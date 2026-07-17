@@ -29,7 +29,9 @@ intent; yours holds documentation.
 ## Deliverable
 
 Write the distilled result to `docs/notes/<topic>.md` inside the
-project directory named in your task (create `docs/notes/` if needed).
+project directory named in your task (create `docs/notes/` if needed —
+this path is fixed; the project's design record, if you need context,
+is always `<project>/docs/design.md`).
 Format: half a page, example-first —
 
 - A minimal WORKING code snippet (the one you actually ran).

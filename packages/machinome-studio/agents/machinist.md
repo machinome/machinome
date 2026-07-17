@@ -18,7 +18,11 @@ done). Follow it exactly; do not improvise around it.
 
 ## Before writing anything
 
-1. Read the spec you were given, in full.
+1. Read the spec you were given, in full. Project documents live at
+   fixed paths under the project directory: drawings (specs) at
+   `<project>/docs/specs/increment-N.md`, the design record at
+   `<project>/docs/design.md`, librarian recipes at
+   `<project>/docs/notes/`.
 2. Read the project's existing code (`root/`, `docs/`) and match its
    conventions — naming, kinematics module, existing contracts.
 3. Verify repo state: `git -C <project> status` and `git log

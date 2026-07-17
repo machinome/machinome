@@ -35,6 +35,12 @@ be one the skill's definition-of-done mutation check can fire.
    assignment: the precise, self-contained spec the machinist
    executes. This is where your craft lives (below).
 
+Both paths are FIXED, relative to the project directory named in your
+dispatch: the design record is always `<project>/docs/design.md`,
+drawings always `<project>/docs/specs/increment-N.md`, librarian
+recipes always `<project>/docs/notes/`. Read and write them there —
+create the directories if missing, never guess other locations.
+
 Keeping design and drawing in two files is deliberate: it is the seam
 along which design synthesis and contract engineering could one day be
 split into two agents. Honor it — put design intent in design.md,
