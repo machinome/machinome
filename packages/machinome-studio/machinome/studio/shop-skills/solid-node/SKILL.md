@@ -59,6 +59,28 @@ attribute get `attr-N`), so the viewer tree and test vocabulary agree.
 An explicit `name=` kwarg overrides; names never affect build
 artifacts, which stay parameter-keyed.
 
+## Parameters: master knobs, derived dimensions
+
+A project has few real degrees of freedom — a scale, a shaft nominal,
+a gear module and tooth counts, a clearance — and everything else is
+derived. Keep the true knobs in ONE module (conventionally
+`root/parameters.py`); derive every other dimension from them in code,
+where it is used:
+
+- Node defaults read the parameter module (`diameter=params.D_SHAFT`);
+  a mating dimension is a relationship (`bore = params.D_SHAFT +
+  2 * params.CLEARANCE`), never a second independent literal. A
+  hand-computed default like `29.4` (really `30.0 - 2*0.3`) freezes
+  the design at one point of its parameter space — turn any knob and
+  its mates silently stop following.
+- Process constraints are the only genuinely absolute numbers, and
+  they belong to the PRINTER, not the design: running clearance per
+  side, minimum wall, minimum printable tooth module, bed envelope.
+  Keep them in the parameter module too. They do NOT scale with the
+  model — they bound the validity envelope of the parameter space,
+  and each deserves a guard test that reddens, with its reason, when
+  a parameter change leaves the envelope.
+
 ## Operations, placement, animation
 
 `child.rotate(angle, [x, y, z])` and `child.translate([x, y, z])` append
@@ -130,7 +152,8 @@ trimesh in world coordinates.
   pass `directions='forward'`. Both modes insert the perturbation
   before the node's placement and restore the operations exactly,
   pass or fail. Perturbation proves ENGAGEMENT; it does not pin
-  dimensions — keep the spec-literal dimension checks alongside it.
+  dimensions — keep the parameter-anchored dimension checks
+  alongside it.
 
 Mesh measurement rules (STL vertices lie exactly on the true surface):
 
@@ -188,29 +211,32 @@ def test_no_two_parts_intersect(self):   # pairs x instants booleans
 - Non-interference alone is gameable (parts a meter apart pass). Pair
   every "does not collide" contract with the engagement contract that
   pins the part in place: blocked beyond the play, free within it.
-- Bound clearances on BOTH sides, deriving bounds from the node's own
-  clearance parameters, not magic numbers.
-- Expected DIMENSIONS are spec literals, never recomputed from the
-  node's parameters at assert time — a self-referential expectation
-  follows the very mutation it should catch and stays tautologically
-  green. Live attributes may LOCATE a feature, never judge it. (This
-  coexists with the clearance rule above: a clearance bound derives
-  from the clearance parameter; a dimension check pins the number.)
-  The same trap hides inside DERIVED play bounds: a blocked/free
-  angle computed from the same parameter a mutation targets moves
-  with the mutation and can never catch it. It also hides inside
-  MEASUREMENT FRAMES: a projection axis read live off the node
-  (`unit.bank`) follows a wiring bug instead of catching it — axes
-  and directions used to measure are spec literals too. And note
-  that max-projection onto an axis is forgiving of axis errors near
-  dead center (off-axis vertices compensate); anchor mid-stroke
-  instants as well as TDC/BDC when the axis direction itself is
-  under test. In a derived-bound
-  formula, pin the mutation-target dimension to its spec literal;
-  only genuinely tunable inputs (clearance) read live. And check the
-  margin against the MEASURED bind angle — small-angle atan
-  estimates undershoot the true corner-bind by a few tenths of a
-  degree, more at larger clearance ratios.
+- Bound clearances on BOTH sides, deriving bounds from the clearance
+  constant in the parameter module, not magic numbers.
+- Expected DIMENSIONS come from the parameter module, through the
+  test's OWN arithmetic — never read off the node at assert time.
+  Tests may share the design's INPUTS (`params.TOWER_HEIGHT`); they
+  must never share the implementation's DERIVATIONS: an expectation
+  read from a node attribute follows the very wiring bug it should
+  catch and stays tautologically green. Live attributes may LOCATE a
+  feature, never judge it. Editing a parameter then moves model and
+  tests together — that is the knob working, not a coverage hole;
+  the bugs tests exist to catch live in NODE CODE (a parameter
+  ignored, misapplied, sign-flipped, a derivation done wrong), and
+  those the shared-input test catches. The tautology trap still
+  hides in two places: DERIVED play bounds (a blocked/free bound
+  computed by calling the node's own formula moves with the bug it
+  should catch — the test redoes the derivation itself, from the
+  parameters) and MEASUREMENT FRAMES (a projection axis read live
+  off the node, `unit.bank`, follows a wiring bug instead of
+  catching it — axes and directions used to measure are computed in
+  the test from the parameters too). Max-projection onto an axis is
+  forgiving of axis errors near dead center (off-axis vertices
+  compensate); anchor mid-stroke instants as well as TDC/BDC when
+  the axis direction itself is under test. And check margins against
+  the MEASURED bind angle — small-angle atan estimates undershoot
+  the true corner-bind by a few tenths of a degree, more at larger
+  clearance ratios.
 - Parts that legitimately abut FLUSH (butt-jointed shaft segments)
   produce float-noise boolean intersections that read as
   interference: pass `volume_epsilon=1e-6` to
@@ -228,9 +254,12 @@ def test_no_two_parts_intersect(self):   # pairs x instants booleans
    If you redirect a chained run's output to one log file, only the
    last command's output survives — redirect per file (or just run
    them as separate foreground invocations) when you'll inspect logs.
-4. Mutation check: break the geometry contract (wrong phase, undersized
-   bore...), confirm the specific contract tests fail, revert, confirm
-   green. The mutation must FLOW: mutating a child's default parameter is
+4. Mutation check: break the geometry contract IN NODE CODE (wrong
+   phase, a dropped clearance term, a misapplied parameter...), confirm
+   the specific contract tests fail, revert, confirm green. Editing the
+   parameter module is inert BY DESIGN — tests share those inputs and
+   follow the knob — so mutate the code that USES the parameter, not
+   the parameter. The mutation must FLOW: mutating a child's default is
    inert when the parent passes the value explicitly — mutate at the
    level the value actually comes from. And it must EXCEED the margin
    that actually bounds the error: identify which physical gap or play
