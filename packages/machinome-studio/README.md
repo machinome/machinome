@@ -42,18 +42,23 @@ to be a private development platform, now open. Clone it and bootstrap
 in one of two tiers:
 
     scripts/setup             # tier 1 (plain): venv + pip install solid-node
-    scripts/setup dev [ref]   # tier 2 (development): framework as a git
-                              # working copy, editable install, frontend
-                              # built from source
+    scripts/setup dev [ref]   # tier 2 (development): the framework
+                              # submodule as a working copy, editable
+                              # install, frontend built from source
 
 **Tier 1** is all you need to build projects: the wheel ships the
 prebuilt viewer and widget (Python and OpenSCAD are the only system
-requirements). **Tier 2** is the contributor bench: the framework is a
-git clone (latest release tag by default; pass a ref, or set
-`SOLID_NODE_REPO` to your fork) installed editable, with the viewer app
-and export widget built from source — so framework work, including the
-whole frontend surface, is one branch away. `setup dev` upgrades a
-tier-1 workspace in place; both tiers are idempotent.
+requirements). **Tier 2** is the contributor bench: the framework
+lives at `solid-node/` as a **git submodule** — the shop pins the
+framework commit it is known to work with — initialized as a working
+copy (the pinned commit by default; pass a ref, or set
+`SOLID_NODE_REPO` to your fork) and installed editable, with the
+viewer app and export widget built from source — so framework work,
+including the whole frontend surface, is one branch away. `setup dev`
+upgrades a tier-1 workspace in place; both tiers are idempotent.
+Advancing the framework version is a shop commit that bumps the
+submodule pin — the workspace always records exactly which framework
+it runs.
 
 On the dev bench, framework work happens in isolated git worktrees with
 their own ports:
@@ -61,12 +66,14 @@ their own ports:
     scripts/dev-env <name> setup      # bench at WTs/<name>, branch <name>
     scripts/dev-env <name> teardown
 
-**Projects live beside the framework, never inside it.** Each CAD
-project is its **own git repository**, conventionally at
-`projects/<name>` in the workspace (gitignored here — your projects
-are yours to host). The framework clone (`solid-node/`) and the
-benches (`WTs/`) hold framework code only; the shop's agents verify
-this boundary before every commit and refuse to cross it.
+**One repository per project, and never the framework's.** Each CAD
+project is its **own git repository**, at `projects/<name>` in the
+workspace (untracked here — your projects are yours to host). The
+boundary is repository membership, not directory nesting: a project's
+files must answer to the project's own repo and to no enclosing one.
+The framework submodule (`solid-node/`) and the benches (`WTs/`) hold
+framework code only; the shop's agents verify this boundary before
+every commit and refuse to cross it.
 
 ## Use
 
@@ -111,8 +118,9 @@ framework repo to activate the flow.
       marketplace.json       marketplace listing (this repo == marketplace)
     scripts/
       setup                  workspace bootstrap (tier 1 plain / tier 2 dev)
-      dev-env                isolated worktree benches on the framework clone
-    projects/                your CAD projects — each its OWN git repo (gitignored)
+      dev-env                isolated worktree benches on the framework submodule
+    solid-node/              the framework, as a git SUBMODULE (pinned commit)
+    projects/                your CAD projects — each its OWN git repo (untracked)
     skills/
       solid-node/            the machinist's craft manual (shared)
       running-the-shop/      the orchestration loop (the foreman reads this)

@@ -1,7 +1,9 @@
 # The shop checkout is a WORKSPACE: everything the setup scripts create
-# next to the shop's own files stays out of git.
+# next to the shop's own files stays out of git. The framework itself
+# is a git SUBMODULE at solid-node/ (tracked); each project under
+# projects/ is its OWN repository (untracked here).
 .venv/
-solid-node/
 WTs/
 .env
-projects/
+projects/*
+!projects/README.md

@@ -53,9 +53,10 @@ working copy and nowhere else.
   that `.env` is picked up, and run the worktree's own code with
   `PYTHONPATH="$PWD"` against the workspace venv
   (`<shop>/.venv/bin/python`, `<shop>/.venv/bin/solid`) — the venv's
-  editable install points at the main clone, not your bench. The web
-  app's `node_modules/` and `build/` are symlinked from the main
-  clone: never run `npm install` or `npm run build` through them.
+  editable install points at the workspace's framework submodule
+  checkout (`<shop>/solid-node`), not your bench. The web app's
+  `node_modules/` and `build/` are symlinked from that checkout:
+  never run `npm install` or `npm run build` through them.
   The framework repo's own CLAUDE.md is authoritative on worktree
   rules.
 - **A standalone fork clone**: work on a branch; standard install
