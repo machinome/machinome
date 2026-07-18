@@ -1,0 +1,6 @@
+# The shop checkout is a WORKSPACE: everything the setup scripts create
+# next to the shop's own files stays out of git.
+.venv/
+solid-node/
+WTs/
+.env
