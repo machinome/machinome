@@ -42,23 +42,20 @@ to be a private development platform, now open. Clone it and bootstrap
 in one of two tiers:
 
     scripts/setup             # tier 1 (plain): venv + pip install solid-node
-    scripts/setup dev [ref]   # tier 2 (development): the framework
-                              # submodule as a working copy, editable
-                              # install, frontend built from source
+    scripts/setup dev [ref]   # tier 2 (development): framework as a git
+                              # working copy, editable install, frontend
+                              # built from source
 
 **Tier 1** is all you need to build projects: the wheel ships the
 prebuilt viewer and widget (Python and OpenSCAD are the only system
-requirements). **Tier 2** is the contributor bench: the framework
-lives at `solid-node/` as a **git submodule** — the shop pins the
-framework commit it is known to work with — initialized as a working
-copy (the pinned commit by default; pass a ref, or set
-`SOLID_NODE_REPO` to your fork) and installed editable, with the
-viewer app and export widget built from source — so framework work,
+requirements). **Tier 2** is the contributor bench: the framework is a
+git clone at `solid-node/` (untracked — the shop does not pin a
+framework commit, so the same shop version serves a user on the
+latest release tag and a maintainer on `main`; pass a ref, or set
+`SOLID_NODE_REPO` to your fork) installed editable, with the viewer
+app and export widget built from source — so framework work,
 including the whole frontend surface, is one branch away. `setup dev`
 upgrades a tier-1 workspace in place; both tiers are idempotent.
-Advancing the framework version is a shop commit that bumps the
-submodule pin — the workspace always records exactly which framework
-it runs.
 
 On the dev bench, framework work happens in isolated git worktrees with
 their own ports:
@@ -71,7 +68,7 @@ project is its **own git repository**, at `projects/<name>` in the
 workspace (untracked here — your projects are yours to host). The
 boundary is repository membership, not directory nesting: a project's
 files must answer to the project's own repo and to no enclosing one.
-The framework submodule (`solid-node/`) and the benches (`WTs/`) hold
+The framework clone (`solid-node/`) and the benches (`WTs/`) hold
 framework code only; the shop's agents verify this boundary before
 every commit and refuse to cross it.
 
@@ -118,8 +115,8 @@ framework repo to activate the flow.
       marketplace.json       marketplace listing (this repo == marketplace)
     scripts/
       setup                  workspace bootstrap (tier 1 plain / tier 2 dev)
-      dev-env                isolated worktree benches on the framework submodule
-    solid-node/              the framework, as a git SUBMODULE (pinned commit)
+      dev-env                isolated worktree benches on the framework clone
+    solid-node/              the framework working copy (untracked; setup dev)
     projects/                your CAD projects — each its OWN git repo (untracked)
     skills/
       solid-node/            the machinist's craft manual (shared)
