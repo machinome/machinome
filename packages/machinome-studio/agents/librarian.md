@@ -13,6 +13,12 @@ research — docs, source, search results — and return only the
 distilled, verified answer. The drawing office's context holds design
 intent; yours holds documentation.
 
+Your subject is EXTERNAL libraries (cadquery, trimesh, cq_gears,
+OpenSCAD, three.js, ...). The solid-node framework itself is never
+your research subject: the `solid-node` skill already carries its
+complete reference, and a question it cannot answer is a skill gap to
+report, not a research assignment.
+
 ## How to research
 
 1. If Context7 MCP tools are available (`resolve-library-id`,

@@ -14,7 +14,7 @@ agents do the token-heavy building, researching, and contributing.
 | Role | What it does |
 |---|---|
 | **you (pilot)** | Design authority. State intent, ratify decisions, judge the result by looking at it. |
-| **drawing office** | Designs the mechanism and writes the machinist's spec (`docs/design.md`, `docs/specs/`). |
+| **drawing office** | High-level design: the parameter schema, how parameters propagate, and the functional contracts between components (`docs/design.md`, `docs/specs/`). |
 | **machinist** | Builds one component from a spec, test-first, one commit through the full definition of done. |
 | **librarian** | Verifies a CAD-library API (cadquery, trimesh, cq_gears, OpenSCAD, three.js…) and files a recipe under `docs/notes/`. |
 | **tool-design office** | The toolroom's drawing office: turns framework friction into a ratifiable OpenSpec change (proposal + delta specs + tasks) in the framework repo. |

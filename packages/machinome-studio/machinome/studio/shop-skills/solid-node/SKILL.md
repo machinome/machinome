@@ -17,6 +17,13 @@ Commands (run from the project directory, with the project's venv):
     solid test root/<node>.py   # run tests for one node (passing the
                                 # test_*.py path works too)
 
+This manual is COMPLETE: together with the framework reference at the
+end it carries everything building against solid-node requires. Never
+read the framework's source tree or installed package to learn the
+framework — if something you need is missing here, that is a SKILL
+GAP: report it in your final message and work around it explicitly;
+do not excavate.
+
 ## Writing nodes
 
 Leaf nodes subclass a backend adapter: `CadQueryNode`, `Solid2Node`,
@@ -213,6 +220,11 @@ def test_no_two_parts_intersect(self):   # pairs x instants booleans
   pins the part in place: blocked beyond the play, free within it.
 - Bound clearances on BOTH sides, deriving bounds from the clearance
   constant in the parameter module, not magic numbers.
+- One measured literal per physical gap: a single min-distance
+  assertion spanning two independent gaps (a radial ring gap and an
+  axial lip gap) is blind to either failing alone — the unaffected
+  gap always wins the min(). If two things can fail independently,
+  they are two contracts.
 - Expected DIMENSIONS come from the parameter module, through the
   test's OWN arithmetic — never read off the node at assert time.
   Tests may share the design's INPUTS (`params.TOWER_HEIGHT`); they
@@ -272,7 +284,7 @@ def test_no_two_parts_intersect(self):   # pairs x instants booleans
    them as coverage.
 5. Wire the component into the root assembly. A component that does not
    change the model in the running viewer is not done. Verify over HTTP:
-   `curl http://localhost:8000/node/?t=0.1` lists children; walk the
+   `curl http://localhost:8000/node/` lists children; walk the
    paths (`/node/<Child>/.../<Leaf>.stl` returns 200; assembly JSON
    shows the expected operations, symbolic `$t` for animated ones).
 6. LOOK at the result — endpoints being correct does not mean the model
@@ -289,3 +301,160 @@ def test_no_two_parts_intersect(self):   # pairs x instants booleans
    `/_build_error` returns `{}` before judging what the user sees. A
    DEAD backend is visible too: the browser shows a red banner and
    heals itself when the server comes back.
+
+## Framework reference
+
+The complete public surface, verified against the source — consult
+this, never the framework tree.
+
+### Imports
+
+```python
+from solid_node.node import (
+    AssemblyNode, FusionNode,                  # internal nodes
+    CadQueryNode, Solid2Node,                  # leaf backends
+    OpenScadNode, JScadNode,
+    property_as_number,                        # decorator (below)
+)
+from solid_node.test import (
+    TestCase, TestCaseMixin, testing_instant, testing_steps)
+from solid_node.math import (
+    sin, cos, tan, asin, acos, atan, atan2, sqrt)   # DEGREES
+```
+
+### Node classes
+
+- `CadQueryNode` — `render()` returns a `cadquery.cq` object
+  (Workplane). Exported to STL by the framework.
+- `Solid2Node` — `render()` returns a solid2 object. Its
+  `as_number()` resolves a solid2 EXPRESSION by running an OpenSCAD
+  process per call — slow; keep numbers in plain Python wherever a
+  test will measure them.
+- `OpenScadNode` — declare `scad_source = 'file.scad'` (path relative
+  to the node's .py file); the scad module named after the file (or
+  `module_name = '...'`) is called with the constructor's
+  `*args/**kwargs`.
+- `JScadNode` — declare `jscad_source`; needs the `jscad` CLI on PATH.
+- `AssemblyNode` — `render()` returns a list of persistent children;
+  `self.time` is available; not rigid.
+- `FusionNode` — an internal node like an assembly (render() returns
+  children) but RIGID: the children fuse into one inseparable printed
+  part, one STL. No `self.time` (raises) — use it to model a single
+  part from several solids.
+- `property_as_number` — decorator turning a method into a property
+  resolved through `as_number()` (for solid2-expression-valued
+  properties).
+
+A file with several node classes must mark the main one with
+module-level `NODE = MyClass` (a class defined in that same file) or
+loading fails loudly with the candidates listed.
+
+### Node API (all nodes)
+
+Class attributes: `color = '#RRGGBB'` (viewer color), `fn = N` (sets
+`$fn`), `optimize` (True; False renders scad un-flattened, OpenSCAD
+viewer only), `rigid` (leaves/fusions True, assemblies False).
+
+Constructor: `__init__(self, *args, name=None, **kwargs)`. The
+artifact key (`uniq_id`) is class qualname + args + sorted kwargs,
+hashed — so pass every parameter to `super().__init__()` and artifacts
+never go stale across parameter changes; `name=` never affects it.
+
+Instance surface: `.rotate(angle, axis)` and `.translate([x,y,z])`
+(append an operation, return self, chainable); `.operations` (the
+list — Rotation/Translation objects; tests may inspect it);
+`.mesh` (trimesh in WORLD coordinates, fresh copy per access, base
+geometry cached per (stl_file, mtime)); `.stl_file` (path of the
+built artifact — the fast intersection path needs it); `.name`;
+`.children`; `.time` (assemblies only — symbolic `$t` in the
+build/viewer path, numeric after `set_keyframe(t)`);
+`.set_keyframe(t)` (propagates down the tree; no-op on leaves);
+`.assemble()` then `.build_stls()` (build a node created inside a
+test so `.mesh` works); `.save_checkpoint()`/`.restore_checkpoint()`
+(operations-list mark and rollback).
+
+Builds land in `_build/` (override: env `SOLID_BUILD_DIR`) as
+`<script>-<readable-prefix>-<hash>.stl`; an STL is up to date when
+its mtime equals the newest source mtime among everything the node
+renders — touch a source, the next build regenerates.
+
+### Assertion signatures (`solid_node.test.TestCase`)
+
+```python
+assertNotIntersecting(node1, node2)
+assertIntersecting(node1, node2)
+assertInside(outer, inner)          # ALL of inner's vertices inside outer
+assertClose(node1, node2, max_distance)   # EVERY vertex of node2 within
+                                          # max_distance of node1's surface
+assertFar(node1, node2, min_distance)     # every vertex at least that far
+assertIntersectVolumeAbove(node1, node2, min_volume)
+assertIntersectVolumeBelow(node1, node2, max_volume)
+assertBlockedBeyond(node, amount, against, axis=None,
+                    volume_epsilon=0.0, along=None, directions='both')
+assertFreeWithin(node, amount, against, axis=None,
+                 volume_epsilon=0.0, along=None, directions='both')
+                    # amount may be a list/tuple (sweep) in FreeWithin
+assertNoPairwiseIntersections(root, volume_epsilon=0.0)
+```
+
+Note `assertClose`/`assertFar` bound the FARTHEST/nearest vertex of
+node2 — whole-part bounds, not a single gap measurement; for a
+specific gap, measure vertices yourself (see the measurement rules).
+Intersection-based assertions take the fast path (cached manifolds +
+AABB cull) when both nodes have `.stl_file`; STLs must be watertight
+or the cache raises naming the offending file. `mesh.contains` needs
+`rtree`; `trimesh.proximity` needs `scipy`.
+
+### Test runner (`solid test <path> [--failfast]`)
+
+- `root/foo.py` pairs with `root/test_foo.py`; a package
+  `root/__init__.py` with `root/test.py`. Passing the TEST file's
+  path is fine (mapped back to the node).
+- The runner builds the node at keyframe 0 (render, assemble, STLs)
+  BEFORE any test runs, then runs `test_*` methods found on the node
+  class itself (via `TestCaseMixin`) and on the test class —
+  alphabetical order, `setUp`/`tearDown` around each method,
+  `set_node()` giving the test `self.node` plus the snake_case alias
+  of the test class name (`SpurGearTest` → `self.spur_gear`).
+- Per instant (from `@testing_instant(t)` / `@testing_steps(n,
+  start=0, end=1)`, default `[0]`): `set_keyframe(instant)`, run,
+  then the ROOT'S DIRECT CHILDREN's operations lists are restored by
+  content — an operation leaked anywhere in those lists is reverted;
+  kinematic operations anywhere deeper are swept by their driving
+  assembly on its next render.
+- Any failure → exit code 1. `--failfast` stops at the first.
+
+### CLI
+
+```
+solid new <name>                # scaffold: <name>/root/__init__.py + .gitignore
+solid develop <path> [--web-dev] [--openscad] [--debug-builder] [--debug-web]
+solid test <path> [--failfast]
+solid snapshot <path> -o out.png [--time 0..1] [--autocenter] [--viewall]
+      [--camera tx,ty,tz,rx,ry,rz,dist | ex,ey,ez,cx,cy,cz]
+      [--imgsize 1920x1080] [--projection ortho|perspective]
+      [--colorscheme Cornfield|Metallic|...] [--preview]
+      [--view axes,crosshairs,edges,scales,wireframe]
+solid export <path> [-o export] [--fps 30] [--frames 360] [--no-widget]
+```
+
+Command comes first (0.4 grammar). The CLI loads `./.env` at startup
+(real environment wins): `SOLID_NODE_PORT` (viewer, default 8000),
+`SOLID_NODE_FRONTEND_PORT` (npm dev server, default 3000),
+`SOLID_BUILD_DIR` (default `_build`). Snapshot self-wraps xvfb-run
+when headless. Export writes `manifest.json` + deduplicated `models/`
++ (unless `--no-widget`) a self-contained embeddable viewer; the
+widget bundle must be built or export says how.
+
+### Viewer HTTP surface (`solid develop`, port `SOLID_NODE_PORT`)
+
+- `GET /node/` — root state JSON: `{operations, type, name, color,
+  mtime, children: [names]}` — operations serialized as
+  `['r', '<angle-expr>', [x,y,z]]` / `['t', ['<x>','<y>','<z>']]`
+  with RAW expressions (`$t` appears verbatim for animated ones).
+- `GET /node/<Child>/.../` — nested states by child name; a rigid
+  node's state has `model: '<Name>.stl'` instead of `children`.
+- `GET /node/<path>/<Name>.stl` — the STL; WAITS for the file to
+  exist rather than 404ing (curl with a timeout).
+- `GET /_build_error` — `{}` when clean, else the current build error.
+- `WS /ws/reload` — the browser's reload signal. Frontend at `/`.
