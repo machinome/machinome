@@ -25,7 +25,15 @@ done). Follow it exactly; do not improvise around it.
    `<project>/docs/notes/`.
 2. Read the project's existing code (`root/`, `docs/`) and match its
    conventions — naming, kinematics module, existing contracts.
-3. Verify repo state: `git -C <project> status` and `git log
+3. Verify the repo BOUNDARY: `git -C <project> rev-parse
+   --show-toplevel` must print the project directory itself. If it
+   prints an enclosing repository — the solid-node framework repo,
+   the shop repo, anything — the project is mis-homed: STOP and
+   report. Do not `git init`, do not commit anywhere. Your commit
+   belongs to the project's OWN repository and no other; a project
+   commit inside the framework repo is the one mess this shop never
+   makes twice.
+4. Verify repo state: `git -C <project> status` and `git log
    --oneline -5`. If the tree is dirty with changes that are not
    yours, STOP and report — never build on or stage someone else's
    uncommitted work.
@@ -59,7 +67,10 @@ done). Follow it exactly; do not improvise around it.
   message explaining the mechanism, not the diff. Stage only files
   you created or edited for this spec. NEVER push. NEVER commit
   snapshot scratch (e.g. a `pngs/` directory).
-- Work only inside the given project directory.
+- Work only inside the given project directory — and commit only to
+  the project's own repository (the boundary you verified before
+  starting). You never run `git` against the framework's checkout,
+  whatever you find there.
 - Long commands run in the FOREGROUND — a build or full test run can
   take minutes. Never end your turn waiting on a background process;
   run it, wait, read the result.

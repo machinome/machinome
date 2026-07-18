@@ -61,6 +61,13 @@ their own ports:
     scripts/dev-env <name> setup      # bench at WTs/<name>, branch <name>
     scripts/dev-env <name> teardown
 
+**Projects live beside the framework, never inside it.** Each CAD
+project is its **own git repository**, conventionally at
+`projects/<name>` in the workspace (gitignored here — your projects
+are yours to host). The framework clone (`solid-node/`) and the
+benches (`WTs/`) hold framework code only; the shop's agents verify
+this boundary before every commit and refuse to cross it.
+
 ## Use
 
 Just describe what you want to build — "let's start a V8 engine
@@ -105,6 +112,7 @@ framework repo to activate the flow.
     scripts/
       setup                  workspace bootstrap (tier 1 plain / tier 2 dev)
       dev-env                isolated worktree benches on the framework clone
+    projects/                your CAD projects — each its OWN git repo (gitignored)
     skills/
       solid-node/            the machinist's craft manual (shared)
       running-the-shop/      the orchestration loop (the foreman reads this)

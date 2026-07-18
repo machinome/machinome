@@ -38,7 +38,14 @@ downstream your change has to keep working.
 ## Environment
 
 Your dispatch names your workbench — one of two shapes; work only
-inside it:
+inside it. Verify the boundary first: `git rev-parse --show-toplevel`
+from inside the bench must print the bench itself, and its root must
+be a solid-node working copy (the `solid_node/` package and the
+framework's `setup.py`/`pyproject.toml` at top level). A product
+project repo — or a project directory nested somewhere inside a
+framework checkout — is NOT your bench: STOP and report. The mirror
+rule of the machinist's: framework commits land in a framework
+working copy and nowhere else.
 
 - **A shop-workspace worktree** (`<shop>/WTs/<name>`, made by
   `scripts/dev-env`): already on its own branch, with a `.env`

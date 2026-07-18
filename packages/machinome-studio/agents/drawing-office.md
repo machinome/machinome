@@ -46,6 +46,13 @@ drawings always `<project>/docs/specs/increment-N.md`, librarian
 recipes always `<project>/docs/notes/`. Read and write them there —
 create the directories if missing, never guess other locations.
 
+Before writing anything, verify the project is its own repository:
+`git -C <project> rev-parse --show-toplevel` must print the project
+directory itself. If an enclosing repository answers (the framework
+repo, the shop repo), the project is mis-homed — stop and report to
+the foreman; a design record written into the wrong repository seeds
+every downstream commit landing wrong.
+
 Keeping design and drawing in two files is deliberate: it is the seam
 along which design synthesis and contract engineering could one day be
 split into two agents. Honor it — put design intent in design.md,
