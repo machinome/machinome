@@ -9,3 +9,5 @@ WTs/
 .env
 projects/*
 !projects/README.md
+*.pyc
+__pycache__

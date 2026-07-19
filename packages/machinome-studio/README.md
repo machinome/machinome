@@ -1,38 +1,46 @@
 # solid-node shop
 
-A Claude Code plugin for building 3D-printable mechanical CAD projects
-with [solid-node](https://github.com/LibreSolid/solid-node) — the
-framework that treats mechanical parts as software: parametric
-interfaces, unit tests, and integration contracts verified on meshes.
+An experimental agent harness for building 3D-printable mechanical CAD
+projects with [solid-node](https://github.com/LibreSolid/solid-node) — the
+framework that treats mechanical parts as software: parametric interfaces,
+unit tests, and integration contracts verified on meshes. This checkout has a
+Codex-native configuration for current trials and also packages the existing
+Claude Code plugin.
 
 The plugin packages a small **shop** of specialist agents and the loop
 that coordinates them, so you (the *pilot*) design and steer while the
-agents do the token-heavy building, researching, and contributing.
+agents do the token-heavy building and researching.
 
 ## The shop
 
 | Role | What it does |
 |---|---|
-| **you (pilot)** | Design authority. State intent, ratify decisions, judge the result by looking at it. |
-| **drawing office** | High-level design: the parameter schema, how parameters propagate, and the functional contracts between components (`docs/design.md`, `docs/specs/`). |
-| **machinist** | Builds one component from a spec, test-first, one commit through the full definition of done. |
+| **you (pilot)** | Establish intent, decide consequential choices, and judge the result by looking at it. |
+| **drawing office** | Maintains the project design, releases the first executable drawing quickly, then plans one evidence-producing slice ahead (`docs/design.md`, `docs/specs/`). |
+| **machinist** | Builds a committed released drawing while the office plans ahead; owns code, tests, and implementation evidence. |
 | **librarian** | Verifies a CAD-library API (cadquery, trimesh, cq_gears, OpenSCAD, three.js…) and files a recipe under `docs/notes/`. |
-| **tool-design office** | The toolroom's drawing office: turns framework friction into a ratifiable OpenSpec change (proposal + delta specs + tasks) in the framework repo. |
-| **toolmaker** | Implements a *ratified* OpenSpec change as a pull request to solid-node itself, one commit per task. |
 
-You talk to Claude; Claude runs the shop, dispatching these agents and
-bringing decisions back to you for ratification. The design lives in
-`docs/design.md` so a fresh session picks the project up from the repo,
-not from memory.
+You talk to the foreman assistant; it runs the shop, dispatching these agents
+concurrently after the first drawing and bringing back only consequential
+decisions. The design lives in `docs/design.md` and immutable released
+drawings, so a fresh session picks the project up from the repo, not from
+memory.
 
-## Install
+## Try with Codex
+
+Start Codex from this checkout so it loads `.codex/config.toml` and the named
+specialists under `.codex/agents/`, then describe the project you want to start
+or resume. The Codex path is currently a checkout-based experimental harness,
+not a published plugin.
+
+## Install in Claude Code
 
     /plugin marketplace add LibreSolid/solid-node-shop
     /plugin install solid-node-shop@solid-node
 
 (Or point the marketplace at wherever you host this repo.) Once
 installed, the `running-the-shop` skill loads whenever you start a
-mechanical project, and the five agents are available as
+mechanical project, and the three agents are available as
 `solid-node-shop:<name>`.
 
 ## The workspace
@@ -75,26 +83,63 @@ every commit and refuse to cross it.
 ## Use
 
 Just describe what you want to build — "let's start a V8 engine
-demonstrator", "add the next increment", "build the bearing frame" —
-and Claude runs the loop:
+demonstrator", "build the windmill", "continue toward a working
+gearbox" — and the foreman runs the pipeline:
 
-1. **drawing office** designs the increment and writes its spec.
-2. You **ratify** the design decisions (asked in plain language).
-3. **machinist** builds it, test-first, one commit.
-4. Claude shows you the **snapshots**; you judge the result.
-5. The increment is **banked** in `docs/design.md`; on to the next.
+1. The foreman has one focused conversation with you about the project.
+2. A fresh **drawing office** first writes a minimal uncommitted draft
+   checkpoint, then establishes the design spine and commits a small,
+   executable first drawing.
+3. The **machinist** builds and tests that released slice while the office
+   develops the higher-level design and drafts the next slice.
+4. The foreman inspects the code, tests, and **snapshots**; implementation
+   evidence is reconciled into the next released drawing.
+5. The line continues toward the project goal, stopping only when a
+   consequential decision needs you.
+
+Released drawings do not move underneath the machinist. The office owns design
+documents; the machinist owns project code and tests. While this workflow is
+experimental, the product-side shop may not use another mechanical project as
+a reference.
+
+### Codex model defaults
+
+The checkout includes project-scoped Codex agents under `.codex/agents/`.
+The initial low-cost evaluation defaults step every role down one model tier so
+the shop can establish whether its prompts are useful before spending heavily:
+
+| Role | Model | Reasoning |
+|---|---|---|
+| foreman | `gpt-5.6-terra` | medium |
+| drawing office | `gpt-5.6-luna` | low |
+| machinist | `gpt-5.6-luna` | low |
+| librarian | `gpt-5.6-luna` | low |
+
+The project config limits agent depth and concurrent threads so the two-lane
+pipeline does not expand into uncontrolled token-heavy fan-out. These are
+evaluation defaults, not settled performance claims.
+
+### OpenSpec capability boundary
+
+The vendored OpenSpec skills support shop and framework development directly
+from this repository, outside the mechanical-project shop roles. Drawing
+office, machinist, and librarian receive no OpenSpec skill.
+
+Codex specialists start with fresh task-local context and load their role and
+skills locally once. During bootstrap, the foreman expects the drawing-office
+draft checkpoint within 90 seconds. Silence beyond that boundary is interrupted
+and reported; it is not poked or retried with inherited history.
 
 When the framework itself gets in the way, that friction is a *wart* —
 run `/file-a-wart` to propose the fix upstream.
 
 ## Contributing to the framework
 
-The framework improves through a **ratify-then-build** loop grounded
-in the framework repo's own records — `openspec/specs/` (behavioral
-contracts), `docs/adrs/` (decisions), `docs/architecture.md`
-(synthesis). You file a wart; the tool-design office turns it into an
-OpenSpec change whose **delta specs** the maintainer ratifies; then
-anyone — including your coding agent, via the toolmaker — implements
+Framework development is a separate discipline from running the mechanical
+shop. It remains grounded in the framework repo's own records —
+`openspec/specs/` (behavioral contracts), `docs/adrs/` (decisions), and
+`docs/architecture.md` (synthesis). A wart can become an OpenSpec change whose
+**delta specs** the maintainer ratifies; a contributor then implements
 it as a PR, and the merged change is archived back into the specs
 (and an ADR, when architectural). Conformance bugs — code violating
 what the specs already promise — skip ratification and go straight to
@@ -113,21 +158,24 @@ framework repo to activate the flow.
     .claude-plugin/
       plugin.json            plugin manifest
       marketplace.json       marketplace listing (this repo == marketplace)
+    .codex/
+      config.toml            foreman model + concurrency defaults
+      agents/                Codex specialist model adapters
     scripts/
       setup                  workspace bootstrap (tier 1 plain / tier 2 dev)
       dev-env                isolated worktree benches on the framework clone
     solid-node/              the framework working copy (untracked; setup dev)
     projects/                your CAD projects — each its OWN git repo (untracked)
     skills/
-      solid-node/            the machinist's craft manual (shared)
+      solid-node-api/        complete public framework contract
+      solid-node/            the machinist's craft manual
       running-the-shop/      the orchestration loop (the foreman reads this)
       file-a-wart/           /file-a-wart — open a framework-improvement issue
+      openspec-*/            vendored OpenSpec workflow skills
     agents/
-      drawing-office.md      design + spec (product)
-      machinist.md           build to spec
+      drawing-office.md      progressive design + released drawings
+      machinist.md           build/test a stable released drawing
       librarian.md           CAD-library research
-      tool-design-office.md  design + delta specs (framework)
-      toolmaker.md           framework PRs
     governance/              contribution templates for the framework repo
 
 ## License
