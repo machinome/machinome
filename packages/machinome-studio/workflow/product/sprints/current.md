@@ -11,8 +11,9 @@ artifact inspection, and foreman conversation to evolve incrementally.
 
 - [x] STORY-001 — Open and close the shop
   - Source: `docs/product/stories/STORY-001-open-and-close-shop.md`
-  - OpenSpec change: `openspec/changes/archive/2026-07-19-open-and-close-shop`
-  - Integration: `6c1617a`
+  - OpenSpec changes: `2026-07-19-open-and-close-shop`,
+    `2026-07-19-go-shop-floor-lifecycle`
+  - Integration: `b724410`
 - [ ] STORY-002 — Use one browser workspace
   - Source: `docs/product/stories/STORY-002-use-one-browser-workspace.md`
   - OpenSpec change: not started
