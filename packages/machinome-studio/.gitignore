@@ -7,7 +7,6 @@
 __pycache__/
 *.pyc
 node_modules/
-frontend/dist/
 playwright-report/
 test-results/
 solid-node/

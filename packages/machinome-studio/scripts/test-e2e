@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-npm --prefix frontend run build
-python -m unittest tests.test_shop_lifecycle_e2e -v
+npm --prefix floor/frontend run build
+python -m unittest tests.test_floor_entrypoint tests.test_floor_api tests.test_shop_lifecycle_e2e -v

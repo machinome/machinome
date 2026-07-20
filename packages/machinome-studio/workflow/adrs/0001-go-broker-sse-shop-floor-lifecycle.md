@@ -1,4 +1,4 @@
-# ADR 0001: Use a Go broker and Server-Sent Events for shop-floor lifecycle
+# ADR 0001: Use a FastAPI broker and Server-Sent Events for shop-floor lifecycle
 
 **Status:** Accepted
 
@@ -19,9 +19,9 @@ preempt later Sprint 1 work on agents, projects, design views, or maker chat.
 
 ## Decision
 
-Shop-floor is a local Go broker. Codex starts and stops its compiled lifecycle
-command. Its default local browser location uses port 9000, and an agent can
-override that port when opening the service.
+Shop-floor is a local FastAPI broker contained in `floor/`. Codex starts and
+stops it with `python -m floor`. Its default local browser location uses port
+9000, and an agent can override that port when opening the service.
 
 The browser page maintains a Server-Sent Events connection to the service's
 lifecycle endpoint. A connected stream displays `Shop is open`; a lost stream
@@ -36,7 +36,7 @@ menu, artifact view, and foreman conversation areas.
 - The agent—not the maker—operates the local service lifecycle.
 - Shutdown must wait until the service is actually unavailable before reporting
   that it is closed, so the browser can receive the SSE disconnect.
-- The Go broker owns its internal unit and integration tests. A Python
+- The FastAPI broker owns its Python unit and integration tests. A Python
   Playwright test covers the public browser lifecycle across shutdown and
   restart; failure retains browser evidence.
 - Server-Sent Events are sufficient for this one-way lifecycle signal. Later

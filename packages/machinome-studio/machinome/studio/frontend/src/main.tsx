@@ -48,6 +48,14 @@ function AgentMenu({ agents }: { agents: Agent[] }) {
 
 function App() {
   const [run, setRun] = useState<Run | null>(null);
+  const [shopOpen, setShopOpen] = useState(false);
+
+  useEffect(() => {
+    const lifecycle = new EventSource("/events/lifecycle");
+    lifecycle.onopen = () => setShopOpen(true);
+    lifecycle.onerror = () => setShopOpen(false);
+    return () => lifecycle.close();
+  }, []);
 
   useEffect(() => {
     let source: EventSource | undefined;
@@ -95,6 +103,7 @@ function App() {
     <main>
       <header>
         <h1>shop-floor</h1>
+        <p id="shop-status" aria-live="polite">Shop is {shopOpen ? "open" : "closed"}</p>
         <p>{run ? `Run ${run.id} · ${run.status}` : "Waiting for a run."}</p>
       </header>
       <AgentMenu agents={run?.agents ?? []} />
