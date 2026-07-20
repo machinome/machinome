@@ -40,6 +40,9 @@ class ShopLifecycleE2E(unittest.TestCase):
     def test_roster_updates_without_reloading(self) -> None:
         self.page.goto(self.url("/"))
         self.page.get_by_text("Shop is open").wait_for()
+        self.page.get_by_role("complementary", name="Shop menu").wait_for()
+        self.page.get_by_role("region", name="Artifact view").get_by_text("No artifact selected.").wait_for()
+        self.page.get_by_role("region", name="Foreman conversation").get_by_text("No foreman conversation is available yet.").wait_for()
         self._stop_floor()
         self.page.get_by_text("Shop is closed").wait_for(timeout=5_000)
         self._start_floor()
@@ -56,6 +59,32 @@ class ShopLifecycleE2E(unittest.TestCase):
         row.get_by_text("waiting").wait_for(timeout=500)
         _request(self.url("/api/runs/shop-floor/agents/machinist"), "DELETE")
         self.page.get_by_text("No agents are currently manifested.").wait_for(timeout=500)
+
+    def test_workspace_has_no_horizontal_overflow_on_a_narrow_viewport(self) -> None:
+        self.page.set_viewport_size({"width": 375, "height": 800})
+        self.page.goto(self.url("/"))
+        self.page.get_by_role("complementary", name="Shop menu").wait_for()
+        self.assertTrue(
+            self.page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"),
+            "workspace must not require horizontal page scrolling",
+        )
+
+    def test_desktop_workspace_uses_a_full_height_menu_and_60_40_content_split(self) -> None:
+        self.page.set_viewport_size({"width": 1440, "height": 900})
+        self.page.goto(self.url("/"))
+        menu = self.page.get_by_role("complementary", name="Shop menu").bounding_box()
+        view = self.page.get_by_role("region", name="Artifact view").bounding_box()
+        chat = self.page.get_by_role("region", name="Foreman conversation").bounding_box()
+        self.assertIsNotNone(menu)
+        self.assertIsNotNone(view)
+        self.assertIsNotNone(chat)
+        assert menu is not None and view is not None and chat is not None
+        self.assertAlmostEqual(menu["y"], 0, delta=1)
+        self.assertAlmostEqual(menu["height"], 900, delta=1)
+        self.assertGreaterEqual(view["x"], menu["x"] + menu["width"] - 1)
+        self.assertAlmostEqual(view["y"], 0, delta=1)
+        self.assertAlmostEqual(chat["y"], view["y"] + view["height"], delta=1)
+        self.assertAlmostEqual(view["height"] / (view["height"] + chat["height"]), 0.6, delta=0.01)
 
     def url(self, path: str) -> str:
         return f"http://127.0.0.1:{self.port}{path}"

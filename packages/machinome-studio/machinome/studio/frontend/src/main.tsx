@@ -27,9 +27,9 @@ type LifecycleEvent = {
 };
 
 function AgentMenu({ agents }: { agents: Agent[] }) {
-  return (
-    <aside aria-label="Shop agents">
-      <h2>Agents</h2>
+  return <>
+    <section aria-labelledby="agents-heading">
+      <h2 id="agents-heading">Agents</h2>
       {agents.length === 0 ? (
         <p className="empty">No agents are currently manifested.</p>
       ) : (
@@ -42,8 +42,8 @@ function AgentMenu({ agents }: { agents: Agent[] }) {
           ))}
         </ul>
       )}
-    </aside>
-  );
+    </section>
+  </>;
 }
 
 function App() {
@@ -100,13 +100,25 @@ function App() {
   }, []);
 
   return (
-    <main>
-      <header>
-        <h1>shop-floor</h1>
-        <p id="shop-status" aria-live="polite">Shop is {shopOpen ? "open" : "closed"}</p>
-        <p>{run ? `Run ${run.id} · ${run.status}` : "Waiting for a run."}</p>
-      </header>
-      <AgentMenu agents={run?.agents ?? []} />
+    <main className="shop-workspace">
+      <aside className="shop-menu" aria-label="Shop menu">
+        <header className="shop-brand">
+          <h1>shop-floor</h1>
+          <p id="shop-status" aria-live="polite">Shop is {shopOpen ? "open" : "closed"}</p>
+          <p className="run-status">{run ? `Run ${run.id} · ${run.status}` : "Waiting for a run."}</p>
+        </header>
+        <AgentMenu agents={run?.agents ?? []} />
+      </aside>
+      <div className="shop-content">
+        <section className="artifact-view" aria-labelledby="artifact-heading">
+          <h2 id="artifact-heading">Artifact view</h2>
+          <p className="empty">No artifact selected.</p>
+        </section>
+        <section className="foreman-conversation" aria-labelledby="conversation-heading">
+          <h2 id="conversation-heading">Foreman conversation</h2>
+          <p className="empty">No foreman conversation is available yet.</p>
+        </section>
+      </div>
     </main>
   );
 }

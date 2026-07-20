@@ -1,21 +1,28 @@
 ## ADDED Requirements
 
-### Requirement: The shop floor provides one browser workspace
-The shop floor SHALL present the maker with one browser workspace containing a
-shop menu, an artifact area, and a foreman-conversation area at the shop-floor
-browser location.
+### Requirement: The shop floor provides a structured browser workspace
+The shop floor SHALL present the maker with one full-height browser workspace
+containing a left shop-menu column and a right content column at the shop-floor
+browser location. The content column SHALL contain the artifact area above the
+foreman-conversation area, with the artifact area occupying 60% and the
+foreman-conversation area occupying 40% of the available content height.
 
 #### Scenario: A maker opens the shop floor
 - **WHEN** the maker opens the running shop-floor browser location
-- **THEN** the page shows the shop menu, artifact area, and foreman-conversation area together
+- **THEN** the page shows the menu as a left column and the artifact and foreman-conversation areas as vertically stacked right-side panes
+
+#### Scenario: A maker views the desktop workspace
+- **WHEN** the maker opens the shop floor in a desktop browser window
+- **THEN** the artifact area occupies 60% and the foreman-conversation area occupies 40% of the right-side content height
 
 #### Scenario: A maker uses a narrow browser window
 - **WHEN** the maker opens the shop floor in a narrow browser window
 - **THEN** every workspace area remains reachable without horizontal page overflow
 
 ### Requirement: The workspace menu preserves live shop context
-The workspace menu SHALL show the current shop lifecycle status, active run
-identity, and manifested-agent state using the existing live shop-floor data.
+The full-height workspace menu SHALL show the current shop lifecycle status,
+active run identity, and manifested-agent state using the existing live
+shop-floor data.
 
 #### Scenario: An agent changes work state
 - **WHEN** a manifested agent's state changes while the maker is viewing the workspace

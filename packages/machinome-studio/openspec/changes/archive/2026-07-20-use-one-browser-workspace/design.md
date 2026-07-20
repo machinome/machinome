@@ -14,8 +14,9 @@ avoiding a new server contract for content which does not yet exist.
 **Goals:**
 
 - Use React, built and bundled by Vite, as the shop-floor application frame.
-- Show a single responsive workspace with menu, artifact, and foreman-chat
-  regions at the same browser location.
+- Show a single, full-height responsive workspace with a persistent left menu
+  and a right content column split into artifact view (60%) above foreman chat
+  (40%).
 - Keep lifecycle state and the manifested-agent menu live through the existing
   browser APIs.
 - Give unimplemented artifact and chat regions truthful, useful empty states.
@@ -43,18 +44,28 @@ Alternatives considered:
   interactive surfaces harder to compose.
 - Separate pages or browser tabs would not meet the one-workspace outcome.
 
-### Establish three named regions with deferred-content states
+### Establish an application shell, not three cards
 
-The application renders a persistent navigation/menu region, an artifact
-region, and a foreman-conversation region. The menu owns current shop status,
-run identity, and the live roster. Until Stories 3 and 5 provide content, the
-other regions explicitly state that no artifact is selected and that the
-foreman conversation is not yet available.
+The application uses the full browser viewport. A fixed-width left menu spans
+the viewport height and owns the shop identity, lifecycle status, run identity,
+and live roster. The remaining width is one content column, divided into a
+60% artifact view above a 40% foreman-conversation pane. Borders separate
+structural panes; they are not independently floating cards.
+
+This follows the app-shell treatment in `langchain-ai/agent-chat-ui`: a
+full-height, overflow-controlled workspace, an understated separated sidebar,
+and content panes that dominate the screen. It does not copy that project's
+components, dependencies, or chat protocol.
+
+Until Stories 3 and 5 provide content, the view and chat panes explicitly
+state that no artifact is selected and that the foreman conversation is not
+yet available.
 
 Alternatives considered:
 
-- Omitting unfinished regions would leave no durable frame for subsequent
-  stories and would make the browser surface look incomplete.
+- A top header and three equal-looking cards were rejected because they turn
+  the required application frame into a dashboard and leave the artifact view
+  without the visual priority it needs.
 - Showing invented sample chat or artifact data would misrepresent shop state.
 
 ### Preserve the current FastAPI boundary
@@ -73,9 +84,9 @@ Alternatives considered:
 - [The empty panels could be mistaken for unavailable functionality] → Label
   them as pending surfaces, not as failed loads, and preserve the working menu
   feedback.
-- [A desktop three-panel layout could become unusable on narrow screens] → Use
-  responsive CSS that keeps every region reachable without horizontal
-  overflow.
+- [The desktop split could become unusable on narrow screens] → Collapse the
+  shell to a vertical sequence at the breakpoint while keeping every region
+  reachable without horizontal overflow.
 - [The checked-in static assets could drift from the Vite source] → Rebuild
   the frontend as an explicit implementation task and validate the served
   result in browser coverage.

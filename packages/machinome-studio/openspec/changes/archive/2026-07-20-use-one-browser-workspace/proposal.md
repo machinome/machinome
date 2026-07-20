@@ -7,12 +7,14 @@ foreman direction and functional-model inspection.
 
 ## What Changes
 
-- Replace the roster-only browser layout with a single, responsive shop
-  workspace.
+- Replace the roster-only browser layout with a full-height, responsive shop
+  workspace: a left menu column and a right content column split between view
+  and chat.
 - Establish that workspace as the React + Vite application frame for the
   remaining shop-floor interface stories.
 - Provide persistent, clearly named regions for the shop menu, the current
-  artifact, and the foreman conversation.
+  artifact, and the foreman conversation, with the artifact view taking 60%
+  and chat taking 40% of the right-hand workspace.
 - Keep the existing shop lifecycle and manifested-agent feedback visible in
   the workspace menu while the other regions show their initial empty states.
 
