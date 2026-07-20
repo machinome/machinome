@@ -4,6 +4,7 @@ import json
 import socket
 import subprocess
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -30,7 +31,6 @@ class FloorAPITest(unittest.TestCase):
     def test_default_and_configured_server_surface_tracks_agent_work(self) -> None:
         self.assertEqual(_request(self.url("/health"), "GET"), {"status": "open"})
         self.assertEqual(_request(self.url("/api/runs/latest"), "GET")["agents"], [])
-
         manifested = _request(
             self.url("/api/runs/shop-floor/agents"),
             "POST",
@@ -59,6 +59,74 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual(_status(self.url("/api/runs/shop-floor/agents/designer/completions"), "POST", {"assignment_id": "x"}), 409)
         self.assertEqual(_status(self.url("/api/runs/shop-floor/agents/designer"), "DELETE"), 204)
         self.assertEqual(_request(self.url("/api/runs/latest"), "GET")["agents"], [])
+
+    def test_foreman_conversation_is_ordered_and_survives_a_browser_snapshot(self) -> None:
+        first = _request(
+            self.url("/api/runs/shop-floor/conversation/maker"),
+            "POST",
+            {"text": "Build the bracket."},
+        )
+        foreman = _request(
+            self.url("/api/runs/shop-floor/foreman/publish"),
+            "POST",
+            {"text": "I will inspect the drawing first."},
+        )
+        second = _request(
+            self.url("/api/runs/shop-floor/conversation/maker"),
+            "POST",
+            {"text": "Use the thinner stock."},
+        )
+
+        conversation = _request(self.url("/api/runs/shop-floor/conversation"), "GET")
+        self.assertEqual(
+            conversation["entries"],
+            [first, foreman, second],
+            "a freshly loaded browser snapshot must retain the recorded order",
+        )
+        self.assertEqual(_status(self.url("/api/runs/shop-floor/conversation/maker"), "POST", {"text": "   "}), 400)
+
+    def test_foreman_receive_blocks_then_drains_messages_received_while_working(self) -> None:
+        received: dict[str, object] = {}
+
+        def wait_for_direction() -> None:
+            received.update(
+                _request(
+                    self.url("/api/runs/shop-floor/foreman/receive"),
+                    "POST",
+                    {"after": 0},
+                )
+            )
+
+        listener = threading.Thread(target=wait_for_direction)
+        listener.start()
+        time.sleep(0.1)
+        self.assertTrue(listener.is_alive(), "the foreman listener must wait for maker direction")
+        first = _request(
+            self.url("/api/runs/shop-floor/conversation/maker"),
+            "POST",
+            {"text": "Start with the frame."},
+        )
+        listener.join(timeout=2)
+        self.assertFalse(listener.is_alive())
+        self.assertEqual(received["entries"], [first])
+
+        second = _request(
+            self.url("/api/runs/shop-floor/conversation/maker"),
+            "POST",
+            {"text": "Add gussets."},
+        )
+        third = _request(
+            self.url("/api/runs/shop-floor/conversation/maker"),
+            "POST",
+            {"text": "Keep the corners round."},
+        )
+        drained = _request(
+            self.url("/api/runs/shop-floor/foreman/receive"),
+            "POST",
+            {"after": received["sequence"]},
+        )
+        self.assertEqual(drained["entries"], [second, third])
+        self.assertEqual(drained["sequence"], third["sequence"])
 
     def url(self, path: str) -> str:
         return f"http://127.0.0.1:{self.port}{path}"

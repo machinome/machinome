@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -38,10 +38,30 @@ class AssignmentInput(BaseModel):
     assignment_id: str
 
 
+class ConversationInput(BaseModel):
+    text: str
+
+
+class ReceiveInput(BaseModel):
+    after: int = 0
+
+
+@dataclass(frozen=True)
+class ConversationEntry:
+    sequence: int
+    author: str
+    text: str
+
+    def browser_value(self) -> dict[str, object]:
+        return asdict(self)
+
+
 class Broker:
     def __init__(self) -> None:
         self.agents: dict[str, Agent] = {}
         self.subscribers: set[asyncio.Queue[dict[str, object]]] = set()
+        self.conversation: list[ConversationEntry] = []
+        self.conversation_changed = asyncio.Condition()
 
     def run(self) -> dict[str, object]:
         return {
@@ -50,13 +70,32 @@ class Broker:
             "agents": [agent.browser_value() for agent in sorted(self.agents.values(), key=lambda agent: agent.role)],
         }
 
-    def publish(self, kind: str, agent: Agent) -> None:
-        event: dict[str, object] = {"kind": kind, "payload": agent.browser_value()}
+    def publish(self, kind: str, payload: Agent | ConversationEntry) -> None:
+        event: dict[str, object] = {"kind": kind, "payload": payload.browser_value()}
         for subscriber in self.subscribers:
             try:
                 subscriber.put_nowait(event)
             except asyncio.QueueFull:
                 pass
+
+    async def record_conversation(self, author: str, text: str) -> ConversationEntry:
+        text = text.strip()
+        if not text:
+            raise ValueError("text is required")
+        async with self.conversation_changed:
+            entry = ConversationEntry(sequence=len(self.conversation) + 1, author=author, text=text)
+            self.conversation.append(entry)
+            self.conversation_changed.notify_all()
+        self.publish("conversation_entry", entry)
+        return entry
+
+    async def receive_for_foreman(self, after: int) -> tuple[list[ConversationEntry], int]:
+        async with self.conversation_changed:
+            while True:
+                entries = [entry for entry in self.conversation if entry.author == "maker" and entry.sequence > after]
+                if entries:
+                    return entries, entries[-1].sequence
+                await self.conversation_changed.wait()
 
 
 def create_app() -> FastAPI:
@@ -91,6 +130,37 @@ def create_app() -> FastAPI:
     async def run(run_id: str) -> dict[str, object]:
         _require_run(run_id)
         return broker.run()
+
+    @app.get("/api/runs/{run_id}/conversation")
+    async def conversation(run_id: str) -> dict[str, object]:
+        _require_run(run_id)
+        return {"entries": [entry.browser_value() for entry in broker.conversation]}
+
+    @app.post("/api/runs/{run_id}/conversation/maker")
+    async def submit_maker_message(run_id: str, input: ConversationInput) -> JSONResponse:
+        _require_run(run_id)
+        try:
+            entry = await broker.record_conversation("maker", input.text)
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        return JSONResponse(entry.browser_value())
+
+    @app.post("/api/runs/{run_id}/foreman/publish")
+    async def publish_foreman_message(run_id: str, input: ConversationInput) -> JSONResponse:
+        _require_run(run_id)
+        try:
+            entry = await broker.record_conversation("foreman", input.text)
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        return JSONResponse(entry.browser_value())
+
+    @app.post("/api/runs/{run_id}/foreman/receive")
+    async def receive_maker_messages(run_id: str, input: ReceiveInput) -> JSONResponse:
+        _require_run(run_id)
+        if input.after < 0:
+            raise HTTPException(status_code=400, detail="after must not be negative")
+        entries, sequence = await broker.receive_for_foreman(input.after)
+        return JSONResponse({"entries": [entry.browser_value() for entry in entries], "sequence": sequence})
 
     @app.post("/api/runs/{run_id}/agents")
     async def manifest(run_id: str, input: ManifestInput) -> JSONResponse:

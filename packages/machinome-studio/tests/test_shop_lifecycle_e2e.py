@@ -42,7 +42,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_text("Shop is open").wait_for()
         self.page.get_by_role("complementary", name="Shop menu").wait_for()
         self.page.get_by_role("region", name="Artifact view").get_by_text("No artifact selected.").wait_for()
-        self.page.get_by_role("region", name="Foreman conversation").get_by_text("No foreman conversation is available yet.").wait_for()
+        self.page.get_by_role("region", name="Foreman conversation").get_by_role("textbox", name="Message to foreman").wait_for()
         self._stop_floor()
         self.page.get_by_text("Shop is closed").wait_for(timeout=5_000)
         self._start_floor()
@@ -59,6 +59,29 @@ class ShopLifecycleE2E(unittest.TestCase):
         row.get_by_text("waiting").wait_for(timeout=500)
         _request(self.url("/api/runs/shop-floor/agents/machinist"), "DELETE")
         self.page.get_by_text("No agents are currently manifested.").wait_for(timeout=500)
+
+    def test_maker_can_direct_the_foreman_and_reload_the_conversation(self) -> None:
+        self.page.goto(self.url("/"))
+        conversation = self.page.get_by_role("region", name="Foreman conversation")
+        composer = conversation.get_by_role("textbox", name="Message to foreman")
+        composer.fill("Please begin with the housing.")
+        conversation.get_by_role("button", name="Send to foreman").click()
+        conversation.get_by_text("Please begin with the housing.").wait_for()
+
+        _request(
+            self.url("/api/runs/shop-floor/foreman/publish"),
+            "POST",
+            {"text": "I will review the drawing and report back."},
+        )
+        conversation.get_by_text("I will review the drawing and report back.").wait_for(timeout=1_000)
+        self.page.reload()
+        transcript = conversation.get_by_role("list", name="Conversation transcript")
+        transcript.get_by_text("Please begin with the housing.").wait_for()
+        transcript.get_by_text("I will review the drawing and report back.").wait_for()
+        self.assertEqual(
+            transcript.locator("[data-conversation-author]").all_text_contents(),
+            ["MakerPlease begin with the housing.", "ForemanI will review the drawing and report back."],
+        )
 
     def test_workspace_has_no_horizontal_overflow_on_a_narrow_viewport(self) -> None:
         self.page.set_viewport_size({"width": 375, "height": 800})

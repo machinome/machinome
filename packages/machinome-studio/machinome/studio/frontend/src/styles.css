@@ -19,7 +19,18 @@ body { margin: 0; }
 .artifact-view, .foreman-conversation { min-height: 0; overflow: auto; padding: 1.5rem 2rem; }
 .artifact-view { background: #ffffff; border-bottom: 1px solid #e5e5e5; }
 .foreman-conversation { background: #fafafa; }
-.artifact-view .empty, .foreman-conversation .empty { align-items: center; display: flex; height: calc(100% - 3rem); justify-content: center; margin: 0; }
+.artifact-view .empty { align-items: center; display: flex; height: calc(100% - 3rem); justify-content: center; margin: 0; }
+.foreman-conversation { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 1rem; }
+.conversation-transcript { display: flex; flex-direction: column; gap: .75rem; min-height: 0; overflow-y: auto; }
+.conversation-transcript li { align-items: flex-start; background: #fff; border: 1px solid #e5e5e5; display: block; padding: .75rem; }
+.conversation-transcript li[data-conversation-author="maker"] { background: #eff6ff; border-color: #bfdbfe; }
+.conversation-transcript strong { display: block; font-size: .75rem; letter-spacing: .04em; text-transform: uppercase; }
+.conversation-transcript p { margin: .25rem 0 0; white-space: pre-wrap; }
+.conversation-transcript .empty { align-items: center; background: transparent; border: 0; color: #737373; display: flex; flex: 1; justify-content: center; }
+.conversation-composer { display: grid; gap: .5rem; }
+.conversation-composer label { font-size: .8rem; font-weight: 600; }
+.conversation-composer textarea { font: inherit; min-height: 3.5rem; padding: .5rem; resize: vertical; }
+.conversation-composer button { justify-self: end; padding: .45rem .75rem; }
 ul { list-style: none; margin: 0; padding: 0; }
 li { align-items: center; border-radius: .375rem; display: flex; justify-content: space-between; margin: .25rem 0; padding: .55rem .5rem; }
 .state { border-radius: 1rem; font-size: .75rem; padding: .15rem .5rem; }
@@ -31,4 +42,5 @@ li { align-items: center; border-radius: .375rem; display: flex; justify-content
   .shop-menu { border-bottom: 1px solid #e5e5e5; border-right: 0; overflow: visible; }
   .shop-content { grid-template-rows: minmax(18rem, 3fr) minmax(15rem, 2fr); min-height: calc(100dvh - 18rem); overflow: visible; }
   .artifact-view, .foreman-conversation { overflow: visible; padding: 1.5rem; }
+  .conversation-transcript { overflow: visible; }
 }

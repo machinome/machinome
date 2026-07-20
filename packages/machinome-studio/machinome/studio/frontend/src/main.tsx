@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState } from "react";
+import { FormEvent, StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -19,12 +19,55 @@ type Run = {
 
 type LifecycleEvent = {
   kind: string;
-  payload: {
-    role: string;
-    label: string;
-    state: AgentState | null;
-  };
+  payload: Agent | ConversationEntry;
 };
+
+type ConversationEntry = {
+  sequence: number;
+  author: "maker" | "foreman";
+  text: string;
+};
+
+function ForemanConversation({
+  entries,
+  onSubmit,
+}: {
+  entries: ConversationEntry[];
+  onSubmit: (text: string) => Promise<void>;
+}) {
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!text.trim() || sending) return;
+    setSending(true);
+    try {
+      await onSubmit(text);
+      setText("");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return <>
+    <ol className="conversation-transcript" aria-label="Conversation transcript">
+      {entries.length === 0 ? (
+        <li className="empty">Direct the foreman to begin the conversation.</li>
+      ) : entries.map((entry) => (
+        <li key={entry.sequence} data-conversation-author={entry.author}>
+          <strong>{entry.author === "maker" ? "Maker" : "Foreman"}</strong>
+          <p>{entry.text}</p>
+        </li>
+      ))}
+    </ol>
+    <form className="conversation-composer" aria-label="Direct the foreman" onSubmit={submit}>
+      <label htmlFor="foreman-message">Message to foreman</label>
+      <textarea id="foreman-message" name="message" value={text} onChange={(event) => setText(event.target.value)} />
+      <button type="submit" disabled={!text.trim() || sending}>Send to foreman</button>
+    </form>
+  </>;
+}
 
 function AgentMenu({ agents }: { agents: Agent[] }) {
   return <>
@@ -49,6 +92,7 @@ function AgentMenu({ agents }: { agents: Agent[] }) {
 function App() {
   const [run, setRun] = useState<Run | null>(null);
   const [shopOpen, setShopOpen] = useState(false);
+  const [conversation, setConversation] = useState<ConversationEntry[]>([]);
 
   useEffect(() => {
     const lifecycle = new EventSource("/events/lifecycle");
@@ -69,8 +113,13 @@ function App() {
       source = new EventSource(`/api/runs/${currentRun.id}/stream`);
       source.addEventListener("shop-floor", (message) => {
         const event = JSON.parse((message as MessageEvent<string>).data) as LifecycleEvent;
+        if (event.kind === "conversation_entry") {
+          const entry = event.payload as ConversationEntry;
+          setConversation((previous) => previous.some((item) => item.sequence === entry.sequence) ? previous : [...previous, entry]);
+          return;
+        }
         if (!event.kind.startsWith("agent_") && !event.kind.startsWith("work_")) return;
-        const { role, label, state } = event.payload;
+        const { role, label, state } = event.payload as Agent;
         setRun((previous) => {
           if (!previous) return previous;
           const agents = previous.agents.filter((agent) => agent.role !== role);
@@ -86,7 +135,11 @@ function App() {
       const response = await fetch("/api/runs/latest");
       if (!response.ok || cancelled) return;
       const currentRun = (await response.json()) as Run;
+      const conversationResponse = await fetch(`/api/runs/${currentRun.id}/conversation`);
+      if (!conversationResponse.ok || cancelled) return;
+      const currentConversation = (await conversationResponse.json()) as { entries: ConversationEntry[] };
       setRun(currentRun);
+      setConversation(currentConversation.entries);
       connect(currentRun);
     };
 
@@ -98,6 +151,18 @@ function App() {
       source?.close();
     };
   }, []);
+
+  const submitMakerMessage = async (text: string) => {
+    if (!run) return;
+    const response = await fetch(`/api/runs/${run.id}/conversation/maker`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!response.ok) return;
+    const entry = (await response.json()) as ConversationEntry;
+    setConversation((previous) => previous.some((item) => item.sequence === entry.sequence) ? previous : [...previous, entry]);
+  };
 
   return (
     <main className="shop-workspace">
@@ -116,7 +181,7 @@ function App() {
         </section>
         <section className="foreman-conversation" aria-labelledby="conversation-heading">
           <h2 id="conversation-heading">Foreman conversation</h2>
-          <p className="empty">No foreman conversation is available yet.</p>
+          <ForemanConversation entries={conversation} onSubmit={submitMakerMessage} />
         </section>
       </div>
     </main>
