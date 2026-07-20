@@ -17,6 +17,8 @@ public command, artifact format, and callback protocol remain unratified.
 - Treat the project-root `__init__.py` as the conventional model entry point.
 - Have the floor use a one-shot solid CLI build before reporting the shop open.
 - Keep project Python execution outside the floor process.
+- Reuse the solid-node frontend widget in the floor artifact area and provide
+  the model-serving endpoints that widget consumes.
 - Refresh the visible model after the machinist's development process reports
   a successful change to the broker.
 - Let the browser recover using a complete current model state when a refresh
@@ -65,6 +67,20 @@ cannot notify the floor deterministically. Polling project files was rejected
 because it duplicates framework change detection and cannot establish that a
 new model is successfully built.
 
+### The floor hosts the solid-node viewer widget and its model endpoints
+
+The artifact area will embed or otherwise reuse the frontend widget provided
+by solid-node. The floor will implement the endpoints the widget needs to
+obtain the current model; it remains the local owner of browser-session and
+broker lifecycle, rather than redirecting the maker to a separate framework
+web server.
+
+Reimplementing the viewer was rejected because it would duplicate the
+framework's model inspection surface. Importing or hosting framework server
+internals was rejected because the floor needs a stable public integration
+boundary; the widget's endpoint contract will therefore be captured alongside
+the linked framework CLI/callback contract.
+
 ### The broker turns build-ready notifications into SSE refresh events
 
 The broker exposes a local callback endpoint for the framework development
@@ -97,8 +113,8 @@ representation.
 1. Ratify this shop proposal as the originating-project requirement.
 2. Establish and implement the linked framework CLI/callback contract in its
    own solid-node change.
-3. Implement the floor adapter, broker endpoint/SSE event, and workspace view
-   against that ratified contract.
+3. Implement the floor adapter, widget-compatible model endpoints, broker
+   endpoint/SSE event, and workspace view against that ratified contract.
 4. Verify initial build, missing-model failure, and a machinist-triggered
    refresh in an isolated project fixture.
 
@@ -111,6 +127,5 @@ no project model is imported or persisted by the floor.
   representation will the solid-node framework publish?
 - What callback request schema and local authentication/capability mechanism
   will bind a `solid develop` process to one floor run?
-- Does the framework serve a viewer-ready artifact itself, or does the floor
-  receive a framework-defined state representation to render? The shop only
-  requires an inspectable current result.
+- What public widget integration and model-serving endpoint contract will
+  solid-node publish for a host such as floor?

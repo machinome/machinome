@@ -11,7 +11,7 @@
 
 ## 3. Browser refresh
 
-- [ ] 3.1 Serve the current functional-model state through the floor and render it in the artifact area.
+- [ ] 3.1 Integrate the solid-node frontend widget into the artifact area and implement its ratified model-serving endpoints in floor.
 - [ ] 3.2 Publish the model-change notification through the run SSE stream and reload the complete model state in the browser.
 - [ ] 3.3 Preserve the last successful browser model when a subsequent development build fails.
 

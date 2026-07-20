@@ -12,7 +12,8 @@ that unsafe import boundary.
   when the shop floor opens, instead of importing it into the floor service.
 - Give a project with no conventional model a clean, explanatory shop-open
   failure rather than starting a floor with no inspectable result.
-- Serve the built functional-model state in the shop workspace.
+- Reuse the solid-node frontend widget in the shop workspace and implement its
+  model-serving endpoints in floor.
 - Start `solid develop` for the machinist with a floor-broker callback so
   source changes cause the browser model view to refresh through SSE.
 
@@ -32,8 +33,8 @@ that unsafe import boundary.
 
 ## Impact
 
-- Affects the porter/shop-open flow, `floor` broker and HTTP/SSE API, and the
-  browser artifact view.
+- Affects the porter/shop-open flow, `floor` broker, model-serving and HTTP/SSE
+  APIs, and the browser artifact view through the solid-node frontend widget.
 - Adds an integration boundary to the installed `solid` CLI (`build` and
   `develop`) and the conventional project-root `__init__.py` model location.
 - Affects machinist launch configuration so it supplies the broker callback
