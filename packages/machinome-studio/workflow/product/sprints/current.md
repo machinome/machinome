@@ -15,10 +15,10 @@ artifact inspection, and foreman conversation to evolve incrementally.
     `2026-07-19-go-shop-floor-lifecycle`,
     `2026-07-19-rebuild-floor-fastapi`
   - Integration: `97a3ca5`
-- [ ] STORY-002 — Use one browser workspace
+- [x] STORY-002 — Use one browser workspace
   - Source: `docs/product/stories/STORY-002-use-one-browser-workspace.md`
-  - OpenSpec change: not started
-  - Integration: pending
+  - OpenSpec change: `2026-07-20-use-one-browser-workspace`
+  - Integration: `35fa1b2`
 - [ ] STORY-003 — Direct the foreman
   - Source: `docs/product/stories/STORY-003-direct-the-foreman.md`
   - OpenSpec change: not started
