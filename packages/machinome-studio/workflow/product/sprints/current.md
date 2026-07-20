@@ -19,10 +19,10 @@ artifact inspection, and foreman conversation to evolve incrementally.
   - Source: `docs/product/stories/STORY-002-use-one-browser-workspace.md`
   - OpenSpec change: `2026-07-20-use-one-browser-workspace`
   - Integration: `35fa1b2`
-- [ ] STORY-003 — Direct the foreman
+- [x] STORY-003 — Direct the foreman
   - Source: `docs/product/stories/STORY-003-direct-the-foreman.md`
-  - OpenSpec change: not started
-  - Integration: pending
+  - OpenSpec change: `2026-07-20-direct-the-foreman`
+  - Integration: `dbe48f6`
 - [x] STORY-004 — See agent work state
   - Source: `docs/product/stories/STORY-004-see-agent-work-state.md`
   - OpenSpec change: `2026-07-19-manifest-shop-agent-lifecycle`
