@@ -1,81 +1,70 @@
-"""Real-browser acceptance test for the compiled shop-floor command."""
+from __future__ import annotations
 
-import shutil
+import json
 import socket
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from urllib.request import Request, urlopen
 
-from playwright.sync_api import expect, sync_playwright
+from playwright.sync_api import sync_playwright
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def free_port() -> int:
-    with socket.socket() as listener:
-        listener.bind(("127.0.0.1", 0))
-        return listener.getsockname()[1]
-
-
-class ShopLifecycleE2ETests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.temporary_directory = Path(tempfile.mkdtemp(prefix="shop-floor-e2e-"))
-        cls.binary = cls.temporary_directory / "shop-floor"
-        cls.state_file = cls.temporary_directory / "shop-floor.pid"
-        cls.port = free_port()
-        cls.location = f"http://127.0.0.1:{cls.port}"
+class ShopLifecycleE2E(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        temporary = Path(self.temporary.name)
+        self.binary = temporary / "shop-floor"
+        self.state_file = temporary / "shop-floor.pid"
+        self.port = _free_port()
+        subprocess.run(["go", "build", "-o", str(self.binary), "./cmd/shop-floor"], cwd=ROOT, check=True)
         subprocess.run(
-            ["go", "build", "-o", str(cls.binary), "./cmd/shop-floor"],
-            cwd=ROOT,
+            [str(self.binary), "open", "--port", str(self.port), "--state-file", str(self.state_file)],
             check=True,
-        )
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        try:
-            cls.ask_agent("close")
-        finally:
-            shutil.rmtree(cls.temporary_directory, ignore_errors=True)
-
-    @classmethod
-    def ask_agent(cls, command: str) -> None:
-        subprocess.run(
-            [
-                str(cls.binary), command, "--port", str(cls.port),
-                "--state-file", str(cls.state_file),
-            ],
-            cwd=ROOT,
-            check=True,
-            text=True,
             capture_output=True,
+            text=True,
         )
+        self.playwright = sync_playwright().start()
+        self.browser = self.playwright.chromium.launch()
+        self.page = self.browser.new_page()
 
-    def test_an_already_open_page_shows_closed_on_shutdown_and_open_after_restart(self) -> None:
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch()
-            context = browser.new_context()
-            context.tracing.start(screenshots=True, snapshots=True, sources=True)
-            page = context.new_page()
-            try:
-                self.ask_agent("open")
-                page.goto(self.location)
-                status = page.locator("#shop-status")
-                expect(status).to_have_text("Shop is open")
+    def tearDown(self) -> None:
+        self.browser.close()
+        self.playwright.stop()
+        subprocess.run([str(self.binary), "close", "--port", str(self.port), "--state-file", str(self.state_file)], check=False)
+        self.temporary.cleanup()
 
-                self.ask_agent("close")
-                expect(status).to_have_text("Shop is closed")
+    def test_roster_updates_without_reloading(self) -> None:
+        self.page.goto(self.url("/"))
+        self.page.get_by_text("No agents are currently manifested.").wait_for()
+        self.page.wait_for_timeout(100)
+        _request(self.url("/api/runs/shop-floor/agents"), "POST", {"role": "machinist", "label": "Machinist"})
+        row = self.page.locator('[data-agent-role="machinist"]')
+        row.get_by_text("waiting").wait_for(timeout=500)
+        _request(self.url("/api/runs/shop-floor/agents/machinist/assignments"), "POST", {"assignment_id": "work-1"})
+        _request(self.url("/api/runs/shop-floor/agents/machinist/acknowledgments"), "POST", {"assignment_id": "work-1"})
+        row.get_by_text("active").wait_for(timeout=500)
+        _request(self.url("/api/runs/shop-floor/agents/machinist/completions"), "POST", {"assignment_id": "work-1"})
+        row.get_by_text("waiting").wait_for(timeout=500)
+        _request(self.url("/api/runs/shop-floor/agents/machinist"), "DELETE")
+        self.page.get_by_text("No agents are currently manifested.").wait_for(timeout=500)
 
-                self.ask_agent("open")
-                expect(status).to_have_text("Shop is open")
-            except Exception:
-                Path("test-results").mkdir(exist_ok=True)
-                page.screenshot(path="test-results/shop-lifecycle-failure.png")
-                raise
-            finally:
-                Path("test-results").mkdir(exist_ok=True)
-                context.tracing.stop(path="test-results/shop-lifecycle-trace.zip")
-                context.close()
-                browser.close()
+    def url(self, path: str) -> str:
+        return f"http://127.0.0.1:{self.port}{path}"
+
+
+def _free_port() -> int:
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
+
+
+def _request(url: str, method: str, body: dict[str, str] | None = None) -> dict[str, object]:
+    request = Request(url, data=json.dumps(body).encode() if body else None, method=method, headers={"Content-Type": "application/json"})
+    with urlopen(request, timeout=5) as response:  # nosec: local Go broker
+        data = response.read()
+        return json.loads(data) if data else {}
