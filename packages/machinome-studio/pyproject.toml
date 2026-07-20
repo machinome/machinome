@@ -3,17 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "solid-node-shop-floor"
+name = "solid-node-shop"
 version = "0.1.0"
-description = "The local browser lifecycle surface for solid-node-shop"
+description = "The solid-node shop broker and browser acceptance tests"
 requires-python = ">=3.11"
-dependencies = [
-    "fastapi>=0.136,<1",
-    "uvicorn>=0.47,<1",
-]
-
-[project.scripts]
-shop-floor = "shop_floor.__main__:main"
-
-[tool.setuptools.packages.find]
-where = ["src"]
+[project.optional-dependencies]
+e2e = ["playwright==1.61.0"]

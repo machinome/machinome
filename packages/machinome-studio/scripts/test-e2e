@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+python -m unittest tests/test_shop_lifecycle_e2e.py -v
