@@ -68,7 +68,7 @@ upgrades a tier-1 workspace in place; both tiers are idempotent.
 On the dev bench, framework work happens in isolated git worktrees with
 their own ports:
 
-    scripts/dev-env <name> setup      # bench at WTs/<name>, branch <name>
+    scripts/dev-env <name> setup      # bench at solid-node/WTs/<name>
     scripts/dev-env <name> teardown
 
 **One repository per project, and never the framework's.** Each CAD
@@ -76,9 +76,9 @@ project is its **own git repository**, at `projects/<name>` in the
 workspace (untracked here — your projects are yours to host). The
 boundary is repository membership, not directory nesting: a project's
 files must answer to the project's own repo and to no enclosing one.
-The framework clone (`solid-node/`) and the benches (`WTs/`) hold
-framework code only; the shop's agents verify this boundary before
-every commit and refuse to cross it.
+The framework clone and its benches (`solid-node/WTs/`) hold framework code
+only. Top-level `WTs/` holds shop worktrees only. The shop's agents verify this
+boundary before every commit and refuse to cross it.
 
 ## Use
 
@@ -121,8 +121,12 @@ evaluation defaults, not settled performance claims.
 
 ### OpenSpec capability boundary
 
-The vendored OpenSpec skills support shop and framework development directly
-from this repository, outside the mechanical-project shop roles. Drawing
+OpenSpec is an upstream open-source dependency. Its installed workflows own
+change artifacts, their dependency and validation model, implementation
+guidance, synchronization, and archival. The shop invokes those supported
+interfaces and consumes their reported paths and results; it does not maintain
+a parallel description or implementation of OpenSpec. These workflows support
+shop and framework development outside the mechanical-project roles. Drawing
 office, machinist, and librarian receive no OpenSpec skill.
 
 Codex specialists start with fresh task-local context and load their role and
@@ -135,23 +139,41 @@ run `/file-a-wart` to propose the fix upstream.
 
 ## Contributing to the framework
 
-Framework development is a separate discipline from running the mechanical
-shop. It remains grounded in the framework repo's own records —
-`openspec/specs/` (behavioral contracts), `docs/adrs/` (decisions), and
-`docs/architecture.md` (synthesis). A wart can become an OpenSpec change whose
-**delta specs** the maintainer ratifies; a contributor then implements
-it as a PR, and the merged change is archived back into the specs
-(and an ADR, when architectural). Conformance bugs — code violating
-what the specs already promise — skip ratification and go straight to
-a red-first PR. The templates that make this work live in
-[`governance/`](./governance):
+Local framework development is a separate discipline from running the
+mechanical shop and does not use a shop sprint. Every solid-node mutation is
+routed through [`skills/framework-change/SKILL.md`](./skills/framework-change/SKILL.md):
+it opens `solid-node/WTs/<change>`, uses OpenSpec to prepare a complete planning
+record for pilot interaction, and waits for explicit ratification. The cycle
+then has exactly two commits—one containing only the ratified planning state,
+and one containing implementation, tests, synchronized and archived OpenSpec
+records, plus any architecture updates and ADRs extracted after implementation
+confirms the design. Integration and publication remain separate pilot
+decisions.
+
+Agent prompts and lifecycle orchestration live only in this shop. The framework
+repository owns source, tests, OpenSpec records, `docs/architecture.md`, and
+`docs/adrs/`; it must not be given an `AGENTS.md` or authoritative copies of
+assistant workflows.
+
+The public community-contribution and PR workflow is a separate intended lane,
+not a claim about the currently private shop protocol or its portability. Its
+experimental templates live in [`governance/`](./governance):
 
 - `ISSUE_TEMPLATE.md` → the framework repo's
   `.github/ISSUE_TEMPLATE/framework-improvement.md`
 - `CONTRIBUTING.md` → the framework repo root
 
-They ship here as the canonical source; copy them into the solid-node
-framework repo to activate the flow.
+They remain proposed source material until the public workflow is explicitly
+published and activated.
+
+### Protocol bootstrap
+
+The protocol lands in two repository-local changes. First this shop capability
+is implemented and integrated. Then the pilot starts a separate solid-node
+cycle through it to remove tracked framework-local workflow copies and align
+framework-owned OpenSpec and ADR guidance. Any untracked `solid-node/AGENTS.md`
+is pilot-controlled local state: remove it as cleanup when explicitly directed,
+and never commit it to the framework.
 
 ## Layout
 
@@ -165,11 +187,14 @@ framework repo to activate the flow.
       setup                  workspace bootstrap (tier 1 plain / tier 2 dev)
       dev-env                isolated worktree benches on the framework clone
     solid-node/              the framework working copy (untracked; setup dev)
+      WTs/                   framework worktrees and their bench manifest
+    WTs/                     shop worktrees only (untracked)
     projects/                your CAD projects — each its OWN git repo (untracked)
     skills/
       solid-node-api/        complete public framework contract
       solid-node/            the machinist's craft manual
       running-the-shop/      the orchestration loop (the foreman reads this)
+      framework-change/      non-sprint solid-node change lifecycle
       file-a-wart/           /file-a-wart — open a framework-improvement issue
       openspec-*/            vendored OpenSpec workflow skills
     agents/
