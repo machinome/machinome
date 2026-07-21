@@ -4,6 +4,11 @@
 # choice: released tag, main, a fork). Each project under projects/
 # is its OWN repository (untracked here).
 .venv/
+__pycache__/
+*.pyc
+node_modules/
+playwright-report/
+test-results/
 solid-node/
 WTs/
 .env

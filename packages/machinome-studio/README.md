@@ -16,15 +16,17 @@ agents do the token-heavy building and researching.
 | Role | What it does |
 |---|---|
 | **you (pilot)** | Establish intent, decide consequential choices, and judge the result by looking at it. |
+| **porter** | Opens and closes shop-floor and launches or ends agents; it makes no shop-work decisions. |
+| **foreman** | Manages shop-floor work and communicates directly with the maker through the shop-floor broker. |
 | **drawing office** | Maintains the project design, releases the first executable drawing quickly, then plans one evidence-producing slice ahead (`docs/design.md`, `docs/specs/`). |
 | **machinist** | Builds a committed released drawing while the office plans ahead; owns code, tests, and implementation evidence. |
 | **librarian** | Verifies a CAD-library API (cadquery, trimesh, cq_gears, OpenSCAD, three.js…) and files a recipe under `docs/notes/`. |
 
-You talk to the foreman assistant; it runs the shop, dispatching these agents
-concurrently after the first drawing and bringing back only consequential
-decisions. The design lives in `docs/design.md` and immutable released
-drawings, so a fresh session picks the project up from the repo, not from
-memory.
+The foreman runs the shop, dispatching these agents concurrently after the
+first drawing and bringing back only consequential decisions. The porter only
+performs the routine lifecycle work that makes those agents available. The
+design lives in `docs/design.md` and immutable released drawings, so a fresh
+session picks the project up from the repo, not from memory.
 
 ## Try with Codex
 
@@ -110,6 +112,7 @@ the shop can establish whether its prompts are useful before spending heavily:
 
 | Role | Model | Reasoning |
 |---|---|---|
+| porter | `gpt-5.6-terra` | medium |
 | foreman | `gpt-5.6-terra` | medium |
 | drawing office | `gpt-5.6-luna` | low |
 | machinist | `gpt-5.6-luna` | low |
@@ -181,8 +184,8 @@ and never commit it to the framework.
       plugin.json            plugin manifest
       marketplace.json       marketplace listing (this repo == marketplace)
     .codex/
-      config.toml            foreman model + concurrency defaults
-      agents/                Codex specialist model adapters
+      config.toml            porter model + concurrency defaults
+      agents/                Codex foreman and specialist model adapters
     scripts/
       setup                  workspace bootstrap (tier 1 plain / tier 2 dev)
       dev-env                isolated worktree benches on the framework clone
