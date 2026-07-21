@@ -13,4 +13,4 @@ foreman; it SHALL not claim that a foreman conversation is unavailable.
 
 #### Scenario: The workspace has a built functional model
 - **WHEN** the shop floor has successfully built the project's functional model
-- **THEN** the artifact area presents the current functional model instead of the empty state
+- **THEN** the artifact area presents the current completed `_build` model as an interactive, correctly materialled browser viewer instead of the empty state

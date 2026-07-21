@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import socket
 import subprocess
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -22,9 +23,12 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.browser = self.playwright.chromium.launch()
         self.page = self.browser.new_page()
 
-    def _start_floor(self) -> None:
+    def _start_floor(self, project: Path | None = None) -> None:
+        command = ["python", "-m", "floor", "--port", str(self.port)]
+        if project is not None:
+            command += ["--project", str(project), "--solid-command", "true"]
         self.floor = subprocess.Popen(
-            ["python", "-m", "floor", "--port", str(self.port)],
+            command,
             cwd=ROOT,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
@@ -108,6 +112,41 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertAlmostEqual(view["y"], 0, delta=1)
         self.assertAlmostEqual(chat["y"], view["y"] + view["height"], delta=1)
         self.assertAlmostEqual(view["height"] / (view["height"] + chat["height"]), 0.6, delta=0.01)
+
+    def test_built_model_is_rendered_from_static_build_artifacts(self) -> None:
+        project = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(project, ignore_errors=True))
+        build = project / "_build"
+        build.mkdir()
+        (project / "__init__.py").write_text("this source must not be imported")
+        (build / "viewer.json").write_text(
+            '{"version": 1, "animation": {"fps": 30, "frames": 360}, '
+            '"root": {"name": "part", "color": "#22c55e", '
+            '"operations": [["t", ["10 * cos(360 * $t)", "0", "0"]]], "model": "part.stl"}}'
+        )
+        (build / "part.stl").write_text("solid part\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 10 0 0\nvertex 0 10 0\nendloop\nendfacet\nendsolid part\n")
+        self._stop_floor()
+        self._start_floor(project)
+        self.page.goto(self.url("/"))
+        canvas = self.page.get_by_role("region", name="Artifact view").get_by_role("img", name="Functional model")
+        canvas.wait_for()
+        self.page.wait_for_timeout(250)
+        timeline = self.page.get_by_role("button", name="Timeline")
+        controls = self.page.locator(".animation-controls")
+        self.assertTrue(controls.is_hidden(), "timeline controls must not obscure the initial model view")
+        timeline.click()
+        self.assertTrue(controls.is_visible())
+        timeline.click()
+        self.assertTrue(controls.is_hidden())
+        before_orbit = canvas.screenshot()
+        box = canvas.bounding_box()
+        assert box is not None
+        self.page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        self.page.mouse.down()
+        self.page.mouse.move(box["x"] + box["width"] * 0.7, box["y"] + box["height"] * 0.6)
+        self.page.mouse.up()
+        self.page.wait_for_timeout(100)
+        self.assertNotEqual(before_orbit, canvas.screenshot(), "orbiting the functional model must redraw the canvas")
 
     def url(self, path: str) -> str:
         return f"http://127.0.0.1:{self.port}{path}"

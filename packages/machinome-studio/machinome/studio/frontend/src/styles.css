@@ -18,6 +18,13 @@ body { margin: 0; }
 .shop-content { display: grid; grid-template-rows: 3fr 2fr; min-height: 0; overflow: hidden; }
 .artifact-view, .foreman-conversation { min-height: 0; overflow: auto; padding: 1.5rem 2rem; }
 .artifact-view { background: #ffffff; border-bottom: 1px solid #e5e5e5; }
+.functional-model-host { height: calc(100% - 2rem); margin-top: 1rem; position: relative; width: 100%; }
+.functional-model { display: block; height: 100%; outline: 0; touch-action: none; width: 100%; }
+.animation-controls { align-items: center; background: rgba(30, 33, 38, .65); bottom: 0; color: #fff; display: flex; gap: .5rem; left: 0; padding: .4rem .6rem; position: absolute; right: 0; }
+.animation-controls[hidden] { display: none; }
+.timeline-toggle { background: rgba(30, 33, 38, .65); border: 0; color: #fff; cursor: pointer; font: 12px system-ui, sans-serif; padding: .35rem .5rem; position: absolute; right: .5rem; top: .5rem; }
+.animation-controls button { background: none; border: 0; color: inherit; cursor: pointer; }
+.animation-controls input { flex: 1; }
 .foreman-conversation { background: #fafafa; }
 .artifact-view .empty { align-items: center; display: flex; height: calc(100% - 3rem); justify-content: center; margin: 0; }
 .foreman-conversation { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 1rem; }

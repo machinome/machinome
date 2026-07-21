@@ -1,6 +1,7 @@
-import { FormEvent, StrictMode, useEffect, useState } from "react";
+import { FormEvent, StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
+import { mountViewer, ViewerView } from "./viewer";
 
 type AgentState = "waiting" | "active";
 
@@ -27,6 +28,27 @@ type ConversationEntry = {
   author: "maker" | "foreman";
   text: string;
 };
+
+function FunctionalModel({ generation }: { generation: number }) {
+  const container = useRef<HTMLDivElement>(null);
+  const view = useRef<ViewerView | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const target = container.current;
+    if (!target) return;
+    let disposed = false;
+    let unmount: (() => void) | undefined;
+    setError(null);
+    void mountViewer(target, `/artifacts/viewer.json?generation=${generation}`, view.current)
+      .then((mounted) => {
+        const cleanup = () => { view.current = mounted.view(); mounted.dispose(); };
+        if (disposed) cleanup(); else unmount = cleanup;
+      })
+      .catch((reason: Error) => { if (!disposed) setError(reason.message); });
+    return () => { disposed = true; unmount?.(); };
+  }, [generation]);
+  return error ? <p className="empty">{error}</p> : <div className="functional-model-host" ref={container} />;
+}
 
 function ForemanConversation({
   entries,
@@ -93,6 +115,7 @@ function App() {
   const [run, setRun] = useState<Run | null>(null);
   const [shopOpen, setShopOpen] = useState(false);
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
+  const [modelGeneration, setModelGeneration] = useState(0);
 
   useEffect(() => {
     const lifecycle = new EventSource("/events/lifecycle");
@@ -118,6 +141,7 @@ function App() {
           setConversation((previous) => previous.some((item) => item.sequence === entry.sequence) ? previous : [...previous, entry]);
           return;
         }
+        if (event.kind === "model_changed") { setModelGeneration((generation) => generation + 1); return; }
         if (!event.kind.startsWith("agent_") && !event.kind.startsWith("work_")) return;
         const { role, label, state } = event.payload as Agent;
         setRun((previous) => {
@@ -177,7 +201,7 @@ function App() {
       <div className="shop-content">
         <section className="artifact-view" aria-labelledby="artifact-heading">
           <h2 id="artifact-heading">Artifact view</h2>
-          <p className="empty">No artifact selected.</p>
+          <FunctionalModel generation={modelGeneration} />
         </section>
         <section className="foreman-conversation" aria-labelledby="conversation-heading">
           <h2 id="conversation-heading">Foreman conversation</h2>

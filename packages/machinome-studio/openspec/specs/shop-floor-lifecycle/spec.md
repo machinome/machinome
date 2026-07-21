@@ -31,6 +31,16 @@ stop the shop-floor service and tell the maker that the shop is closed.
 - **WHEN** a maker asks Codex to close the shop
 - **THEN** Codex stops shop-floor and reports that the shop is closed
 
+### Requirement: The shop validates the model before it becomes open
+When Codex opens a project shop floor, the system SHALL build the selected
+project-local functional model before making the shop floor available at its
+browser location. If that build cannot produce a model, the system SHALL tell
+the maker why the shop was not opened.
+
+#### Scenario: The initial model build succeeds
+- **WHEN** Codex opens a shop for a project with a buildable selected model path
+- **THEN** Codex starts the shop-floor service and provides its browser location only after the model is ready for inspection
+
 ### Requirement: The browser shows the shop lifecycle without a reload
 The shop-floor service SHALL serve a browser page that displays `Shop is open`
 while its lifecycle-status stream is connected. The page SHALL maintain a

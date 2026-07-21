@@ -128,8 +128,39 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual(drained["entries"], [second, third])
         self.assertEqual(drained["sequence"], third["sequence"])
 
+    def test_serves_only_completed_build_artifacts_and_not_project_source(self) -> None:
+        project = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(project, ignore_errors=True))
+        build = project / "_build"
+        build.mkdir()
+        (build / "viewer.json").write_text('{"version": 1, "root": {"name": "part", "model": "part.stl"}}')
+        (build / "part.stl").write_text("solid part")
+
+        # A project source file must never be exposed through the artifact route.
+        (project / "__init__.py").write_text("raise RuntimeError('must not import')")
+        self._restart_floor(project)
+
+        self.assertIn("part.stl", _raw(self.url("/artifacts/viewer.json")))
+        self.assertEqual(_raw(self.url("/artifacts/part.stl")), "solid part")
+        self.assertEqual(_status(self.url("/artifacts/../__init__.py"), "GET"), 404)
+
+    def test_valid_callback_publishes_model_changed_event(self) -> None:
+        self._restart_floor(Path(tempfile.mkdtemp()), callback_token="opaque")
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.project, ignore_errors=True))
+        self.assertEqual(_status(self.url("/api/runs/shop-floor/model/ready/wrong"), "POST"), 404)
+        self.assertEqual(_status(self.url("/api/runs/shop-floor/model/ready/opaque"), "POST"), 204)
+
     def url(self, path: str) -> str:
         return f"http://127.0.0.1:{self.port}{path}"
+
+    def _restart_floor(self, project: Path, callback_token: str | None = None) -> None:
+        self._stop_floor()
+        self.project = project
+        command = ["python", "-m", "floor", "--port", str(self.port), "--project", str(project), "--solid-command", "true"]
+        if callback_token:
+            command += ["--callback-token", callback_token]
+        self.process = subprocess.Popen(command, cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        _wait_for_health(self.url("/health"))
 
     def _stop_floor(self) -> None:
         self.process.terminate()
@@ -164,6 +195,11 @@ def _request(url: str, method: str, body: dict[str, str] | None = None) -> dict[
     with urlopen(request, timeout=5) as response:  # nosec: local floor service
         data = response.read()
         return json.loads(data) if data else {}
+
+
+def _raw(url: str) -> str:
+    with urlopen(url, timeout=5) as response:  # nosec: local floor service
+        return response.read().decode()
 
 
 def _status(url: str, method: str, body: dict[str, str] | None = None) -> int:

@@ -70,8 +70,9 @@ class Broker:
             "agents": [agent.browser_value() for agent in sorted(self.agents.values(), key=lambda agent: agent.role)],
         }
 
-    def publish(self, kind: str, payload: Agent | ConversationEntry) -> None:
-        event: dict[str, object] = {"kind": kind, "payload": payload.browser_value()}
+    def publish(self, kind: str, payload: Agent | ConversationEntry | dict[str, object]) -> None:
+        value = payload if isinstance(payload, dict) else payload.browser_value()
+        event: dict[str, object] = {"kind": kind, "payload": value}
         for subscriber in self.subscribers:
             try:
                 subscriber.put_nowait(event)
@@ -98,11 +99,23 @@ class Broker:
                 await self.conversation_changed.wait()
 
 
-def create_app() -> FastAPI:
+def create_app(project_root: Path | None = None, *, callback_token: str | None = None) -> FastAPI:
     app = FastAPI(title="shop-floor")
     broker = Broker()
     app.state.broker = broker
     app.mount("/assets", StaticFiles(directory=STATIC_ROOT / "assets"), name="assets")
+    build_root = project_root / "_build" if project_root is not None else None
+
+    @app.get("/artifacts/{artifact_path:path}")
+    async def artifact(artifact_path: str) -> FileResponse:
+        if build_root is None:
+            raise HTTPException(status_code=404, detail="no project build is available")
+        candidate = (build_root / artifact_path).resolve()
+        if build_root.resolve() not in candidate.parents and candidate != build_root.resolve():
+            raise HTTPException(status_code=404, detail="unknown artifact")
+        if not candidate.is_file():
+            raise HTTPException(status_code=404, detail="unknown artifact")
+        return FileResponse(candidate)
 
     @app.get("/")
     async def browser_page() -> FileResponse:
@@ -161,6 +174,14 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="after must not be negative")
         entries, sequence = await broker.receive_for_foreman(input.after)
         return JSONResponse({"entries": [entry.browser_value() for entry in entries], "sequence": sequence})
+
+    @app.post("/api/runs/{run_id}/model/ready/{token}")
+    async def model_ready(run_id: str, token: str) -> Response:
+        _require_run(run_id)
+        if callback_token is None or token != callback_token:
+            raise HTTPException(status_code=404, detail="unknown model callback")
+        broker.publish("model_changed", {})
+        return Response(status_code=204)
 
     @app.post("/api/runs/{run_id}/agents")
     async def manifest(run_id: str, input: ManifestInput) -> JSONResponse:

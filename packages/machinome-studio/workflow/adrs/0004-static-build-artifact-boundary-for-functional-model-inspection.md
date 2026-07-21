@@ -1,0 +1,47 @@
+# ADR 0004: Use published build artifacts as the functional-model boundary
+
+**Status:** Accepted
+
+**Date:** 2026-07-20
+
+**Origin:** Sprint 001, STORY-005 — Inspect the functional model
+
+## Context
+
+Shop-floor is long-lived while a project's conventional model is Python code
+that changes during machining. Importing that model into floor would cache
+module state, make reload behaviour unreliable, and couple the browser service
+to project execution.
+
+`solid build <project-local-model-path>` atomically publishes a completed
+`_build` directory containing `viewer.json` and the model files it references.
+`solid develop <project-local-model-path> --callback URL` sends an empty POST
+only after a successful replacement of that complete directory; failed rebuilds
+retain the preceding build and send no callback.
+
+## Decision
+
+Floor SHALL treat the completed `_build` directory as its only functional-model
+input. It serves the viewer snapshot and referenced model files to the browser
+and uses the development callback solely as a signal to reload that static
+output.
+
+Floor SHALL NOT import, execute, reload, inspect, or serve project Python
+source. Project Python execution belongs only to the `solid build` subprocess
+and the framework-owned `solid develop` process.
+
+`solid export` and its separate export widget are not part of this decision or
+of Story 5.
+
+Floor owns a browser-side renderer that fetches only these served static
+artifacts. The backend does not interpret the snapshot or execute any model
+code.
+
+## Consequences
+
+- The visible model is always derived from a complete CLI publication.
+- Floor does not need Python-module invalidation or project-runtime lifecycle
+  management.
+- A failed later build leaves the prior inspectable result available.
+- Floor implementation and tests must exercise static `_build` serving and
+  callback-driven browser refresh without importing a project model.

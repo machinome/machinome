@@ -8,12 +8,16 @@ that unsafe import boundary.
 
 ## What Changes
 
-- Build a project's conventional `__init__.py` model through the `solid` CLI
+- Build the selected project-local functional model through the `solid` CLI
   when the shop floor opens, instead of importing it into the floor service.
-- Give a project with no conventional model a clean, explanatory shop-open
+- Give a project whose selected model does not exist a clean, explanatory shop-open
   failure rather than starting a floor with no inspectable result.
-- Reuse the solid-node frontend widget in the shop workspace and implement its
-  model-serving endpoints in floor.
+- Serve the completed static build artifacts from the project's `_build`
+  directory in the shop workspace.
+- Render those artifacts with the established solid-node viewer semantics:
+  evaluated transform hierarchy, inherited material colours, normal material
+  for uncoloured meshes, Z-up camera fitting, orbit interaction, and animated
+  timeline controls.
 - Start `solid develop` for the machinist with a floor-broker callback so
   source changes cause the browser model view to refresh through SSE.
 
@@ -33,9 +37,12 @@ that unsafe import boundary.
 
 ## Impact
 
-- Affects the porter/shop-open flow, `floor` broker, model-serving and HTTP/SSE
-  APIs, and the browser artifact view through the solid-node frontend widget.
+- Affects the porter/shop-open flow, `floor` broker, static artifact serving
+  and HTTP/SSE APIs, and the browser artifact view.
+- Requires the published build snapshot to carry the animation cadence needed
+  to render its raw `$t` operations without a project runtime.
 - Adds an integration boundary to the installed `solid` CLI (`build` and
-  `develop`) and the conventional project-root `__init__.py` model location.
+  `develop`) and a selected project-local model path, defaulting to
+  `__init__.py`.
 - Affects machinist launch configuration so it supplies the broker callback
   without coupling the floor process to project Python modules.
