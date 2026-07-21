@@ -104,6 +104,11 @@ class ShopLifecycleE2E(unittest.TestCase):
         log = self.page.get_by_role("log", name="Broker events")
         log.get_by_text("Designer manifested").wait_for()
         self.assertEqual(log.locator("[data-broker-event]").count(), 3)
+        self.assertEqual(
+            log.locator("[data-broker-event]").evaluate_all("entries => entries.map((entry) => entry.dataset.brokerEventSequence)"),
+            ["3", "2", "1"],
+        )
+        self.assertEqual(log.locator("time[datetime]").count(), 3)
 
         for index in range(22):
             _request(
@@ -113,11 +118,19 @@ class ShopLifecycleE2E(unittest.TestCase):
             )
         log.get_by_text("Direction · Foreman → Designer").last.wait_for(timeout=1_000)
         self.assertEqual(log.locator("[data-broker-event]").count(), 20)
+        displayed_sequences = log.locator("[data-broker-event]").evaluate_all("entries => entries.map((entry) => Number(entry.dataset.brokerEventSequence))")
+        self.assertEqual(displayed_sequences, sorted(displayed_sequences, reverse=True))
+        self.assertEqual(log.locator("time[datetime]").count(), 20)
         self.assertNotIn("private instruction", log.inner_text())
         self.page.reload()
         reloaded = self.page.get_by_role("log", name="Broker events")
         reloaded.locator("[data-broker-event]").first.wait_for()
         self.assertEqual(reloaded.locator("[data-broker-event]").count(), 20)
+        self.assertEqual(
+            reloaded.locator("[data-broker-event]").evaluate_all("entries => entries.map((entry) => Number(entry.dataset.brokerEventSequence))"),
+            displayed_sequences,
+        )
+        self.assertEqual(reloaded.locator("time[datetime]").count(), 20)
 
     def test_maker_can_direct_the_foreman_and_reload_the_conversation(self) -> None:
         self.page.goto(self.url("/"))

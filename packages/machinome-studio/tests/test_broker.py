@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 import unittest
 
 from floor.app import Broker
@@ -65,6 +66,20 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
         snapshot = self.broker.run()
         self.assertEqual(len(snapshot["events"]), 20)
         self.assertNotIn("private-24", str(snapshot["events"]), "display history must exclude message bodies")
+
+    async def test_event_snapshots_and_live_events_include_utc_publication_timestamps(self) -> None:
+        cursor = self.broker.latest_event_sequence
+        waiting = asyncio.create_task(self.broker.wait_for_events(cursor))
+        await asyncio.sleep(0)
+
+        self.broker.publish("test_event", {"role": "foreman"})
+        live_event = (await asyncio.wait_for(waiting, timeout=0.1))[-1]
+        snapshot_event = self.broker.run()["events"][-1]
+
+        self.assertEqual(snapshot_event["timestamp"], live_event.browser_value()["timestamp"])
+        recorded = datetime.fromisoformat(str(snapshot_event["timestamp"]).replace("Z", "+00:00"))
+        self.assertIsNotNone(recorded.tzinfo)
+        self.assertEqual(recorded.utcoffset().total_seconds(), 0)
 
 
 if __name__ == "__main__":

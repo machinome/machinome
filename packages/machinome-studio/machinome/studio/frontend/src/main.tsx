@@ -27,6 +27,7 @@ type LifecycleEvent = {
 
 type BrokerEvent = {
   sequence: number;
+  timestamp?: string;
   kind: string;
   summary: string;
   role?: string;
@@ -34,6 +35,13 @@ type BrokerEvent = {
   recipient?: string;
   assignment_id?: string;
 };
+
+function formatEventTimestamp(timestamp: string | undefined): string {
+  if (!timestamp) return "Timestamp unavailable";
+  const recorded = new Date(timestamp);
+  if (Number.isNaN(recorded.valueOf())) return timestamp;
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "medium" }).format(recorded);
+}
 
 type ConversationEntry = {
   sequence: number;
@@ -143,6 +151,7 @@ function ForemanConversation({
 }
 
 function AgentMenu({ agents, events }: { agents: Agent[]; events: BrokerEvent[] }) {
+  const newestEvents = [...events].reverse();
   return <>
     <section aria-labelledby="agents-heading">
       <h2 id="agents-heading">Agents</h2>
@@ -164,10 +173,10 @@ function AgentMenu({ agents, events }: { agents: Agent[]; events: BrokerEvent[] 
       <ol role="log" aria-label="Broker events" aria-live="polite">
         {events.length === 0 ? (
           <li className="empty">No broker events yet.</li>
-        ) : events.map((event) => (
-          <li key={event.sequence} data-broker-event={event.kind}>
+        ) : newestEvents.map((event) => (
+          <li key={event.sequence} data-broker-event={event.kind} data-broker-event-sequence={event.sequence}>
             <span>{event.summary}</span>
-            <small>#{event.sequence}</small>
+            <small><time dateTime={event.timestamp}>{formatEventTimestamp(event.timestamp)}</time> · #{event.sequence}</small>
           </li>
         ))}
       </ol>

@@ -7,6 +7,7 @@ import json
 from collections import deque
 from collections.abc import AsyncIterator
 from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -49,6 +50,7 @@ class Envelope:
 @dataclass(frozen=True)
 class BrokerEvent:
     sequence: int
+    timestamp: str
     kind: str
     summary: str
     role: str = ""
@@ -306,6 +308,7 @@ class Broker:
         self.latest_event_sequence += 1
         event = BrokerEvent(
             sequence=self.latest_event_sequence,
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             kind=kind,
             summary=_event_summary(kind, role, sender, recipient, assignment_id),
             role=role,
