@@ -1,4 +1,4 @@
-import { FormEvent, StrictMode, useEffect, useRef, useState } from "react";
+import { FormEvent, StrictMode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import { mountViewer, ViewerView } from "./viewer";
@@ -59,6 +59,13 @@ function ForemanConversation({
 }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const transcript = useRef<HTMLOListElement>(null);
+  const latestEntry = entries[entries.length - 1];
+
+  useLayoutEffect(() => {
+    if (latestEntry?.author !== "foreman") return;
+    if (transcript.current) transcript.current.scrollTop = transcript.current.scrollHeight;
+  }, [latestEntry?.author, latestEntry?.sequence]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -73,9 +80,9 @@ function ForemanConversation({
   };
 
   return <>
-    <ol className="conversation-transcript" aria-label="Conversation transcript">
+    <ol className="conversation-transcript" aria-label="Conversation transcript" ref={transcript}>
       {entries.length === 0 ? (
-        <li className="empty">Direct the foreman to begin the conversation.</li>
+        <li className="empty">Send a message to begin the conversation.</li>
       ) : entries.map((entry) => (
         <li key={entry.sequence} data-conversation-author={entry.author}>
           <strong>{entry.author === "maker" ? "Maker" : "Foreman"}</strong>
@@ -83,10 +90,9 @@ function ForemanConversation({
         </li>
       ))}
     </ol>
-    <form className="conversation-composer" aria-label="Direct the foreman" onSubmit={submit}>
-      <label htmlFor="foreman-message">Message to foreman</label>
-      <textarea id="foreman-message" name="message" value={text} onChange={(event) => setText(event.target.value)} />
-      <button type="submit" disabled={!text.trim() || sending}>Send to foreman</button>
+    <form className="conversation-composer" aria-label="Message composer" onSubmit={submit}>
+      <textarea aria-label="Message" id="message" name="message" value={text} onChange={(event) => setText(event.target.value)} />
+      <button type="submit" disabled={!text.trim() || sending}>Send</button>
     </form>
   </>;
 }
@@ -203,8 +209,7 @@ function App() {
           <h2 id="artifact-heading">Artifact view</h2>
           <FunctionalModel generation={modelGeneration} />
         </section>
-        <section className="foreman-conversation" aria-labelledby="conversation-heading">
-          <h2 id="conversation-heading">Foreman conversation</h2>
+        <section className="conversation" aria-label="Chat">
           <ForemanConversation entries={conversation} onSubmit={submitMakerMessage} />
         </section>
       </div>

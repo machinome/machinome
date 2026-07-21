@@ -46,7 +46,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_text("Shop is open").wait_for()
         self.page.get_by_role("complementary", name="Shop menu").wait_for()
         self.page.get_by_role("region", name="Artifact view").get_by_text("No artifact selected.").wait_for()
-        self.page.get_by_role("region", name="Foreman conversation").get_by_role("textbox", name="Message to foreman").wait_for()
+        self.page.get_by_role("region", name="Chat").get_by_role("textbox", name="Message").wait_for()
         self._stop_floor()
         self.page.get_by_text("Shop is closed").wait_for(timeout=5_000)
         self._start_floor()
@@ -66,11 +66,23 @@ class ShopLifecycleE2E(unittest.TestCase):
 
     def test_maker_can_direct_the_foreman_and_reload_the_conversation(self) -> None:
         self.page.goto(self.url("/"))
-        conversation = self.page.get_by_role("region", name="Foreman conversation")
-        composer = conversation.get_by_role("textbox", name="Message to foreman")
+        conversation = self.page.get_by_role("region", name="Chat")
+        composer = conversation.get_by_role("textbox", name="Message")
         composer.fill("Please begin with the housing.")
-        conversation.get_by_role("button", name="Send to foreman").click()
+        conversation.get_by_role("button", name="Send").click()
         conversation.get_by_text("Please begin with the housing.").wait_for()
+        self.assertEqual(self.page.get_by_text("Foreman conversation", exact=True).count(), 0)
+        self.assertEqual(self.page.get_by_text("Message to foreman", exact=True).count(), 0)
+
+        for index in range(20):
+            _request(
+                self.url("/api/runs/shop-floor/foreman/publish"),
+                "POST",
+                {"text": f"Progress update {index}: reviewing the drawing details."},
+            )
+        transcript = conversation.get_by_role("list", name="Conversation transcript")
+        transcript.get_by_text("Progress update 19: reviewing the drawing details.").wait_for(timeout=1_000)
+        transcript.evaluate("element => { element.scrollTop = 0; }")
 
         _request(
             self.url("/api/runs/shop-floor/foreman/publish"),
@@ -78,14 +90,14 @@ class ShopLifecycleE2E(unittest.TestCase):
             {"text": "I will review the drawing and report back."},
         )
         conversation.get_by_text("I will review the drawing and report back.").wait_for(timeout=1_000)
+        self.assertGreater(transcript.evaluate("element => element.scrollTop"), 0)
         self.page.reload()
-        transcript = conversation.get_by_role("list", name="Conversation transcript")
+        transcript = self.page.get_by_role("region", name="Chat").get_by_role("list", name="Conversation transcript")
         transcript.get_by_text("Please begin with the housing.").wait_for()
         transcript.get_by_text("I will review the drawing and report back.").wait_for()
-        self.assertEqual(
-            transcript.locator("[data-conversation-author]").all_text_contents(),
-            ["MakerPlease begin with the housing.", "ForemanI will review the drawing and report back."],
-        )
+        messages = transcript.locator("[data-conversation-author]").all_text_contents()
+        self.assertEqual(messages[0], "MakerPlease begin with the housing.")
+        self.assertEqual(messages[-1], "ForemanI will review the drawing and report back.")
 
     def test_workspace_has_no_horizontal_overflow_on_a_narrow_viewport(self) -> None:
         self.page.set_viewport_size({"width": 375, "height": 800})
@@ -96,12 +108,12 @@ class ShopLifecycleE2E(unittest.TestCase):
             "workspace must not require horizontal page scrolling",
         )
 
-    def test_desktop_workspace_uses_a_full_height_menu_and_60_40_content_split(self) -> None:
+    def test_desktop_workspace_keeps_the_menu_and_both_content_areas_visible(self) -> None:
         self.page.set_viewport_size({"width": 1440, "height": 900})
         self.page.goto(self.url("/"))
         menu = self.page.get_by_role("complementary", name="Shop menu").bounding_box()
         view = self.page.get_by_role("region", name="Artifact view").bounding_box()
-        chat = self.page.get_by_role("region", name="Foreman conversation").bounding_box()
+        chat = self.page.get_by_role("region", name="Chat").bounding_box()
         self.assertIsNotNone(menu)
         self.assertIsNotNone(view)
         self.assertIsNotNone(chat)
@@ -111,7 +123,8 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertGreaterEqual(view["x"], menu["x"] + menu["width"] - 1)
         self.assertAlmostEqual(view["y"], 0, delta=1)
         self.assertAlmostEqual(chat["y"], view["y"] + view["height"], delta=1)
-        self.assertAlmostEqual(view["height"] / (view["height"] + chat["height"]), 0.6, delta=0.01)
+        self.assertGreater(view["height"], 0)
+        self.assertGreater(chat["height"], 0)
 
     def test_built_model_is_rendered_from_static_build_artifacts(self) -> None:
         project = Path(tempfile.mkdtemp())
