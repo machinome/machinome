@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections import deque
 from collections.abc import AsyncIterator
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -16,6 +17,8 @@ from pydantic import BaseModel
 
 RUN_ID = "shop-floor"
 STATIC_ROOT = Path(__file__).parent / "static"
+ROLE_LABELS = {"foreman": "Foreman", "designer": "Designer", "machinist": "Machinist"}
+MESSAGE_KINDS = {"direction", "assignment", "report"}
 
 
 @dataclass
@@ -24,9 +27,48 @@ class Agent:
     label: str
     state: str
     assignment_id: str = ""
+    pending_assignments: list[str] = field(default_factory=list)
 
     def browser_value(self) -> dict[str, str]:
         return {"role": self.role, "label": self.label, "state": self.state}
+
+
+@dataclass(frozen=True)
+class Envelope:
+    sequence: int
+    kind: str
+    sender: str
+    recipient: str
+    body: str
+    assignment_id: str = ""
+
+    def delivery_value(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class BrokerEvent:
+    sequence: int
+    kind: str
+    summary: str
+    role: str = ""
+    sender: str = ""
+    recipient: str = ""
+    assignment_id: str = ""
+    envelope_sequence: int | None = None
+
+    def browser_value(self) -> dict[str, object]:
+        return {key: value for key, value in asdict(self).items() if value not in ("", None)}
+
+
+@dataclass(frozen=True)
+class ConversationEntry:
+    sequence: int
+    author: str
+    text: str
+
+    def browser_value(self) -> dict[str, object]:
+        return asdict(self)
 
 
 class ManifestInput(BaseModel):
@@ -42,66 +84,303 @@ class ConversationInput(BaseModel):
     text: str
 
 
-class ReceiveInput(BaseModel):
-    after: int = 0
-
-
-@dataclass(frozen=True)
-class ConversationEntry:
-    sequence: int
-    author: str
-    text: str
-
-    def browser_value(self) -> dict[str, object]:
-        return asdict(self)
+class EnvelopeInput(BaseModel):
+    kind: str
+    sender: str
+    recipient: str
+    body: str
+    assignment_id: str = ""
 
 
 class Broker:
-    def __init__(self) -> None:
+    """One in-memory run's portable coordination state."""
+
+    def __init__(self, *, event_history_limit: int = 20) -> None:
         self.agents: dict[str, Agent] = {}
         self.subscribers: set[asyncio.Queue[dict[str, object]]] = set()
+        self.delivery_subscribers: set[asyncio.Queue[Envelope | None]] = set()
         self.conversation: list[ConversationEntry] = []
-        self.conversation_changed = asyncio.Condition()
+        self.envelopes: list[Envelope] = []
+        self.delivered: set[int] = set()
+        self.available: set[int] = set()
+        self.assignment_envelopes: dict[tuple[str, str], int] = {}
+        self.events: deque[BrokerEvent] = deque(maxlen=event_history_limit)
+        self.latest_event_sequence = 0
+        self._next_envelope_sequence = 0
+        self._event_changed = asyncio.Event()
 
     def run(self) -> dict[str, object]:
         return {
             "id": RUN_ID,
             "status": "running",
-            "agents": [agent.browser_value() for agent in sorted(self.agents.values(), key=lambda agent: agent.role)],
+            "agents": [agent.browser_value() for agent in sorted(self.agents.values(), key=lambda item: item.role)],
+            "events": [event.browser_value() for event in self.events],
         }
 
-    def publish(self, kind: str, payload: Agent | ConversationEntry | dict[str, object]) -> None:
-        value = payload if isinstance(payload, dict) else payload.browser_value()
-        event: dict[str, object] = {"kind": kind, "payload": value}
-        for subscriber in self.subscribers:
-            try:
-                subscriber.put_nowait(event)
-            except asyncio.QueueFull:
-                pass
+    def manifest(self, role: str, label: str) -> Agent:
+        if role not in ROLE_LABELS:
+            raise ValueError("unknown agent role")
+        if role in self.agents:
+            raise ValueError("agent already manifested")
+        agent = Agent(role=role, label=label, state="waiting")
+        self.agents[role] = agent
+        self.publish("agent_manifested", agent)
+        return agent
+
+    def stop(self, role: str) -> Agent:
+        agent = self.agents.pop(role, None)
+        if agent is None:
+            raise ValueError("unknown agent")
+        self.publish("agent_stopped", agent)
+        return agent
+
+    def send(
+        self,
+        kind: str,
+        sender: str,
+        recipient: str,
+        body: str,
+        assignment_id: str = "",
+    ) -> Envelope:
+        if kind not in MESSAGE_KINDS:
+            raise ValueError("unknown envelope kind")
+        if sender != "maker" and sender not in ROLE_LABELS:
+            raise ValueError("unknown agent sender")
+        if recipient not in ROLE_LABELS:
+            raise ValueError("unknown agent recipient")
+        body = body.strip()
+        if not body:
+            raise ValueError("body is required")
+        if kind == "assignment":
+            if sender != "foreman":
+                raise ValueError("only foreman assigns work")
+            return self.assign(recipient, assignment_id, body=body)
+        if kind == "report" and recipient != "foreman":
+            raise ValueError("reports must be addressed to foreman")
+        envelope = self._new_envelope(kind, sender, recipient, body, assignment_id)
+        self._make_available(envelope)
+        return envelope
+
+    def assign(self, role: str, assignment_id: str, *, body: str | None = None) -> Envelope:
+        agent = self._agent(role)
+        if not assignment_id:
+            raise ValueError("assignment_id is required")
+        if (role, assignment_id) in self.assignment_envelopes:
+            raise ValueError("assignment already exists")
+        envelope = self._new_envelope(
+            "assignment",
+            "foreman",
+            role,
+            body or f"Assignment {assignment_id}",
+            assignment_id,
+        )
+        self.assignment_envelopes[(role, assignment_id)] = envelope.sequence
+        if not agent.assignment_id:
+            agent.assignment_id = assignment_id
+            self._make_available(envelope)
+        else:
+            agent.pending_assignments.append(assignment_id)
+            self.publish(
+                "assignment_queued",
+                {"role": role, "assignment_id": assignment_id},
+                role=role,
+                assignment_id=assignment_id,
+                envelope_sequence=envelope.sequence,
+            )
+        return envelope
+
+    def acknowledge(self, role: str, assignment_id: str) -> Agent:
+        agent = self._agent(role)
+        if agent.state != "waiting" or agent.assignment_id != assignment_id:
+            raise ValueError("invalid lifecycle report")
+        agent.state = "active"
+        self.publish("work_acknowledged", agent, role=role, assignment_id=assignment_id)
+        return agent
+
+    def complete(self, role: str, assignment_id: str) -> Agent:
+        agent = self._agent(role)
+        if agent.state != "active" or agent.assignment_id != assignment_id:
+            raise ValueError("invalid lifecycle report")
+        agent.state = "waiting"
+        agent.assignment_id = ""
+        self.publish("work_completed", agent, role=role, assignment_id=assignment_id)
+        if agent.pending_assignments:
+            next_assignment = agent.pending_assignments.pop(0)
+            agent.assignment_id = next_assignment
+            sequence = self.assignment_envelopes[(role, next_assignment)]
+            envelope = self._envelope(sequence)
+            self._make_available(envelope)
+        return agent
+
+    def pending_for(self, role: str) -> list[Envelope]:
+        if role not in ROLE_LABELS:
+            raise ValueError("unknown agent")
+        return [
+            envelope
+            for envelope in self.envelopes
+            if envelope.recipient == role
+            and envelope.sequence in self.available
+            and envelope.sequence not in self.delivered
+        ]
+
+    def mark_delivered(self, sequence: int) -> Envelope:
+        envelope = self._envelope(sequence)
+        if sequence not in self.available:
+            raise ValueError("envelope is not available")
+        if sequence in self.delivered:
+            raise ValueError("envelope already delivered")
+        self.delivered.add(sequence)
+        self.publish(
+            "envelope_delivered",
+            {
+                "role": envelope.recipient,
+                "sender": envelope.sender,
+                "recipient": envelope.recipient,
+                "assignment_id": envelope.assignment_id,
+            },
+            role=envelope.recipient,
+            sender=envelope.sender,
+            recipient=envelope.recipient,
+            assignment_id=envelope.assignment_id,
+            envelope_sequence=envelope.sequence,
+        )
+        return envelope
 
     async def record_conversation(self, author: str, text: str) -> ConversationEntry:
         text = text.strip()
         if not text:
             raise ValueError("text is required")
-        async with self.conversation_changed:
-            entry = ConversationEntry(sequence=len(self.conversation) + 1, author=author, text=text)
-            self.conversation.append(entry)
-            self.conversation_changed.notify_all()
+        entry = ConversationEntry(sequence=len(self.conversation) + 1, author=author, text=text)
+        self.conversation.append(entry)
         self.publish("conversation_entry", entry)
+        if author == "maker":
+            self.send("direction", "maker", "foreman", text)
         return entry
 
-    async def receive_for_foreman(self, after: int) -> tuple[list[ConversationEntry], int]:
-        async with self.conversation_changed:
+    async def wait_for_events(self, after: int) -> list[BrokerEvent]:
+        while True:
+            events = [event for event in self.events if event.sequence > after]
+            if events:
+                return events
+            self._event_changed.clear()
+            if any(event.sequence > after for event in self.events):
+                continue
+            await self._event_changed.wait()
+
+    async def deliveries(self) -> AsyncIterator[Envelope]:
+        queue: asyncio.Queue[Envelope | None] = asyncio.Queue()
+        self.delivery_subscribers.add(queue)
+        try:
+            for role in ROLE_LABELS:
+                for envelope in self.pending_for(role):
+                    await queue.put(envelope)
             while True:
-                entries = [entry for entry in self.conversation if entry.author == "maker" and entry.sequence > after]
-                if entries:
-                    return entries, entries[-1].sequence
-                await self.conversation_changed.wait()
+                envelope = await queue.get()
+                if envelope is None:
+                    return
+                if envelope.sequence not in self.delivered:
+                    yield envelope
+        finally:
+            self.delivery_subscribers.discard(queue)
+
+    def shutdown(self) -> None:
+        for subscriber in tuple(self.delivery_subscribers):
+            subscriber.put_nowait(None)
+
+    def publish(
+        self,
+        kind: str,
+        payload: Agent | ConversationEntry | dict[str, object],
+        *,
+        role: str = "",
+        sender: str = "",
+        recipient: str = "",
+        assignment_id: str = "",
+        envelope_sequence: int | None = None,
+    ) -> BrokerEvent:
+        value = payload if isinstance(payload, dict) else payload.browser_value()
+        role = role or str(value.get("role", ""))
+        sender = sender or str(value.get("sender", ""))
+        recipient = recipient or str(value.get("recipient", ""))
+        assignment_id = assignment_id or str(value.get("assignment_id", ""))
+        self.latest_event_sequence += 1
+        event = BrokerEvent(
+            sequence=self.latest_event_sequence,
+            kind=kind,
+            summary=_event_summary(kind, role, sender, recipient, assignment_id),
+            role=role,
+            sender=sender,
+            recipient=recipient,
+            assignment_id=assignment_id,
+            envelope_sequence=envelope_sequence,
+        )
+        self.events.append(event)
+        self._event_changed.set()
+        live_event: dict[str, object] = {"kind": kind, "payload": value, "event": event.browser_value()}
+        for subscriber in tuple(self.subscribers):
+            subscriber.put_nowait(live_event)
+        return event
+
+    def _new_envelope(
+        self,
+        kind: str,
+        sender: str,
+        recipient: str,
+        body: str,
+        assignment_id: str,
+    ) -> Envelope:
+        self._next_envelope_sequence += 1
+        envelope = Envelope(
+            sequence=self._next_envelope_sequence,
+            kind=kind,
+            sender=sender,
+            recipient=recipient,
+            body=body,
+            assignment_id=assignment_id,
+        )
+        self.envelopes.append(envelope)
+        return envelope
+
+    def _make_available(self, envelope: Envelope) -> None:
+        self.available.add(envelope.sequence)
+        self.publish(
+            f"{envelope.kind}_available",
+            {
+                "role": envelope.recipient,
+                "sender": envelope.sender,
+                "recipient": envelope.recipient,
+                "assignment_id": envelope.assignment_id,
+            },
+            role=envelope.recipient,
+            sender=envelope.sender,
+            recipient=envelope.recipient,
+            assignment_id=envelope.assignment_id,
+            envelope_sequence=envelope.sequence,
+        )
+        for subscriber in tuple(self.delivery_subscribers):
+            subscriber.put_nowait(envelope)
+
+    def _agent(self, role: str) -> Agent:
+        agent = self.agents.get(role)
+        if agent is None:
+            raise ValueError("unknown agent")
+        return agent
+
+    def _envelope(self, sequence: int) -> Envelope:
+        try:
+            return next(item for item in self.envelopes if item.sequence == sequence)
+        except StopIteration as error:
+            raise ValueError("unknown envelope") from error
 
 
-def create_app(project_root: Path | None = None, *, callback_token: str | None = None) -> FastAPI:
+def create_app(
+    project_root: Path | None = None,
+    *,
+    callback_token: str | None = None,
+    broker: Broker | None = None,
+) -> FastAPI:
     app = FastAPI(title="shop-floor")
-    broker = Broker()
+    broker = broker or Broker()
     app.state.broker = broker
     app.mount("/assets", StaticFiles(directory=STATIC_ROOT / "assets"), name="assets")
     build_root = project_root / "_build" if project_root is not None else None
@@ -152,28 +431,12 @@ def create_app(project_root: Path | None = None, *, callback_token: str | None =
     @app.post("/api/runs/{run_id}/conversation/maker")
     async def submit_maker_message(run_id: str, input: ConversationInput) -> JSONResponse:
         _require_run(run_id)
-        try:
-            entry = await broker.record_conversation("maker", input.text)
-        except ValueError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
-        return JSONResponse(entry.browser_value())
+        return JSONResponse((await _conversation_or_400(broker, "maker", input.text)).browser_value())
 
     @app.post("/api/runs/{run_id}/foreman/publish")
     async def publish_foreman_message(run_id: str, input: ConversationInput) -> JSONResponse:
         _require_run(run_id)
-        try:
-            entry = await broker.record_conversation("foreman", input.text)
-        except ValueError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
-        return JSONResponse(entry.browser_value())
-
-    @app.post("/api/runs/{run_id}/foreman/receive")
-    async def receive_maker_messages(run_id: str, input: ReceiveInput) -> JSONResponse:
-        _require_run(run_id)
-        if input.after < 0:
-            raise HTTPException(status_code=400, detail="after must not be negative")
-        entries, sequence = await broker.receive_for_foreman(input.after)
-        return JSONResponse({"entries": [entry.browser_value() for entry in entries], "sequence": sequence})
+        return JSONResponse((await _conversation_or_400(broker, "foreman", input.text)).browser_value())
 
     @app.post("/api/runs/{run_id}/model/ready/{token}")
     async def model_ready(run_id: str, token: str) -> Response:
@@ -186,56 +449,82 @@ def create_app(project_root: Path | None = None, *, callback_token: str | None =
     @app.post("/api/runs/{run_id}/agents")
     async def manifest(run_id: str, input: ManifestInput) -> JSONResponse:
         _require_run(run_id)
-        if not input.role or not input.label:
-            raise HTTPException(status_code=400, detail="role and label are required")
-        if input.role in broker.agents:
-            raise HTTPException(status_code=409, detail="agent already manifested")
-        agent = Agent(role=input.role, label=input.label, state="waiting")
-        broker.agents[agent.role] = agent
-        broker.publish("agent_manifested", agent)
-        return JSONResponse(agent.browser_value())
+        try:
+            return JSONResponse(broker.manifest(input.role, input.label).browser_value())
+        except ValueError as error:
+            raise _broker_http_error(error) from error
+
+    @app.post("/api/runs/{run_id}/envelopes")
+    async def send_envelope(run_id: str, input: EnvelopeInput) -> JSONResponse:
+        _require_run(run_id)
+        try:
+            envelope = broker.send(
+                input.kind,
+                input.sender,
+                input.recipient,
+                input.body,
+                input.assignment_id,
+            )
+        except ValueError as error:
+            raise _broker_http_error(error) from error
+        return JSONResponse(envelope.delivery_value())
+
+    @app.post("/api/runs/{run_id}/envelopes/{sequence}/delivered")
+    async def mark_delivered(run_id: str, sequence: int) -> JSONResponse:
+        _require_run(run_id)
+        try:
+            return JSONResponse(broker.mark_delivered(sequence).delivery_value())
+        except ValueError as error:
+            raise _broker_http_error(error) from error
 
     @app.post("/api/runs/{run_id}/agents/{role}/assignments")
     async def assign(run_id: str, role: str, input: AssignmentInput) -> JSONResponse:
-        agent = _agent_for_transition(broker, run_id, role, input.assignment_id)
-        if agent.state != "waiting":
-            raise HTTPException(status_code=409, detail="invalid lifecycle report")
-        agent.assignment_id = input.assignment_id
-        broker.publish("assignment", agent)
-        return JSONResponse(agent.browser_value())
+        _require_run(run_id)
+        try:
+            broker.assign(role, input.assignment_id)
+            return JSONResponse(broker.agents[role].browser_value())
+        except ValueError as error:
+            raise _broker_http_error(error) from error
 
     @app.post("/api/runs/{run_id}/agents/{role}/acknowledgments")
     async def acknowledge(run_id: str, role: str, input: AssignmentInput) -> JSONResponse:
-        agent = _agent_for_transition(broker, run_id, role, input.assignment_id)
-        if agent.state != "waiting" or agent.assignment_id != input.assignment_id:
-            raise HTTPException(status_code=409, detail="invalid lifecycle report")
-        agent.state = "active"
-        broker.publish("work_acknowledged", agent)
-        return JSONResponse(agent.browser_value())
+        _require_run(run_id)
+        try:
+            return JSONResponse(broker.acknowledge(role, input.assignment_id).browser_value())
+        except ValueError as error:
+            raise _broker_http_error(error) from error
 
     @app.post("/api/runs/{run_id}/agents/{role}/completions")
     async def complete(run_id: str, role: str, input: AssignmentInput) -> JSONResponse:
-        agent = _agent_for_transition(broker, run_id, role, input.assignment_id)
-        if agent.state != "active" or agent.assignment_id != input.assignment_id:
-            raise HTTPException(status_code=409, detail="invalid lifecycle report")
-        agent.state = "waiting"
-        agent.assignment_id = ""
-        broker.publish("work_completed", agent)
-        return JSONResponse(agent.browser_value())
+        _require_run(run_id)
+        try:
+            return JSONResponse(broker.complete(role, input.assignment_id).browser_value())
+        except ValueError as error:
+            raise _broker_http_error(error) from error
 
     @app.delete("/api/runs/{run_id}/agents/{role}")
     async def stop(run_id: str, role: str) -> Response:
         _require_run(run_id)
-        agent = broker.agents.pop(role, None)
-        if agent is None:
-            raise HTTPException(status_code=404, detail="unknown agent")
-        broker.publish("agent_stopped", agent)
+        try:
+            broker.stop(role)
+        except ValueError as error:
+            raise _broker_http_error(error) from error
         return Response(status_code=204)
+
+    @app.get("/api/runs/{run_id}/orchestrator/stream")
+    async def orchestrator_stream(run_id: str) -> StreamingResponse:
+        _require_run(run_id)
+
+        async def events() -> AsyncIterator[str]:
+            async for envelope in broker.deliveries():
+                yield f"event: envelope\ndata: {json.dumps(envelope.delivery_value())}\n\n"
+
+        return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
     @app.get("/api/runs/{run_id}/stream")
     async def stream(run_id: str, request: Request) -> StreamingResponse:
         _require_run(run_id)
-        subscriber: asyncio.Queue[dict[str, object]] = asyncio.Queue(maxsize=8)
+        subscriber: asyncio.Queue[dict[str, object]] = asyncio.Queue()
 
         async def events() -> AsyncIterator[str]:
             broker.subscribers.add(subscriber)
@@ -254,16 +543,46 @@ def create_app(project_root: Path | None = None, *, callback_token: str | None =
     return app
 
 
+async def _conversation_or_400(broker: Broker, author: str, text: str) -> ConversationEntry:
+    try:
+        return await broker.record_conversation(author, text)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+def _event_summary(kind: str, role: str, sender: str, recipient: str, assignment_id: str) -> str:
+    labels = ROLE_LABELS
+    if kind == "agent_manifested":
+        return f"{labels.get(role, role.title())} manifested"
+    if kind == "agent_stopped":
+        return f"{labels.get(role, role.title())} stopped"
+    if kind.endswith("_available"):
+        name = kind.removesuffix("_available").replace("_", " ").title()
+        return f"{name} · {labels.get(sender, sender.title())} → {labels.get(recipient, recipient.title())}"
+    if kind == "assignment_queued":
+        return f"Assignment queued · {labels.get(role, role.title())} · {assignment_id}"
+    if kind == "work_acknowledged":
+        return f"Work started · {labels.get(role, role.title())} · {assignment_id}"
+    if kind == "work_completed":
+        return f"Work completed · {labels.get(role, role.title())} · {assignment_id}"
+    if kind == "envelope_delivered":
+        return f"Delivered · {labels.get(recipient, recipient.title())}"
+    if kind == "conversation_entry":
+        return "Conversation updated"
+    if kind == "model_changed":
+        return "Model updated"
+    return kind.replace("_", " ").title()
+
+
 def _require_run(run_id: str) -> None:
     if run_id != RUN_ID:
         raise HTTPException(status_code=404, detail="unknown shop run")
 
 
-def _agent_for_transition(broker: Broker, run_id: str, role: str, assignment_id: str) -> Agent:
-    _require_run(run_id)
-    if not assignment_id:
-        raise HTTPException(status_code=400, detail="assignment_id is required")
-    agent = broker.agents.get(role)
-    if agent is None:
-        raise HTTPException(status_code=404, detail="unknown agent")
-    return agent
+def _broker_http_error(error: ValueError) -> HTTPException:
+    detail = str(error)
+    if "unknown" in detail:
+        return HTTPException(status_code=404, detail=detail)
+    if "required" in detail:
+        return HTTPException(status_code=400, detail=detail)
+    return HTTPException(status_code=409, detail=detail)

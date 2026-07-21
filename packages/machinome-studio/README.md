@@ -4,8 +4,9 @@ An experimental agent harness for building 3D-printable mechanical CAD
 projects with [solid-node](https://github.com/LibreSolid/solid-node) — the
 framework that treats mechanical parts as software: parametric interfaces,
 unit tests, and integration contracts verified on meshes. This checkout has a
-Codex-native configuration for current trials and also packages the existing
-Claude Code plugin.
+Codex-native configuration for current trials. Claude Code packaging remains
+experimental metadata; live orchestration is implemented and tested only for
+Codex for now.
 
 The plugin packages a small **shop** of specialist agents and the loop
 that coordinates them, so you (the *pilot*) design and steer while the
@@ -16,15 +17,15 @@ agents do the token-heavy building and researching.
 | Role | What it does |
 |---|---|
 | **you (pilot)** | Establish intent, decide consequential choices, and judge the result by looking at it. |
-| **porter** | Opens and closes shop-floor and launches or ends agents; it makes no shop-work decisions. |
+| **orchestrator** | A non-model process that owns Codex app-server, routes broker events, and opens or closes the three role threads. |
 | **foreman** | Manages shop-floor work and communicates directly with the maker through the shop-floor broker. |
-| **drawing office** | Maintains the project design, releases the first executable drawing quickly, then plans one evidence-producing slice ahead (`docs/design.md`, `docs/specs/`). |
-| **machinist** | Builds a committed released drawing while the office plans ahead; owns code, tests, and implementation evidence. |
+| **designer** | Maintains the project design, releases the first executable drawing quickly, then plans one evidence-producing slice ahead (`docs/design.md`, `docs/specs/`). |
+| **machinist** | Builds a committed released drawing while the designer plans ahead; owns code, tests, and implementation evidence. |
 | **librarian** | Verifies a CAD-library API (cadquery, trimesh, cq_gears, OpenSCAD, three.js…) and files a recipe under `docs/notes/`. |
 
 The foreman runs the shop, dispatching these agents concurrently after the
-first drawing and bringing back only consequential decisions. The porter only
-performs the routine lifecycle work that makes those agents available. The
+first drawing and bringing back only consequential decisions. The deterministic
+orchestrator performs the routine lifecycle and delivery work. The
 design lives in `docs/design.md` and immutable released drawings, so a fresh
 session picks the project up from the repo, not from memory.
 
@@ -35,15 +36,21 @@ specialists under `.codex/agents/`, then describe the project you want to start
 or resume. The Codex path is currently a checkout-based experimental harness,
 not a published plugin.
 
-## Install in Claude Code
+To open the persistent event-driven floor directly:
+
+    python -m floor.orchestrator --port 9000
+
+The orchestrator owns one app-server and the Foreman, Designer, and Machinist
+threads. Idle role threads have no active model turn and consume no tokens.
+
+## Claude Code packaging
 
     /plugin marketplace add LibreSolid/solid-node-shop
     /plugin install solid-node-shop@solid-node
 
-(Or point the marketplace at wherever you host this repo.) Once
-installed, the `running-the-shop` skill loads whenever you start a
-mechanical project, and the three agents are available as
-`solid-node-shop:<name>`.
+(Or point the marketplace at wherever you host this repo.) This packaging is
+retained for future work, but the persistent broker/app-server orchestration in
+this version is Codex-only and makes no tested Claude support claim.
 
 ## The workspace
 
@@ -89,17 +96,17 @@ demonstrator", "build the windmill", "continue toward a working
 gearbox" — and the foreman runs the pipeline:
 
 1. The foreman has one focused conversation with you about the project.
-2. A fresh **drawing office** first writes a minimal uncommitted draft
+2. A fresh **designer** first writes a minimal uncommitted draft
    checkpoint, then establishes the design spine and commits a small,
    executable first drawing.
-3. The **machinist** builds and tests that released slice while the office
+3. The **machinist** builds and tests that released slice while the designer
    develops the higher-level design and drafts the next slice.
 4. The foreman inspects the code, tests, and **snapshots**; implementation
    evidence is reconciled into the next released drawing.
 5. The line continues toward the project goal, stopping only when a
    consequential decision needs you.
 
-Released drawings do not move underneath the machinist. The office owns design
+Released drawings do not move underneath the machinist. The designer owns design
 documents; the machinist owns project code and tests. While this workflow is
 experimental, the product-side shop may not use another mechanical project as
 a reference.
@@ -112,9 +119,8 @@ the shop can establish whether its prompts are useful before spending heavily:
 
 | Role | Model | Reasoning |
 |---|---|---|
-| porter | `gpt-5.6-terra` | medium |
 | foreman | `gpt-5.6-terra` | medium |
-| drawing office | `gpt-5.6-luna` | low |
+| designer | `gpt-5.6-luna` | low |
 | machinist | `gpt-5.6-luna` | low |
 | librarian | `gpt-5.6-luna` | low |
 
@@ -130,10 +136,11 @@ guidance, synchronization, and archival. The shop invokes those supported
 interfaces and consumes their reported paths and results; it does not maintain
 a parallel description or implementation of OpenSpec. These workflows support
 shop and framework development outside the mechanical-project roles. Drawing
-office, machinist, and librarian receive no OpenSpec skill.
+Designer, machinist, and librarian receive no OpenSpec skill.
 
-Codex specialists start with fresh task-local context and load their role and
-skills locally once. During bootstrap, the foreman expects the drawing-office
+Codex specialists keep persistent role threads, receive task-local broker
+assignments, and load their role and skills locally once. During bootstrap,
+the foreman expects the designer
 draft checkpoint within 90 seconds. Silence beyond that boundary is interrupted
 and reported; it is not poked or retried with inherited history.
 
@@ -184,7 +191,7 @@ and never commit it to the framework.
       plugin.json            plugin manifest
       marketplace.json       marketplace listing (this repo == marketplace)
     .codex/
-      config.toml            porter model + concurrency defaults
+      config.toml            Codex model + concurrency defaults
       agents/                Codex foreman and specialist model adapters
     scripts/
       setup                  workspace bootstrap (tier 1 plain / tier 2 dev)
@@ -201,7 +208,7 @@ and never commit it to the framework.
       file-a-wart/           /file-a-wart — open a framework-improvement issue
       openspec-*/            vendored OpenSpec workflow skills
     agents/
-      drawing-office.md      progressive design + released drawings
+      designer.md            progressive design + released drawings
       machinist.md           build/test a stable released drawing
       librarian.md           CAD-library research
     governance/              contribution templates for the framework repo

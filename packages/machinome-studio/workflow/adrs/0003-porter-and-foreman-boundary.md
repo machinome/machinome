@@ -1,6 +1,6 @@
 # ADR 0003: Separate the porter lifecycle role from the foreman
 
-**Status:** Accepted
+**Status:** Superseded by ADR 0005
 
 **Date:** 2026-07-20
 

@@ -64,6 +64,28 @@ class ShopLifecycleE2E(unittest.TestCase):
         _request(self.url("/api/runs/shop-floor/agents/machinist"), "DELETE")
         self.page.get_by_text("No agents are currently manifested.").wait_for(timeout=500)
 
+    def test_broker_event_log_loads_updates_and_rolls_over(self) -> None:
+        for role, label in (("foreman", "Foreman"), ("designer", "Designer"), ("machinist", "Machinist")):
+            _request(self.url("/api/runs/shop-floor/agents"), "POST", {"role": role, "label": label})
+        self.page.goto(self.url("/"))
+        log = self.page.get_by_role("log", name="Broker events")
+        log.get_by_text("Designer manifested").wait_for()
+        self.assertEqual(log.locator("[data-broker-event]").count(), 3)
+
+        for index in range(22):
+            _request(
+                self.url("/api/runs/shop-floor/envelopes"),
+                "POST",
+                {"kind": "direction", "sender": "foreman", "recipient": "designer", "body": f"private instruction {index}"},
+            )
+        log.get_by_text("Direction · Foreman → Designer").last.wait_for(timeout=1_000)
+        self.assertEqual(log.locator("[data-broker-event]").count(), 20)
+        self.assertNotIn("private instruction", log.inner_text())
+        self.page.reload()
+        reloaded = self.page.get_by_role("log", name="Broker events")
+        reloaded.locator("[data-broker-event]").first.wait_for()
+        self.assertEqual(reloaded.locator("[data-broker-event]").count(), 20)
+
     def test_maker_can_direct_the_foreman_and_reload_the_conversation(self) -> None:
         self.page.goto(self.url("/"))
         conversation = self.page.get_by_role("region", name="Chat")

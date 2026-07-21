@@ -16,11 +16,23 @@ type Run = {
   branch: string;
   status: string;
   agents: Agent[];
+  events: BrokerEvent[];
 };
 
 type LifecycleEvent = {
   kind: string;
   payload: Agent | ConversationEntry;
+  event: BrokerEvent;
+};
+
+type BrokerEvent = {
+  sequence: number;
+  kind: string;
+  summary: string;
+  role?: string;
+  sender?: string;
+  recipient?: string;
+  assignment_id?: string;
 };
 
 type ConversationEntry = {
@@ -120,7 +132,7 @@ function ForemanConversation({
   </>;
 }
 
-function AgentMenu({ agents }: { agents: Agent[] }) {
+function AgentMenu({ agents, events }: { agents: Agent[]; events: BrokerEvent[] }) {
   return <>
     <section aria-labelledby="agents-heading">
       <h2 id="agents-heading">Agents</h2>
@@ -136,6 +148,19 @@ function AgentMenu({ agents }: { agents: Agent[] }) {
           ))}
         </ul>
       )}
+    </section>
+    <section className="broker-events" aria-labelledby="events-heading">
+      <h2 id="events-heading">Broker events</h2>
+      <ol role="log" aria-label="Broker events" aria-live="polite">
+        {events.length === 0 ? (
+          <li className="empty">No broker events yet.</li>
+        ) : events.map((event) => (
+          <li key={event.sequence} data-broker-event={event.kind}>
+            <span>{event.summary}</span>
+            <small>#{event.sequence}</small>
+          </li>
+        ))}
+      </ol>
     </section>
   </>;
 }
@@ -165,6 +190,10 @@ function App() {
       source = new EventSource(`/api/runs/${currentRun.id}/stream`);
       source.addEventListener("shop-floor", (message) => {
         const event = JSON.parse((message as MessageEvent<string>).data) as LifecycleEvent;
+        setRun((previous) => {
+          if (!previous || previous.events.some((item) => item.sequence === event.event.sequence)) return previous;
+          return { ...previous, events: [...previous.events, event.event].slice(-20) };
+        });
         if (event.kind === "conversation_entry") {
           const entry = event.payload as ConversationEntry;
           setConversation((previous) => previous.some((item) => item.sequence === entry.sequence) ? previous : [...previous, entry]);
@@ -225,7 +254,7 @@ function App() {
           <p id="shop-status" aria-live="polite">Shop is {shopOpen ? "open" : "closed"}</p>
           <p className="run-status">{run ? `Run ${run.id} · ${run.status}` : "Waiting for a run."}</p>
         </header>
-        <AgentMenu agents={run?.agents ?? []} />
+        <AgentMenu agents={run?.agents ?? []} events={run?.events ?? []} />
       </aside>
       <div className="shop-content">
         <section className="artifact-view" aria-labelledby="artifact-heading">

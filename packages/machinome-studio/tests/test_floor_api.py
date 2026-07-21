@@ -85,48 +85,42 @@ class FloorAPITest(unittest.TestCase):
         )
         self.assertEqual(_status(self.url("/api/runs/shop-floor/conversation/maker"), "POST", {"text": "   "}), 400)
 
-    def test_foreman_receive_blocks_then_drains_messages_received_while_working(self) -> None:
-        received: dict[str, object] = {}
+    def test_orchestrator_stream_blocks_then_emits_ordered_maker_direction(self) -> None:
+        received: list[dict[str, object]] = []
 
         def wait_for_direction() -> None:
-            received.update(
-                _request(
-                    self.url("/api/runs/shop-floor/foreman/receive"),
-                    "POST",
-                    {"after": 0},
-                )
-            )
+            with urlopen(self.url("/api/runs/shop-floor/orchestrator/stream"), timeout=5) as response:  # nosec: local floor
+                for raw_line in response:
+                    line = raw_line.decode().strip()
+                    if line.startswith("data: "):
+                        received.append(json.loads(line.removeprefix("data: ")))
+                        if len(received) == 3:
+                            return
 
         listener = threading.Thread(target=wait_for_direction)
         listener.start()
         time.sleep(0.1)
-        self.assertTrue(listener.is_alive(), "the foreman listener must wait for maker direction")
-        first = _request(
+        self.assertTrue(listener.is_alive(), "the orchestrator stream must wait without polling")
+        _request(
             self.url("/api/runs/shop-floor/conversation/maker"),
             "POST",
             {"text": "Start with the frame."},
         )
-        listener.join(timeout=2)
-        self.assertFalse(listener.is_alive())
-        self.assertEqual(received["entries"], [first])
-
-        second = _request(
+        _request(
             self.url("/api/runs/shop-floor/conversation/maker"),
             "POST",
             {"text": "Add gussets."},
         )
-        third = _request(
+        _request(
             self.url("/api/runs/shop-floor/conversation/maker"),
             "POST",
             {"text": "Keep the corners round."},
         )
-        drained = _request(
-            self.url("/api/runs/shop-floor/foreman/receive"),
-            "POST",
-            {"after": received["sequence"]},
-        )
-        self.assertEqual(drained["entries"], [second, third])
-        self.assertEqual(drained["sequence"], third["sequence"])
+        listener.join(timeout=2)
+        self.assertFalse(listener.is_alive())
+        self.assertEqual([item["body"] for item in received], ["Start with the frame.", "Add gussets.", "Keep the corners round."])
+        self.assertEqual([item["sequence"] for item in received], sorted(item["sequence"] for item in received))
+        self.assertEqual(_status(self.url("/api/runs/shop-floor/foreman/receive"), "POST", {"after": "0"}), 404)
 
     def test_serves_only_completed_build_artifacts_and_not_project_source(self) -> None:
         project = Path(tempfile.mkdtemp())

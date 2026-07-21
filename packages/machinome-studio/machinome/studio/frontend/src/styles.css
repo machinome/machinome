@@ -41,6 +41,11 @@ li { align-items: center; border-radius: .375rem; display: flex; justify-content
 .state { border-radius: 1rem; font-size: .75rem; padding: .15rem .5rem; }
 .waiting { background: #e5e5e5; }
 .active { background: #dcfce7; color: #166534; }
+.broker-events ol { list-style: none; margin: .75rem 0 0; padding: 0; }
+.broker-events li { align-items: flex-start; background: #fff; border: 1px solid #e5e5e5; display: flex; flex-direction: column; gap: .25rem; margin: .4rem 0; padding: .5rem; }
+.broker-events li.empty { background: transparent; border: 0; padding-left: 0; }
+.broker-events span { font-size: .78rem; line-height: 1.25; overflow-wrap: anywhere; }
+.broker-events small { color: #737373; font-size: .68rem; }
 
 @media (max-width: 700px) {
   .shop-workspace { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 100dvh; overflow: visible; }

@@ -1,16 +1,22 @@
-# Foreman conversation listener
+# Foreman event delivery
 
-The active foreman listens directly to the local shop-floor broker; the porter
-does not relay maker messages or decide how the foreman responds.
+The active foreman does not poll or run a broker receive command. One
+non-model shop orchestrator owns the Codex app-server and subscribes to broker
+events asynchronously.
 
-The foreman's normal conversation loop is:
+When maker direction or a specialist report is addressed to the foreman, the
+orchestrator records it before delivery and then:
 
-1. Run `python -m floor.foreman receive --after <sequence>`.
-2. Handle each returned maker message in its current foreman context.
-3. When the foreman judges that communication is warranted, run
-   `python -m floor.foreman publish --text "..."`.
-4. Run `receive` again with the returned `sequence`.
+- starts a turn when the foreman is idle; or
+- steers the active turn when the foreman is working, so Codex presents the
+  queued input after the current tool call and before the next task action.
 
-`receive` waits until a later maker message exists and then returns every
-currently queued later maker message in order. Messages arriving while the
-foreman is handling an earlier batch are returned by the next receive.
+The foreman publishes to the maker with:
+
+```text
+python -m floor.foreman --text "<message>"
+```
+
+It assigns, directs, and receives specialist reports through the role-neutral
+`python -m floor.agent` command surface. While idle, the foreman has no active
+model turn, pending receive tool, polling interval, or token consumption.
