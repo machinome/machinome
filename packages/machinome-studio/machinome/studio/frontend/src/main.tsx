@@ -72,12 +72,21 @@ function ForemanConversation({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const transcript = useRef<HTMLOListElement>(null);
+  const composer = useRef<HTMLTextAreaElement>(null);
+  const pendingCaret = useRef<number | null>(null);
   const latestEntry = entries[entries.length - 1];
 
   useLayoutEffect(() => {
     if (latestEntry?.author !== "foreman") return;
     if (transcript.current) transcript.current.scrollTop = transcript.current.scrollHeight;
   }, [latestEntry?.author, latestEntry?.sequence]);
+
+  useLayoutEffect(() => {
+    const caret = pendingCaret.current;
+    if (caret === null || !composer.current) return;
+    composer.current.setSelectionRange(caret, caret);
+    pendingCaret.current = null;
+  }, [text]);
 
   const submit = async () => {
     if (!text.trim() || sending) return;
@@ -108,6 +117,7 @@ function ForemanConversation({
     </ol>
     <form className="conversation-composer" aria-label="Message composer" onSubmit={submitForm}>
       <textarea
+        ref={composer}
         aria-label="Message"
         id="message"
         name="message"
@@ -119,8 +129,8 @@ function ForemanConversation({
             event.preventDefault();
             const message = event.currentTarget;
             const { selectionEnd, selectionStart } = message;
+            pendingCaret.current = selectionStart + 1;
             setText((previous) => `${previous.slice(0, selectionStart)}\n${previous.slice(selectionEnd)}`);
-            requestAnimationFrame(() => message.setSelectionRange(selectionStart + 1, selectionStart + 1));
             return;
           }
           event.preventDefault();
