@@ -67,8 +67,7 @@ function ForemanConversation({
     if (transcript.current) transcript.current.scrollTop = transcript.current.scrollHeight;
   }, [latestEntry?.author, latestEntry?.sequence]);
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submit = async () => {
     if (!text.trim() || sending) return;
     setSending(true);
     try {
@@ -77,6 +76,11 @@ function ForemanConversation({
     } finally {
       setSending(false);
     }
+  };
+
+  const submitForm = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void submit();
   };
 
   return <>
@@ -90,8 +94,27 @@ function ForemanConversation({
         </li>
       ))}
     </ol>
-    <form className="conversation-composer" aria-label="Message composer" onSubmit={submit}>
-      <textarea aria-label="Message" id="message" name="message" value={text} onChange={(event) => setText(event.target.value)} />
+    <form className="conversation-composer" aria-label="Message composer" onSubmit={submitForm}>
+      <textarea
+        aria-label="Message"
+        id="message"
+        name="message"
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter") return;
+          if (event.ctrlKey) {
+            event.preventDefault();
+            const message = event.currentTarget;
+            const { selectionEnd, selectionStart } = message;
+            setText((previous) => `${previous.slice(0, selectionStart)}\n${previous.slice(selectionEnd)}`);
+            requestAnimationFrame(() => message.setSelectionRange(selectionStart + 1, selectionStart + 1));
+            return;
+          }
+          event.preventDefault();
+          void submit();
+        }}
+      />
       <button type="submit" disabled={!text.trim() || sending}>Send</button>
     </form>
   </>;

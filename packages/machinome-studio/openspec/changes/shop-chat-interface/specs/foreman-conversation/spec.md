@@ -7,12 +7,20 @@ messages in their recorded order in a compact, independently scrollable chat
 transcript that attributes each message to its participant without a visible
 foreman-specific conversation title. The composer SHALL present a message field
 without visible foreman-directed wording and a submit control labelled `Send`.
+Pressing Enter in the message field SHALL submit its non-empty draft. Pressing
+Ctrl+Enter SHALL insert a line break in the draft without submitting it.
 The shop floor SHALL not provide a direct-conversation control for another
 agent.
 
 #### Scenario: A maker directs the foreman
 - **WHEN** the maker submits a non-empty message through the chat composer
 - **THEN** the message appears in the transcript as a maker message available to the foreman
+
+#### Scenario: A maker sends with Enter and composes with Ctrl+Enter
+- **WHEN** the maker presses Ctrl+Enter while composing a message
+- **THEN** the message field gains a line break and no message is submitted
+- **WHEN** the maker then presses Enter
+- **THEN** the full multiline message is submitted to the conversation
 
 #### Scenario: The foreman communicates with the maker
 - **WHEN** the foreman publishes a conversation message

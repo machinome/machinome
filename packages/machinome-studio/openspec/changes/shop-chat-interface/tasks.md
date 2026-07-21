@@ -13,3 +13,9 @@
 
 - [x] 3.1 Run the focused browser lifecycle coverage and the full relevant test suite.
 - [x] 3.2 Build the frontend and inspect the resulting workspace/chat presentation for visual regressions.
+
+## 4. Keyboard composer refinement
+
+- [x] 4.1 Add browser coverage for Enter sending and Ctrl+Enter inserting a newline without sending.
+- [x] 4.2 Implement the specified keyboard behavior while preserving the `Send` button submission path.
+- [x] 4.3 Build the frontend and run the focused composer coverage.

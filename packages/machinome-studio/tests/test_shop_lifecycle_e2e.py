@@ -99,6 +99,20 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual(messages[0], "MakerPlease begin with the housing.")
         self.assertEqual(messages[-1], "ForemanI will review the drawing and report back.")
 
+    def test_chat_composer_sends_with_enter_and_adds_lines_with_control_enter(self) -> None:
+        self.page.goto(self.url("/"))
+        conversation = self.page.get_by_role("region", name="Chat")
+        composer = conversation.get_by_role("textbox", name="Message")
+        composer.fill("First line")
+        composer.press("Control+Enter")
+        composer.type("Second line")
+        self.assertEqual(composer.input_value(), "First line\nSecond line")
+        self.assertEqual(conversation.get_by_role("list").locator("[data-conversation-author]").count(), 0)
+        composer.press("Enter")
+        message = conversation.locator('[data-conversation-author="maker"]')
+        message.wait_for()
+        self.assertEqual(message.text_content(), "MakerFirst line\nSecond line")
+
     def test_workspace_has_no_horizontal_overflow_on_a_narrow_viewport(self) -> None:
         self.page.set_viewport_size({"width": 375, "height": 800})
         self.page.goto(self.url("/"))

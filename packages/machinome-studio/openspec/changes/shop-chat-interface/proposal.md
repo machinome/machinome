@@ -14,6 +14,7 @@ surface as the shop later adds messages from more participants.
   on the foreman.
 - Simplify the composer to the message field and a `Send` button; remove the
   visible foreman-specific title and field/button wording.
+- Let Enter send a message and Ctrl+Enter add a line break without sending it.
 - Scroll the chat transcript to its newest message when the foreman publishes
   a new message.
 
@@ -26,8 +27,8 @@ None.
 ### Modified Capabilities
 
 - `foreman-conversation`: The live conversation gains chat-oriented transcript
-  presentation, generic composer language, and newest-foreman-message
-  auto-scroll behavior.
+  presentation, generic keyboard composer behavior, and
+  newest-foreman-message auto-scroll behavior.
 - `shop-browser-workspace`: The browser workspace gives conversation a 50/50
   desktop share with artifact inspection and removes the exact-ratio acceptance
   assertion.

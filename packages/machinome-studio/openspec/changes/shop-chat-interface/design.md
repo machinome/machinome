@@ -53,6 +53,17 @@ foreman preserves the current maker/foreman distinction and leaves the
 component adaptable to later participants. Removing all author attribution is
 rejected because readers need to identify who sent each entry.
 
+### Use Enter for dispatch and Ctrl+Enter for a newline
+
+The composer will intercept an unmodified Enter keypress and submit the
+non-empty draft through the same path as the `Send` button. Ctrl+Enter keeps
+the textarea's normal newline behavior and does not dispatch. This makes the
+single-key action match a chat while retaining a deliberate multiline path.
+
+Requiring the button for all sends is rejected because it makes routine chat
+entry slower. Sending on Ctrl+Enter is rejected because it conflicts with the
+requested multiline shortcut.
+
 ### Reveal live foreman messages with transcript-owned scrolling
 
 The transcript element will hold a ref. When the rendered conversation gains a
