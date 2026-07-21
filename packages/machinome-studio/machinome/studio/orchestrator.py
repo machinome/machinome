@@ -162,10 +162,12 @@ class CodexAppServer:
         self,
         cwd: Path,
         *,
+        project: Path | None = None,
         command: str | Sequence[str] = "codex",
         broker_url: str = "http://127.0.0.1:9000",
     ) -> None:
         self.cwd = cwd.resolve()
+        self.project = (project or cwd).resolve()
         self.command = (command,) if isinstance(command, str) else tuple(command)
         self.broker_url = broker_url
         self.process: asyncio.subprocess.Process | None = None
@@ -186,7 +188,13 @@ class CodexAppServer:
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env={**os.environ, "FLOOR_URL": self.broker_url},
+            env={
+                **os.environ,
+                "FLOOR_URL": self.broker_url,
+                "PYTHONPATH": os.pathsep.join(
+                    item for item in (str(self.cwd), os.environ.get("PYTHONPATH", "")) if item
+                ),
+            },
             start_new_session=True,
         )
         self._reader_task = asyncio.create_task(self._read_stdout())
@@ -208,14 +216,21 @@ class CodexAppServer:
         config_path = self.cwd / ".codex" / "agents" / f"{role}.toml"
         with config_path.open("rb") as handle:
             config = tomllib.load(handle)
+        role_instructions = str(config.get("developer_instructions", ""))
+        runtime_instructions = (
+            f"Shop checkout: {self.cwd}\n"
+            f"Active project: {self.project}\n"
+            "Treat the active project as the sole mechanical-project repository for this shop run. "
+            "Shop role cards and skills come from the shop checkout named above.\n\n"
+        )
         result = await self._request(
             "thread/start",
             {
-                "cwd": str(self.cwd),
+                "cwd": str(self.project),
                 "model": config.get("model"),
-                "developerInstructions": config.get("developer_instructions"),
+                "developerInstructions": runtime_instructions + role_instructions,
                 "approvalPolicy": "never",
-                "sandbox": "workspace-write",
+                "sandbox": "danger-full-access",
                 "serviceName": f"solid-node-shop-{role}",
             },
         )
@@ -325,6 +340,7 @@ async def _serve(arguments: argparse.Namespace) -> None:
         await asyncio.sleep(0.01)
     codex = CodexAppServer(
         arguments.cwd,
+        project=arguments.project,
         command=arguments.codex_command,
         broker_url=f"http://127.0.0.1:{arguments.port}",
     )

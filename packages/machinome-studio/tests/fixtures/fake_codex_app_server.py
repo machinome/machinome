@@ -31,7 +31,14 @@ for raw_line in sys.stdin:
         next_thread += 1
         thread_id = f"thread-{next_thread}"
         threads[thread_id] = None
-        thread = {"id": thread_id, "status": {"type": "idle"}, "turns": []}
+        thread = {
+            "id": thread_id,
+            "status": {"type": "idle"},
+            "turns": [],
+            "cwd": params.get("cwd"),
+            "developerInstructions": params.get("developerInstructions"),
+            "sandbox": params.get("sandbox"),
+        }
         send({"id": request_id, "result": {"thread": thread}})
         send({"method": "thread/started", "params": {"thread": thread}})
     elif method == "turn/start":

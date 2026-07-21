@@ -133,6 +133,21 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
 
 class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
+    async def test_role_threads_work_in_the_active_project_with_explicit_shop_context(self) -> None:
+        project = ROOT / "projects" / "snowman"
+        codex = CodexAppServer(ROOT, project=project, command=(sys.executable, str(FAKE_APP_SERVER)))
+        await codex.start()
+        self.addAsyncCleanup(codex.close)
+
+        await codex.start_thread("foreman")
+        notification = await codex.notifications.get()
+        thread = notification["params"]["thread"]
+
+        self.assertEqual(thread["cwd"], str(project.resolve()))
+        self.assertEqual(thread["sandbox"], "danger-full-access")
+        self.assertIn(f"Shop checkout: {ROOT.resolve()}", thread["developerInstructions"])
+        self.assertIn(f"Active project: {project.resolve()}", thread["developerInstructions"])
+
     async def test_closing_never_used_role_threads_is_clean(self) -> None:
         codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
         orchestrator = ShopOrchestrator(codex, LocalBrokerControl(Broker()))

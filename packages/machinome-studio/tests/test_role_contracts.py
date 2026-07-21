@@ -24,6 +24,15 @@ class RoleContractTest(unittest.TestCase):
         self.assertIn("designer reconciliation pass", process)
         self.assertIn("never poll or invoke a receive command", foreman)
 
+    def test_foreman_prompt_distinguishes_floor_management_from_process_orchestration(self) -> None:
+        foreman = (ROOT / "agents" / "foreman.md").read_text()
+        process = (ROOT / "skills" / "running-the-shop" / "SKILL.md").read_text()
+        self.assertIn("You do not own or monitor the agent processes", foreman)
+        self.assertIn("python -m floor.agent assign --role designer", foreman)
+        self.assertIn("Your ordinary agent messages are published", foreman)
+        self.assertIn("Reports and maker messages wake your persistent thread", process)
+        self.assertNotIn("Inspect specialist messages and the two checkpoint paths after 60 seconds", process)
+
     def test_current_guidance_does_not_claim_claude_or_legacy_role_support(self) -> None:
         current = "\n".join(
             path.read_text()
