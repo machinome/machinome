@@ -6,6 +6,8 @@ import argparse
 import asyncio
 import json
 import os
+import secrets
+import shlex
 import sys
 import tomllib
 from dataclasses import dataclass
@@ -167,11 +169,15 @@ class CodexAppServer:
         project: Path | None = None,
         command: str | Sequence[str] = "codex",
         broker_url: str = "http://127.0.0.1:9000",
+        solid_command: str | Sequence[str] = "solid",
+        model_callback_url: str | None = None,
     ) -> None:
         self.cwd = cwd.resolve()
         self.project = (project or cwd).resolve()
         self.command = (command,) if isinstance(command, str) else tuple(command)
         self.broker_url = broker_url
+        self.solid_command = (solid_command,) if isinstance(solid_command, str) else tuple(solid_command)
+        self.model_callback_url = model_callback_url
         self.process: asyncio.subprocess.Process | None = None
         self.notifications: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
         self._pending: dict[int, asyncio.Future[dict[str, Any]]] = {}
@@ -225,6 +231,12 @@ class CodexAppServer:
             "Treat the active project as the sole mechanical-project repository for this shop run. "
             "Shop role cards and skills come from the shop checkout named above.\n\n"
         )
+        if role == "machinist" and self.model_callback_url is not None:
+            runtime_instructions += (
+                "Live model development command (run it from the active project and keep it running "
+                "throughout an active machining assignment):\n"
+                f"{shlex.join(self.solid_command)} develop root --callback {shlex.quote(self.model_callback_url)}\n\n"
+            )
         result = await self._request(
             "thread/start",
             {
@@ -330,7 +342,14 @@ async def _serve(arguments: argparse.Namespace) -> None:
     solid_command = arguments.solid_command or default_solid_command(arguments.cwd)
     prepared = prepare_project(arguments.project_name, project_home=project_home, solid_command=solid_command)
     broker = Broker()
-    app = create_app(prepared.project_root, artifact_root=prepared.artifact_root, broker=broker)
+    callback_token = secrets.token_urlsafe(24)
+    callback_url = f"http://127.0.0.1:{arguments.port}/api/runs/shop-floor/model/ready/{callback_token}"
+    app = create_app(
+        prepared.project_root,
+        artifact_root=prepared.artifact_root,
+        callback_token=callback_token,
+        broker=broker,
+    )
     server = uvicorn.Server(
         uvicorn.Config(
             app,
@@ -355,6 +374,8 @@ async def _serve(arguments: argparse.Namespace) -> None:
             project=prepared.project_root,
             command=arguments.codex_command,
             broker_url=f"http://127.0.0.1:{arguments.port}",
+            solid_command=solid_command,
+            model_callback_url=callback_url,
         )
         orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker))
         await orchestrator.open()

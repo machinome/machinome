@@ -146,7 +146,7 @@ and restores operation state between instants. Any failure exits nonzero;
 
 ```text
 solid new <name>
-solid develop <path> [--web-dev] [--openscad] [--debug-builder] [--debug-web]
+solid develop <path> [--web-dev] [--openscad] [--debug-builder] [--debug-web] [--callback URL]
 solid test <path> [--failfast]
 solid snapshot <path> -o out.png [--time 0..1] [--autocenter] [--viewall]
       [--camera tx,ty,tz,rx,ry,rz,dist | ex,ey,ez,cx,cy,cz]

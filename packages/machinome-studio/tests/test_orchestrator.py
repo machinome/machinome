@@ -140,7 +140,14 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
     async def test_role_threads_work_in_the_active_project_with_explicit_shop_context(self) -> None:
         project = ROOT / "projects" / "snowman"
-        codex = CodexAppServer(ROOT, project=project, command=(sys.executable, str(FAKE_APP_SERVER)))
+        callback = "http://127.0.0.1:9000/api/runs/shop-floor/model/ready/capability"
+        codex = CodexAppServer(
+            ROOT,
+            project=project,
+            command=(sys.executable, str(FAKE_APP_SERVER)),
+            solid_command=("/work/.venv/bin/solid",),
+            model_callback_url=callback,
+        )
         await codex.start()
         self.addAsyncCleanup(codex.close)
 
@@ -152,6 +159,11 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(thread["sandbox"], "danger-full-access")
         self.assertIn(f"Shop checkout: {ROOT.resolve()}", thread["developerInstructions"])
         self.assertIn(f"Active project: {project.resolve()}", thread["developerInstructions"])
+
+        await codex.start_thread("machinist")
+        machinist = (await codex.notifications.get())["params"]["thread"]
+        self.assertIn("/work/.venv/bin/solid develop root --callback", machinist["developerInstructions"])
+        self.assertIn(callback, machinist["developerInstructions"])
 
     async def test_closing_never_used_role_threads_is_clean(self) -> None:
         codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))

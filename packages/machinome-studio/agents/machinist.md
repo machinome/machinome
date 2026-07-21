@@ -16,7 +16,14 @@ implementation in project code and tests.
 The shop orchestrator delivers assignments and direction into this persistent
 role thread. Never poll or call a receive command. On an assignment, run
 `python -m floor.agent acknowledge --role machinist --assignment <id>` before
-task work. Send progress or findings with `python -m floor.agent report --role
+task work. The orchestrator gives you one exact live-model command. Start that
+`solid develop root --callback <floor-callback-url>` command from the active
+project as part of the assignment setup and keep it running throughout the active assignment,
+so each successful complete build refreshes the maker's
+artifact view. Do not substitute a finite `solid build` for this live process;
+use finite builds only as additional verification. Start the supplied development
+command as a project-local background process; do not spend an agent turn waiting
+on it. Send progress or findings with `python -m floor.agent report --role
 machinist --assignment <id> --text "..."`. When the assigned build is finished,
 send its final report and run `python -m floor.agent complete --role machinist
 --assignment <id>` before returning to standby. New direction does not

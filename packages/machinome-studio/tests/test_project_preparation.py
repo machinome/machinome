@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from floor.preparation import PreparationError, prepare_project, primary_shop_root, resolve_project
+from floor.preparation import PreparationError, default_project_home, prepare_project, primary_shop_root, resolve_project
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +24,9 @@ class ProjectResolutionTest(unittest.TestCase):
 
     def test_accepts_lowercase_kebab_case(self) -> None:
         self.assertEqual(resolve_project("v8-engine", self.home), self.home / "v8-engine")
+
+    def test_projects_are_scoped_to_the_checkout_that_launches_the_floor(self) -> None:
+        self.assertEqual(default_project_home(ROOT), ROOT / "projects")
 
     def test_rejects_missing_and_unsafe_names(self) -> None:
         for name in (None, "", "V8-engine", "v8 engine", "v8_engine", "../v8", ".", "v8/engine", "/tmp/v8"):
@@ -86,6 +89,14 @@ class ProjectPreparationTest(unittest.TestCase):
             set(subprocess.run(["git", "-C", str(project), "ls-files"], check=True, text=True, capture_output=True).stdout.splitlines()),
             {".gitignore", "root/__init__.py"},
         )
+
+    def test_missing_project_home_is_created_for_a_first_launch(self) -> None:
+        home = self.home.parent / "fresh-projects"
+        with patch.dict(os.environ, self.git_environment):
+            prepared = prepare_project("new-engine", project_home=home, solid_command=self.command)
+
+        self.assertEqual(prepared.project_root, home / "new-engine")
+        self.assertTrue((home / "new-engine" / "root" / "__init__.py").is_file())
 
     def test_existing_exact_repository_is_reused_without_git_mutation(self) -> None:
         project = self.home / "existing"

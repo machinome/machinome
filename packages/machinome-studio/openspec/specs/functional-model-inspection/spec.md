@@ -29,7 +29,8 @@ serve project Python source.
 - **THEN** the browser can retrieve the already-validated initial viewer snapshot rather than receiving a no-build response
 
 ### Requirement: The shop floor refreshes a changed functional model
-After a development process reports a successfully updated build through the
+The system SHALL start the machinist's solid-node development process with a
+floor callback location. After that process reports a successfully updated build through the
 floor callback, the broker SHALL notify connected browsers and they SHALL load
 the complete current `_build` model artifacts without Floor importing or
 executing project Python.

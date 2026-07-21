@@ -33,6 +33,11 @@ class RoleContractTest(unittest.TestCase):
         self.assertIn("Reports and maker messages wake your persistent thread", process)
         self.assertNotIn("Inspect specialist messages and the two checkpoint paths after 60 seconds", process)
 
+    def test_machinist_keeps_callback_development_running_during_an_assignment(self) -> None:
+        machinist = (ROOT / "agents" / "machinist.md").read_text()
+        self.assertIn("solid develop root --callback", machinist)
+        self.assertIn("throughout the active assignment", machinist)
+
     def test_current_guidance_does_not_claim_claude_or_legacy_role_support(self) -> None:
         current = "\n".join(
             path.read_text()

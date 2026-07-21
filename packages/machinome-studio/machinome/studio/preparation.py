@@ -45,7 +45,7 @@ def primary_shop_root(checkout: Path) -> Path:
 
 
 def default_project_home(checkout: Path) -> Path:
-    return primary_shop_root(checkout) / "projects"
+    return checkout.resolve() / "projects"
 
 
 def default_solid_command(checkout: Path) -> tuple[str, ...]:
@@ -64,6 +64,10 @@ def resolve_project(name: str | None, project_home: Path) -> Path:
     if name is None or not PROJECT_NAME.fullmatch(name):
         raise PreparationError("project-name", name, None, "a lowercase kebab-case project name is required")
     home = project_home.resolve()
+    try:
+        home.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise PreparationError("project-home", name, home, str(error)) from error
     if not home.is_dir():
         raise PreparationError("project-home", name, home, "workspace projects directory does not exist")
     candidate = home / name
