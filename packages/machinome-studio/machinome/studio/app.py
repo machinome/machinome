@@ -376,6 +376,7 @@ class Broker:
 def create_app(
     project_root: Path | None = None,
     *,
+    artifact_root: Path | None = None,
     callback_token: str | None = None,
     broker: Broker | None = None,
 ) -> FastAPI:
@@ -383,7 +384,7 @@ def create_app(
     broker = broker or Broker()
     app.state.broker = broker
     app.mount("/assets", StaticFiles(directory=STATIC_ROOT / "assets"), name="assets")
-    build_root = project_root / "_build" if project_root is not None else None
+    build_root = artifact_root or (project_root / "_build" if project_root is not None else None)
 
     @app.get("/artifacts/{artifact_path:path}")
     async def artifact(artifact_path: str) -> FileResponse:

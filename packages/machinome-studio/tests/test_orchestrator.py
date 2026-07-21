@@ -6,16 +6,21 @@ import signal
 import socket
 import subprocess
 import sys
+import tempfile
 import time
+from types import SimpleNamespace
 from pathlib import Path
+from unittest.mock import patch
 from urllib.request import urlopen
 
 from floor.app import Broker
-from floor.orchestrator import CodexAppServer, InactiveTurn, LocalBrokerControl, ShopOrchestrator
+from floor.orchestrator import CodexAppServer, InactiveTurn, LocalBrokerControl, ShopOrchestrator, _serve
+from floor.preparation import PreparationError
 
 
 ROOT = Path(__file__).resolve().parents[1]
 FAKE_APP_SERVER = ROOT / "tests" / "fixtures" / "fake_codex_app_server.py"
+FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
 
 
 class FakeBroker:
@@ -221,7 +226,31 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
 
 class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
+    def test_preparation_failure_constructs_no_runtime_and_reports_no_url(self) -> None:
+        arguments = SimpleNamespace(
+            project_name="broken",
+            project_home=Path("/work/projects"),
+            solid_command="solid",
+            cwd=ROOT,
+            port=9000,
+            codex_command="codex",
+        )
+        failure = PreparationError("build", "broken", Path("/work/projects/broken"), "failed")
+        with (
+            patch("floor.orchestrator.prepare_project", side_effect=failure),
+            patch("floor.orchestrator.Broker") as broker,
+            patch("floor.orchestrator.create_app") as create_app,
+            self.assertRaises(PreparationError),
+        ):
+            __import__("asyncio").run(_serve(arguments))
+        broker.assert_not_called()
+        create_app.assert_not_called()
+
     def test_one_sigint_closes_with_a_live_sse_client(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        project_home = Path(temporary.name) / "projects"
+        project_home.mkdir()
         with socket.socket() as probe:
             probe.bind(("127.0.0.1", 0))
             port = probe.getsockname()[1]
@@ -230,19 +259,30 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
                 sys.executable,
                 "-m",
                 "floor.orchestrator",
+                "shutdown-test",
                 "--port",
                 str(port),
                 "--cwd",
                 str(ROOT),
                 "--codex-command",
                 str(FAKE_APP_SERVER),
+                "--project-home",
+                str(project_home),
+                "--solid-command",
+                str(FAKE_SOLID),
             ],
             cwd=ROOT,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             start_new_session=True,
-            env={**os.environ},
+            env={
+                **os.environ,
+                "GIT_AUTHOR_NAME": "Shop Test",
+                "GIT_AUTHOR_EMAIL": "shop@example.invalid",
+                "GIT_COMMITTER_NAME": "Shop Test",
+                "GIT_COMMITTER_EMAIL": "shop@example.invalid",
+            },
         )
         self.addCleanup(self._terminate, process)
         assert process.stdout is not None

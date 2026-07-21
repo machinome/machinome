@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import json
 import os
+import sys
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,7 @@ from typing import Any, Protocol
 import uvicorn
 
 from .app import Broker, Envelope, ROLE_LABELS, create_app
+from .preparation import PreparationError, default_project_home, default_solid_command, prepare_project
 
 
 SHOP_ROLES = tuple(ROLE_LABELS)
@@ -324,8 +326,11 @@ class CodexAppServer:
 
 
 async def _serve(arguments: argparse.Namespace) -> None:
+    project_home = arguments.project_home or default_project_home(arguments.cwd)
+    solid_command = arguments.solid_command or default_solid_command(arguments.cwd)
+    prepared = prepare_project(arguments.project_name, project_home=project_home, solid_command=solid_command)
     broker = Broker()
-    app = create_app(arguments.project, broker=broker)
+    app = create_app(prepared.project_root, artifact_root=prepared.artifact_root, broker=broker)
     server = uvicorn.Server(
         uvicorn.Config(
             app,
@@ -336,47 +341,67 @@ async def _serve(arguments: argparse.Namespace) -> None:
         )
     )
     server_task = asyncio.create_task(server.serve())
-    while not server.started and not server_task.done():
-        await asyncio.sleep(0.01)
-    codex = CodexAppServer(
-        arguments.cwd,
-        project=arguments.project,
-        command=arguments.codex_command,
-        broker_url=f"http://127.0.0.1:{arguments.port}",
-    )
-    orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker))
-    await orchestrator.open()
-    print(f"shop-floor open at http://127.0.0.1:{arguments.port}", flush=True)
-
-    async def route_deliveries() -> None:
-        async for envelope in broker.deliveries():
-            await orchestrator.deliver(envelope)
-
-    async def route_notifications() -> None:
-        while True:
-            await orchestrator.handle_notification(await codex.notifications.get())
-
-    delivery_task = asyncio.create_task(route_deliveries())
-    notification_task = asyncio.create_task(route_notifications())
+    orchestrator: ShopOrchestrator | None = None
+    delivery_task: asyncio.Task[None] | None = None
+    notification_task: asyncio.Task[None] | None = None
     try:
+        while not server.started and not server_task.done():
+            await asyncio.sleep(0.01)
+        if server_task.done():
+            await server_task
+            raise RuntimeError("shop-floor server stopped before opening")
+        codex = CodexAppServer(
+            arguments.cwd,
+            project=prepared.project_root,
+            command=arguments.codex_command,
+            broker_url=f"http://127.0.0.1:{arguments.port}",
+        )
+        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker))
+        await orchestrator.open()
+        print(f"shop-floor open at http://127.0.0.1:{arguments.port}", flush=True)
+
+        async def route_deliveries() -> None:
+            assert orchestrator is not None
+            async for envelope in broker.deliveries():
+                await orchestrator.deliver(envelope)
+
+        async def route_notifications() -> None:
+            assert orchestrator is not None
+            while True:
+                await orchestrator.handle_notification(await codex.notifications.get())
+
+        delivery_task = asyncio.create_task(route_deliveries())
+        notification_task = asyncio.create_task(route_notifications())
         await server_task
     except asyncio.CancelledError:
         pass
     finally:
         broker.shutdown()
-        delivery_task.cancel()
-        notification_task.cancel()
-        await asyncio.gather(delivery_task, notification_task, return_exceptions=True)
-        await orchestrator.close()
+        route_tasks = tuple(task for task in (delivery_task, notification_task) if task is not None)
+        for task in route_tasks:
+            task.cancel()
+        if route_tasks:
+            await asyncio.gather(*route_tasks, return_exceptions=True)
+        if orchestrator is not None:
+            await orchestrator.close()
+        if not server_task.done():
+            server.should_exit = True
+            await server_task
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the event-driven Codex shop")
+    parser.add_argument("project_name", help="lowercase kebab-case project name below projects/")
     parser.add_argument("--port", type=int, default=int(os.environ.get("FLOOR_PORT", "9000")))
-    parser.add_argument("--project", type=Path)
     parser.add_argument("--cwd", type=Path, default=Path.cwd(), help="shop checkout containing .codex role adapters")
+    parser.add_argument("--project-home", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--solid-command", help=argparse.SUPPRESS)
     parser.add_argument("--codex-command", default="codex", help=argparse.SUPPRESS)
-    asyncio.run(_serve(parser.parse_args()))
+    try:
+        asyncio.run(_serve(parser.parse_args()))
+    except PreparationError as error:
+        print(f"error: {error}", file=sys.stderr)
+        raise SystemExit(1) from error
 
 
 if __name__ == "__main__":

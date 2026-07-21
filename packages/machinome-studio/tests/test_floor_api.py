@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import socket
 import subprocess
+import shutil
 import tempfile
 import threading
 import time
@@ -13,18 +14,18 @@ from urllib.request import Request, urlopen
 
 
 ROOT = Path(__file__).resolve().parents[1]
+FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
 
 
 class FloorAPITest(unittest.TestCase):
     def setUp(self) -> None:
         self.port = _free_port()
-        self.process = subprocess.Popen(
-            ["python", "-m", "floor", "--port", str(self.port)],
-            cwd=ROOT,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.project_home = Path(self.temporary.name) / "projects"
+        self.project_home.mkdir()
+        self._project_number = 0
+        self._start_floor("floor-api")
         self.addCleanup(self._stop_floor)
         _wait_for_health(self.url("/health"))
 
@@ -149,14 +150,45 @@ class FloorAPITest(unittest.TestCase):
 
     def _restart_floor(self, project: Path, callback_token: str | None = None) -> None:
         self._stop_floor()
-        self.project = project
-        command = ["python", "-m", "floor", "--port", str(self.port), "--project", str(project), "--solid-command", "true"]
+        self._project_number += 1
+        name = f"restart-{self._project_number}"
+        target = self.project_home / name
+        shutil.copytree(project, target)
+        (target / ".gitignore").write_text("_build/\n")
+        subprocess.run(["git", "init", "-q", "-b", "main", str(target)], check=True)
+        subprocess.run(["git", "-C", str(target), "add", "--all"], check=True)
+        subprocess.run(["git", "-C", str(target), "-c", "user.name=Shop Test", "-c", "user.email=shop@example.invalid", "commit", "-q", "-m", "fixture"], check=True)
+        environment = self._environment()
+        viewer = target / "_build" / "viewer.json"
+        if viewer.is_file():
+            environment["FAKE_SOLID_VIEWER"] = viewer.read_text()
+            value = json.loads(viewer.read_text())
+            model = value["root"]["model"]
+            environment["FAKE_SOLID_MODEL"] = model
+            environment["FAKE_SOLID_MODEL_CONTENT"] = (target / "_build" / model).read_text()
+        self.project = target
+        self._start_floor(name, callback_token=callback_token, environment=environment)
+
+    def _start_floor(self, name: str, *, callback_token: str | None = None, environment: dict[str, str] | None = None) -> None:
+        command = ["python", "-m", "floor", name, "--port", str(self.port), "--project-home", str(self.project_home), "--solid-command", str(FAKE_SOLID)]
         if callback_token:
             command += ["--callback-token", callback_token]
-        self.process = subprocess.Popen(command, cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        self.process = subprocess.Popen(command, cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, env=environment or self._environment())
         _wait_for_health(self.url("/health"))
 
+    @staticmethod
+    def _environment() -> dict[str, str]:
+        return {
+            **__import__("os").environ,
+            "GIT_AUTHOR_NAME": "Shop Test",
+            "GIT_AUTHOR_EMAIL": "shop@example.invalid",
+            "GIT_COMMITTER_NAME": "Shop Test",
+            "GIT_COMMITTER_EMAIL": "shop@example.invalid",
+        }
+
     def _stop_floor(self) -> None:
+        if self.process.poll() is not None:
+            return
         self.process.terminate()
         try:
             self.process.wait(timeout=5)

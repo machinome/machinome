@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import socket
 import subprocess
 import tempfile
@@ -13,26 +15,52 @@ from playwright.sync_api import sync_playwright
 
 
 ROOT = Path(__file__).resolve().parents[1]
+FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
 
 
 class ShopLifecycleE2E(unittest.TestCase):
     def setUp(self) -> None:
         self.port = _free_port()
+        self.temporary = tempfile.TemporaryDirectory()
+        self.project_home = Path(self.temporary.name) / "projects"
+        self.project_home.mkdir()
+        self._project_number = 0
         self._start_floor()
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch()
         self.page = self.browser.new_page()
 
     def _start_floor(self, project: Path | None = None) -> None:
-        command = ["python", "-m", "floor", "--port", str(self.port)]
+        self._project_number += 1
+        name = f"browser-{self._project_number}"
+        environment = {
+            **os.environ,
+            "GIT_AUTHOR_NAME": "Shop Test",
+            "GIT_AUTHOR_EMAIL": "shop@example.invalid",
+            "GIT_COMMITTER_NAME": "Shop Test",
+            "GIT_COMMITTER_EMAIL": "shop@example.invalid",
+        }
         if project is not None:
-            command += ["--project", str(project), "--solid-command", "true"]
+            target = self.project_home / name
+            shutil.copytree(project, target)
+            (target / ".gitignore").write_text("_build/\n")
+            subprocess.run(["git", "init", "-q", "-b", "main", str(target)], check=True)
+            subprocess.run(["git", "-C", str(target), "add", "--all"], check=True)
+            subprocess.run(["git", "-C", str(target), "-c", "user.name=Shop Test", "-c", "user.email=shop@example.invalid", "commit", "-q", "-m", "fixture"], check=True)
+            viewer = target / "_build" / "viewer.json"
+            environment["FAKE_SOLID_VIEWER"] = viewer.read_text()
+            value = json.loads(viewer.read_text())
+            model = value["root"]["model"]
+            environment["FAKE_SOLID_MODEL"] = model
+            environment["FAKE_SOLID_MODEL_CONTENT"] = (target / "_build" / model).read_text()
+        command = ["python", "-m", "floor", name, "--port", str(self.port), "--project-home", str(self.project_home), "--solid-command", str(FAKE_SOLID)]
         self.floor = subprocess.Popen(
             command,
             cwd=ROOT,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
             text=True,
+            env=environment,
         )
         _wait_for_health(self.url("/health"))
 
@@ -40,6 +68,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.browser.close()
         self.playwright.stop()
         self._stop_floor()
+        self.temporary.cleanup()
 
     def test_roster_updates_without_reloading(self) -> None:
         self.page.goto(self.url("/"))

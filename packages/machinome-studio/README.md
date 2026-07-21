@@ -36,12 +36,18 @@ specialists under `.codex/agents/`, then describe the project you want to start
 or resume. The Codex path is currently a checkout-based experimental harness,
 not a published plugin.
 
-To open the persistent event-driven floor directly:
+To open the persistent event-driven floor for a workspace project:
 
-    python -m floor.orchestrator --port 9000
+    python -m floor.orchestrator v8-engine --port 9000
 
 The orchestrator owns one app-server and the Foreman, Designer, and Machinist
-threads. Idle role threads have no active model turn and consume no tokens.
+threads. The required lowercase kebab-case name resolves only to
+`projects/<name>`. A missing project is created with `solid new`, initialized
+as its own Git repository, and given one scaffold commit. An existing project
+must already be that exact repository root. In both cases, `solid build root`
+must publish a complete viewer snapshot before the HTTP listener or any agent
+starts, so a reported browser URL never opens on the no-build 404 state. Idle
+role threads have no active model turn and consume no tokens.
 
 ## Claude Code packaging
 
@@ -88,6 +94,11 @@ files must answer to the project's own repo and to no enclosing one.
 The framework clone and its benches (`solid-node/WTs/`) hold framework code
 only. Top-level `WTs/` holds shop worktrees only. The shop's agents verify this
 boundary before every commit and refuse to cross it.
+
+Opening the shop is the normal creation and validation boundary. Pass the
+project name to the launcher; do not pass an arbitrary project path. If
+scaffolding, Git setup, or the initial build fails, the launcher preserves the
+project evidence but starts no floor or role process.
 
 ## Use
 
