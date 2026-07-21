@@ -10,10 +10,13 @@ Codex shop runtime SHALL prepare the corresponding `projects/<name>` repository
 and complete its initial functional-model build. It SHALL then run the local
 shop-floor service, start persistent sessions for the foreman, designer, and
 machinist in that verified project root, and keep control of those sessions for
-the life of the open shop. Codex SHALL tell the maker its stable local browser
-location only after the initial model is ready, the service is available, and
-all three agents are running. The default browser location SHALL use port 9000,
-and Codex SHALL be able to use an explicitly configured port instead.
+the life of the open shop. Each role session SHALL use the verified project root
+as its `workspace-write` sandbox boundary and SHALL use the configured Codex
+approval behavior rather than an application-forced unrestricted execution
+policy. Codex SHALL tell the maker its stable local browser location only after
+the initial model is ready, the service is available, and all three agents are
+running. The default browser location SHALL use port 9000, and Codex SHALL be
+able to use an explicitly configured port instead.
 
 #### Scenario: A maker opens the shop
 - **WHEN** a maker asks Codex to open the shop for a named project without configuring a port
@@ -30,6 +33,10 @@ and Codex SHALL be able to use an explicitly configured port instead.
 #### Scenario: The runtime cannot be opened after project preparation
 - **WHEN** the service or any required Codex agent cannot be started after the project is ready
 - **THEN** Codex ends anything started for that attempt and tells the maker that the shop could not be opened
+
+#### Scenario: Role sessions are sandboxed to the project
+- **WHEN** Codex opens the shop after preparing `projects/<name>`
+- **THEN** each Foreman, Designer, and Machinist session uses that verified repository as its workspace-write sandbox boundary and retains the configured Codex approval behavior
 
 ### Requirement: Codex closes the shop floor
 The system SHALL allow a maker to ask Codex to close shop-floor. The Codex shop

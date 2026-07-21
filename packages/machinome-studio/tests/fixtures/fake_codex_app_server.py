@@ -37,6 +37,7 @@ for raw_line in sys.stdin:
             "turns": [],
             "cwd": params.get("cwd"),
             "developerInstructions": params.get("developerInstructions"),
+            "approvalPolicy": params.get("approvalPolicy"),
             "sandbox": params.get("sandbox"),
         }
         send({"id": request_id, "result": {"thread": thread}})

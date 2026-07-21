@@ -253,8 +253,7 @@ class CodexAppServer:
                 "cwd": str(self.project),
                 "model": config.get("model"),
                 "developerInstructions": runtime_instructions + role_instructions,
-                "approvalPolicy": "never",
-                "sandbox": "danger-full-access",
+                "sandbox": "workspace-write",
                 "serviceName": f"solid-node-shop-{role}",
             },
         )

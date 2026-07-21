@@ -174,12 +174,22 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         thread = notification["params"]["thread"]
 
         self.assertEqual(thread["cwd"], str(project.resolve()))
-        self.assertEqual(thread["sandbox"], "danger-full-access")
+        self.assertEqual(thread["sandbox"], "workspace-write")
+        self.assertIsNone(thread["approvalPolicy"])
         self.assertIn(f"Shop checkout: {ROOT.resolve()}", thread["developerInstructions"])
         self.assertIn(f"Active project: {project.resolve()}", thread["developerInstructions"])
 
+        await codex.start_thread("designer")
+        designer = (await codex.notifications.get())["params"]["thread"]
+        self.assertEqual(designer["cwd"], str(project.resolve()))
+        self.assertEqual(designer["sandbox"], "workspace-write")
+        self.assertIsNone(designer["approvalPolicy"])
+
         await codex.start_thread("machinist")
         machinist = (await codex.notifications.get())["params"]["thread"]
+        self.assertEqual(machinist["cwd"], str(project.resolve()))
+        self.assertEqual(machinist["sandbox"], "workspace-write")
+        self.assertIsNone(machinist["approvalPolicy"])
         self.assertIn("/work/.venv/bin/solid develop root --callback", machinist["developerInstructions"])
         self.assertIn(callback, machinist["developerInstructions"])
 
