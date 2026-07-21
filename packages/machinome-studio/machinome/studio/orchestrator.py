@@ -36,6 +36,7 @@ class CodexControl(Protocol):
 class BrokerControl(Protocol):
     async def manifest(self, role: str, label: str) -> None: ...
     async def mark_delivered(self, sequence: int) -> None: ...
+    async def record_conversation(self, author: str, text: str) -> None: ...
 
 
 @dataclass
@@ -53,6 +54,9 @@ class LocalBrokerControl:
 
     async def mark_delivered(self, sequence: int) -> None:
         self.broker.mark_delivered(sequence)
+
+    async def record_conversation(self, author: str, text: str) -> None:
+        await self.broker.record_conversation(author, text)
 
 
 class ShopOrchestrator:
@@ -98,9 +102,20 @@ class ShopOrchestrator:
                     runtime.active_turn_id = None if turn_id in self._completed_turns else turn_id
             await self.broker.mark_delivered(sequence)
 
-    def handle_notification(self, message: dict[str, Any]) -> None:
+    async def handle_notification(self, message: dict[str, Any]) -> None:
         method = message.get("method")
         params = message.get("params", {})
+        if method == "item/completed":
+            item = params.get("item", {})
+            runtime = self.roles.get("foreman")
+            if (
+                runtime is not None
+                and params.get("threadId") == runtime.thread_id
+                and item.get("type") == "agentMessage"
+                and str(item.get("text", "")).strip()
+            ):
+                await self.broker.record_conversation("foreman", str(item["text"]).strip())
+            return
         if method not in {"turn/completed", "turn/started"}:
             return
         thread_id = params.get("threadId")
@@ -323,7 +338,7 @@ async def _serve(arguments: argparse.Namespace) -> None:
 
     async def route_notifications() -> None:
         while True:
-            orchestrator.handle_notification(await codex.notifications.get())
+            await orchestrator.handle_notification(await codex.notifications.get())
 
     delivery_task = asyncio.create_task(route_deliveries())
     notification_task = asyncio.create_task(route_notifications())

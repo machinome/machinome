@@ -22,12 +22,16 @@ class FakeBroker:
     def __init__(self) -> None:
         self.manifested: list[tuple[str, str]] = []
         self.delivered: list[int] = []
+        self.conversation: list[tuple[str, str]] = []
 
     async def manifest(self, role: str, label: str) -> None:
         self.manifested.append((role, label))
 
     async def mark_delivered(self, sequence: int) -> None:
         self.delivered.append(sequence)
+
+    async def record_conversation(self, author: str, text: str) -> None:
+        self.conversation.append((author, text))
 
 
 class FakeCodex:
@@ -100,6 +104,32 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         await self.orchestrator.close()
         self.assertEqual(self.codex.interrupted, [("thread-foreman", "turn-1")])
         self.assertEqual(self.codex.closed, ["thread-machinist", "thread-designer", "thread-foreman"])
+
+    async def test_completed_foreman_message_is_published_to_the_maker_conversation(self) -> None:
+        await self.orchestrator.handle_notification(
+            {
+                "method": "item/completed",
+                "params": {
+                    "threadId": "thread-foreman",
+                    "turnId": "turn-1",
+                    "completedAtMs": 1,
+                    "item": {"id": "item-1", "type": "agentMessage", "text": "Hello from Foreman."},
+                },
+            }
+        )
+        await self.orchestrator.handle_notification(
+            {
+                "method": "item/completed",
+                "params": {
+                    "threadId": "thread-designer",
+                    "turnId": "turn-2",
+                    "completedAtMs": 2,
+                    "item": {"id": "item-2", "type": "agentMessage", "text": "Internal specialist output."},
+                },
+            }
+        )
+
+        self.assertEqual(self.broker.conversation, [("foreman", "Hello from Foreman.")])
 
 
 class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
