@@ -170,12 +170,14 @@ function App() {
   const [shopOpen, setShopOpen] = useState(false);
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
   const [modelGeneration, setModelGeneration] = useState(0);
+  const lifecycleOpened = useRef(false);
 
   useEffect(() => {
     const lifecycle = new EventSource("/events/lifecycle");
     lifecycle.onopen = () => {
       setShopOpen(true);
-      setModelGeneration((generation) => generation + 1);
+      if (lifecycleOpened.current) setModelGeneration((generation) => generation + 1);
+      lifecycleOpened.current = true;
     };
     lifecycle.onerror = () => setShopOpen(false);
     return () => lifecycle.close();

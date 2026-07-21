@@ -93,6 +93,10 @@ class ShopLifecycleE2E(unittest.TestCase):
         _request(self.url("/api/runs/shop-floor/agents/machinist"), "DELETE")
         self.page.get_by_text("No agents are currently manifested.").wait_for(timeout=500)
 
+    def test_initial_floor_build_renders_without_a_lifecycle_reload_race(self) -> None:
+        self.page.goto(self.url("/"))
+        self.page.get_by_role("region", name="Artifact view").get_by_role("img", name="Functional model").wait_for(timeout=5_000)
+
     def test_broker_event_log_loads_updates_and_rolls_over(self) -> None:
         for role, label in (("foreman", "Foreman"), ("designer", "Designer"), ("machinist", "Machinist")):
             _request(self.url("/api/runs/shop-floor/agents"), "POST", {"role": role, "label": label})
