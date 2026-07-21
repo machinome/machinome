@@ -173,7 +173,10 @@ function App() {
 
   useEffect(() => {
     const lifecycle = new EventSource("/events/lifecycle");
-    lifecycle.onopen = () => setShopOpen(true);
+    lifecycle.onopen = () => {
+      setShopOpen(true);
+      setModelGeneration((generation) => generation + 1);
+    };
     lifecycle.onerror = () => setShopOpen(false);
     return () => lifecycle.close();
   }, []);

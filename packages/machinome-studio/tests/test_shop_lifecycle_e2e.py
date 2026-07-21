@@ -226,6 +226,30 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.wait_for_timeout(100)
         self.assertNotEqual(before_orbit, canvas.screenshot(), "orbiting the functional model must redraw the canvas")
 
+    def test_reloads_the_initial_build_when_a_new_project_floor_reopens(self) -> None:
+        first = Path(tempfile.mkdtemp())
+        second = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(first, ignore_errors=True))
+        self.addCleanup(lambda: __import__("shutil").rmtree(second, ignore_errors=True))
+        _fixture_project(first, "first", "first.stl", "0 0 0\n10 0 0\n0 10 0")
+        _fixture_project(second, "second", "second.stl", "0 0 0\n40 0 0\n0 40 0")
+
+        self._stop_floor()
+        self._start_floor(first)
+        self.page.goto(self.url("/"))
+        canvas = self.page.get_by_role("region", name="Artifact view").get_by_role("img", name="Functional model")
+        canvas.wait_for()
+        first_render = canvas.screenshot()
+
+        self._stop_floor()
+        self.page.get_by_text("Shop is closed").wait_for(timeout=5_000)
+        self._start_floor(second)
+        self.page.get_by_text("Shop is open").wait_for(timeout=5_000)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and canvas.screenshot() == first_render:
+            self.page.wait_for_timeout(100)
+        self.assertNotEqual(first_render, canvas.screenshot(), "reopening on a new project must replace the previous project render")
+
     def url(self, path: str) -> str:
         return f"http://127.0.0.1:{self.port}{path}"
 
@@ -251,6 +275,16 @@ def _request(url: str, method: str, body: dict[str, str] | None = None) -> dict[
     with urlopen(request, timeout=5) as response:  # nosec: local floor service
         data = response.read()
         return json.loads(data) if data else {}
+
+
+def _fixture_project(project: Path, name: str, model: str, triangle: str) -> None:
+    build = project / "_build"
+    build.mkdir(parents=True)
+    (build / "viewer.json").write_text(json.dumps({"version": 1, "root": {"name": name, "model": model}}))
+    vertices = "\n".join(f"vertex {point}" for point in triangle.splitlines())
+    (build / model).write_text(
+        f"solid {name}\nfacet normal 0 0 1\nouter loop\n{vertices}\nendloop\nendfacet\nendsolid {name}\n"
+    )
 
 
 def _wait_for_health(url: str) -> None:
