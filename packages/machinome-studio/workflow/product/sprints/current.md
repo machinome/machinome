@@ -27,10 +27,10 @@ artifact inspection, and foreman conversation to evolve incrementally.
   - Source: `docs/product/stories/STORY-004-see-agent-work-state.md`
   - OpenSpec change: `2026-07-19-manifest-shop-agent-lifecycle`
   - Integration: `19336c7`
-- [ ] STORY-005 — Inspect the functional model
+- [x] STORY-005 — Inspect the functional model
   - Source: `docs/product/stories/STORY-005-inspect-functional-model.md`
-  - OpenSpec change: not started
-  - Integration: pending
+  - OpenSpec change: `openspec/changes/archive/2026-07-21-inspect-functional-model/`
+  - Integration: `1ee4074 feat: inspect published functional models`
 
 ## Ratified scope
 
