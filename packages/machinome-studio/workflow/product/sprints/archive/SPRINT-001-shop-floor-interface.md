@@ -46,4 +46,6 @@ artifact inspection, and foreman conversation to evolve incrementally.
 
 ## Outcome
 
-Pending.
+Completed 2026-07-21. The maker can open and close the shop, use its browser
+workspace, direct the foreman, see agent work state, and inspect published
+functional models.
