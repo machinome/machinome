@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 import unittest
+import os
+import signal
+import socket
+import subprocess
 import sys
+import time
 from pathlib import Path
+from urllib.request import urlopen
 
 from floor.app import Broker
 from floor.orchestrator import CodexAppServer, InactiveTurn, LocalBrokerControl, ShopOrchestrator
@@ -97,6 +103,15 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
 
 class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
+    async def test_closing_never_used_role_threads_is_clean(self) -> None:
+        codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
+        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(Broker()))
+        await orchestrator.open()
+
+        await orchestrator.close()
+
+        self.assertIsNone(codex.process)
+
     async def test_one_owner_starts_steers_idles_and_closes_all_role_threads(self) -> None:
         broker = Broker()
         codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
@@ -158,6 +173,53 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(orchestrator.roles["designer"].active_turn_id)
         self.assertIsNotNone(orchestrator.roles["machinist"].active_turn_id)
         self.assertEqual(broker.agents["machinist"].assignment_id, "build-1")
+
+
+class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
+    def test_one_sigint_closes_with_a_live_sse_client(self) -> None:
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "floor.orchestrator",
+                "--port",
+                str(port),
+                "--cwd",
+                str(ROOT),
+                "--codex-command",
+                str(FAKE_APP_SERVER),
+            ],
+            cwd=ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            start_new_session=True,
+            env={**os.environ},
+        )
+        self.addCleanup(self._terminate, process)
+        assert process.stdout is not None
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if "shop-floor open" in process.stdout.readline():
+                break
+        else:
+            self.fail("orchestrator did not open")
+
+        stream = urlopen(f"http://127.0.0.1:{port}/events/lifecycle", timeout=2)  # nosec: local test server
+        self.addCleanup(stream.close)
+        self.assertIn(b"event: lifecycle", stream.readline())
+        process.send_signal(signal.SIGINT)
+
+        self.assertEqual(process.wait(timeout=5), 0)
+
+    @staticmethod
+    def _terminate(process: subprocess.Popen[str]) -> None:
+        if process.poll() is None:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait()
 
 
 if __name__ == "__main__":

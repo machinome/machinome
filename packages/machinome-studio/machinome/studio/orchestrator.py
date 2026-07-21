@@ -232,7 +232,11 @@ class CodexAppServer:
         await self._request("turn/interrupt", {"threadId": thread_id, "turnId": turn_id})
 
     async def close_thread(self, thread_id: str) -> None:
-        await self._request("thread/archive", {"threadId": thread_id})
+        try:
+            await self._request("thread/archive", {"threadId": thread_id})
+        except RuntimeError as error:
+            if "no rollout found for thread id" not in str(error).lower():
+                raise
 
     async def close(self) -> None:
         if self.process is None:
@@ -292,7 +296,15 @@ class CodexAppServer:
 async def _serve(arguments: argparse.Namespace) -> None:
     broker = Broker()
     app = create_app(arguments.project, broker=broker)
-    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=arguments.port, log_level="info"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            app,
+            host="127.0.0.1",
+            port=arguments.port,
+            log_level="info",
+            timeout_graceful_shutdown=1,
+        )
+    )
     server_task = asyncio.create_task(server.serve())
     while not server.started and not server_task.done():
         await asyncio.sleep(0.01)

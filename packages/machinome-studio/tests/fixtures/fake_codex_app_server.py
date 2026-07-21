@@ -9,6 +9,7 @@ import sys
 
 threads: dict[str, str | None] = {}
 turns: dict[str, str] = {}
+threads_with_rollouts: set[str] = set()
 next_thread = 0
 next_turn = 0
 
@@ -41,6 +42,7 @@ for raw_line in sys.stdin:
         next_turn += 1
         turn_id = f"turn-{next_turn}"
         threads[thread_id] = turn_id
+        threads_with_rollouts.add(thread_id)
         turns[turn_id] = thread_id
         turn = {"id": turn_id, "status": "inProgress", "items": []}
         send({"id": request_id, "result": {"turn": turn}})
@@ -57,7 +59,11 @@ for raw_line in sys.stdin:
         threads[thread_id] = None
         send({"id": request_id, "result": {}})
     elif method == "thread/archive":
-        threads.pop(params["threadId"], None)
-        send({"id": request_id, "result": {}})
+        thread_id = params["threadId"]
+        if thread_id not in threads_with_rollouts:
+            send({"id": request_id, "error": {"code": -32600, "message": f"no rollout found for thread id {thread_id}"}})
+        else:
+            threads.pop(thread_id, None)
+            send({"id": request_id, "result": {}})
     else:
         send({"id": request_id, "error": {"code": -32601, "message": f"unknown method: {method}"}})
