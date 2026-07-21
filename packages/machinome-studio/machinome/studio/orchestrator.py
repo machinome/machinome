@@ -146,6 +146,16 @@ class ShopOrchestrator:
         assignment_id = value.get("assignment_id")
         if assignment_id:
             lines.append(f"assignment: {assignment_id}")
+        if value.get("kind") == "assignment" and assignment_id:
+            lines.extend(
+                (
+                    "ASSIGNMENT LIFECYCLE GATE:",
+                    "Before anything else, your FIRST TOOL CALL must be:",
+                    f"python -m floor.agent acknowledge --role {value['recipient']} --assignment {assignment_id}",
+                    "Do not read files or investigate, load a role card or skill, start a development process, "
+                    "or make any other tool call until that command succeeds.",
+                )
+            )
         lines.extend(("instruction:", str(value["body"])))
         return "\n".join(lines)
 

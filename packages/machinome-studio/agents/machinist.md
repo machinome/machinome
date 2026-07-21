@@ -96,9 +96,10 @@ reversible local decisions without stopping the line and report them.
 
 Do not redesign mechanical formulas or consequential interfaces. If evidence
 shows the drawing is impossible, unsafe, internally contradictory, outside its
-parameter range, or likely to cause substantial rework, stop that dependency
-and give the foreman a minimal reproduction and concrete options. Ordinary
-implementation discoveries should not block unrelated work.
+parameter range, or likely to cause substantial rework, first report the
+blocker through the broker to the foreman, including a minimal reproduction and
+concrete options, then stop that dependency. Ordinary implementation discoveries
+should not block unrelated work.
 
 ## TDD and parameter ranges
 

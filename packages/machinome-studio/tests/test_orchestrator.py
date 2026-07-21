@@ -94,6 +94,24 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("instruction:\nSecond", self.codex.steered_turns[0][2])
         self.assertEqual(self.broker.delivered, [10, 11])
 
+    def test_assignment_delivery_makes_acknowledgement_the_first_tool_call(self) -> None:
+        message = self.orchestrator._message(
+            {
+                "sequence": 10,
+                "kind": "assignment",
+                "recipient": "machinist",
+                "assignment_id": "build-1",
+                "body": "Build the released drawing.",
+            }
+        )
+
+        self.assertIn("FIRST TOOL CALL", message)
+        self.assertIn(
+            "python -m floor.agent acknowledge --role machinist --assignment build-1",
+            message,
+        )
+        self.assertIn("Do not read files or investigate", message)
+
     async def test_completion_race_restarts_the_still_unacknowledged_envelope(self) -> None:
         await self.orchestrator.deliver({"sequence": 12, "recipient": "machinist", "body": "Build"})
         self.codex.fail_next_steer = True

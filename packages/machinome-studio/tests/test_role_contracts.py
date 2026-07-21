@@ -38,6 +38,14 @@ class RoleContractTest(unittest.TestCase):
         self.assertIn("solid develop root --callback", machinist)
         self.assertIn("throughout the active assignment", machinist)
 
+    def test_specialists_obey_the_assignment_lifecycle_before_loading_role_material(self) -> None:
+        for role in ("designer", "machinist"):
+            adapter = (ROOT / ".codex" / "agents" / f"{role}.toml").read_text()
+            self.assertIn("ASSIGNMENT LIFECYCLE GATE", adapter)
+            self.assertIn("before\nreading any file", adapter)
+        machinist = (ROOT / "agents" / "machinist.md").read_text()
+        self.assertIn("first report the\nblocker through the broker", machinist)
+
     def test_current_guidance_does_not_claim_claude_or_legacy_role_support(self) -> None:
         current = "\n".join(
             path.read_text()
