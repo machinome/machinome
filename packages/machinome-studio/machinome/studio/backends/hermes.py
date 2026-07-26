@@ -110,7 +110,7 @@ class HermesBackend:
         """Create a persistent ACP session for *role* with *context*."""
         result = await self._request(
             "session/new",
-            {"cwd": context.active_project},
+            {"cwd": context.active_project, "mcpServers": []},
         )
         session_id = str(result["sessionId"])
         handle = RoleHandle(backend_id=session_id, role=role)
