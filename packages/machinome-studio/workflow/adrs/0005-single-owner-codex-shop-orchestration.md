@@ -1,6 +1,6 @@
 # ADR 0005: Use one app-server owner for live Codex shop orchestration
 
-**Status:** Accepted
+**Status:** Superseded by 0006
 
 **Date:** 2026-07-21
 

@@ -29,36 +29,42 @@ This checkout is both the harness source and a live workspace. The framework
 itself lives under `solid-node/` (an untracked working copy) and is **not** the
 shop — do not confuse the two.
 
-## The three runtime layers
+## The four runtime layers
 
-The running shop has three layers, with strict responsibility boundaries:
+The running shop has four layers, with strict responsibility boundaries:
 
-```
-                        HTTP (REST + SSE)
-  pilot (browser)  <──────────────────────>  BROKER
-   floor/static                              floor/app.py  (FastAPI, in-memory)
-                                                  │  owns: state, conversation,
-                                                  │  envelopes, event log, SSE
-                                                  │  speaks ONLY portable role names
-                                                  ▼
-                                            internal async queue
-                                                  ▼
-                                            ORCHESTRATOR
-                                            floor/orchestrator.py  (deterministic,
-                                             non-model, zero tokens at standby)
-                                                  │  JSON-RPC over stdio
-                                                  ▼
-                                            CODEX APP-SERVER
-                                            `codex app-server --stdio`
-                                             (one owned process)
-                                                  │  persistent threads
-                                    ┌─────────────┼─────────────┐
-                                    ▼             ▼             ▼
-                                foreman       designer      machinist
-                                thread        thread        thread
-                            (role cards in agents/*.md,
-                             adapters in .codex/agents/*.toml,
-                             skills in skills/*/SKILL.md)
+```text
+                         HTTP (REST + SSE)
+ pilot (browser)  <──────────────────────────>  BROKER
+  floor/static                                  floor/app.py  (FastAPI, in-memory)
+                                                     │  owns: state, conversation,
+                                                     │  envelopes, event log, SSE
+                                                     │  speaks ONLY portable role names
+                                                     ▼
+                                               internal async queue
+                                                     ▼
+                                               ORCHESTRATOR
+                                               floor/orchestrator.py  (deterministic,
+                                                non-model, zero tokens at standby)
+                                                     │  portable AgentBackend protocol
+                                                     ▼
+                       ┌─────────────────────────────┴─────────────────────────────┐
+                       │                                                            │
+                 --backend codex                                              --backend hermes
+                       │                                                            │
+                CODEX BACKEND                                                HERMES BACKEND
+                floor/backends/codex.py                                     floor/backends/hermes.py
+                `codex app-server --stdio`                                  `hermes acp`
+                JSON-RPC over stdio                                          ACP over stdio
+                       │                                                            │
+              persistent Codex threads                                 persistent ACP sessions
+                ┌──────┼──────┐                                            ┌──────┼──────┐
+                ▼      ▼      ▼                                            ▼      ▼      ▼
+             foreman designer machinist                                 foreman designer machinist
+                │      │      │                                            │      │      │
+                └──────┴──────┴──────────── shared role contracts ──────────┴──────┴──────┘
+                                  agents/*.md
+                                  skills/*/SKILL.md
 ```
 
 ### Layer 1 — Broker (`floor/app.py`, ~590 lines)
@@ -69,9 +75,9 @@ thing the browser talks to.
 - Holds agent state (`waiting`/`active`), the envelope queue, the maker ↔
   foreman conversation, and a bounded event log (last 20 events).
 - Speaks **only portable role names** (`foreman`, `designer`, `machinist`). It
-  has no knowledge of Codex thread or turn identifiers — that is ADR 0005's
-  central boundary and what keeps broker history and browser observability
-  independent of the model runtime.
+  has no knowledge of any backend's thread, turn, or session identifiers —
+  that is ADR 0005/0006's central boundary and what keeps broker history and
+  browser observability independent of the model runtime.
 - Persists every envelope before delivery and serializes delivery per role.
 - Enforces messaging rules: only the foreman assigns work; reports must be
   addressed to the foreman; a maker message automatically becomes a `direction`
@@ -87,40 +93,71 @@ There is exactly one run, hard-coded id `shop-floor`.
 ### Layer 2 — Orchestrator (`floor/orchestrator.py`, ~440 lines)
 
 A deterministic, non-model process. **It is not an agent and makes no
-decisions** — it is a lifecycle owner and delivery adapter (ADR 0005).
+decisions** — it is a lifecycle owner and delivery adapter (ADR 0006).
 
-- Owns exactly one Codex app-server subprocess and speaks newline-delimited
-  JSON-RPC over its stdin/stdout (`CodexAppServer`).
-- At open, creates one persistent thread per role and manifests it to the
-  broker. Threads persist with **no token use while idle**.
+- Composes one backend selected by `--backend {codex,hermes}`. Default:
+  `codex`.
+- At open, calls `backend.open_role()` for each role to create one persistent
+  agent session per role, then manifests each to the broker. Sessions persist
+  with **no token use while idle**.
 - Subscribes to the broker's delivery queue and routes each envelope to its
-  role thread: `turn/start` when the role is idle, `turn/steer` with the
-  expected turn ID while it is active. It acknowledges broker delivery only
-  after the app-server accepts the input.
-- Handles the completion race: if a steer fails because the turn already
-  completed, it retries the envelope as a fresh `turn/start` on the now-idle
-  thread.
-- On app-server notifications, records the foreman's agent messages into the
-  maker conversation and tracks `turn/started` / `turn/completed` to know
-  whether each role is idle.
-- On close, interrupts active turns and archives threads in reverse order.
-- Injects runtime context into each thread at start: the shop checkout, the
-  active project, and (for the machinist) the live-model `solid develop`
-  callback command.
+  role handle: `backend.deliver()` when the role is idle, with the active
+  delivery ID while it is active. It acknowledges broker delivery only after
+  the backend accepts the input.
+- Handles the completion race: if a delivery fails because the role already
+  completed, it retries the envelope as a fresh delivery on the now-idle role.
+- On backend events, records the foreman's agent messages into the maker
+  conversation and tracks `turn_started` / `turn_completed` to know whether
+  each role is idle.
+- On close, interrupts active roles and closes them in reverse order.
+- Injects runtime context at role open: the shop checkout, the active project,
+  and (for the machinist) the live-model `solid develop` callback command.
 - Restart recovery is intentionally absent: losing the owner closes the
-  in-memory run rather than attaching a new app-server to uncontrollable
+  in-memory run rather than attaching a new backend to uncontrollable
   sessions.
 
-### Layer 3 — Agents (Codex threads)
+### Layer 3 — Agent Backend (`floor/backends/`)
 
-The specialist roles are Codex threads, not processes the broker manages.
+The `AgentBackend` protocol is the portable seam between the orchestrator and
+any agent runtime. It exposes only role-level operations and events — no
+vendor-specific identifiers or wire protocols escape above this boundary
+(ADR 0006).
+
+```python
+class AgentBackend(Protocol):
+    events: AsyncIterator[BackendEvent]
+
+    async def start(self) -> None: ...
+    async def open_role(self, role: str, context: RoleContext) -> RoleHandle: ...
+    async def deliver(self, handle: RoleHandle, message: str) -> DeliveryReceipt: ...
+    async def interrupt(self, handle: RoleHandle) -> None: ...
+    async def close_role(self, handle: RoleHandle) -> None: ...
+    async def close(self) -> None: ...
+```
+
+Common events: `role_message`, `turn_started`, `turn_completed`,
+`role_failed`, `backend_failed`.
+
+| Backend | Process | Protocol | Role primitive |
+|---|---|---|---|
+| `codex` | `codex app-server --stdio` | JSON-RPC over stdio | Persistent Codex thread |
+| `hermes` | `hermes acp` | ACP over stdio | Persistent ACP session |
+
+The current `CodexAppServer` in `floor/orchestrator.py` SHALL move to
+`floor/backends/codex.py` and implement `AgentBackend`.
+
+### Layer 4 — Agents (backend sessions)
+
+The specialist roles are persistent sessions owned by the selected backend,
+not processes the broker manages.
 
 - **Role cards** (`agents/*.md`) define each role's discipline and are the
-  authoritative per-role contract.
-- **Codex adapters** (`.codex/agents/*.toml`) give each role its model,
-  reasoning effort, and developer instructions. The orchestrator reads these to
-  start threads; the instructions direct the thread to load its role card and
-  named skills from the shop checkout.
+  authoritative per-role contract. They are identical across backends.
+- **Backend-specific adapters** (`.codex/agents/*.toml` for Codex; Hermes
+  adapter metadata for Hermes) give each role its model, reasoning effort,
+  and developer instructions. The backend reads these to start sessions; the
+  instructions direct the session to load its role card and named skills from
+  the shop checkout. Neither backend duplicates the role cards or skills.
 - **Skills** (`skills/*/SKILL.md`) are loaded once by the agent at startup.
   `skills/running-the-shop/` is the foreman's operating loop;
   `skills/solid-node-api/` is the framework's public contract;
@@ -136,21 +173,21 @@ the maker conversation).
 | Role | Kind | Responsibility |
 |---|---|---|
 | **pilot** | human | Establish intent, decide consequential choices, judge the result by looking at it. |
-| **orchestrator** | deterministic process | Own the app-server, route envelopes, open/close role threads. No decisions. |
-| **foreman** | agent thread | Manage shop-floor work, coordinate specialists, own pipeline transitions, talk to the maker. Does **not** own processes or machine parts. |
-| **designer** | agent thread | Maintain the project design, release the first executable drawing quickly, then plan one evidence-producing slice ahead. |
-| **machinist** | agent thread | Build and test one committed released drawing; owns code, tests, and implementation evidence. |
+| **orchestrator** | deterministic process | Own the selected backend, route envelopes, open/close role sessions. No decisions. |
+| **foreman** | agent session | Manage shop-floor work, coordinate specialists, own pipeline transitions, talk to the maker. Does **not** own processes or machine parts. |
+| **designer** | agent session | Maintain the project design, release the first executable drawing quickly, then plan one evidence-producing slice ahead. |
+| **machinist** | agent session | Build and test one committed released drawing; owns code, tests, and implementation evidence. |
 | **librarian** | agent (on demand) | Verify a narrow external CAD-library question and file a recipe in the project. |
 
 The foreman manages *work*; the orchestrator manages *processes*. These are
 different things and must not be conflated — the foreman role card says so
 explicitly.
 
-> **Librarian note.** The librarian has a role card and a Codex adapter, but it
-> is **not** in the broker's `ROLE_LABELS` (`foreman`, `designer`, `machinist`),
-> so it is not one of the orchestrator's persistent threads. The foreman
-> dispatches it as a narrower, on-demand specialist rather than through the
-> standing envelope pipeline.
+> **Librarian note.** The librarian has a role card and backend-specific
+> adapter, but it is **not** in the broker's `ROLE_LABELS` (`foreman`,
+> `designer`, `machinist`), so it is not one of the orchestrator's persistent
+> sessions. The foreman dispatches it as a narrower, on-demand specialist
+> rather than through the standing envelope pipeline.
 
 ## Startup: fail-closed preparation (`floor/preparation.py`)
 
@@ -227,11 +264,12 @@ The checkout is also a workspace, and its boundaries are enforced.
 ## Operating modes
 
 - **Full orchestrated run** (the real path): `python -m floor.orchestrator
-  <project-name> --port 9000`. Runs preparation, starts the broker, opens the
-  app-server, and creates the three role threads.
+  <project-name> --port 9000 [--backend codex|hermes]`. Runs preparation,
+  starts the broker, opens the selected backend, and creates the three role
+  sessions.
 - **Broker only** (browser/lifecycle testing): `python -m floor
   <project-name>`. Runs preparation and serves the broker and static UI with
-  no app-server or agents.
+  no backend or agents.
 - **End-to-end test**: `scripts/test-e2e` builds the frontend and runs the
   Python Playwright browser test (ADR 0002).
 
@@ -251,9 +289,9 @@ The checkout is also a workspace, and its boundaries are enforced.
 
 These are accurate as of this writing; keep them current (see `AGENTS.md`).
 
-- The persistent broker/app-server orchestration is implemented and tested
-  **only for Codex**. Claude packaging is retained experimental metadata and
-  makes no tested support claim.
+- The persistent broker/orchestration is implemented and tested **for
+  Codex**. The multi-backend protocol and `--backend` flag are proposed
+  (ADR 0006, change `multi-backend-orchestration`) but not yet implemented.
 - The shop is private and experimental; roles and disciplines are being
   exercised and revised before release.
 - Restart recovery is intentionally absent (ADR 0005).
@@ -271,7 +309,10 @@ These are accurate as of this writing; keep them current (see `AGENTS.md`).
 | Path | What it is |
 |---|---|
 | `floor/app.py` | Broker: HTTP API, SSE, agent state machine, event log. |
-| `floor/orchestrator.py` | Process owner; routes envelopes to Codex threads. |
+| `floor/orchestrator.py` | Process owner; routes envelopes to the selected backend. |
+| `floor/backends/base.py` | `AgentBackend` protocol, role handles, events (proposed). |
+| `floor/backends/codex.py` | Codex backend: Codex app-server client (proposed extraction). |
+| `floor/backends/hermes.py` | Hermes backend: Hermes ACP client (proposed). |
 | `floor/preparation.py` | Fail-closed named-project preparation and validation. |
 | `floor/agent.py` | CLI for agents to talk to the broker. |
 | `floor/foreman.py` | CLI for the foreman to publish to the maker conversation. |
@@ -296,7 +337,8 @@ These are accurate as of this writing; keep them current (see `AGENTS.md`).
 | `0002` | Python Playwright for browser E2E. | Accepted |
 | `0003` | Separate porter (lifecycle) from foreman (work). | Superseded by 0005 |
 | `0004` | Completed `_build/` artifacts as the functional-model boundary. | Accepted |
-| `0005` | One deterministic owner for the Codex app-server; broker speaks role names only. | Accepted |
+| `0005` | One deterministic owner for the Codex app-server; broker speaks role names only. | Superseded by 0006 |
+| `0006` | Generalize shop orchestration to a pluggable agent backend. | Proposed |
 
 Read an ADR for the reasoning and context behind a boundary; read this file
 for the boundary as it stands.
