@@ -20,7 +20,7 @@ from .app import Broker, Envelope, ROLE_LABELS, create_app
 from .backends.base import AgentBackend, BackendEvent, DeliveryReceipt, RoleContext, RoleHandle
 from .backends.codex import InactiveTurn
 from .backends import create_backend
-from .preparation import PreparationError, default_project_home, default_solid_command, prepare_project
+from .preparation import PreparationError, default_project_home, default_solid_command, prepare_project, primary_shop_root
 
 
 SHOP_ROLES = tuple(ROLE_LABELS)
@@ -157,8 +157,9 @@ class ShopOrchestrator:
 async def _serve(arguments: argparse.Namespace) -> None:
     project_home = arguments.project_home or default_project_home(arguments.cwd)
     solid_command = arguments.solid_command or default_solid_command(arguments.cwd)
+    shop_root = primary_shop_root(arguments.cwd)
     prepared = prepare_project(arguments.project_name, project_home=project_home, solid_command=solid_command,
-                               shop_root=arguments.cwd.resolve())
+                               shop_root=shop_root)
     broker = Broker()
     callback_token = secrets.token_urlsafe(24)
     callback_url = f"http://127.0.0.1:{arguments.port}/api/runs/shop-floor/model/ready/{callback_token}"
