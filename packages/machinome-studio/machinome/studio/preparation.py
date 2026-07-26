@@ -55,7 +55,8 @@ def default_solid_command(checkout: Path) -> tuple[str, ...]:
     solid_node_cli = primary / "solid-node" / "solid_node" / "cli.py"
     if solid_node_cli.is_file():
         # Prefer the checked-out solid-node framework inside the shop.
-        return (sys.executable, "-m", "solid_node.cli")
+        # Module has no __main__.py, so use -c to call manage() directly.
+        return (sys.executable, "-c", "from solid_node.cli import manage; manage()")
     executable = primary / ".venv" / "bin" / "solid"
     if not executable.is_file():
         raise PreparationError(
