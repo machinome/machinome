@@ -1,4 +1,4 @@
-"""Single-owner Codex app-server orchestration for a live shop run."""
+"""Pluggable agent-backend orchestration for a live shop run."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ import os
 import secrets
 import shlex
 import sys
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from collections.abc import Sequence
@@ -18,23 +17,13 @@ from typing import Any, Protocol
 import uvicorn
 
 from .app import Broker, Envelope, ROLE_LABELS, create_app
+from .backends.base import AgentBackend, BackendEvent, DeliveryReceipt, RoleContext, RoleHandle
+from .backends.codex import InactiveTurn
+from .backends import create_backend
 from .preparation import PreparationError, default_project_home, default_solid_command, prepare_project
 
 
 SHOP_ROLES = tuple(ROLE_LABELS)
-
-
-class InactiveTurn(RuntimeError):
-    """The expected turn completed before steering was accepted."""
-
-
-class CodexControl(Protocol):
-    async def start_thread(self, role: str) -> str: ...
-    async def start_turn(self, thread_id: str, message: str) -> str: ...
-    async def steer_turn(self, thread_id: str, turn_id: str, message: str) -> None: ...
-    async def interrupt_turn(self, thread_id: str, turn_id: str) -> None: ...
-    async def close_thread(self, thread_id: str) -> None: ...
-    async def close(self) -> None: ...
 
 
 class BrokerControl(Protocol):
@@ -45,8 +34,8 @@ class BrokerControl(Protocol):
 
 @dataclass
 class RoleRuntime:
-    thread_id: str
-    active_turn_id: str | None = None
+    handle: RoleHandle
+    active_delivery_id: str | None = None
 
 
 class LocalBrokerControl:
@@ -64,23 +53,23 @@ class LocalBrokerControl:
 
 
 class ShopOrchestrator:
-    """Own role threads and perform only deterministic lifecycle and routing."""
+    """Own role sessions and perform only deterministic lifecycle and routing."""
 
-    def __init__(self, codex: CodexControl, broker: BrokerControl) -> None:
-        self.codex = codex
+    def __init__(self, backend: AgentBackend, broker: BrokerControl) -> None:
+        self.backend = backend
         self.broker = broker
         self.roles: dict[str, RoleRuntime] = {}
         self._delivery_locks = {role: asyncio.Lock() for role in SHOP_ROLES}
-        self._completed_turns: set[str] = set()
+        self._completed_deliveries: set[str] = set()
 
     async def open(self) -> None:
-        start = getattr(self.codex, "start", None)
-        if start is not None:
-            await start()
+        """Start the backend and open one persistent session per role."""
+        if hasattr(self.backend, "start"):
+            await self.backend.start()
         try:
             for role in SHOP_ROLES:
-                thread_id = await self.codex.start_thread(role)
-                self.roles[role] = RoleRuntime(thread_id=thread_id)
+                handle = await self.backend.open_role(role, self._role_context(role))
+                self.roles[role] = RoleRuntime(handle=handle)
                 await self.broker.manifest(role, ROLE_LABELS[role])
         except BaseException:
             await self.close()
@@ -95,45 +84,41 @@ class ShopOrchestrator:
         if runtime is None:
             raise ValueError(f"unknown orchestrated role: {role}")
         async with self._delivery_locks[role]:
-            if runtime.active_turn_id is None:
-                turn_id = await self.codex.start_turn(runtime.thread_id, message)
-                runtime.active_turn_id = None if turn_id in self._completed_turns else turn_id
+            if runtime.active_delivery_id is None:
+                receipt = await self.backend.deliver_start(runtime.handle, message)
+                did = receipt.delivery_id
+                runtime.active_delivery_id = None if did in self._completed_deliveries else did
             else:
                 try:
-                    await self.codex.steer_turn(runtime.thread_id, runtime.active_turn_id, message)
+                    await self.backend.deliver_steer(
+                        runtime.handle, runtime.active_delivery_id, message
+                    )
                 except InactiveTurn:
-                    turn_id = await self.codex.start_turn(runtime.thread_id, message)
-                    runtime.active_turn_id = None if turn_id in self._completed_turns else turn_id
+                    receipt = await self.backend.deliver_start(runtime.handle, message)
+                    did = receipt.delivery_id
+                    runtime.active_delivery_id = None if did in self._completed_deliveries else did
             await self.broker.mark_delivered(sequence)
 
-    async def handle_notification(self, message: dict[str, Any]) -> None:
-        method = message.get("method")
-        params = message.get("params", {})
-        if method == "item/completed":
-            item = params.get("item", {})
-            runtime = self.roles.get("foreman")
-            if (
-                runtime is not None
-                and params.get("threadId") == runtime.thread_id
-                and item.get("type") == "agentMessage"
-                and str(item.get("text", "")).strip()
-            ):
-                await self.broker.record_conversation("foreman", str(item["text"]).strip())
-            return
-        if method not in {"turn/completed", "turn/started"}:
-            return
-        thread_id = params.get("threadId")
-        turn = params.get("turn", {})
-        turn_id = turn.get("id")
-        runtime = next((item for item in self.roles.values() if item.thread_id == thread_id), None)
-        if runtime is None:
-            return
-        if method == "turn/started":
-            runtime.active_turn_id = turn_id
-        else:
-            self._completed_turns.add(turn_id)
-            if runtime.active_turn_id == turn_id:
-                runtime.active_turn_id = None
+    async def handle_event(self, event: BackendEvent) -> None:
+        """Consume one portable backend event."""
+        if event.kind == "role_message" and event.role == "foreman":
+            if event.text and event.text.strip():
+                await self.broker.record_conversation("foreman", event.text.strip())
+        elif event.kind == "turn_started":
+            runtime = self.roles.get(event.role or "")
+            if runtime is not None and event.delivery_id is not None:
+                runtime.active_delivery_id = event.delivery_id
+        elif event.kind == "turn_completed":
+            if event.delivery_id is not None:
+                self._completed_deliveries.add(event.delivery_id)
+            runtime = self.roles.get(event.role or "")
+            if runtime is not None and runtime.active_delivery_id == event.delivery_id:
+                runtime.active_delivery_id = None
+
+    @staticmethod
+    def _role_context(role: str) -> RoleContext:
+        # Built by _serve and injected via a closure; see _serve below.
+        return RoleContext(shop_checkout="", active_project="")
 
     @staticmethod
     def _message(value: dict[str, Any]) -> str:
@@ -161,189 +146,12 @@ class ShopOrchestrator:
 
     async def close(self) -> None:
         for runtime in reversed(tuple(self.roles.values())):
-            if runtime.active_turn_id is not None:
-                await self.codex.interrupt_turn(runtime.thread_id, runtime.active_turn_id)
+            if runtime.active_delivery_id is not None:
+                await self.backend.interrupt(runtime.handle)
         for runtime in reversed(tuple(self.roles.values())):
-            await self.codex.close_thread(runtime.thread_id)
+            await self.backend.close_role(runtime.handle)
         self.roles.clear()
-        await self.codex.close()
-
-
-class CodexAppServer:
-    """Minimal newline-delimited JSON-RPC client owning one app-server process."""
-
-    def __init__(
-        self,
-        cwd: Path,
-        *,
-        project: Path | None = None,
-        command: str | Sequence[str] = "codex",
-        broker_url: str = "http://127.0.0.1:9000",
-        solid_command: str | Sequence[str] = "solid",
-        model_callback_url: str | None = None,
-    ) -> None:
-        self.cwd = cwd.resolve()
-        self.project = (project or cwd).resolve()
-        self.command = (command,) if isinstance(command, str) else tuple(command)
-        self.broker_url = broker_url
-        self.solid_command = (solid_command,) if isinstance(solid_command, str) else tuple(solid_command)
-        self.model_callback_url = model_callback_url
-        self.process: asyncio.subprocess.Process | None = None
-        self.notifications: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
-        self._pending: dict[int, asyncio.Future[dict[str, Any]]] = {}
-        self._next_id = 0
-        self._reader_task: asyncio.Task[None] | None = None
-        self._stderr_task: asyncio.Task[None] | None = None
-
-    async def start(self) -> None:
-        if self.process is not None:
-            return
-        self.process = await asyncio.create_subprocess_exec(
-            *self.command,
-            "app-server",
-            "--stdio",
-            cwd=self.cwd,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env={
-                **os.environ,
-                "FLOOR_URL": self.broker_url,
-                "PYTHONPATH": os.pathsep.join(
-                    item for item in (str(self.cwd), os.environ.get("PYTHONPATH", "")) if item
-                ),
-            },
-            start_new_session=True,
-        )
-        self._reader_task = asyncio.create_task(self._read_stdout())
-        self._stderr_task = asyncio.create_task(self._drain_stderr())
-        await self._request(
-            "initialize",
-            {
-                "clientInfo": {
-                    "name": "solid-node-shop-orchestrator",
-                    "title": "solid-node shop orchestrator",
-                    "version": "0.1.0",
-                },
-                "capabilities": {"experimentalApi": True},
-            },
-        )
-        await self._notify("initialized", {})
-
-    async def start_thread(self, role: str) -> str:
-        config_path = self.cwd / ".codex" / "agents" / f"{role}.toml"
-        with config_path.open("rb") as handle:
-            config = tomllib.load(handle)
-        role_instructions = str(config.get("developer_instructions", ""))
-        runtime_instructions = (
-            f"Shop checkout: {self.cwd}\n"
-            f"Active project: {self.project}\n"
-            "Treat the active project as the sole mechanical-project repository for this shop run. "
-            "Shop role cards and skills come from the shop checkout named above.\n\n"
-        )
-        if role == "machinist" and self.model_callback_url is not None:
-            runtime_instructions += (
-                "Live model development command (run it from the active project and keep it running "
-                "throughout an active machining assignment):\n"
-                f"{shlex.join(self.solid_command)} develop root --callback {shlex.quote(self.model_callback_url)}\n\n"
-            )
-        result = await self._request(
-            "thread/start",
-            {
-                "cwd": str(self.project),
-                "model": config.get("model"),
-                "developerInstructions": runtime_instructions + role_instructions,
-                "sandbox": "workspace-write",
-                "serviceName": f"solid-node-shop-{role}",
-            },
-        )
-        return str(result["thread"]["id"])
-
-    async def start_turn(self, thread_id: str, message: str) -> str:
-        result = await self._request(
-            "turn/start",
-            {"threadId": thread_id, "input": [{"type": "text", "text": message}]},
-        )
-        return str(result["turn"]["id"])
-
-    async def steer_turn(self, thread_id: str, turn_id: str, message: str) -> None:
-        try:
-            await self._request(
-                "turn/steer",
-                {
-                    "threadId": thread_id,
-                    "expectedTurnId": turn_id,
-                    "input": [{"type": "text", "text": message}],
-                },
-            )
-        except RuntimeError as error:
-            if "active turn" in str(error).lower() or "thread not found" in str(error).lower():
-                raise InactiveTurn from error
-            raise
-
-    async def interrupt_turn(self, thread_id: str, turn_id: str) -> None:
-        await self._request("turn/interrupt", {"threadId": thread_id, "turnId": turn_id})
-
-    async def close_thread(self, thread_id: str) -> None:
-        try:
-            await self._request("thread/archive", {"threadId": thread_id})
-        except RuntimeError as error:
-            if "no rollout found for thread id" not in str(error).lower():
-                raise
-
-    async def close(self) -> None:
-        if self.process is None:
-            return
-        if self.process.stdin is not None:
-            self.process.stdin.close()
-        try:
-            await asyncio.wait_for(self.process.wait(), timeout=5)
-        except asyncio.TimeoutError:
-            self.process.terminate()
-            await self.process.wait()
-        if self._reader_task is not None:
-            await self._reader_task
-        if self._stderr_task is not None:
-            await self._stderr_task
-        self.process = None
-
-    async def _request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
-        if self.process is None or self.process.stdin is None:
-            raise RuntimeError("app-server is not running")
-        self._next_id += 1
-        request_id = self._next_id
-        future: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
-        self._pending[request_id] = future
-        self.process.stdin.write((json.dumps({"id": request_id, "method": method, "params": params}) + "\n").encode())
-        await self.process.stdin.drain()
-        return await asyncio.wait_for(future, timeout=30)
-
-    async def _notify(self, method: str, params: dict[str, Any]) -> None:
-        if self.process is None or self.process.stdin is None:
-            raise RuntimeError("app-server is not running")
-        self.process.stdin.write((json.dumps({"method": method, "params": params}) + "\n").encode())
-        await self.process.stdin.drain()
-
-    async def _read_stdout(self) -> None:
-        assert self.process is not None and self.process.stdout is not None
-        while line := await self.process.stdout.readline():
-            message = json.loads(line)
-            request_id = message.get("id")
-            if request_id is not None and ("result" in message or "error" in message):
-                future = self._pending.pop(request_id, None)
-                if future is None:
-                    continue
-                if "error" in message:
-                    future.set_exception(RuntimeError(json.dumps(message["error"])))
-                else:
-                    future.set_result(message["result"])
-            elif "method" in message:
-                await self.notifications.put(message)
-
-    async def _drain_stderr(self) -> None:
-        assert self.process is not None and self.process.stderr is not None
-        while await self.process.stderr.readline():
-            pass
+        await self.backend.close()
 
 
 async def _serve(arguments: argparse.Namespace) -> None:
@@ -371,22 +179,32 @@ async def _serve(arguments: argparse.Namespace) -> None:
     server_task = asyncio.create_task(server.serve())
     orchestrator: ShopOrchestrator | None = None
     delivery_task: asyncio.Task[None] | None = None
-    notification_task: asyncio.Task[None] | None = None
+    event_task: asyncio.Task[None] | None = None
     try:
         while not server.started and not server_task.done():
             await asyncio.sleep(0.01)
         if server_task.done():
             await server_task
             raise RuntimeError("shop-floor server stopped before opening")
-        codex = CodexAppServer(
-            arguments.cwd,
+
+        backend = create_backend(
+            arguments.backend,
+            cwd=arguments.cwd,
             project=prepared.project_root,
-            command=arguments.codex_command,
             broker_url=f"http://127.0.0.1:{arguments.port}",
+            command=getattr(arguments, "backend_command", None),
             solid_command=solid_command,
             model_callback_url=callback_url,
         )
-        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker))
+        orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker))
+
+        # Inject runtime context so open_role() can use it.
+        orchestrator._role_context = lambda role: RoleContext(  # type: ignore[method-assign]
+            shop_checkout=str(arguments.cwd.resolve()),
+            active_project=str(prepared.project_root.resolve()),
+            model_callback_url=callback_url if role == "machinist" else None,
+        )
+
         await orchestrator.open()
         print(f"shop-floor open at http://127.0.0.1:{arguments.port}", flush=True)
 
@@ -395,19 +213,19 @@ async def _serve(arguments: argparse.Namespace) -> None:
             async for envelope in broker.deliveries():
                 await orchestrator.deliver(envelope)
 
-        async def route_notifications() -> None:
+        async def route_events() -> None:
             assert orchestrator is not None
-            while True:
-                await orchestrator.handle_notification(await codex.notifications.get())
+            async for event in backend.events:
+                await orchestrator.handle_event(event)
 
         delivery_task = asyncio.create_task(route_deliveries())
-        notification_task = asyncio.create_task(route_notifications())
+        event_task = asyncio.create_task(route_events())
         await server_task
     except asyncio.CancelledError:
         pass
     finally:
         broker.shutdown()
-        route_tasks = tuple(task for task in (delivery_task, notification_task) if task is not None)
+        route_tasks = tuple(task for task in (delivery_task, event_task) if task is not None)
         for task in route_tasks:
             task.cancel()
         if route_tasks:
@@ -420,13 +238,15 @@ async def _serve(arguments: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the event-driven Codex shop")
+    parser = argparse.ArgumentParser(description="Run the event-driven agent shop")
     parser.add_argument("project_name", help="lowercase kebab-case project name below projects/")
     parser.add_argument("--port", type=int, default=int(os.environ.get("FLOOR_PORT", "9000")))
-    parser.add_argument("--cwd", type=Path, default=Path.cwd(), help="shop checkout containing .codex role adapters")
+    parser.add_argument("--cwd", type=Path, default=Path.cwd(), help="shop checkout containing role adapters")
+    parser.add_argument("--backend", choices=("codex", "hermes"), default="codex",
+                        help="agent backend (default: codex)")
     parser.add_argument("--project-home", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--solid-command", help=argparse.SUPPRESS)
-    parser.add_argument("--codex-command", default="codex", help=argparse.SUPPRESS)
+    parser.add_argument("--backend-command", default=None, help=argparse.SUPPRESS)
     try:
         asyncio.run(_serve(parser.parse_args()))
     except PreparationError as error:

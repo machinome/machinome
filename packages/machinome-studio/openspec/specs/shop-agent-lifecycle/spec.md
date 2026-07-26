@@ -1,16 +1,17 @@
-# shop-agent-lifecycle Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change manifest-shop-agent-lifecycle. Update Purpose after archive.
-## Requirements
-### Requirement: An open Codex shop manifests the working team
-Each newly opened Codex shop SHALL manifest exactly one `foreman`, one
-`designer`, and one `machinist` as its initial working team. The design role
-MUST use `designer`, not `drawing-office`, as its role identifier and displayed
-name.
+### Requirement: An open shop manifests the working team
+Each newly opened shop SHALL manifest exactly one `foreman`, one `designer`,
+and one `machinist` as its initial working team. The orchestrator SHALL create
+each role session through the selected agent backend. The design role MUST use
+`designer`, not `drawing-office`, as its role identifier and displayed name.
 
 #### Scenario: The working team starts
-- **WHEN** Codex successfully opens a shop
+- **WHEN** the runtime successfully opens a shop
+- **THEN** the agent roster shows Foreman, Designer, and Machinist as waiting agents
+
+#### Scenario: The working team starts with the Hermes backend
+- **WHEN** the runtime opens a shop with `--backend hermes`
 - **THEN** the agent roster shows Foreman, Designer, and Machinist as waiting agents
 
 #### Scenario: The retired design role is addressed

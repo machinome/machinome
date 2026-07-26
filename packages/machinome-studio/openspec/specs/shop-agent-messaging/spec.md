@@ -1,17 +1,11 @@
-# shop-agent-messaging Specification
-
-## Purpose
-
-Provide ordered role-addressed direction, assignments, and reports with
-tool-boundary delivery and zero-token event-driven standby.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Running agents receive ordered direction at work boundaries
 Each manifested shop agent SHALL have an ordered inbox for direction addressed
 to that role. Direction received while the agent is using a tool SHALL remain
 queued and SHALL be presented to the agent after that tool call completes and
-before the agent starts its next task action.
+before the agent starts its next task action. The orchestrator SHALL deliver
+each envelope to the selected backend through `AgentBackend.deliver()`.
 
 #### Scenario: Direction arrives during a tool call
 - **WHEN** an agent is using a tool and new direction is addressed to that agent
@@ -68,7 +62,9 @@ acknowledges the queued assignment.
 ### Requirement: Specialists report through the broker to the foreman
 The designer and machinist SHALL send progress, findings, and completion
 reports through the shop broker to the foreman. Reports and shop events SHALL
-remain ordered and available to the foreman while it manages the floor.
+remain ordered and available to the foreman while it manages the floor. The
+orchestrator SHALL translate backend `role_message` events into broker
+conversation entries for foreman-to-maker communication.
 
 #### Scenario: A specialist reports while the foreman is working
 - **WHEN** a specialist reports progress or completion while the foreman is using a tool

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+import json
 import os
 import signal
 import socket
@@ -14,7 +15,9 @@ from unittest.mock import patch
 from urllib.request import urlopen
 
 from floor.app import Broker
-from floor.orchestrator import CodexAppServer, InactiveTurn, LocalBrokerControl, ShopOrchestrator, _serve
+from floor.backends.codex import CodexBackend as CodexAppServer, InactiveTurn
+from floor.backends.base import BackendEvent, DeliveryReceipt, RoleContext, RoleHandle
+from floor.orchestrator import LocalBrokerControl, ShopOrchestrator, _serve
 from floor.preparation import PreparationError
 
 
@@ -71,6 +74,40 @@ class FakeCodex:
     async def close(self) -> None:
         pass
 
+    # ── AgentBackend protocol shim ──────────────────────────────────────
+
+    async def start(self) -> None:
+        pass
+
+    async def open_role(self, role: str, context: RoleContext) -> RoleHandle:
+        thread_id = await self.start_thread(role)
+        return RoleHandle(backend_id=thread_id, role=role)
+
+    async def deliver_start(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
+        turn_id = await self.start_turn(handle.backend_id, message)
+        return DeliveryReceipt(delivery_id=turn_id, accepted=True)
+
+    async def deliver_steer(
+        self, handle: RoleHandle, expected_delivery_id: str, message: str
+    ) -> DeliveryReceipt:
+        await self.steer_turn(handle.backend_id, expected_delivery_id, message)
+        return DeliveryReceipt(delivery_id=expected_delivery_id, accepted=True)
+
+    async def interrupt(self, handle: RoleHandle) -> None:
+        await self.interrupt_turn(handle.backend_id, handle.backend_id)
+
+    async def close_role(self, handle: RoleHandle) -> None:
+        self.closed.append(handle.backend_id)
+
+    # Events — FakeCodex doesn't emit events; tests call handle_notification
+    # directly.  Provide a dummy async iterator for the protocol.
+    async def _empty_events(self):
+        while True:
+            await __import__("asyncio").sleep(3600)
+            yield  # type: ignore[misc]
+
+    events = property(lambda self: self._empty_events())
+
 
 class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -87,7 +124,7 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         await self.orchestrator.deliver({"sequence": 10, "recipient": "designer", "body": "First"})
         runtime = self.orchestrator.roles["designer"]
         self.assertIn("instruction:\nFirst", self.codex.started_turns[0][1])
-        self.assertEqual(runtime.active_turn_id, "turn-1")
+        self.assertEqual(runtime.active_delivery_id, "turn-1")
 
         await self.orchestrator.deliver({"sequence": 11, "recipient": "designer", "body": "Second"})
         self.assertEqual(self.codex.steered_turns[0][0:2], ("thread-designer", "turn-1"))
@@ -125,33 +162,16 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.codex.steered_turns, [])
         await self.orchestrator.deliver({"sequence": 14, "recipient": "foreman", "body": "Work"})
         await self.orchestrator.close()
-        self.assertEqual(self.codex.interrupted, [("thread-foreman", "turn-1")])
+        self.assertEqual(self.codex.interrupted, [("thread-foreman", "thread-foreman")])
         self.assertEqual(self.codex.closed, ["thread-machinist", "thread-designer", "thread-foreman"])
 
     async def test_completed_foreman_message_is_published_to_the_maker_conversation(self) -> None:
-        await self.orchestrator.handle_notification(
-            {
-                "method": "item/completed",
-                "params": {
-                    "threadId": "thread-foreman",
-                    "turnId": "turn-1",
-                    "completedAtMs": 1,
-                    "item": {"id": "item-1", "type": "agentMessage", "text": "Hello from Foreman."},
-                },
-            }
+        await self.orchestrator.handle_event(
+            BackendEvent(kind="role_message", role="foreman", text="Hello from Foreman.")
         )
-        await self.orchestrator.handle_notification(
-            {
-                "method": "item/completed",
-                "params": {
-                    "threadId": "thread-designer",
-                    "turnId": "turn-2",
-                    "completedAtMs": 2,
-                    "item": {"id": "item-2", "type": "agentMessage", "text": "Internal specialist output."},
-                },
-            }
+        await self.orchestrator.handle_event(
+            BackendEvent(kind="role_message", role="designer", text="Internal specialist output.")
         )
-
         self.assertEqual(self.broker.conversation, [("foreman", "Hello from Foreman.")])
 
 
@@ -219,7 +239,7 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         second = broker.send("direction", "foreman", "designer", "Adjust")
         await orchestrator.deliver(second)
         self.assertEqual(broker.delivered, {first.sequence, second.sequence})
-        self.assertIsNotNone(orchestrator.roles["designer"].active_turn_id)
+        self.assertIsNotNone(orchestrator.roles["designer"].active_delivery_id)
 
     async def test_independent_app_server_cannot_steer_the_owners_thread(self) -> None:
         owner = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
@@ -243,7 +263,7 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         await broker.record_conversation("maker", "Open with the housing.")
         maker_direction = broker.pending_for("foreman")[0]
         await orchestrator.deliver(maker_direction)
-        self.assertIsNotNone(orchestrator.roles["foreman"].active_turn_id)
+        self.assertIsNotNone(orchestrator.roles["foreman"].active_delivery_id)
 
         drawing = broker.assign("designer", "drawing-1", body="Release the first drawing.")
         await orchestrator.deliver(drawing)
@@ -260,8 +280,8 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(ahead.sequence, {item.sequence for item in broker.pending_for("designer")})
         await orchestrator.deliver(ahead)
 
-        self.assertIsNotNone(orchestrator.roles["designer"].active_turn_id)
-        self.assertIsNotNone(orchestrator.roles["machinist"].active_turn_id)
+        self.assertIsNotNone(orchestrator.roles["designer"].active_delivery_id)
+        self.assertIsNotNone(orchestrator.roles["machinist"].active_delivery_id)
         self.assertEqual(broker.agents["machinist"].assignment_id, "build-1")
 
 
@@ -273,7 +293,8 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
             solid_command="solid",
             cwd=ROOT,
             port=9000,
-            codex_command="codex",
+            backend="codex",
+            backend_command="codex",
         )
         failure = PreparationError("build", "broken", Path("/work/projects/broken"), "failed")
         with (
@@ -304,7 +325,7 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
                 str(port),
                 "--cwd",
                 str(ROOT),
-                "--codex-command",
+                "--backend-command",
                 str(FAKE_APP_SERVER),
                 "--project-home",
                 str(project_home),
@@ -345,6 +366,111 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
         if process.poll() is None:
             os.killpg(process.pid, signal.SIGKILL)
             process.wait()
+
+
+# ── AgentBackend protocol acceptance tests ─────────────────────────────────
+# These tests use the portable AgentBackend protocol and a FakeBackend
+# fixture.  They are RED until Phase 4 switches ShopOrchestrator from
+# CodexControl to AgentBackend.
+
+
+class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
+    """Orchestrator acceptance through the portable AgentBackend protocol."""
+
+    async def asyncSetUp(self) -> None:
+        from tests.fixtures.fake_backend import FakeBackend as FB
+
+        self.backend = FB()
+        self.broker = FakeBroker()
+        self.orchestrator = ShopOrchestrator(self.backend, self.broker)
+        await self.orchestrator.open()
+
+    async def test_open_owns_exactly_the_three_role_sessions(self) -> None:
+        self.assertEqual(
+            [r for r, _ in self.backend.opened_roles],
+            ["foreman", "designer", "machinist"],
+        )
+        self.assertEqual(
+            [role for role, _ in self.broker.manifested],
+            [r for r, _ in self.backend.opened_roles],
+        )
+
+    async def test_direction_envelope_reaches_backend_deliver_with_body(self) -> None:
+        await self.orchestrator.deliver(
+            {"sequence": 10, "recipient": "designer", "body": "Design the housing."}
+        )
+        self.assertEqual(len(self.backend.deliveries), 1)
+        handle, message = self.backend.deliveries[0]
+        self.assertEqual(handle.role, "designer")
+        self.assertIn("Design the housing.", message)
+
+    async def test_role_message_event_records_foreman_conversation(self) -> None:
+        await self.orchestrator.handle_event(
+            BackendEvent(kind="role_message", role="foreman", text="Progress update.")
+        )
+        self.assertEqual(self.broker.conversation, [("foreman", "Progress update.")])
+
+    async def test_close_interrupts_active_roles_in_reverse_then_closes_backend(self) -> None:
+        await self.orchestrator.deliver(
+            {"sequence": 14, "recipient": "foreman", "body": "Work"}
+        )
+        await self.orchestrator.close()
+        # At least one interrupted handle for the active foreman
+        self.assertGreater(len(self.backend.interrupted), 0)
+        self.assertEqual(self.backend.interrupted[0].role, "foreman")
+        self.assertTrue(self.backend.closed)
+
+
+class BackendFlagAcceptanceTest(unittest.TestCase):
+    def test_unknown_backend_rejected(self) -> None:
+        from pathlib import Path
+        from floor.backends import create_backend
+
+        with self.assertRaises(ValueError) as cm:
+            create_backend("unknown", cwd=Path("/tmp"))
+        self.assertIn("unknown", str(cm.exception))
+
+    def test_codex_backend_selected(self) -> None:
+        from pathlib import Path
+        from floor.backends import create_backend
+        from floor.backends.codex import CodexBackend
+
+        backend = create_backend("codex", cwd=Path("/tmp"))
+        self.assertIsInstance(backend, CodexBackend)
+
+    def test_hermes_backend_selected(self) -> None:
+        from pathlib import Path
+        from floor.backends import create_backend
+        from floor.backends.hermes import HermesBackend
+
+        backend = create_backend("hermes", cwd=Path("/tmp"))
+        self.assertIsInstance(backend, HermesBackend)
+
+
+class ACPFixtureTest(unittest.TestCase):
+    def test_fake_acp_server_starts_and_accepts_session_new(self) -> None:
+        """Smoke test: the fake ACP server accepts session/new over stdio."""
+        import subprocess
+
+        proc = subprocess.Popen(
+            [sys.executable, str(ROOT / "tests" / "fixtures" / "fake_acp_server.py")],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        self.addCleanup(lambda: proc.kill())
+        assert proc.stdin is not None and proc.stdout is not None
+
+        proc.stdin.write(json.dumps({"id": 1, "method": "session/new", "params": {"cwd": "/tmp"}}) + "\n")
+        proc.stdin.flush()
+        response = json.loads(proc.stdout.readline())
+        self.assertEqual(response["id"], 1)
+        self.assertIn("sessionId", response["result"])
+        self.assertIn("session-1", response["result"]["sessionId"])
+
+        proc.stdin.close()
+        proc.wait(timeout=5)
 
 
 if __name__ == "__main__":
