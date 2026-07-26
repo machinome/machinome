@@ -157,7 +157,8 @@ class ShopOrchestrator:
 async def _serve(arguments: argparse.Namespace) -> None:
     project_home = arguments.project_home or default_project_home(arguments.cwd)
     solid_command = arguments.solid_command or default_solid_command(arguments.cwd)
-    prepared = prepare_project(arguments.project_name, project_home=project_home, solid_command=solid_command)
+    prepared = prepare_project(arguments.project_name, project_home=project_home, solid_command=solid_command,
+                               shop_root=arguments.cwd.resolve())
     broker = Broker()
     callback_token = secrets.token_urlsafe(24)
     callback_url = f"http://127.0.0.1:{arguments.port}/api/runs/shop-floor/model/ready/{callback_token}"
