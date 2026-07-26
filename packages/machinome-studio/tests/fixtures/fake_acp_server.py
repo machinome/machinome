@@ -30,7 +30,22 @@ def main() -> None:
         method = message["method"]
         params = message.get("params", {})
 
-        if method == "session/new":
+        if method == "initialize":
+            send(
+                {
+                    "id": request_id,
+                    "result": {
+                        "agentCapabilities": {
+                            "prompt": {"text": True},
+                            "mcp": False,
+                        },
+                        "authMethods": [],
+                        "protocolVersion": params.get("protocolVersion", 1),
+                    },
+                }
+            )
+
+        elif method == "session/new":
             next_session += 1
             sid = f"session-{next_session}"
             sessions[sid] = {"cwd": params.get("cwd", ""), "active": False}

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import unittest
 import json
 import os
@@ -17,6 +18,7 @@ from urllib.request import urlopen
 from floor.app import Broker
 from floor.backends.codex import CodexBackend as CodexAppServer, InactiveTurn
 from floor.backends.base import BackendEvent, DeliveryReceipt, RoleContext, RoleHandle
+from floor.backends.hermes import HermesBackend
 from floor.orchestrator import LocalBrokerControl, ShopOrchestrator, _serve
 from floor.preparation import PreparationError
 
@@ -471,6 +473,91 @@ class ACPFixtureTest(unittest.TestCase):
 
         proc.stdin.close()
         proc.wait(timeout=5)
+
+
+# ── HermesBackend acceptance tests against fake ACP fixture ────────────────
+# RED until HermesBackend methods are implemented (currently all raise
+# NotImplementedError).
+
+FAKE_ACP_SERVER = ROOT / "tests" / "fixtures" / "fake_acp_server.py"
+
+
+class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
+    """HermesBackend exercising all AgentBackend operations through fake ACP."""
+
+    async def asyncSetUp(self) -> None:
+        self.hermes = HermesBackend(
+            ROOT,
+            project=ROOT / "projects" / "snowman",
+            command=(sys.executable, str(FAKE_ACP_SERVER)),
+        )
+
+    async def test_full_role_lifecycle_through_fake_acp(self) -> None:
+        """start -> open_role x 3 -> deliver -> close through fake ACP."""
+        await self.hermes.start()
+        context = RoleContext(
+            shop_checkout=str(ROOT),
+            active_project=str(ROOT / "projects" / "snowman"),
+        )
+        foreman = await self.hermes.open_role("foreman", context)
+        designer = await self.hermes.open_role("designer", context)
+        machinist = await self.hermes.open_role("machinist", context)
+
+        self.assertEqual(foreman.role, "foreman")
+        self.assertEqual(designer.role, "designer")
+        self.assertEqual(machinist.role, "machinist")
+
+        receipt = await self.hermes.deliver_start(
+            foreman, "Begin the design."
+        )
+        self.assertTrue(receipt.accepted)
+        self.assertIsNotNone(receipt.delivery_id)
+
+        await self.hermes.close_role(designer)
+        await self.hermes.close_role(machinist)
+        await self.hermes.close_role(foreman)
+        await self.hermes.close()
+
+    async def test_deliver_and_interrupt_through_fake_acp(self) -> None:
+        """deliver_start then interrupt cancels the active session."""
+        await self.hermes.start()
+        context = RoleContext(
+            shop_checkout=str(ROOT),
+            active_project=str(ROOT / "projects" / "snowman"),
+        )
+        handle = await self.hermes.open_role("foreman", context)
+        await self.hermes.deliver_start(handle, "Work")
+        await self.hermes.interrupt(handle)
+        await self.hermes.close_role(handle)
+        await self.hermes.close()
+
+    async def test_deliver_steer_handles_inactive_turn_through_fake_acp(self) -> None:
+        """deliver_steer on a completed turn raises InactiveTurn."""
+        await self.hermes.start()
+        context = RoleContext(
+            shop_checkout=str(ROOT),
+            active_project=str(ROOT / "projects" / "snowman"),
+        )
+        handle = await self.hermes.open_role("foreman", context)
+        receipt = await self.hermes.deliver_start(handle, "First")
+        # Let _read_stdout process the fake ACP server's response
+        # (the fake server returns end_turn immediately).
+        await asyncio.sleep(0.05)
+        # Now the turn is complete; steering should raise InactiveTurn.
+        with self.assertRaises(InactiveTurn):
+            await self.hermes.deliver_steer(
+                handle, receipt.delivery_id, "Correction"
+            )
+        await self.hermes.close_role(handle)
+        await self.hermes.close()
+
+    async def test_idempotent_start_through_fake_acp(self) -> None:
+        """Calling start() twice does not launch a second process."""
+        await self.hermes.start()
+        process = self.hermes.process
+        await self.hermes.start()
+        self.assertIs(self.hermes.process, process)
+        await self.hermes.close()
 
 
 if __name__ == "__main__":

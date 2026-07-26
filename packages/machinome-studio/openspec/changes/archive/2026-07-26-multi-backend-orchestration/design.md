@@ -40,14 +40,15 @@ Making the backend pluggable requires:
 
 **Non-Goals:**
 
-- Implementing the full `HermesBackend` as a working Hermes ACP client.
-  This change defines the protocol, the Codex extraction, and the `--backend`
-  flag. The Hermes backend gets its structs, the factory entry, and an
-  acceptance-test fixture but is not yet wired to a real `hermes acp` process
-  — that is a follow-on change.
 - A `--backend hermes-ephemeral` mode using `delegate_task` children.
 - Changing the broker's role set, envelope kinds, or messaging rules.
 - Durable recovery of backend sessions after the shop process exits.
+
+> **Note (2026-07-26):** The Hermes backend was initially classified as a
+> non-goal (structural outline only).  The follow-on change
+> `2026-07-26-implement-hermes-backend-acp-integration` completed the
+> implementation — `HermesBackend` now wires to a real `hermes acp`
+> subprocess and all `AgentBackend` methods are operational.
 
 ## Decisions
 
