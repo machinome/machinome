@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
+import sys
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,7 +51,12 @@ def default_project_home(checkout: Path) -> Path:
 
 
 def default_solid_command(checkout: Path) -> tuple[str, ...]:
-    executable = primary_shop_root(checkout) / ".venv" / "bin" / "solid"
+    primary = primary_shop_root(checkout)
+    solid_node_cli = primary / "solid-node" / "solid_node" / "cli.py"
+    if solid_node_cli.is_file():
+        # Prefer the checked-out solid-node framework inside the shop.
+        return (sys.executable, "-m", "solid_node.cli")
+    executable = primary / ".venv" / "bin" / "solid"
     if not executable.is_file():
         raise PreparationError(
             "solid-command",
@@ -86,10 +93,22 @@ def prepare_project(
     *,
     project_home: Path,
     solid_command: str | Sequence[str],
+    shop_root: Path | None = None,
 ) -> PreparedProject:
     project_root = resolve_project(name, project_home)
     assert name is not None
     created = not project_root.exists()
+    # When solid-node is run from a checkout inside the shop, add the
+    # solid-node checkout to PYTHONPATH so ``python -m solid_node.cli``
+    # can find the package.
+    solid_env: dict[str, str] | None = None
+    if shop_root is not None:
+        solid_node_path = shop_root / "solid-node"
+        if solid_node_path.is_dir():
+            existing = os.environ.get("PYTHONPATH", "")
+            solid_env = {"PYTHONPATH": os.pathsep.join(
+                item for item in (str(solid_node_path), existing) if item
+            )}
     if created:
         _run(
             (*_command(solid_command), "new", name),
@@ -97,6 +116,7 @@ def prepare_project(
             stage="scaffold",
             name=name,
             project_root=project_root,
+            extra_env=solid_env,
         )
         if not project_root.is_dir():
             raise PreparationError("scaffold", name, project_root, "solid new did not create the named project directory")
@@ -121,6 +141,7 @@ def prepare_project(
         stage="build",
         name=name,
         project_root=project_root,
+        extra_env=solid_env,
     )
     if previous is not None and _fingerprint(snapshot) == previous:
         raise PreparationError("snapshot", name, project_root, "build left the previous viewer snapshot unchanged")
@@ -186,9 +207,13 @@ def _run(
     stage: str,
     name: str | None,
     project_root: Path | None,
+    extra_env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    env = None
+    if extra_env:
+        env = {**os.environ, **extra_env}
     try:
-        return subprocess.run(command, cwd=cwd, check=True, capture_output=True, text=True)
+        return subprocess.run(command, cwd=cwd, check=True, capture_output=True, text=True, env=env)
     except FileNotFoundError as error:
         raise PreparationError(stage, name, project_root, str(error)) from error
     except subprocess.CalledProcessError as error:
