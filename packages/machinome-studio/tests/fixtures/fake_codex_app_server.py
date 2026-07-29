@@ -64,8 +64,29 @@ for raw_line in sys.stdin:
             send({"id": request_id, "result": {"turnId": turn_id}})
     elif method == "turn/interrupt":
         thread_id = params["threadId"]
-        threads[thread_id] = None
-        send({"id": request_id, "result": {}})
+        turn_id = params["turnId"]
+        if threads.get(thread_id) != turn_id:
+            send(
+                {
+                    "id": request_id,
+                    "error": {
+                        "code": -32600,
+                        "message": f"turn not active: {turn_id}",
+                    },
+                }
+            )
+        else:
+            threads[thread_id] = None
+            send({"id": request_id, "result": {}})
+            send(
+                {
+                    "method": "turn/completed",
+                    "params": {
+                        "threadId": thread_id,
+                        "turn": {"id": turn_id, "status": "interrupted", "items": []},
+                    },
+                }
+            )
     elif method == "thread/archive":
         thread_id = params["threadId"]
         if thread_id not in threads_with_rollouts:

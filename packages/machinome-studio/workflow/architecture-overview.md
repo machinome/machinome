@@ -153,11 +153,11 @@ not processes the broker manages.
 
 - **Role cards** (`agents/*.md`) define each role's discipline and are the
   authoritative per-role contract. They are identical across backends.
-- **Backend-specific adapters** (`.codex/agents/*.toml` for Codex; Hermes
-  adapter metadata for Hermes) give each role its model, reasoning effort,
-  and developer instructions. The backend reads these to start sessions; the
-  instructions direct the session to load its role card and named skills from
-  the shop checkout. Neither backend duplicates the role cards or skills.
+- **Backend-specific adapters** give each role its runtime instructions.
+  Codex reads `.codex/agents/*.toml`; Hermes sends and awaits an ACP bootstrap
+  prompt. Both direct the session to load the authoritative role card and every
+  named skill from the shop checkout. Neither backend duplicates those
+  contracts.
 - **Skills** (`skills/*/SKILL.md`) are loaded once by the agent at startup.
   `skills/running-the-shop/` is the foreman's operating loop;
   `skills/solid-node-api/` is the framework's public contract;
@@ -310,9 +310,9 @@ These are accurate as of this writing; keep them current (see `AGENTS.md`).
 |---|---|
 | `floor/app.py` | Broker: HTTP API, SSE, agent state machine, event log. |
 | `floor/orchestrator.py` | Process owner; routes envelopes to the selected backend. |
-| `floor/backends/base.py` | `AgentBackend` protocol, role handles, events (proposed). |
-| `floor/backends/codex.py` | Codex backend: Codex app-server client (proposed extraction). |
-| `floor/backends/hermes.py` | Hermes backend: Hermes ACP client (proposed). |
+| `floor/backends/base.py` | `AgentBackend` protocol, role handles, and portable events. |
+| `floor/backends/codex.py` | Codex backend: Codex app-server client. |
+| `floor/backends/hermes.py` | Hermes backend: Hermes ACP client. |
 | `floor/preparation.py` | Fail-closed named-project preparation and validation. |
 | `floor/agent.py` | CLI for agents to talk to the broker. |
 | `floor/foreman.py` | CLI for the foreman to publish to the maker conversation. |
@@ -338,7 +338,7 @@ These are accurate as of this writing; keep them current (see `AGENTS.md`).
 | `0003` | Separate porter (lifecycle) from foreman (work). | Superseded by 0005 |
 | `0004` | Completed `_build/` artifacts as the functional-model boundary. | Accepted |
 | `0005` | One deterministic owner for the Codex app-server; broker speaks role names only. | Superseded by 0006 |
-| `0006` | Generalize shop orchestration to a pluggable agent backend. | Proposed |
+| `0006` | Generalize shop orchestration to a pluggable agent backend. | Accepted |
 
 Read an ADR for the reasoning and context behind a boundary; read this file
 for the boundary as it stands.

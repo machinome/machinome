@@ -21,8 +21,9 @@ error before starting the broker or any agent session.
 ### Requirement: The backend owns its agent sessions
 The selected backend SHALL own the lifecycle of every role session it creates.
 The orchestrator SHALL call `open_role()` once per role at shop open,
-`deliver()` for each envelope addressed to that role, `interrupt()` on shop
-close or shutdown, and `close_role()` to release the session. The backend
+`deliver_start()` for an envelope addressed to an idle role, `deliver_steer()`
+for an envelope addressed to an active role, `interrupt()` on shop close or
+shutdown, and `close_role()` to release the session. The backend
 SHALL translate its native protocol events into portable `BackendEvent`
 instances consumed by the orchestrator.
 
@@ -32,14 +33,14 @@ instances consumed by the orchestrator.
 
 #### Scenario: Backend delivers an envelope
 - **WHEN** the broker emits an envelope addressed to an idle role
-- **THEN** the orchestrator calls `backend.deliver()` for that role with the envelope body
+- **THEN** the orchestrator calls `backend.deliver_start()` for that role with the envelope body
 
 #### Scenario: Backend reports a role message
 - **WHEN** an agent session publishes a message to the maker conversation
 - **THEN** the backend emits a `role_message` event consumed by the orchestrator
 
 #### Scenario: Backend fails during a role operation
-- **WHEN** a backend `open_role()` or `deliver()` call raises an error
+- **WHEN** a backend role-open or delivery call raises an error
 - **THEN** the orchestrator unwinds partial state and reports the failure
 
 ### Requirement: The orchestrator is backend-neutral

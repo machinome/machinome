@@ -1,4 +1,12 @@
-## ADDED Requirements
+# shop-agent-backend Specification
+
+## Purpose
+
+Define the portable runtime boundary that lets the shop orchestrator own and
+route persistent role sessions through either Codex app-server or Hermes ACP
+without leaking backend-native identifiers into the broker.
+
+## Requirements
 
 ### Requirement: The orchestrator accepts a configurable agent backend
 The shop orchestrator SHALL accept a `--backend` flag with values `codex` and
@@ -21,8 +29,9 @@ error before starting the broker or any agent session.
 ### Requirement: The backend owns its agent sessions
 The selected backend SHALL own the lifecycle of every role session it creates.
 The orchestrator SHALL call `open_role()` once per role at shop open,
-`deliver()` for each envelope addressed to that role, `interrupt()` on shop
-close or shutdown, and `close_role()` to release the session. The backend
+`deliver_start()` for an envelope addressed to an idle role, `deliver_steer()`
+for an envelope addressed to an active role, `interrupt()` on shop close or
+shutdown, and `close_role()` to release the session. The backend
 SHALL translate its native protocol events into portable `BackendEvent`
 instances consumed by the orchestrator. The Hermes backend SHALL operate a
 real `hermes acp` subprocess rather than raising `NotImplementedError`.
@@ -33,14 +42,14 @@ real `hermes acp` subprocess rather than raising `NotImplementedError`.
 
 #### Scenario: Backend delivers an envelope
 - **WHEN** the broker emits an envelope addressed to an idle role
-- **THEN** the orchestrator calls `backend.deliver()` for that role with the envelope body
+- **THEN** the orchestrator calls `backend.deliver_start()` for that role with the envelope body
 
 #### Scenario: Backend reports a role message
 - **WHEN** an agent session publishes a message to the maker conversation
 - **THEN** the backend emits a `role_message` event consumed by the orchestrator
 
 #### Scenario: Backend fails during a role operation
-- **WHEN** a backend `open_role()` or `deliver()` call raises an error
+- **WHEN** a backend role-open or delivery call raises an error
 - **THEN** the orchestrator unwinds partial state and reports the failure
 
 #### Scenario: Hermes backend is independently testable against a fake ACP fixture
@@ -74,7 +83,7 @@ request/response and notification plumbing as the Codex backend.
 
 #### Scenario: Hermes backend creates role sessions
 - **WHEN** `open_role("designer", context)` is called
-- **THEN** the backend sends ACP `session/new` with `cwd` set to the active project and injects role context via an initial `session/prompt`
+- **THEN** the backend sends ACP `session/new` with `cwd` set to the active project, sends and awaits an initial `session/prompt` that loads the designer role card and named skills, and only then returns the role handle
 
 #### Scenario: Hermes backend delivers messages
 - **WHEN** `deliver_start(handle, message)` is called on an idle session
@@ -82,7 +91,7 @@ request/response and notification plumbing as the Codex backend.
 
 #### Scenario: Hermes backend steers active turns
 - **WHEN** `deliver_steer(handle, expected_id, message)` is called on an active session
-- **THEN** the backend cancels the current prompt via `session/cancel` and sends a new `session/prompt` with the correction
+- **THEN** the backend cancels the current prompt via `session/cancel`, sends a new `session/prompt` with the correction, and returns a receipt identifying that new prompt
 - **AND IF** the active prompt already completed, the backend raises `InactiveTurn`
 
 #### Scenario: Hermes backend interrupts sessions
@@ -95,8 +104,8 @@ The Hermes backend SHALL consume ACP `session/update` notifications and
 `BackendEvent` instances consumed by the orchestrator.
 
 #### Scenario: Foreman agent message is published to conversation
-- **WHEN** the ACP subprocess emits a `session/update` notification with `agentMessage` text for the foreman session
-- **THEN** the backend emits a `BackendEvent(kind="role_message", role="foreman", text=...)`
+- **WHEN** the ACP subprocess streams `agent_message_chunk` updates for a foreman prompt and then completes that prompt
+- **THEN** the backend emits one `BackendEvent(kind="role_message", role="foreman", text=...)` containing the assembled message before its completion event
 
 #### Scenario: Turn start is tracked
 - **WHEN** a `session/prompt` request is dispatched to the subprocess

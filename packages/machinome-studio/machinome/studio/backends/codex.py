@@ -58,13 +58,19 @@ class CodexBackend:
         self.solid_command = (solid_command,) if isinstance(solid_command, str) else tuple(solid_command)
         self.model_callback_url = model_callback_url
         self.process: asyncio.subprocess.Process | None = None
-        self.notifications: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        self.notifications: asyncio.Queue[dict[str, Any] | BackendEvent] = (
+            asyncio.Queue()
+        )
         self._pending: dict[int, asyncio.Future[dict[str, Any]]] = {}
         self._next_id = 0
         self._reader_task: asyncio.Task[None] | None = None
         self._stderr_task: asyncio.Task[None] | None = None
         # Map backend_id → (role, thread_id) so events can resolve the role.
         self._handles: dict[str, tuple[str, str]] = {}
+        # Map thread_id → active turn_id. Thread and turn identifiers are
+        # distinct on the Codex wire protocol and must never be substituted.
+        self._active_turns: dict[str, str] = {}
+        self._closing = False
         self.events = self._event_iterator()
 
     # ── AgentBackend protocol ────────────────────────────────────────────
@@ -73,6 +79,7 @@ class CodexBackend:
         """Launch the Codex app-server subprocess (idempotent)."""
         if self.process is not None:
             return
+        self._closing = False
         self.process = await asyncio.create_subprocess_exec(
             *self.command,
             "app-server",
@@ -147,6 +154,7 @@ class CodexBackend:
             {"threadId": thread_id, "input": [{"type": "text", "text": message}]},
         )
         turn_id = str(result["turn"]["id"])
+        self._active_turns[thread_id] = turn_id
         return DeliveryReceipt(delivery_id=turn_id, accepted=True)
 
     async def deliver(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
@@ -175,9 +183,14 @@ class CodexBackend:
         return DeliveryReceipt(delivery_id=expected_delivery_id, accepted=True)
 
     async def interrupt(self, handle: RoleHandle) -> None:
-        """Interrupt the active turn (best-effort, uses thread ID as turn ID)."""
+        """Interrupt the active turn, if this thread currently has one."""
         thread_id = handle.backend_id
-        await self._request("turn/interrupt", {"threadId": thread_id, "turnId": thread_id})
+        turn_id = self._active_turns.get(thread_id)
+        if turn_id is None:
+            return
+        await self._request(
+            "turn/interrupt", {"threadId": thread_id, "turnId": turn_id}
+        )
 
     async def close_role(self, handle: RoleHandle) -> None:
         """Archive the Codex thread (best-effort)."""
@@ -192,6 +205,7 @@ class CodexBackend:
         """Stop the app-server process and release OS resources."""
         if self.process is None:
             return
+        self._closing = True
         if self.process.stdin is not None:
             self.process.stdin.close()
         try:
@@ -203,7 +217,12 @@ class CodexBackend:
             await self._reader_task
         if self._stderr_task is not None:
             await self._stderr_task
+        self._pending.clear()
+        self._active_turns.clear()
+        self._handles.clear()
         self.process = None
+        self._reader_task = None
+        self._stderr_task = None
 
     # ── legacy API (used by acceptance tests) ────────────────────────────
 
@@ -232,8 +251,9 @@ class CodexBackend:
 
     async def interrupt_turn(self, thread_id: str, turn_id: str) -> None:
         """Legacy: interrupt an active turn."""
-        handle = RoleHandle(backend_id=thread_id, role="")
-        await self.interrupt(handle)
+        await self._request(
+            "turn/interrupt", {"threadId": thread_id, "turnId": turn_id}
+        )
 
     async def close_thread(self, thread_id: str) -> None:
         """Legacy: archive a thread."""
@@ -246,6 +266,9 @@ class CodexBackend:
         """Yield portable BackendEvents from the app-server notification queue."""
         while True:
             message = await self.notifications.get()
+            if isinstance(message, BackendEvent):
+                yield message
+                continue
             event = self._translate_notification(message)
             if event is not None:
                 yield event
@@ -279,23 +302,28 @@ class CodexBackend:
         if method == "turn/started":
             thread_id = params.get("threadId")
             role_info = self._handles.get(thread_id)
-            if role_info is None:
+            turn_id = params.get("turn", {}).get("id")
+            if role_info is None or turn_id is None:
                 return None
+            self._active_turns[thread_id] = str(turn_id)
             return BackendEvent(
                 kind="turn_started",
                 role=role_info[0],
-                delivery_id=thread_id,
+                delivery_id=str(turn_id),
             )
 
         if method == "turn/completed":
             thread_id = params.get("threadId")
             role_info = self._handles.get(thread_id)
-            if role_info is None:
+            turn_id = params.get("turn", {}).get("id")
+            if role_info is None or turn_id is None:
                 return None
+            if self._active_turns.get(thread_id) == str(turn_id):
+                self._active_turns.pop(thread_id, None)
             return BackendEvent(
                 kind="turn_completed",
                 role=role_info[0],
-                delivery_id=thread_id,
+                delivery_id=str(turn_id),
             )
 
         return None
@@ -312,7 +340,11 @@ class CodexBackend:
         payload = json.dumps({"id": request_id, "method": method, "params": params}) + "\n"
         self.process.stdin.write(payload.encode())
         await self.process.stdin.drain()
-        return await asyncio.wait_for(future, timeout=30)
+        try:
+            return await asyncio.wait_for(future, timeout=30)
+        finally:
+            if self._pending.get(request_id) is future:
+                self._pending.pop(request_id, None)
 
     async def _notify(self, method: str, params: dict[str, Any]) -> None:
         if self.process is None or self.process.stdin is None:
@@ -336,6 +368,17 @@ class CodexBackend:
                     future.set_result(message["result"])
             elif "method" in message:
                 await self.notifications.put(message)
+        if not self._closing:
+            returncode = await self.process.wait()
+            error = f"codex app-server exited unexpectedly with status {returncode}"
+            for future in self._pending.values():
+                if not future.done():
+                    future.set_exception(RuntimeError(error))
+            self._pending.clear()
+            self._active_turns.clear()
+            await self.notifications.put(
+                BackendEvent(kind="backend_failed", error=error)
+            )
 
     async def _drain_stderr(self) -> None:
         assert self.process is not None and self.process.stderr is not None

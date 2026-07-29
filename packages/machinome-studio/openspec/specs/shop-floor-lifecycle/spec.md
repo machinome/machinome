@@ -1,4 +1,11 @@
-## MODIFIED Requirements
+# shop-floor-lifecycle Specification
+
+## Purpose
+
+Define fail-closed preparation, opening, operation, and shutdown of the local
+shop floor across supported agent backends.
+
+## Requirements
 
 ### Requirement: The orchestrator opens the shop floor
 The system SHALL allow a maker to open shop-floor for a required workspace

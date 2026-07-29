@@ -12,7 +12,7 @@ request/response and notification plumbing as the Codex backend.
 
 #### Scenario: Hermes backend creates role sessions
 - **WHEN** `open_role("designer", context)` is called
-- **THEN** the backend sends ACP `session/new` with `cwd` set to the active project and injects role context via an initial `session/prompt`
+- **THEN** the backend sends ACP `session/new` with `cwd` set to the active project, sends and awaits an initial `session/prompt` that loads the designer role card and named skills, and only then returns the role handle
 
 #### Scenario: Hermes backend delivers messages
 - **WHEN** `deliver_start(handle, message)` is called on an idle session
@@ -20,7 +20,7 @@ request/response and notification plumbing as the Codex backend.
 
 #### Scenario: Hermes backend steers active turns
 - **WHEN** `deliver_steer(handle, expected_id, message)` is called on an active session
-- **THEN** the backend cancels the current prompt via `session/cancel` and sends a new `session/prompt` with the correction
+- **THEN** the backend cancels the current prompt via `session/cancel`, sends a new `session/prompt` with the correction, and returns a receipt identifying that new prompt
 - **AND IF** the active prompt already completed, the backend raises `InactiveTurn`
 
 #### Scenario: Hermes backend interrupts sessions
@@ -33,8 +33,8 @@ The Hermes backend SHALL consume ACP `session/update` notifications and
 `BackendEvent` instances consumed by the orchestrator.
 
 #### Scenario: Foreman agent message is published to conversation
-- **WHEN** the ACP subprocess emits a `session/update` notification with `agentMessage` text for the foreman session
-- **THEN** the backend emits a `BackendEvent(kind="role_message", role="foreman", text=...)`
+- **WHEN** the ACP subprocess streams `agent_message_chunk` updates for a foreman prompt and then completes that prompt
+- **THEN** the backend emits one `BackendEvent(kind="role_message", role="foreman", text=...)` containing the assembled message before its completion event
 
 #### Scenario: Turn start is tracked
 - **WHEN** a `session/prompt` request is dispatched to the subprocess

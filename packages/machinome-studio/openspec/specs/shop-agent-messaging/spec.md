@@ -1,4 +1,11 @@
-## MODIFIED Requirements
+# shop-agent-messaging Specification
+
+## Purpose
+
+Provide ordered role-addressed direction, assignments, reports, and portable
+backend delivery with tool-boundary handling and event-driven standby.
+
+## Requirements
 
 ### Requirement: Running agents receive ordered direction at work boundaries
 Each manifested shop agent SHALL have an ordered inbox for direction addressed

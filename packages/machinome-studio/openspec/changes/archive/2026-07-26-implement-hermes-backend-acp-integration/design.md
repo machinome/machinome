@@ -49,22 +49,29 @@ ACP has no `session/steer` or equivalent mid-turn injection. The only way to red
 
 | ACP event | BackendEvent |
 |---|---|
-| `session/update` with `agentMessage` text, foreman session | `role_message(role="foreman", text=...)` |
+| Streamed `session/update` `agent_message_chunk`, foreman session | Assemble chunks; emit one `role_message(role="foreman", text=...)` before completion |
 | `session/prompt` sent (request dispatched) | `turn_started(delivery_id=request_id)` |
 | `session/prompt` response received (`stopReason` present) | `turn_completed(delivery_id=request_id)` |
 | Process exits unexpectedly | `backend_failed(error=...)` |
 
 Designer and machinist agent messages are internal specialist communication — they arrive through the broker's report mechanism, not as `role_message` events to the maker conversation.
 
-### open_role returns before the initial prompt completes
+### open_role establishes the role contract before manifesting
 
-`open_role()` fires the initial context prompt as a notification (no response awaited) and returns the handle immediately. This keeps shop-open latency low. The orchestrator's standby discipline means no tokens are consumed until a maker message arrives anyway.
+`open_role()` sends the initial context prompt as an ACP request and awaits its
+completion before returning the handle. The prompt directs the session to load
+the authoritative role card and every skill named in its frontmatter. Bootstrap
+streaming output is suppressed so it cannot appear as maker conversation. Once
+the bootstrap completes, the persistent session has no active model turn and
+standby consumes no tokens.
 
 ## Risks / Trade-offs
 
 - **cancel+reprompt may lose context** — If Hermes clears session history on cancel, the correction prompt arrives in an empty session. Mitigation: the fake ACP fixture preserves session state across cancel; a real-Hermes smoke test will reveal whether `session/cancel` preserves history. If not, the initial prompt can re-inject prior context before the correction.
 - **The fake ACP fixture is not a real Hermes** — It returns `stopReason: end_turn` immediately. A real `hermes acp` process may take seconds to minutes, may emit `session/update` notifications interspersed with tool calls, and may cancel differently. The fixture validates structural correctness, not timing or real-agent behavior.
-- **No steering validation under load** — The cancel+reprompt race is tested structurally but not against a live agent mid-thought. The first real-Hermes shop run will validate or correct this path.
+- **Live steering timing varies** — The cancel+reprompt race is covered by
+  delivery-correlation tests; a live-process smoke check remains the bounded
+  compatibility check for real ACP timing.
 
 ## Migration Plan
 
@@ -79,5 +86,10 @@ Rollback: `HermesBackend` is self-contained in one file. Reverting to the stub i
 
 ## Open Questions
 
-- Does `session/cancel` in the real Hermes ACP adapter preserve session history, or does it reset the session? The fake ACP fixture preserves history; the real answer determines whether `deliver_steer` needs to re-inject prior context.
-- Should the initial role context be sent as `session/prompt` text blocks, or is there a better ACP mechanism (e.g., `session/set_mode`, system prompt injection)?
+- The current ACP surface provides no separate developer-instructions field;
+  role context is therefore established through an awaited initial
+  `session/prompt` text block.
+- Does cancellation preserve all model context in every supported Hermes ACP
+  version? `deliver_steer` preserves the ACP session and correlates request IDs
+  independently from session IDs, but compatibility remains covered by the
+  bounded live smoke check.

@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import shlex
 from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
 from typing import Any
@@ -58,7 +59,9 @@ class HermesBackend:
 
         # Subprocess state (set by start())
         self.process: asyncio.subprocess.Process | None = None
-        self.notifications: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        self.notifications: asyncio.Queue[dict[str, Any] | BackendEvent] = (
+            asyncio.Queue()
+        )
         self._pending: dict[int, asyncio.Future[dict[str, Any]]] = {}
         self._next_id = 0
         self._reader_task: asyncio.Task[None] | None = None
@@ -68,6 +71,14 @@ class HermesBackend:
         self._handles: dict[str, tuple[str, str]] = {}
         # Which request_id is the active prompt for each session
         self._active_prompts: dict[str, int] = {}
+        # Prompt request_id -> (session_id, role), for response correlation.
+        self._prompt_requests: dict[int, tuple[str, str]] = {}
+        self._prompt_chunks: dict[int, list[str]] = {}
+        self._control_requests: dict[int, tuple[str, str]] = {}
+        self._control_by_session: dict[str, int] = {}
+        self._control_chunks: dict[int, list[str]] = {}
+        self._bootstrap_sessions: set[str] = set()
+        self._closing = False
 
         self.events = self._event_iterator()
 
@@ -77,6 +88,7 @@ class HermesBackend:
         """Launch the ``hermes acp`` subprocess (idempotent)."""
         if self.process is not None:
             return
+        self._closing = False
         self.process = await asyncio.create_subprocess_exec(
             *self.command,
             "acp",
@@ -88,6 +100,14 @@ class HermesBackend:
                 **os.environ,
                 "HERMES_ACP_SKIP_CONFIGURED_MCP": "1",
                 "FLOOR_URL": self.broker_url,
+                "PYTHONPATH": os.pathsep.join(
+                    item
+                    for item in (
+                        str(self.cwd),
+                        os.environ.get("PYTHONPATH", ""),
+                    )
+                    if item
+                ),
             },
             start_new_session=True,
         )
@@ -116,23 +136,28 @@ class HermesBackend:
         handle = RoleHandle(backend_id=session_id, role=role)
         self._handles[session_id] = (role, session_id)
 
-        # Inject role context via an initial fire-and-forget prompt.
-        # The orchestrator delivers real work later; this primes the
-        # session so the agent knows its identity and workspace.
-        context_text = (
-            f"Shop checkout: {context.shop_checkout}\n"
-            f"Active project: {context.active_project}\n"
-            f"Role: {role}\n"
-            "You are a specialist agent in the solid-node shop.  "
-            "The foreman will direct you when work is ready.\n"
-        )
-        await self._send_notify(
-            "session/prompt",
-            {
-                "sessionId": session_id,
-                "prompt": [{"type": "text", "text": context_text}],
-            },
-        )
+        # ACP has no developer-instructions field on session/new. Prime the
+        # persistent session with an ordinary request and await completion so
+        # the role contract is loaded before the broker manifests the role.
+        self._bootstrap_sessions.add(session_id)
+        try:
+            await self._request(
+                "session/prompt",
+                {
+                    "sessionId": session_id,
+                    "prompt": [
+                        {
+                            "type": "text",
+                            "text": self._role_bootstrap(role, context),
+                        }
+                    ],
+                },
+            )
+        except BaseException:
+            self._handles.pop(session_id, None)
+            raise
+        finally:
+            self._bootstrap_sessions.discard(session_id)
         return handle
 
     async def deliver_start(
@@ -144,14 +169,7 @@ class HermesBackend:
         processed asynchronously and surfaced as a turn_completed event.
         """
         session_id = handle.backend_id
-        delivery_id = await self._send_async(
-            "session/prompt",
-            {
-                "sessionId": session_id,
-                "prompt": [{"type": "text", "text": message}],
-            },
-        )
-        self._active_prompts[session_id] = delivery_id
+        delivery_id = await self._send_prompt(handle, message)
         return DeliveryReceipt(delivery_id=str(delivery_id), accepted=True)
 
     async def deliver(
@@ -174,19 +192,54 @@ class HermesBackend:
             raise InactiveTurn from None
 
         # Check whether the expected prompt already completed.
-        future = self._pending.get(expected_id)
-        if future is None or future.done():
+        if expected_id not in self._prompt_requests:
             raise InactiveTurn
 
         active = self._active_prompts.get(session_id)
         if active is None or active != expected_id:
             raise InactiveTurn
 
-        # Cancel the current prompt.
-        await self._notify("session/cancel", {"sessionId": session_id})
+        # A second regular ACP prompt is Hermes' active-turn redirect surface.
+        # Hermes either redirects the current model request or queues the text
+        # for the current prompt coroutine to drain before it completes. Keep
+        # the original delivery identity in both cases. If the completion race
+        # made this run as a normal prompt instead, publish it as a replacement.
+        self._prompt_chunks[expected_id] = []
+        control_id, text = await self._send_control_prompt(handle, message)
+        if (
+            "Redirected the active turn with your correction." in text
+            or "queued for the next turn" in text.lower()
+        ):
+            return DeliveryReceipt(
+                delivery_id=expected_delivery_id, accepted=True
+            )
 
-        # Start a new prompt with the correction.
-        return await self.deliver_start(handle, message)
+        # The original prompt completed between the local active check and the
+        # ACP request. Hermes ran the correction as a normal prompt; publish its
+        # lifecycle in portable order and return its request identity.
+        self.notifications.put_nowait(
+            BackendEvent(
+                kind="turn_started",
+                role=handle.role,
+                delivery_id=str(control_id),
+            )
+        )
+        if handle.role == "foreman" and text.strip():
+            self.notifications.put_nowait(
+                BackendEvent(
+                    kind="role_message",
+                    role="foreman",
+                    text=text.strip(),
+                )
+            )
+        self.notifications.put_nowait(
+            BackendEvent(
+                kind="turn_completed",
+                role=handle.role,
+                delivery_id=str(control_id),
+            )
+        )
+        return DeliveryReceipt(delivery_id=str(control_id), accepted=True)
 
     async def interrupt(self, handle: RoleHandle) -> None:
         """Interrupt the active prompt (best-effort)."""
@@ -204,6 +257,7 @@ class HermesBackend:
         """Stop the acp process and release OS resources."""
         if self.process is None:
             return
+        self._closing = True
         if self.process.stdin is not None:
             self.process.stdin.close()
         try:
@@ -215,7 +269,17 @@ class HermesBackend:
             await self._reader_task
         if self._stderr_task is not None:
             await self._stderr_task
+        self._pending.clear()
+        self._prompt_requests.clear()
+        self._active_prompts.clear()
+        self._prompt_chunks.clear()
+        self._control_requests.clear()
+        self._control_by_session.clear()
+        self._control_chunks.clear()
+        self._handles.clear()
         self.process = None
+        self._reader_task = None
+        self._stderr_task = None
 
     # ── event iterator ─────────────────────────────────────────────────
 
@@ -223,6 +287,9 @@ class HermesBackend:
         """Yield portable BackendEvents from the ACP notification queue."""
         while True:
             message = await self.notifications.get()
+            if isinstance(message, BackendEvent):
+                yield message
+                continue
             event = self._translate_notification(message)
             if event is not None:
                 yield event
@@ -232,10 +299,9 @@ class HermesBackend:
     ) -> BackendEvent | None:
         """Translate one ACP message into a BackendEvent.
 
-        Handles:
-        - ``session/update`` with ``agentMessage`` → role_message
-          (foreman session only; designer/machinist messages are internal)
-        - ``session/prompt`` response with ``stopReason`` → turn_completed
+        Legacy whole-message ``agentMessage`` updates are accepted here.
+        Current streamed ``agent_message_chunk`` updates and prompt responses
+        are correlated and assembled by ``_read_stdout``.
         """
         method = message.get("method")
         params = message.get("params", {})
@@ -258,22 +324,51 @@ class HermesBackend:
                     )
             return None
 
-        if method == "session/prompt":
-            # This is a server-to-client notification about a completed
-            # prompt (the response-to-request was already handled by
-            # _read_stdout).  The ACP spec sends session/update for
-            # streaming; session/prompt as a notification carries the
-            # final stop reason.  We treat it as turn_completed.
-            session_id = params.get("sessionId", "")
-            role_info = self._handles.get(session_id)
-            role = role_info[0] if role_info else None
-            return BackendEvent(
-                kind="turn_completed",
-                role=role,
-                delivery_id=session_id,
-            )
-
         return None
+
+    def _role_bootstrap(self, role: str, context: RoleContext) -> str:
+        """Build the authoritative role-contract bootstrap prompt."""
+        shop = Path(context.shop_checkout).resolve()
+        role_card = shop / "agents" / f"{role}.md"
+        lines = [
+            f"Shop checkout: {shop}",
+            f"Active project: {Path(context.active_project).resolve()}",
+            f"Role: {role}",
+            "Before taking any task action, read the following role card in full ",
+            f"and follow it as authoritative: {role_card}",
+            "Read every skill named by that role card's YAML frontmatter in full.",
+        ]
+        for skill in self._role_skills(role_card):
+            lines.append(f"Required skill: {shop / 'skills' / skill / 'SKILL.md'}")
+        if role == "machinist" and context.model_callback_url is not None:
+            lines.extend(
+                (
+                    "Live model development command (run it from the active project ",
+                    "and keep it running throughout an active machining assignment):",
+                    f"{shlex.join(self.solid_command)} develop root "
+                    f"--callback {shlex.quote(context.model_callback_url)}",
+                )
+            )
+        lines.append(
+            "Do not begin project work. Finish loading this contract, then return "
+            "to standby for a broker message."
+        )
+        return "\n".join(lines)
+
+    @staticmethod
+    def _role_skills(role_card: Path) -> tuple[str, ...]:
+        """Read the simple skills list from a role card's YAML frontmatter."""
+        for line in role_card.read_text().splitlines():
+            if line.startswith("skills:"):
+                value = line.partition(":")[2].strip()
+                if not (value.startswith("[") and value.endswith("]")):
+                    break
+                return tuple(
+                    item.strip()
+                    for item in value[1:-1].split(",")
+                    if item.strip()
+                )
+        return ()
 
     # ── JSON-RPC plumbing ──────────────────────────────────────────────
 
@@ -297,54 +392,102 @@ class HermesBackend:
         )
         self.process.stdin.write(payload.encode())
         await self.process.stdin.drain()
-        return await asyncio.wait_for(future, timeout=30)
+        try:
+            return await asyncio.wait_for(future, timeout=30)
+        finally:
+            if self._pending.get(request_id) is future:
+                self._pending.pop(request_id, None)
 
-    async def _send_async(self, method: str, params: dict[str, Any]) -> int:
-        """Send a JSON-RPC request and return the request_id immediately.
-
-        The response is handled asynchronously by ``_read_stdout``.
-        Used for ``session/prompt`` where we want to return a receipt
-        without waiting for the full agent turn to complete.
-        """
+    async def _send_prompt(self, handle: RoleHandle, message: str) -> int:
+        """Dispatch a prompt and emit its portable start event."""
         if self.process is None or self.process.stdin is None:
             raise RuntimeError("hermes acp is not running")
         self._next_id += 1
         request_id = self._next_id
-        future: asyncio.Future[dict[str, Any]] = (
-            asyncio.get_running_loop().create_future()
-        )
-        self._pending[request_id] = future
+        session_id = handle.backend_id
+        self._prompt_requests[request_id] = (session_id, handle.role)
+        self._active_prompts[session_id] = request_id
+        self._prompt_chunks[request_id] = []
         payload = (
             json.dumps(
-                {"id": request_id, "method": method, "params": params}
+                {
+                    "id": request_id,
+                    "method": "session/prompt",
+                    "params": {
+                        "sessionId": session_id,
+                        "prompt": [{"type": "text", "text": message}],
+                    },
+                }
             )
             + "\n"
         )
         self.process.stdin.write(payload.encode())
-        await self.process.stdin.drain()
+        # Queue the portable start before yielding to the reader task. A fast
+        # ACP response can therefore never overtake its start event.
+        self.notifications.put_nowait(
+            BackendEvent(
+                kind="turn_started",
+                role=handle.role,
+                delivery_id=str(request_id),
+            )
+        )
+        try:
+            await self.process.stdin.drain()
+        except BaseException:
+            self._prompt_requests.pop(request_id, None)
+            if self._active_prompts.get(session_id) == request_id:
+                self._active_prompts.pop(session_id, None)
+            self._prompt_chunks.pop(request_id, None)
+            raise
         return request_id
+
+    async def _send_control_prompt(
+        self, handle: RoleHandle, message: str
+    ) -> tuple[int, str]:
+        """Send a Hermes ACP control prompt without exposing it as a turn."""
+        if self.process is None or self.process.stdin is None:
+            raise RuntimeError("hermes acp is not running")
+        self._next_id += 1
+        request_id = self._next_id
+        session_id = handle.backend_id
+        future: asyncio.Future[dict[str, Any]] = (
+            asyncio.get_running_loop().create_future()
+        )
+        self._pending[request_id] = future
+        self._control_requests[request_id] = (session_id, handle.role)
+        self._control_by_session[session_id] = request_id
+        self._control_chunks[request_id] = []
+        payload = (
+            json.dumps(
+                {
+                    "id": request_id,
+                    "method": "session/prompt",
+                    "params": {
+                        "sessionId": session_id,
+                        "prompt": [{"type": "text", "text": message}],
+                    },
+                }
+            )
+            + "\n"
+        )
+        self.process.stdin.write(payload.encode())
+        try:
+            await self.process.stdin.drain()
+            await asyncio.wait_for(future, timeout=30)
+            text = "".join(self._control_chunks.get(request_id, ())).strip()
+            return request_id, text
+        finally:
+            if self._pending.get(request_id) is future:
+                self._pending.pop(request_id, None)
+            self._control_requests.pop(request_id, None)
+            if self._control_by_session.get(session_id) == request_id:
+                self._control_by_session.pop(session_id, None)
+            self._control_chunks.pop(request_id, None)
 
     async def _notify(
         self, method: str, params: dict[str, Any]
     ) -> None:
         """Send a JSON-RPC notification (no response expected)."""
-        if self.process is None or self.process.stdin is None:
-            raise RuntimeError("hermes acp is not running")
-        payload = (
-            json.dumps({"method": method, "params": params}) + "\n"
-        )
-        self.process.stdin.write(payload.encode())
-        await self.process.stdin.drain()
-
-    async def _send_notify(
-        self, method: str, params: dict[str, Any]
-    ) -> None:
-        """Send a JSON-RPC notification without awaiting a response.
-
-        Used for fire-and-forget operations like the initial context
-        prompt in ``open_role``.  Drains stdin synchronously before
-        returning.
-        """
         if self.process is None or self.process.stdin is None:
             raise RuntimeError("hermes acp is not running")
         payload = (
@@ -367,6 +510,42 @@ class HermesBackend:
             if request_id is not None and (
                 "result" in message or "error" in message
             ):
+                prompt = self._prompt_requests.pop(request_id, None)
+                if prompt is not None:
+                    session_id, role = prompt
+                    is_active = self._active_prompts.get(session_id) == request_id
+                    if is_active:
+                        self._active_prompts.pop(session_id, None)
+                    chunks = self._prompt_chunks.pop(request_id, ())
+                    text = ""
+                    if is_active:
+                        text = "".join(chunks).strip()
+                    if "error" in message:
+                        await self.notifications.put(
+                            BackendEvent(
+                                kind="role_failed",
+                                role=role,
+                                delivery_id=str(request_id),
+                                error=json.dumps(message["error"]),
+                            )
+                        )
+                    else:
+                        if role == "foreman" and text:
+                            await self.notifications.put(
+                                BackendEvent(
+                                    kind="role_message",
+                                    role="foreman",
+                                    text=text,
+                                )
+                            )
+                        await self.notifications.put(
+                            BackendEvent(
+                                kind="turn_completed",
+                                role=role,
+                                delivery_id=str(request_id),
+                            )
+                        )
+                    continue
                 future = self._pending.pop(request_id, None)
                 if future is None:
                     continue
@@ -377,7 +556,47 @@ class HermesBackend:
                 else:
                     future.set_result(message["result"])
             elif "method" in message:
+                session_id = message.get("params", {}).get("sessionId")
+                if session_id in self._bootstrap_sessions:
+                    continue
+                update = message.get("params", {}).get("update", {})
+                if update.get("sessionUpdate") == "agent_message_chunk":
+                    content = update.get("content", {})
+                    control_request = self._control_by_session.get(session_id)
+                    if (
+                        content.get("type") == "text"
+                        and control_request is not None
+                    ):
+                        self._control_chunks.setdefault(
+                            control_request, []
+                        ).append(str(content.get("text", "")))
+                        continue
+                    active_request = self._active_prompts.get(session_id)
+                    if (
+                        content.get("type") == "text"
+                        and active_request is not None
+                    ):
+                        self._prompt_chunks.setdefault(active_request, []).append(
+                            str(content.get("text", ""))
+                        )
+                    continue
                 await self.notifications.put(message)
+        if not self._closing:
+            returncode = await self.process.wait()
+            error = f"hermes acp exited unexpectedly with status {returncode}"
+            for future in self._pending.values():
+                if not future.done():
+                    future.set_exception(RuntimeError(error))
+            self._pending.clear()
+            self._prompt_requests.clear()
+            self._active_prompts.clear()
+            self._prompt_chunks.clear()
+            self._control_requests.clear()
+            self._control_by_session.clear()
+            self._control_chunks.clear()
+            await self.notifications.put(
+                BackendEvent(kind="backend_failed", error=error)
+            )
 
     async def _drain_stderr(self) -> None:
         """Drain stderr (Hermes logs to stderr in ACP mode)."""

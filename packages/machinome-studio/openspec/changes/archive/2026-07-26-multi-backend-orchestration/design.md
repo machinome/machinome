@@ -147,7 +147,7 @@ def create_backend(name: str, *, cwd: Path, project: Path,
 The `--codex-command` flag becomes `--backend-command` (still hidden from
 help). The `--backend hermes` flag selects a Hermes ACP backend.
 
-### Hermes backend structural outline
+### Hermes backend ACP implementation
 
 `floor/backends/hermes.py` defines `HermesBackend(AgentBackend)`. Its
 `start()` launches `hermes acp` as a subprocess. `open_role()` calls
@@ -156,9 +156,10 @@ help). The `--backend hermes` flag selects a Hermes ACP backend.
 when the role is busy. Events translate from ACP `session/update`
 notifications.
 
-This file ships as a structural outline with the factory entry — it is
-not yet wired to a real `hermes acp` process. Full implementation is a
-follow-on change.
+The initial cycle introduced this boundary as a structural outline. The
+archived follow-on change
+`2026-07-26-implement-hermes-backend-acp-integration` completed and verified
+the real ACP subprocess implementation.
 
 ### RoleContext
 
@@ -191,9 +192,9 @@ tests work against either fixture through the backend factory.
   the orchestrator needs, not by what one backend already exposes. If a new
   backend cannot implement `deliver()` with start/steer semantics, revisit
   the protocol rather than forcing the backend into Codex-shaped concepts.
-- **The Hermes backend outline may be wrong** → It is labelled structural
-  and not wired to a real process. The first integration test against a real
-  `hermes acp` process will validate or correct it.
+- **Hermes ACP may evolve independently** → Keep wire behavior contained in
+  `HermesBackend`, cover it with the strict fake ACP fixture, and retain a
+  bounded live-process smoke check for protocol compatibility.
 - **Extraction may break subtle Codex behaviour** → Preserve the existing
   test suite. Add red-green coverage for the extraction before moving any
   code.
@@ -211,7 +212,8 @@ tests work against either fixture through the backend factory.
 4. Replace `CodexControl` with `AgentBackend` in `ShopOrchestrator`.
    Move notification translation into the backend's event iterator.
 5. Add `--backend` flag and `create_backend()` factory.
-6. Add `floor/backends/hermes.py` structural outline and factory entry.
+6. Add `floor/backends/hermes.py` and its factory entry; complete the ACP
+   implementation in the recorded follow-on cycle.
 7. Add `tests/fixtures/fake_acp_server.py`.
 8. Run full Python suite, browser E2E, and manual open/direct/close exercise
    with `--backend codex`.

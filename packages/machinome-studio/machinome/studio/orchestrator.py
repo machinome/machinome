@@ -71,8 +71,13 @@ class ShopOrchestrator:
                 handle = await self.backend.open_role(role, self._role_context(role))
                 self.roles[role] = RoleRuntime(handle=handle)
                 await self.broker.manifest(role, ROLE_LABELS[role])
-        except BaseException:
-            await self.close()
+        except BaseException as opening_error:
+            try:
+                await self.close()
+            except BaseException as cleanup_error:
+                opening_error.add_note(
+                    f"shop-open cleanup also failed: {cleanup_error}"
+                )
             raise
 
     async def deliver(self, envelope: Envelope | dict[str, Any]) -> None:
@@ -90,8 +95,12 @@ class ShopOrchestrator:
                 runtime.active_delivery_id = None if did in self._completed_deliveries else did
             else:
                 try:
-                    await self.backend.deliver_steer(
+                    receipt = await self.backend.deliver_steer(
                         runtime.handle, runtime.active_delivery_id, message
+                    )
+                    did = receipt.delivery_id
+                    runtime.active_delivery_id = (
+                        None if did in self._completed_deliveries else did
                     )
                 except InactiveTurn:
                     receipt = await self.backend.deliver_start(runtime.handle, message)
@@ -114,6 +123,9 @@ class ShopOrchestrator:
             runtime = self.roles.get(event.role or "")
             if runtime is not None and runtime.active_delivery_id == event.delivery_id:
                 runtime.active_delivery_id = None
+        elif event.kind in {"role_failed", "backend_failed"}:
+            subject = event.role or "agent backend"
+            raise RuntimeError(f"{subject} failed: {event.error or 'unknown error'}")
 
     @staticmethod
     def _role_context(role: str) -> RoleContext:
@@ -145,13 +157,66 @@ class ShopOrchestrator:
         return "\n".join(lines)
 
     async def close(self) -> None:
+        errors: list[BaseException] = []
         for runtime in reversed(tuple(self.roles.values())):
             if runtime.active_delivery_id is not None:
-                await self.backend.interrupt(runtime.handle)
+                try:
+                    await self.backend.interrupt(runtime.handle)
+                except BaseException as error:
+                    errors.append(error)
         for runtime in reversed(tuple(self.roles.values())):
-            await self.backend.close_role(runtime.handle)
+            try:
+                await self.backend.close_role(runtime.handle)
+            except BaseException as error:
+                errors.append(error)
         self.roles.clear()
-        await self.backend.close()
+        try:
+            await self.backend.close()
+        except BaseException as error:
+            errors.append(error)
+        if errors:
+            raise errors[0]
+
+
+async def _wait_for_runtime(
+    server_task: asyncio.Task[None],
+    route_tasks: Sequence[asyncio.Task[None]],
+) -> None:
+    """Wait until the HTTP server or a required routing loop stops.
+
+    A routing loop ending is a runtime failure, not a reason to leave an
+    apparently open but nonfunctional broker behind.
+    """
+    done, _ = await asyncio.wait(
+        (server_task, *route_tasks), return_when=asyncio.FIRST_COMPLETED
+    )
+    for task in route_tasks:
+        if task in done:
+            await task
+            raise RuntimeError("shop routing task stopped unexpectedly")
+    await server_task
+
+
+async def _shutdown_runtime(
+    orchestrator: ShopOrchestrator | None,
+    server: Any,
+    server_task: asyncio.Task[None],
+) -> None:
+    """Release backend and HTTP resources even when one cleanup step fails."""
+    errors: list[BaseException] = []
+    if orchestrator is not None:
+        try:
+            await orchestrator.close()
+        except BaseException as error:
+            errors.append(error)
+    if not server_task.done():
+        server.should_exit = True
+    try:
+        await server_task
+    except BaseException as error:
+        errors.append(error)
+    if errors:
+        raise errors[0]
 
 
 async def _serve(arguments: argparse.Namespace) -> None:
@@ -222,7 +287,7 @@ async def _serve(arguments: argparse.Namespace) -> None:
 
         delivery_task = asyncio.create_task(route_deliveries())
         event_task = asyncio.create_task(route_events())
-        await server_task
+        await _wait_for_runtime(server_task, (delivery_task, event_task))
     except asyncio.CancelledError:
         pass
     finally:
@@ -232,11 +297,7 @@ async def _serve(arguments: argparse.Namespace) -> None:
             task.cancel()
         if route_tasks:
             await asyncio.gather(*route_tasks, return_exceptions=True)
-        if orchestrator is not None:
-            await orchestrator.close()
-        if not server_task.done():
-            server.should_exit = True
-            await server_task
+        await _shutdown_runtime(orchestrator, server, server_task)
 
 
 def main() -> None:

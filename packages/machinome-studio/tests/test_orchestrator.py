@@ -19,7 +19,13 @@ from floor.app import Broker
 from floor.backends.codex import CodexBackend as CodexAppServer, InactiveTurn
 from floor.backends.base import BackendEvent, DeliveryReceipt, RoleContext, RoleHandle
 from floor.backends.hermes import HermesBackend
-from floor.orchestrator import LocalBrokerControl, ShopOrchestrator, _serve
+from floor.orchestrator import (
+    LocalBrokerControl,
+    ShopOrchestrator,
+    _serve,
+    _shutdown_runtime,
+    _wait_for_runtime,
+)
 from floor.preparation import PreparationError
 
 
@@ -178,6 +184,47 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
 
 class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
+    async def test_native_turn_identity_survives_events_steering_and_interrupt(self) -> None:
+        codex = CodexAppServer(
+            ROOT,
+            command=(sys.executable, str(FAKE_APP_SERVER)),
+        )
+        await codex.start()
+        self.addAsyncCleanup(codex.close)
+        context = RoleContext(
+            shop_checkout=str(ROOT),
+            active_project=str(ROOT / "projects" / "snowman"),
+        )
+        handle = await codex.open_role("designer", context)
+
+        receipt = await codex.deliver_start(handle, "Begin")
+        started = await asyncio.wait_for(anext(codex.events), timeout=1)
+        self.assertEqual(started.kind, "turn_started")
+        self.assertEqual(started.delivery_id, receipt.delivery_id)
+
+        steered = await codex.deliver_steer(
+            handle, started.delivery_id or "", "Adjust"
+        )
+        self.assertEqual(steered.delivery_id, receipt.delivery_id)
+        await codex.interrupt(handle)
+        completed = await asyncio.wait_for(anext(codex.events), timeout=1)
+        self.assertEqual(completed.kind, "turn_completed")
+        self.assertEqual(completed.delivery_id, receipt.delivery_id)
+
+    async def test_unexpected_process_exit_emits_backend_failure(self) -> None:
+        codex = CodexAppServer(
+            ROOT,
+            command=(sys.executable, str(FAKE_APP_SERVER)),
+        )
+        await codex.start()
+        self.addAsyncCleanup(codex.close)
+        assert codex.process is not None
+        codex.process.terminate()
+
+        event = await asyncio.wait_for(anext(codex.events), timeout=1)
+        self.assertEqual(event.kind, "backend_failed")
+        self.assertIn("exited unexpectedly", event.error or "")
+
     async def test_role_threads_work_in_the_active_project_with_explicit_shop_context(self) -> None:
         project = ROOT / "projects" / "snowman"
         callback = "http://127.0.0.1:9000/api/runs/shop-floor/model/ready/capability"
@@ -412,6 +459,47 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(self.broker.conversation, [("foreman", "Progress update.")])
 
+    async def test_steer_receipt_replaces_the_active_delivery_identity(self) -> None:
+        from tests.fixtures.fake_backend import FakeBackend
+
+        class NewIdentityBackend(FakeBackend):
+            async def deliver_steer(
+                self,
+                handle: RoleHandle,
+                expected_delivery_id: str,
+                message: str,
+            ) -> DeliveryReceipt:
+                self.deliveries.append((handle, message))
+                return DeliveryReceipt(
+                    delivery_id="replacement-delivery", accepted=True
+                )
+
+        backend = NewIdentityBackend()
+        orchestrator = ShopOrchestrator(backend, FakeBroker())
+        await orchestrator.open()
+        await orchestrator.deliver(
+            {"sequence": 30, "recipient": "designer", "body": "Begin"}
+        )
+        await orchestrator.deliver(
+            {"sequence": 31, "recipient": "designer", "body": "Correct"}
+        )
+
+        self.assertEqual(
+            orchestrator.roles["designer"].active_delivery_id,
+            "replacement-delivery",
+        )
+        await orchestrator.close()
+
+    async def test_backend_and_role_failures_fail_closed(self) -> None:
+        for event in (
+            BackendEvent(kind="backend_failed", error="process exited"),
+            BackendEvent(kind="role_failed", role="designer", error="prompt failed"),
+        ):
+            with self.subTest(kind=event.kind), self.assertRaisesRegex(
+                RuntimeError, event.error or ""
+            ):
+                await self.orchestrator.handle_event(event)
+
     async def test_close_interrupts_active_roles_in_reverse_then_closes_backend(self) -> None:
         await self.orchestrator.deliver(
             {"sequence": 14, "recipient": "foreman", "body": "Work"}
@@ -421,6 +509,103 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(len(self.backend.interrupted), 0)
         self.assertEqual(self.backend.interrupted[0].role, "foreman")
         self.assertTrue(self.backend.closed)
+
+    async def test_close_releases_every_resource_after_individual_failures(self) -> None:
+        from tests.fixtures.fake_backend import FakeBackend
+
+        class FailingBackend(FakeBackend):
+            async def interrupt(self, handle: RoleHandle) -> None:
+                await super().interrupt(handle)
+                if handle.role == "designer":
+                    raise RuntimeError("interrupt failed")
+
+            async def close_role(self, handle: RoleHandle) -> None:
+                await super().close_role(handle)
+                if handle.role == "machinist":
+                    raise RuntimeError("role close failed")
+
+        backend = FailingBackend()
+        orchestrator = ShopOrchestrator(backend, FakeBroker())
+        await orchestrator.open()
+        await orchestrator.deliver(
+            {"sequence": 20, "recipient": "foreman", "body": "Work"}
+        )
+        await orchestrator.deliver(
+            {"sequence": 21, "recipient": "designer", "body": "Work"}
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "interrupt failed"):
+            await orchestrator.close()
+        self.assertEqual(
+            [handle.role for handle in backend.interrupted],
+            ["designer", "foreman"],
+        )
+        self.assertEqual(
+            [handle.role for handle in backend.closed_roles],
+            ["machinist", "designer", "foreman"],
+        )
+        self.assertTrue(backend.closed)
+
+    async def test_open_preserves_primary_failure_after_cleanup_failure(self) -> None:
+        from tests.fixtures.fake_backend import FakeBackend
+
+        class FailingOpenBackend(FakeBackend):
+            async def open_role(
+                self, role: str, context: RoleContext
+            ) -> RoleHandle:
+                if role == "designer":
+                    raise RuntimeError("designer open failed")
+                return await super().open_role(role, context)
+
+            async def close_role(self, handle: RoleHandle) -> None:
+                await super().close_role(handle)
+                raise RuntimeError("cleanup failed")
+
+        backend = FailingOpenBackend()
+        orchestrator = ShopOrchestrator(backend, FakeBroker())
+        with self.assertRaisesRegex(RuntimeError, "designer open failed"):
+            await orchestrator.open()
+        self.assertEqual(
+            [handle.role for handle in backend.closed_roles], ["foreman"]
+        )
+        self.assertTrue(backend.closed)
+
+    async def test_route_failure_ends_runtime_wait(self) -> None:
+        async def serve_forever() -> None:
+            await asyncio.Future()
+
+        async def fail_route() -> None:
+            raise RuntimeError("delivery routing failed")
+
+        server_task = asyncio.create_task(serve_forever())
+        route_task = asyncio.create_task(fail_route())
+        self.addCleanup(server_task.cancel)
+        with self.assertRaisesRegex(RuntimeError, "delivery routing failed"):
+            await _wait_for_runtime(server_task, (route_task,))
+
+    async def test_runtime_shutdown_stops_server_when_backend_close_fails(
+        self,
+    ) -> None:
+        class FailingOrchestrator:
+            async def close(self) -> None:
+                raise RuntimeError("backend close failed")
+
+        class FakeServer:
+            should_exit = False
+
+        server = FakeServer()
+
+        async def serve_until_stopped() -> None:
+            while not server.should_exit:
+                await asyncio.sleep(0)
+
+        server_task = asyncio.create_task(serve_until_stopped())
+        with self.assertRaisesRegex(RuntimeError, "backend close failed"):
+            await _shutdown_runtime(
+                FailingOrchestrator(), server, server_task
+            )
+        self.assertTrue(server.should_exit)
+        self.assertTrue(server_task.done())
 
 
 class BackendFlagAcceptanceTest(unittest.TestCase):
@@ -464,7 +649,16 @@ class ACPFixtureTest(unittest.TestCase):
         self.addCleanup(lambda: proc.kill())
         assert proc.stdin is not None and proc.stdout is not None
 
-        proc.stdin.write(json.dumps({"id": 1, "method": "session/new", "params": {"cwd": "/tmp"}}) + "\n")
+        proc.stdin.write(
+            json.dumps(
+                {
+                    "id": 1,
+                    "method": "session/new",
+                    "params": {"cwd": "/tmp", "mcpServers": []},
+                }
+            )
+            + "\n"
+        )
         proc.stdin.flush()
         response = json.loads(proc.stdout.readline())
         self.assertEqual(response["id"], 1)
@@ -486,11 +680,88 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
     """HermesBackend exercising all AgentBackend operations through fake ACP."""
 
     async def asyncSetUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.capture = Path(self.temporary.name) / "acp.jsonl"
+        self.environment = patch.dict(
+            os.environ, {"FAKE_ACP_CAPTURE": str(self.capture)}
+        )
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
         self.hermes = HermesBackend(
             ROOT,
             project=ROOT / "projects" / "snowman",
             command=(sys.executable, str(FAKE_ACP_SERVER)),
+            solid_command=("/work/.venv/bin/solid",),
         )
+
+    def captured(self) -> list[dict]:
+        return [json.loads(line) for line in self.capture.read_text().splitlines()]
+
+    async def test_role_bootstrap_and_environment_are_operational(self) -> None:
+        await self.hermes.start()
+        callback = "http://127.0.0.1:9000/model-ready"
+        context = RoleContext(
+            shop_checkout=str(ROOT),
+            active_project=str(ROOT / "projects" / "snowman"),
+            model_callback_url=callback,
+        )
+        await self.hermes.open_role("machinist", context)
+
+        captured = self.captured()
+        environment = next(item for item in captured if item["kind"] == "environment")
+        self.assertTrue(environment["floorImportable"])
+        self.assertIn(str(ROOT), environment["pythonpath"].split(os.pathsep))
+        prompts = [
+            item["value"]
+            for item in captured
+            if item["kind"] == "message"
+            and item["value"].get("method") == "session/prompt"
+        ]
+        self.assertEqual(len(prompts), 1)
+        self.assertIn("id", prompts[0], "session/prompt must be an ACP request")
+        text = prompts[0]["params"]["prompt"][0]["text"]
+        self.assertIn(str(ROOT / "agents" / "machinist.md"), text)
+        self.assertIn(str(ROOT / "skills" / "solid-node-api" / "SKILL.md"), text)
+        self.assertIn(str(ROOT / "skills" / "solid-node" / "SKILL.md"), text)
+        self.assertIn("/work/.venv/bin/solid develop root --callback", text)
+        self.assertIn(callback, text)
+        await self.hermes.close()
+
+    async def test_prompt_events_preserve_request_identity(self) -> None:
+        await self.hermes.start()
+        context = RoleContext(
+            shop_checkout=str(ROOT),
+            active_project=str(ROOT / "projects" / "snowman"),
+        )
+        handle = await self.hermes.open_role("foreman", context)
+        receipt = await self.hermes.deliver_start(handle, "Begin")
+
+        started = await asyncio.wait_for(anext(self.hermes.events), timeout=1)
+        message = await asyncio.wait_for(anext(self.hermes.events), timeout=1)
+        completed = await asyncio.wait_for(anext(self.hermes.events), timeout=1)
+        self.assertEqual(
+            (started.kind, started.delivery_id),
+            ("turn_started", receipt.delivery_id),
+        )
+        self.assertEqual(
+            (message.kind, message.role, message.text),
+            ("role_message", "foreman", "FAKE_REPLY"),
+        )
+        self.assertEqual(
+            (completed.kind, completed.delivery_id),
+            ("turn_completed", receipt.delivery_id),
+        )
+        await self.hermes.close()
+
+    async def test_unexpected_process_exit_emits_backend_failure(self) -> None:
+        await self.hermes.start()
+        assert self.hermes.process is not None
+        self.hermes.process.terminate()
+        event = await asyncio.wait_for(anext(self.hermes.events), timeout=1)
+        self.assertEqual(event.kind, "backend_failed")
+        self.assertIn("hermes acp exited", event.error or "")
+        await self.hermes.close()
 
     async def test_full_role_lifecycle_through_fake_acp(self) -> None:
         """start -> open_role x 3 -> deliver -> close through fake ACP."""
@@ -529,6 +800,30 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         await self.hermes.deliver_start(handle, "Work")
         await self.hermes.interrupt(handle)
         await self.hermes.close_role(handle)
+        await self.hermes.close()
+
+    async def test_active_prompt_is_steered_without_replacing_its_identity(
+        self,
+    ) -> None:
+        await self.hermes.start()
+        context = RoleContext(
+            shop_checkout=str(ROOT),
+            active_project=str(ROOT / "projects" / "snowman"),
+        )
+        handle = await self.hermes.open_role("foreman", context)
+        first = await self.hermes.deliver_start(handle, "HOLD")
+        started = await asyncio.wait_for(anext(self.hermes.events), timeout=1)
+        self.assertEqual(started.delivery_id, first.delivery_id)
+
+        second = await self.hermes.deliver_steer(
+            handle, first.delivery_id, "Corrected"
+        )
+        self.assertEqual(second.delivery_id, first.delivery_id)
+
+        # The redirect acknowledgement is control-plane text, not a second turn
+        # or a role message for the maker conversation.
+        await asyncio.sleep(0.05)
+        self.assertTrue(self.hermes.notifications.empty())
         await self.hermes.close()
 
     async def test_deliver_steer_handles_inactive_turn_through_fake_acp(self) -> None:

@@ -1,4 +1,11 @@
-## MODIFIED Requirements
+# shop-agent-lifecycle Specification
+
+## Purpose
+
+Define how the shop manifests its standing role team and reflects each role's
+acknowledged assignment state in the shop-floor roster.
+
+## Requirements
 
 ### Requirement: An open shop manifests the working team
 Each newly opened shop SHALL manifest exactly one `foreman`, one `designer`,
