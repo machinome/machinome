@@ -19,6 +19,7 @@ the overview says *what is true now*.
 | `0004` | [Use published build artifacts as the functional-model boundary](./0004-static-build-artifact-boundary-for-functional-model-inspection.md) | Accepted | 2026-07-20 |
 | `0005` | [Use one app-server owner for live Codex shop orchestration](./0005-single-owner-codex-shop-orchestration.md) | Superseded by 0006 | 2026-07-21 |
 | `0006` | [Generalize shop orchestration to a pluggable agent backend](./0006-pluggable-agent-backend-orchestration.md) | Accepted | 2026-07-26 |
+| `0007` | [Depend on Hermes' off-spec second-prompt steering for active-turn corrections](./0007-hermes-second-prompt-steering.md) | Accepted | 2026-07-30 |
 
 ## Conventions
 

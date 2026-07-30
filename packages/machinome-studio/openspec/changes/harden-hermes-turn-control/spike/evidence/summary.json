@@ -1,0 +1,171 @@
+{
+  "hermes": "/home/asa/.local/bin/hermes",
+  "s0": {
+    "v2": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "agentCapabilities": {
+          "loadSession": true,
+          "promptCapabilities": {
+            "image": true
+          },
+          "sessionCapabilities": {
+            "fork": {},
+            "list": {},
+            "resume": {}
+          }
+        },
+        "agentInfo": {
+          "name": "hermes-agent",
+          "version": "0.19.0"
+        },
+        "authMethods": [
+          {
+            "description": "Authenticate Hermes using the currently configured openai-codex runtime credentials.",
+            "id": "openai-codex",
+            "name": "openai-codex runtime credentials"
+          },
+          {
+            "args": [
+              "--setup"
+            ],
+            "description": "Open Hermes' interactive model/provider setup in a terminal. Use this when Hermes has not been configured on this machine yet.",
+            "id": "hermes-setup",
+            "name": "Configure Hermes provider",
+            "type": "terminal"
+          }
+        ],
+        "protocolVersion": 1
+      }
+    },
+    "v2_teardown": {
+      "ended_by": "stdin_close",
+      "returncode": 0
+    },
+    "v1": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "agentCapabilities": {
+          "loadSession": true,
+          "promptCapabilities": {
+            "image": true
+          },
+          "sessionCapabilities": {
+            "fork": {},
+            "list": {},
+            "resume": {}
+          }
+        },
+        "agentInfo": {
+          "name": "hermes-agent",
+          "version": "0.19.0"
+        },
+        "authMethods": [
+          {
+            "description": "Authenticate Hermes using the currently configured openai-codex runtime credentials.",
+            "id": "openai-codex",
+            "name": "openai-codex runtime credentials"
+          },
+          {
+            "args": [
+              "--setup"
+            ],
+            "description": "Open Hermes' interactive model/provider setup in a terminal. Use this when Hermes has not been configured on this machine yet.",
+            "id": "hermes-setup",
+            "name": "Configure Hermes provider",
+            "type": "terminal"
+          }
+        ],
+        "protocolVersion": 1
+      }
+    },
+    "v1_teardown": {
+      "ended_by": "stdin_close",
+      "returncode": 0
+    }
+  },
+  "version_used": 2,
+  "s1": {
+    "cwd": "/tmp/acp-s1-zn3bvfsa",
+    "first_prompt_id": 3,
+    "probe_lines_when_correction_sent": 2,
+    "second_prompt_id": 4,
+    "second_prompt_latency_s": 0.0,
+    "second_response": {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "result": {
+        "stopReason": "end_turn"
+      }
+    },
+    "which_returned_first": "second(correction)",
+    "first_response": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": {
+        "stopReason": "end_turn",
+        "usage": {
+          "cachedReadTokens": 43520,
+          "inputTokens": 60192,
+          "outputTokens": 289,
+          "thoughtTokens": 152,
+          "totalTokens": 60481
+        }
+      }
+    },
+    "probe_lines_final": 60,
+    "probe_lines_added_after_correction": 58,
+    "result_txt": "REDIRECTED",
+    "stop_reasons": [],
+    "update_kinds": [
+      "agent_message_chunk",
+      "agent_thought_chunk",
+      "available_commands_update",
+      "session_info_update",
+      "tool_call",
+      "tool_call_update",
+      "usage_update"
+    ],
+    "teardown": {
+      "ended_by": "stdin_close",
+      "returncode": 0
+    },
+    "cwd_kept": "/tmp/acp-s1-zn3bvfsa"
+  },
+  "s2_s3": {
+    "cwd": "/tmp/acp-s2-v6ekn0w6",
+    "probe_lines_at_cancel": 2,
+    "first_response": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "error": {
+        "code": -32603,
+        "message": "Internal error",
+        "data": {
+          "details": "'NoneType' object has no attribute 'startswith'"
+        }
+      }
+    },
+    "cancel_to_response_s": 0.09,
+    "probe_lines_10s_after_cancel": 2,
+    "lines_added_after_cancel": 0,
+    "tool_orphaned": false,
+    "stop_reasons": [],
+    "s3_reprompt_accepted": false,
+    "s3_response": {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "result": {
+        "stopReason": "end_turn"
+      }
+    },
+    "s3_error": "AttributeError(\"'list' object has no attribute 'get'\")",
+    "teardown": {
+      "ended_by": "stdin_close",
+      "returncode": 0
+    },
+    "cwd_kept": "/tmp/acp-s2-v6ekn0w6"
+  }
+}

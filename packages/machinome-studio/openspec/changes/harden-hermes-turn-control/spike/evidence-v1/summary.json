@@ -1,0 +1,38 @@
+{
+  "hermes": "/home/asa/.local/bin/hermes",
+  "version_used": 1,
+  "s2_s3": {
+    "cwd": "/tmp/acp-s2-m_lxqbrs",
+    "probe_lines_at_cancel": 2,
+    "first_response": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "error": {
+        "code": -32603,
+        "message": "Internal error",
+        "data": {
+          "details": "'NoneType' object has no attribute 'startswith'"
+        }
+      }
+    },
+    "cancel_to_response_s": 0.09,
+    "probe_lines_10s_after_cancel": 2,
+    "lines_added_after_cancel": 0,
+    "tool_orphaned": false,
+    "stop_reasons": [],
+    "s3_reprompt_accepted": true,
+    "s3_response": {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "result": {
+        "stopReason": "end_turn"
+      }
+    },
+    "s3_agent_text": "Queued for the next turn. (1 queued)",
+    "teardown": {
+      "ended_by": "stdin_close",
+      "returncode": 0
+    },
+    "cwd_kept": "/tmp/acp-s2-m_lxqbrs"
+  }
+}
