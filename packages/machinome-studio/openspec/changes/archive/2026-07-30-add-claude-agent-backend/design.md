@@ -147,6 +147,29 @@ would reach `handle_event` as `role_failed` and raise, ending the run — the AD
 Unlike Hermes, the session is not spent afterwards, so no session is marked
 dead. The orchestrator still only calls `interrupt()` while closing.
 
+### D8a: Role readiness cannot be confirmed, and that is not a gap to close
+
+**Added during implementation.** The first attempt gated `open_role()` on the
+session's `system/init` frame, on the assumption that a session announces
+itself the way `hermes acp` answers `session/new`. It deadlocked against the
+real CLI: `claude` emits nothing at all until it receives its first input
+frame, so waiting for `init` waits forever.
+
+The obvious repair — send a cheap probe to elicit `init` — is exactly what D5
+forbids, because a probe is not a broker envelope and would put every session
+into the measured 0/3 condition. The two requirements are in direct tension and
+D5 wins.
+
+So `open_role()` returns once the process is launched and has survived a short
+startup grace. A session that dies at startup is reported with its retained
+stderr; a session that dies later surfaces as `role_failed` from its reader.
+Readiness in the stronger sense — "this session can do work" — is first proven
+by the first real delivery.
+
+This also fixed a real defect the deadlock exposed: `_drain_stderr` discarded
+everything it read, so a session that failed to start failed silently. The
+backend now retains recent stderr per role.
+
 ### D8: A fixture for the transport, a live spike for the model
 
 `tests/fixtures/fake_claude_cli.py` replays the measured frames: `system/init`,

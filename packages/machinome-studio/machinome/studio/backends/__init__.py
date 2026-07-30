@@ -24,7 +24,7 @@ def create_backend(
     model_callback_url: str | None = None,
     **_kwargs: Any,
 ) -> "AgentBackend":
-    """Return the AgentBackend for *name* ("codex" or "hermes").
+    """Return the AgentBackend for *name* ("codex", "hermes", or "claude").
 
     Raises ``ValueError`` for unknown names.
     """
@@ -54,8 +54,9 @@ def _register(name: str, cls: type[AgentBackend]) -> None:
     _BACKENDS[name] = cls
 
 
-# Import order is deliberate: base → codex → hermes so the factory map is
-# populated before ``create_backend`` is first called.
+# Import order is deliberate: base → codex → hermes → claude so the factory
+# map is populated before ``create_backend`` is first called.
 from .base import AgentBackend  # noqa: E402
 from . import codex as _codex  # noqa: E402
 from . import hermes as _hermes  # noqa: E402
+from . import claude as _claude  # noqa: E402

@@ -16,8 +16,8 @@ from unittest.mock import patch
 from urllib.request import urlopen
 
 from floor.app import Broker
-from floor.backends.codex import CodexBackend as CodexAppServer, InactiveTurn
-from floor.backends.base import BackendEvent, DeliveryReceipt, RoleContext, RoleHandle
+from floor.backends.codex import CodexBackend as CodexAppServer
+from floor.backends.base import BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle
 from floor.backends.hermes import HermesBackend
 from floor.orchestrator import (
     LocalBrokerControl,
@@ -992,3 +992,256 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ── ClaudeBackend acceptance tests against the fake Claude CLI fixture ─────
+# The fixture proves the steer *transport* only. Whether a real model acts on
+# a delivered correction is measured in the spike, not here (ADR 0009).
+
+FAKE_CLAUDE_CLI = ROOT / "tests" / "fixtures" / "fake_claude_cli.py"
+
+
+class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
+    """ClaudeBackend exercising AgentBackend operations through a fake CLI."""
+
+    async def asyncSetUp(self) -> None:
+        from floor.backends.claude import ClaudeBackend
+
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.capture = Path(self.temporary.name) / "claude.jsonl"
+        self.environment = patch.dict(
+            os.environ, {"FAKE_CLAUDE_CAPTURE": str(self.capture)}
+        )
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
+        self.project = Path(self.temporary.name) / "project"
+        self.project.mkdir()
+        self.claude = ClaudeBackend(
+            ROOT,
+            project=self.project,
+            command=(sys.executable, str(FAKE_CLAUDE_CLI)),
+            solid_command=("/work/.venv/bin/solid",),
+        )
+        self.context = RoleContext(
+            shop_checkout=str(ROOT),
+            active_project=str(self.project),
+        )
+
+    def captured(self) -> list[dict]:
+        return [json.loads(line) for line in self.capture.read_text().splitlines()]
+
+    async def test_open_role_starts_one_process_per_role(self) -> None:
+        await self.claude.start()
+        await self.claude.open_role("foreman", self.context)
+        await self.claude.open_role("designer", self.context)
+        self.assertEqual(len(self.claude.processes), 2)
+        environments = [i for i in self.captured() if i["kind"] == "environment"]
+        self.assertEqual(len(environments), 2)
+        for environment in environments:
+            self.assertEqual(environment["cwd"], str(self.project))
+            self.assertTrue(environment["floorImportable"])
+        await self.claude.close()
+
+    async def test_role_contract_is_session_level_not_a_turn(self) -> None:
+        """The first user message must be a broker envelope (ADR 0009)."""
+        await self.claude.start()
+        await self.claude.open_role("machinist", self.context)
+        captured = self.captured()
+
+        argv = next(i for i in captured if i["kind"] == "environment")["argv"]
+        contract = argv[argv.index("--append-system-prompt") + 1]
+        self.assertIn(str(ROOT / "agents" / "machinist.md"), contract)
+        self.assertIn(str(ROOT / "skills" / "solid-node-api" / "SKILL.md"), contract)
+        self.assertIn("trusted control plane", contract)
+
+        user_messages = [
+            i for i in captured
+            if i["kind"] == "message" and i["value"].get("type") == "user"
+        ]
+        self.assertEqual(user_messages, [], "open_role must not send a user turn")
+        await self.claude.close()
+
+    async def test_role_card_supplies_model_and_tools(self) -> None:
+        await self.claude.start()
+        await self.claude.open_role("machinist", self.context)
+        argv = next(i for i in self.captured() if i["kind"] == "environment")["argv"]
+        self.assertEqual(argv[argv.index("--model") + 1], "sonnet")
+        self.assertIn("Bash", argv[argv.index("--tools") + 1])
+        self.assertIn("--safe-mode", argv)
+        await self.claude.close()
+
+    async def test_delivery_is_completed_under_the_minted_identifier(self) -> None:
+        await self.claude.start()
+        handle = await self.claude.open_role("foreman", self.context)
+        receipt = await self.claude.deliver_start(handle, "Begin")
+
+        started = await asyncio.wait_for(anext(self.claude.events), timeout=5)
+        message = await asyncio.wait_for(anext(self.claude.events), timeout=5)
+        completed = await asyncio.wait_for(anext(self.claude.events), timeout=5)
+        self.assertEqual(
+            (started.kind, started.delivery_id),
+            ("turn_started", receipt.delivery_id),
+        )
+        self.assertEqual(
+            (message.kind, message.role, message.text),
+            ("role_message", "foreman", "FAKE_REPLY"),
+        )
+        self.assertEqual(
+            (completed.kind, completed.delivery_id),
+            ("turn_completed", receipt.delivery_id),
+        )
+        await self.claude.close()
+
+    async def test_steering_preserves_identity_and_yields_one_completion(self) -> None:
+        await self.claude.start()
+        handle = await self.claude.open_role("machinist", self.context)
+        receipt = await self.claude.deliver_start(handle, "HOLD")
+        started = await asyncio.wait_for(anext(self.claude.events), timeout=5)
+        self.assertEqual(started.kind, "turn_started")
+
+        steered = await self.claude.deliver_steer(
+            handle, receipt.delivery_id, "Also chamfer the edge."
+        )
+        self.assertEqual(steered.delivery_id, receipt.delivery_id)
+
+        completed = await asyncio.wait_for(anext(self.claude.events), timeout=5)
+        self.assertEqual(
+            (completed.kind, completed.delivery_id),
+            ("turn_completed", receipt.delivery_id),
+        )
+        with self.assertRaises(asyncio.TimeoutError):
+            await asyncio.wait_for(anext(self.claude.events), timeout=0.5)
+        await self.claude.close()
+
+    async def test_steer_after_completion_becomes_a_new_delivery(self) -> None:
+        """No InactiveTurn: the CLI cannot report the race (ADR 0008)."""
+        await self.claude.start()
+        handle = await self.claude.open_role("foreman", self.context)
+        receipt = await self.claude.deliver_start(handle, "Begin")
+        for _ in range(3):  # started, role_message, completed
+            await asyncio.wait_for(anext(self.claude.events), timeout=5)
+
+        steered = await self.claude.deliver_steer(
+            handle, receipt.delivery_id, "A late correction."
+        )
+        self.assertNotEqual(steered.delivery_id, receipt.delivery_id)
+        started = await asyncio.wait_for(anext(self.claude.events), timeout=5)
+        self.assertEqual(
+            (started.kind, started.delivery_id),
+            ("turn_started", steered.delivery_id),
+        )
+        await self.claude.close()
+
+    async def test_interrupted_turn_completes_and_does_not_fail_the_role(self) -> None:
+        await self.claude.start()
+        handle = await self.claude.open_role("machinist", self.context)
+        receipt = await self.claude.deliver_start(handle, "HOLD")
+        await asyncio.wait_for(anext(self.claude.events), timeout=5)
+
+        await self.claude.interrupt(handle)
+        completed = await asyncio.wait_for(anext(self.claude.events), timeout=5)
+        self.assertEqual(
+            (completed.kind, completed.delivery_id),
+            ("turn_completed", receipt.delivery_id),
+        )
+        await self.claude.close()
+
+    async def test_one_role_process_exiting_is_a_role_failure(self) -> None:
+        await self.claude.start()
+        await self.claude.open_role("foreman", self.context)
+        handle = await self.claude.open_role("designer", self.context)
+        self.claude.processes[handle.backend_id].terminate()
+
+        event = await asyncio.wait_for(anext(self.claude.events), timeout=5)
+        self.assertEqual((event.kind, event.role), ("role_failed", "designer"))
+        await self.claude.close()
+
+    async def test_partial_open_releases_already_started_processes(self) -> None:
+        await self.claude.start()
+        await self.claude.open_role("foreman", self.context)
+        with patch.object(
+            self.claude, "_role_command", side_effect=RuntimeError("boom")
+        ):
+            with self.assertRaises(RuntimeError):
+                await self.claude.open_role("designer", self.context)
+        await self.claude.close()
+        self.assertEqual(self.claude.processes, {})
+
+
+class ClaudeBackendStartupFailureTest(unittest.IsolatedAsyncioTestCase):
+    """A session that dies at startup must say why.
+
+    Written after implementation, not red-first: the need surfaced only when
+    the real CLI deadlocked a readiness gate and stderr had been discarded
+    (design.md D8a).
+    """
+
+    async def test_startup_exit_reports_stderr(self) -> None:
+        from floor.backends.claude import ClaudeBackend
+
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        project = Path(temporary.name) / "project"
+        project.mkdir()
+        claude = ClaudeBackend(
+            ROOT,
+            project=project,
+            command=(
+                sys.executable,
+                "-c",
+                "import sys; sys.stderr.write('no such flag\\n'); sys.exit(2)",
+            ),
+        )
+        context = RoleContext(
+            shop_checkout=str(ROOT), active_project=str(project)
+        )
+        await claude.start()
+        with self.assertRaises(RuntimeError) as caught:
+            await claude.open_role("foreman", context)
+        self.assertIn("exited at startup with status 2", str(caught.exception))
+        self.assertIn("no such flag", str(caught.exception))
+        self.assertEqual(claude.processes, {})
+        await claude.close()
+
+
+class ClaudeBackendShutdownTest(unittest.IsolatedAsyncioTestCase):
+    """close() must release every owned process, bounded, even a stubborn one."""
+
+    async def test_close_forces_a_process_that_ignores_sigterm(self) -> None:
+        from floor.backends.claude import ClaudeBackend
+
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        project = Path(temporary.name) / "project"
+        project.mkdir()
+        with patch.dict(os.environ, {"FAKE_CLAUDE_IGNORE_SIGNALS": "1"}):
+            claude = ClaudeBackend(
+                ROOT,
+                project=project,
+                command=(sys.executable, str(FAKE_CLAUDE_CLI)),
+                stop_timeout=0.5,
+            )
+            context = RoleContext(
+                shop_checkout=str(ROOT),
+                active_project=str(project),
+            )
+            await claude.start()
+            await claude.open_role("foreman", context)
+            await claude.open_role("designer", context)
+            processes = list(claude.processes.values())
+
+            await asyncio.wait_for(claude.close(), timeout=10)
+            for process in processes:
+                self.assertIsNotNone(process.returncode)
+            self.assertEqual(claude.processes, {})
+
+
+class ClaudeBackendFlagTest(unittest.TestCase):
+    def test_claude_backend_selected(self) -> None:
+        from pathlib import Path
+        from floor.backends import create_backend
+        from floor.backends.claude import ClaudeBackend
+
+        backend = create_backend("claude", cwd=Path("/tmp"))
+        self.assertIsInstance(backend, ClaudeBackend)

@@ -54,7 +54,9 @@ stop the shop-floor service before telling the maker that the shop is closed.
 
 Closing SHALL complete within a bounded time. Ending a session that has active
 work SHALL NOT prevent the runtime from closing, and no agent subprocess SHALL
-be left running after the maker is told the shop is closed.
+be left running after the maker is told the shop is closed. When the selected
+backend owns more than one agent subprocess, this SHALL hold for every one of
+them.
 
 #### Scenario: A maker closes the shop
 - **WHEN** a maker closes the shop
@@ -71,6 +73,10 @@ be left running after the maker is told the shop is closed.
 #### Scenario: Ending active work does not abort the close
 - **WHEN** ending an agent's active work reports an error while the shop is closing
 - **THEN** the runtime still ends the remaining sessions, stops shop-floor, and reports that the shop is closed
+
+#### Scenario: Closing releases every process of a multi-process backend
+- **WHEN** a maker closes the shop running a backend that owns one subprocess per role and one of those subprocesses does not exit when asked
+- **THEN** the runtime forces that subprocess to stop, still releases the others, and reports that the shop is closed
 
 ### Requirement: The shop validates the model before it becomes open
 When the runtime opens a named project shop floor, the system SHALL build the
@@ -106,4 +112,16 @@ again without a page reload.
 #### Scenario: The service restarts while the browser page remains open
 - **WHEN** the shop-floor service restarts at the same browser location after the page displayed `Shop is closed`
 - **THEN** the page reconnects through Server-Sent Events and displays `Shop is open` without a page reload
+
+### Requirement: A maker can open the shop with the Claude backend
+The shop runtime SHALL support opening the shop with the Claude backend, using
+the same broker, role cards, skills, and product pipeline as the other backends.
+
+#### Scenario: A maker opens the shop with the Claude backend
+- **WHEN** a maker opens the shop with `--backend claude`
+- **THEN** the runtime uses the Claude backend for all three agent sessions
+
+#### Scenario: Claude role sessions are sandboxed to the project
+- **WHEN** the runtime opens the shop with the Claude backend after preparing `projects/<name>`
+- **THEN** each Foreman, Designer, and Machinist session uses that verified repository as its workspace boundary
 

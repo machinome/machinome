@@ -17,8 +17,7 @@ from typing import Any, Protocol
 import uvicorn
 
 from .app import Broker, Envelope, ROLE_LABELS, create_app
-from .backends.base import AgentBackend, BackendEvent, DeliveryReceipt, RoleContext, RoleHandle
-from .backends.codex import InactiveTurn
+from .backends.base import AgentBackend, BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle
 from .backends import create_backend
 from .preparation import PreparationError, default_project_home, default_solid_command, prepare_project, primary_shop_root
 
@@ -305,7 +304,7 @@ def main() -> None:
     parser.add_argument("project_name", help="lowercase kebab-case project name below projects/")
     parser.add_argument("--port", type=int, default=int(os.environ.get("FLOOR_PORT", "9000")))
     parser.add_argument("--cwd", type=Path, default=Path.cwd(), help="shop checkout containing role adapters")
-    parser.add_argument("--backend", choices=("codex", "hermes"), default="codex",
+    parser.add_argument("--backend", choices=("codex", "hermes", "claude"), default="codex",
                         help="agent backend (default: codex)")
     parser.add_argument("--project-home", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--solid-command", help=argparse.SUPPRESS)

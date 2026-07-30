@@ -20,10 +20,10 @@ from .base import (
     AgentBackend,
     BackendEvent,
     DeliveryReceipt,
+    InactiveTurn,
     RoleContext,
     RoleHandle,
 )
-from .codex import InactiveTurn
 
 # Hermes streams one of these as an ``agent_message_chunk`` when it accepts a
 # correction into a running turn. They are control-plane chatter, not turn

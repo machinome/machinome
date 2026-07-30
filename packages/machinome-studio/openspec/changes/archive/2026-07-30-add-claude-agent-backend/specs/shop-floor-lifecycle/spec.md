@@ -23,6 +23,10 @@ them.
 - **WHEN** a maker closes the shop and the agent subprocess does not exit when asked
 - **THEN** the runtime forces it to stop, completes the close, and reports that the shop is closed
 
+#### Scenario: Ending active work does not abort the close
+- **WHEN** ending an agent's active work reports an error while the shop is closing
+- **THEN** the runtime still ends the remaining sessions, stops shop-floor, and reports that the shop is closed
+
 #### Scenario: Closing releases every process of a multi-process backend
 - **WHEN** a maker closes the shop running a backend that owns one subprocess per role and one of those subprocesses does not exit when asked
 - **THEN** the runtime forces that subprocess to stop, still releases the others, and reports that the shop is closed

@@ -13,6 +13,19 @@ from pathlib import Path
 from typing import Protocol
 
 
+# ── delivery races ────────────────────────────────────────────────────────
+
+
+class InactiveTurn(RuntimeError):
+    """The expected delivery completed before steering was accepted.
+
+    Part of the portable contract, not one backend's detail: each backend
+    learns of the race differently — Codex from an error response, Hermes
+    from its own outstanding-prompt record — and a backend whose runtime
+    provides no such signal at all never raises it (see ADR 0008).
+    """
+
+
 # ── role context & handles ────────────────────────────────────────────────
 
 
@@ -77,9 +90,11 @@ class BackendEvent:
 class AgentBackend(Protocol):
     """Protocol for a pluggable agent-runtime backend.
 
-    Every backend owns one external process (``codex app-server``, ``hermes
-    acp``, …) and translates between its native protocol and the portable
-    operations and events defined here.
+    A backend owns every external process it starts — one for all roles
+    (``codex app-server``, ``hermes acp``) or one per role (``claude``) —
+    and releases all of them on ``close()``.  It translates between its
+    native protocol and the portable operations and events defined here.
+    Cardinality is a backend's own business; ownership is not (ADR 0008).
 
     The orchestrator never sees thread/turn IDs, ACP session handles, or
     provider configuration — only the abstractions below.
@@ -120,10 +135,11 @@ class AgentBackend(Protocol):
     ) -> DeliveryReceipt:
         """Steer an active delivery (turn redirect).
 
-        Raises ``InactiveTurn`` (imported from the backend module) when
-        *expected_delivery_id* no longer matches — i.e. a completion race
-        was lost.  The orchestrator catches this and retries with
-        ``deliver_start``.
+        Raises ``InactiveTurn`` when *expected_delivery_id* no longer
+        matches — i.e. a completion race was lost.  The orchestrator
+        catches this and retries with ``deliver_start``.  A backend whose
+        runtime cannot report the race never raises it and resolves the
+        ambiguity internally instead (ADR 0008).
         """
         ...
 

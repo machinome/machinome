@@ -48,21 +48,23 @@ The running shop has four layers, with strict responsibility boundaries:
                                                 non-model, zero tokens at standby)
                                                      │  portable AgentBackend protocol
                                                      ▼
-                       ┌─────────────────────────────┴─────────────────────────────┐
-                       │                                                            │
-                 --backend codex                                              --backend hermes
-                       │                                                            │
-                CODEX BACKEND                                                HERMES BACKEND
-                floor/backends/codex.py                                     floor/backends/hermes.py
-                `codex app-server --stdio`                                  `hermes acp`
-                JSON-RPC over stdio                                          ACP over stdio
-                       │                                                            │
-              persistent Codex threads                                 persistent ACP sessions
-                ┌──────┼──────┐                                            ┌──────┼──────┐
-                ▼      ▼      ▼                                            ▼      ▼      ▼
-             foreman designer machinist                                 foreman designer machinist
-                │      │      │                                            │      │      │
-                └──────┴──────┴──────────── shared role contracts ──────────┴──────┴──────┘
+      ┌────────────────────────┬────────────────────────┬────────────────────────┐
+      │                        │                        │                        │
+ --backend codex        --backend hermes         --backend claude                │
+      │                        │                        │                        │
+ CODEX BACKEND           HERMES BACKEND           CLAUDE BACKEND                  │
+ backends/codex.py       backends/hermes.py       backends/claude.py              │
+ `codex app-server`      `hermes acp`             `claude -p` x3                  │
+ JSON-RPC over stdio     ACP over stdio           stream-json over stdio          │
+      │                        │                        │                        │
+ ONE process,            ONE process,             ONE PROCESS PER ROLE            │
+ 3 threads               3 ACP sessions           (ADR 0008)                      │
+ ┌────┼────┐             ┌────┼────┐              ┌────┼────┐                     │
+ ▼    ▼    ▼             ▼    ▼    ▼              ▼    ▼    ▼                     │
+foreman designer      foreman designer         foreman designer                   │
+     machinist             machinist                machinist                     │
+      │                        │                        │                        │
+      └────────────────────────┴──── shared role contracts ──┴────────────────────┘
                                   agents/*.md
                                   skills/*/SKILL.md
 ```
@@ -95,7 +97,7 @@ There is exactly one run, hard-coded id `shop-floor`.
 A deterministic, non-model process. **It is not an agent and makes no
 decisions** — it is a lifecycle owner and delivery adapter (ADR 0006).
 
-- Composes one backend selected by `--backend {codex,hermes}`. Default:
+- Composes one backend selected by `--backend {codex,hermes,claude}`. Default:
   `codex`.
 - At open, calls `backend.open_role()` for each role to create one persistent
   agent session per role, then manifests each to the broker. Sessions persist
@@ -141,12 +143,16 @@ class AgentBackend(Protocol):
 Common events: `role_message`, `turn_started`, `turn_completed`,
 `role_failed`, `backend_failed`.
 
-| Backend | Process | Protocol | Role primitive | Steer primitive |
-|---|---|---|---|---|
-| `codex` | `codex app-server --stdio` | JSON-RPC over stdio | Persistent Codex thread | `turn/steer` on the owned turn |
-| `hermes` | `hermes acp` | ACP over stdio | Persistent ACP session | Extra `session/prompt` on the live session |
+| Backend | Process model | Protocol | Role primitive | Steer primitive | Delivery identity |
+|---|---|---|---|---|---|
+| `codex` | one process, three threads | JSON-RPC over stdio | Persistent Codex thread | `turn/steer` on the owned turn | Codex `turnId` |
+| `hermes` | one process, three sessions | ACP over stdio | Persistent ACP session | Extra `session/prompt` on the live session | Adapter-minted request id |
+| `claude` | **one process per role** | stream-json over stdio | One `claude -p` conversation | Extra user frame on the live turn | Adapter-minted, correlated to `result` |
 
-Both backends deliver a correction into a turn that is already running, so
+A backend owns every process it starts and releases all of them on `close()`.
+Cardinality is the backend's own business; ownership is not (ADR 0008).
+
+All three backends deliver a correction into a turn that is already running, so
 `deliver_steer()` is specified by outcome rather than mechanism: the correction
 reaches the role at its next model or tool boundary, the turn survives, and the
 original delivery identity stays active until that turn's own response arrives.
@@ -162,10 +168,35 @@ end the run, and a cancelled session is never returned to standby.
 The shop speaks ACP `protocolVersion: 1`, which is what hermes 0.19.0
 negotiates even when offered `2`.
 
-Both adapters bound their close path, escalating from input close to `SIGTERM`
-to `SIGKILL`, so no shutdown can block on a subprocess that declines to exit.
-Hermes separates its control-plane budget (`initialize`, `session/new`) from its
-prompt budget, so a slow role-contract bootstrap cannot fail shop open.
+Claude reaches the same outcome through the CLI's own queued-input behaviour:
+input written while a turn is running is injected at the next tool boundary and
+the whole exchange answers with a single `result`. Two properties are specific
+to it. There is no turn identifier anywhere in the stream, so the adapter mints
+delivery ids and correlates them positionally — sound only because the
+orchestrator holds one delivery per role at a time. And the runtime cannot
+report a steer/completion race at all, so `deliver_steer()` never raises
+`InactiveTurn` there; a late correction simply becomes a new delivery.
+
+Whether a Claude role *acts* on a delivered correction is conditional, not
+guaranteed: it depends on the broker envelope being the format of every message
+from the session's first, which is why the role contract is delivered as a
+system prompt rather than an opening turn (ADR 0009). The session also emits
+nothing until its first input, so role readiness cannot be probed without
+sending a message — and a probe would not be an envelope. A Claude session that
+dies is detected by early exit at open and by its reader afterwards, with recent
+stderr retained for diagnosis.
+
+Interrupt fidelity differs. Codex interrupts a turn; Claude interrupts a turn
+and the session keeps working; Hermes cannot interrupt usefully at all. The
+portable contract stays at the lowest common denominator — the orchestrator
+interrupts only while closing — and every backend reports an interrupted turn as
+a completion rather than a role failure, so interrupting can never end the run.
+
+All adapters bound their close path, escalating from input close to `SIGTERM`
+to `SIGKILL`, so no shutdown can block on a subprocess that declines to exit;
+the Claude backend runs that ladder once per owned process. Hermes separates its
+control-plane budget (`initialize`, `session/new`) from its prompt budget, so a
+slow role-contract bootstrap cannot fail shop open.
 
 ### Layer 4 — Agents (backend sessions)
 
@@ -176,9 +207,11 @@ not processes the broker manages.
   authoritative per-role contract. They are identical across backends.
 - **Backend-specific adapters** give each role its runtime instructions.
   Codex reads `.codex/agents/*.toml`; Hermes sends and awaits an ACP bootstrap
-  prompt. Both direct the session to load the authoritative role card and every
-  named skill from the shop checkout. Neither backend duplicates those
-  contracts.
+  prompt; Claude passes the contract as a system prompt and needs no adapter
+  file at all, reading `model:` and `tools:` straight from the role card, whose
+  frontmatter already uses Claude Code's own vocabulary. All three direct the
+  session to load the authoritative role card and every named skill from the
+  shop checkout. No backend duplicates those contracts.
 - **Skills** (`skills/*/SKILL.md`) are loaded once by the agent at startup.
   `skills/running-the-shop/` is the foreman's operating loop;
   `skills/solid-node-api/` is the framework's public contract;
@@ -311,8 +344,16 @@ The checkout is also a workspace, and its boundaries are enforced.
 These are accurate as of this writing; keep them current (see `AGENTS.md`).
 
 - The persistent broker/orchestration, the `AgentBackend` protocol, and the
-  `--backend` flag are implemented for both Codex and Hermes (ADR 0006, ADR
-  0007). Codex is the default and the more exercised path.
+  `--backend` flag are implemented for Codex, Hermes, and Claude (ADR 0006,
+  0007, 0008, 0009). Codex is the default and the more exercised path.
+- Claude steering is guaranteed at the transport layer but only best-effort at
+  the model layer (ADR 0009). A spike measured a delivered correction being
+  acted on 4/4 times in the shop's configuration and 0/3 times when the broker
+  envelope was not used from the session's first message. No fixture can cover
+  that half; re-running `openspec/changes/archive/*-add-claude-agent-backend/
+  spike/claude_turn_control.py` is the regression check, and it is unmeasured
+  on models other than Sonnet 5 and on real builds rather than synthetic tool
+  calls.
 - Hermes steering depends on undocumented Hermes behaviour rather than on any
   ACP guarantee (ADR 0007). The fake ACP fixture replays the frame sequence
   measured against hermes 0.19.0, so a Hermes change that removes it fails the
@@ -339,6 +380,7 @@ These are accurate as of this writing; keep them current (see `AGENTS.md`).
 | `floor/backends/base.py` | `AgentBackend` protocol, role handles, and portable events. |
 | `floor/backends/codex.py` | Codex backend: Codex app-server client. |
 | `floor/backends/hermes.py` | Hermes backend: Hermes ACP client. |
+| `floor/backends/claude.py` | Claude backend: one `claude` CLI process per role. |
 | `floor/preparation.py` | Fail-closed named-project preparation and validation. |
 | `floor/agent.py` | CLI for agents to talk to the broker. |
 | `floor/foreman.py` | CLI for the foreman to publish to the maker conversation. |
@@ -364,7 +406,7 @@ These are accurate as of this writing; keep them current (see `AGENTS.md`).
 | `0003` | Separate porter (lifecycle) from foreman (work). | Superseded by 0005 |
 | `0004` | Completed `_build/` artifacts as the functional-model boundary. | Accepted |
 | `0005` | One deterministic owner for the Codex app-server; broker speaks role names only. | Superseded by 0006 |
-| `0006` | Generalize shop orchestration to a pluggable agent backend. | Accepted |
+| `0006` | Generalize shop orchestration to a pluggable agent backend. | Accepted (process model amended by 0008) |
 
 Read an ADR for the reasoning and context behind a boundary; read this file
 for the boundary as it stands.

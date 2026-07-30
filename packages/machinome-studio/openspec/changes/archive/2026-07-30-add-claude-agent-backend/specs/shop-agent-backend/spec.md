@@ -29,7 +29,8 @@ The orchestrator SHALL call `open_role()` once per role at shop open,
 for an envelope addressed to an active role, `interrupt()` on shop close or
 shutdown, and `close_role()` to release the session. The backend
 SHALL translate its native protocol events into portable `BackendEvent`
-instances consumed by the orchestrator.
+instances consumed by the orchestrator. The Hermes backend SHALL operate a
+real `hermes acp` subprocess rather than raising `NotImplementedError`.
 
 A backend MAY own one external process per role session rather than a single
 process for all roles. Process cardinality SHALL NOT change a backend's
@@ -70,6 +71,10 @@ an interrupted role as available for a subsequent delivery.
 #### Scenario: An interrupted role is not returned to standby
 - **WHEN** the orchestrator interrupts an active role while closing the shop
 - **THEN** the orchestrator does not deliver further envelopes to that role and does not report it as waiting
+
+#### Scenario: Hermes backend is independently testable against a fake ACP fixture
+- **WHEN** a fake ACP server fixture is provided as the `hermes acp` command
+- **THEN** the orchestrator exercises the Hermes backend through the same `AgentBackend` operations as the Codex backend and all operations succeed without `NotImplementedError`
 
 ## ADDED Requirements
 

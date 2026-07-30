@@ -21,16 +21,10 @@ from .base import (
     AgentBackend,
     BackendEvent,
     DeliveryReceipt,
+    InactiveTurn,
     RoleContext,
     RoleHandle,
 )
-
-
-# ── InactiveTurn (delivery completion race) ────────────────────────────────
-
-
-class InactiveTurn(RuntimeError):
-    """The expected turn completed before steering was accepted."""
 
 
 # ── CodexBackend ───────────────────────────────────────────────────────────
