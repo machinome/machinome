@@ -20,6 +20,8 @@ the overview says *what is true now*.
 | `0005` | [Use one app-server owner for live Codex shop orchestration](./0005-single-owner-codex-shop-orchestration.md) | Superseded by 0006 | 2026-07-21 |
 | `0006` | [Generalize shop orchestration to a pluggable agent backend](./0006-pluggable-agent-backend-orchestration.md) | Accepted | 2026-07-26 |
 | `0007` | [Depend on Hermes' off-spec second-prompt steering for active-turn corrections](./0007-hermes-second-prompt-steering.md) | Accepted | 2026-07-30 |
+| `0008` | [Add a Claude Code backend, and let a backend own one process per role](./0008-claude-backend-one-process-per-role.md) | Accepted | 2026-07-30 |
+| `0009` | [Carry Claude corrections on a channel the role has trusted since its first instruction](./0009-claude-correction-channel-consistency.md) | Accepted | 2026-07-30 |
 
 ## Conventions
 
