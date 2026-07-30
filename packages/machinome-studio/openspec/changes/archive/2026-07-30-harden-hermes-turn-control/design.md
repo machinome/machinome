@@ -99,6 +99,23 @@ which is now provably correct — the correction executes inside that turn. The
 "misattribution leak" named in the previous proposal was a misreading and is
 withdrawn.
 
+**Amended during implementation.** The first attempt suppressed *all* chunks on
+a session between sending a correction and reading its acknowledgement. A
+red-first test caught that this drops genuine turn output: `turn_started` is
+queued before the write is drained, so a correction can be sent while the
+turn's earlier text is still unread, and session-scoped suppression eats it.
+The two cannot be told apart from session state — both directions are
+independent streams, so a chunk read after our write may have been emitted
+before it.
+
+The acknowledgement is therefore filtered by its known text
+(`STEER_ACKNOWLEDGEMENTS`), and only while a correction is outstanding on that
+session. This does use Hermes' prose, but for *content filtering*, never for
+control flow, which is the line ADR 0007 draws. It also degrades in the safe
+direction: if Hermes rewords the acknowledgement, a stray sentence reaches the
+conversation while turn output and delivery identity stay correct. The
+alternative loses real work.
+
 ### D4: Stop discarding pre-steer output
 
 Remove the `_prompt_chunks[expected_id] = []` reset (`hermes.py:207`). It was

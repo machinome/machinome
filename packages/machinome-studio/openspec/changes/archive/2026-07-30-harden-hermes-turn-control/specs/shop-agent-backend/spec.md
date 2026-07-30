@@ -66,9 +66,10 @@ outstanding. It SHALL NOT decide this from the agent's natural-language reply.
 - **WHEN** `deliver_start(handle, message)` is called on an idle session
 - **THEN** the backend sends `session/prompt` with the message as a text content block and returns an accepted `DeliveryReceipt`
 
-#### Scenario: Hermes backend steers an active turn without cancelling it
+#### Scenario: Hermes backend steers active turns
 - **WHEN** `deliver_steer(handle, expected_id, message)` is called while the prompt identified by `expected_id` is still outstanding
 - **THEN** the backend sends an additional `session/prompt` carrying the correction, sends no `session/cancel`, and returns a receipt that still identifies `expected_id` as the active delivery
+- **AND IF** the prompt identified by `expected_id` has already responded, the backend raises `InactiveTurn`
 
 #### Scenario: The steer acknowledgement is not a turn completion
 - **WHEN** Hermes answers the correction's `session/prompt` immediately while the original prompt remains outstanding

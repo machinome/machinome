@@ -27,7 +27,8 @@ cancel the active prompt, then send the correction as a new prompt. The two
 disagreed, and neither had been measured.
 
 A spike against the installed `hermes` 0.19.0 settled it
-(`openspec/changes/.../spike/`, evidence retained):
+(`openspec/changes/archive/2026-07-30-harden-hermes-turn-control/spike/`, with
+raw JSON-RPC traces in both directions retained):
 
 - A second `session/prompt` on a busy session is Hermes' steer surface. Hermes
   streams `"Redirected the active turn with your correction."` as an
@@ -59,6 +60,12 @@ decided from the shop's own record of whether the original prompt is still
 outstanding. The correction's immediate response is an acknowledgement, not a
 turn completion: the original delivery remains the active identity until its own
 response arrives.
+
+Hermes' acknowledgement sentence MAY be matched to keep it out of the maker's
+conversation, because the two streams carry no marker that separates it from
+turn output. That is content filtering only, and it fails safe: an unrecognised
+acknowledgement adds a stray sentence rather than losing turn output or
+changing a delivery identity. It SHALL NOT influence control flow.
 
 Cancellation SHALL be reserved for closing or shutting down the shop. A
 cancelled prompt SHALL be reported as a completed turn rather than a role

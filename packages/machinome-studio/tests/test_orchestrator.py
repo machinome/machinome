@@ -854,6 +854,141 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self.assertIs(self.hermes.process, process)
         await self.hermes.close()
 
+    async def _foreman(self) -> RoleHandle:
+        await self.hermes.start()
+        return await self.hermes.open_role(
+            "foreman",
+            RoleContext(
+                shop_checkout=str(ROOT),
+                active_project=str(ROOT / "projects" / "snowman"),
+            ),
+        )
+
+    def _methods(self) -> list[str]:
+        return [
+            item["value"]["method"]
+            for item in self.captured()
+            if item["kind"] == "message" and "method" in item["value"]
+        ]
+
+    async def test_steering_never_cancels_the_active_turn(self) -> None:
+        """ADR 0007: a correction is an extra prompt, never a cancellation."""
+        handle = await self._foreman()
+        first = await self.hermes.deliver_start(handle, "HOLD")
+
+        steered = await self.hermes.deliver_steer(
+            handle, first.delivery_id, "Corrected"
+        )
+
+        self.assertEqual(steered.delivery_id, first.delivery_id)
+        self.assertNotIn("session/cancel", self._methods())
+        await self.hermes.close()
+
+    async def test_steer_acknowledgement_is_not_a_turn_completion(self) -> None:
+        """The instant bare stop reason must not complete either delivery."""
+        handle = await self._foreman()
+        first = await self.hermes.deliver_start(handle, "HOLD")
+        started = await asyncio.wait_for(anext(self.hermes.events), timeout=1)
+        self.assertEqual(started.delivery_id, first.delivery_id)
+
+        await self.hermes.deliver_steer(handle, first.delivery_id, "Corrected")
+        await asyncio.sleep(0.1)
+
+        # No turn_completed for either identity, and the original is still
+        # the session's active prompt.
+        self.assertTrue(self.hermes.notifications.empty())
+        self.assertEqual(
+            self.hermes._active_prompts.get(handle.backend_id),
+            int(first.delivery_id),
+        )
+        await self.hermes.close()
+
+    async def test_text_streamed_before_a_correction_is_retained(self) -> None:
+        """Steering preserves the turn, so its earlier output must survive.
+
+        Deliberately does not sleep before steering. `turn_started` is queued
+        before the write is drained, so the correction is sent while the turn's
+        first chunk is still unread — the case where suppressing chunks by
+        session would silently eat real output. The assembled message must
+        still contain the pre-correction text and not the acknowledgement.
+        """
+        handle = await self._foreman()
+        first = await self.hermes.deliver_start(handle, "HOLD")
+        started = await asyncio.wait_for(anext(self.hermes.events), timeout=1)
+        self.assertEqual(started.kind, "turn_started")
+
+        # "FINISH" makes the fixture apply the correction inside the held turn.
+        await self.hermes.deliver_steer(handle, first.delivery_id, "FINISH now")
+
+        message = await asyncio.wait_for(anext(self.hermes.events), timeout=2)
+        completed = await asyncio.wait_for(anext(self.hermes.events), timeout=2)
+        self.assertEqual((message.kind, message.role), ("role_message", "foreman"))
+        self.assertEqual(message.text, "PREPOST")
+        self.assertEqual(
+            (completed.kind, completed.delivery_id),
+            ("turn_completed", first.delivery_id),
+        )
+        await self.hermes.close()
+
+    async def test_cancelled_turn_completes_and_is_not_a_role_failure(self) -> None:
+        """hermes 0.19.0 fails a cancelled prompt; that must not kill the run."""
+        handle = await self._foreman()
+        receipt = await self.hermes.deliver_start(handle, "HOLD")
+        started = await asyncio.wait_for(anext(self.hermes.events), timeout=1)
+        self.assertEqual(started.kind, "turn_started")
+
+        await self.hermes.interrupt(handle)
+
+        event = await asyncio.wait_for(anext(self.hermes.events), timeout=2)
+        self.assertEqual(
+            (event.kind, event.delivery_id),
+            ("turn_completed", receipt.delivery_id),
+            "a cancelled turn must complete, not fail the role",
+        )
+        await self.hermes.close()
+
+    async def test_slow_role_bootstrap_still_opens_the_shop(self) -> None:
+        """A bootstrap slower than the control budget is not a protocol stall."""
+        hermes = HermesBackend(
+            ROOT,
+            project=ROOT / "projects" / "snowman",
+            command=(sys.executable, str(FAKE_ACP_SERVER)),
+            solid_command=("/work/.venv/bin/solid",),
+            control_timeout=0.3,
+            prompt_timeout=20,
+        )
+        with patch.dict(os.environ, {"FAKE_ACP_PROMPT_DELAY": "1.5"}):
+            await hermes.start()
+            handle = await hermes.open_role(
+                "foreman",
+                RoleContext(
+                    shop_checkout=str(ROOT),
+                    active_project=str(ROOT / "projects" / "snowman"),
+                ),
+            )
+        self.assertEqual(handle.role, "foreman")
+        await hermes.close()
+
+    async def test_close_is_bounded_against_a_subprocess_that_ignores_signals(
+        self,
+    ) -> None:
+        """close() must escalate to SIGKILL rather than wait forever."""
+        with patch.dict(os.environ, {"FAKE_ACP_IGNORE_SIGNALS": "1"}):
+            hermes = HermesBackend(
+                ROOT,
+                project=ROOT / "projects" / "snowman",
+                command=(sys.executable, str(FAKE_ACP_SERVER)),
+                solid_command=("/work/.venv/bin/solid",),
+            )
+            await hermes.start()
+            process = hermes.process
+            assert process is not None
+            started = time.monotonic()
+            await asyncio.wait_for(hermes.close(), timeout=20)
+            elapsed = time.monotonic() - started
+        self.assertIsNotNone(process.returncode)
+        self.assertLess(elapsed, 15, "close() must be bounded")
+
 
 if __name__ == "__main__":
     unittest.main()

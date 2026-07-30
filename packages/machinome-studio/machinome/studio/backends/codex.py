@@ -208,15 +208,22 @@ class CodexBackend:
         self._closing = True
         if self.process.stdin is not None:
             self.process.stdin.close()
-        try:
-            await asyncio.wait_for(self.process.wait(), timeout=5)
-        except asyncio.TimeoutError:
-            self.process.terminate()
-            await self.process.wait()
+        # Escalate so no close path can wait forever on a subprocess that
+        # declines to exit: input close, then SIGTERM, then SIGKILL.
+        for stop in (None, self.process.terminate, self.process.kill):
+            if stop is not None:
+                stop()
+            try:
+                await asyncio.wait_for(self.process.wait(), timeout=5)
+                break
+            except asyncio.TimeoutError:
+                continue
         if self._reader_task is not None:
-            await self._reader_task
+            self._reader_task.cancel()
+            await asyncio.gather(self._reader_task, return_exceptions=True)
         if self._stderr_task is not None:
-            await self._stderr_task
+            self._stderr_task.cancel()
+            await asyncio.gather(self._stderr_task, return_exceptions=True)
         self._pending.clear()
         self._active_turns.clear()
         self._handles.clear()

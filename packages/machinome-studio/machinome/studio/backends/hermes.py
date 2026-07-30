@@ -25,6 +25,25 @@ from .base import (
 )
 from .codex import InactiveTurn
 
+# Hermes streams one of these as an ``agent_message_chunk`` when it accepts a
+# correction into a running turn. They are control-plane chatter, not turn
+# output, so they are filtered out of the assembled message.
+#
+# This is content filtering only. ADR 0007 forbids deciding delivery identity
+# from agent prose, and nothing here does: if Hermes reworded these, a stray
+# sentence would reach the conversation, but no turn output would be lost and
+# no delivery identity would change. Suppressing by session instead would drop
+# genuine turn text that was still in flight when the correction was sent.
+STEER_ACKNOWLEDGEMENTS = (
+    "Redirected the active turn with your correction.",
+    "Queued for the next turn.",
+)
+
+
+def _is_steer_acknowledgement(text: str) -> bool:
+    stripped = text.strip()
+    return any(stripped.startswith(marker) for marker in STEER_ACKNOWLEDGEMENTS)
+
 
 class HermesBackend:
     """AgentBackend backed by a ``hermes acp`` subprocess.
@@ -47,6 +66,9 @@ class HermesBackend:
         broker_url: str = "http://127.0.0.1:9000",
         solid_command: str | Sequence[str] = "solid",
         model_callback_url: str | None = None,
+        control_timeout: float = 30,
+        prompt_timeout: float = 900,
+        stop_timeout: float = 5,
     ) -> None:
         self.cwd = cwd.resolve()
         self.project = (project or cwd).resolve()
@@ -56,6 +78,12 @@ class HermesBackend:
             (solid_command,) if isinstance(solid_command, str) else tuple(solid_command)
         )
         self.model_callback_url = model_callback_url
+        # Control-plane liveness (initialize, session/new) and model work are
+        # different budgets: a role bootstrap reads a role card and every skill
+        # it names, which says nothing about whether the protocol is alive.
+        self.control_timeout = control_timeout
+        self.prompt_timeout = prompt_timeout
+        self.stop_timeout = stop_timeout
 
         # Subprocess state (set by start())
         self.process: asyncio.subprocess.Process | None = None
@@ -74,9 +102,14 @@ class HermesBackend:
         # Prompt request_id -> (session_id, role), for response correlation.
         self._prompt_requests: dict[int, tuple[str, str]] = {}
         self._prompt_chunks: dict[int, list[str]] = {}
-        self._control_requests: dict[int, tuple[str, str]] = {}
-        self._control_by_session: dict[str, int] = {}
-        self._control_chunks: dict[int, list[str]] = {}
+        # Steer prompts carry a correction into a turn that is already running.
+        # They are not turns of their own, so they never reach the orchestrator.
+        self._steer_requests: set[int] = set()
+        self._steer_by_session: dict[str, int] = {}
+        # Sessions this backend cancelled. Hermes 0.19.0 fails their outstanding
+        # prompt instead of reporting a "cancelled" stop reason, and cannot run
+        # anything afterwards (see ADR 0007).
+        self._cancelled_sessions: set[str] = set()
         self._bootstrap_sessions: set[str] = set()
         self._closing = False
 
@@ -152,6 +185,7 @@ class HermesBackend:
                         }
                     ],
                 },
+                timeout=self.prompt_timeout,
             )
         except BaseException:
             self._handles.pop(session_id, None)
@@ -184,14 +218,21 @@ class HermesBackend:
         expected_delivery_id: str,
         message: str,
     ) -> DeliveryReceipt:
-        """Steer an active prompt.  Raises InactiveTurn on completion race."""
+        """Steer the active prompt.  Raises InactiveTurn on a completion race.
+
+        Per ADR 0007 this sends an additional ``session/prompt`` and never
+        ``session/cancel``: Hermes applies the correction to the turn already
+        running, delivering it at the next tool-batch boundary. The turn — and
+        therefore the delivery identity — survives.
+        """
         session_id = handle.backend_id
         try:
             expected_id = int(expected_delivery_id)
         except ValueError:
             raise InactiveTurn from None
 
-        # Check whether the expected prompt already completed.
+        # The only authority on whether the turn is still live is our own
+        # record of the outstanding prompt. Never the agent's prose reply.
         if expected_id not in self._prompt_requests:
             raise InactiveTurn
 
@@ -199,56 +240,24 @@ class HermesBackend:
         if active is None or active != expected_id:
             raise InactiveTurn
 
-        # A second regular ACP prompt is Hermes' active-turn redirect surface.
-        # Hermes either redirects the current model request or queues the text
-        # for the current prompt coroutine to drain before it completes. Keep
-        # the original delivery identity in both cases. If the completion race
-        # made this run as a normal prompt instead, publish it as a replacement.
-        self._prompt_chunks[expected_id] = []
-        control_id, text = await self._send_control_prompt(handle, message)
-        if (
-            "Redirected the active turn with your correction." in text
-            or "queued for the next turn" in text.lower()
-        ):
-            return DeliveryReceipt(
-                delivery_id=expected_delivery_id, accepted=True
-            )
-
-        # The original prompt completed between the local active check and the
-        # ACP request. Hermes ran the correction as a normal prompt; publish its
-        # lifecycle in portable order and return its request identity.
-        self.notifications.put_nowait(
-            BackendEvent(
-                kind="turn_started",
-                role=handle.role,
-                delivery_id=str(control_id),
-            )
-        )
-        if handle.role == "foreman" and text.strip():
-            self.notifications.put_nowait(
-                BackendEvent(
-                    kind="role_message",
-                    role="foreman",
-                    text=text.strip(),
-                )
-            )
-        self.notifications.put_nowait(
-            BackendEvent(
-                kind="turn_completed",
-                role=handle.role,
-                delivery_id=str(control_id),
-            )
-        )
-        return DeliveryReceipt(delivery_id=str(control_id), accepted=True)
+        await self._send_steer_prompt(handle, message)
+        return DeliveryReceipt(delivery_id=expected_delivery_id, accepted=True)
 
     async def interrupt(self, handle: RoleHandle) -> None:
-        """Interrupt the active prompt (best-effort)."""
+        """Cancel the active prompt.  Spends the session (ADR 0007).
+
+        hermes 0.19.0 cannot run anything on a session after it is cancelled, so
+        this is reserved for closing or shutting down the shop and the session is
+        never returned to standby.
+        """
         session_id = handle.backend_id
+        self._cancelled_sessions.add(session_id)
         await self._notify("session/cancel", {"sessionId": session_id})
 
     async def close_role(self, handle: RoleHandle) -> None:
         """Release a role session (best-effort — cancels active prompt)."""
         session_id = handle.backend_id
+        self._cancelled_sessions.add(session_id)
         await self._notify("session/cancel", {"sessionId": session_id})
         self._handles.pop(session_id, None)
         self._active_prompts.pop(session_id, None)
@@ -260,22 +269,29 @@ class HermesBackend:
         self._closing = True
         if self.process.stdin is not None:
             self.process.stdin.close()
-        try:
-            await asyncio.wait_for(self.process.wait(), timeout=5)
-        except asyncio.TimeoutError:
-            self.process.terminate()
-            await self.process.wait()
+        # Escalate so no close path can wait forever on a subprocess that
+        # declines to exit: input close, then SIGTERM, then SIGKILL.
+        for stop in (None, self.process.terminate, self.process.kill):
+            if stop is not None:
+                stop()
+            try:
+                await asyncio.wait_for(self.process.wait(), timeout=self.stop_timeout)
+                break
+            except asyncio.TimeoutError:
+                continue
         if self._reader_task is not None:
-            await self._reader_task
+            self._reader_task.cancel()
+            await asyncio.gather(self._reader_task, return_exceptions=True)
         if self._stderr_task is not None:
-            await self._stderr_task
+            self._stderr_task.cancel()
+            await asyncio.gather(self._stderr_task, return_exceptions=True)
         self._pending.clear()
         self._prompt_requests.clear()
         self._active_prompts.clear()
         self._prompt_chunks.clear()
-        self._control_requests.clear()
-        self._control_by_session.clear()
-        self._control_chunks.clear()
+        self._steer_requests.clear()
+        self._steer_by_session.clear()
+        self._cancelled_sessions.clear()
         self._handles.clear()
         self.process = None
         self._reader_task = None
@@ -373,9 +389,14 @@ class HermesBackend:
     # ── JSON-RPC plumbing ──────────────────────────────────────────────
 
     async def _request(
-        self, method: str, params: dict[str, Any]
+        self, method: str, params: dict[str, Any], timeout: float | None = None
     ) -> dict[str, Any]:
-        """Send a JSON-RPC request and await the response."""
+        """Send a JSON-RPC request and await the response.
+
+        ``timeout`` defaults to the control-plane budget. Prompt work must pass
+        ``self.prompt_timeout`` instead: model work taking longer than a
+        liveness check is healthy, not a stalled protocol.
+        """
         if self.process is None or self.process.stdin is None:
             raise RuntimeError("hermes acp is not running")
         self._next_id += 1
@@ -393,7 +414,10 @@ class HermesBackend:
         self.process.stdin.write(payload.encode())
         await self.process.stdin.drain()
         try:
-            return await asyncio.wait_for(future, timeout=30)
+            return await asyncio.wait_for(
+                future,
+                timeout=self.control_timeout if timeout is None else timeout,
+            )
         finally:
             if self._pending.get(request_id) is future:
                 self._pending.pop(request_id, None)
@@ -441,22 +465,24 @@ class HermesBackend:
             raise
         return request_id
 
-    async def _send_control_prompt(
-        self, handle: RoleHandle, message: str
-    ) -> tuple[int, str]:
-        """Send a Hermes ACP control prompt without exposing it as a turn."""
+    async def _send_steer_prompt(self, handle: RoleHandle, message: str) -> int:
+        """Carry a correction into the turn already running on this session.
+
+        Hermes answers this request immediately with a bare stop reason that is
+        an acknowledgement, not a completion, so it is deliberately not awaited
+        and never becomes a portable turn. The original prompt's own response
+        remains the turn's completion.
+        """
         if self.process is None or self.process.stdin is None:
             raise RuntimeError("hermes acp is not running")
         self._next_id += 1
         request_id = self._next_id
         session_id = handle.backend_id
-        future: asyncio.Future[dict[str, Any]] = (
-            asyncio.get_running_loop().create_future()
-        )
-        self._pending[request_id] = future
-        self._control_requests[request_id] = (session_id, handle.role)
-        self._control_by_session[session_id] = request_id
-        self._control_chunks[request_id] = []
+        self._steer_requests.add(request_id)
+        # Text streamed between this request and its acknowledgement is
+        # control-plane chatter ("Redirected the active turn with your
+        # correction."), not turn output. Suppress it until the ack lands.
+        self._steer_by_session[session_id] = request_id
         payload = (
             json.dumps(
                 {
@@ -473,16 +499,12 @@ class HermesBackend:
         self.process.stdin.write(payload.encode())
         try:
             await self.process.stdin.drain()
-            await asyncio.wait_for(future, timeout=30)
-            text = "".join(self._control_chunks.get(request_id, ())).strip()
-            return request_id, text
-        finally:
-            if self._pending.get(request_id) is future:
-                self._pending.pop(request_id, None)
-            self._control_requests.pop(request_id, None)
-            if self._control_by_session.get(session_id) == request_id:
-                self._control_by_session.pop(session_id, None)
-            self._control_chunks.pop(request_id, None)
+        except BaseException:
+            self._steer_requests.discard(request_id)
+            if self._steer_by_session.get(session_id) == request_id:
+                self._steer_by_session.pop(session_id, None)
+            raise
+        return request_id
 
     async def _notify(
         self, method: str, params: dict[str, Any]
@@ -510,6 +532,14 @@ class HermesBackend:
             if request_id is not None and (
                 "result" in message or "error" in message
             ):
+                if request_id in self._steer_requests:
+                    # Acknowledgement of a correction carried into a live turn.
+                    # Not a turn: emit nothing and stop suppressing chunks.
+                    self._steer_requests.discard(request_id)
+                    for session, steer in tuple(self._steer_by_session.items()):
+                        if steer == request_id:
+                            self._steer_by_session.pop(session, None)
+                    continue
                 prompt = self._prompt_requests.pop(request_id, None)
                 if prompt is not None:
                     session_id, role = prompt
@@ -520,6 +550,19 @@ class HermesBackend:
                     text = ""
                     if is_active:
                         text = "".join(chunks).strip()
+                    # A prompt this backend cancelled ends the turn, however the
+                    # subprocess chose to report it. hermes 0.19.0 answers with
+                    # a transport error rather than a "cancelled" stop reason,
+                    # and treating that as a role failure would end the run.
+                    if "error" in message and session_id in self._cancelled_sessions:
+                        await self.notifications.put(
+                            BackendEvent(
+                                kind="turn_completed",
+                                role=role,
+                                delivery_id=str(request_id),
+                            )
+                        )
+                        continue
                     if "error" in message:
                         await self.notifications.put(
                             BackendEvent(
@@ -562,14 +605,10 @@ class HermesBackend:
                 update = message.get("params", {}).get("update", {})
                 if update.get("sessionUpdate") == "agent_message_chunk":
                     content = update.get("content", {})
-                    control_request = self._control_by_session.get(session_id)
-                    if (
-                        content.get("type") == "text"
-                        and control_request is not None
+                    if session_id in self._steer_by_session and (
+                        _is_steer_acknowledgement(str(content.get("text", "")))
                     ):
-                        self._control_chunks.setdefault(
-                            control_request, []
-                        ).append(str(content.get("text", "")))
+                        # Hermes acknowledging the correction, not turn output.
                         continue
                     active_request = self._active_prompts.get(session_id)
                     if (
@@ -591,9 +630,8 @@ class HermesBackend:
             self._prompt_requests.clear()
             self._active_prompts.clear()
             self._prompt_chunks.clear()
-            self._control_requests.clear()
-            self._control_by_session.clear()
-            self._control_chunks.clear()
+            self._steer_requests.clear()
+            self._steer_by_session.clear()
             await self.notifications.put(
                 BackendEvent(kind="backend_failed", error=error)
             )

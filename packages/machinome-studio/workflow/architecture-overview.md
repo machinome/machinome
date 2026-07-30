@@ -101,9 +101,9 @@ decisions** — it is a lifecycle owner and delivery adapter (ADR 0006).
   agent session per role, then manifests each to the broker. Sessions persist
   with **no token use while idle**.
 - Subscribes to the broker's delivery queue and routes each envelope to its
-  role handle: `backend.deliver()` when the role is idle, with the active
-  delivery ID while it is active. It acknowledges broker delivery only after
-  the backend accepts the input.
+  role handle: `backend.deliver_start()` when the role is idle,
+  `backend.deliver_steer()` with the active delivery ID while it is working. It
+  acknowledges broker delivery only after the backend accepts the input.
 - Handles the completion race: if a delivery fails because the role already
   completed, it retries the envelope as a fresh delivery on the now-idle role.
 - On backend events, records the foreman's agent messages into the maker
@@ -129,7 +129,10 @@ class AgentBackend(Protocol):
 
     async def start(self) -> None: ...
     async def open_role(self, role: str, context: RoleContext) -> RoleHandle: ...
-    async def deliver(self, handle: RoleHandle, message: str) -> DeliveryReceipt: ...
+    async def deliver_start(self, handle: RoleHandle, message: str) -> DeliveryReceipt: ...
+    async def deliver_steer(
+        self, handle: RoleHandle, expected_delivery_id: str, message: str
+    ) -> DeliveryReceipt: ...
     async def interrupt(self, handle: RoleHandle) -> None: ...
     async def close_role(self, handle: RoleHandle) -> None: ...
     async def close(self) -> None: ...
@@ -138,13 +141,31 @@ class AgentBackend(Protocol):
 Common events: `role_message`, `turn_started`, `turn_completed`,
 `role_failed`, `backend_failed`.
 
-| Backend | Process | Protocol | Role primitive |
-|---|---|---|---|
-| `codex` | `codex app-server --stdio` | JSON-RPC over stdio | Persistent Codex thread |
-| `hermes` | `hermes acp` | ACP over stdio | Persistent ACP session |
+| Backend | Process | Protocol | Role primitive | Steer primitive |
+|---|---|---|---|---|
+| `codex` | `codex app-server --stdio` | JSON-RPC over stdio | Persistent Codex thread | `turn/steer` on the owned turn |
+| `hermes` | `hermes acp` | ACP over stdio | Persistent ACP session | Extra `session/prompt` on the live session |
 
-The current `CodexAppServer` in `floor/orchestrator.py` SHALL move to
-`floor/backends/codex.py` and implement `AgentBackend`.
+Both backends deliver a correction into a turn that is already running, so
+`deliver_steer()` is specified by outcome rather than mechanism: the correction
+reaches the role at its next model or tool boundary, the turn survives, and the
+original delivery identity stays active until that turn's own response arrives.
+
+Hermes reaches that outcome through behaviour no ACP version specifies — a
+second `session/prompt` on a busy session (ADR 0007). ACP's own
+`session/cancel` is not used for steering: on hermes 0.19.0 it fails the
+pending prompt with a transport error and leaves the session unable to run
+anything further. Cancellation is therefore reserved for shutdown, a cancelled
+turn is reported as completed rather than failed so interrupting a role cannot
+end the run, and a cancelled session is never returned to standby.
+
+The shop speaks ACP `protocolVersion: 1`, which is what hermes 0.19.0
+negotiates even when offered `2`.
+
+Both adapters bound their close path, escalating from input close to `SIGTERM`
+to `SIGKILL`, so no shutdown can block on a subprocess that declines to exit.
+Hermes separates its control-plane budget (`initialize`, `session/new`) from its
+prompt budget, so a slow role-contract bootstrap cannot fail shop open.
 
 ### Layer 4 — Agents (backend sessions)
 
@@ -289,9 +310,14 @@ The checkout is also a workspace, and its boundaries are enforced.
 
 These are accurate as of this writing; keep them current (see `AGENTS.md`).
 
-- The persistent broker/orchestration is implemented and tested **for
-  Codex**. The multi-backend protocol and `--backend` flag are proposed
-  (ADR 0006, change `multi-backend-orchestration`) but not yet implemented.
+- The persistent broker/orchestration, the `AgentBackend` protocol, and the
+  `--backend` flag are implemented for both Codex and Hermes (ADR 0006, ADR
+  0007). Codex is the default and the more exercised path.
+- Hermes steering depends on undocumented Hermes behaviour rather than on any
+  ACP guarantee (ADR 0007). The fake ACP fixture replays the frame sequence
+  measured against hermes 0.19.0, so a Hermes change that removes it fails the
+  suite instead of degrading silently. `session/cancel` is broken upstream on
+  that version, so the shop has no usable mid-run interrupt for Hermes roles.
 - The shop is private and experimental; roles and disciplines are being
   exercised and revised before release.
 - Restart recovery is intentionally absent (ADR 0005).
