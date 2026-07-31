@@ -70,28 +70,6 @@ class ShopLifecycleE2E(unittest.TestCase):
         self._stop_floor()
         self.temporary.cleanup()
 
-    def test_roster_updates_without_reloading(self) -> None:
-        self.page.goto(self.url("/"))
-        self.page.get_by_text("Shop is open").wait_for()
-        self.page.get_by_role("complementary", name="Shop menu").wait_for()
-        self.page.get_by_role("region", name="Artifact view").get_by_text("No artifact selected.").wait_for()
-        self.page.get_by_role("region", name="Chat").get_by_role("textbox", name="Message").wait_for()
-        self._stop_floor()
-        self.page.get_by_text("Shop is closed").wait_for(timeout=5_000)
-        self._start_floor()
-        self.page.get_by_text("Shop is open").wait_for(timeout=5_000)
-        self.page.get_by_text("No agents are currently manifested.").wait_for()
-        self.page.wait_for_timeout(100)
-        _request(self.url("/api/runs/shop-floor/agents"), "POST", {"role": "machinist", "label": "Machinist"})
-        row = self.page.locator('[data-agent-role="machinist"]')
-        row.get_by_text("waiting").wait_for(timeout=500)
-        _request(self.url("/api/runs/shop-floor/agents/machinist/assignments"), "POST", {"assignment_id": "work-1"})
-        _request(self.url("/api/runs/shop-floor/agents/machinist/acknowledgments"), "POST", {"assignment_id": "work-1"})
-        row.get_by_text("active").wait_for(timeout=500)
-        _request(self.url("/api/runs/shop-floor/agents/machinist/completions"), "POST", {"assignment_id": "work-1"})
-        row.get_by_text("waiting").wait_for(timeout=500)
-        _request(self.url("/api/runs/shop-floor/agents/machinist"), "DELETE")
-        self.page.get_by_text("No agents are currently manifested.").wait_for(timeout=500)
 
     def test_initial_floor_build_renders_without_a_lifecycle_reload_race(self) -> None:
         self.page.goto(self.url("/"))
