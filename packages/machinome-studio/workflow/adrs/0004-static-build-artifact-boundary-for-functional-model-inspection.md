@@ -1,6 +1,7 @@
 # ADR 0004: Use published build artifacts as the functional-model boundary
 
-**Status:** Accepted
+**Status:** Accepted — the artifact boundary stands; the callback refresh
+mechanism is superseded by [ADR 0010](./0010-shop-owned-model-watcher.md)
 
 **Date:** 2026-07-20
 

@@ -77,7 +77,6 @@ class ClaudeBackend:
         command: str | Sequence[str] = "claude",
         broker_url: str = "http://127.0.0.1:9000",
         solid_command: str | Sequence[str] = "solid",
-        model_callback_url: str | None = None,
         startup_grace: float = 0.5,
         stop_timeout: float = 5,
     ) -> None:
@@ -88,7 +87,6 @@ class ClaudeBackend:
         self.solid_command = (
             (solid_command,) if isinstance(solid_command, str) else tuple(solid_command)
         )
-        self.model_callback_url = model_callback_url
         # How long to watch a freshly launched session for an immediate
         # exit before treating it as started.
         self.startup_grace = startup_grace
@@ -293,14 +291,6 @@ class ClaudeBackend:
         ]
         for skill in self._role_skills(card):
             lines.append(f"Required skill: {shop / 'skills' / skill / 'SKILL.md'}")
-        if role == "machinist" and context.model_callback_url is not None:
-            lines.append(
-                "Live model development command (run it from the active "
-                "project and keep it running throughout an active machining "
-                "assignment): "
-                f"{shlex.join(self.solid_command)} develop root "
-                f"--callback {shlex.quote(context.model_callback_url)}"
-            )
         lines.append(TRUST_FRAMING)
         return "\n".join(lines)
 

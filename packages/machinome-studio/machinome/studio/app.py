@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 import json
 from collections import deque
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping, Sequence
+from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,6 +15,8 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+from .watcher import ModelWatcher
 
 
 RUN_ID = "shop-floor"
@@ -380,12 +383,42 @@ def create_app(
     project_root: Path | None = None,
     *,
     artifact_root: Path | None = None,
-    callback_token: str | None = None,
     broker: Broker | None = None,
+    solid_command: Sequence[str] | None = None,
+    build_environment: Mapping[str, str] | None = None,
+    poll_interval: float = 0.5,
 ) -> FastAPI:
-    app = FastAPI(title="shop-floor")
+    # The watcher belongs to the application, not the orchestrator: the
+    # thing it refreshes is this app's own artifact route, and this app
+    # is what publishes model_changed. Both entry points -- the full
+    # orchestrated floor and broker-only mode -- get it with no
+    # duplicated wiring. An app built without a solid command runs no
+    # watcher and spawns no subprocesses.
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        watcher_task: asyncio.Task[None] | None = None
+        if solid_command is not None and project_root is not None and build_root is not None:
+            watcher = ModelWatcher(
+                project_root,
+                build_root,
+                solid_command,
+                app.state.broker.publish,
+                extra_environment=build_environment,
+                poll_interval=poll_interval,
+            )
+            app.state.model_watcher = watcher
+            watcher_task = asyncio.create_task(watcher.run())
+        try:
+            yield
+        finally:
+            if watcher_task is not None:
+                watcher_task.cancel()
+                await asyncio.gather(watcher_task, return_exceptions=True)
+
+    app = FastAPI(title="shop-floor", lifespan=lifespan)
     broker = broker or Broker()
     app.state.broker = broker
+    app.state.model_watcher = None
     app.mount("/assets", StaticFiles(directory=STATIC_ROOT / "assets"), name="assets")
     build_root = artifact_root or (project_root / "_build" if project_root is not None else None)
 
@@ -441,14 +474,6 @@ def create_app(
     async def publish_foreman_message(run_id: str, input: ConversationInput) -> JSONResponse:
         _require_run(run_id)
         return JSONResponse((await _conversation_or_400(broker, "foreman", input.text)).browser_value())
-
-    @app.post("/api/runs/{run_id}/model/ready/{token}")
-    async def model_ready(run_id: str, token: str) -> Response:
-        _require_run(run_id)
-        if callback_token is None or token != callback_token:
-            raise HTTPException(status_code=404, detail="unknown model callback")
-        broker.publish("model_changed", {})
-        return Response(status_code=204)
 
     @app.post("/api/runs/{run_id}/agents")
     async def manifest(run_id: str, input: ManifestInput) -> JSONResponse:
@@ -575,6 +600,10 @@ def _event_summary(kind: str, role: str, sender: str, recipient: str, assignment
         return "Conversation updated"
     if kind == "model_changed":
         return "Model updated"
+    if kind == "model_build_failed":
+        return "Model rebuild failed"
+    if kind == "model_build_succeeded":
+        return "Model rebuilt"
     return kind.replace("_", " ").title()
 
 

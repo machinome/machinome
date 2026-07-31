@@ -139,16 +139,15 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual(_raw(self.url("/artifacts/part.stl")), "solid part")
         self.assertEqual(_status(self.url("/artifacts/../__init__.py"), "GET"), 404)
 
-    def test_valid_callback_publishes_model_changed_event(self) -> None:
-        self._restart_floor(Path(tempfile.mkdtemp()), callback_token="opaque")
-        self.addCleanup(lambda: __import__("shutil").rmtree(self.project, ignore_errors=True))
-        self.assertEqual(_status(self.url("/api/runs/shop-floor/model/ready/wrong"), "POST"), 404)
-        self.assertEqual(_status(self.url("/api/runs/shop-floor/model/ready/opaque"), "POST"), 204)
+    def test_the_removed_model_callback_route_is_gone(self) -> None:
+        # The floor refreshes the model itself now; nothing may post a
+        # refresh into it. See tests/test_model_watcher.py.
+        self.assertEqual(_status(self.url("/api/runs/shop-floor/model/ready/anything"), "POST"), 404)
 
     def url(self, path: str) -> str:
         return f"http://127.0.0.1:{self.port}{path}"
 
-    def _restart_floor(self, project: Path, callback_token: str | None = None) -> None:
+    def _restart_floor(self, project: Path) -> None:
         self._stop_floor()
         self._project_number += 1
         name = f"restart-{self._project_number}"
@@ -167,12 +166,10 @@ class FloorAPITest(unittest.TestCase):
             environment["FAKE_SOLID_MODEL"] = model
             environment["FAKE_SOLID_MODEL_CONTENT"] = (target / "_build" / model).read_text()
         self.project = target
-        self._start_floor(name, callback_token=callback_token, environment=environment)
+        self._start_floor(name, environment=environment)
 
-    def _start_floor(self, name: str, *, callback_token: str | None = None, environment: dict[str, str] | None = None) -> None:
+    def _start_floor(self, name: str, *, environment: dict[str, str] | None = None) -> None:
         command = ["python", "-m", "floor", name, "--port", str(self.port), "--project-home", str(self.project_home), "--solid-command", str(FAKE_SOLID)]
-        if callback_token:
-            command += ["--callback-token", callback_token]
         self.process = subprocess.Popen(command, cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, env=environment or self._environment())
         _wait_for_health(self.url("/health"))
 

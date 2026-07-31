@@ -22,7 +22,6 @@ def main() -> None:
         default=int(os.environ.get("FLOOR_PORT", "9000")),
         help="local browser port (default: 9000 or FLOOR_PORT)",
     )
-    parser.add_argument("--callback-token", help="local token accepted from solid develop callbacks")
     parser.add_argument("--project-home", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--solid-command", help=argparse.SUPPRESS)
     arguments = parser.parse_args()
@@ -35,7 +34,12 @@ def main() -> None:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(1) from error
     uvicorn.run(
-        create_app(prepared.project_root, artifact_root=prepared.artifact_root, callback_token=arguments.callback_token),
+        create_app(
+            prepared.project_root,
+            artifact_root=prepared.artifact_root,
+            solid_command=prepared.solid_command,
+            build_environment=prepared.build_environment,
+        ),
         host="127.0.0.1",
         port=arguments.port,
     )

@@ -33,10 +33,12 @@ class RoleContractTest(unittest.TestCase):
         self.assertIn("Reports and maker messages wake your persistent thread", process)
         self.assertNotIn("Inspect specialist messages and the two checkpoint paths after 60 seconds", process)
 
-    def test_machinist_keeps_callback_development_running_during_an_assignment(self) -> None:
+    def test_machinist_is_not_told_to_run_a_live_model_process(self) -> None:
+        # The shop watches the project and rebuilds it, so the maker's
+        # view no longer depends on an agent keeping a process alive.
         machinist = (ROOT / "agents" / "machinist.md").read_text()
-        self.assertIn("solid develop root --callback", machinist)
-        self.assertIn("throughout the active assignment", machinist)
+        self.assertNotIn("solid develop", machinist)
+        self.assertIn("The shop keeps the maker's artifact view current on its own", machinist)
 
     def test_specialists_obey_the_assignment_lifecycle_before_loading_role_material(self) -> None:
         for role in ("designer", "machinist"):

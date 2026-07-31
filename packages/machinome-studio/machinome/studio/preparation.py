@@ -21,6 +21,39 @@ class PreparedProject:
     project_root: Path
     model: Path
     artifact_root: Path
+    solid_command: tuple[str, ...] = ()
+    build_environment: dict[str, str] | None = None
+
+    def build_invocation(self) -> tuple[tuple[str, ...], dict[str, str] | None]:
+        """The command and environment overlay that builds this project.
+
+        The watcher rebuilds the same project the same way preparation
+        first built it; carrying the invocation on the prepared project
+        keeps one definition rather than two that can drift apart.
+        """
+        return build_command(self.solid_command), self.build_environment
+
+
+def build_command(solid_command: str | Sequence[str]) -> tuple[str, ...]:
+    return (*_command(solid_command), "build", "root")
+
+
+def build_environment(shop_root: Path | None) -> dict[str, str] | None:
+    """PYTHONPATH overlay for a solid-node checkout inside the shop.
+
+    When solid-node is run from a checkout inside the shop, the checkout
+    must be on PYTHONPATH for ``python -c "from solid_node.cli ..."`` to
+    find the package.
+    """
+    if shop_root is None:
+        return None
+    solid_node_path = shop_root / "solid-node"
+    if not solid_node_path.is_dir():
+        return None
+    existing = os.environ.get("PYTHONPATH", "")
+    return {"PYTHONPATH": os.pathsep.join(
+        item for item in (str(solid_node_path), existing) if item
+    )}
 
 
 class PreparationError(RuntimeError):
@@ -99,17 +132,7 @@ def prepare_project(
     project_root = resolve_project(name, project_home)
     assert name is not None
     created = not project_root.exists()
-    # When solid-node is run from a checkout inside the shop, add the
-    # solid-node checkout to PYTHONPATH so ``python -m solid_node.cli``
-    # can find the package.
-    solid_env: dict[str, str] | None = None
-    if shop_root is not None:
-        solid_node_path = shop_root / "solid-node"
-        if solid_node_path.is_dir():
-            existing = os.environ.get("PYTHONPATH", "")
-            solid_env = {"PYTHONPATH": os.pathsep.join(
-                item for item in (str(solid_node_path), existing) if item
-            )}
+    solid_env = build_environment(shop_root)
     if created:
         _run(
             (*_command(solid_command), "new", name),
@@ -137,7 +160,7 @@ def prepare_project(
     snapshot = artifact_root / "viewer.json"
     previous = _fingerprint(snapshot)
     _run(
-        (*_command(solid_command), "build", "root"),
+        build_command(solid_command),
         cwd=project_root,
         stage="build",
         name=name,
@@ -147,7 +170,14 @@ def prepare_project(
     if previous is not None and _fingerprint(snapshot) == previous:
         raise PreparationError("snapshot", name, project_root, "build left the previous viewer snapshot unchanged")
     _validate_snapshot(snapshot, artifact_root, name, project_root)
-    return PreparedProject(name=name, project_root=project_root, model=Path("root"), artifact_root=artifact_root)
+    return PreparedProject(
+        name=name,
+        project_root=project_root,
+        model=Path("root"),
+        artifact_root=artifact_root,
+        solid_command=_command(solid_command),
+        build_environment=solid_env,
+    )
 
 
 def _require_exact_repository(project_root: Path, name: str) -> None:

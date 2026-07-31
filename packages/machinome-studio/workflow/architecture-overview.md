@@ -112,8 +112,9 @@ decisions** — it is a lifecycle owner and delivery adapter (ADR 0006).
   conversation and tracks `turn_started` / `turn_completed` to know whether
   each role is idle.
 - On close, interrupts active roles and closes them in reverse order.
-- Injects runtime context at role open: the shop checkout, the active project,
-  and (for the machinist) the live-model `solid develop` callback command.
+- Injects runtime context at role open: the shop checkout and the active
+  project. No role is given a live-model command; the floor keeps the maker's
+  view current itself (ADR 0010).
 - Restart recovery is intentionally absent: losing the owner closes the
   in-memory run rather than attaching a new backend to uncontrollable
   sessions.
@@ -262,7 +263,7 @@ fails, no floor or role process starts.
 Only after this does the launcher report a browser URL, so a reported URL
 never opens on the no-build 404 state.
 
-## The functional-model boundary (ADR 0004)
+## The functional-model boundary (ADR 0004, 0010)
 
 Floor **never imports, executes, reloads, or serves project Python source**.
 The project's model is code that changes during machining; importing it into
@@ -271,12 +272,26 @@ to project execution.
 
 The only functional-model input is the **completed `_build/` directory**,
 published atomically by `solid build`. Floor serves the viewer snapshot and
-its referenced model files to the browser as static artifacts. A separate
-framework-owned `solid develop root --callback <url>` process (kept running by
-the machinist during an assignment) POSTs an empty callback only after a
-successful full replacement of `_build/`; floor treats that callback purely as
-a signal to reload static output. A failed rebuild keeps the prior inspectable
-result and sends no callback.
+its referenced model files to the browser as static artifacts.
+
+**The floor keeps that view current itself** (ADR 0010). A watcher owned by the
+FastAPI application's lifespan polls the project's `*.py` sources — excluding
+the whole build-tree family, which a build writes into — and requires the
+fingerprint to hold still across two polls before running the same
+`solid build root` the shop runs before the floor opens. One build at a time; a
+change arriving during a build produces one follow-up rebuild. An app built
+without a solid command runs no watcher at all.
+
+`model_changed` is published only when the content hash of `_build/viewer.json`
+differs from the last published one — every publication installs a new
+versioned directory, so inode and mtime are useless as signals. A failed
+rebuild publishes `model_build_failed` with bounded stderr; the browser shows
+it beside the model and keeps rendering the last complete one. A later success
+publishes `model_build_succeeded`, clearing the failure without implying the
+artifacts changed. Only `model_changed` makes the browser fetch a new snapshot.
+
+Nothing outside the floor can trigger a refresh: no role is told to run a live
+model process, and there is no callback route to post one.
 
 The browser owns a renderer (React + three.js, source in `floor/frontend/`,
 built into `floor/static/`) that fetches only these served static artifacts.
@@ -404,9 +419,13 @@ These are accurate as of this writing; keep them current (see `AGENTS.md`).
 | `0001` | FastAPI broker + SSE for shop-floor lifecycle. | Accepted |
 | `0002` | Python Playwright for browser E2E. | Accepted |
 | `0003` | Separate porter (lifecycle) from foreman (work). | Superseded by 0005 |
-| `0004` | Completed `_build/` artifacts as the functional-model boundary. | Accepted |
+| `0004` | Completed `_build/` artifacts as the functional-model boundary. | Accepted (callback mechanism superseded by 0010) |
 | `0005` | One deterministic owner for the Codex app-server; broker speaks role names only. | Superseded by 0006 |
 | `0006` | Generalize shop orchestration to a pluggable agent backend. | Accepted (process model amended by 0008) |
+| `0007` | Steer a running Hermes turn on its second-prompt channel. | Accepted |
+| `0008` | One Claude process per role, for the life of that role. | Accepted |
+| `0009` | Carry Claude corrections on a channel the role has trusted since its first instruction. | Accepted |
+| `0010` | The shop watches the project and rebuilds it, rather than asking an agent to. | Accepted |
 
 Read an ADR for the reasoning and context behind a boundary; read this file
 for the boundary as it stands.

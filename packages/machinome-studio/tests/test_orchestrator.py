@@ -227,13 +227,11 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_role_threads_work_in_the_active_project_with_explicit_shop_context(self) -> None:
         project = ROOT / "projects" / "snowman"
-        callback = "http://127.0.0.1:9000/api/runs/shop-floor/model/ready/capability"
         codex = CodexAppServer(
             ROOT,
             project=project,
             command=(sys.executable, str(FAKE_APP_SERVER)),
             solid_command=("/work/.venv/bin/solid",),
-            model_callback_url=callback,
         )
         await codex.start()
         self.addAsyncCleanup(codex.close)
@@ -259,8 +257,7 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(machinist["cwd"], str(project.resolve()))
         self.assertEqual(machinist["sandbox"], "workspace-write")
         self.assertIsNone(machinist["approvalPolicy"])
-        self.assertIn("/work/.venv/bin/solid develop root --callback", machinist["developerInstructions"])
-        self.assertIn(callback, machinist["developerInstructions"])
+        self.assertNotIn("develop root", machinist["developerInstructions"])
 
     async def test_closing_never_used_role_threads_is_clean(self) -> None:
         codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
@@ -700,11 +697,9 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_role_bootstrap_and_environment_are_operational(self) -> None:
         await self.hermes.start()
-        callback = "http://127.0.0.1:9000/model-ready"
         context = RoleContext(
             shop_checkout=str(ROOT),
             active_project=str(ROOT / "projects" / "snowman"),
-            model_callback_url=callback,
         )
         await self.hermes.open_role("machinist", context)
 
@@ -724,8 +719,9 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(str(ROOT / "agents" / "machinist.md"), text)
         self.assertIn(str(ROOT / "skills" / "solid-node-api" / "SKILL.md"), text)
         self.assertIn(str(ROOT / "skills" / "solid-node" / "SKILL.md"), text)
-        self.assertIn("/work/.venv/bin/solid develop root --callback", text)
-        self.assertIn(callback, text)
+        # The shop watches and rebuilds the project itself, so no role
+        # is told to run a live-model process.
+        self.assertNotIn("develop root", text)
         await self.hermes.close()
 
     async def test_prompt_events_preserve_request_identity(self) -> None:

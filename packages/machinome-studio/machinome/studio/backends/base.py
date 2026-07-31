@@ -39,7 +39,6 @@ class RoleContext:
     active_project: str
     """Absolute path to the active mechanical-project repository root."""
 
-    model_callback_url: str | None = None
     """Callback URL the machinist uses to signal model rebuilds."""
 
 

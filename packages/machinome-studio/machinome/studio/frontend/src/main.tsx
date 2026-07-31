@@ -49,7 +49,7 @@ type ConversationEntry = {
   text: string;
 };
 
-function FunctionalModel({ generation }: { generation: number }) {
+function FunctionalModel({ generation, buildError }: { generation: number; buildError: string | null }) {
   const container = useRef<HTMLDivElement>(null);
   const view = useRef<ViewerView | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +67,19 @@ function FunctionalModel({ generation }: { generation: number }) {
       .catch((reason: Error) => { if (!disposed) setError(reason.message); });
     return () => { disposed = true; unmount?.(); };
   }, [generation]);
-  return error ? <p className="empty">{error}</p> : <div className="functional-model-host" ref={container} />;
+  // A failed rebuild is reported beside the model, never instead of it:
+  // the last complete model stays inspectable while the maker fixes the
+  // source. Only model_changed replaces what is rendered.
+  return (
+    <>
+      {buildError === null ? null : (
+        <p className="model-build-error" role="status" aria-live="polite">
+          Model rebuild failed: {buildError}
+        </p>
+      )}
+      {error ? <p className="empty">{error}</p> : <div className="functional-model-host" ref={container} />}
+    </>
+  );
 }
 
 function ForemanConversation({
@@ -189,6 +201,7 @@ function App() {
   const [shopOpen, setShopOpen] = useState(false);
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
   const [modelGeneration, setModelGeneration] = useState(0);
+  const [modelBuildError, setModelBuildError] = useState<string | null>(null);
   const lifecycleOpened = useRef(false);
 
   useEffect(() => {
@@ -224,6 +237,12 @@ function App() {
           return;
         }
         if (event.kind === "model_changed") { setModelGeneration((generation) => generation + 1); return; }
+        if (event.kind === "model_build_failed") {
+          const { error } = event.payload as { error?: string };
+          setModelBuildError(error ?? "the model could not be rebuilt");
+          return;
+        }
+        if (event.kind === "model_build_succeeded") { setModelBuildError(null); return; }
         if (!event.kind.startsWith("agent_") && !event.kind.startsWith("work_")) return;
         const { role, label, state } = event.payload as Agent;
         setRun((previous) => {
@@ -283,7 +302,7 @@ function App() {
       <div className="shop-content">
         <section className="artifact-view" aria-labelledby="artifact-heading">
           <h2 id="artifact-heading">Artifact view</h2>
-          <FunctionalModel generation={modelGeneration} />
+          <FunctionalModel generation={modelGeneration} buildError={modelBuildError} />
         </section>
         <section className="conversation" aria-label="Chat">
           <ForemanConversation entries={conversation} onSubmit={submitMakerMessage} />

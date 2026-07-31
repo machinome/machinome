@@ -6,7 +6,6 @@ import argparse
 import asyncio
 import json
 import os
-import secrets
 import shlex
 import sys
 from dataclasses import dataclass
@@ -225,13 +224,12 @@ async def _serve(arguments: argparse.Namespace) -> None:
     prepared = prepare_project(arguments.project_name, project_home=project_home, solid_command=solid_command,
                                shop_root=shop_root)
     broker = Broker()
-    callback_token = secrets.token_urlsafe(24)
-    callback_url = f"http://127.0.0.1:{arguments.port}/api/runs/shop-floor/model/ready/{callback_token}"
     app = create_app(
         prepared.project_root,
         artifact_root=prepared.artifact_root,
-        callback_token=callback_token,
         broker=broker,
+        solid_command=prepared.solid_command,
+        build_environment=prepared.build_environment,
     )
     server = uvicorn.Server(
         uvicorn.Config(
@@ -260,7 +258,6 @@ async def _serve(arguments: argparse.Namespace) -> None:
             broker_url=f"http://127.0.0.1:{arguments.port}",
             command=getattr(arguments, "backend_command", None),
             solid_command=solid_command,
-            model_callback_url=callback_url,
         )
         orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker))
 
@@ -268,7 +265,6 @@ async def _serve(arguments: argparse.Namespace) -> None:
         orchestrator._role_context = lambda role: RoleContext(  # type: ignore[method-assign]
             shop_checkout=str(arguments.cwd.resolve()),
             active_project=str(prepared.project_root.resolve()),
-            model_callback_url=callback_url if role == "machinist" else None,
         )
 
         await orchestrator.open()

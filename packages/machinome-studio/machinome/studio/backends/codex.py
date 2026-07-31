@@ -43,14 +43,12 @@ class CodexBackend:
         command: str | Sequence[str] = "codex",
         broker_url: str = "http://127.0.0.1:9000",
         solid_command: str | Sequence[str] = "solid",
-        model_callback_url: str | None = None,
     ) -> None:
         self.cwd = cwd.resolve()
         self.project = (project or cwd).resolve()
         self.command = (command,) if isinstance(command, str) else tuple(command)
         self.broker_url = broker_url
         self.solid_command = (solid_command,) if isinstance(solid_command, str) else tuple(solid_command)
-        self.model_callback_url = model_callback_url
         self.process: asyncio.subprocess.Process | None = None
         self.notifications: asyncio.Queue[dict[str, Any] | BackendEvent] = (
             asyncio.Queue()
@@ -118,13 +116,6 @@ class CodexBackend:
             "Treat the active project as the sole mechanical-project repository for this shop run. "
             "Shop role cards and skills come from the shop checkout named above.\n\n"
         )
-        if role == "machinist" and context.model_callback_url is not None:
-            runtime_instructions += (
-                "Live model development command (run it from the active project and keep it running "
-                "throughout an active machining assignment):\n"
-                f"{shlex.join(self.solid_command)} develop root "
-                f"--callback {shlex.quote(context.model_callback_url)}\n\n"
-            )
         result = await self._request(
             "thread/start",
             {
@@ -232,7 +223,6 @@ class CodexBackend:
         ctx = RoleContext(
             shop_checkout=str(self.cwd),
             active_project=str(self.project),
-            model_callback_url=self.model_callback_url if role == "machinist" else None,
         )
         handle = await self.open_role(role, ctx)
         return handle.backend_id

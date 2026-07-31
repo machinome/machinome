@@ -21,7 +21,6 @@ def create_backend(
     broker_url: str = "http://127.0.0.1:9000",
     command: str | None = None,
     solid_command: str = "solid",
-    model_callback_url: str | None = None,
     **_kwargs: Any,
 ) -> "AgentBackend":
     """Return the AgentBackend for *name* ("codex", "hermes", or "claude").
@@ -37,7 +36,6 @@ def create_backend(
         broker_url=broker_url,
         command=backend_command,
         solid_command=solid_command,
-        model_callback_url=model_callback_url,
     )
 
 

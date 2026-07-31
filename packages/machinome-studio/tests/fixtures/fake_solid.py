@@ -17,14 +17,32 @@ if command == "new":
     (project / "root" / "__init__.py").write_text("# test scaffold\n")
     (project / ".gitignore").write_text("_build/\n")
 elif command == "build":
-    if os.environ.get("FAKE_SOLID_FAIL_BUILD"):
-        print("forced initial build failure", file=sys.stderr)
+    # A watcher runs this repeatedly inside one floor, so the
+    # environment cannot steer an individual build. A state file in the
+    # project directory can: a test writes it between polls to make the
+    # next build fail, publish a different snapshot, or -- by writing
+    # nothing -- leave the snapshot identical.
+    state = {}
+    state_file = cwd / ".fake-solid-state.json"
+    if state_file.is_file():
+        state = json.loads(state_file.read_text())
+
+    failure = state.get("fail") or os.environ.get("FAKE_SOLID_FAIL_BUILD")
+    if failure:
+        message = failure if isinstance(failure, str) else "forced initial build failure"
+        print(message, file=sys.stderr)
         raise SystemExit(17)
+
     build = cwd / "_build"
     build.mkdir(exist_ok=True)
-    model = os.environ.get("FAKE_SOLID_MODEL", "part.stl")
-    (build / model).write_text(os.environ.get("FAKE_SOLID_MODEL_CONTENT", "solid part"))
-    viewer = os.environ.get("FAKE_SOLID_VIEWER")
+    model = state.get("model") or os.environ.get("FAKE_SOLID_MODEL", "part.stl")
+    content = state.get("model_content") or os.environ.get("FAKE_SOLID_MODEL_CONTENT", "solid part")
+    (build / model).write_text(content)
+    viewer = state.get("viewer")
+    if viewer is not None:
+        viewer = json.dumps(viewer)
+    else:
+        viewer = os.environ.get("FAKE_SOLID_VIEWER")
     if viewer is None:
         viewer = json.dumps({"version": 1, "root": {"name": "part", "model": model}})
     (build / "viewer.json").write_text(viewer)

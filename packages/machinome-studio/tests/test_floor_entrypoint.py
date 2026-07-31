@@ -38,7 +38,12 @@ class FloorEntrypointTest(unittest.TestCase):
             __main__.main()
         prepare.assert_called_once()
         self.assertEqual(prepare.call_args.args[0], "v8-engine")
-        create_app.assert_called_once_with(prepared.project_root, artifact_root=prepared.artifact_root, callback_token=None)
+        create_app.assert_called_once_with(
+            prepared.project_root,
+            artifact_root=prepared.artifact_root,
+            solid_command=prepared.solid_command,
+            build_environment=prepared.build_environment,
+        )
 
 
 def _prepared():
