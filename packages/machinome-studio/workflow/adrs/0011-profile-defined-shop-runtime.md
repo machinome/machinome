@@ -1,6 +1,6 @@
 # ADR 0011: Define shop runtime topology with declarative profiles
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Date:** 2026-07-31
 

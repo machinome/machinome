@@ -10,7 +10,8 @@ from pathlib import Path
 import uvicorn
 
 from .app import create_app
-from .preparation import PreparationError, default_project_home, default_solid_command, prepare_project
+from .preparation import PreparationError, default_project_home, default_solid_command, prepare_project, primary_shop_root
+from .profiles import ProfileError, load_profile
 
 
 def main() -> None:
@@ -24,12 +25,24 @@ def main() -> None:
     )
     parser.add_argument("--project-home", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--solid-command", help=argparse.SUPPRESS)
+    parser.add_argument("--profile", help="runtime profile owned by this shop checkout")
     arguments = parser.parse_args()
     checkout = Path.cwd()
+    try:
+        shop_root = primary_shop_root(checkout)
+        profile = load_profile(arguments.profile, shop_root=shop_root, backend="codex")
+    except ProfileError as error:
+        print(f"error: {error}", file=sys.stderr)
+        raise SystemExit(1) from error
     project_home = arguments.project_home or default_project_home(checkout)
     solid_command = arguments.solid_command or default_solid_command(checkout)
     try:
-        prepared = prepare_project(arguments.project_name, project_home=project_home, solid_command=solid_command)
+        prepared = prepare_project(
+            arguments.project_name,
+            project_home=project_home,
+            solid_command=solid_command,
+            shop_root=shop_root,
+        )
     except PreparationError as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(1) from error
@@ -39,6 +52,7 @@ def main() -> None:
             artifact_root=prepared.artifact_root,
             solid_command=prepared.solid_command,
             build_environment=prepared.build_environment,
+            profile=profile,
         ),
         host="127.0.0.1",
         port=arguments.port,

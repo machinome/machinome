@@ -12,6 +12,8 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+from tests.fixtures.primary_shop import isolated_primary_shop, subprocess_environment
+
 
 ROOT = Path(__file__).resolve().parents[1]
 FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
@@ -25,55 +27,36 @@ class FloorAPITest(unittest.TestCase):
         self.project_home = Path(self.temporary.name) / "projects"
         self.project_home.mkdir()
         self._project_number = 0
+        self.shop = self.enterContext(isolated_primary_shop())
         self._start_floor("floor-api")
         self.addCleanup(self._stop_floor)
         _wait_for_health(self.url("/health"))
 
-    def test_default_and_configured_server_surface_tracks_agent_work(self) -> None:
+    def test_default_profile_run_surface_exposes_profile_metadata(self) -> None:
         self.assertEqual(_request(self.url("/health"), "GET"), {"status": "open"})
-        self.assertEqual(_request(self.url("/api/runs/latest"), "GET")["agents"], [])
+        run = _request(self.url("/api/runs/latest"), "GET")
+        self.assertEqual(run["profile_id"], "builder")
+        self.assertEqual(run["user_label"], "Maker")
+        self.assertEqual(run["user_agent"], {"id": "builder", "label": "Builder"})
+        self.assertEqual(run["roster"], [{"id": "builder", "label": "Builder"}])
         manifested = _request(
             self.url("/api/runs/shop-floor/agents"),
             "POST",
-            {"role": "designer", "label": "Designer"},
+            {"role": "builder", "label": "Builder"},
         )
         self.assertEqual(manifested["state"], "waiting")
-        _request(
-            self.url("/api/runs/shop-floor/agents/designer/assignments"),
-            "POST",
-            {"assignment_id": "drawing-1"},
-        )
-        self.assertEqual(_request(self.url("/api/runs/latest"), "GET")["agents"][0]["state"], "waiting")
-        acknowledged = _request(
-            self.url("/api/runs/shop-floor/agents/designer/acknowledgments"),
-            "POST",
-            {"assignment_id": "drawing-1"},
-        )
-        self.assertEqual(acknowledged["state"], "active")
-        completed = _request(
-            self.url("/api/runs/shop-floor/agents/designer/completions"),
-            "POST",
-            {"assignment_id": "drawing-1"},
-        )
-        self.assertEqual(completed["state"], "waiting")
-        self.assertEqual(_status(self.url("/api/runs/shop-floor/agents/unknown/acknowledgments"), "POST", {"assignment_id": "x"}), 404)
-        self.assertEqual(_status(self.url("/api/runs/shop-floor/agents/designer/completions"), "POST", {"assignment_id": "x"}), 409)
-        self.assertEqual(_status(self.url("/api/runs/shop-floor/agents/designer"), "DELETE"), 204)
+        self.assertEqual(_status(self.url("/api/runs/shop-floor/agents/builder/assignments"), "POST", {"assignment_id": "x"}), 409)
+        self.assertEqual(_status(self.url("/api/runs/shop-floor/agents/builder"), "DELETE"), 204)
         self.assertEqual(_request(self.url("/api/runs/latest"), "GET")["agents"], [])
 
-    def test_foreman_conversation_is_ordered_and_survives_a_browser_snapshot(self) -> None:
+    def test_profile_conversation_is_ordered_and_survives_a_browser_snapshot(self) -> None:
         first = _request(
-            self.url("/api/runs/shop-floor/conversation/maker"),
+            self.url("/api/runs/shop-floor/conversation"),
             "POST",
             {"text": "Build the bracket."},
         )
-        foreman = _request(
-            self.url("/api/runs/shop-floor/foreman/publish"),
-            "POST",
-            {"text": "I will inspect the drawing first."},
-        )
         second = _request(
-            self.url("/api/runs/shop-floor/conversation/maker"),
+            self.url("/api/runs/shop-floor/conversation"),
             "POST",
             {"text": "Use the thinner stock."},
         )
@@ -81,12 +64,12 @@ class FloorAPITest(unittest.TestCase):
         conversation = _request(self.url("/api/runs/shop-floor/conversation"), "GET")
         self.assertEqual(
             conversation["entries"],
-            [first, foreman, second],
+            [first, second],
             "a freshly loaded browser snapshot must retain the recorded order",
         )
-        self.assertEqual(_status(self.url("/api/runs/shop-floor/conversation/maker"), "POST", {"text": "   "}), 400)
+        self.assertEqual(_status(self.url("/api/runs/shop-floor/conversation"), "POST", {"text": "   "}), 400)
 
-    def test_orchestrator_stream_blocks_then_emits_ordered_maker_direction(self) -> None:
+    def test_orchestrator_stream_blocks_then_emits_ordered_user_direction(self) -> None:
         received: list[dict[str, object]] = []
 
         def wait_for_direction() -> None:
@@ -103,17 +86,17 @@ class FloorAPITest(unittest.TestCase):
         time.sleep(0.1)
         self.assertTrue(listener.is_alive(), "the orchestrator stream must wait without polling")
         _request(
-            self.url("/api/runs/shop-floor/conversation/maker"),
+            self.url("/api/runs/shop-floor/conversation"),
             "POST",
             {"text": "Start with the frame."},
         )
         _request(
-            self.url("/api/runs/shop-floor/conversation/maker"),
+            self.url("/api/runs/shop-floor/conversation"),
             "POST",
             {"text": "Add gussets."},
         )
         _request(
-            self.url("/api/runs/shop-floor/conversation/maker"),
+            self.url("/api/runs/shop-floor/conversation"),
             "POST",
             {"text": "Keep the corners round."},
         )
@@ -170,18 +153,18 @@ class FloorAPITest(unittest.TestCase):
 
     def _start_floor(self, name: str, *, environment: dict[str, str] | None = None) -> None:
         command = ["python", "-m", "floor", name, "--port", str(self.port), "--project-home", str(self.project_home), "--solid-command", str(FAKE_SOLID)]
-        self.process = subprocess.Popen(command, cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, env=environment or self._environment())
+        self.process = subprocess.Popen(command, cwd=self.shop, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, env=environment or self._environment())
         _wait_for_health(self.url("/health"))
 
     @staticmethod
     def _environment() -> dict[str, str]:
-        return {
+        return subprocess_environment({
             **__import__("os").environ,
             "GIT_AUTHOR_NAME": "Shop Test",
             "GIT_AUTHOR_EMAIL": "shop@example.invalid",
             "GIT_COMMITTER_NAME": "Shop Test",
             "GIT_COMMITTER_EMAIL": "shop@example.invalid",
-        }
+        })
 
     def _stop_floor(self) -> None:
         if self.process.poll() is not None:

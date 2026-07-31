@@ -37,7 +37,8 @@ def main() -> None:
     direction.add_argument("--text", required=True)
 
     assign = commands.add_parser("assign")
-    assign.add_argument("--role", required=True)
+    assign.add_argument("--sender", required=True)
+    assign.add_argument("--recipient", required=True)
     assign.add_argument("--assignment", required=True)
     assign.add_argument("--text", required=True)
 
@@ -46,7 +47,8 @@ def main() -> None:
     acknowledge.add_argument("--assignment", required=True)
 
     report = commands.add_parser("report")
-    report.add_argument("--role", required=True)
+    report.add_argument("--sender", required=True)
+    report.add_argument("--recipient", required=True)
     report.add_argument("--text", required=True)
     report.add_argument("--assignment", default="")
 
@@ -75,8 +77,8 @@ def main() -> None:
             "POST",
             {
                 "kind": "assignment",
-                "sender": "foreman",
-                "recipient": arguments.role,
+                "sender": arguments.sender,
+                "recipient": arguments.recipient,
                 "body": arguments.text,
                 "assignment_id": arguments.assignment,
             },
@@ -95,8 +97,8 @@ def main() -> None:
             "POST",
             {
                 "kind": "report",
-                "sender": arguments.role,
-                "recipient": "foreman",
+                "sender": arguments.sender,
+                "recipient": arguments.recipient,
                 "body": arguments.text,
                 "assignment_id": arguments.assignment,
             },

@@ -54,10 +54,15 @@ as a side effect of opening the shop.
 - **THEN** the system starts no floor service or agent and reports the repository validation failure
 
 ### Requirement: Every project agent works in the verified project root
-The system SHALL give the foreman, designer, and machinist the same verified
-`projects/<name>` repository root as their project working directory while
-retaining shop-owned role instructions outside the project repository.
+The system SHALL give every standing agent declared by the selected profile the
+same verified `projects/<name>` repository root as its project working
+directory while retaining shop-owned profile prompts and runtime skills outside
+the project repository.
 
-#### Scenario: The named project is ready
-- **WHEN** the system starts the agent team after preparing the named project
-- **THEN** all three project agents work from that exact project repository root
+#### Scenario: The Builder project is ready
+- **WHEN** the system starts the default `builder` profile after preparing the named project
+- **THEN** Builder works from that exact project repository root
+
+#### Scenario: The Fordesmac project is ready
+- **WHEN** the system starts the `fordesmac` profile after preparing the named project
+- **THEN** Foreman, Designer, Machinist, and Librarian all work from that exact project repository root

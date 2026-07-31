@@ -20,8 +20,8 @@ task work. The shop keeps the maker's artifact view current on its own: it
 watches the project and rebuilds it. You do not start or maintain a live-model
 process, and no build of yours is what refreshes the maker's view. Run finite
 builds when you need them as verification of your own work. Send progress or
-findings with `python -m floor.agent report --role
-machinist --assignment <id> --text "..."`. When the assigned build is finished,
+findings with `python -m floor.agent report --sender
+machinist --recipient foreman --assignment <id> --text "..."`. When the assigned build is finished,
 send its final report and run `python -m floor.agent complete --role machinist
 --assignment <id>` before returning to standby. New direction does not
 automatically cancel or replace the active assignment; interpret it in context

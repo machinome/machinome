@@ -1,22 +1,13 @@
-# Foreman event delivery
+# User-facing agent delivery
 
-The active foreman does not poll or run a broker receive command. One
-non-model shop orchestrator owns the Codex app-server and subscribes to broker
-events asynchronously.
+The selected profile's user-facing agent does not poll or run a broker receive
+command. The non-model orchestrator records a broker envelope before delivery,
+starts an idle backend delivery, or steers that same active delivery at its
+next backend work boundary. The broker publishes ordinary non-empty backend
+output from only that configured agent into the user conversation.
 
-When maker direction or a specialist report is addressed to the foreman, the
-orchestrator records it before delivery and then:
-
-- starts a turn when the foreman is idle; or
-- steers the active turn when the foreman is working, so Codex presents the
-  queued input after the current tool call and before the next task action.
-
-The foreman publishes to the maker with:
-
-```text
-python -m floor.foreman --text "<message>"
-```
-
-It assigns, directs, and receives specialist reports through the role-neutral
-`python -m floor.agent` command surface. While idle, the foreman has no active
-model turn, pending receive tool, polling interval, or token consumption.
+Direct profiles carry no assignment identity and derive activity only from the
+matching backend turn. Delegated profiles use the declared assignment and
+reporting graph; assignment acknowledgement and matching completion, not a
+backend turn, control specialist work state. `python -m floor.agent` provides
+the profile-neutral broker command surface.

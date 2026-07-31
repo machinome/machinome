@@ -29,73 +29,73 @@ with an error before starting the broker or any agent session.
 - **THEN** the orchestrator exits with an error before starting any service or agent
 
 ### Requirement: The backend owns its agent sessions
-The selected backend SHALL own the lifecycle of every role session it creates.
-The orchestrator SHALL call `open_role()` once per role at shop open,
-`deliver_start()` for an envelope addressed to an idle role, `deliver_steer()`
-for an envelope addressed to an active role, `interrupt()` on shop close or
-shutdown, and `close_role()` to release the session. The backend
-SHALL translate its native protocol events into portable `BackendEvent`
-instances consumed by the orchestrator. The Hermes backend SHALL operate a
-real `hermes acp` subprocess rather than raising `NotImplementedError`.
+The selected backend SHALL own the lifecycle of every standing agent session
+declared by the selected profile. The orchestrator SHALL call `open_role()`
+once per declared agent in profile order with that agent's resolved contract,
+`deliver_start()` for an envelope addressed to an idle agent,
+`deliver_steer()` for an envelope addressed to an active agent, `interrupt()`
+on close or shutdown, and `close_role()` to release the session. The backend
+SHALL translate native events into portable `BackendEvent` instances.
 
-A backend MAY own one external process per role session rather than a single
-process for all roles. Process cardinality SHALL NOT change a backend's
-obligations: it SHALL own every process it starts and SHALL release all of them
-when closed. A backend that owns one process per role SHALL report the
-unexpected exit of a single role process as a failure of that role, and SHALL
-reserve backend failure for a fault that ends the run.
+A backend MAY own one process per agent session rather than one process for all
+agents. Process cardinality SHALL NOT change ownership: it SHALL release every
+process it starts. Unexpected exit of one process in a per-agent backend SHALL
+be a failure of that agent; backend failure is reserved for a fault that ends
+the run.
 
-Interrupting a role SHALL be reserved for closing or shutting down the shop. A
-backend whose native interrupt leaves a session unable to accept further work
-SHALL NOT return that session to standby, and the orchestrator SHALL NOT treat
-an interrupted role as available for a subsequent delivery.
+Interrupting an agent SHALL be reserved for closing or shutting down. A backend
+whose native interrupt spends a session SHALL NOT return it to standby.
 
-#### Scenario: Backend creates a role session
-- **WHEN** the orchestrator opens the shop
-- **THEN** the backend receives `open_role()` for foreman, designer, and machinist in order
+#### Scenario: Backend creates Builder profile sessions
+- **WHEN** the orchestrator opens the `builder` profile
+- **THEN** the backend receives one `open_role()` call carrying Builder's resolved profile contract
+
+#### Scenario: Backend creates Fordesmac profile sessions
+- **WHEN** the orchestrator opens the `fordesmac` profile
+- **THEN** the backend receives `open_role()` for Foreman, Designer, Machinist, and Librarian in profile declaration order
 
 #### Scenario: Backend delivers an envelope
-- **WHEN** the broker emits an envelope addressed to an idle role
-- **THEN** the orchestrator calls `backend.deliver_start()` for that role with the envelope body
+- **WHEN** the broker emits an envelope addressed to an idle declared agent
+- **THEN** the orchestrator calls `backend.deliver_start()` for that agent with the envelope body
 
 #### Scenario: Backend reports a role message
-- **WHEN** an agent session publishes a message to the maker conversation
-- **THEN** the backend emits a `role_message` event consumed by the orchestrator
+- **WHEN** an agent session publishes a message
+- **THEN** the backend emits a `role_message` event with that stable profile agent ID
 
-#### Scenario: Backend fails during a role operation
+#### Scenario: Backend fails during an agent operation
 - **WHEN** a backend role-open or delivery call raises an error
 - **THEN** the orchestrator unwinds partial state and reports the failure
 
 #### Scenario: A partially opened multi-process backend releases what it started
-- **WHEN** a backend that owns one process per role fails while opening the second of three role sessions
-- **THEN** it releases the processes it already started before reporting the failure
+- **WHEN** a per-agent backend fails while opening a later profile agent
+- **THEN** it releases every process it already started before reporting failure
 
-#### Scenario: One role process exiting is a role failure, not a backend failure
-- **WHEN** a backend owning one process per role observes a single role process exit unexpectedly
-- **THEN** it emits `role_failed` for that role rather than `backend_failed`
+#### Scenario: One role process exiting is a role failure
+- **WHEN** a per-agent backend observes one declared agent process exit unexpectedly
+- **THEN** it emits `role_failed` for that agent rather than `backend_failed`
 
 #### Scenario: An interrupted role is not returned to standby
-- **WHEN** the orchestrator interrupts an active role while closing the shop
-- **THEN** the orchestrator does not deliver further envelopes to that role and does not report it as waiting
+- **WHEN** the orchestrator interrupts an active agent while closing the shop
+- **THEN** it delivers no further envelopes to that agent and does not report it waiting
 
-#### Scenario: Hermes backend is independently testable against a fake ACP fixture
-- **WHEN** a fake ACP server fixture is provided as the `hermes acp` command
-- **THEN** the orchestrator exercises the Hermes backend through the same `AgentBackend` operations as the Codex backend and all operations succeed without `NotImplementedError`
+#### Scenario: Every backend is independently testable
+- **WHEN** fake Codex, Hermes, or Claude fixtures are selected
+- **THEN** each fixture opens and exercises every agent in either initial profile through the same portable backend operations
 
 ### Requirement: The orchestrator is backend-neutral
-The shop orchestrator SHALL depend only on the `AgentBackend` protocol. It
-SHALL NOT reference, import, or depend on any backend-specific identifier,
-wire format, configuration path, or session handle. Backend-specific
-configuration SHALL be owned by the backend implementation, not by the
-orchestrator or broker.
+The orchestrator SHALL depend only on the portable `AgentBackend` protocol and
+resolved profile/agent data. It SHALL NOT reference any backend-native
+identifier, wire format, session handle, global role adapter path, or
+backend-specific profile parsing. Each backend SHALL own translation of the
+resolved model, effort, and tool policy into controls it actually supports.
 
-#### Scenario: Orchestrator code references no backend identifiers
-- **WHEN** the Codex backend is extracted to `floor/backends/codex.py`
-- **THEN** `floor/orchestrator.py` contains no reference to `threadId`, `turnId`, `turn/steer`, `app-server`, Codex-specific JSON-RPC methods, or `.codex/agents/*.toml`
+#### Scenario: Orchestrator code references no backend identifiers or role adapters
+- **WHEN** the profile runtime is implemented
+- **THEN** `floor/orchestrator.py` contains no Codex/Hermes/Claude wire identifier and no `.codex/agents/<role>.toml` or global `agents/<role>.md` lookup
 
-#### Scenario: Hermes backend is independently testable
-- **WHEN** a fake ACP server fixture is provided
-- **THEN** the orchestrator exercises the Hermes backend through the same `AgentBackend` operations as the Codex backend
+#### Scenario: Backends receive one resolved interpretation
+- **WHEN** a profile agent is opened through any backend
+- **THEN** the backend receives the same validated prompt and skill paths, stable identity, labels, and selected-backend runtime policy from the profile loader
 
 ### Requirement: The Hermes backend operates a real acp subprocess
 The Hermes backend SHALL launch `hermes acp` as a subprocess during `start()`.
@@ -204,38 +204,34 @@ path can wait indefinitely on a subprocess that declines to exit.
 - **THEN** the call returns without error and starts no new subprocess
 
 ### Requirement: The Claude backend operates Claude Code CLI sessions
-The Claude backend SHALL launch one `claude` process per role session in
-non-interactive streaming mode, exchanging newline-delimited JSON frames over
-stdio. It SHALL open each session with the active project as its working
-directory.
+The Claude backend SHALL launch one `claude` process per profile-declared agent
+in non-interactive streaming mode, exchange newline-delimited JSON frames over
+stdio, and use the active project as its working directory.
 
-The backend SHALL deliver the role contract as session-level instructions rather
-than as a conversational turn, so that the session's first user message is a
-broker envelope. It SHALL read the role's model and permitted tools from that
-role's card rather than from a backend-specific adapter file.
+It SHALL deliver the resolved profile prompt and skills as session-level
+instructions so the first user message remains a broker envelope. It SHALL use
+the profile's selected Claude model, effort, and permitted tools rather than
+Markdown model/tool fields or a global adapter file. It SHALL open each session
+with both project-level and user-level assistant configuration, memory, hooks,
+plugins, and other operator-machine customization disabled. It SHALL NOT read,
+store, forward, or require a credential, and SHALL invoke the `claude` command
+using authentication the operator has already configured.
 
-The backend SHALL open each role session with operator-machine customization
-disabled, so that a role's behavior does not depend on configuration, memory,
-hooks, or plugins present on the machine running the shop.
-
-The backend SHALL NOT read, store, forward, or require any credential. It SHALL
-invoke the `claude` command as the operator has already configured it.
-
-#### Scenario: Claude backend starts a role session per role
-- **WHEN** the orchestrator opens the shop with `--backend claude`
-- **THEN** the backend starts one `claude` process per role with the active project as its working directory
+#### Scenario: Claude starts one process per profile agent
+- **WHEN** either initial profile opens with Claude
+- **THEN** Claude starts exactly one process for every agent declared by that profile
 
 #### Scenario: The role contract does not consume a conversational turn
-- **WHEN** `open_role("designer", context)` is called
-- **THEN** the role contract is delivered as session-level instructions and the session's first user message is a broker envelope
+- **WHEN** Claude opens a profile agent
+- **THEN** prompt and skill contracts are delivered as session-level instructions and the first user message is a broker envelope
 
-#### Scenario: Role capability comes from the role card
-- **WHEN** a role session is opened
-- **THEN** the model and permitted tools for that session are those named by the role card's frontmatter
+#### Scenario: Runtime capability comes from the selected profile
+- **WHEN** Claude opens Designer from `fordesmac`
+- **THEN** it uses the model, effort, and tool policy that profile declares for Claude, only Designer's validated profile prompt and skill paths, and no global role adapter
 
-#### Scenario: Operator machine configuration does not reach a role
-- **WHEN** the machine running the shop has project or user-level assistant configuration, hooks, or plugins
-- **THEN** a role session is opened such that none of them are loaded
+#### Scenario: Operator machine configuration does not reach an agent
+- **WHEN** the active project or the machine has project-level or user-level assistant configuration, memory, hooks, or plugins
+- **THEN** the role session is opened without loading any of them
 
 ### Requirement: The Claude backend establishes delivery identity without a vendor turn identifier
 The Claude backend SHALL mint its own delivery identifier for each delivery and

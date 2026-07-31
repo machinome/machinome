@@ -17,8 +17,8 @@ class FakeBackend:
     """In-memory AgentBackend that records calls and emits configurable events.
 
     Each ``open_role`` returns a ``RoleHandle`` with a predictable backend_id.
-    ``deliver`` records the call and returns an accepted receipt.  Events are
-    pushed into ``self._event_queue`` and yielded by ``self.events``.
+    Delivery calls are recorded and events are pushed into ``self._event_queue``
+    for ``self.events`` to yield.
     """
 
     events: AsyncIterator[BackendEvent]
@@ -41,9 +41,6 @@ class FakeBackend:
         self.opened_roles.append((role, context))
         self._next_role += 1
         return RoleHandle(backend_id=f"fake-{role}-{self._next_role}", role=role)
-
-    async def deliver(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
-        return await self.deliver_start(handle, message)
 
     async def deliver_start(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
         self.deliveries.append((handle, message))

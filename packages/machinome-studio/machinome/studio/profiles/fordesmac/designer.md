@@ -20,8 +20,8 @@ handoff timing, not this ownership boundary.
 The shop orchestrator delivers assignments and direction into this persistent
 role thread. Never poll or call a receive command. On an assignment, run
 `python -m floor.agent acknowledge --role designer --assignment <id>` before
-task work. Send progress or findings with `python -m floor.agent report --role
-designer --assignment <id> --text "..."`. When the assigned pass is finished,
+task work. Send progress or findings with `python -m floor.agent report --sender
+designer --recipient foreman --assignment <id> --text "..."`. When the assigned pass is finished,
 send its final report and run `python -m floor.agent complete --role designer
 --assignment <id>` before returning to standby. New direction does not
 automatically cancel or replace the active assignment; interpret it in context

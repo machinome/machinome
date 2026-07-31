@@ -16,12 +16,12 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from .profiles import RuntimeProfile, load_profile
 from .watcher import ModelWatcher
 
 
 RUN_ID = "shop-floor"
 STATIC_ROOT = Path(__file__).parent / "static"
-ROLE_LABELS = {"foreman": "Foreman", "designer": "Designer", "machinist": "Machinist"}
 MESSAGE_KINDS = {"direction", "assignment", "report"}
 
 
@@ -32,6 +32,7 @@ class Agent:
     state: str
     assignment_id: str = ""
     pending_assignments: list[str] = field(default_factory=list)
+    direct_delivery_id: str = ""
 
     def browser_value(self) -> dict[str, str]:
         return {"role": self.role, "label": self.label, "state": self.state}
@@ -100,7 +101,8 @@ class EnvelopeInput(BaseModel):
 class Broker:
     """One in-memory run's portable coordination state."""
 
-    def __init__(self, *, event_history_limit: int = 20) -> None:
+    def __init__(self, profile: RuntimeProfile | None = None, *, event_history_limit: int = 20) -> None:
+        self.profile = profile or load_profile(None, shop_root=Path(__file__).resolve().parents[1], backend="codex")
         self.agents: dict[str, Agent] = {}
         self.subscribers: set[asyncio.Queue[dict[str, object]]] = set()
         self.delivery_subscribers: set[asyncio.Queue[Envelope | None]] = set()
@@ -118,12 +120,19 @@ class Broker:
         return {
             "id": RUN_ID,
             "status": "running",
-            "agents": [agent.browser_value() for agent in sorted(self.agents.values(), key=lambda item: item.role)],
+            "profile_id": self.profile.id,
+            "user_label": self.profile.user_label,
+            "user_agent": {"id": self.profile.user_agent.id, "label": self.profile.user_agent.label},
+            "roster": [{"id": agent.id, "label": agent.label} for agent in self.profile.agents],
+            "agents": [agent.browser_value() for agent in self.agents.values()],
             "events": [event.browser_value() for event in self.events],
         }
 
     def manifest(self, role: str, label: str) -> Agent:
-        if role not in ROLE_LABELS:
+        declared = self._profile_agent(role)
+        if label != declared.label:
+            raise ValueError("agent label does not match active profile")
+        if role not in self._agent_ids:
             raise ValueError("unknown agent role")
         if role in self.agents:
             raise ValueError("agent already manifested")
@@ -149,32 +158,46 @@ class Broker:
     ) -> Envelope:
         if kind not in MESSAGE_KINDS:
             raise ValueError("unknown envelope kind")
-        if sender != "maker" and sender not in ROLE_LABELS:
+        if self.profile.work_mode == "direct" and assignment_id:
+            raise ValueError("assignment ID is unavailable in direct mode")
+        if sender != "user" and sender not in self._agent_ids:
             raise ValueError("unknown agent sender")
-        if recipient not in ROLE_LABELS:
+        if recipient not in self._agent_ids:
             raise ValueError("unknown agent recipient")
         body = body.strip()
         if not body:
             raise ValueError("body is required")
         if kind == "assignment":
-            if sender != "foreman":
-                raise ValueError("only foreman assigns work")
-            return self.assign(recipient, assignment_id, body=body)
-        if kind == "report" and recipient != "foreman":
-            raise ValueError("reports must be addressed to foreman")
+            if self.profile.work_mode != "delegated":
+                raise ValueError("assignment lifecycle is unavailable in direct mode")
+            if recipient not in self._profile_agent(sender).assigns:
+                raise ValueError("assignment edge is not declared by the active profile")
+            return self.assign(recipient, assignment_id, body=body, sender=sender)
+        if kind == "report":
+            if self.profile.work_mode != "delegated":
+                raise ValueError("assignment lifecycle is unavailable in direct mode")
+            if self._profile_agent(sender).reports_to != recipient:
+                raise ValueError("reporting parent is not declared by the active profile")
+        if kind == "direction" and sender == "user" and recipient != self.profile.user_agent_id:
+            raise ValueError("user direction must target the profile user-facing agent")
         envelope = self._new_envelope(kind, sender, recipient, body, assignment_id)
         self._make_available(envelope)
         return envelope
 
-    def assign(self, role: str, assignment_id: str, *, body: str | None = None) -> Envelope:
+    def assign(self, role: str, assignment_id: str, *, body: str | None = None, sender: str | None = None) -> Envelope:
+        if self.profile.work_mode != "delegated":
+            raise ValueError("assignment lifecycle is unavailable in direct mode")
         agent = self._agent(role)
+        sender = sender or (self._profile_agent(role).reports_to or "")
+        if role not in self._profile_agent(sender).assigns:
+            raise ValueError("assignment edge is not declared by the active profile")
         if not assignment_id:
             raise ValueError("assignment_id is required")
         if (role, assignment_id) in self.assignment_envelopes:
             raise ValueError("assignment already exists")
         envelope = self._new_envelope(
             "assignment",
-            "foreman",
+            sender,
             role,
             body or f"Assignment {assignment_id}",
             assignment_id,
@@ -195,6 +218,8 @@ class Broker:
         return envelope
 
     def acknowledge(self, role: str, assignment_id: str) -> Agent:
+        if self.profile.work_mode != "delegated":
+            raise ValueError("assignment lifecycle is unavailable in direct mode")
         agent = self._agent(role)
         if agent.state != "waiting" or agent.assignment_id != assignment_id:
             raise ValueError("invalid lifecycle report")
@@ -203,6 +228,8 @@ class Broker:
         return agent
 
     def complete(self, role: str, assignment_id: str) -> Agent:
+        if self.profile.work_mode != "delegated":
+            raise ValueError("assignment lifecycle is unavailable in direct mode")
         agent = self._agent(role)
         if agent.state != "active" or agent.assignment_id != assignment_id:
             raise ValueError("invalid lifecycle report")
@@ -218,7 +245,7 @@ class Broker:
         return agent
 
     def pending_for(self, role: str) -> list[Envelope]:
-        if role not in ROLE_LABELS:
+        if role not in self._agent_ids:
             raise ValueError("unknown agent")
         return [
             envelope
@@ -252,14 +279,16 @@ class Broker:
         return envelope
 
     async def record_conversation(self, author: str, text: str) -> ConversationEntry:
+        if author not in {"user", self.profile.user_agent_id}:
+            raise ValueError("only user and the profile user-facing agent can enter the conversation")
         text = text.strip()
         if not text:
             raise ValueError("text is required")
         entry = ConversationEntry(sequence=len(self.conversation) + 1, author=author, text=text)
         self.conversation.append(entry)
         self.publish("conversation_entry", entry)
-        if author == "maker":
-            self.send("direction", "maker", "foreman", text)
+        if author == "user":
+            self.send("direction", "user", self.profile.user_agent_id, text)
         return entry
 
     async def wait_for_events(self, after: int) -> list[BrokerEvent]:
@@ -276,7 +305,7 @@ class Broker:
         queue: asyncio.Queue[Envelope | None] = asyncio.Queue()
         self.delivery_subscribers.add(queue)
         try:
-            for role in ROLE_LABELS:
+            for role in self._agent_ids:
                 for envelope in self.pending_for(role):
                     await queue.put(envelope)
             while True:
@@ -313,7 +342,7 @@ class Broker:
             sequence=self.latest_event_sequence,
             timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             kind=kind,
-            summary=_event_summary(kind, role, sender, recipient, assignment_id),
+            summary=self._event_summary(kind, role, sender, recipient, assignment_id),
             role=role,
             sender=sender,
             recipient=recipient,
@@ -372,6 +401,70 @@ class Broker:
             raise ValueError("unknown agent")
         return agent
 
+    @property
+    def _agent_ids(self) -> tuple[str, ...]:
+        return tuple(agent.id for agent in self.profile.agents)
+
+    def _profile_agent(self, role: str):
+        try:
+            return self.profile.agent(role)
+        except ValueError as error:
+            raise ValueError("unknown agent") from error
+
+    def turn_started(self, role: str, delivery_id: str) -> Agent:
+        if self.profile.work_mode != "direct" or role != self.profile.user_agent_id:
+            return self._agent(role)
+        agent = self._agent(role)
+        if agent.direct_delivery_id != delivery_id:
+            return agent
+        agent.state = "active"
+        self.publish("direct_work_started", agent, role=role)
+        return agent
+
+    def turn_completed(self, role: str, delivery_id: str) -> Agent:
+        if self.profile.work_mode != "direct" or role != self.profile.user_agent_id:
+            return self._agent(role)
+        agent = self._agent(role)
+        if agent.direct_delivery_id != delivery_id:
+            return agent
+        agent.state = "waiting"
+        agent.direct_delivery_id = ""
+        self.publish("direct_work_completed", agent, role=role)
+        return agent
+
+    def register_direct_delivery(self, role: str, delivery_id: str) -> None:
+        """Record the one backend delivery that may change direct work state."""
+        if self.profile.work_mode != "direct" or role != self.profile.user_agent_id:
+            return
+        self._agent(role).direct_delivery_id = delivery_id
+
+    def _event_summary(self, kind: str, role: str, sender: str, recipient: str, assignment_id: str) -> str:
+        labels = {"user": self.profile.user_label, **{agent.id: agent.label for agent in self.profile.agents}}
+        if kind == "agent_manifested":
+            return f"{labels.get(role, role.title())} manifested"
+        if kind == "agent_stopped":
+            return f"{labels.get(role, role.title())} stopped"
+        if kind.endswith("_available"):
+            name = kind.removesuffix("_available").replace("_", " ").title()
+            return f"{name} · {labels.get(sender, sender.title())} → {labels.get(recipient, recipient.title())}"
+        if kind == "assignment_queued":
+            return f"Assignment queued · {labels.get(role, role.title())} · {assignment_id}"
+        if kind in {"work_acknowledged", "direct_work_started"}:
+            return f"Work started · {labels.get(role, role.title())}" + (f" · {assignment_id}" if assignment_id else "")
+        if kind in {"work_completed", "direct_work_completed"}:
+            return f"Work completed · {labels.get(role, role.title())}" + (f" · {assignment_id}" if assignment_id else "")
+        if kind == "envelope_delivered":
+            return f"Delivered · {labels.get(recipient, recipient.title())}"
+        if kind == "conversation_entry":
+            return "Conversation updated"
+        if kind == "model_changed":
+            return "Model updated"
+        if kind == "model_build_failed":
+            return "Model rebuild failed"
+        if kind == "model_build_succeeded":
+            return "Model rebuilt"
+        return kind.replace("_", " ").title()
+
     def _envelope(self, sequence: int) -> Envelope:
         try:
             return next(item for item in self.envelopes if item.sequence == sequence)
@@ -384,6 +477,7 @@ def create_app(
     *,
     artifact_root: Path | None = None,
     broker: Broker | None = None,
+    profile: RuntimeProfile | None = None,
     solid_command: Sequence[str] | None = None,
     build_environment: Mapping[str, str] | None = None,
     poll_interval: float = 0.5,
@@ -416,7 +510,7 @@ def create_app(
                 await asyncio.gather(watcher_task, return_exceptions=True)
 
     app = FastAPI(title="shop-floor", lifespan=lifespan)
-    broker = broker or Broker()
+    broker = broker or Broker(profile=profile)
     app.state.broker = broker
     app.state.model_watcher = None
     app.mount("/assets", StaticFiles(directory=STATIC_ROOT / "assets"), name="assets")
@@ -465,15 +559,10 @@ def create_app(
         _require_run(run_id)
         return {"entries": [entry.browser_value() for entry in broker.conversation]}
 
-    @app.post("/api/runs/{run_id}/conversation/maker")
-    async def submit_maker_message(run_id: str, input: ConversationInput) -> JSONResponse:
+    @app.post("/api/runs/{run_id}/conversation")
+    async def submit_user_message(run_id: str, input: ConversationInput) -> JSONResponse:
         _require_run(run_id)
-        return JSONResponse((await _conversation_or_400(broker, "maker", input.text)).browser_value())
-
-    @app.post("/api/runs/{run_id}/foreman/publish")
-    async def publish_foreman_message(run_id: str, input: ConversationInput) -> JSONResponse:
-        _require_run(run_id)
-        return JSONResponse((await _conversation_or_400(broker, "foreman", input.text)).browser_value())
+        return JSONResponse((await _conversation_or_400(broker, "user", input.text)).browser_value())
 
     @app.post("/api/runs/{run_id}/agents")
     async def manifest(run_id: str, input: ManifestInput) -> JSONResponse:
@@ -577,34 +666,6 @@ async def _conversation_or_400(broker: Broker, author: str, text: str) -> Conver
         return await broker.record_conversation(author, text)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-
-
-def _event_summary(kind: str, role: str, sender: str, recipient: str, assignment_id: str) -> str:
-    labels = ROLE_LABELS
-    if kind == "agent_manifested":
-        return f"{labels.get(role, role.title())} manifested"
-    if kind == "agent_stopped":
-        return f"{labels.get(role, role.title())} stopped"
-    if kind.endswith("_available"):
-        name = kind.removesuffix("_available").replace("_", " ").title()
-        return f"{name} · {labels.get(sender, sender.title())} → {labels.get(recipient, recipient.title())}"
-    if kind == "assignment_queued":
-        return f"Assignment queued · {labels.get(role, role.title())} · {assignment_id}"
-    if kind == "work_acknowledged":
-        return f"Work started · {labels.get(role, role.title())} · {assignment_id}"
-    if kind == "work_completed":
-        return f"Work completed · {labels.get(role, role.title())} · {assignment_id}"
-    if kind == "envelope_delivered":
-        return f"Delivered · {labels.get(recipient, recipient.title())}"
-    if kind == "conversation_entry":
-        return "Conversation updated"
-    if kind == "model_changed":
-        return "Model updated"
-    if kind == "model_build_failed":
-        return "Model rebuild failed"
-    if kind == "model_build_succeeded":
-        return "Model rebuilt"
-    return kind.replace("_", " ").title()
 
 
 def _require_run(run_id: str) -> None:

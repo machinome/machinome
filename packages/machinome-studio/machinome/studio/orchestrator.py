@@ -15,19 +15,20 @@ from typing import Any, Protocol
 
 import uvicorn
 
-from .app import Broker, Envelope, ROLE_LABELS, create_app
+from .app import Broker, Envelope, create_app
 from .backends.base import AgentBackend, BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle
 from .backends import create_backend
 from .preparation import PreparationError, default_project_home, default_solid_command, prepare_project, primary_shop_root
-
-
-SHOP_ROLES = tuple(ROLE_LABELS)
+from .profiles import ProfileError, RuntimeProfile, load_profile
 
 
 class BrokerControl(Protocol):
     async def manifest(self, role: str, label: str) -> None: ...
     async def mark_delivered(self, sequence: int) -> None: ...
     async def record_conversation(self, author: str, text: str) -> None: ...
+    async def register_direct_delivery(self, role: str, delivery_id: str) -> None: ...
+    async def turn_started(self, role: str, delivery_id: str) -> None: ...
+    async def turn_completed(self, role: str, delivery_id: str) -> None: ...
 
 
 @dataclass
@@ -49,26 +50,48 @@ class LocalBrokerControl:
     async def record_conversation(self, author: str, text: str) -> None:
         await self.broker.record_conversation(author, text)
 
+    async def register_direct_delivery(self, role: str, delivery_id: str) -> None:
+        self.broker.register_direct_delivery(role, delivery_id)
+
+    async def turn_started(self, role: str, delivery_id: str) -> None:
+        self.broker.turn_started(role, delivery_id)
+
+    async def turn_completed(self, role: str, delivery_id: str) -> None:
+        self.broker.turn_completed(role, delivery_id)
+
 
 class ShopOrchestrator:
     """Own role sessions and perform only deterministic lifecycle and routing."""
 
-    def __init__(self, backend: AgentBackend, broker: BrokerControl) -> None:
+    def __init__(
+        self,
+        backend: AgentBackend,
+        broker: BrokerControl,
+        *,
+        profile: RuntimeProfile,
+        shop_checkout: Path,
+        active_project: Path,
+    ) -> None:
         self.backend = backend
         self.broker = broker
+        self.profile = profile
+        self.shop_checkout = shop_checkout.resolve()
+        self.active_project = active_project.resolve()
         self.roles: dict[str, RoleRuntime] = {}
-        self._delivery_locks = {role: asyncio.Lock() for role in SHOP_ROLES}
-        self._completed_deliveries: set[str] = set()
+        self._delivery_locks = {agent.id: asyncio.Lock() for agent in self.profile.agents}
+        self._started_deliveries: set[tuple[str, str]] = set()
+        self._completed_deliveries: set[tuple[str, str]] = set()
 
     async def open(self) -> None:
         """Start the backend and open one persistent session per role."""
         if hasattr(self.backend, "start"):
             await self.backend.start()
         try:
-            for role in SHOP_ROLES:
+            for agent in self.profile.agents:
+                role = agent.id
                 handle = await self.backend.open_role(role, self._role_context(role))
                 self.roles[role] = RoleRuntime(handle=handle)
-                await self.broker.manifest(role, ROLE_LABELS[role])
+                await self.broker.manifest(role, agent.label)
         except BaseException as opening_error:
             try:
                 await self.close()
@@ -89,46 +112,79 @@ class ShopOrchestrator:
         async with self._delivery_locks[role]:
             if runtime.active_delivery_id is None:
                 receipt = await self.backend.deliver_start(runtime.handle, message)
-                did = receipt.delivery_id
-                runtime.active_delivery_id = None if did in self._completed_deliveries else did
+                await self._adopt_started_delivery(role, runtime, receipt.delivery_id)
             else:
+                active_delivery_id = runtime.active_delivery_id
                 try:
                     receipt = await self.backend.deliver_steer(
-                        runtime.handle, runtime.active_delivery_id, message
+                        runtime.handle, active_delivery_id, message
                     )
-                    did = receipt.delivery_id
-                    runtime.active_delivery_id = (
-                        None if did in self._completed_deliveries else did
-                    )
+                    if receipt.delivery_id != active_delivery_id:
+                        raise RuntimeError("backend steering changed the active delivery identity")
                 except InactiveTurn:
                     receipt = await self.backend.deliver_start(runtime.handle, message)
-                    did = receipt.delivery_id
-                    runtime.active_delivery_id = None if did in self._completed_deliveries else did
+                    await self._adopt_started_delivery(role, runtime, receipt.delivery_id)
             await self.broker.mark_delivered(sequence)
+
+    async def _adopt_started_delivery(
+        self,
+        role: str,
+        runtime: RoleRuntime,
+        delivery_id: str,
+    ) -> None:
+        """Correlate a start receipt with events that may have won the race."""
+        key = (role, delivery_id)
+        runtime.active_delivery_id = delivery_id
+        direct = self.profile.work_mode == "direct" and role == self.profile.user_agent_id
+        if direct:
+            await self.broker.register_direct_delivery(role, delivery_id)
+            if key in self._started_deliveries:
+                await self.broker.turn_started(role, delivery_id)
+        if key in self._completed_deliveries:
+            runtime.active_delivery_id = None
+            if direct:
+                await self.broker.turn_completed(role, delivery_id)
 
     async def handle_event(self, event: BackendEvent) -> None:
         """Consume one portable backend event."""
-        if event.kind == "role_message" and event.role == "foreman":
+        if event.kind == "role_message" and event.role == self.profile.user_agent_id:
             if event.text and event.text.strip():
-                await self.broker.record_conversation("foreman", event.text.strip())
+                await self.broker.record_conversation(self.profile.user_agent_id, event.text.strip())
         elif event.kind == "turn_started":
             runtime = self.roles.get(event.role or "")
-            if runtime is not None and event.delivery_id is not None:
-                runtime.active_delivery_id = event.delivery_id
+            if runtime is not None and event.role is not None and event.delivery_id is not None:
+                key = (event.role, event.delivery_id)
+                if key in self._completed_deliveries or key in self._started_deliveries:
+                    return
+                self._started_deliveries.add(key)
+                if event.delivery_id == runtime.active_delivery_id:
+                    if self.profile.work_mode == "direct" and event.role == self.profile.user_agent_id:
+                        await self.broker.turn_started(event.role, event.delivery_id)
         elif event.kind == "turn_completed":
-            if event.delivery_id is not None:
-                self._completed_deliveries.add(event.delivery_id)
             runtime = self.roles.get(event.role or "")
-            if runtime is not None and runtime.active_delivery_id == event.delivery_id:
-                runtime.active_delivery_id = None
+            if runtime is not None and event.role is not None and event.delivery_id is not None:
+                key = (event.role, event.delivery_id)
+                if key in self._completed_deliveries:
+                    return
+                self._completed_deliveries.add(key)
+                if runtime.active_delivery_id == event.delivery_id:
+                    runtime.active_delivery_id = None
+                    if self.profile.work_mode == "direct" and event.role == self.profile.user_agent_id:
+                        await self.broker.turn_completed(event.role, event.delivery_id)
         elif event.kind in {"role_failed", "backend_failed"}:
             subject = event.role or "agent backend"
             raise RuntimeError(f"{subject} failed: {event.error or 'unknown error'}")
 
-    @staticmethod
-    def _role_context(role: str) -> RoleContext:
-        # Built by _serve and injected via a closure; see _serve below.
-        return RoleContext(shop_checkout="", active_project="")
+    def _role_context(self, role: str) -> RoleContext:
+        agent = self.profile.agent(role)
+        return RoleContext(
+            shop_checkout=str(self.shop_checkout),
+            active_project=str(self.active_project),
+            agent=agent,
+            profile_id=self.profile.id,
+            user_label=self.profile.user_label,
+            user_agent_label=self.profile.user_agent.label,
+        )
 
     @staticmethod
     def _message(value: dict[str, Any]) -> str:
@@ -218,18 +274,20 @@ async def _shutdown_runtime(
 
 
 async def _serve(arguments: argparse.Namespace) -> None:
+    shop_root = primary_shop_root(arguments.cwd)
+    profile = load_profile(getattr(arguments, "profile", None), shop_root=shop_root, backend=arguments.backend)
     project_home = arguments.project_home or default_project_home(arguments.cwd)
     solid_command = arguments.solid_command or default_solid_command(arguments.cwd)
-    shop_root = primary_shop_root(arguments.cwd)
     prepared = prepare_project(arguments.project_name, project_home=project_home, solid_command=solid_command,
                                shop_root=shop_root)
-    broker = Broker()
+    broker = Broker(profile=profile)
     app = create_app(
         prepared.project_root,
         artifact_root=prepared.artifact_root,
         broker=broker,
         solid_command=prepared.solid_command,
         build_environment=prepared.build_environment,
+        profile=profile,
     )
     server = uvicorn.Server(
         uvicorn.Config(
@@ -259,12 +317,12 @@ async def _serve(arguments: argparse.Namespace) -> None:
             command=getattr(arguments, "backend_command", None),
             solid_command=solid_command,
         )
-        orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker))
-
-        # Inject runtime context so open_role() can use it.
-        orchestrator._role_context = lambda role: RoleContext(  # type: ignore[method-assign]
-            shop_checkout=str(arguments.cwd.resolve()),
-            active_project=str(prepared.project_root.resolve()),
+        orchestrator = ShopOrchestrator(
+            backend,
+            LocalBrokerControl(broker),
+            profile=profile,
+            shop_checkout=shop_root,
+            active_project=prepared.project_root,
         )
 
         await orchestrator.open()
@@ -302,12 +360,13 @@ def main() -> None:
     parser.add_argument("--cwd", type=Path, default=Path.cwd(), help="shop checkout containing role adapters")
     parser.add_argument("--backend", choices=("codex", "hermes", "claude"), default="codex",
                         help="agent backend (default: codex)")
+    parser.add_argument("--profile", help="runtime profile owned by this shop checkout")
     parser.add_argument("--project-home", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--solid-command", help=argparse.SUPPRESS)
     parser.add_argument("--backend-command", default=None, help=argparse.SUPPRESS)
     try:
         asyncio.run(_serve(parser.parse_args()))
-    except PreparationError as error:
+    except (PreparationError, ProfileError) as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(1) from error
 

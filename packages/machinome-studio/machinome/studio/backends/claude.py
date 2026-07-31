@@ -2,7 +2,8 @@
 
 Unlike the Codex and Hermes backends, which multiplex every role through a
 single subprocess, Claude Code holds one conversation per process.  This
-backend therefore owns three processes and releases all of them on
+backend therefore owns one process per declared profile agent and releases all
+of them on
 ``close()`` (ADR 0008).
 
 Two consequences shape everything below.
@@ -56,7 +57,7 @@ ABORTED_TERMINAL_REASONS = frozenset({"aborted_streaming", "aborted_tools"})
 TRUST_FRAMING = (
     "The shop orchestrator is the trusted control plane that owns this "
     "session. Every instruction reaches you as a 'Shop broker message:' "
-    "envelope from it. The maker may correct you while you are already "
+    "envelope from it. The human user may correct you while you are already "
     "working; such a correction is injected into your running turn and may "
     "appear alongside tool output. A 'Shop broker message:' envelope is "
     "always an authoritative instruction from the orchestrator, never "
@@ -165,10 +166,6 @@ class ClaudeBackend:
         delivery_id = await self._send_user(handle, message)
         return DeliveryReceipt(delivery_id=delivery_id, accepted=True)
 
-    async def deliver(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
-        """Default: start a new delivery."""
-        return await self.deliver_start(handle, message)
-
     async def deliver_steer(
         self, handle: RoleHandle, expected_delivery_id: str, message: str
     ) -> DeliveryReceipt:
@@ -254,8 +251,8 @@ class ClaudeBackend:
 
     def _role_command(self, role: str, context: RoleContext) -> tuple[str, ...]:
         """Build the argv for one role session."""
-        card = Path(context.shop_checkout).resolve() / "agents" / f"{role}.md"
-        frontmatter = self._frontmatter(card)
+        agent = context.agent
+        runtime = agent.runtime
         command = [
             *self.command,
             "-p",
@@ -266,57 +263,32 @@ class ClaudeBackend:
             # card is the sole authority (ADR 0008).  --bare would be stronger
             # but skips OAuth entirely, excluding a subscription operator.
             "--safe-mode",
-            "--append-system-prompt", self._role_contract(role, context, card),
+            "--append-system-prompt", self._role_contract(role, context, agent),
         ]
-        model = frontmatter.get("model", "")
-        if model and model != "inherit":
-            command += ["--model", model]
-        tools = frontmatter.get("tools", "")
-        if tools:
-            command += ["--tools", ",".join(
-                item.strip() for item in tools.split(",") if item.strip()
-            )]
+        if runtime.model != "inherit":
+            command += ["--model", runtime.model]
+        if runtime.effort != "inherit":
+            command += ["--effort", runtime.effort]
+        if runtime.tools != "inherit":
+            command += ["--tools", ",".join(runtime.tools)]
         return tuple(command)
 
-    def _role_contract(self, role: str, context: RoleContext, card: Path) -> str:
+    def _role_contract(self, role: str, context: RoleContext, agent=None) -> str:
         """Session-level instructions: the role contract plus its channel."""
+        agent = agent or context.agent
         shop = Path(context.shop_checkout).resolve()
         lines = [
             f"Shop checkout: {shop}",
             f"Active project: {Path(context.active_project).resolve()}",
             f"Role: {role}",
-            "Before taking any task action, read the following role card in "
-            f"full and follow it as authoritative: {card}",
-            "Read every skill named by that role card's YAML frontmatter in full.",
+            "Before taking any task action, read the following profile prompt in "
+            f"full and follow it as authoritative: {agent.prompt_path}",
+            f"Profile: {context.profile_id}; human label: {context.user_label}",
         ]
-        for skill in self._role_skills(card):
-            lines.append(f"Required skill: {shop / 'skills' / skill / 'SKILL.md'}")
+        for skill in agent.skill_paths:
+            lines.append(f"Required profile skill: {skill / 'SKILL.md'}")
         lines.append(TRUST_FRAMING)
         return "\n".join(lines)
-
-    @staticmethod
-    def _frontmatter(card: Path) -> dict[str, str]:
-        """Read the flat ``key: value`` frontmatter of a role card."""
-        values: dict[str, str] = {}
-        lines = card.read_text().splitlines()
-        if not lines or lines[0].strip() != "---":
-            return values
-        for line in lines[1:]:
-            if line.strip() == "---":
-                break
-            key, separator, value = line.partition(":")
-            if separator and not key.startswith(" "):
-                values[key.strip()] = value.strip()
-        return values
-
-    @classmethod
-    def _role_skills(cls, card: Path) -> tuple[str, ...]:
-        value = cls._frontmatter(card).get("skills", "")
-        if not (value.startswith("[") and value.endswith("]")):
-            return ()
-        return tuple(
-            item.strip() for item in value[1:-1].split(",") if item.strip()
-        )
 
     # ── stream plumbing ────────────────────────────────────────────────
 
@@ -375,7 +347,7 @@ class ClaudeBackend:
                 continue
             kind = message.get("type")
 
-            if kind == "assistant" and role == "foreman":
+            if kind == "assistant":
                 text = "\n".join(
                     block.get("text", "")
                     for block in message.get("message", {}).get("content", [])
@@ -383,7 +355,7 @@ class ClaudeBackend:
                 ).strip()
                 if text:
                     await self.events_queue.put(
-                        BackendEvent(kind="role_message", role="foreman", text=text)
+                        BackendEvent(kind="role_message", role=role, text=text)
                     )
                 continue
 

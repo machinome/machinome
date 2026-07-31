@@ -4,7 +4,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
-from floor import agent, foreman
+from floor import agent
 
 
 class AgentCLITest(unittest.TestCase):
@@ -25,20 +25,21 @@ class AgentCLITest(unittest.TestCase):
         )
 
         with (
-            patch.object(sys, "argv", ["agent", "report", "--role", "machinist", "--text", "Built", "--assignment", "build-1"]),
+            patch.object(sys, "argv", ["agent", "report", "--sender", "machinist", "--recipient", "foreman", "--text", "Built", "--assignment", "build-1"]),
             patch.object(agent, "_request", return_value={}) as request,
         ):
             agent.main()
         self.assertEqual(request.call_args.args[3]["recipient"], "foreman")
         self.assertEqual(request.call_args.args[3]["assignment_id"], "build-1")
 
-    def test_foreman_surface_publishes_only_and_has_no_receive_command(self) -> None:
+    def test_assignment_caller_supplies_the_profile_edge(self) -> None:
         with (
-            patch.object(sys, "argv", ["foreman", "--text", "Progress"]),
-            patch.object(foreman, "_request", return_value={}) as request,
+            patch.object(sys, "argv", ["agent", "assign", "--sender", "foreman", "--recipient", "librarian", "--assignment", "research", "--text", "Research ACP"]),
+            patch.object(agent, "_request", return_value={}) as request,
         ):
-            foreman.main()
-        self.assertEqual(request.call_args.args[1], "/api/runs/shop-floor/foreman/publish")
+            agent.main()
+        self.assertEqual(request.call_args.args[3]["sender"], "foreman")
+        self.assertEqual(request.call_args.args[3]["recipient"], "librarian")
 
 
 if __name__ == "__main__":

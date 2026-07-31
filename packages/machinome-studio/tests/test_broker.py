@@ -5,17 +5,17 @@ from datetime import datetime
 import unittest
 
 from floor.app import Broker
+from floor.profiles import load_profile
+
+
+ROOT = __import__("pathlib").Path(__file__).resolve().parents[1]
 
 
 class BrokerTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        self.broker = Broker(event_history_limit=20)
-        for role, label in (
-            ("foreman", "Foreman"),
-            ("designer", "Designer"),
-            ("machinist", "Machinist"),
-        ):
-            self.broker.manifest(role, label)
+        self.broker = Broker(load_profile("fordesmac", shop_root=ROOT, backend="codex"), event_history_limit=20)
+        for agent in self.broker.profile.agents:
+            self.broker.manifest(agent.id, agent.label)
 
     async def test_direction_and_reports_are_ordered_and_delivery_is_explicit(self) -> None:
         first = self.broker.send("direction", "foreman", "designer", "Start the first drawing.")
@@ -80,6 +80,55 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
         recorded = datetime.fromisoformat(str(snapshot_event["timestamp"]).replace("Z", "+00:00"))
         self.assertIsNotNone(recorded.tzinfo)
         self.assertEqual(recorded.utcoffset().total_seconds(), 0)
+
+
+class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
+    async def test_direct_profile_routes_user_and_turn_state_without_assignment_ceremony(self) -> None:
+        broker = Broker(profile=load_profile("builder", shop_root=ROOT, backend="codex"))
+        builder = broker.manifest("builder", "Builder")
+        entry = await broker.record_conversation("user", "Build a bracket.")
+        direction = broker.pending_for("builder")[0]
+
+        self.assertEqual(entry.author, "user")
+        self.assertEqual((direction.sender, direction.recipient, direction.assignment_id), ("user", "builder", ""))
+        with self.assertRaisesRegex(ValueError, "assignment ID.*direct"):
+            broker.send("direction", "user", "builder", "smuggle an assignment", "not-allowed")
+        broker.register_direct_delivery("builder", "turn-1")
+        broker.turn_started("builder", "turn-1")
+        self.assertEqual(builder.state, "active")
+        broker.turn_completed("builder", "turn-1")
+        self.assertEqual(builder.state, "waiting")
+        for operation in (
+            lambda: broker.assign("builder", "bad"),
+            lambda: broker.acknowledge("builder", "bad"),
+            lambda: broker.complete("builder", "bad"),
+            lambda: broker.send("report", "builder", "builder", "bad"),
+        ):
+            with self.assertRaisesRegex(ValueError, "direct|unavailable"):
+                operation()
+
+    async def test_delegated_profile_enforces_declared_edges_and_keeps_completion_assignment_based(self) -> None:
+        broker = Broker(profile=load_profile("fordesmac", shop_root=ROOT, backend="codex"))
+        for agent in broker.profile.agents:
+            broker.manifest(agent.id, agent.label)
+        with self.assertRaisesRegex(ValueError, "assignment edge"):
+            broker.send("assignment", "designer", "machinist", "skip foreman", "bad")
+        with self.assertRaisesRegex(ValueError, "reporting parent"):
+            broker.send("report", "designer", "machinist", "wrong parent")
+        assignment = broker.send("assignment", "foreman", "librarian", "Research ACP", "research-1")
+        self.assertEqual(assignment.recipient, "librarian")
+        broker.acknowledge("librarian", "research-1")
+        broker.turn_completed("librarian", "backend-turn")
+        self.assertEqual(broker.agents["librarian"].state, "active")
+        broker.complete("librarian", "research-1")
+        self.assertEqual(broker.agents["librarian"].state, "waiting")
+
+    async def test_only_declared_user_agent_output_reaches_the_conversation(self) -> None:
+        broker = Broker(profile=load_profile("fordesmac", shop_root=ROOT, backend="codex"))
+        await broker.record_conversation("foreman", "Public update")
+        self.assertEqual(broker.conversation[-1].author, "foreman")
+        with self.assertRaisesRegex(ValueError, "user-facing"):
+            await broker.record_conversation("designer", "Internal update")
 
 
 if __name__ == "__main__":

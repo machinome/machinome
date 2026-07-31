@@ -1,0 +1,80 @@
+schema_version = 1
+user_label = "Maker"
+user_agent = "foreman"
+work_mode = "delegated"
+
+[[agents]]
+id = "foreman"
+label = "Foreman"
+prompt = "foreman.md"
+assigns = ["designer", "machinist", "librarian"]
+
+[agents.backends.codex]
+model = "gpt-5.6-terra"
+effort = "medium"
+tools = "inherit"
+[agents.backends.claude]
+model = "sonnet"
+effort = "medium"
+tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
+[agents.backends.hermes]
+model = "inherit"
+effort = "inherit"
+tools = "inherit"
+
+[[agents]]
+id = "designer"
+label = "Designer"
+prompt = "designer.md"
+assigns = []
+reports_to = "foreman"
+[agents.backends.codex]
+model = "gpt-5.6-sol"
+effort = "medium"
+tools = "inherit"
+[agents.backends.claude]
+model = "opus"
+effort = "medium"
+tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
+[agents.backends.hermes]
+model = "inherit"
+effort = "inherit"
+tools = "inherit"
+
+[[agents]]
+id = "machinist"
+label = "Machinist"
+prompt = "machinist.md"
+assigns = []
+reports_to = "foreman"
+[agents.backends.codex]
+model = "gpt-5.6-terra"
+effort = "medium"
+tools = "inherit"
+[agents.backends.claude]
+model = "sonnet"
+effort = "medium"
+tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
+[agents.backends.hermes]
+model = "inherit"
+effort = "inherit"
+tools = "inherit"
+
+[[agents]]
+id = "librarian"
+label = "Librarian"
+prompt = "librarian.md"
+assigns = []
+reports_to = "foreman"
+[agents.backends.codex]
+model = "gpt-5.6-terra"
+effort = "medium"
+tools = "inherit"
+[agents.backends.claude]
+model = "sonnet"
+effort = "medium"
+tools = ["Bash", "Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"]
+[agents.backends.hermes]
+model = "inherit"
+effort = "inherit"
+tools = "inherit"

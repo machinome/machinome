@@ -13,8 +13,11 @@ type Agent = {
 
 type Run = {
   id: string;
-  branch: string;
   status: string;
+  profile_id: string;
+  user_label: string;
+  user_agent: { id: string; label: string };
+  roster: { id: string; label: string }[];
   agents: Agent[];
   events: BrokerEvent[];
 };
@@ -45,7 +48,7 @@ function formatEventTimestamp(timestamp: string | undefined): string {
 
 type ConversationEntry = {
   sequence: number;
-  author: "maker" | "foreman";
+  author: string;
   text: string;
 };
 
@@ -68,7 +71,7 @@ function FunctionalModel({ generation, buildError }: { generation: number; build
     return () => { disposed = true; unmount?.(); };
   }, [generation]);
   // A failed rebuild is reported beside the model, never instead of it:
-  // the last complete model stays inspectable while the maker fixes the
+  // the last complete model stays inspectable while the human user fixes the
   // source. Only model_changed replaces what is rendered.
   return (
     <>
@@ -82,12 +85,14 @@ function FunctionalModel({ generation, buildError }: { generation: number; build
   );
 }
 
-function ForemanConversation({
+function ProfileConversation({
   entries,
   onSubmit,
+  labels,
 }: {
   entries: ConversationEntry[];
   onSubmit: (text: string) => Promise<void>;
+  labels: Record<string, string>;
 }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -97,7 +102,6 @@ function ForemanConversation({
   const latestEntry = entries[entries.length - 1];
 
   useLayoutEffect(() => {
-    if (latestEntry?.author !== "foreman") return;
     if (transcript.current) transcript.current.scrollTop = transcript.current.scrollHeight;
   }, [latestEntry?.author, latestEntry?.sequence]);
 
@@ -130,7 +134,7 @@ function ForemanConversation({
         <li className="empty">Send a message to begin the conversation.</li>
       ) : entries.map((entry) => (
         <li key={entry.sequence} data-conversation-author={entry.author}>
-          <strong>{entry.author === "maker" ? "Maker" : "Foreman"}</strong>
+          <strong>{labels[entry.author] ?? entry.author}</strong>
           <p>{entry.text}</p>
         </li>
       ))}
@@ -162,11 +166,12 @@ function ForemanConversation({
   </>;
 }
 
-function AgentMenu({ agents, events }: { agents: Agent[]; events: BrokerEvent[] }) {
+function AgentMenu({ agents, events, profileId }: { agents: Agent[]; events: BrokerEvent[]; profileId?: string }) {
   const newestEvents = [...events].reverse();
   return <>
     <section aria-labelledby="agents-heading">
       <h2 id="agents-heading">Agents</h2>
+      {profileId ? <p className="run-status">Profile {profileId}</p> : null}
       {agents.length === 0 ? (
         <p className="empty">No agents are currently manifested.</p>
       ) : (
@@ -243,7 +248,11 @@ function App() {
           return;
         }
         if (event.kind === "model_build_succeeded") { setModelBuildError(null); return; }
-        if (!event.kind.startsWith("agent_") && !event.kind.startsWith("work_")) return;
+        if (
+          !event.kind.startsWith("agent_")
+          && !event.kind.startsWith("work_")
+          && !event.kind.startsWith("direct_work_")
+        ) return;
         const { role, label, state } = event.payload as Agent;
         setRun((previous) => {
           if (!previous) return previous;
@@ -277,9 +286,9 @@ function App() {
     };
   }, []);
 
-  const submitMakerMessage = async (text: string) => {
+  const submitUserMessage = async (text: string) => {
     if (!run) return;
-    const response = await fetch(`/api/runs/${run.id}/conversation/maker`, {
+    const response = await fetch(`/api/runs/${run.id}/conversation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
@@ -297,7 +306,7 @@ function App() {
           <p id="shop-status" aria-live="polite">Shop is {shopOpen ? "open" : "closed"}</p>
           <p className="run-status">{run ? `Run ${run.id} · ${run.status}` : "Waiting for a run."}</p>
         </header>
-        <AgentMenu agents={run?.agents ?? []} events={run?.events ?? []} />
+        <AgentMenu agents={run?.agents ?? []} events={run?.events ?? []} profileId={run?.profile_id} />
       </aside>
       <div className="shop-content">
         <section className="artifact-view" aria-labelledby="artifact-heading">
@@ -305,7 +314,11 @@ function App() {
           <FunctionalModel generation={modelGeneration} buildError={modelBuildError} />
         </section>
         <section className="conversation" aria-label="Chat">
-          <ForemanConversation entries={conversation} onSubmit={submitMakerMessage} />
+          <ProfileConversation
+            entries={conversation}
+            onSubmit={submitUserMessage}
+            labels={run ? { user: run.user_label, [run.user_agent.id]: run.user_agent.label } : {}}
+          />
         </section>
       </div>
     </main>

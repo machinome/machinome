@@ -6,77 +6,72 @@ Define fail-closed preparation, opening, operation, and shutdown of the local
 shop floor across supported agent backends.
 ## Requirements
 ### Requirement: The orchestrator opens the shop floor
-The system SHALL allow a maker to open shop-floor for a required workspace
-project name. Before starting the local service or any agent, the shop runtime
-SHALL prepare the corresponding `projects/<name>` repository and complete its
-initial functional-model build. It SHALL then run the local shop-floor service,
-start persistent sessions for the foreman, designer, and machinist through the
-selected agent backend in that verified project root, and keep control of those
-sessions for the life of the open shop. Each role session SHALL use the
-verified project root as its workspace boundary. The shop runtime SHALL tell
-the maker its stable local browser location only after the initial model is
-ready, the service is available, and all three agents are running. The default
-browser location SHALL use port 9000, and the runtime SHALL be able to use an
-explicitly configured port instead.
+The system SHALL allow the user to open shop-floor for a required workspace
+project and selected runtime profile. Before project creation, validation, or
+build, it SHALL resolve and validate that profile and selected backend settings.
+It SHALL then prepare the corresponding `projects/<name>` repository, complete
+the initial model build, run the local service, and start persistent sessions
+for exactly the profile's standing agents through the selected backend. Each
+session SHALL use the verified project root as its workspace boundary.
 
-#### Scenario: A maker opens the shop
-- **WHEN** a maker opens the shop for a named project without configuring a port
-- **THEN** the runtime prepares and builds that project, runs the shop-floor service and three-agent team in it, and provides its browser location on port 9000
+The runtime SHALL report its stable browser location only after profile
+validation, model preparation, service availability, and all declared agents
+are complete. The default port SHALL be 9000 and an explicit port SHALL remain
+supported.
 
-#### Scenario: A maker opens the shop on a configured port
-- **WHEN** a maker opens the shop for a named project with an explicit port
-- **THEN** the runtime prepares and builds that project, runs the shop-floor service and three-agent team in it, and provides its browser location on that port
+#### Scenario: The user opens the default shop
+- **WHEN** the user opens a named project without profile or port options
+- **THEN** the runtime validates `builder`, prepares the project, opens one Builder session through Codex, and reports the browser location on port 9000
 
-#### Scenario: A maker opens the shop with the Codex backend
-- **WHEN** a maker opens the shop with `--backend codex` (or omitting the flag)
-- **THEN** the runtime uses the Codex backend for all three agent sessions
+#### Scenario: The user opens either profile on a configured port
+- **WHEN** the user opens a named project with an explicit non-default port and either valid built-in profile
+- **THEN** the runtime opens that profile on the configured port and reports the matching browser location
 
-#### Scenario: A maker opens the shop with the Hermes backend
-- **WHEN** a maker opens the shop with `--backend hermes`
-- **THEN** the runtime uses the Hermes backend for all three agent sessions
+#### Scenario: The user opens Fordesmac
+- **WHEN** the user opens a named project with `--profile fordesmac`
+- **THEN** the runtime validates that profile and opens Foreman, Designer, Machinist, and Librarian sessions
+
+#### Scenario: Profile and backend are selected independently
+- **WHEN** either initial profile is selected with Codex, Hermes, or Claude
+- **THEN** that backend opens exactly the agents declared by that profile
+
+#### Scenario: Profile validation fails
+- **WHEN** the selected profile is invalid or incomplete for the selected backend
+- **THEN** the runtime starts no preparation, service, build, or agent process and reports the profile error
 
 #### Scenario: Project preparation fails
-- **WHEN** the named project cannot be created, validated, or built into a complete initial model
-- **THEN** the runtime starts no floor service or agent session, provides no browser location, and tells the maker why the shop was not opened
+- **WHEN** the validly configured project cannot be created, validated, or built
+- **THEN** the runtime starts no floor service or agent session, reports why it did not open, and provides no browser location
 
-#### Scenario: The runtime cannot be opened after project preparation
-- **WHEN** the service or any required agent session cannot be started after the project is ready
-- **THEN** the runtime ends anything started for that attempt and tells the maker that the shop could not be opened
+#### Scenario: Runtime opening fails after preparation
+- **WHEN** the service or any declared session cannot start after the project is ready
+- **THEN** the runtime ends everything started for that attempt and reports that it could not open
 
-#### Scenario: Role sessions are sandboxed to the project
-- **WHEN** the runtime opens the shop after preparing `projects/<name>`
-- **THEN** each Foreman, Designer, and Machinist session uses that verified repository as its workspace boundary
+#### Scenario: Profile sessions are sandboxed to the project
+- **WHEN** a valid profile opens after preparing a named project
+- **THEN** every declared agent session uses that exact verified repository as its workspace boundary
 
 ### Requirement: The orchestrator closes the shop floor
-The system SHALL allow a maker to close shop-floor. The shop runtime SHALL end
-the foreman, designer, and machinist sessions through the selected backend and
-stop the shop-floor service before telling the maker that the shop is closed.
+The user SHALL be able to close shop-floor. The runtime SHALL end every agent
+session declared by the active profile through the selected backend and stop
+the service before reporting closure. Close SHALL be bounded, active work SHALL
+NOT prevent it, and no owned agent process may remain afterward.
 
-Closing SHALL complete within a bounded time. Ending a session that has active
-work SHALL NOT prevent the runtime from closing, and no agent subprocess SHALL
-be left running after the maker is told the shop is closed. When the selected
-backend owns more than one agent subprocess, this SHALL hold for every one of
-them.
+#### Scenario: The user closes either profile
+- **WHEN** the user closes an open Builder or Fordesmac shop
+- **THEN** the runtime ends every active profile session, stops the floor, and reports closure
 
-#### Scenario: A maker closes the shop
-- **WHEN** a maker closes the shop
-- **THEN** the runtime ends all three shop-agent sessions, stops shop-floor, and reports that the shop is closed
+#### Scenario: The user closes while work is active
+- **WHEN** the shop closes while direct or delegated work is active
+- **THEN** the runtime ends the active run without leaving an agent session or broker process
 
-#### Scenario: A maker closes the shop while work is active
-- **WHEN** a maker closes the shop while one or more agents have active work
-- **THEN** the runtime ends the active shop runtime without leaving an agent session or broker process running
+#### Scenario: One agent will not stop
+- **WHEN** an owned agent process does not exit when asked
+- **THEN** the backend forces it to stop, releases all others, and close completes
 
-#### Scenario: Closing does not hang on an agent that will not stop
-- **WHEN** a maker closes the shop and the agent subprocess does not exit when asked
-- **THEN** the runtime forces it to stop, completes the close, and reports that the shop is closed
-
-#### Scenario: Ending active work does not abort the close
-- **WHEN** ending an agent's active work reports an error while the shop is closing
-- **THEN** the runtime still ends the remaining sessions, stops shop-floor, and reports that the shop is closed
-
-#### Scenario: Closing releases every process of a multi-process backend
-- **WHEN** a maker closes the shop running a backend that owns one subprocess per role and one of those subprocesses does not exit when asked
-- **THEN** the runtime forces that subprocess to stop, still releases the others, and reports that the shop is closed
+#### Scenario: Ending active work reports an error
+- **WHEN** interrupting one profile agent reports an error during close
+- **THEN** the runtime still releases remaining sessions and stops the floor
 
 ### Requirement: The shop validates the model before it becomes open
 When the runtime opens a named project shop floor, the system SHALL build the
@@ -114,14 +109,15 @@ again without a page reload.
 - **THEN** the page reconnects through Server-Sent Events and displays `Shop is open` without a page reload
 
 ### Requirement: A maker can open the shop with the Claude backend
-The shop runtime SHALL support opening the shop with the Claude backend, using
-the same broker, role cards, skills, and product pipeline as the other backends.
+The shop runtime SHALL support both initial profiles through Claude using the
+same broker, profile prompts, profile skills, topology, and lifecycle outcomes
+as the other backends.
 
-#### Scenario: A maker opens the shop with the Claude backend
-- **WHEN** a maker opens the shop with `--backend claude`
-- **THEN** the runtime uses the Claude backend for all three agent sessions
+#### Scenario: Builder opens with Claude
+- **WHEN** the user opens with `--profile builder --backend claude`
+- **THEN** the runtime opens one Builder Claude session with the Builder profile contract
 
-#### Scenario: Claude role sessions are sandboxed to the project
-- **WHEN** the runtime opens the shop with the Claude backend after preparing `projects/<name>`
-- **THEN** each Foreman, Designer, and Machinist session uses that verified repository as its workspace boundary
+#### Scenario: Fordesmac opens with Claude
+- **WHEN** the user opens with `--profile fordesmac --backend claude`
+- **THEN** the runtime opens four project-sandboxed Claude sessions carrying the Fordesmac contracts
 

@@ -77,7 +77,7 @@ class HermesBackend:
             (solid_command,) if isinstance(solid_command, str) else tuple(solid_command)
         )
         # Control-plane liveness (initialize, session/new) and model work are
-        # different budgets: a role bootstrap reads a role card and every skill
+        # different budgets: a profile bootstrap reads its prompt and every skill
         # it names, which says nothing about whether the protocol is alive.
         self.control_timeout = control_timeout
         self.prompt_timeout = prompt_timeout
@@ -204,12 +204,6 @@ class HermesBackend:
         delivery_id = await self._send_prompt(handle, message)
         return DeliveryReceipt(delivery_id=str(delivery_id), accepted=True)
 
-    async def deliver(
-        self, handle: RoleHandle, message: str
-    ) -> DeliveryReceipt:
-        """Default: start a new delivery."""
-        return await self.deliver_start(handle, message)
-
     async def deliver_steer(
         self,
         handle: RoleHandle,
@@ -330,10 +324,10 @@ class HermesBackend:
                     return None
                 role = role_info[0]
                 text = str(agent_message.get("text", "")).strip()
-                if role == "foreman" and text:
+                if text:
                     return BackendEvent(
                         kind="role_message",
-                        role="foreman",
+                        role=role,
                         text=text,
                     )
             return None
@@ -342,38 +336,23 @@ class HermesBackend:
 
     def _role_bootstrap(self, role: str, context: RoleContext) -> str:
         """Build the authoritative role-contract bootstrap prompt."""
+        agent = context.agent
         shop = Path(context.shop_checkout).resolve()
-        role_card = shop / "agents" / f"{role}.md"
         lines = [
             f"Shop checkout: {shop}",
             f"Active project: {Path(context.active_project).resolve()}",
             f"Role: {role}",
-            "Before taking any task action, read the following role card in full ",
-            f"and follow it as authoritative: {role_card}",
-            "Read every skill named by that role card's YAML frontmatter in full.",
+            "Before taking any task action, read the following profile prompt in full ",
+            f"and follow it as authoritative: {agent.prompt_path}",
         ]
-        for skill in self._role_skills(role_card):
-            lines.append(f"Required skill: {shop / 'skills' / skill / 'SKILL.md'}")
+        for skill in agent.skill_paths:
+            lines.append(f"Required profile skill: {skill / 'SKILL.md'}")
         lines.append(
             "Do not begin project work. Finish loading this contract, then return "
             "to standby for a broker message."
         )
         return "\n".join(lines)
 
-    @staticmethod
-    def _role_skills(role_card: Path) -> tuple[str, ...]:
-        """Read the simple skills list from a role card's YAML frontmatter."""
-        for line in role_card.read_text().splitlines():
-            if line.startswith("skills:"):
-                value = line.partition(":")[2].strip()
-                if not (value.startswith("[") and value.endswith("]")):
-                    break
-                return tuple(
-                    item.strip()
-                    for item in value[1:-1].split(",")
-                    if item.strip()
-                )
-        return ()
 
     # ── JSON-RPC plumbing ──────────────────────────────────────────────
 
@@ -562,11 +541,11 @@ class HermesBackend:
                             )
                         )
                     else:
-                        if role == "foreman" and text:
+                        if text:
                             await self.notifications.put(
                                 BackendEvent(
                                     kind="role_message",
-                                    role="foreman",
+                                    role=role,
                                     text=text,
                                 )
                             )

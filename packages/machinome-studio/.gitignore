@@ -9,7 +9,7 @@ __pycache__/
 node_modules/
 playwright-report/
 test-results/
-solid-node/
+/solid-node/
 WTs/
 .env
 projects/*

@@ -12,7 +12,6 @@ import asyncio
 import json
 import os
 import shlex
-import tomllib
 from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
 from typing import Any
@@ -106,23 +105,25 @@ class CodexBackend:
 
     async def open_role(self, role: str, context: RoleContext) -> RoleHandle:
         """Create a persistent Codex thread for *role* with *context*."""
-        config_path = self.cwd / ".codex" / "agents" / f"{role}.toml"
-        with config_path.open("rb") as handle:
-            config = tomllib.load(handle)
-        role_instructions = str(config.get("developer_instructions", ""))
+        agent = context.agent
+        runtime = agent.runtime
         runtime_instructions = (
             f"Shop checkout: {context.shop_checkout}\n"
             f"Active project: {context.active_project}\n"
+            f"Profile: {context.profile_id}\n"
+            f"Human user label: {context.user_label}\n"
             "Treat the active project as the sole mechanical-project repository for this shop run. "
-            "Shop role cards and skills come from the shop checkout named above.\n\n"
+            f"Read and follow this profile-owned prompt in full: {agent.prompt_path}\n"
+            + "\n".join(f"Required profile skill: {skill / 'SKILL.md'}" for skill in agent.skill_paths)
         )
         project = Path(context.active_project).resolve()
         result = await self._request(
             "thread/start",
             {
                 "cwd": str(project),
-                "model": config.get("model"),
-                "developerInstructions": runtime_instructions + role_instructions,
+                "model": None if runtime.model == "inherit" else runtime.model,
+                "config": None if runtime.effort == "inherit" else {"model_reasoning_effort": runtime.effort},
+                "developerInstructions": runtime_instructions,
                 "sandbox": "danger-full-access",
                 "approvalPolicy": "never",
                 "runtimeWorkspaceRoots": [str(project)],
@@ -144,10 +145,6 @@ class CodexBackend:
         turn_id = str(result["turn"]["id"])
         self._active_turns[thread_id] = turn_id
         return DeliveryReceipt(delivery_id=turn_id, accepted=True)
-
-    async def deliver(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
-        """Default: start a new delivery (orchestrator uses deliver_start/deliver_steer)."""
-        return await self.deliver_start(handle, message)
 
     async def deliver_steer(
         self, handle: RoleHandle, expected_delivery_id: str, message: str
@@ -219,15 +216,11 @@ class CodexBackend:
         self._reader_task = None
         self._stderr_task = None
 
-    # ── legacy API (used by acceptance tests) ────────────────────────────
+    # ── native test helpers ──────────────────────────────────────────────
 
-    async def start_thread(self, role: str) -> str:
-        """Legacy: open a role thread and return its thread ID."""
-        ctx = RoleContext(
-            shop_checkout=str(self.cwd),
-            active_project=str(self.project),
-        )
-        handle = await self.open_role(role, ctx)
+    async def start_thread(self, role: str, context: RoleContext) -> str:
+        """Open an explicit resolved role contract and return its thread ID."""
+        handle = await self.open_role(role, context)
         return handle.backend_id
 
     async def start_turn(self, thread_id: str, message: str) -> str:
@@ -282,13 +275,12 @@ class CodexBackend:
                 return None
             role = role_info[0]
             if (
-                role == "foreman"
-                and item.get("type") == "agentMessage"
+                item.get("type") == "agentMessage"
                 and str(item.get("text", "")).strip()
             ):
                 return BackendEvent(
                     kind="role_message",
-                    role="foreman",
+                    role=role,
                     text=str(item["text"]).strip(),
                 )
             return None

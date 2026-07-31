@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
+from ..profiles import ProfileAgent
+
 
 # ── delivery races ────────────────────────────────────────────────────────
 
@@ -34,12 +36,17 @@ class RoleContext:
     """Runtime context injected into a role session at open time."""
 
     shop_checkout: str
-    """Absolute path to the shop checkout (role cards, skills live here)."""
+    """Absolute path to the shop checkout that owns the resolved profile."""
 
     active_project: str
     """Absolute path to the active mechanical-project repository root."""
 
-    """Callback URL the machinist uses to signal model rebuilds."""
+    agent: ProfileAgent
+    """The validated, profile-owned contract for this session."""
+
+    profile_id: str
+    user_label: str
+    user_agent_label: str
 
 
 @dataclass(frozen=True)
@@ -108,16 +115,6 @@ class AgentBackend(Protocol):
 
     async def open_role(self, role: str, context: RoleContext) -> RoleHandle:
         """Create a persistent role session and return its handle."""
-        ...
-
-    async def deliver(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
-        """Route a broker envelope to a role session.
-
-        The orchestrator calls ``deliver_start`` when the role is idle and
-        ``deliver_steer`` when the role is active.  The default
-        ``deliver()`` implementation dispatches to the appropriate method
-        based on whether *expected_delivery_id* is passed.
-        """
         ...
 
     async def deliver_start(

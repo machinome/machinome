@@ -12,12 +12,13 @@ import tempfile
 import time
 from types import SimpleNamespace
 from pathlib import Path
+from typing import cast
 from unittest.mock import patch
 from urllib.request import urlopen
 
 from floor.app import Broker
 from floor.backends.codex import CodexBackend as CodexAppServer
-from floor.backends.base import BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle
+from floor.backends.base import AgentBackend, BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle
 from floor.backends.hermes import HermesBackend
 from floor.orchestrator import (
     LocalBrokerControl,
@@ -27,11 +28,27 @@ from floor.orchestrator import (
     _wait_for_runtime,
 )
 from floor.preparation import PreparationError
+from floor.profiles import load_profile
+
+from tests.fixtures.primary_shop import isolated_primary_shop
 
 
 ROOT = Path(__file__).resolve().parents[1]
 FAKE_APP_SERVER = ROOT / "tests" / "fixtures" / "fake_codex_app_server.py"
 FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
+FORDESMAC = load_profile("fordesmac", shop_root=ROOT, backend="codex")
+
+
+def _context(role: str, *, backend: str = "codex", project: Path | None = None) -> RoleContext:
+    profile = load_profile("fordesmac", shop_root=ROOT, backend=backend)
+    return RoleContext(
+        shop_checkout=str(ROOT),
+        active_project=str((project or ROOT / "projects" / "snowman").resolve()),
+        agent=profile.agent(role),
+        profile_id=profile.id,
+        user_label=profile.user_label,
+        user_agent_label=profile.user_agent.label,
+    )
 
 
 class FakeBroker:
@@ -121,11 +138,11 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.codex = FakeCodex()
         self.broker = FakeBroker()
-        self.orchestrator = ShopOrchestrator(self.codex, self.broker)
+        self.orchestrator = ShopOrchestrator(self.codex, self.broker, profile=FORDESMAC, shop_checkout=ROOT, active_project=ROOT)
         await self.orchestrator.open()
 
     async def test_open_owns_exactly_the_three_role_threads(self) -> None:
-        self.assertEqual(self.codex.started_threads, ["foreman", "designer", "machinist"])
+        self.assertEqual(self.codex.started_threads, ["foreman", "designer", "machinist", "librarian"])
         self.assertEqual([role for role, _ in self.broker.manifested], self.codex.started_threads)
 
     async def test_idle_delivery_starts_and_active_delivery_steers_the_same_owner(self) -> None:
@@ -171,7 +188,7 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         await self.orchestrator.deliver({"sequence": 14, "recipient": "foreman", "body": "Work"})
         await self.orchestrator.close()
         self.assertEqual(self.codex.interrupted, [("thread-foreman", "thread-foreman")])
-        self.assertEqual(self.codex.closed, ["thread-machinist", "thread-designer", "thread-foreman"])
+        self.assertEqual(self.codex.closed, ["thread-librarian", "thread-machinist", "thread-designer", "thread-foreman"])
 
     async def test_completed_foreman_message_is_published_to_the_maker_conversation(self) -> None:
         await self.orchestrator.handle_event(
@@ -183,6 +200,160 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.broker.conversation, [("foreman", "Hello from Foreman.")])
 
 
+class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
+    async def test_direct_start_event_that_wins_the_receipt_race_is_adopted(self) -> None:
+        profile = load_profile("builder", shop_root=ROOT, backend="codex")
+        broker = Broker(profile=profile)
+
+        class RacingCodex(FakeCodex):
+            orchestrator: ShopOrchestrator
+
+            async def deliver_start(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
+                receipt = await super().deliver_start(handle, message)
+                await self.orchestrator.handle_event(
+                    BackendEvent(
+                        kind="turn_started",
+                        role=handle.role,
+                        delivery_id=receipt.delivery_id,
+                    )
+                )
+                return receipt
+
+        codex = RacingCodex()
+        orchestrator = ShopOrchestrator(
+            cast(AgentBackend, codex),
+            LocalBrokerControl(broker),
+            profile=profile,
+            shop_checkout=ROOT,
+            active_project=ROOT,
+        )
+        codex.orchestrator = orchestrator
+        await orchestrator.open()
+        self.addAsyncCleanup(orchestrator.close)
+        await broker.record_conversation("user", "Build")
+        await orchestrator.deliver(broker.pending_for("builder")[0])
+
+        self.assertEqual(broker.agents["builder"].state, "active")
+        self.assertEqual(
+            broker.agents["builder"].direct_delivery_id,
+            orchestrator.roles["builder"].active_delivery_id,
+        )
+
+    async def test_direct_completion_that_wins_the_receipt_race_stays_waiting(self) -> None:
+        profile = load_profile("builder", shop_root=ROOT, backend="codex")
+        broker = Broker(profile=profile)
+
+        class RacingCodex(FakeCodex):
+            orchestrator: ShopOrchestrator
+
+            async def deliver_start(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
+                receipt = await super().deliver_start(handle, message)
+                for kind in ("turn_started", "turn_completed"):
+                    await self.orchestrator.handle_event(
+                        BackendEvent(
+                            kind=kind,
+                            role=handle.role,
+                            delivery_id=receipt.delivery_id,
+                        )
+                    )
+                return receipt
+
+        codex = RacingCodex()
+        orchestrator = ShopOrchestrator(
+            cast(AgentBackend, codex),
+            LocalBrokerControl(broker),
+            profile=profile,
+            shop_checkout=ROOT,
+            active_project=ROOT,
+        )
+        codex.orchestrator = orchestrator
+        await orchestrator.open()
+        self.addAsyncCleanup(orchestrator.close)
+        await broker.record_conversation("user", "Quick answer")
+        await orchestrator.deliver(broker.pending_for("builder")[0])
+
+        self.assertEqual(broker.agents["builder"].state, "waiting")
+        self.assertEqual(broker.agents["builder"].direct_delivery_id, "")
+        self.assertIsNone(orchestrator.roles["builder"].active_delivery_id)
+
+    async def test_every_declared_agent_gets_the_exact_verified_project_root(self) -> None:
+        from tests.fixtures.fake_backend import FakeBackend
+
+        project = ROOT / "projects" / "verified-root"
+        profile = load_profile("fordesmac", shop_root=ROOT, backend="codex")
+        backend = FakeBackend()
+        orchestrator = ShopOrchestrator(
+            backend,
+            FakeBroker(),
+            profile=profile,
+            shop_checkout=ROOT,
+            active_project=project,
+        )
+        await orchestrator.open()
+        self.addAsyncCleanup(orchestrator.close)
+        self.assertEqual(
+            [context.active_project for _, context in backend.opened_roles],
+            [str(project.resolve())] * len(profile.agents),
+        )
+
+    async def test_profile_order_contract_and_only_user_agent_output_are_generic(self) -> None:
+        profile = load_profile("fordesmac", shop_root=ROOT, backend="codex")
+        codex = FakeCodex()
+        broker = FakeBroker()
+        orchestrator = ShopOrchestrator(codex, broker, profile=profile, shop_checkout=ROOT, active_project=ROOT)
+        await orchestrator.open()
+        self.addAsyncCleanup(orchestrator.close)
+        self.assertEqual(codex.started_threads, ["foreman", "designer", "machinist", "librarian"])
+        await orchestrator.handle_event(BackendEvent(kind="role_message", role="designer", text="Internal"))
+        await orchestrator.handle_event(BackendEvent(kind="role_message", role="foreman", text="Public"))
+        self.assertEqual(broker.conversation, [("foreman", "Public")])
+
+    async def test_direct_turn_events_update_the_builder_broker_without_assignment_ids(self) -> None:
+        profile = load_profile("builder", shop_root=ROOT, backend="codex")
+        broker = Broker(profile=profile)
+        codex = FakeCodex()
+        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker), profile=profile, shop_checkout=ROOT, active_project=ROOT)
+        await orchestrator.open()
+        self.addAsyncCleanup(orchestrator.close)
+        await broker.record_conversation("user", "Build")
+        envelope = broker.pending_for("builder")[0]
+        await orchestrator.deliver(envelope)
+        delivery = orchestrator.roles["builder"].active_delivery_id
+        await orchestrator.handle_event(BackendEvent(kind="turn_started", role="builder", delivery_id=delivery))
+        self.assertEqual(broker.agents["builder"].state, "active")
+        await orchestrator.handle_event(BackendEvent(kind="turn_completed", role="builder", delivery_id=delivery))
+        self.assertEqual(broker.agents["builder"].state, "waiting")
+
+    async def test_direct_lifecycle_ignores_stale_events_and_preserves_the_steered_delivery_identity(self) -> None:
+        profile = load_profile("builder", shop_root=ROOT, backend="codex")
+        broker = Broker(profile=profile)
+        codex = FakeCodex()
+        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker), profile=profile, shop_checkout=ROOT, active_project=ROOT)
+        await orchestrator.open()
+        self.addAsyncCleanup(orchestrator.close)
+        await broker.record_conversation("user", "Build")
+        first = broker.pending_for("builder")[0]
+        await orchestrator.deliver(first)
+        delivery = orchestrator.roles["builder"].active_delivery_id
+
+        await orchestrator.handle_event(BackendEvent(kind="turn_started", role="builder", delivery_id="stale"))
+        self.assertEqual(broker.agents["builder"].state, "waiting")
+        self.assertEqual(orchestrator.roles["builder"].active_delivery_id, delivery)
+
+        await orchestrator.handle_event(BackendEvent(kind="turn_started", role="builder", delivery_id=delivery))
+        await broker.record_conversation("user", "Use aluminum")
+        steer = broker.pending_for("builder")[0]
+        await orchestrator.deliver(steer)
+        self.assertEqual(orchestrator.roles["builder"].active_delivery_id, delivery)
+
+        await orchestrator.handle_event(BackendEvent(kind="turn_completed", role="builder", delivery_id="stale"))
+        self.assertEqual(broker.agents["builder"].state, "active")
+        self.assertEqual(orchestrator.roles["builder"].active_delivery_id, delivery)
+
+        await orchestrator.handle_event(BackendEvent(kind="turn_completed", role="builder", delivery_id=delivery))
+        self.assertEqual(broker.agents["builder"].state, "waiting")
+
+
 class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
     async def test_native_turn_identity_survives_events_steering_and_interrupt(self) -> None:
         codex = CodexAppServer(
@@ -191,10 +362,7 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         )
         await codex.start()
         self.addAsyncCleanup(codex.close)
-        context = RoleContext(
-            shop_checkout=str(ROOT),
-            active_project=str(ROOT / "projects" / "snowman"),
-        )
+        context = _context("designer")
         handle = await codex.open_role("designer", context)
 
         receipt = await codex.deliver_start(handle, "Begin")
@@ -236,7 +404,7 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         await codex.start()
         self.addAsyncCleanup(codex.close)
 
-        await codex.start_thread("foreman")
+        await codex.start_thread("foreman", _context("foreman", project=project))
         notification = await codex.notifications.get()
         thread = notification["params"]["thread"]
 
@@ -244,30 +412,30 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(thread["sandbox"], "danger-full-access")
         self.assertEqual(thread["approvalPolicy"], "never")
         self.assertEqual(thread["runtimeWorkspaceRoots"], [str(project.resolve())])
-        self.assertIsNone(thread["config"])
+        self.assertEqual(thread["config"], {"model_reasoning_effort": "medium"})
         self.assertIn(f"Shop checkout: {ROOT.resolve()}", thread["developerInstructions"])
         self.assertIn(f"Active project: {project.resolve()}", thread["developerInstructions"])
 
-        await codex.start_thread("designer")
+        await codex.start_thread("designer", _context("designer", project=project))
         designer = (await codex.notifications.get())["params"]["thread"]
         self.assertEqual(designer["cwd"], str(project.resolve()))
         self.assertEqual(designer["sandbox"], "danger-full-access")
         self.assertEqual(designer["approvalPolicy"], "never")
         self.assertEqual(designer["runtimeWorkspaceRoots"], [str(project.resolve())])
-        self.assertIsNone(designer["config"])
+        self.assertEqual(designer["config"], {"model_reasoning_effort": "medium"})
 
-        await codex.start_thread("machinist")
+        await codex.start_thread("machinist", _context("machinist", project=project))
         machinist = (await codex.notifications.get())["params"]["thread"]
         self.assertEqual(machinist["cwd"], str(project.resolve()))
         self.assertEqual(machinist["sandbox"], "danger-full-access")
         self.assertEqual(machinist["approvalPolicy"], "never")
         self.assertEqual(machinist["runtimeWorkspaceRoots"], [str(project.resolve())])
-        self.assertIsNone(machinist["config"])
+        self.assertEqual(machinist["config"], {"model_reasoning_effort": "medium"})
         self.assertNotIn("develop root", machinist["developerInstructions"])
 
     async def test_closing_never_used_role_threads_is_clean(self) -> None:
         codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
-        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(Broker()))
+        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(Broker(FORDESMAC)), profile=FORDESMAC, shop_checkout=ROOT, active_project=ROOT)
         await orchestrator.open()
 
         await orchestrator.close()
@@ -275,13 +443,13 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(codex.process)
 
     async def test_one_owner_starts_steers_idles_and_closes_all_role_threads(self) -> None:
-        broker = Broker()
+        broker = Broker(FORDESMAC)
         codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
-        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker))
+        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker), profile=FORDESMAC, shop_checkout=ROOT, active_project=ROOT)
         await orchestrator.open()
         self.addAsyncCleanup(orchestrator.close)
 
-        self.assertEqual(sorted(broker.agents), ["designer", "foreman", "machinist"])
+        self.assertEqual(sorted(broker.agents), ["designer", "foreman", "librarian", "machinist"])
         request_count_at_standby = codex._next_id
         await __import__("asyncio").sleep(0.01)
         self.assertEqual(codex._next_id, request_count_at_standby, "standby must not create turns or tool calls")
@@ -300,19 +468,19 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         await inspector.start()
         self.addAsyncCleanup(owner.close)
         self.addAsyncCleanup(inspector.close)
-        thread_id = await owner.start_thread("foreman")
+        thread_id = await owner.start_thread("foreman", _context("foreman"))
         turn_id = await owner.start_turn(thread_id, "Work")
         with self.assertRaises(InactiveTurn):
             await inspector.steer_turn(thread_id, turn_id, "Cross-process direction")
 
     async def test_broker_routes_maker_specialist_and_parallel_pipeline_messages(self) -> None:
-        broker = Broker()
+        broker = Broker(FORDESMAC)
         codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
-        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker))
+        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker), profile=FORDESMAC, shop_checkout=ROOT, active_project=ROOT)
         await orchestrator.open()
         self.addAsyncCleanup(orchestrator.close)
 
-        await broker.record_conversation("maker", "Open with the housing.")
+        await broker.record_conversation("user", "Open with the housing.")
         maker_direction = broker.pending_for("foreman")[0]
         await orchestrator.deliver(maker_direction)
         self.assertIsNotNone(orchestrator.roles["foreman"].active_delivery_id)
@@ -350,6 +518,7 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
         )
         failure = PreparationError("build", "broken", Path("/work/projects/broken"), "failed")
         with (
+            patch("floor.orchestrator.primary_shop_root", return_value=ROOT),
             patch("floor.orchestrator.prepare_project", side_effect=failure),
             patch("floor.orchestrator.Broker") as broker,
             patch("floor.orchestrator.create_app") as create_app,
@@ -359,11 +528,33 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
         broker.assert_not_called()
         create_app.assert_not_called()
 
+    def test_orchestrator_normalizes_to_the_primary_root_before_loading_a_profile(self) -> None:
+        arguments = SimpleNamespace(
+            project_name="broken",
+            project_home=Path("/work/projects"),
+            solid_command="solid",
+            cwd=ROOT / "WTs" / "checkout",
+            port=9000,
+            backend="codex",
+            backend_command="codex",
+        )
+        primary = ROOT
+        failure = PreparationError("build", "broken", Path("/work/projects/broken"), "failed")
+        with (
+            patch("floor.orchestrator.primary_shop_root", return_value=primary),
+            patch("floor.orchestrator.load_profile", return_value=FORDESMAC) as load_profile,
+            patch("floor.orchestrator.prepare_project", side_effect=failure),
+            self.assertRaises(PreparationError),
+        ):
+            __import__("asyncio").run(_serve(arguments))
+        self.assertEqual(load_profile.call_args.kwargs["shop_root"], primary)
+
     def test_one_sigint_closes_with_a_live_sse_client(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         project_home = Path(temporary.name) / "projects"
         project_home.mkdir()
+        shop = self.enterContext(isolated_primary_shop())
         with socket.socket() as probe:
             probe.bind(("127.0.0.1", 0))
             port = probe.getsockname()[1]
@@ -376,7 +567,7 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
                 "--port",
                 str(port),
                 "--cwd",
-                str(ROOT),
+                str(shop),
                 "--backend-command",
                 str(FAKE_APP_SERVER),
                 "--project-home",
@@ -434,13 +625,13 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
         self.backend = FB()
         self.broker = FakeBroker()
-        self.orchestrator = ShopOrchestrator(self.backend, self.broker)
+        self.orchestrator = ShopOrchestrator(self.backend, self.broker, profile=FORDESMAC, shop_checkout=ROOT, active_project=ROOT)
         await self.orchestrator.open()
 
     async def test_open_owns_exactly_the_three_role_sessions(self) -> None:
         self.assertEqual(
             [r for r, _ in self.backend.opened_roles],
-            ["foreman", "designer", "machinist"],
+            ["foreman", "designer", "machinist", "librarian"],
         )
         self.assertEqual(
             [role for role, _ in self.broker.manifested],
@@ -462,7 +653,7 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(self.broker.conversation, [("foreman", "Progress update.")])
 
-    async def test_steer_receipt_replaces_the_active_delivery_identity(self) -> None:
+    async def test_steer_receipt_cannot_replace_the_active_delivery_identity(self) -> None:
         from tests.fixtures.fake_backend import FakeBackend
 
         class NewIdentityBackend(FakeBackend):
@@ -478,19 +669,16 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
                 )
 
         backend = NewIdentityBackend()
-        orchestrator = ShopOrchestrator(backend, FakeBroker())
+        orchestrator = ShopOrchestrator(backend, FakeBroker(), profile=FORDESMAC, shop_checkout=ROOT, active_project=ROOT)
         await orchestrator.open()
         await orchestrator.deliver(
             {"sequence": 30, "recipient": "designer", "body": "Begin"}
         )
-        await orchestrator.deliver(
-            {"sequence": 31, "recipient": "designer", "body": "Correct"}
-        )
-
-        self.assertEqual(
-            orchestrator.roles["designer"].active_delivery_id,
-            "replacement-delivery",
-        )
+        with self.assertRaisesRegex(RuntimeError, "changed the active delivery identity"):
+            await orchestrator.deliver(
+                {"sequence": 31, "recipient": "designer", "body": "Correct"}
+            )
+        self.assertEqual(orchestrator.roles["designer"].active_delivery_id, "delivery-1")
         await orchestrator.close()
 
     async def test_backend_and_role_failures_fail_closed(self) -> None:
@@ -528,7 +716,7 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
                     raise RuntimeError("role close failed")
 
         backend = FailingBackend()
-        orchestrator = ShopOrchestrator(backend, FakeBroker())
+        orchestrator = ShopOrchestrator(backend, FakeBroker(), profile=FORDESMAC, shop_checkout=ROOT, active_project=ROOT)
         await orchestrator.open()
         await orchestrator.deliver(
             {"sequence": 20, "recipient": "foreman", "body": "Work"}
@@ -545,7 +733,7 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(
             [handle.role for handle in backend.closed_roles],
-            ["machinist", "designer", "foreman"],
+            ["librarian", "machinist", "designer", "foreman"],
         )
         self.assertTrue(backend.closed)
 
@@ -565,7 +753,7 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
                 raise RuntimeError("cleanup failed")
 
         backend = FailingOpenBackend()
-        orchestrator = ShopOrchestrator(backend, FakeBroker())
+        orchestrator = ShopOrchestrator(backend, FakeBroker(), profile=FORDESMAC, shop_checkout=ROOT, active_project=ROOT)
         with self.assertRaisesRegex(RuntimeError, "designer open failed"):
             await orchestrator.open()
         self.assertEqual(
@@ -703,11 +891,7 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_role_bootstrap_and_environment_are_operational(self) -> None:
         await self.hermes.start()
-        context = RoleContext(
-            shop_checkout=str(ROOT),
-            active_project=str(ROOT / "projects" / "snowman"),
-        )
-        await self.hermes.open_role("machinist", context)
+        await self.hermes.open_role("machinist", _context("machinist", backend="hermes"))
 
         captured = self.captured()
         environment = next(item for item in captured if item["kind"] == "environment")
@@ -722,9 +906,9 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(prompts), 1)
         self.assertIn("id", prompts[0], "session/prompt must be an ACP request")
         text = prompts[0]["params"]["prompt"][0]["text"]
-        self.assertIn(str(ROOT / "agents" / "machinist.md"), text)
-        self.assertIn(str(ROOT / "skills" / "solid-node-api" / "SKILL.md"), text)
-        self.assertIn(str(ROOT / "skills" / "solid-node" / "SKILL.md"), text)
+        self.assertIn(str(ROOT / "profiles" / "fordesmac" / "machinist.md"), text)
+        self.assertIn(str(ROOT / "profiles" / "fordesmac" / "skills" / "solid-node-api" / "SKILL.md"), text)
+        self.assertIn(str(ROOT / "profiles" / "fordesmac" / "skills" / "solid-node" / "SKILL.md"), text)
         # The shop watches and rebuilds the project itself, so no role
         # is told to run a live-model process.
         self.assertNotIn("develop root", text)
@@ -732,11 +916,7 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_prompt_events_preserve_request_identity(self) -> None:
         await self.hermes.start()
-        context = RoleContext(
-            shop_checkout=str(ROOT),
-            active_project=str(ROOT / "projects" / "snowman"),
-        )
-        handle = await self.hermes.open_role("foreman", context)
+        handle = await self.hermes.open_role("foreman", _context("foreman", backend="hermes"))
         receipt = await self.hermes.deliver_start(handle, "Begin")
 
         started = await asyncio.wait_for(anext(self.hermes.events), timeout=1)
@@ -768,13 +948,9 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
     async def test_full_role_lifecycle_through_fake_acp(self) -> None:
         """start -> open_role x 3 -> deliver -> close through fake ACP."""
         await self.hermes.start()
-        context = RoleContext(
-            shop_checkout=str(ROOT),
-            active_project=str(ROOT / "projects" / "snowman"),
-        )
-        foreman = await self.hermes.open_role("foreman", context)
-        designer = await self.hermes.open_role("designer", context)
-        machinist = await self.hermes.open_role("machinist", context)
+        foreman = await self.hermes.open_role("foreman", _context("foreman", backend="hermes"))
+        designer = await self.hermes.open_role("designer", _context("designer", backend="hermes"))
+        machinist = await self.hermes.open_role("machinist", _context("machinist", backend="hermes"))
 
         self.assertEqual(foreman.role, "foreman")
         self.assertEqual(designer.role, "designer")
@@ -794,11 +970,7 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
     async def test_deliver_and_interrupt_through_fake_acp(self) -> None:
         """deliver_start then interrupt cancels the active session."""
         await self.hermes.start()
-        context = RoleContext(
-            shop_checkout=str(ROOT),
-            active_project=str(ROOT / "projects" / "snowman"),
-        )
-        handle = await self.hermes.open_role("foreman", context)
+        handle = await self.hermes.open_role("foreman", _context("foreman", backend="hermes"))
         await self.hermes.deliver_start(handle, "Work")
         await self.hermes.interrupt(handle)
         await self.hermes.close_role(handle)
@@ -808,11 +980,7 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self,
     ) -> None:
         await self.hermes.start()
-        context = RoleContext(
-            shop_checkout=str(ROOT),
-            active_project=str(ROOT / "projects" / "snowman"),
-        )
-        handle = await self.hermes.open_role("foreman", context)
+        handle = await self.hermes.open_role("foreman", _context("foreman", backend="hermes"))
         first = await self.hermes.deliver_start(handle, "HOLD")
         started = await asyncio.wait_for(anext(self.hermes.events), timeout=1)
         self.assertEqual(started.delivery_id, first.delivery_id)
@@ -831,11 +999,7 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
     async def test_deliver_steer_handles_inactive_turn_through_fake_acp(self) -> None:
         """deliver_steer on a completed turn raises InactiveTurn."""
         await self.hermes.start()
-        context = RoleContext(
-            shop_checkout=str(ROOT),
-            active_project=str(ROOT / "projects" / "snowman"),
-        )
-        handle = await self.hermes.open_role("foreman", context)
+        handle = await self.hermes.open_role("foreman", _context("foreman", backend="hermes"))
         receipt = await self.hermes.deliver_start(handle, "First")
         # Let _read_stdout process the fake ACP server's response
         # (the fake server returns end_turn immediately).
@@ -860,10 +1024,7 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         await self.hermes.start()
         return await self.hermes.open_role(
             "foreman",
-            RoleContext(
-                shop_checkout=str(ROOT),
-                active_project=str(ROOT / "projects" / "snowman"),
-            ),
+            _context("foreman", backend="hermes"),
         )
 
     def _methods(self) -> list[str]:
@@ -963,10 +1124,7 @@ class HermesBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
             await hermes.start()
             handle = await hermes.open_role(
                 "foreman",
-                RoleContext(
-                    shop_checkout=str(ROOT),
-                    active_project=str(ROOT / "projects" / "snowman"),
-                ),
+                _context("foreman", backend="hermes"),
             )
         self.assertEqual(handle.role, "foreman")
         await hermes.close()
@@ -1025,18 +1183,16 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
             command=(sys.executable, str(FAKE_CLAUDE_CLI)),
             solid_command=("/work/.venv/bin/solid",),
         )
-        self.context = RoleContext(
-            shop_checkout=str(ROOT),
-            active_project=str(self.project),
-        )
+    def context(self, role: str) -> RoleContext:
+        return _context(role, backend="claude", project=self.project)
 
     def captured(self) -> list[dict]:
         return [json.loads(line) for line in self.capture.read_text().splitlines()]
 
     async def test_open_role_starts_one_process_per_role(self) -> None:
         await self.claude.start()
-        await self.claude.open_role("foreman", self.context)
-        await self.claude.open_role("designer", self.context)
+        await self.claude.open_role("foreman", self.context("foreman"))
+        await self.claude.open_role("designer", self.context("designer"))
         self.assertEqual(len(self.claude.processes), 2)
         environments = [i for i in self.captured() if i["kind"] == "environment"]
         self.assertEqual(len(environments), 2)
@@ -1048,13 +1204,13 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
     async def test_role_contract_is_session_level_not_a_turn(self) -> None:
         """The first user message must be a broker envelope (ADR 0009)."""
         await self.claude.start()
-        await self.claude.open_role("machinist", self.context)
+        await self.claude.open_role("machinist", self.context("machinist"))
         captured = self.captured()
 
         argv = next(i for i in captured if i["kind"] == "environment")["argv"]
         contract = argv[argv.index("--append-system-prompt") + 1]
-        self.assertIn(str(ROOT / "agents" / "machinist.md"), contract)
-        self.assertIn(str(ROOT / "skills" / "solid-node-api" / "SKILL.md"), contract)
+        self.assertIn(str(ROOT / "profiles" / "fordesmac" / "machinist.md"), contract)
+        self.assertIn(str(ROOT / "profiles" / "fordesmac" / "skills" / "solid-node-api" / "SKILL.md"), contract)
         self.assertIn("trusted control plane", contract)
 
         user_messages = [
@@ -1066,7 +1222,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_role_card_supplies_model_and_tools(self) -> None:
         await self.claude.start()
-        await self.claude.open_role("machinist", self.context)
+        await self.claude.open_role("machinist", self.context("machinist"))
         argv = next(i for i in self.captured() if i["kind"] == "environment")["argv"]
         self.assertEqual(argv[argv.index("--model") + 1], "sonnet")
         self.assertIn("Bash", argv[argv.index("--tools") + 1])
@@ -1075,7 +1231,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_delivery_is_completed_under_the_minted_identifier(self) -> None:
         await self.claude.start()
-        handle = await self.claude.open_role("foreman", self.context)
+        handle = await self.claude.open_role("foreman", self.context("foreman"))
         receipt = await self.claude.deliver_start(handle, "Begin")
 
         started = await asyncio.wait_for(anext(self.claude.events), timeout=5)
@@ -1097,7 +1253,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_steering_preserves_identity_and_yields_one_completion(self) -> None:
         await self.claude.start()
-        handle = await self.claude.open_role("machinist", self.context)
+        handle = await self.claude.open_role("machinist", self.context("machinist"))
         receipt = await self.claude.deliver_start(handle, "HOLD")
         started = await asyncio.wait_for(anext(self.claude.events), timeout=5)
         self.assertEqual(started.kind, "turn_started")
@@ -1107,6 +1263,8 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(steered.delivery_id, receipt.delivery_id)
 
+        message = await asyncio.wait_for(anext(self.claude.events), timeout=5)
+        self.assertEqual((message.kind, message.role), ("role_message", "machinist"))
         completed = await asyncio.wait_for(anext(self.claude.events), timeout=5)
         self.assertEqual(
             (completed.kind, completed.delivery_id),
@@ -1119,7 +1277,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
     async def test_steer_after_completion_becomes_a_new_delivery(self) -> None:
         """No InactiveTurn: the CLI cannot report the race (ADR 0008)."""
         await self.claude.start()
-        handle = await self.claude.open_role("foreman", self.context)
+        handle = await self.claude.open_role("foreman", self.context("foreman"))
         receipt = await self.claude.deliver_start(handle, "Begin")
         for _ in range(3):  # started, role_message, completed
             await asyncio.wait_for(anext(self.claude.events), timeout=5)
@@ -1137,7 +1295,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_interrupted_turn_completes_and_does_not_fail_the_role(self) -> None:
         await self.claude.start()
-        handle = await self.claude.open_role("machinist", self.context)
+        handle = await self.claude.open_role("machinist", self.context("machinist"))
         receipt = await self.claude.deliver_start(handle, "HOLD")
         await asyncio.wait_for(anext(self.claude.events), timeout=5)
 
@@ -1151,8 +1309,8 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_one_role_process_exiting_is_a_role_failure(self) -> None:
         await self.claude.start()
-        await self.claude.open_role("foreman", self.context)
-        handle = await self.claude.open_role("designer", self.context)
+        await self.claude.open_role("foreman", self.context("foreman"))
+        handle = await self.claude.open_role("designer", self.context("designer"))
         self.claude.processes[handle.backend_id].terminate()
 
         event = await asyncio.wait_for(anext(self.claude.events), timeout=5)
@@ -1161,12 +1319,12 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_partial_open_releases_already_started_processes(self) -> None:
         await self.claude.start()
-        await self.claude.open_role("foreman", self.context)
+        await self.claude.open_role("foreman", self.context("foreman"))
         with patch.object(
             self.claude, "_role_command", side_effect=RuntimeError("boom")
         ):
             with self.assertRaises(RuntimeError):
-                await self.claude.open_role("designer", self.context)
+                await self.claude.open_role("designer", self.context("designer"))
         await self.claude.close()
         self.assertEqual(self.claude.processes, {})
 
@@ -1195,9 +1353,7 @@ class ClaudeBackendStartupFailureTest(unittest.IsolatedAsyncioTestCase):
                 "import sys; sys.stderr.write('no such flag\\n'); sys.exit(2)",
             ),
         )
-        context = RoleContext(
-            shop_checkout=str(ROOT), active_project=str(project)
-        )
+        context = _context("foreman", backend="claude", project=project)
         await claude.start()
         with self.assertRaises(RuntimeError) as caught:
             await claude.open_role("foreman", context)
@@ -1224,10 +1380,7 @@ class ClaudeBackendShutdownTest(unittest.IsolatedAsyncioTestCase):
                 command=(sys.executable, str(FAKE_CLAUDE_CLI)),
                 stop_timeout=0.5,
             )
-            context = RoleContext(
-                shop_checkout=str(ROOT),
-                active_project=str(project),
-            )
+            context = _context("foreman", backend="claude", project=project)
             await claude.start()
             await claude.open_role("foreman", context)
             await claude.open_role("designer", context)

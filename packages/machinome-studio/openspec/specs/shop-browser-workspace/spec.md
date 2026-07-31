@@ -27,28 +27,36 @@ height in a desktop browser.
 - **THEN** every workspace area remains reachable without horizontal page overflow
 
 ### Requirement: The workspace menu preserves live shop context
-The full-height workspace menu SHALL show the current shop lifecycle status,
-active run identity, and manifested-agent state using the existing live
-shop-floor data.
+The full-height workspace menu SHALL show current lifecycle status, run
+identity, stable active profile ID, and every profile-declared agent's display
+label and live state using broker run data. It SHALL NOT require or invent a
+separate profile display label.
+
+#### Scenario: The default profile is visible
+- **WHEN** the user opens a default-profile workspace
+- **THEN** the menu identifies profile `builder` and shows Builder's live state
+
+#### Scenario: Fordesmac is visible
+- **WHEN** the user opens a Fordesmac workspace
+- **THEN** the menu identifies profile `fordesmac` and shows Foreman, Designer, Machinist, and Librarian
 
 #### Scenario: An agent changes work state
-- **WHEN** a manifested agent's state changes while the maker is viewing the workspace
-- **THEN** the corresponding agent state in the workspace menu updates without a page reload
+- **WHEN** a declared agent's state changes while the workspace is open
+- **THEN** that agent's state updates without a page reload
 
 ### Requirement: Deferred workspace areas are truthful
-Until artifact inspection is available, the artifact area SHALL show that no
-artifact is selected. Once a functional model is available, it SHALL present an
-interactive, correctly materialled browser viewer. The foreman-conversation
-area SHALL show the active foreman conversation and a control for directing the
-foreman; it SHALL not claim that a foreman conversation is unavailable.
-
-#### Scenario: The workspace has no selected artifact
-- **WHEN** the maker opens the Story 3 workspace before artifact inspection is implemented
-- **THEN** the artifact area shows its empty state and the foreman-conversation area remains available for conversation
+The artifact area SHALL present the current interactive functional-model viewer
+when a complete model exists. The conversation area SHALL show the active
+profile conversation and allow direction to its one user-facing agent without
+role-specific composer wording or a direct control for another agent.
 
 #### Scenario: The workspace has a built functional model
 - **WHEN** the shop floor has successfully built the project's functional model
-- **THEN** the artifact area presents the current completed `_build` model as an interactive browser viewer instead of the empty state
+- **THEN** the artifact area presents the completed `_build` model as an interactive viewer
+
+#### Scenario: The selected profile conversation is available
+- **WHEN** either initial profile opens
+- **THEN** the conversation area attributes the human and user-facing agent with profile-provided labels and accepts direction for that agent
 
 ### Requirement: The shop menu shows a rolling broker-event log
 Below the manifested-agent roster, the workspace menu SHALL show a bounded
@@ -71,3 +79,14 @@ recorded it, and without displaying full instruction or report text.
 - **WHEN** the maker loads or reconnects to the workspace after broker events have occurred
 - **THEN** the menu restores the broker's current bounded event history in
   newest-first order with a timestamp on every event
+
+### Requirement: Browser participant presentation comes from the active profile
+The browser SHALL render the human label, user-facing agent label, roster
+labels, conversation attribution, event-log participant summaries, and
+accessibility text supplied in run state. It MUST NOT hard-code `Maker`,
+`Foreman`, or another profile participant as the meaning of an internal author
+ID.
+
+#### Scenario: A profile changes the human label
+- **WHEN** a valid profile declares a human label other than `Maker`
+- **THEN** the transcript and relevant accessibility text use that configured label while API identity remains `user`
