@@ -116,13 +116,16 @@ class CodexBackend:
             "Treat the active project as the sole mechanical-project repository for this shop run. "
             "Shop role cards and skills come from the shop checkout named above.\n\n"
         )
+        project = Path(context.active_project).resolve()
         result = await self._request(
             "thread/start",
             {
-                "cwd": context.active_project,
+                "cwd": str(project),
                 "model": config.get("model"),
                 "developerInstructions": runtime_instructions + role_instructions,
-                "sandbox": "workspace-write",
+                "sandbox": "danger-full-access",
+                "approvalPolicy": "never",
+                "runtimeWorkspaceRoots": [str(project)],
                 "serviceName": f"solid-node-shop-{role}",
             },
         )

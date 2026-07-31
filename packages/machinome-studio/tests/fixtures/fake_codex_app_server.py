@@ -39,6 +39,8 @@ for raw_line in sys.stdin:
             "developerInstructions": params.get("developerInstructions"),
             "approvalPolicy": params.get("approvalPolicy"),
             "sandbox": params.get("sandbox"),
+            "runtimeWorkspaceRoots": params.get("runtimeWorkspaceRoots"),
+            "config": params.get("config"),
         }
         send({"id": request_id, "result": {"thread": thread}})
         send({"method": "thread/started", "params": {"thread": thread}})

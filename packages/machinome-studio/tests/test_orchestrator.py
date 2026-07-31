@@ -241,22 +241,28 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         thread = notification["params"]["thread"]
 
         self.assertEqual(thread["cwd"], str(project.resolve()))
-        self.assertEqual(thread["sandbox"], "workspace-write")
-        self.assertIsNone(thread["approvalPolicy"])
+        self.assertEqual(thread["sandbox"], "danger-full-access")
+        self.assertEqual(thread["approvalPolicy"], "never")
+        self.assertEqual(thread["runtimeWorkspaceRoots"], [str(project.resolve())])
+        self.assertIsNone(thread["config"])
         self.assertIn(f"Shop checkout: {ROOT.resolve()}", thread["developerInstructions"])
         self.assertIn(f"Active project: {project.resolve()}", thread["developerInstructions"])
 
         await codex.start_thread("designer")
         designer = (await codex.notifications.get())["params"]["thread"]
         self.assertEqual(designer["cwd"], str(project.resolve()))
-        self.assertEqual(designer["sandbox"], "workspace-write")
-        self.assertIsNone(designer["approvalPolicy"])
+        self.assertEqual(designer["sandbox"], "danger-full-access")
+        self.assertEqual(designer["approvalPolicy"], "never")
+        self.assertEqual(designer["runtimeWorkspaceRoots"], [str(project.resolve())])
+        self.assertIsNone(designer["config"])
 
         await codex.start_thread("machinist")
         machinist = (await codex.notifications.get())["params"]["thread"]
         self.assertEqual(machinist["cwd"], str(project.resolve()))
-        self.assertEqual(machinist["sandbox"], "workspace-write")
-        self.assertIsNone(machinist["approvalPolicy"])
+        self.assertEqual(machinist["sandbox"], "danger-full-access")
+        self.assertEqual(machinist["approvalPolicy"], "never")
+        self.assertEqual(machinist["runtimeWorkspaceRoots"], [str(project.resolve())])
+        self.assertIsNone(machinist["config"])
         self.assertNotIn("develop root", machinist["developerInstructions"])
 
     async def test_closing_never_used_role_threads_is_clean(self) -> None:
