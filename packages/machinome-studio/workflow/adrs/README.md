@@ -23,6 +23,7 @@ the overview says *what is true now*.
 | `0008` | [Add a Claude Code backend, and let a backend own one process per role](./0008-claude-backend-one-process-per-role.md) | Accepted | 2026-07-30 |
 | `0009` | [Carry Claude corrections on a channel the role has trusted since its first instruction](./0009-claude-correction-channel-consistency.md) | Accepted | 2026-07-30 |
 | `0010` | [The shop watches the project and rebuilds it, rather than asking an agent to](./0010-shop-owned-model-watcher.md) | Accepted | 2026-07-31 |
+| `0011` | [Define shop runtime topology with declarative profiles](./0011-profile-defined-shop-runtime.md) | Proposed | 2026-07-31 |
 
 ## Conventions
 
