@@ -40,6 +40,23 @@ class RoleContractTest(unittest.TestCase):
         self.assertNotIn("solid develop", machinist)
         self.assertIn("The shop keeps the maker's artifact view current on its own", machinist)
 
+    def test_machinist_verifies_wiring_from_a_finite_build_not_a_live_server(self) -> None:
+        # Nothing the machinist runs listens on a port any more, so the old
+        # `curl http://localhost:8000/...` and `/_build_error` checks could
+        # only ever fail. A finite `solid build` publishes the same tree.
+        machinist = (ROOT / "agents" / "machinist.md").read_text()
+        craft = (ROOT / "skills" / "solid-node" / "SKILL.md").read_text()
+        api = (ROOT / "skills" / "solid-node-api" / "SKILL.md").read_text()
+        process = (ROOT / "skills" / "running-the-shop" / "SKILL.md").read_text()
+        for text in (machinist, craft):
+            self.assertNotIn("localhost:8000", text)
+            self.assertNotIn("_build_error", text)
+            self.assertNotIn("over HTTP", text)
+        self.assertIn("solid build root", machinist)
+        self.assertIn("viewer.json", craft)
+        self.assertIn("solid build <path>", api)
+        self.assertNotIn("HTTP verification", process)
+
     def test_specialists_obey_the_assignment_lifecycle_before_loading_role_material(self) -> None:
         for role in ("designer", "machinist"):
             adapter = (ROOT / ".codex" / "agents" / f"{role}.toml").read_text()

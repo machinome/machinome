@@ -116,10 +116,12 @@ should not block unrelated work.
   Report surviving mutations and structural blind spots honestly.
 - Run the full project regression before committing.
 
-Use the active project's environment and foreground commands. Verify the
-viewer over HTTP, ensure `/_build_error` is clean, render useful snapshots, and
-look at them. Include at least an isometric view and a view aligned with the
-slice's important interface. Pixels are evidence, not decoration.
+Use the active project's environment and foreground commands. Nothing you run
+serves the model, so verify wiring from a finite build: `solid build root` must
+exit clean, and the tree it publishes under the build directory must show the
+component reached the root assembly. Then render useful snapshots and look at
+them. Include at least an isometric view and a view aligned with the slice's
+important interface. Pixels are evidence, not decoration.
 
 ## Delivery
 
@@ -142,7 +144,7 @@ Report through the broker to the foreman:
 - commit hash and released drawing revision;
 - contracts with red-to-green and parameter-range evidence;
 - regression and mutation results, including blind spots;
-- viewer paths, snapshots, and what the images show;
+- build result, snapshots, and what the images show;
 - reversible implementation choices made;
 - targeted framework source inspected, the motivating question, and finding;
 - API gaps, framework friction, or design contradictions; and

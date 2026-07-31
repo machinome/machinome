@@ -146,6 +146,7 @@ and restores operation state between instants. Any failure exits nonzero;
 
 ```text
 solid new <name>
+solid build <path>
 solid develop <path> [--web-dev] [--openscad] [--debug-builder] [--debug-web] [--callback URL]
 solid test <path> [--failfast]
 solid snapshot <path> -o out.png [--time 0..1] [--autocenter] [--viewall]
@@ -167,9 +168,35 @@ Snapshots self-wrap with `xvfb-run` when headless. Export writes
 `manifest.json`, deduplicated models, and—unless `--no-widget`—a
 self-contained viewer.
 
+## Published build artifacts
+
+`solid build` renders once and publishes the complete current model, then
+exits: zero when the build is current, nonzero when it failed. It is the
+finite form of what `solid develop` does on every save, and it is how a
+process that must not serve the model still verifies one.
+
+`SOLID_BUILD_DIR` (default `_build`) is a symlink to a versioned sibling
+directory. Each publication renames a completed candidate into a fresh
+version and atomically moves the symlink onto it, dropping the previous
+one; a reader following the link therefore sees one complete artifact set
+or the next, never a mixture. Hold the symlink path and resolve it at each
+use — a resolved path names one publication and stops existing at the next.
+
+Inside a publication:
+
+- `viewer.json` — `{version, animation: {fps, frames}, root}`, where the
+  node tree carries the same `name`, `type`, `color`, `mtime`,
+  `operations`, and either `children` or a rigid node's `model` path
+  relative to the build directory.
+- the rendered STLs, at the `model` paths `viewer.json` names.
+- `errors.json` — `{error, tstamp}`, written into the build path instead
+  of a publication when a build fails, so the previous model keeps
+  serving.
+
 ## Viewer HTTP surface
 
-With `solid develop` running on `SOLID_NODE_PORT`:
+`solid develop` serves this; a build publication does not. With it running
+on `SOLID_NODE_PORT`:
 
 - `GET /node/` — root JSON containing operations, type, name, color,
   mtime, and child names.

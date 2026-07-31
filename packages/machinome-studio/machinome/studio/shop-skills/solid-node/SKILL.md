@@ -13,9 +13,15 @@ transmit torque) are expressed as tests over the rendered meshes.
 
 Commands (run from the project directory, with the project's venv):
 
-    solid develop root          # build + watch + web viewer on :8000
+    solid build root            # build once and publish the model
     solid test root/<node>.py   # run tests for one node (passing the
                                 # test_*.py path works too)
+    solid snapshot root -o out.png --autocenter   # render an image
+
+`solid develop` also exists, and serves a live viewer that rebuilds on save.
+Do not run it here: the shop already watches the project, rebuilds it, and
+keeps the maker's view current. Your builds are verification of your own work,
+and they are finite.
 
 Read `../solid-node-api/SKILL.md` in full before building unless it is already
 loaded. It is the authoritative public surface. This manual owns implementation
@@ -283,11 +289,19 @@ def test_no_two_parts_intersect(self):   # pairs x instants booleans
    abs() can never catch a sign flip) — say so rather than counting
    them as coverage.
 5. Wire the component into the root assembly. A component that does not
-   change the model in the running viewer is not done. Verify over HTTP:
-   `curl http://localhost:8000/node/` lists children; walk the
-   paths (`/node/<Child>/.../<Leaf>.stl` returns 200; assembly JSON
-   shows the expected operations, symbolic `$t` for animated ones).
-6. LOOK at the result — endpoints being correct does not mean the model
+   change the model the maker sees is not done. You run no server;
+   verify from a finite build:
+
+       solid build root
+
+   It exits nonzero if the build fails, and on success publishes the
+   whole current model. Read `viewer.json` in the build directory
+   (`_build` by default, a symlink to the current publication — always
+   go through the link, never a resolved versioned path): walk from
+   `root` down to the new component, confirm each `operations` entry
+   holds the expected rotation/translation (symbolic `$t` for animated
+   ones), and confirm every rigid leaf's `model` file exists.
+6. LOOK at the result — a correct build tree does not mean the model
    looks right, and the user judges pixels. Render and read images:
 
        solid snapshot root -o out.png --autocenter --time 0.1
@@ -295,12 +309,14 @@ def test_no_two_parts_intersect(self):   # pairs x instants booleans
    Render at least an isometric view and one view along the axis that
    the new component's alignments live on, and inspect them before
    declaring done.
-7. A broken save no longer kills `solid develop`: import errors surface
-   at `/_build_error` and the next clean save recovers automatically.
-   While an error is up the viewer serves the last good model — check
-   `/_build_error` returns `{}` before judging what the user sees. A
-   DEAD backend is visible too: the browser shows a red banner and
-   heals itself when the server comes back.
+7. A broken save is not private. A failed build exits nonzero and
+   writes `errors.json` into the build directory instead of publishing;
+   the previous publication keeps serving, so the maker goes on seeing
+   the older model — never read a stale snapshot as evidence for the
+   edit you just made. The shop watches project sources and runs the
+   same build itself, whoever saved, and reports the failure to the
+   maker: leave the tree building green, and rebuild after fixing an
+   error rather than assuming the next save heals it.
 
 ## Public API
 
