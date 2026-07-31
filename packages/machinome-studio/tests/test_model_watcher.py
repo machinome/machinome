@@ -19,6 +19,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from floor.app import Broker, create_app
+from floor.preparation import artifact_root_for as prepare_like_the_floor
 from floor.watcher import ModelWatcher
 
 
@@ -191,6 +192,41 @@ class FailedRebuildTest(WatcherTestCase):
         await self.run_until(watcher, "model_build_failed", edit="# edited\n")
 
         self.assertIn("model_build_failed", self.kinds())
+
+
+class RepublicationTest(WatcherTestCase):
+    """Every build publishes a *new* versioned directory and repoints the
+    `_build` symlink at it, dropping the old one. Anything that resolved
+    that symlink once and kept the answer is holding a path that stops
+    existing on the next build."""
+
+    async def test_the_artifact_route_survives_a_republication(self) -> None:
+        from fastapi.testclient import TestClient
+
+        prepared_root = prepare_like_the_floor(self.project)
+        app = create_app(self.project, artifact_root=prepared_root, broker=Broker())
+        with TestClient(app) as client:
+            self.assertEqual(client.get("/artifacts/viewer.json").status_code, 200)
+            build_state(self.project, viewer={"version": 1, "root": {"name": "part", "model": "part.stl"}, "revision": 9})
+            await self.build_once()
+            self.assertEqual(client.get("/artifacts/viewer.json").status_code, 200)
+
+    async def test_the_watcher_still_sees_snapshots_after_a_republication(self) -> None:
+        watcher = ModelWatcher(
+            self.project,
+            prepare_like_the_floor(self.project),
+            SOLID_COMMAND,
+            self.record,
+            poll_interval=POLL,
+        )
+        build_state(self.project, viewer={"version": 1, "root": {"name": "part", "model": "part.stl"}, "revision": 10})
+        await self.run_until(watcher, "model_changed", edit="# first edit\n")
+
+        self.published.clear()
+        build_state(self.project, viewer={"version": 1, "root": {"name": "part", "model": "part.stl"}, "revision": 11})
+        await self.run_until(watcher, "model_changed", edit="# second edit\n")
+
+        self.assertIn("model_changed", self.kinds())
 
 
 class WatcherWiringTest(WatcherTestCase):

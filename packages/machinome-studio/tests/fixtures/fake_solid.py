@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -33,8 +34,12 @@ elif command == "build":
         print(message, file=sys.stderr)
         raise SystemExit(17)
 
-    build = cwd / "_build"
-    build.mkdir(exist_ok=True)
+    # Publish the way the framework does: write a fresh versioned
+    # directory, repoint the _build symlink at it, and drop the old one.
+    # A fixture that wrote in place would hide every bug that only appears
+    # when the build directory a consumer is holding stops existing.
+    build = cwd / f"_build.{os.urandom(4).hex()}"
+    build.mkdir()
     model = state.get("model") or os.environ.get("FAKE_SOLID_MODEL", "part.stl")
     content = state.get("model_content") or os.environ.get("FAKE_SOLID_MODEL_CONTENT", "solid part")
     (build / model).write_text(content)
@@ -46,5 +51,17 @@ elif command == "build":
     if viewer is None:
         viewer = json.dumps({"version": 1, "root": {"name": "part", "model": model}})
     (build / "viewer.json").write_text(viewer)
+
+    link = cwd / "_build"
+    previous = link.resolve() if link.is_symlink() else None
+    if previous is None and link.is_dir():
+        # A project built before symlink publication has a real directory
+        # here; the first new-style build replaces it.
+        shutil.rmtree(link)
+    staging = cwd / f".{build.name}.link"
+    staging.symlink_to(build.name)
+    os.replace(staging, link)
+    if previous is not None and previous != build and previous.is_dir():
+        shutil.rmtree(previous, ignore_errors=True)
 else:
     raise SystemExit(2)

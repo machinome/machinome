@@ -34,6 +34,18 @@ class PreparedProject:
         return build_command(self.solid_command), self.build_environment
 
 
+def artifact_root_for(project_root: Path) -> Path:
+    """The handle the floor holds on a project's published artifacts.
+
+    Deliberately the symlink, not what it currently points at. Every build
+    publishes a new versioned directory and repoints `_build` at it,
+    dropping the old one -- so a resolved path names one publication and
+    stops existing at the next. Consumers resolve this per use and always
+    reach the current artifacts.
+    """
+    return project_root / "_build"
+
+
 def build_command(solid_command: str | Sequence[str]) -> tuple[str, ...]:
     return (*_command(solid_command), "build", "root")
 
@@ -156,7 +168,7 @@ def prepare_project(
     else:
         _require_exact_repository(project_root, name)
 
-    artifact_root = (project_root / "_build").resolve()
+    artifact_root = artifact_root_for(project_root)
     snapshot = artifact_root / "viewer.json"
     previous = _fingerprint(snapshot)
     _run(
@@ -201,9 +213,14 @@ def _validate_snapshot(snapshot: Path, artifact_root: Path, name: str, project_r
     models = tuple(_model_references(value["root"]))
     if not models:
         raise PreparationError("snapshot", name, project_root, "viewer snapshot references no model artifacts")
+    # Resolve here, not in the caller: artifact_root is the build symlink,
+    # and containment has to be judged against the publication it points at
+    # right now. Comparing a resolved artifact against the unresolved link
+    # would reject every artifact in the project.
+    published = artifact_root.resolve()
     for model in models:
         candidate = (artifact_root / model).resolve()
-        if artifact_root not in candidate.parents or not candidate.is_file():
+        if published not in candidate.parents or not candidate.is_file():
             raise PreparationError("artifact", name, project_root, f"referenced model artifact is missing or outside _build: {model}")
 
 
