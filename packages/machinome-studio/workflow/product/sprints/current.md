@@ -30,7 +30,7 @@ appears everywhere.
 - `solid-node-shop`
   - Source: `main` @ `ceddcd5`
   - Sprint branch: `sprint-002`
-  - Content: `ceddcd5`
+  - Content: `4b20729`
   - Worktree: `WTs/sprint-002`
 - `solid-node`
   - Source: `main` @ `6f8a5ae`
@@ -86,14 +86,16 @@ appears everywhere.
 - `solid-node-shop` / `adjust-ignore-framework-link`
   - Story: none - sprint machinery
   - Requires: none
-  - Branch: pending
-  - Commits: pending
+  - Branch: `sprint-002-adjust-ignore-framework-link` from `6b08021`
+  - Commits: `4b20729`
   - Archive: not applicable - direct adjustment
-  - Integrated: pending
+  - Integrated: `sprint-002` @ `4b20729`
 
 ## Paired validation
 
-- Pending
+- `python -m pytest tests/` (128 passed, 23 subtests) and
+  `bash tests/dev-env-test.sh` (all tests passed) passed from `WTs/sprint-002`
+  for shop content `4b20729` and framework content `6f8a5ae`
 
 ## Decisions and scope changes
 
