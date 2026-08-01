@@ -28,9 +28,9 @@ appears everywhere.
 ## Repositories
 
 - `solid-node-shop`
-  - Source: `main` @ `7750901`
+  - Source: `main` @ `ceddcd5`
   - Sprint branch: `sprint-002`
-  - Content: `7750901`
+  - Content: `ceddcd5`
   - Worktree: `WTs/sprint-002`
 - `solid-node`
   - Source: `main` @ `6f8a5ae`
