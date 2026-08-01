@@ -83,6 +83,13 @@ appears everywhere.
   - Commits: pending
   - Archive: pending
   - Integrated: pending
+- `solid-node-shop` / `adjust-ignore-framework-link`
+  - Story: none - sprint machinery
+  - Requires: none
+  - Branch: pending
+  - Commits: pending
+  - Archive: not applicable - direct adjustment
+  - Integrated: pending
 
 ## Paired validation
 
@@ -107,6 +114,10 @@ appears everywhere.
 - 2026-08-01 - Do not publish the viewer to a package registry; deliver it
   inside the framework's Python distribution, deferring public release surface
   until an external consumer exists.
+- 2026-08-01 - Correct the shop ignore rule so the framework sprint link is
+  ignored as required, as a direct adjustment on the sprint branch: a commit on
+  shop `main` would move it off the recorded base and prevent fast-forward
+  integration when the sprint is archived.
 
 ## Outcome
 
