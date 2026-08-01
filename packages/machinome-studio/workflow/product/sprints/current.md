@@ -108,7 +108,9 @@ appears everywhere.
 
 ## Paired validation
 
-- Pending after rebasing shop `sprint-002` onto `main` @ `595eb00`.
+- `python -m pytest tests/` (128 passed) and `bash tests/dev-env-test.sh`
+  (all tests passed) passed from `WTs/sprint-002` after the rebase for shop
+  content `f42cfe9` and framework content `6f8a5ae`.
 
 ## Decisions and scope changes
 
