@@ -1,6 +1,6 @@
 # ADR 0011: Define shop runtime topology with declarative profiles
 
-**Status:** Accepted
+**Status:** Accepted (OpenCode compatibility policy amended by ADR 0012)
 
 **Date:** 2026-07-31
 

@@ -1,0 +1,2476 @@
+{
+  "agents": [
+    {
+      "mode": "primary",
+      "name": "build",
+      "native": true
+    },
+    {
+      "mode": "primary",
+      "name": "compaction",
+      "native": true
+    },
+    {
+      "mode": "subagent",
+      "name": "explore",
+      "native": true
+    },
+    {
+      "mode": "subagent",
+      "name": "general",
+      "native": true
+    },
+    {
+      "mode": "primary",
+      "name": "plan",
+      "native": true
+    },
+    {
+      "mode": "primary",
+      "name": "summary",
+      "native": true
+    },
+    {
+      "mode": "primary",
+      "name": "title",
+      "native": true
+    }
+  ],
+  "cleanup": {
+    "returncode": -15,
+    "stderr": "timestamp=2026-08-01T13:31:26.810Z level=INFO run=e2de5055 message=loading path=/home/asa/.config/opencode/config.json\ntimestamp=2026-08-01T13:31:26.813Z level=INFO run=e2de5055 message=loading path=/home/asa/.config/opencode/opencode.json\ntimestamp=2026-08-01T13:31:26.814Z level=INFO run=e2de5055 message=loading path=/home/asa/.config/opencode/opencode.jsonc\ntimestamp=2026-08-01T13:31:28.904Z level=INFO run=e2de5055 message=\"creating instance\" directory=/tmp/opencode-spike-v091kg7u/project\ntimestamp=2026-08-01T13:31:28.905Z level=INFO run=e2de5055 message=fromDirectory directory=/tmp/opencode-spike-v091kg7u/project\ntimestamp=2026-08-01T13:31:28.915Z level=INFO run=e2de5055 message=bootstrapping directory=/tmp/opencode-spike-v091kg7u/project\ntimestamp=2026-08-01T13:31:28.930Z level=INFO run=e2de5055 message=loading path=/home/asa/.config/opencode/config.json\ntimestamp=2026-08-01T13:31:28.930Z level=INFO run=e2de5055 message=loading path=/home/asa/.config/opencode/opencode.json\ntimestamp=2026-08-01T13:31:28.930Z level=INFO run=e2de5055 message=loading path=/home/asa/.config/opencode/opencode.jsonc\ntimestamp=2026-08-01T13:31:28.931Z level=INFO run=e2de5055 message=loading path=/tmp/opencode-spike-v091kg7u/opencode.json\ntimestamp=2026-08-01T13:31:28.951Z level=INFO run=e2de5055 message=loading path=/home/asa/.opencode/opencode.json\ntimestamp=2026-08-01T13:31:28.951Z level=INFO run=e2de5055 message=loading path=/home/asa/.opencode/opencode.jsonc\ntimestamp=2026-08-01T13:31:28.959Z level=INFO run=e2de5055 message=loading path=/tmp/opencode-spike-v091kg7u/role-config/opencode.json\ntimestamp=2026-08-01T13:31:28.960Z level=INFO run=e2de5055 message=loading path=/tmp/opencode-spike-v091kg7u/role-config/opencode.jsonc\ntimestamp=2026-08-01T13:31:29.094Z level=INFO run=e2de5055 message=\"all LSPs are disabled\"\ntimestamp=2026-08-01T13:31:29.096Z level=INFO run=e2de5055 message=\"all formatters are disabled\"\ntimestamp=2026-08-01T13:31:29.096Z level=INFO run=e2de5055 message=init\ntimestamp=2026-08-01T13:31:29.553Z level=INFO run=e2de5055 message=created id=ses_0427a366fffedmKRKVFRt0TZc9 slug=nimble-mountain version=1.18.11 projectID=global directory=/tmp/opencode-spike-v091kg7u/project path=tmp/opencode-spike-v091kg7u/project workspaceID=undefined parentID=undefined title=\"shop spike\" agent=undefined model=undefined metadata=undefined permission=undefined cost=0 tokens.input=0 tokens.output=0 tokens.reasoning=0 tokens.cache.read=0 tokens.cache.write=0 time.created=1785591089553 time.updated=1785591089553"
+  },
+  "command": [
+    "opencode",
+    "serve",
+    "--pure",
+    "--hostname",
+    "127.0.0.1",
+    "--port",
+    "32955",
+    "--print-logs"
+  ],
+  "effective_config": {
+    "$schema": "https://opencode.ai/config.json",
+    "agent": {},
+    "command": {},
+    "instructions": [],
+    "mcp": {},
+    "mode": {},
+    "plugin": [],
+    "username": "asa"
+  },
+  "environment_controls": {
+    "OPENCODE_CONFIG": "/tmp/opencode-spike-v091kg7u/opencode.json",
+    "OPENCODE_CONFIG_DIR": "/tmp/opencode-spike-v091kg7u/role-config",
+    "OPENCODE_DISABLE_PROJECT_CONFIG": "true",
+    "authenticated_loopback": true,
+    "pure": true
+  },
+  "health": {
+    "healthy": true,
+    "version": "1.18.11"
+  },
+  "opencode_version": "1.18.11",
+  "providers": {
+    "default": {
+      "openai": "gpt-5.6-terra-fast",
+      "opencode": "big-pickle"
+    },
+    "ids": [
+      "openai",
+      "opencode"
+    ]
+  },
+  "requests": [
+    {
+      "body": {
+        "healthy": true,
+        "version": "1.18.11"
+      },
+      "method": "GET",
+      "path": "/global/health",
+      "status": 200
+    },
+    {
+      "body": {
+        "$schema": "https://opencode.ai/config.json",
+        "agent": {},
+        "command": {},
+        "instructions": [],
+        "mcp": {},
+        "mode": {},
+        "plugin": [],
+        "username": "asa"
+      },
+      "method": "GET",
+      "path": "/config",
+      "status": 200
+    },
+    {
+      "body": [
+        {
+          "description": "The default agent. Executes tools based on configured permissions.",
+          "mode": "primary",
+          "name": "build",
+          "native": true,
+          "options": {},
+          "permission": [
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "*"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "doom_loop"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/tmp/opencode/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.claude/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.agents/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "question"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_enter"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_exit"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env.*",
+              "permission": "read"
+            },
+            {
+              "action": "allow",
+              "pattern": "*.env.example",
+              "permission": "read"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "question"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "plan_enter"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            }
+          ]
+        },
+        {
+          "hidden": true,
+          "mode": "primary",
+          "name": "compaction",
+          "native": true,
+          "options": {},
+          "permission": [
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "*"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "doom_loop"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/tmp/opencode/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.claude/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.agents/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "question"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_enter"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_exit"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env.*",
+              "permission": "read"
+            },
+            {
+              "action": "allow",
+              "pattern": "*.env.example",
+              "permission": "read"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "*"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            }
+          ],
+          "prompt": "You are an anchored context summarization assistant for coding sessions.\n\nSummarize only the conversation history you are given. The newest turns may be kept verbatim outside your summary, so focus on the older context that still matters for continuing the work.\n\nIf the prompt includes a <previous-summary> block, treat it as the current anchored summary. Update it with the new history by preserving still-true details, removing stale details, and merging in new facts.\n\nAlways follow the exact output structure requested by the user prompt. Keep every section, preserve exact file paths and identifiers when known, and prefer terse bullets over paragraphs.\n\nDo not answer the conversation itself. Do not mention that you are summarizing, compacting, or merging context. Respond in the same language as the conversation.\n"
+        },
+        {
+          "description": "Fast agent specialized for exploring codebases. Use this when you need to quickly find files by patterns (eg. \"src/components/**/*.tsx\"), search code for keywords (eg. \"API endpoints\"), or answer questions about the codebase (eg. \"how do API endpoints work?\"). When calling this agent, specify the desired thoroughness level: \"quick\" for basic searches, \"medium\" for moderate exploration, or \"very thorough\" for comprehensive analysis across multiple locations and naming conventions.",
+          "mode": "subagent",
+          "name": "explore",
+          "native": true,
+          "options": {},
+          "permission": [
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "*"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "doom_loop"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/tmp/opencode/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.claude/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.agents/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "question"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_enter"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_exit"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env.*",
+              "permission": "read"
+            },
+            {
+              "action": "allow",
+              "pattern": "*.env.example",
+              "permission": "read"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "*"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "grep"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "glob"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "list"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "bash"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "webfetch"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "websearch"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/tmp/opencode/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.claude/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.agents/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            }
+          ],
+          "prompt": "You are a file search specialist. You excel at thoroughly navigating and exploring codebases.\n\nYour strengths:\n- Rapidly finding files using glob patterns\n- Searching code and text with powerful regex patterns\n- Reading and analyzing file contents\n\nGuidelines:\n- Use Glob for broad file pattern matching\n- Use Grep for searching file contents with regex\n- Use Read when you know the specific file path you need to read\n- Use Bash for file operations like copying, moving, or listing directory contents\n- Adapt your search approach based on the thoroughness level specified by the caller\n- Return file paths as absolute paths in your final response\n- For clear communication, avoid using emojis\n- Do not create any files, or run bash commands that modify the user's system state in any way\n\nComplete the user's search request efficiently and report your findings clearly.\n"
+        },
+        {
+          "description": "General-purpose agent for researching complex questions and executing multi-step tasks. Use this agent to execute multiple units of work in parallel.",
+          "mode": "subagent",
+          "name": "general",
+          "native": true,
+          "options": {},
+          "permission": [
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "*"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "doom_loop"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/tmp/opencode/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.claude/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.agents/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "question"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_enter"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_exit"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env.*",
+              "permission": "read"
+            },
+            {
+              "action": "allow",
+              "pattern": "*.env.example",
+              "permission": "read"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "todowrite"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            }
+          ]
+        },
+        {
+          "description": "Plan mode. Disallows all edit tools.",
+          "mode": "primary",
+          "name": "plan",
+          "native": true,
+          "options": {},
+          "permission": [
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "*"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "doom_loop"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/tmp/opencode/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.claude/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.agents/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "question"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_enter"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_exit"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env.*",
+              "permission": "read"
+            },
+            {
+              "action": "allow",
+              "pattern": "*.env.example",
+              "permission": "read"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "question"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "plan_exit"
+            },
+            {
+              "action": "deny",
+              "pattern": "general",
+              "permission": "task"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/plans/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "edit"
+            },
+            {
+              "action": "allow",
+              "pattern": ".opencode/plans/*.md",
+              "permission": "edit"
+            },
+            {
+              "action": "allow",
+              "pattern": "home/asa/.local/share/opencode/plans/*.md",
+              "permission": "edit"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            }
+          ]
+        },
+        {
+          "hidden": true,
+          "mode": "primary",
+          "name": "summary",
+          "native": true,
+          "options": {},
+          "permission": [
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "*"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "doom_loop"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/tmp/opencode/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.claude/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.agents/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "question"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_enter"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_exit"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env.*",
+              "permission": "read"
+            },
+            {
+              "action": "allow",
+              "pattern": "*.env.example",
+              "permission": "read"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "*"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            }
+          ],
+          "prompt": "Summarize what was done in this conversation. Write like a pull request description.\n\nRules:\n- 2-3 sentences max\n- Describe the changes made, not the process\n- Do not mention running tests, builds, or other validation steps\n- Do not explain what the user asked for\n- Write in first person (I added..., I fixed...)\n- Never ask questions or add new questions\n- If the conversation ends with an unanswered question to the user, preserve that exact question\n- If the conversation ends with an imperative statement or request to the user (e.g. \"Now please run the command and paste the console output\"), always include that exact request in the summary\n"
+        },
+        {
+          "hidden": true,
+          "mode": "primary",
+          "name": "title",
+          "native": true,
+          "options": {},
+          "permission": [
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "*"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "doom_loop"
+            },
+            {
+              "action": "ask",
+              "pattern": "*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/tmp/opencode/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.claude/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.agents/skills/context7-mcp/*",
+              "permission": "external_directory"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "question"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_enter"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "plan_exit"
+            },
+            {
+              "action": "allow",
+              "pattern": "*",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env",
+              "permission": "read"
+            },
+            {
+              "action": "ask",
+              "pattern": "*.env.*",
+              "permission": "read"
+            },
+            {
+              "action": "allow",
+              "pattern": "*.env.example",
+              "permission": "read"
+            },
+            {
+              "action": "deny",
+              "pattern": "*",
+              "permission": "*"
+            },
+            {
+              "action": "allow",
+              "pattern": "/home/asa/.local/share/opencode/tool-output/*",
+              "permission": "external_directory"
+            }
+          ],
+          "prompt": "You are a title generator. You output ONLY a thread title. Nothing else.\n\n<task>\nGenerate a brief title that would help the user find this conversation later.\n\nFollow all rules in <rules>\nUse the <examples> so you know what a good title looks like.\nYour output must be:\n- A single line\n- \u226450 characters\n- No explanations\n</task>\n\n<rules>\n- you MUST use the same language as the user message you are summarizing\n- Title must be grammatically correct and read naturally - no word salad\n- Never include tool names in the title (e.g. \"read tool\", \"bash tool\", \"edit tool\")\n- Focus on the main topic or question the user needs to retrieve\n- Vary your phrasing - avoid repetitive patterns like always starting with \"Analyzing\"\n- When a file is mentioned, focus on WHAT the user wants to do WITH the file, not just that they shared it\n- Keep exact: technical terms, numbers, filenames, HTTP codes\n- Remove: the, this, my, a, an\n- Never assume tech stack\n- Never use tools\n- NEVER respond to questions, just generate a title for the conversation\n- The title should NEVER include \"summarizing\" or \"generating\" when generating a title\n- DO NOT SAY YOU CANNOT GENERATE A TITLE OR COMPLAIN ABOUT THE INPUT\n- Always output something meaningful, even if the input is minimal.\n- If the user message is short or conversational (e.g. \"hello\", \"lol\", \"what's up\", \"hey\"):\n  \u2192 create a title that reflects the user's tone or intent (such as Greeting, Quick check-in, Light chat, Intro message, etc.)\n</rules>\n\n<examples>\n\"debug 500 errors in production\" \u2192 Debugging production 500 errors\n\"refactor user service\" \u2192 Refactoring user service\n\"why is app.js failing\" \u2192 app.js failure investigation\n\"implement rate limiting\" \u2192 Rate limiting implementation\n\"how do I connect postgres to my API\" \u2192 Postgres API connection\n\"best practices for React hooks\" \u2192 React hooks best practices\n\"@src/auth.ts can you add refresh token support\" \u2192 Auth refresh token support\n\"@utils/parser.ts this is broken\" \u2192 Parser bug fix\n\"look at @config.json\" \u2192 Config review\n\"@App.tsx add dark mode toggle\" \u2192 Dark mode toggle in App\n</examples>\n",
+          "temperature": 0.5
+        }
+      ],
+      "method": "GET",
+      "path": "/agent",
+      "status": 200
+    },
+    {
+      "body": {
+        "default": {
+          "openai": "gpt-5.6-terra-fast",
+          "opencode": "big-pickle"
+        },
+        "providers": [
+          {
+            "env": [
+              "OPENAI_API_KEY"
+            ],
+            "id": "openai",
+            "models": {
+              "gpt-5.3-codex-spark": {
+                "api": {
+                  "id": "gpt-5.3-codex-spark",
+                  "npm": "@ai-sdk/openai",
+                  "url": ""
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": false,
+                    "image": true,
+                    "pdf": true,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": false,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "gpt-codex-spark",
+                "headers": {},
+                "id": "gpt-5.3-codex-spark",
+                "limit": {
+                  "context": 128000,
+                  "input": 100000,
+                  "output": 32000
+                },
+                "name": "GPT-5.3 Codex Spark",
+                "options": {},
+                "providerID": "openai",
+                "release_date": "2026-02-05",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "high",
+                    "reasoningSummary": "auto"
+                  },
+                  "low": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "low",
+                    "reasoningSummary": "auto"
+                  },
+                  "medium": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "medium",
+                    "reasoningSummary": "auto"
+                  },
+                  "none": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "none",
+                    "reasoningSummary": "auto"
+                  },
+                  "xhigh": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "xhigh",
+                    "reasoningSummary": "auto"
+                  }
+                }
+              },
+              "gpt-5.4": {
+                "api": {
+                  "id": "gpt-5.4",
+                  "npm": "@ai-sdk/openai",
+                  "url": ""
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": false,
+                    "image": true,
+                    "pdf": true,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": false,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "gpt",
+                "headers": {},
+                "id": "gpt-5.4",
+                "limit": {
+                  "context": 1050000,
+                  "input": 922000,
+                  "output": 128000
+                },
+                "name": "GPT-5.4",
+                "options": {},
+                "providerID": "openai",
+                "release_date": "2026-03-05",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "high",
+                    "reasoningSummary": "auto"
+                  },
+                  "low": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "low",
+                    "reasoningSummary": "auto"
+                  },
+                  "medium": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "medium",
+                    "reasoningSummary": "auto"
+                  },
+                  "none": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "none",
+                    "reasoningSummary": "auto"
+                  },
+                  "xhigh": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "xhigh",
+                    "reasoningSummary": "auto"
+                  }
+                }
+              },
+              "gpt-5.4-fast": {
+                "api": {
+                  "id": "gpt-5.4",
+                  "npm": "@ai-sdk/openai",
+                  "url": ""
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": false,
+                    "image": true,
+                    "pdf": true,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": false,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "gpt",
+                "headers": {},
+                "id": "gpt-5.4-fast",
+                "limit": {
+                  "context": 1050000,
+                  "input": 922000,
+                  "output": 128000
+                },
+                "name": "GPT-5.4 Fast",
+                "options": {
+                  "serviceTier": "priority"
+                },
+                "providerID": "openai",
+                "release_date": "2026-03-05",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "high",
+                    "reasoningSummary": "auto"
+                  },
+                  "low": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "low",
+                    "reasoningSummary": "auto"
+                  },
+                  "medium": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "medium",
+                    "reasoningSummary": "auto"
+                  },
+                  "none": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "none",
+                    "reasoningSummary": "auto"
+                  },
+                  "xhigh": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "xhigh",
+                    "reasoningSummary": "auto"
+                  }
+                }
+              },
+              "gpt-5.4-mini": {
+                "api": {
+                  "id": "gpt-5.4-mini",
+                  "npm": "@ai-sdk/openai",
+                  "url": ""
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": false,
+                    "image": true,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": false,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "gpt-mini",
+                "headers": {},
+                "id": "gpt-5.4-mini",
+                "limit": {
+                  "context": 400000,
+                  "input": 272000,
+                  "output": 128000
+                },
+                "name": "GPT-5.4 mini",
+                "options": {},
+                "providerID": "openai",
+                "release_date": "2026-03-17",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "high",
+                    "reasoningSummary": "auto"
+                  },
+                  "low": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "low",
+                    "reasoningSummary": "auto"
+                  },
+                  "medium": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "medium",
+                    "reasoningSummary": "auto"
+                  },
+                  "none": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "none",
+                    "reasoningSummary": "auto"
+                  },
+                  "xhigh": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "xhigh",
+                    "reasoningSummary": "auto"
+                  }
+                }
+              },
+              "gpt-5.4-mini-fast": {
+                "api": {
+                  "id": "gpt-5.4-mini",
+                  "npm": "@ai-sdk/openai",
+                  "url": ""
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": false,
+                    "image": true,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": false,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "gpt-mini",
+                "headers": {},
+                "id": "gpt-5.4-mini-fast",
+                "limit": {
+                  "context": 400000,
+                  "input": 272000,
+                  "output": 128000
+                },
+                "name": "GPT-5.4 mini Fast",
+                "options": {
+                  "serviceTier": "priority"
+                },
+                "providerID": "openai",
+                "release_date": "2026-03-17",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "high",
+                    "reasoningSummary": "auto"
+                  },
+                  "low": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "low",
+                    "reasoningSummary": "auto"
+                  },
+                  "medium": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "medium",
+                    "reasoningSummary": "auto"
+                  },
+                  "none": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "none",
+                    "reasoningSummary": "auto"
+                  },
+                  "xhigh": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "xhigh",
+                    "reasoningSummary": "auto"
+                  }
+                }
+              },
+              "gpt-5.5": {
+                "api": {
+                  "id": "gpt-5.5",
+                  "npm": "@ai-sdk/openai",
+                  "url": ""
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": false,
+                    "image": true,
+                    "pdf": true,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": false,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "gpt",
+                "headers": {},
+                "id": "gpt-5.5",
+                "limit": {
+                  "context": 400000,
+                  "input": 272000,
+                  "output": 128000
+                },
+                "name": "GPT-5.5",
+                "options": {},
+                "providerID": "openai",
+                "release_date": "2026-04-23",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "high",
+                    "reasoningSummary": "auto"
+                  },
+                  "low": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "low",
+                    "reasoningSummary": "auto"
+                  },
+                  "medium": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "medium",
+                    "reasoningSummary": "auto"
+                  },
+                  "none": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "none",
+                    "reasoningSummary": "auto"
+                  },
+                  "xhigh": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "xhigh",
+                    "reasoningSummary": "auto"
+                  }
+                }
+              },
+              "gpt-5.5-fast": {
+                "api": {
+                  "id": "gpt-5.5",
+                  "npm": "@ai-sdk/openai",
+                  "url": ""
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": false,
+                    "image": true,
+                    "pdf": true,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": false,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "gpt",
+                "headers": {},
+                "id": "gpt-5.5-fast",
+                "limit": {
+                  "context": 400000,
+                  "input": 272000,
+                  "output": 128000
+                },
+                "name": "GPT-5.5 Fast",
+                "options": {
+                  "serviceTier": "priority"
+                },
+                "providerID": "openai",
+                "release_date": "2026-04-23",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "high",
+                    "reasoningSummary": "auto"
+                  },
+                  "low": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "low",
+                    "reasoningSummary": "auto"
+                  },
+                  "medium": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "medium",
+                    "reasoningSummary": "auto"
+                  },
+                  "none": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "none",
+                    "reasoningSummary": "auto"
+                  },
+                  "xhigh": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "xhigh",
+                    "reasoningSummary": "auto"
+                  }
+                }
+              },
+              "gpt-5.6-luna": {
+                "api": {
+                  "id": "gpt-5.6-luna",
+                  "npm": "@ai-sdk/openai",
+                  "url": ""
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": false,
+                    "image": true,
+                    "pdf": true,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": false,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "gpt-luna",
+                "headers": {},
+                "id": "gpt-5.6-luna",
+                "limit": {
+                  "context": 500000,
+                  "input": 372000,
+                  "output": 128000
+                },
+                "name": "GPT-5.6 Luna",
+                "options": {},
+                "providerID": "openai",
+                "release_date": "2026-07-09",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "high",
+                    "reasoningSummary": "auto"
+                  },
+                  "low": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "low",
+                    "reasoningSummary": "auto"
+                  },
+                  "max": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "max",
+                    "reasoningSummary": "auto"
+                  },
+                  "medium": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "medium",
+                    "reasoningSummary": "auto"
+                  },
+                  "none": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "none",
+                    "reasoningSummary": "auto"
+                  },
+                  "xhigh": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "xhigh",
+                    "reasoningSummary": "auto"
+                  }
+                }
+              },
+              "gpt-5.6-luna-fast": {
+                "api": {
+                  "id": "gpt-5.6-luna",
+                  "npm": "@ai-sdk/openai",
+                  "url": ""
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": false,
+                    "image": true,
+                    "pdf": true,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": false,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "gpt-luna",
+                "headers": {},
+                "id": "gpt-5.6-luna-fast",
+                "limit": {
+                  "context": 500000,
+                  "input": 372000,
+                  "output": 128000
+                },
+                "name": "GPT-5.6 Luna Fast",
+                "options": {
+                  "serviceTier": "priority"
+                },
+                "providerID": "openai",
+                "release_date": "2026-07-09",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "high",
+                    "reasoningSummary": "auto"
+                  },
+                  "low": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "low",
+                    "reasoningSummary": "auto"
+                  },
+                  "max": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "max",
+                    "reasoningSummary": "auto"
+                  },
+                  "medium": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "medium",
+                    "reasoningSummary": "auto"
+                  },
+                  "none": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "none",
+                    "reasoningSummary": "auto"
+                  },
+                  "xhigh": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "xhigh",
+                    "reasoningSummary": "auto"
+                  }
+                }
+              },
+              "gpt-5.6-sol": {
+                "api": {
+                  "id": "gpt-5.6-sol",
+                  "npm": "@ai-sdk/openai",
+                  "url": ""
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": false,
+                    "image": true,
+                    "pdf": true,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": false,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "gpt-sol",
+                "headers": {},
+                "id": "gpt-5.6-sol",
+                "limit": {
+                  "context": 500000,
+                  "input": 372000,
+                  "output": 128000
+                },
+                "name": "GPT-5.6 Sol",
+                "options": {},
+                "providerID": "openai",
+                "release_date": "2026-07-09",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "high",
+                    "reasoningSummary": "auto"
+                  },
+                  "low": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "low",
+                    "reasoningSummary": "auto"
+                  },
+                  "max": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "max",
+                    "reasoningSummary": "auto"
+                  },
+                  "medium": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "medium",
+                    "reasoningSummary": "auto"
+                  },
+                  "none": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "none",
+                    "reasoningSummary": "auto"
+                  },
+                  "xhigh": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "xhigh",
+                    "reasoningSummary": "auto"
+                  }
+                }
+              },
+              "gpt-5.6-sol-fast": {
+                "api": {
+                  "id": "gpt-5.6-sol",
+                  "npm": "@ai-sdk/openai",
+                  "url": ""
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": false,
+                    "image": true,
+                    "pdf": true,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": false,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "gpt-sol",
+                "headers": {},
+                "id": "gpt-5.6-sol-fast",
+                "limit": {
+                  "context": 500000,
+                  "input": 372000,
+                  "output": 128000
+                },
+                "name": "GPT-5.6 Sol Fast",
+                "options": {
+                  "serviceTier": "priority"
+                },
+                "providerID": "openai",
+                "release_date": "2026-07-09",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "high",
+                    "reasoningSummary": "auto"
+                  },
+                  "low": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "low",
+                    "reasoningSummary": "auto"
+                  },
+                  "max": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "max",
+                    "reasoningSummary": "auto"
+                  },
+                  "medium": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "medium",
+                    "reasoningSummary": "auto"
+                  },
+                  "none": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "none",
+                    "reasoningSummary": "auto"
+                  },
+                  "xhigh": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "xhigh",
+                    "reasoningSummary": "auto"
+                  }
+                }
+              },
+              "gpt-5.6-terra": {
+                "api": {
+                  "id": "gpt-5.6-terra",
+                  "npm": "@ai-sdk/openai",
+                  "url": ""
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": false,
+                    "image": true,
+                    "pdf": true,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": false,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "gpt-terra",
+                "headers": {},
+                "id": "gpt-5.6-terra",
+                "limit": {
+                  "context": 500000,
+                  "input": 372000,
+                  "output": 128000
+                },
+                "name": "GPT-5.6 Terra",
+                "options": {},
+                "providerID": "openai",
+                "release_date": "2026-07-09",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "high",
+                    "reasoningSummary": "auto"
+                  },
+                  "low": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "low",
+                    "reasoningSummary": "auto"
+                  },
+                  "max": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "max",
+                    "reasoningSummary": "auto"
+                  },
+                  "medium": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "medium",
+                    "reasoningSummary": "auto"
+                  },
+                  "none": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "none",
+                    "reasoningSummary": "auto"
+                  },
+                  "xhigh": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "xhigh",
+                    "reasoningSummary": "auto"
+                  }
+                }
+              },
+              "gpt-5.6-terra-fast": {
+                "api": {
+                  "id": "gpt-5.6-terra",
+                  "npm": "@ai-sdk/openai",
+                  "url": ""
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": false,
+                    "image": true,
+                    "pdf": true,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": false,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "gpt-terra",
+                "headers": {},
+                "id": "gpt-5.6-terra-fast",
+                "limit": {
+                  "context": 500000,
+                  "input": 372000,
+                  "output": 128000
+                },
+                "name": "GPT-5.6 Terra Fast",
+                "options": {
+                  "serviceTier": "priority"
+                },
+                "providerID": "openai",
+                "release_date": "2026-07-09",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "high",
+                    "reasoningSummary": "auto"
+                  },
+                  "low": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "low",
+                    "reasoningSummary": "auto"
+                  },
+                  "max": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "max",
+                    "reasoningSummary": "auto"
+                  },
+                  "medium": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "medium",
+                    "reasoningSummary": "auto"
+                  },
+                  "none": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "none",
+                    "reasoningSummary": "auto"
+                  },
+                  "xhigh": {
+                    "include": [
+                      "reasoning.encrypted_content"
+                    ],
+                    "reasoningEffort": "xhigh",
+                    "reasoningSummary": "auto"
+                  }
+                }
+              }
+            },
+            "name": "OpenAI",
+            "options": {
+              "apiKey": "<redacted>",
+              "headerTimeout": 300000
+            },
+            "source": "custom"
+          },
+          {
+            "env": [
+              "OPENCODE_API_KEY"
+            ],
+            "id": "opencode",
+            "models": {
+              "big-pickle": {
+                "api": {
+                  "id": "big-pickle",
+                  "npm": "@ai-sdk/openai-compatible",
+                  "url": "https://opencode.ai/zen/v1"
+                },
+                "capabilities": {
+                  "attachment": false,
+                  "input": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": {
+                    "field": "reasoning_content"
+                  },
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": true,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "big-pickle",
+                "headers": {},
+                "id": "big-pickle",
+                "limit": {
+                  "context": 200000,
+                  "input": 160000,
+                  "output": 32000
+                },
+                "name": "Big Pickle",
+                "options": {},
+                "providerID": "opencode",
+                "release_date": "2025-10-17",
+                "status": "active",
+                "variants": {}
+              },
+              "deepseek-v4-flash-free": {
+                "api": {
+                  "id": "deepseek-v4-flash-free",
+                  "npm": "@ai-sdk/openai-compatible",
+                  "url": "https://opencode.ai/zen/v1"
+                },
+                "capabilities": {
+                  "attachment": false,
+                  "input": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": {
+                    "field": "reasoning_content"
+                  },
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": true,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "deepseek-flash",
+                "headers": {},
+                "id": "deepseek-v4-flash-free",
+                "limit": {
+                  "context": 200000,
+                  "output": 128000
+                },
+                "name": "DeepSeek V4 Flash Free (New)",
+                "options": {},
+                "providerID": "opencode",
+                "release_date": "2026-04-24",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "reasoningEffort": "high"
+                  },
+                  "max": {
+                    "reasoningEffort": "max"
+                  }
+                }
+              },
+              "laguna-s-2.1-free": {
+                "api": {
+                  "id": "laguna-s-2.1-free",
+                  "npm": "@ai-sdk/openai-compatible",
+                  "url": "https://opencode.ai/zen/v1"
+                },
+                "capabilities": {
+                  "attachment": false,
+                  "input": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": true,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "laguna",
+                "headers": {},
+                "id": "laguna-s-2.1-free",
+                "limit": {
+                  "context": 256000,
+                  "output": 32000
+                },
+                "name": "Laguna S 2.1 Free",
+                "options": {},
+                "providerID": "opencode",
+                "release_date": "2026-07-21",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "reasoningEffort": "high"
+                  },
+                  "low": {
+                    "reasoningEffort": "low"
+                  },
+                  "medium": {
+                    "reasoningEffort": "medium"
+                  }
+                }
+              },
+              "ling-3.0-flash-free": {
+                "api": {
+                  "id": "ling-3.0-flash-free",
+                  "npm": "@ai-sdk/openai-compatible",
+                  "url": "https://opencode.ai/zen/v1"
+                },
+                "capabilities": {
+                  "attachment": false,
+                  "input": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": false,
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": true,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "ling",
+                "headers": {},
+                "id": "ling-3.0-flash-free",
+                "limit": {
+                  "context": 262144,
+                  "output": 32768
+                },
+                "name": "Ling-3.0-flash Free",
+                "options": {},
+                "providerID": "opencode",
+                "release_date": "2026-07-23",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "reasoningEffort": "high"
+                  },
+                  "low": {
+                    "reasoningEffort": "low"
+                  },
+                  "medium": {
+                    "reasoningEffort": "medium"
+                  }
+                }
+              },
+              "mimo-v2.5-free": {
+                "api": {
+                  "id": "mimo-v2.5-free",
+                  "npm": "@ai-sdk/openai-compatible",
+                  "url": "https://opencode.ai/zen/v1"
+                },
+                "capabilities": {
+                  "attachment": true,
+                  "input": {
+                    "audio": true,
+                    "image": true,
+                    "pdf": false,
+                    "text": true,
+                    "video": true
+                  },
+                  "interleaved": {
+                    "field": "reasoning_content"
+                  },
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": true,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "mimo-v2.5-free",
+                "headers": {},
+                "id": "mimo-v2.5-free",
+                "limit": {
+                  "context": 200000,
+                  "output": 32000
+                },
+                "name": "MiMo V2.5 Free",
+                "options": {},
+                "providerID": "opencode",
+                "release_date": "2026-04-24",
+                "status": "active",
+                "variants": {}
+              },
+              "nemotron-3-ultra-free": {
+                "api": {
+                  "id": "nemotron-3-ultra-free",
+                  "npm": "@ai-sdk/openai-compatible",
+                  "url": "https://opencode.ai/zen/v1"
+                },
+                "capabilities": {
+                  "attachment": false,
+                  "input": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": {
+                    "field": "reasoning_content"
+                  },
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": true,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "nemotron-free",
+                "headers": {},
+                "id": "nemotron-3-ultra-free",
+                "limit": {
+                  "context": 1000000,
+                  "output": 128000
+                },
+                "name": "Nemotron 3 Ultra Free",
+                "options": {},
+                "providerID": "opencode",
+                "release_date": "2026-06-04",
+                "status": "active",
+                "variants": {}
+              },
+              "north-mini-code-free": {
+                "api": {
+                  "id": "north-mini-code-free",
+                  "npm": "@ai-sdk/openai-compatible",
+                  "url": "https://opencode.ai/zen/v1"
+                },
+                "capabilities": {
+                  "attachment": false,
+                  "input": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "interleaved": {
+                    "field": "reasoning_content"
+                  },
+                  "output": {
+                    "audio": false,
+                    "image": false,
+                    "pdf": false,
+                    "text": true,
+                    "video": false
+                  },
+                  "reasoning": true,
+                  "temperature": true,
+                  "toolcall": true
+                },
+                "cost": {
+                  "cache": {
+                    "read": 0,
+                    "write": 0
+                  },
+                  "input": 0,
+                  "output": 0
+                },
+                "family": "north-free",
+                "headers": {},
+                "id": "north-mini-code-free",
+                "limit": {
+                  "context": 256000,
+                  "output": 64000
+                },
+                "name": "North Mini Code Free",
+                "options": {},
+                "providerID": "opencode",
+                "release_date": "2026-06-09",
+                "status": "active",
+                "variants": {
+                  "high": {
+                    "reasoningEffort": "high"
+                  },
+                  "none": {
+                    "reasoningEffort": "none"
+                  }
+                }
+              }
+            },
+            "name": "OpenCode Zen",
+            "options": {
+              "apiKey": "<redacted>"
+            },
+            "source": "custom"
+          }
+        ]
+      },
+      "method": "GET",
+      "path": "/config/providers",
+      "status": 200
+    },
+    {
+      "body": {
+        "cost": 0,
+        "directory": "/tmp/opencode-spike-v091kg7u/project",
+        "id": "ses_0427a366fffedmKRKVFRt0TZc9",
+        "path": "tmp/opencode-spike-v091kg7u/project",
+        "projectID": "global",
+        "slug": "nimble-mountain",
+        "time": {
+          "created": 1785591089553,
+          "updated": 1785591089553
+        },
+        "title": "shop spike",
+        "tokens": "<redacted>",
+        "version": "1.18.11"
+      },
+      "method": "POST",
+      "path": "/session",
+      "status": 200
+    }
+  ],
+  "session": {
+    "cost": 0,
+    "directory": "/tmp/opencode-spike-v091kg7u/project",
+    "id": "ses_0427a366fffedmKRKVFRt0TZc9",
+    "path": "tmp/opencode-spike-v091kg7u/project",
+    "projectID": "global",
+    "slug": "nimble-mountain",
+    "time": {
+      "created": 1785591089553,
+      "updated": 1785591089553
+    },
+    "title": "shop spike",
+    "tokens": "<redacted>",
+    "version": "1.18.11"
+  }
+}

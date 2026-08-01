@@ -10,7 +10,8 @@ from typing import Any, Literal
 
 
 PROFILE_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
-BACKENDS = ("codex", "claude", "hermes")
+BACKENDS = ("codex", "claude", "hermes", "opencode")
+PROFILE_BACKENDS = ("codex", "claude", "hermes")
 _TOP_LEVEL = {"schema_version", "user_label", "user_agent", "work_mode", "agents"}
 _AGENT = {"id", "label", "prompt", "assigns", "reports_to", "backends"}
 _RUNTIME = {"model", "effort", "tools"}
@@ -138,12 +139,16 @@ def load_profile(
         backend_settings = raw.get("backends")
         if not isinstance(backend_settings, dict):
             raise ProfileError(f"profile {selected}.{agent_id}.backends must declare every backend")
-        _only(backend_settings, set(BACKENDS), f"profile {selected}.{agent_id}.backends")
-        if set(backend_settings) != set(BACKENDS):
+        _only(backend_settings, set(PROFILE_BACKENDS), f"profile {selected}.{agent_id}.backends")
+        if set(backend_settings) != set(PROFILE_BACKENDS):
             raise ProfileError(f"profile {selected}.{agent_id}.backends must declare Codex, Claude, and Hermes")
         for runtime_backend, runtime_value in backend_settings.items():
             _runtime(runtime_value, selected, agent_id, runtime_backend)
-        runtime = _runtime(backend_settings[backend], selected, agent_id, backend)
+        runtime = (
+            BackendRuntime("inherit", "inherit", "inherit")
+            if backend == "opencode"
+            else _runtime(backend_settings[backend], selected, agent_id, backend)
+        )
         agents.append(ProfileAgent(agent_id, str(raw["label"]), prompt, skill_paths, assigns, reports_to, runtime))
     _topology(selected, work_mode, tuple(agents), ids, user_agent_id)
     return RuntimeProfile(selected, resolved_root, user_label, user_agent_id, work_mode, tuple(agents), backend)

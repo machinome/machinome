@@ -85,16 +85,21 @@ whose native interrupt spends a session SHALL NOT return it to standby.
 The orchestrator SHALL depend only on the portable `AgentBackend` protocol and
 resolved profile/agent data. It SHALL NOT reference any backend-native
 identifier, wire format, session handle, global role adapter path, or
-backend-specific profile parsing. Each backend SHALL own translation of the
-resolved model, effort, and tool policy into controls it actually supports.
+backend-specific profile parsing. A backend SHALL own translation of resolved
+profile controls when the profile declares controls for that backend. OpenCode
+SHALL instead use the bounded adapter-owned compatibility policy defined below.
 
 #### Scenario: Orchestrator code references no backend identifiers or role adapters
 - **WHEN** the profile runtime is implemented
 - **THEN** `floor/orchestrator.py` contains no Codex, Hermes, Claude, or OpenCode wire identifier and no global backend role-adapter lookup
 
-#### Scenario: Backends receive one resolved interpretation
+#### Scenario: Backends receive one resolved role interpretation
 - **WHEN** a profile agent is opened through any backend
-- **THEN** the backend receives the same validated prompt and skill paths, stable identity, labels, and selected-backend runtime policy from the profile loader
+- **THEN** the backend receives the same validated prompt and skill paths, stable identity, and labels from the profile loader
+
+#### Scenario: OpenCode does not add a profile policy lookup
+- **WHEN** a validated existing profile is opened through OpenCode
+- **THEN** the adapter applies its compatibility policy without requiring or reading an OpenCode table in that profile
 
 ## ADDED Requirements
 
@@ -103,7 +108,8 @@ The OpenCode backend SHALL launch one loopback-only `opencode serve` subprocess,
 wait for its health endpoint before opening roles, and create one persistent
 OpenCode session for every profile-declared agent. It SHALL use the verified
 active project as the server and session workspace and SHALL configure each
-session from that agent's resolved profile contract.
+session from that agent's resolved role contract and the adapter-owned
+compatibility policy.
 
 The backend SHALL use operator-managed OpenCode provider authentication without
 reading, copying, storing, or forwarding credentials. It SHALL NOT attach to an
@@ -115,30 +121,64 @@ unrelated existing OpenCode server or session.
 
 #### Scenario: OpenCode opens a role without a bootstrap turn
 - **WHEN** `open_role("designer", context)` is called
-- **THEN** the backend configures Designer's profile prompt, skills, runtime policy, and project workspace before returning without sending a conversational user message
+- **THEN** the backend configures Designer's generated role agent and project workspace before returning without sending a conversational user message
 
 #### Scenario: Operator authentication remains external
-- **WHEN** the OpenCode server connects to the profile-selected or inherited provider
+- **WHEN** the OpenCode server connects to the inherited operator-selected provider
 - **THEN** the shop relies on authentication already configured by the operator and does not receive the credential
 
-### Requirement: OpenCode includes only explicitly allowed project instruction
-The OpenCode backend SHALL include the verified active project's root
-`AGENTS.md` as supplemental system-level session instruction when that regular
-file exists. The composed contract SHALL place the profile prompt and explicit
-precedence framing before the project guidance and SHALL state that the profile
-remains authoritative for role identity, topology, authority, skills, model,
-effort, tool permissions, and repository boundaries.
+### Requirement: OpenCode uses bounded adapter-owned compatibility defaults
+Existing profiles SHALL remain unchanged and valid when OpenCode is selected.
+The OpenCode adapter SHALL NOT require or read OpenCode model, variant, effort,
+tool, or permission declarations from a profile manifest. It SHALL inherit the
+authenticated operator model, variant, and configuration and SHALL own temporary
+compatibility defaults for model/variant/tool handling.
 
-The backend SHALL prevent automatic discovery or activation of project and user
-OpenCode agents, commands, skills, plugins, MCP servers, hooks, configuration,
-and instruction files other than that root `AGENTS.md`. This does not make
-ordinary files beneath the active project unreadable through profile-permitted
-tools. The backend SHALL NOT load an `AGENTS.md` from the shop checkout, a
-parent directory, a sibling project, or the user home through this project
-instruction mechanism.
+The adapter SHALL generate one primary OpenCode agent shared by its persistent
+role sessions and SHALL apply a deny-by-default permission policy. Every
+delivery SHALL carry the target role's exact profile prompt and the exact
+instructions of each profile-allowlisted skill as system context. The adapter
+SHALL explicitly admit required shop tool classes while denying native
+subagents, interactive questions, external directories, and native skill
+discovery. This bounded exception to profile-explicit runtime policy SHALL NOT
+be represented as equivalent control across backends.
+
+#### Scenario: Existing profile selects OpenCode
+- **WHEN** Builder or Fordesmac is selected with `--backend opencode`
+- **THEN** profile validation succeeds without an OpenCode table and the adapter supplies the compatibility defaults
+
+#### Scenario: A role agent is generated
+- **WHEN** OpenCode starts and later opens resolved profile roles
+- **THEN** one generated primary agent serves their persistent sessions and each role delivery carries that role's exact profile prompt and exact allowlisted skill instructions
+
+#### Scenario: OpenCode permissions are established
+- **WHEN** the adapter generates its OpenCode agent
+- **THEN** it applies deny-by-default permissions with only required shop tool classes admitted and reads no permission declarations from the profile manifest
+
+#### Scenario: Operator runtime choices are inherited
+- **WHEN** the generated role starts without adapter-selected concrete values
+- **THEN** OpenCode uses the authenticated operator model, variant, and configuration and runtime evidence records the effective non-secret choices
+
+### Requirement: OpenCode uses an explicit project-instruction boundary
+The OpenCode backend SHALL include the verified active project's exact root
+`AGENTS.md` as supplemental system-level session instruction only when it is a
+regular non-symlink file. The composed contract SHALL place the profile prompt and explicit
+precedence framing before the project guidance and SHALL state that the profile
+remains authoritative for role identity, topology, authority, skills, adapter
+policy, permissions, and repository boundaries.
+
+The backend SHALL prevent automatic discovery or activation of project OpenCode
+agents, commands, skills, plugins, MCP servers, hooks, configuration, and
+instruction files other than that root `AGENTS.md`. It SHALL intentionally
+inherit the operator's global OpenCode configuration for authentication and
+default model resolution and SHALL run in pure mode so external plugins do not
+execute. Other global configuration may remain visible. This does not make ordinary files beneath the active project
+unreadable through profile-permitted tools. The backend SHALL NOT load an
+`AGENTS.md` from the shop checkout, a parent directory, a sibling project, or
+the user home through this project instruction mechanism.
 
 #### Scenario: Active project supplies root guidance
-- **WHEN** the verified active project contains a regular root `AGENTS.md`
+- **WHEN** the verified active project contains a regular non-symlink root `AGENTS.md`
 - **THEN** every OpenCode role session receives its exact content after profile-authority framing as supplemental project-local instruction
 
 #### Scenario: Root guidance conflicts with the profile
@@ -149,9 +189,17 @@ instruction mechanism.
 - **WHEN** the verified active project has no root `AGENTS.md`
 - **THEN** OpenCode opens every role without fabricating project instruction or searching another repository for one
 
+#### Scenario: Root guidance is a symlink or non-regular file
+- **WHEN** the exact project-root `AGENTS.md` is a symlink or is not a regular file
+- **THEN** OpenCode does not append it and does not follow it to another location
+
 #### Scenario: Project OpenCode customization is present
-- **WHEN** the active project or operator machine contains OpenCode agents, skills, plugins, MCP servers, hooks, or configuration outside the generated runtime contract
-- **THEN** OpenCode does not automatically discover or activate those customizations for the shop's sessions
+- **WHEN** the active project contains OpenCode agents, skills, plugins, MCP servers, hooks, or configuration outside the generated runtime contract
+- **THEN** OpenCode does not automatically discover or activate those project customizations for the shop's sessions
+
+#### Scenario: Operator OpenCode customization is present
+- **WHEN** the operator machine contains OpenCode agents, skills, plugins, MCP servers, hooks, or configuration
+- **THEN** the backend inherits authentication and provider defaults, disables external plugins, and records the effective non-secret configuration in runtime evidence
 
 ### Requirement: OpenCode correlates messages and preserves active delivery identity
 The OpenCode backend SHALL assign each submitted broker envelope a unique
@@ -221,12 +269,13 @@ shared-server exit or unrecoverable event-stream loss SHALL emit
 
 ### Requirement: The OpenCode backend is independently testable against a fake server
 A fake OpenCode HTTP/SSE fixture SHALL exercise startup, health, role sessions,
-resolved runtime configuration, root `AGENTS.md` selection, prompt identity,
+adapter-owned compatibility configuration, root `AGENTS.md` selection, prompt identity,
 ordered steering, text assembly, interruption, role deletion, server failure,
 and bounded shutdown without a real provider.
 
-Real-runtime evidence SHALL additionally prove selective configuration loading
-and correction delivery at a tool boundary before the backend is accepted.
+Real-runtime evidence SHALL additionally prove project-configuration isolation,
+record inherited operator configuration, and prove correction delivery at a tool
+boundary before the backend is accepted.
 Fixture evidence SHALL NOT be presented as proof that a model obeyed a
 correction.
 
@@ -235,8 +284,8 @@ correction.
 - **THEN** every declared role is opened, delivered, steered, interrupted, and closed through the unchanged portable backend operations
 
 #### Scenario: Real OpenCode proves selective project instruction
-- **WHEN** the isolation spike opens a project containing root `AGENTS.md` and conflicting OpenCode customization
-- **THEN** observed session context contains the authoritative profile contract followed by framed root guidance while automatic OpenCode customization remains inactive
+- **WHEN** the isolation spike opens a project containing root `AGENTS.md` and conflicting project OpenCode customization
+- **THEN** observed session context contains the profile contract followed by framed root guidance while automatic project OpenCode customization remains inactive and inherited operator configuration is recorded
 
 #### Scenario: Real OpenCode proves correction transport
 - **WHEN** the steering spike submits ordered corrections during an active tool call and near idle

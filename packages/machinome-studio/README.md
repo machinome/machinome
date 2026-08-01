@@ -3,13 +3,15 @@
 An experimental local harness for building 3D-printable mechanical CAD
 projects with solid-node. The pilot chooses a repository-owned runtime profile;
 the profile, rather than Python role constants, defines the standing team,
-authority, prompts, skills, and backend controls.
+authority, prompts, skills, and normally the backend controls. OpenCode's
+temporary compatibility policy is the documented exception.
 
 ## Open a floor
 
 ```text
 python -m floor.orchestrator <project-name> --profile builder --backend codex
 python -m floor.orchestrator <project-name> --profile fordesmac --backend claude
+python -m floor.orchestrator <project-name> --profile builder --backend opencode
 python -m floor <project-name> --profile builder
 ```
 
@@ -24,10 +26,30 @@ root. Runtime prompts belong to `profiles/<id>/`; their shared allowlisted
 skills are in `shop-skills/`. Repository operation and development skills stay
 under `skills/` and are not runtime capabilities.
 
-The selected backend receives the profile's validated controls: Codex gets the
-configured model and reasoning effort, Claude gets its selected model, effort,
-and supported tools, and Hermes explicitly inherits its process configuration.
-No backend loads global role cards or `.codex/agents` runtime adapters.
+Four backends are selectable: Codex, Claude, Hermes, and OpenCode. Codex gets
+the profile-configured model and reasoning effort, Claude gets its selected
+model, effort, and supported tools, and Hermes explicitly inherits its process
+configuration. These three use explicit profile runtime tables.
+
+OpenCode currently uses a bounded compatibility exception. Existing profiles
+remain unchanged and valid and do not contain OpenCode tables. The adapter
+inherits the authenticated operator model, variant, and global OpenCode
+configuration and owns temporary model/variant/tool defaults. One generated
+deny-by-default primary agent serves persistent role sessions; every prompt
+carries that session's exact profile prompt and allowlisted skill instructions.
+This does not claim that OpenCode exposes controls equivalent to the other
+backends.
+
+OpenCode requires a locally authenticated `opencode` runtime. Native project
+OpenCode configuration is disabled. If the exact project-root `AGENTS.md` is a
+regular non-symlink file, the adapter manually appends it as subordinate project
+guidance; it does not follow a symlink or search elsewhere. Operator-global
+OpenCode configuration remains inherited for authentication and provider
+defaults, while `--pure` disables external plugin execution. OpenCode 1.18.11
+was measured to preserve those global configuration sources while project
+configuration is disabled and an authenticated persistent session is created.
+
+No backend loads global shop role cards or `.codex/agents` runtime adapters.
 
 ## Workspace
 

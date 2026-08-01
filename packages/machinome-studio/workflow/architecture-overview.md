@@ -13,8 +13,10 @@ checkout and load `profiles/<id>/profile.toml`. `--profile builder` is the
 default; `--profile fordesmac` selects the delegated team. A profile is strict
 trusted configuration: it declares the human label, one user-facing agent,
 standing roster, direct or delegated work mode, prompt paths, allowed skills,
-communication edges, and per-backend model/effort/tool policy. A project never
-supplies or overrides that configuration.
+communication edges, and Codex, Claude, and Hermes model/effort/tool policy. A
+project never supplies or overrides that configuration. OpenCode is the bounded
+exception: existing profiles have no OpenCode tables and remain unchanged and
+valid; its adapter owns temporary compatibility defaults.
 
 The initial profiles are:
 
@@ -34,8 +36,8 @@ root, while prompts and skills remain shop-owned outside that project.
 ```text
 browser  <-->  Broker  <-->  Orchestrator  <-->  selected backend sessions
                    |               |                     |
-             state, SSE,      resolved profile       Codex / Claude / Hermes
-             conversation     contracts only
+             state, SSE,      resolved profile    Codex / Claude / Hermes /
+             conversation     contracts only            OpenCode
 ```
 
 `floor/app.py` is the in-memory broker and browser API. It uses stable internal
@@ -59,8 +61,8 @@ delegated assignment work.
 
 `floor/orchestrator.py` is deterministic and backend-neutral. It opens profile
 agents in declaration order, constructs a required `RoleContext` containing the
-validated `ProfileAgent`, selected backend policy, labels, shop root, and
-verified project root, and closes the arbitrary roster in reverse order. It
+validated `ProfileAgent`, labels, shop root, and verified project root, and
+closes the arbitrary roster in reverse order. It
 uses `deliver_start()` for idle delivery and `deliver_steer()` only for the
 currently active delivery. Native session and turn identifiers never enter the
 broker.
@@ -77,12 +79,35 @@ Claude launches one isolated CLI process per profile agent and translates the
 selected model, effort, and permitted tools into its supported command fields.
 Hermes explicitly inherits model, effort, and tools because ACP does not expose
 per-session controls; it still receives the same validated profile prompt and
-skills. Backends never parse profile files or load global role adapters.
+skills. These three adapters consume the selected profile runtime table and
+never parse profile files or load global role adapters.
+
+OpenCode owns one password-protected loopback HTTP/SSE server and one persistent
+session per role. Its adapter does not require or read OpenCode profile tables.
+It inherits the authenticated operator model, variant, and global configuration
+and owns temporary model/variant/tool compatibility defaults. For each role it
+uses one shared generated primary agent with a deny-by-default permission policy;
+every role delivery carries the exact profile prompt and exact allowlisted skill
+instructions as that session's system contract. This is a bounded exception to
+profile-explicit runtime policy, not a claim that OpenCode exposes equivalent
+controls.
+
+OpenCode native project configuration is disabled. If the exact verified
+project-root `AGENTS.md` is a regular non-symlink file, the adapter manually
+appends it after explicit subordinate-guidance framing. It does not follow a
+symlink or search another location. OpenCode 1.18.11 evidence confirms that
+project configuration can be disabled while operator-global authentication and
+provider defaults remain available. The server uses `--pure` so external
+plugins do not execute. Archived authenticated verification proves exact role
+contract composition and one corrected tool turn with native ancestry and one
+portable completion on the tested 1.18.11 runtime.
 
 The initial operational matrix is Builder/Foreman/Machinist/Librarian:
 Claude `sonnet`, Codex `gpt-5.6-terra`, medium effort; Designer uses Claude
 `opus` and Codex `gpt-5.6-sol`, also medium effort. Hermes explicitly inherits
-all three controls. These are profile data, not broker semantics.
+all three controls. OpenCode instead inherits its operator model and variant
+under its adapter-owned compatibility policy. These choices are backend
+configuration, not broker semantics.
 
 ## Floor and browser
 
