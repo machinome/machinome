@@ -172,14 +172,15 @@ appears everywhere.
   correction to an internal development script with no user-visible behavior.
   Run as a cycle it grew into a shared-store transaction protocol that the
   sprint does not need; the abandoned attempt is recorded in `sprint-log.md`.
-- 2026-08-01 - Operational note for the remaining framework cycles: the S1
-  dev-env fix lives on shop `sprint-002` and does not reach shop `main` until
-  the sprint is integrated, so the primary checkout's `scripts/dev-env` still
-  links only the CRA app. Opening F2 with it produced a bench that could not
-  build the widget. Open F3 and F4 by materializing the sprint-branch script at
-  the shop root first (`git show sprint-002:scripts/dev-env`), running setup
-  with it, and removing it; confirm the setup output links all four frontend
-  directories before proposing.
+- 2026-08-01 - Cherry-pick the S1 dev-env fix onto shop `main` as `0032e26`.
+  Benches are opened with the primary checkout's `scripts/dev-env`, which on
+  `main` still linked only the CRA app, so opening F2 produced a bench that
+  could not build the widget. Every remaining framework cycle would repeat it.
+  Shop `main` had already advanced past the recorded sprint base `595eb00`
+  before this, so fast-forward archive integration was already unavailable and
+  the duplicate commit costs nothing it had not already lost: shop `sprint-002`
+  must be rebased onto `main` before archive integration, where this identical
+  patch is expected to drop out. F3 and F4 open with the ordinary command.
 - 2026-08-01 - Anchor the widget's ignore patterns (`/node_modules`, `/dist`)
   in the framework rather than tracking managed links or excluding them at
   setup time. A trailing-slash pattern matches directories but not symlinks, so
