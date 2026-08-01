@@ -9,7 +9,10 @@ __pycache__/
 node_modules/
 playwright-report/
 test-results/
-/solid-node/
+# No trailing slash: this must also ignore the framework sprint worktree
+# link a cross-repository sprint creates at WTs/sprint-NNN/solid-node,
+# which is a symlink rather than a directory.
+/solid-node
 WTs/
 .env
 projects/*
