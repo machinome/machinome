@@ -11,6 +11,9 @@ appears everywhere.
 
 - [ ] STORY-006 - See one model viewer everywhere
   - Source: `docs/product/stories/STORY-006-one-model-viewer.md`
+  - Brief: `docs/product/sprints/SPRINT-002-brief.md` - findings, decisions with
+    their rejected alternatives, the viewer interface consumers require, and the
+    intent of every cycle. Read it before opening any cycle in this sprint.
 
 ## Ratified scope
 
@@ -42,6 +45,8 @@ appears everywhere.
 ## Cycles
 
 - `solid-node` / `unified-node-serializer`
+  - Intent: one node-tree walk behind both published documents, converged
+    additively; brief section 5 (F1)
   - Story: `STORY-006`
   - Requires: none
   - Branch: pending
@@ -49,6 +54,8 @@ appears everywhere.
   - Archive: pending
   - Integrated: pending
 - `solid-node-shop` / `viewer-bench-symlinks`
+  - Intent: a framework bench can build any viewer package without installing
+    inside a worktree; brief section 5 (S1)
   - Story: `STORY-006`
   - Requires: none
   - Branch: pending
@@ -56,6 +63,8 @@ appears everywhere.
   - Archive: pending
   - Integrated: pending
 - `solid-node` / `viewer-package`
+  - Intent: the single reusable viewer with the interface in brief section 4,
+    consumed by export and Sphinx embedding; brief section 5 (F2)
   - Story: `STORY-006`
   - Requires: `solid-node` / `unified-node-serializer`, `solid-node-shop` / `viewer-bench-symlinks`
   - Branch: pending
@@ -63,6 +72,8 @@ appears everywhere.
   - Archive: pending
   - Integrated: pending
 - `solid-node` / `viewer-bundle-delivery`
+  - Intent: the built viewer ships inside the Python distribution and a CLI
+    accessor reports it; brief section 5 (F3)
   - Story: `STORY-006`
   - Requires: `solid-node` / `viewer-package`
   - Branch: pending
@@ -70,6 +81,8 @@ appears everywhere.
   - Archive: pending
   - Integrated: pending
 - `solid-node-shop` / `floor-uses-framework-viewer`
+  - Intent: the shop floor shows models through the framework's viewer instead
+    of its own copy; brief section 5 (S2)
   - Story: `STORY-006`
   - Requires: `solid-node` / `viewer-bundle-delivery`
   - Branch: pending
@@ -77,6 +90,8 @@ appears everywhere.
   - Archive: pending
   - Integrated: pending
 - `solid-node` / `dev-viewer-on-shared-package`
+  - Intent: the development loop shows models through the same viewer and the
+    last per-node walk retires; brief section 5 (F4)
   - Story: `STORY-006`
   - Requires: `solid-node` / `viewer-package`
   - Branch: pending
