@@ -52,7 +52,7 @@ appears everywhere.
     additively; brief section 5 (F1)
   - Story: `STORY-006`
   - Requires: none
-  - Branch: pending
+  - Branch: `sprint-002-unified-node-serializer` from `6f8a5ae`
   - Commits: pending
   - Archive: pending
   - Integrated: pending
