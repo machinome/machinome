@@ -36,6 +36,30 @@ No backend loads global role cards or `.codex/agents` runtime adapters.
 floor prepares and validates the selected project before opening. It serves
 only completed `_build/` artifacts and refreshes them with its own watcher.
 
+## Cross-Repository Sprints
+
+A sprint always integrates shop work on branch and worktree `sprint-NNN` and
+`WTs/sprint-NNN`. If its ratified scope includes framework work, the framework
+repository has its own same-named integration branch and worktree at
+`solid-node/WTs/sprint-NNN`. Framework commits remain in solid-node; shop
+commits remain in solid-node-shop.
+
+The framework sprint worktree is linked into the shop sprint worktree at
+`WTs/sprint-NNN/solid-node`. Run combined validation from the shop sprint
+worktree so it uses the exact paired integration content. Framework child cycles
+are created from the registered framework sprint head with:
+
+```text
+scripts/dev-env sprint-NNN-<change> setup --base sprint-NNN
+```
+
+Standalone framework benches keep using `scripts/dev-env <name> setup`. Sprint
+dependencies and both tested content commits are recorded in `current.md` on
+the shop sprint integration branch. Evidence-only record commits do not create
+a new paired product state. The primary copy identifies the active sprint until
+final integration. See `skills/sprint/SKILL.md` for lifecycle and authority
+rules.
+
 Run the local checks with:
 
 ```text
