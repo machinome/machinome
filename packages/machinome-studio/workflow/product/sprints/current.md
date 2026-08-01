@@ -1,0 +1,113 @@
+# SPRINT-002: One model viewer
+
+## Goal
+
+Every surface that shows a solid-node model — the shop floor, an exported
+directory, the documentation, and the live development loop — renders it with
+the same viewer, so an improvement to how models are seen is made once and
+appears everywhere.
+
+## Stories
+
+- [ ] STORY-006 - See one model viewer everywhere
+  - Source: `docs/product/stories/STORY-006-one-model-viewer.md`
+
+## Ratified scope
+
+- Included: one reusable viewer inside solid-node with the options its
+  consumers need; one node-tree serializer behind both published documents;
+  delivery of the built viewer inside the framework's Python distribution;
+  the shop floor showing models through that viewer instead of its own; the
+  development loop showing models through it as well.
+- Excluded: publishing the viewer to a package registry; renaming the
+  published export bundle, its auto-mount attribute, or its browser global;
+  renaming either published document; making build publications portable and
+  self-contained; viewer capabilities beyond parity and the options existing
+  consumers require.
+
+## Repositories
+
+- `solid-node-shop`
+  - Source: `main` @ `7750901`
+  - Sprint branch: `sprint-002`
+  - Content: `7750901`
+  - Worktree: `WTs/sprint-002`
+- `solid-node`
+  - Source: `main` @ `6f8a5ae`
+  - Sprint branch: `sprint-002`
+  - Content: `6f8a5ae`
+  - Worktree: `solid-node/WTs/sprint-002`
+  - Shop link: `WTs/sprint-002/solid-node`
+
+## Cycles
+
+- `solid-node` / `unified-node-serializer`
+  - Story: `STORY-006`
+  - Requires: none
+  - Branch: pending
+  - Commits: pending
+  - Archive: pending
+  - Integrated: pending
+- `solid-node-shop` / `viewer-bench-symlinks`
+  - Story: `STORY-006`
+  - Requires: none
+  - Branch: pending
+  - Commits: pending
+  - Archive: pending
+  - Integrated: pending
+- `solid-node` / `viewer-package`
+  - Story: `STORY-006`
+  - Requires: `solid-node` / `unified-node-serializer`, `solid-node-shop` / `viewer-bench-symlinks`
+  - Branch: pending
+  - Commits: pending
+  - Archive: pending
+  - Integrated: pending
+- `solid-node` / `viewer-bundle-delivery`
+  - Story: `STORY-006`
+  - Requires: `solid-node` / `viewer-package`
+  - Branch: pending
+  - Commits: pending
+  - Archive: pending
+  - Integrated: pending
+- `solid-node-shop` / `floor-uses-framework-viewer`
+  - Story: `STORY-006`
+  - Requires: `solid-node` / `viewer-bundle-delivery`
+  - Branch: pending
+  - Commits: pending
+  - Archive: pending
+  - Integrated: pending
+- `solid-node` / `dev-viewer-on-shared-package`
+  - Story: `STORY-006`
+  - Requires: `solid-node` / `viewer-package`
+  - Branch: pending
+  - Commits: pending
+  - Archive: pending
+  - Integrated: pending
+
+## Paired validation
+
+- Pending
+
+## Decisions and scope changes
+
+- 2026-08-01 - Stage the work as separate cycles rather than one change,
+  because the development-loop viewer rests on a different architecture than
+  the other two and carries the sprint's largest risk.
+- 2026-08-01 - Include the development-loop viewer in this sprint; the goal is
+  not met while one surface still carries its own implementation.
+- 2026-08-01 - Unify the node-tree serializer behind both published documents
+  and keep both document names, because the two names distinguish a portable
+  directory from a build publication.
+- 2026-08-01 - Keep the published export bundle name, auto-mount attribute, and
+  browser global unchanged; rename only the package directory, so no ratified
+  export or embedding behavior changes in this sprint.
+- 2026-08-01 - Report an absent or incompatible viewer as one shop preparation
+  failure rather than a degraded browser state, because no user exists today
+  for whom the shop and the framework are versioned independently.
+- 2026-08-01 - Do not publish the viewer to a package registry; deliver it
+  inside the framework's Python distribution, deferring public release surface
+  until an external consumer exists.
+
+## Outcome
+
+Completed when the sprint is archived.
