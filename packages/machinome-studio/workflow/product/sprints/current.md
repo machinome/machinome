@@ -31,9 +31,9 @@ appears everywhere.
 ## Repositories
 
 - `solid-node-shop`
-  - Source: `main` @ `ceddcd5`
+  - Source: `main` @ `595eb00`
   - Sprint branch: `sprint-002`
-  - Content: `4b20729`
+  - Content: `f42cfe9`
   - Worktree: `WTs/sprint-002`
 - `solid-node`
   - Source: `main` @ `6f8a5ae`
@@ -101,16 +101,14 @@ appears everywhere.
 - `solid-node-shop` / `adjust-ignore-framework-link`
   - Story: none - sprint machinery
   - Requires: none
-  - Branch: `sprint-002-adjust-ignore-framework-link` from `6b08021`
-  - Commits: `4b20729`
+  - Branch: `sprint-002-adjust-ignore-framework-link` from `a0d74d3`
+  - Commits: `f42cfe9`
   - Archive: not applicable - direct adjustment
-  - Integrated: `sprint-002` @ `4b20729`
+  - Integrated: `sprint-002` @ `f42cfe9`
 
 ## Paired validation
 
-- `python -m pytest tests/` (128 passed, 23 subtests) and
-  `bash tests/dev-env-test.sh` (all tests passed) passed from `WTs/sprint-002`
-  for shop content `4b20729` and framework content `6f8a5ae`
+- Pending after rebasing shop `sprint-002` onto `main` @ `595eb00`.
 
 ## Decisions and scope changes
 
@@ -135,6 +133,10 @@ appears everywhere.
   ignored as required, as a direct adjustment on the sprint branch: a commit on
   shop `main` would move it off the recorded base and prevent fast-forward
   integration when the sprint is archived.
+- 2026-08-01 - Rebase shop `sprint-002` onto `main` @ `595eb00` before opening
+  any feature cycle, incorporating the unrelated running-the-shop documentation
+  change while histories are uncontested and preserving fast-forward archive
+  integration.
 
 ## Outcome
 
