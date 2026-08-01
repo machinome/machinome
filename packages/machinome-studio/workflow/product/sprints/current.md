@@ -153,6 +153,18 @@ appears everywhere.
   release evidence.
 - 2026-08-01 - Ratify `SPRINT-002-validation.md` as the binding cross-cycle
   proof matrix before opening F1 or S1.
+- 2026-08-01 - Reconcile F1 proposal review by retaining document-level name
+  parity, proving the real re-created-and-rebound child failure through both
+  producers, recording schema identity versus portability in an ADR, accepting
+  additive `mtime` churn, and assigning the shop API/watcher consequences to S2.
+- 2026-08-01 - Preserve npm-less Python benches while making viewer benches
+  explicit through `scripts/dev-env <name> setup --frontend`. Frontend mode
+  validates the selected base's declared top-level dependency requirements
+  against the primary installed tree rather than requiring whole-lockfile
+  equality, creates and links missing generated-output roots, verifies only
+  exact managed links as cleanliness exceptions, and rolls back failed setup.
+  F2, F3, and F4 use frontend mode; ports and the six-field manifest remain
+  unchanged.
 
 ## Outcome
 

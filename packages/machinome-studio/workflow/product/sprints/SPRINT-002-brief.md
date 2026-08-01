@@ -61,15 +61,18 @@ separate `Animator` drives time (`animator.ts`). It also carries dead weight: a
 stubbed `NavigationTree.tsx`, a commented-out `ControlCube`, and `react-ace` /
 `re-resizable` dependencies.
 
-**F-3 — The node-tree walk exists three times in Python, and has drifted.**
+**F-3 — The node-tree walk exists three times in Python, and can drift.**
 `solid_node/core/export.py:97` (`_serialize_tree`), `solid_node/core/builder.py:95`
 (`_viewer_state`), and `solid_node/viewers/web/viewer.py:160` (`NodeAPI.__init__`)
 are the same recursion: same `node.rigid` short-circuit, same `render()`
 list/tuple check, same `[op.serialized for op in node.operations]`. Two of them
 call `node._link_child(child)` before recursing — the fix that makes viewer
-names agree with STL and test names — and `_serialize_tree` does not. An
-exported manifest can therefore name nodes differently from the build snapshot
-of the same tree.
+names agree with STL and test names — and `_serialize_tree` does not. Normal
+assembly masks that omission when `render()` returns the same child objects.
+When `render()` recreates and rebinds a child, export assembly links one
+instance and serialization walks another, while the builder links the instance
+it serializes; the two published documents then disagree on the same logical
+child's name.
 
 **F-4 — A built viewer bundle is absent exactly where development happens.**
 `solid_node/viewers/widget/dist/solid-widget.js` is gitignored and built only by
@@ -262,17 +265,26 @@ two documents additively: `format` into `viewer.json`, `mtime` into
 `manifest.json`. Apply `_link_child` in the export path so all three consumers
 name nodes identically.
 
-Prove the drift red first: an export and a build snapshot of the same tree
-disagree on node names today. Do not rename a document, change path rooting, or
-make build publications portable.
+Prove the drift red first through the real export and builder producers with
+independent instances of a fixture that recreates and rebinds a child during
+`render()`. Record in an ADR that the shared `format` identifies a document
+schema and does not make build publications portable. Accept and document the
+committed-export churn caused by additive `mtime`. Do not rename a document,
+change path rooting, or make build publications portable.
 
 ### S1 — `solid-node-shop` / `viewer-bench-symlinks`
 
-Generalize `scripts/dev-env` so it symlinks the heavy gitignored directories for
-every frontend package under `solid_node/viewers/`, not only the CRA app (F-5),
-so a framework worktree can build a bundle without `npm install` inside it.
-Cover it in `tests/dev-env-test.sh`. Do not change port allocation or the
-manifest format.
+Generalize `scripts/setup` and `scripts/dev-env` to discover every frontend
+package under `solid_node/viewers/`, not only the two current package names
+(F-5). Preserve ordinary npm-less Python benches. An explicit
+`scripts/dev-env <name> setup --frontend` mode links each package's
+`node_modules` and conventional generated output to the exact
+package-relative location in the primary checkout, validates the selected
+base's declared top-level dependencies against the installed tree, creates a
+missing generated-output root, and rolls back failed setup. Managed symlinks
+are narrow verified cleanliness exceptions rather than shared Git excludes.
+Cover both modes, failure recovery, and lifecycle in `tests/dev-env-test.sh`.
+Do not change port allocation or the six-field manifest format.
 
 ### F2 — `solid-node` / `viewer-package`
 
@@ -309,7 +321,9 @@ Implement D-5 in `floor/preparation.py`. Drop `three`, `@types/three` and
 
 Amend `openspec/specs/functional-model-inspection/spec.md` so the requirement
 states the outcome rather than forbidding the widget, and amend ADR-0004's
-exclusion of the export widget (F-7).
+exclusion of the export widget (F-7). Update `shop-skills/solid-node-api/SKILL.md`
+for the additive `viewer.json` format field and record that the first snapshot
+after upgrade can produce one ordinary content-hash change in the floor watcher.
 
 Evidence: the shop suite, new preparation tests for the absent and incompatible
 cases, and visual confirmation that a model still renders and that a rebuild
@@ -319,8 +333,8 @@ preserves the maker's camera.
 
 Make `solid develop` serve the published snapshot plus a reload signal, and
 rebuild its React app on the shared package. Retire `node.ts`, the per-node walk
-in `NodeAPI`, and the unused `SnapshotNodeAPI` (`viewers/web/viewer.py:259`,
-called by nothing but its test). The development viewer gains colours, lights and
+in `NodeAPI`, and `SnapshotNodeAPI` (`viewers/web/viewer.py:259`, currently
+reached through `NodeAPI.from_build` and its test). The development viewer gains colours, lights and
 a fitted camera as a consequence.
 
 The jest tests that encode the flat-scene architecture (F-2) are replaced, not
@@ -336,7 +350,7 @@ and S1 (a bench that can build a bundle). F3 needs F2. S2 needs F3 integrated
 into the framework's `sprint-002`, because floor consumes the accessor. F4 needs
 F3 so framework viewer build cycles remain serialized while their benches share
 heavy frontend directories. F1 removes two of the three Python walks; F4 removes
-the third.
+the third. F2, F3, and F4 open their framework benches with `--frontend`.
 
 ## 7. Out of scope, with reasons
 
