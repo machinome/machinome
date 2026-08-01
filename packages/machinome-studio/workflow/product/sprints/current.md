@@ -69,7 +69,7 @@ appears everywhere.
     consumed by export and Sphinx embedding; brief section 5 (F2)
   - Story: `STORY-006`
   - Requires: `solid-node` / `unified-node-serializer`, the dev-env adjustment
-  - Branch: pending
+  - Branch: `sprint-002-viewer-package` from `db59935`
   - Commits: pending
   - Archive: pending
   - Integrated: pending
@@ -172,6 +172,14 @@ appears everywhere.
   correction to an internal development script with no user-visible behavior.
   Run as a cycle it grew into a shared-store transaction protocol that the
   sprint does not need; the abandoned attempt is recorded in `sprint-log.md`.
+- 2026-08-01 - Operational note for the remaining framework cycles: the S1
+  dev-env fix lives on shop `sprint-002` and does not reach shop `main` until
+  the sprint is integrated, so the primary checkout's `scripts/dev-env` still
+  links only the CRA app. Opening F2 with it produced a bench that could not
+  build the widget. Open F3 and F4 by materializing the sprint-branch script at
+  the shop root first (`git show sprint-002:scripts/dev-env`), running setup
+  with it, and removing it; confirm the setup output links all four frontend
+  directories before proposing.
 - 2026-08-01 - Anchor the widget's ignore patterns (`/node_modules`, `/dist`)
   in the framework rather than tracking managed links or excluding them at
   setup time. A trailing-slash pattern matches directories but not symlinks, so
