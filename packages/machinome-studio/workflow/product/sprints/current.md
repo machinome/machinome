@@ -38,7 +38,7 @@ appears everywhere.
 - `solid-node`
   - Source: `main` @ `6f8a5ae`
   - Sprint branch: `sprint-002`
-  - Content: `db59935`
+  - Content: `075104c`
   - Worktree: `solid-node/WTs/sprint-002`
   - Shop link: `WTs/sprint-002/solid-node`
 
@@ -70,9 +70,9 @@ appears everywhere.
   - Story: `STORY-006`
   - Requires: `solid-node` / `unified-node-serializer`, the dev-env adjustment
   - Branch: `sprint-002-viewer-package` from `db59935`
-  - Commits: pending
-  - Archive: pending
-  - Integrated: pending
+  - Commits: `b89159f` (planning), `075104c` (implementation/archive)
+  - Archive: `openspec/changes/archive/2026-08-01-viewer-package`
+  - Integrated: framework `sprint-002` @ `075104c`
 - `solid-node` / `viewer-bundle-delivery`
   - Intent: the built viewer ships inside the Python distribution and a CLI
     accessor reports it; brief section 5 (F3)
@@ -125,6 +125,14 @@ appears everywhere.
   --base sprint-002` linked all four frontend directories, the bench worktree
   reported clean, `npm run build` produced `dist/solid-widget.js` (483.7kb)
   with no install inside the worktree, and teardown removed the bench cleanly.
+- Combined validation passed from `WTs/sprint-002` against its linked framework
+  worktree for shop content `5a93a4b` and framework content `075104c`: shop
+  `pytest tests/` 128 passed with 23 subtests; `bash tests/dev-env-test.sh` all
+  tests passed; viewer `npm test` 24 passed, `npm run typecheck` and
+  `npm run build` passed; framework `pytest tests/` 372 passed with all 9
+  widget browser tests running; the V8 export was regenerated from the tested
+  framework content and the Sphinx build passed with `-W`; `openspec validate
+  --all --strict` passed all 12 specs.
 
 ## Decisions and scope changes
 
