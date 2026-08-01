@@ -33,12 +33,12 @@ appears everywhere.
 - `solid-node-shop`
   - Source: `main` @ `595eb00`
   - Sprint branch: `sprint-002`
-  - Content: `f42cfe9`
+  - Content: `5a93a4b`
   - Worktree: `WTs/sprint-002`
 - `solid-node`
   - Source: `main` @ `6f8a5ae`
   - Sprint branch: `sprint-002`
-  - Content: `b1e05b9`
+  - Content: `db59935`
   - Worktree: `solid-node/WTs/sprint-002`
   - Shop link: `WTs/sprint-002/solid-node`
 
@@ -58,10 +58,12 @@ appears everywhere.
     inside a worktree; brief section 5 (S1)
   - Story: `STORY-006`
   - Requires: none
-  - Branch: direct shop adjustment - not an OpenSpec cycle
-  - Commits: pending
+  - Branch: `sprint-002-adjust-dev-env-packages` from `80e0b81` - direct shop
+    adjustment, not an OpenSpec cycle
+  - Commits: `5a93a4b`
   - Archive: not applicable - direct adjustment
-  - Integrated: pending
+  - Integrated: shop `sprint-002` @ `5a93a4b`; paired framework ignore fix at
+    `db59935`
 - `solid-node` / `viewer-package`
   - Intent: the single reusable viewer with the interface in brief section 4,
     consumed by export and Sphinx embedding; brief section 5 (F2)
@@ -115,6 +117,14 @@ appears everywhere.
   content `b1e05b9` before integrating F1. Combined shop/framework validation
   for shop content `f42cfe9` and framework content `b1e05b9` is pending the
   dev-env adjustment.
+- Combined validation passed from `WTs/sprint-002` against its linked framework
+  worktree for shop content `5a93a4b` and framework content `db59935`:
+  shop `pytest tests/` 128 passed with 23 subtests; `bash tests/dev-env-test.sh`
+  all tests passed; framework `pytest tests/` 363 passed, 3 skipped, 5 subtests.
+- End-to-end bench proof for finding F-5: `scripts/dev-env probe-bench setup
+  --base sprint-002` linked all four frontend directories, the bench worktree
+  reported clean, `npm run build` produced `dist/solid-widget.js` (483.7kb)
+  with no install inside the worktree, and teardown removed the bench cleanly.
 
 ## Decisions and scope changes
 
@@ -162,6 +172,12 @@ appears everywhere.
   correction to an internal development script with no user-visible behavior.
   Run as a cycle it grew into a shared-store transaction protocol that the
   sprint does not need; the abandoned attempt is recorded in `sprint-log.md`.
+- 2026-08-01 - Anchor the widget's ignore patterns (`/node_modules`, `/dist`)
+  in the framework rather than tracking managed links or excluding them at
+  setup time. A trailing-slash pattern matches directories but not symlinks, so
+  the unanchored form left every bench worktree dirty. The CRA app already used
+  the anchored form; matching it is what makes bench links work, and it removes
+  the reason the abandoned cycle invented link-cleanliness metadata.
 
 ## Outcome
 
