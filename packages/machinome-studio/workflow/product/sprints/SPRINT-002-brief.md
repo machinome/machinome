@@ -272,19 +272,23 @@ schema and does not make build publications portable. Accept and document the
 committed-export churn caused by additive `mtime`. Do not rename a document,
 change path rooting, or make build publications portable.
 
-### S1 — `solid-node-shop` / `viewer-bench-symlinks`
+### S1 — `solid-node-shop` / dev-env frontend package discovery
 
-Generalize `scripts/setup` and `scripts/dev-env` to discover every frontend
-package under `solid_node/viewers/`, not only the two current package names
-(F-5). Preserve ordinary npm-less Python benches. An explicit
-`scripts/dev-env <name> setup --frontend` mode links each package's
-`node_modules` and conventional generated output to the exact
-package-relative location in the primary checkout, validates the selected
-base's declared top-level dependencies against the installed tree, creates a
-missing generated-output root, and rolls back failed setup. Managed symlinks
-are narrow verified cleanliness exceptions rather than shared Git excludes.
-Cover both modes, failure recovery, and lifecycle in `tests/dev-env-test.sh`.
-Do not change port allocation or the six-field manifest format.
+Not a cycle. `scripts/dev-env` hardcodes one frontend package (`APP_DIR`), so a
+framework worktree cannot build the widget (F-5). The fix is to discover every
+directory with a `package.json` under `solid_node/viewers/` and symlink each
+one's heavy gitignored directories from the primary clone, as the script already
+does for the CRA app.
+
+That is a narrow correction to an internal development script with no
+user-visible behavior, so it takes the direct shop adjustment path in
+`skills/sprint/SKILL.md` rather than an OpenSpec cycle. Cover it in
+`tests/dev-env-test.sh`. Do not change port allocation or the manifest format.
+
+An earlier attempt to run this as a full cycle grew it into a shared-store
+transaction protocol — migration markers, ownership metadata, namespace
+guarding, atomic rollback, dependency-compatibility validation — none of which
+this sprint needs. That attempt is abandoned; see `sprint-log.md`.
 
 ### F2 — `solid-node` / `viewer-package`
 
@@ -344,13 +348,13 @@ change either document's name or rooting.
 
 ## 6. Sequencing
 
-F1 and S1 have no dependencies and can run in parallel. F2 needs F1 (one schema
+F1 and the dev-env adjustment (S1) have no dependencies. F2 needs F1 (one schema
 to load rather than dual-source branching that would be written and then deleted)
-and S1 (a bench that can build a bundle). F3 needs F2. S2 needs F3 integrated
-into the framework's `sprint-002`, because floor consumes the accessor. F4 needs
-F3 so framework viewer build cycles remain serialized while their benches share
-heavy frontend directories. F1 removes two of the three Python walks; F4 removes
-the third. F2, F3, and F4 open their framework benches with `--frontend`.
+and the dev-env adjustment (a bench that can build a bundle). F3 needs F2. S2
+needs F3 integrated into the framework's `sprint-002`, because floor consumes the
+accessor. F4 needs F3 so framework viewer build cycles remain serialized while
+their benches share heavy frontend directories. F1 removes two of the three
+Python walks; F4 removes the third.
 
 ## 7. Out of scope, with reasons
 

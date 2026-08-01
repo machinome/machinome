@@ -14,9 +14,6 @@ appears everywhere.
   - Brief: `docs/product/sprints/SPRINT-002-brief.md` - findings, decisions with
     their rejected alternatives, the viewer interface consumers require, and the
     intent of every cycle. Read it before opening any cycle in this sprint.
-  - Validation: `docs/product/sprints/SPRINT-002-validation.md` - binding
-    cross-cycle proof matrix and final paired-validation procedure. Read it
-    before proposing or implementing any cycle in this sprint.
 
 ## Ratified scope
 
@@ -41,7 +38,7 @@ appears everywhere.
 - `solid-node`
   - Source: `main` @ `6f8a5ae`
   - Sprint branch: `sprint-002`
-  - Content: `6f8a5ae`
+  - Content: `b1e05b9`
   - Worktree: `solid-node/WTs/sprint-002`
   - Shop link: `WTs/sprint-002/solid-node`
 
@@ -53,23 +50,23 @@ appears everywhere.
   - Story: `STORY-006`
   - Requires: none
   - Branch: `sprint-002-unified-node-serializer` from `6f8a5ae`
-  - Commits: pending
-  - Archive: pending
-  - Integrated: pending
-- `solid-node-shop` / `viewer-bench-symlinks`
+  - Commits: `69f9c2e` (planning), `b1e05b9` (implementation/archive)
+  - Archive: `openspec/changes/archive/2026-08-01-unified-node-serializer`
+  - Integrated: framework `sprint-002` @ `b1e05b9`
+- `solid-node-shop` / dev-env frontend package discovery
   - Intent: a framework bench can build any viewer package without installing
     inside a worktree; brief section 5 (S1)
   - Story: `STORY-006`
   - Requires: none
-  - Branch: pending
+  - Branch: direct shop adjustment - not an OpenSpec cycle
   - Commits: pending
-  - Archive: pending
+  - Archive: not applicable - direct adjustment
   - Integrated: pending
 - `solid-node` / `viewer-package`
   - Intent: the single reusable viewer with the interface in brief section 4,
     consumed by export and Sphinx embedding; brief section 5 (F2)
   - Story: `STORY-006`
-  - Requires: `solid-node` / `unified-node-serializer`, `solid-node-shop` / `viewer-bench-symlinks`
+  - Requires: `solid-node` / `unified-node-serializer`, the dev-env adjustment
   - Branch: pending
   - Commits: pending
   - Archive: pending
@@ -114,6 +111,10 @@ appears everywhere.
 - `python -m pytest tests/` (128 passed) and `bash tests/dev-env-test.sh`
   (all tests passed) passed from `WTs/sprint-002` after the rebase for shop
   content `f42cfe9` and framework content `6f8a5ae`.
+- Framework suite (363 passed, 3 skipped, 5 subtests) passed for framework
+  content `b1e05b9` before integrating F1. Combined shop/framework validation
+  for shop content `f42cfe9` and framework content `b1e05b9` is pending the
+  dev-env adjustment.
 
 ## Decisions and scope changes
 
@@ -151,20 +152,16 @@ appears everywhere.
   checkout of the exact integrated framework content commit, outside every
   worktree; shared bench outputs remain development conveniences rather than
   release evidence.
-- 2026-08-01 - Ratify `SPRINT-002-validation.md` as the binding cross-cycle
-  proof matrix before opening F1 or S1.
-- 2026-08-01 - Reconcile F1 proposal review by retaining document-level name
-  parity, proving the real re-created-and-rebound child failure through both
-  producers, recording schema identity versus portability in an ADR, accepting
-  additive `mtime` churn, and assigning the shop API/watcher consequences to S2.
-- 2026-08-01 - Preserve npm-less Python benches while making viewer benches
-  explicit through `scripts/dev-env <name> setup --frontend`. Frontend mode
-  validates the selected base's declared top-level dependency requirements
-  against the primary installed tree rather than requiring whole-lockfile
-  equality, creates and links missing generated-output roots, verifies only
-  exact managed links as cleanliness exceptions, and rolls back failed setup.
-  F2, F3, and F4 use frontend mode; ports and the six-field manifest remain
-  unchanged.
+- 2026-08-01 - Withdraw the Hermes-authored `SPRINT-002-validation.md` proof
+  matrix and the enlarged S1 scope derived from review findings. Neither was
+  pilot-authored: the shop protocol defines no sprint-level validation artifact,
+  and the S1 text had been rewritten to absorb reviewer output. Each cycle's
+  proof belongs to its own OpenSpec proposal, as the brief already states.
+- 2026-08-01 - Deliver S1 as a direct shop adjustment rather than an OpenSpec
+  cycle. Discovering frontend packages in `scripts/dev-env` is a narrow
+  correction to an internal development script with no user-visible behavior.
+  Run as a cycle it grew into a shared-store transaction protocol that the
+  sprint does not need; the abandoned attempt is recorded in `sprint-log.md`.
 
 ## Outcome
 
