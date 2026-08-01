@@ -181,11 +181,13 @@ build publications ever become portable (deduplicated, self-contained, servable
 as-is), the distinction disappears and one name becomes right; that is its own
 change, not a side effect of this one.
 
-**D-4 — Keep the published export names; rename only the package directory.**
-`solid-widget.js`, `data-solid-widget` and `SolidNodeWidget` stay. Rejected:
-renaming them, per F-8 — the cost is not user breakage but dragging two ratified
-specs, an ADR, and a deprecation alias into the cycle every other cycle depends
-on.
+**D-4 — Keep the published export names and current package directory.**
+`solid-widget.js`, `data-solid-widget`, `SolidNodeWidget`, and
+`solid_node/viewers/widget` stay. Rejected: renaming the published names, per
+F-8 — the cost is not user breakage but dragging two ratified specs, an ADR, and
+a deprecation alias into the cycle every other cycle depends on. A package
+directory rename may return during F2 only with a proven dependency-source or
+refresh path for framework benches and explicit pilot ratification.
 
 **D-5 — An absent or incompatible viewer is one shop preparation failure.**
 Floor asks the installed framework for the bundle and its API version; if it is
@@ -276,7 +278,8 @@ manifest format.
 
 Turn `solid_node/viewers/widget` into the single reusable viewer package with the
 interface in section 4 and an exported API version (D-8). The directory may be
-renamed; the published output names may not (D-4). Make `solid export` and
+renamed only after the conditional gate in D-4 is ratified; otherwise retain it.
+The published output names may not change. Make `solid export` and
 `solid_node/sphinx.py` consume it, and fold floor's three behaviors (F-1) in as
 options. Keep the package private (D-1).
 
@@ -331,7 +334,9 @@ F1 and S1 have no dependencies and can run in parallel. F2 needs F1 (one schema
 to load rather than dual-source branching that would be written and then deleted)
 and S1 (a bench that can build a bundle). F3 needs F2. S2 needs F3 integrated
 into the framework's `sprint-002`, because floor consumes the accessor. F4 needs
-F2. F1 removes two of the three Python walks; F4 removes the third.
+F3 so framework viewer build cycles remain serialized while their benches share
+heavy frontend directories. F1 removes two of the three Python walks; F4 removes
+the third.
 
 ## 7. Out of scope, with reasons
 

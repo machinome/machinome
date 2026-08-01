@@ -14,6 +14,9 @@ appears everywhere.
   - Brief: `docs/product/sprints/SPRINT-002-brief.md` - findings, decisions with
     their rejected alternatives, the viewer interface consumers require, and the
     intent of every cycle. Read it before opening any cycle in this sprint.
+  - Validation: `docs/product/sprints/SPRINT-002-validation.md` - binding
+    cross-cycle proof matrix and final paired-validation procedure. Read it
+    before proposing or implementing any cycle in this sprint.
 
 ## Ratified scope
 
@@ -93,7 +96,7 @@ appears everywhere.
   - Intent: the development loop shows models through the same viewer and the
     last per-node walk retires; brief section 5 (F4)
   - Story: `STORY-006`
-  - Requires: `solid-node` / `viewer-package`
+  - Requires: `solid-node` / `viewer-bundle-delivery`
   - Branch: pending
   - Commits: pending
   - Archive: pending
@@ -122,9 +125,10 @@ appears everywhere.
 - 2026-08-01 - Unify the node-tree serializer behind both published documents
   and keep both document names, because the two names distinguish a portable
   directory from a build publication.
-- 2026-08-01 - Keep the published export bundle name, auto-mount attribute, and
-  browser global unchanged; rename only the package directory, so no ratified
-  export or embedding behavior changes in this sprint.
+- 2026-08-01 - Keep the published export bundle name, auto-mount attribute,
+  browser global, and current package directory unchanged. A package-directory
+  rename may return during F2 only with a proven dependency-source/refresh path
+  for framework benches and explicit pilot ratification.
 - 2026-08-01 - Report an absent or incompatible viewer as one shop preparation
   failure rather than a degraded browser state, because no user exists today
   for whom the shop and the framework are versioned independently.
@@ -139,6 +143,16 @@ appears everywhere.
   any feature cycle, incorporating the unrelated running-the-shop documentation
   change while histories are uncontested and preserving fast-forward archive
   integration.
+- 2026-08-01 - Serialize the framework viewer build cycles as F2, then F3,
+  then F4 by making F4 depend on F3. Their benches share heavy frontend
+  directories through the shop's development environment, so the sprint graph,
+  rather than transient orchestrator state, prevents overlapping writers.
+- 2026-08-01 - Prove final distribution provenance from a disposable full
+  checkout of the exact integrated framework content commit, outside every
+  worktree; shared bench outputs remain development conveniences rather than
+  release evidence.
+- 2026-08-01 - Ratify `SPRINT-002-validation.md` as the binding cross-cycle
+  proof matrix before opening F1 or S1.
 
 ## Outcome
 
