@@ -9,7 +9,7 @@ appears everywhere.
 
 ## Stories
 
-- [ ] STORY-006 - See one model viewer everywhere
+- [x] STORY-006 - See one model viewer everywhere
   - Source: `docs/product/stories/STORY-006-one-model-viewer.md`
   - Brief: `docs/product/sprints/SPRINT-002-brief.md` - findings, decisions with
     their rejected alternatives, the viewer interface consumers require, and the
@@ -33,7 +33,7 @@ appears everywhere.
 - `solid-node-shop`
   - Source: `main` @ `595eb00`
   - Sprint branch: `sprint-002`
-  - Content: `5a93a4b`
+  - Content: `8f31328`
   - Worktree: `WTs/sprint-002`
 - `solid-node`
   - Source: `main` @ `6f8a5ae`
@@ -229,4 +229,23 @@ appears everywhere.
 
 ## Outcome
 
-Completed when the sprint is archived.
+Delivered. Every surface that shows a solid-node model now renders it through
+one viewer inside the framework: the node-tree serializer is unified behind
+both published documents, the viewer package carries the interface its
+consumers need, the built bundle ships inside the framework's Python
+distribution, and both the shop floor and the development loop consume it
+instead of their own copies. All six cycles integrated.
+
+Final content commits: shop `8f31328`, framework `acf4292`. Combined
+validation for that pair is the F4 entry above.
+
+Both sprint branches were integrated into their primaries before archival:
+shop `sprint-002` into `main` at merge `0fc689f`, framework `sprint-002` into
+`main` at `acf4292`. Shop `main` had already advanced past the recorded base
+`595eb00`, so fast-forward archive integration was unavailable, as this record
+anticipated; the archive commit reaches `main` through an ordinary merge.
+
+The `Content` field for `solid-node-shop` above was stale at `5a93a4b` and is
+corrected to `8f31328`, the last shop content commit; every later commit on
+`sprint-002` was evidence-only. Some cycle hashes in this record predate the
+recorded rebase and no longer resolve on the branch.
