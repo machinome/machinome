@@ -122,6 +122,9 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual(_raw(self.url("/artifacts/part.stl")), "solid part")
         self.assertEqual(_status(self.url("/artifacts/../__init__.py"), "GET"), 404)
 
+    def test_serves_the_framework_viewer_bundle(self) -> None:
+        self.assertIn("SolidNodeWidget", _raw(self.url("/viewer/solid-widget.js")))
+
     def test_the_removed_model_callback_route_is_gone(self) -> None:
         # The floor refreshes the model itself now; nothing may post a
         # refresh into it. See tests/test_model_watcher.py.

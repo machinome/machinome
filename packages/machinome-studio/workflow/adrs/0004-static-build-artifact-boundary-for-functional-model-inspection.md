@@ -31,12 +31,13 @@ Floor SHALL NOT import, execute, reload, inspect, or serve project Python
 source. Project Python execution belongs only to the `solid build` subprocess
 and the framework-owned `solid develop` process.
 
-`solid export` and its separate export widget are not part of this decision or
-of Story 5.
+**Amendment (2026-08-02, Sprint 002).** Floor obtains the framework's static
+browser viewer through `solid viewer` during preparation and serves that one
+bundle to the browser. It remains separate from project artifacts and does not
+weaken this boundary: Floor neither imports nor executes project Python.
 
-Floor owns a browser-side renderer that fetches only these served static
-artifacts. The backend does not interpret the snapshot or execute any model
-code.
+The framework viewer renders the served snapshot and model artifacts. The
+backend does not interpret the snapshot or execute any model code.
 
 ## Consequences
 

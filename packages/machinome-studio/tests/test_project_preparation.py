@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from floor.preparation import PreparationError, default_project_home, prepare_project, primary_shop_root, resolve_project
+from floor.preparation import REQUIRED_VIEWER_API, PreparationError, default_project_home, prepare_project, primary_shop_root, resolve_project
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,6 +79,8 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertEqual(prepared.project_root, project.resolve())
         self.assertEqual(prepared.model, Path("root"))
         self.assertEqual(prepared.artifact_root, (project / "_build").resolve())
+        self.assertTrue(prepared.viewer_bundle.is_file())
+        self.assertEqual(prepared.viewer_api_version, 1)
         self.assertEqual(self.call_log.read_text().splitlines()[0], "new:new-engine")
         self.assertTrue((project / "root" / "__init__.py").is_file())
         self.assertEqual(
@@ -105,7 +107,7 @@ class ProjectPreparationTest(unittest.TestCase):
         prepared = self.prepare("existing")
         self.assertEqual(prepared.project_root, project.resolve())
         self.assertEqual(_git_state(project), before)
-        self.assertEqual(self.call_log.read_text().splitlines(), ["build:root"])
+        self.assertEqual(self.call_log.read_text().splitlines(), ["viewer:", "build:root"])
 
     def test_rejects_existing_file_plain_directory_and_nested_repository(self) -> None:
         (self.home / "file").write_text("not a project")
@@ -133,6 +135,21 @@ class ProjectPreparationTest(unittest.TestCase):
             self.assertIn(str(self.home / name), str(raised.exception))
             if name != "fail-new":
                 self.assertTrue((self.home / name).exists(), "failed project evidence must be preserved")
+
+    def test_rejects_a_missing_or_incompatible_viewer_before_building(self) -> None:
+        project = self.home / "existing"
+        _make_repository(project)
+        for state, expected in (({"viewer_missing": True}, "build the solid-node viewer bundle"), ({"viewer_api_version": 0}, "viewer API 1 is required but installed viewer API is 0")):
+            with self.subTest(state=state):
+                (project / ".fake-solid-state.json").write_text(json.dumps(state))
+                with self.assertRaises(PreparationError) as raised:
+                    self.prepare("existing")
+                self.assertEqual(raised.exception.stage, "viewer")
+                self.assertIn(expected, str(raised.exception))
+
+    def test_required_viewer_api_matches_the_declared_widget_interface(self) -> None:
+        declaration = (ROOT / "floor" / "frontend" / "src" / "solid-node-widget.d.ts").read_text()
+        self.assertIn(f"SOLID_NODE_VIEWER_API_VERSION: {REQUIRED_VIEWER_API}", declaration)
 
     def test_reports_git_initialization_and_initial_commit_failures_by_stage(self) -> None:
         real_run = subprocess.run
@@ -218,8 +235,10 @@ FAKE_SOLID = r'''from pathlib import Path
 import json
 import os
 import sys
+import tempfile
 
-command, argument = sys.argv[1:3]
+command = sys.argv[1]
+argument = sys.argv[2] if len(sys.argv) > 2 else ""
 cwd = Path.cwd()
 with Path(os.environ["SOLID_CALL_LOG"]).open("a") as calls:
     calls.write(f"{command}:{argument}\n")
@@ -250,4 +269,13 @@ elif command == "build":
     else:
         (build / "part.stl").write_text("solid part")
         (build / "viewer.json").write_text(json.dumps({"version": 1, "root": {"model": "part.stl"}}))
+elif command == "viewer":
+    state_file = cwd / ".fake-solid-state.json"
+    state = json.loads(state_file.read_text()) if state_file.is_file() else {}
+    if state.get("viewer_missing"):
+        print("build the solid-node viewer bundle", file=sys.stderr)
+        raise SystemExit(18)
+    bundle = Path(tempfile.gettempdir()) / f"fake-solid-widget-{os.getpid()}.js"
+    bundle.write_text("globalThis.SolidNodeWidget={apiVersion:1,mount(){return Promise.resolve({apiVersion:1,view(){return{}},dispose(){}})}};")
+    print(json.dumps({"path": str(bundle), "apiVersion": state.get("viewer_api_version", 1)}))
 '''

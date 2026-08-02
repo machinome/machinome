@@ -476,6 +476,7 @@ def create_app(
     project_root: Path | None = None,
     *,
     artifact_root: Path | None = None,
+    viewer_bundle: Path | None = None,
     broker: Broker | None = None,
     profile: RuntimeProfile | None = None,
     solid_command: Sequence[str] | None = None,
@@ -515,6 +516,12 @@ def create_app(
     app.state.model_watcher = None
     app.mount("/assets", StaticFiles(directory=STATIC_ROOT / "assets"), name="assets")
     build_root = artifact_root or (project_root / "_build" if project_root is not None else None)
+
+    @app.get("/viewer/solid-widget.js")
+    async def viewer() -> FileResponse:
+        if viewer_bundle is None or not viewer_bundle.is_file():
+            raise HTTPException(status_code=404, detail="no framework viewer is available")
+        return FileResponse(viewer_bundle, media_type="text/javascript")
 
     @app.get("/artifacts/{artifact_path:path}")
     async def artifact(artifact_path: str) -> FileResponse:
