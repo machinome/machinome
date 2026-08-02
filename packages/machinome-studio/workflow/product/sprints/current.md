@@ -91,9 +91,9 @@ appears everywhere.
   - Requires: `solid-node` / `viewer-bundle-delivery` - integrated at framework
     `sprint-002` @ `5c14acf`
   - Branch: `sprint-002-floor-uses-framework-viewer` from `412eb03`
-  - Commits: pending
-  - Archive: pending
-  - Integrated: pending
+  - Commits: `8a3077b` (planning), `8f31328` (implementation/archive)
+  - Archive: `openspec/changes/archive/2026-08-02-floor-uses-framework-viewer`
+  - Integrated: shop `sprint-002` @ `8f31328`
 - `solid-node` / `dev-viewer-on-shared-package`
   - Intent: the development loop shows models through the same viewer and the
     last per-node walk retires; brief section 5 (F4)
@@ -152,6 +152,10 @@ appears everywhere.
   running `solid viewer` from an unrelated directory printed the installed
   bundle path and `"apiVersion": 1` and exited 0. This closes finding F-4 and
   satisfies the F3 post-integration evidence task.
+- Combined S2 validation passed for shop content `8f31328` and framework
+  content `5c14acf`: preparation/API tests (19 passed), frontend typecheck and
+  build, the browser model-and-Timeline test, and `bash tests/dev-env-test.sh`.
+  The pilot also visually confirmed `v8-engine` in the opened shop.
 
 ## Decisions and scope changes
 
