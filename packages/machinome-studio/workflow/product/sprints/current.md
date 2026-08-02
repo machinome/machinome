@@ -38,7 +38,7 @@ appears everywhere.
 - `solid-node`
   - Source: `main` @ `6f8a5ae`
   - Sprint branch: `sprint-002`
-  - Content: `075104c`
+  - Content: `5c14acf`
   - Worktree: `solid-node/WTs/sprint-002`
   - Shop link: `WTs/sprint-002/solid-node`
 
@@ -79,9 +79,11 @@ appears everywhere.
   - Story: `STORY-006`
   - Requires: `solid-node` / `viewer-package`
   - Branch: `sprint-002-viewer-bundle-delivery` from `075104c`
-  - Commits: `8df79e9` (planning), implementation pending
-  - Archive: pending
-  - Integrated: pending
+  - Commits: `369977c` (planning), `5c14acf` (implementation/archive). The
+    planning commit was amended after it was first recorded as `8df79e9`;
+    `369977c` is the commit on the branch.
+  - Archive: `openspec/changes/archive/2026-08-02-viewer-bundle-delivery`
+  - Integrated: framework `sprint-002` @ `5c14acf`
 - `solid-node-shop` / `floor-uses-framework-viewer`
   - Intent: the shop floor shows models through the framework's viewer instead
     of its own copy; brief section 5 (S2)
@@ -133,6 +135,22 @@ appears everywhere.
   widget browser tests running; the V8 export was regenerated from the tested
   framework content and the Sphinx build passed with `-W`; `openspec validate
   --all --strict` passed all 12 specs.
+- Combined validation passed from `WTs/sprint-002` against its linked framework
+  worktree for shop content `5a93a4b` and framework content `5c14acf`: shop
+  `pytest tests/` 128 passed with 23 subtests; `bash tests/dev-env-test.sh` all
+  tests passed; framework `pytest tests/` 380 passed with 5 subtests;
+  `openspec validate --all --strict` passed all 13 specs; the V8 export was
+  regenerated from the tested framework content and the Sphinx build passed
+  with `-W`. The viewer package was not rebuilt because F3 changed no file
+  under `solid_node/viewers/widget/`.
+- Distribution provenance for framework content `5c14acf`, proved from a
+  disposable clone outside every worktree: `python -m build` produced both
+  distributions, and each carries
+  `solid_node/viewers/widget/dist/solid-widget.js` (497823 bytes) with no
+  `node_modules` entries. Installing that wheel into a throwaway virtualenv and
+  running `solid viewer` from an unrelated directory printed the installed
+  bundle path and `"apiVersion": 1` and exited 0. This closes finding F-4 and
+  satisfies the F3 post-integration evidence task.
 
 ## Decisions and scope changes
 
