@@ -76,7 +76,8 @@ in the PRD.
     PRD D5, D6
   - Story: `STORY-007`
   - Requires: none
-  - Branch: pending
+  - Branch: `sprint-003-viewer-targeted-update` from `a89cc56`
+  - Worktree: `solid-node/WTs/sprint-003-viewer-targeted-update`
   - Commits: pending
   - Archive: pending
   - Integrated: pending
@@ -126,6 +127,11 @@ in the PRD.
   setup --base sprint-003` created branch `sprint-003-per-file-build-publication`
   at base `a89cc56`, equal to the framework `sprint-003` head after F1, slot 3.
   Its recorded dependency on F1 is satisfied.
+- F3 opened 2026-08-02. `scripts/dev-env sprint-003-viewer-targeted-update setup
+  --base sprint-003` created branch `sprint-003-viewer-targeted-update` at base
+  `a89cc56`, slot 4. It has no dependencies and runs in parallel with F2; both
+  branch from the same framework head, so whichever integrates second must be
+  rechecked against the advanced sprint branch before its fast-forward.
 
 ## Decisions and scope changes
 
