@@ -42,7 +42,7 @@ in the PRD.
 - `solid-node`
   - Source: `main` @ `acf4292`
   - Sprint branch: `sprint-003`
-  - Content: `f34ddc6`
+  - Content: `582da89`
   - Worktree: `solid-node/WTs/sprint-003`
   - Shop link: `WTs/sprint-003/solid-node`
 
@@ -65,11 +65,12 @@ in the PRD.
     D7, section 3.2
   - Story: `STORY-007`
   - Requires: `solid-node` / `build-mutual-exclusion`
-  - Branch: `sprint-003-per-file-build-publication` from `a89cc56`
-  - Worktree: `solid-node/WTs/sprint-003-per-file-build-publication`
-  - Commits: pending
-  - Archive: pending
-  - Integrated: pending
+  - Branch: `sprint-003-per-file-build-publication`, rebased from `a89cc56`
+    onto `f34ddc6` after F3 integrated first
+  - Worktree: torn down
+  - Commits: `b994c4a`, `582da89`
+  - Archive: `openspec/changes/archive/2026-08-02-per-file-build-publication/`
+  - Integrated: `sprint-003` @ `582da89`
 - `solid-node` / `viewer-targeted-update`
   - Intent: the viewer handle accepts an artifact change and a manifest change
     and updates only what they name; consumed by the development loop as well;
@@ -119,6 +120,33 @@ in the PRD.
   setup --base sprint-003` created branch `sprint-003-build-mutual-exclusion`
   at base `acf4292`, equal to the framework `sprint-003` head, slot 3, backend
   8003 / frontend 3003, clean apart from ignored bench links.
+- F2 integrated 2026-08-02 by fast-forwarding framework `sprint-003` from
+  `f34ddc6` to `582da89`. The cycle was not ready as first handed over and was
+  repaired before integration: it was rebased onto the advanced sprint head;
+  its ADR renumbered to ADR-038 because F3's ADR-037 landed first; its spec
+  sync completed, which had dropped both REMOVED requirements and all three
+  ADDED ones and paraphrased the MODIFIED ones; its 20 tasks verified and
+  checked off; and the change archived, restoring the two-commit shape.
+  Eleven lifecycle tests it had deleted -- including F1's guards against the
+  develop-loop respawn and against a superseded build publishing -- were
+  restored and adapted, each confirmed red by removing the behaviour it
+  guards. Three tasks had no test at all; those were written.
+  One further defect was found only by exercising a real project: with the
+  candidate directory gone, a render lands at the artifact's final path, so
+  the following pass found every artifact current and never rewrote
+  `viewer.json`. Artifacts advanced while the document naming them stayed a
+  build behind, which would have silently defeated F3 and S2. The builder now
+  republishes the manifest when it no longer matches the model, guarded by a
+  unit test and by an assertion added to the real-OpenSCAD end-to-end test.
+  Evidence: framework `pytest tests` 395 passed with 5 subtests, `openspec
+  validate --all --strict` 13 specs. Live on a scaffolded three-file project:
+  a one-leaf edit rewrote only that leaf's artifact, the untouched leaf kept
+  its inode and mtime, and the document followed the edit; `solid test`,
+  `solid build` and `solid develop` interleaved under the F1 lock with exit 0
+  throughout, no leftover temporaries or locks. Combined validation passed for
+  shop content `7397c71` and framework content `582da89`: shop `pytest tests`
+  144 passed with 25 subtests, `tests/dev-env-test.sh` all passed. Cycle
+  worktree torn down; the branch is retained.
 - F3 integrated 2026-08-02 by fast-forwarding framework `sprint-003` from
   `a89cc56` to `f34ddc6`, after verifying the cycle still descended from that
   head. Evidence: framework `pytest tests` 395 passed with 5 subtests, widget
