@@ -284,6 +284,7 @@ async def _serve(arguments: argparse.Namespace) -> None:
     app = create_app(
         prepared.project_root,
         artifact_root=prepared.artifact_root,
+        viewer_bundle=prepared.viewer_bundle,
         broker=broker,
         solid_command=prepared.solid_command,
         build_environment=prepared.build_environment,

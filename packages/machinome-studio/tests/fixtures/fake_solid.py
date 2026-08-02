@@ -7,10 +7,12 @@ import json
 import os
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 
-command, argument = sys.argv[1:3]
+command = sys.argv[1]
+argument = sys.argv[2] if len(sys.argv) > 2 else ""
 cwd = Path.cwd()
 if command == "new":
     project = cwd / argument
@@ -63,5 +65,16 @@ elif command == "build":
     os.replace(staging, link)
     if previous is not None and previous != build and previous.is_dir():
         shutil.rmtree(previous, ignore_errors=True)
+elif command == "viewer":
+    state = {}
+    state_file = cwd / ".fake-solid-state.json"
+    if state_file.is_file():
+        state = json.loads(state_file.read_text())
+    if state.get("viewer_missing"):
+        print("build the solid-node viewer bundle", file=sys.stderr)
+        raise SystemExit(18)
+    bundle = Path(tempfile.gettempdir()) / f"fake-solid-widget-{os.getpid()}.js"
+    bundle.write_text('''globalThis.SolidNodeWidget={apiVersion:1,async mount(target,url,options){const snapshot=await fetch(url).then(r=>r.json());const canvas=document.createElement("canvas");canvas.width=640;canvas.height=360;canvas.className=options.className||"";canvas.setAttribute("role",options.role||"");canvas.setAttribute("aria-label",options.ariaLabel||"");const draw=(offset=0)=>{const ctx=canvas.getContext("2d");ctx.fillStyle=`hsl(${(JSON.stringify(snapshot).length+offset)%360} 60% 45%)`;ctx.fillRect(0,0,640,360)};draw();canvas.addEventListener("pointermove",event=>draw(event.offsetX));target.append(canvas);if(JSON.stringify(snapshot).includes("$t")&&options.animation==="toggle"){const toggle=document.createElement("button");toggle.textContent="Timeline";toggle.className="timeline-toggle";toggle.setAttribute("aria-expanded","false");const controls=document.createElement("div");controls.className="animation-controls";controls.hidden=true;toggle.onclick=()=>{controls.hidden=!controls.hidden;toggle.setAttribute("aria-expanded",String(!controls.hidden))};target.append(toggle,controls)}return{apiVersion:1,view(){return{}},dispose(){target.replaceChildren()}}}};''')
+    print(json.dumps({"path": str(bundle), "apiVersion": state.get("viewer_api_version", 1)}))
 else:
     raise SystemExit(2)

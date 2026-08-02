@@ -50,6 +50,7 @@ def main() -> None:
         create_app(
             prepared.project_root,
             artifact_root=prepared.artifact_root,
+            viewer_bundle=prepared.viewer_bundle,
             solid_command=prepared.solid_command,
             build_environment=prepared.build_environment,
             profile=profile,

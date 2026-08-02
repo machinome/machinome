@@ -13,6 +13,7 @@ from pathlib import Path
 
 
 PROJECT_NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
+REQUIRED_VIEWER_API = 1
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,8 @@ class PreparedProject:
     project_root: Path
     model: Path
     artifact_root: Path
+    viewer_bundle: Path | None = None
+    viewer_api_version: int | None = None
     solid_command: tuple[str, ...] = ()
     build_environment: dict[str, str] | None = None
 
@@ -168,6 +171,9 @@ def prepare_project(
     else:
         _require_exact_repository(project_root, name)
 
+    viewer_bundle, viewer_api_version = _viewer_info(
+        solid_command, name=name, project_root=project_root, extra_env=solid_env,
+    )
     artifact_root = artifact_root_for(project_root)
     snapshot = artifact_root / "viewer.json"
     previous = _fingerprint(snapshot)
@@ -187,9 +193,44 @@ def prepare_project(
         project_root=project_root,
         model=Path("root"),
         artifact_root=artifact_root,
+        viewer_bundle=viewer_bundle,
+        viewer_api_version=viewer_api_version,
         solid_command=_command(solid_command),
         build_environment=solid_env,
     )
+
+
+def _viewer_info(
+    solid_command: str | Sequence[str],
+    *,
+    name: str,
+    project_root: Path,
+    extra_env: dict[str, str] | None,
+) -> tuple[Path, int]:
+    result = _run(
+        (*_command(solid_command), "viewer"),
+        cwd=project_root,
+        stage="viewer",
+        name=name,
+        project_root=project_root,
+        extra_env=extra_env,
+    )
+    try:
+        value = json.loads(result.stdout)
+        path = Path(value["path"])
+        api_version = value["apiVersion"]
+    except (json.JSONDecodeError, KeyError, TypeError) as error:
+        raise PreparationError("viewer", name, project_root, "solid viewer returned malformed bundle metadata") from error
+    if not isinstance(api_version, int) or isinstance(api_version, bool):
+        raise PreparationError("viewer", name, project_root, "solid viewer returned a non-integer API version")
+    if api_version < REQUIRED_VIEWER_API:
+        raise PreparationError(
+            "viewer", name, project_root,
+            f"viewer API {REQUIRED_VIEWER_API} is required but installed viewer API is {api_version}",
+        )
+    if not path.is_file():
+        raise PreparationError("viewer", name, project_root, f"viewer bundle is unavailable: {path}")
+    return path, api_version
 
 
 def _require_exact_repository(project_root: Path, name: str) -> None:

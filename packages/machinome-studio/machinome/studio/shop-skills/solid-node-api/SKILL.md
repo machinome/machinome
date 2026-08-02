@@ -184,7 +184,7 @@ use — a resolved path names one publication and stops existing at the next.
 
 Inside a publication:
 
-- `viewer.json` — `{version, animation: {fps, frames}, root}`, where the
+- `viewer.json` — `{format, version, animation: {fps, frames}, root}`, where the
   node tree carries the same `name`, `type`, `color`, `mtime`,
   `operations`, and either `children` or a rigid node's `model` path
   relative to the build directory.
@@ -192,6 +192,11 @@ Inside a publication:
 - `errors.json` — `{error, tstamp}`, written into the build path instead
   of a publication when a build fails, so the previous model keeps
   serving.
+
+`solid viewer` prints JSON naming the installed `solid-widget.js` bundle and
+its integer `apiVersion`. A consumer must reject a missing or too-old bundle
+before opening. The first build after a framework upgrade may add the additive
+`format` field and therefore produce one ordinary model-change refresh.
 
 ## Viewer HTTP surface
 

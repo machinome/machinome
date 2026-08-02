@@ -1,7 +1,7 @@
 import { FormEvent, StrictMode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
-import { mountViewer, ViewerView } from "./viewer";
+import type { ViewerHandle, ViewerView } from "./solid-node-widget";
 
 type AgentState = "waiting" | "active";
 
@@ -60,15 +60,21 @@ function FunctionalModel({ generation, buildError }: { generation: number; build
     const target = container.current;
     if (!target) return;
     let disposed = false;
-    let unmount: (() => void) | undefined;
+    let mounted: ViewerHandle | undefined;
     setError(null);
-    void mountViewer(target, `/artifacts/viewer.json?generation=${generation}`, view.current)
-      .then((mounted) => {
-        const cleanup = () => { view.current = mounted.view(); mounted.dispose(); };
-        if (disposed) cleanup(); else unmount = cleanup;
+    void window.SolidNodeWidget.mount(target, `/artifacts/viewer.json?generation=${generation}`, {
+      baseUrl: "/artifacts/",
+      animation: "toggle",
+      view: view.current,
+      className: "functional-model",
+      role: "img",
+      ariaLabel: "Functional model",
+    }).then((handle) => {
+        const cleanup = () => { view.current = handle.view(); handle.dispose(); };
+        if (disposed) cleanup(); else mounted = handle;
       })
       .catch((reason: Error) => { if (!disposed) setError(reason.message); });
-    return () => { disposed = true; unmount?.(); };
+    return () => { disposed = true; if (mounted) { view.current = mounted.view(); mounted.dispose(); } };
   }, [generation]);
   // A failed rebuild is reported beside the model, never instead of it:
   // the last complete model stays inspectable while the human user fixes the
