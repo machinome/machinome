@@ -65,7 +65,8 @@ in the PRD.
     D7, section 3.2
   - Story: `STORY-007`
   - Requires: `solid-node` / `build-mutual-exclusion`
-  - Branch: pending
+  - Branch: `sprint-003-per-file-build-publication` from `a89cc56`
+  - Worktree: `solid-node/WTs/sprint-003-per-file-build-publication`
   - Commits: pending
   - Archive: pending
   - Integrated: pending
@@ -121,6 +122,10 @@ in the PRD.
   `acf4292` to `a89cc56`. Cycle worktree torn down with `scripts/dev-env
   sprint-003-build-mutual-exclusion teardown`; the branch is retained. No shop
   content changed, so shop content remains `7397c71`.
+- F2 opened 2026-08-02. `scripts/dev-env sprint-003-per-file-build-publication
+  setup --base sprint-003` created branch `sprint-003-per-file-build-publication`
+  at base `a89cc56`, equal to the framework `sprint-003` head after F1, slot 3.
+  Its recorded dependency on F1 is satisfied.
 
 ## Decisions and scope changes
 
