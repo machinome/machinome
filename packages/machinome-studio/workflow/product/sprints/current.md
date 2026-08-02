@@ -37,7 +37,7 @@ in the PRD.
 - `solid-node-shop`
   - Source: `main` @ `7397c71`
   - Sprint branch: `sprint-003`
-  - Content: `7397c71`
+  - Content: `6817520`
   - Worktree: `WTs/sprint-003`
 - `solid-node`
   - Source: `main` @ `acf4292`
@@ -90,9 +90,9 @@ in the PRD.
   - Requires: `solid-node` / `per-file-build-publication`
   - Branch: `sprint-003-floor-artifact-event-pipeline` from `30ac154`
   - Worktree: `WTs/sprint-003-floor-artifact-event-pipeline`
-  - Commits: pending
-  - Archive: pending
-  - Integrated: pending
+  - Commits: `534b50b` planning, `6817520` implementation and archive
+  - Archive: `openspec/changes/archive/2026-08-02-floor-artifact-event-pipeline/`
+  - Integrated: `sprint-003` @ `6817520`
 - `solid-node-shop` / `floor-in-place-model-updates`
   - Intent: the browser updates the model in place through the framework
     viewer, answering PRD defects A and B by construction; PRD section 6
@@ -106,6 +106,11 @@ in the PRD.
 
 ## Paired validation
 
+- S1 integrated 2026-08-02 by fast-forwarding shop `sprint-003` from
+  `30ac154` to `6817520`. Combined validation passed from `WTs/sprint-003`
+  against linked framework content `582da89`: shop `pytest tests`,
+  `tests/dev-env-test.sh`, and `openspec validate --all --strict` passed.
+  The cycle remains in place until this evidence commit is verified.
 - S1 opened 2026-08-02. Branch `sprint-003-floor-artifact-event-pipeline` and
   worktree `WTs/sprint-003-floor-artifact-event-pipeline` created from the shop
   `sprint-003` head `30ac154`, whose content commit is `7397c71`. Its recorded
