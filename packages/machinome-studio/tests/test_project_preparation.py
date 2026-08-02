@@ -126,7 +126,6 @@ class ProjectPreparationTest(unittest.TestCase):
             "fail-build": "build",
             "bad-json": "snapshot",
             "missing-model": "artifact",
-            "stale": "snapshot",
         }
         for name, stage in cases.items():
             with self.subTest(name=name), self.assertRaises(PreparationError) as raised:
@@ -135,6 +134,11 @@ class ProjectPreparationTest(unittest.TestCase):
             self.assertIn(str(self.home / name), str(raised.exception))
             if name != "fail-new":
                 self.assertTrue((self.home / name).exists(), "failed project evidence must be preserved")
+
+    def test_accepts_a_valid_unchanged_publication(self) -> None:
+        """F2 need not rewrite a manifest when the model is already current."""
+        prepared = self.prepare("stale")
+        self.assertTrue((prepared.artifact_root / "viewer.json").is_file())
 
     def test_rejects_a_missing_or_incompatible_viewer_before_building(self) -> None:
         project = self.home / "existing"

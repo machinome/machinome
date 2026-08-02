@@ -209,11 +209,12 @@ Kept on the canvas for context only. 1c moved activity to a bottom drawer,
   preserve-camera mechanism in `viewer.ts` already covers rebuilds; extend it
   to panel/tab changes.
 - **Opening a file** adds a tab beside `bracket.model`; the model tab is never
-  closable. Saving triggers the existing watcher rebuild; the preview strip and
-  the model tab both update on `model_changed`.
-- **Rebuild failure** keeps the last complete model on screen and reports the
-  error beside it — preserve today's behaviour (`model-build-error`); restyle
-  as `#2a1a1a` bg, 1px `#5a2a2a`, text `#f0b4b4`, radius 8, mono 11.5px.
+  closable. Saving triggers the source watcher; each atomic publication reaches
+  the browser over SSE, and the S1 bridge refreshes the model when it receives
+  the `viewer.json` artifact event.
+- **Rebuild failure** reports the published `errors.json` record beside the
+  model (`model-build-error`); a partial model is an honest observable state.
+  Use `#2a1a1a` bg, 1px `#5a2a2a`, text `#f0b4b4`, radius 8, mono 11.5px.
 - **Live updates** stay on SSE; no polling for state that the stream provides.
   Agent state, event log, status lines and build generation all update without
   reload.

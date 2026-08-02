@@ -24,7 +24,7 @@ type Run = {
 
 type LifecycleEvent = {
   kind: string;
-  payload: Agent | ConversationEntry;
+  payload: Agent | ConversationEntry | { artifact?: string; reason?: string };
   event: BrokerEvent;
 };
 
@@ -69,9 +69,8 @@ function FunctionalModel({ generation, buildError }: { generation: number; build
       .catch((reason: Error) => { if (!disposed) setError(reason.message); });
     return () => { disposed = true; if (mounted) { view.current = mounted.view(); mounted.dispose(); } };
   }, [generation]);
-  // A failed rebuild is reported beside the model, never instead of it:
-  // the last complete model stays inspectable while the human user fixes the
-  // source. Only model_changed replaces what is rendered.
+  // S1 keeps the existing coarse reload bridge; S2 replaces it with the
+  // viewer's targeted artifact update without unmounting this host on error.
   return (
     <>
       {buildError === null ? null : (
@@ -234,13 +233,24 @@ function App() {
           setConversation((previous) => previous.some((item) => item.sequence === entry.sequence) ? previous : [...previous, entry]);
           return;
         }
-        if (event.kind === "model_changed") { setModelGeneration((generation) => generation + 1); return; }
-        if (event.kind === "model_build_failed") {
-          const { error } = event.payload as { error?: string };
-          setModelBuildError(error ?? "the model could not be rebuilt");
+        if (event.kind === "model_artifact_changed") {
+          const { artifact } = event.payload as { artifact?: string };
+          if (artifact === "viewer.json") {
+            setModelBuildError(null);
+            setModelGeneration((generation) => generation + 1);
+          } else if (artifact === "errors.json") {
+            void fetch("/artifacts/errors.json")
+              .then((response) => response.ok ? response.text() : Promise.reject(new Error("the model could not be rebuilt")))
+              .then((error) => setModelBuildError(error || "the model could not be rebuilt"))
+              .catch(() => setModelBuildError("the model could not be rebuilt"));
+          }
           return;
         }
-        if (event.kind === "model_build_succeeded") { setModelBuildError(null); return; }
+        if (event.kind === "model_build_unavailable") {
+          const { reason } = event.payload as { reason?: string };
+          setModelBuildError(reason ?? "the shop could not start a model build");
+          return;
+        }
         if (
           !event.kind.startsWith("agent_")
           && !event.kind.startsWith("work_")

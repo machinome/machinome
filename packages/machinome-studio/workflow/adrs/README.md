@@ -22,9 +22,10 @@ the overview says *what is true now*.
 | `0007` | [Depend on Hermes' off-spec second-prompt steering for active-turn corrections](./0007-hermes-second-prompt-steering.md) | Accepted | 2026-07-30 |
 | `0008` | [Add a Claude Code backend, and let a backend own one process per role](./0008-claude-backend-one-process-per-role.md) | Accepted | 2026-07-30 |
 | `0009` | [Carry Claude corrections on a channel the role has trusted since its first instruction](./0009-claude-correction-channel-consistency.md) | Accepted | 2026-07-30 |
-| `0010` | [The shop watches the project and rebuilds it, rather than asking an agent to](./0010-shop-owned-model-watcher.md) | Accepted | 2026-07-31 |
+| `0010` | [The shop watches the project and rebuilds it, rather than asking an agent to](./0010-shop-owned-model-watcher.md) | Accepted (amended by 0013) | 2026-07-31 |
 | `0011` | [Define shop runtime topology with declarative profiles](./0011-profile-defined-shop-runtime.md) | Accepted (amended by 0012) | 2026-07-31 |
 | `0012` | [Use a bounded adapter-owned OpenCode compatibility policy](./0012-bounded-opencode-compatibility-policy.md) | Accepted | 2026-08-01 |
+| `0013` | [Observe atomic build publications separately from source-triggered builds](./0013-observe-atomic-build-publications.md) | Accepted | 2026-08-02 |
 
 ## Conventions
 

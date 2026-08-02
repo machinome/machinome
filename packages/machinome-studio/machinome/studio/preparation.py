@@ -38,14 +38,7 @@ class PreparedProject:
 
 
 def artifact_root_for(project_root: Path) -> Path:
-    """The handle the floor holds on a project's published artifacts.
-
-    Deliberately the symlink, not what it currently points at. Every build
-    publishes a new versioned directory and repoints `_build` at it,
-    dropping the old one -- so a resolved path names one publication and
-    stops existing at the next. Consumers resolve this per use and always
-    reach the current artifacts.
-    """
+    """The project's single, atomically updated published build directory."""
     return project_root / "_build"
 
 
@@ -176,7 +169,6 @@ def prepare_project(
     )
     artifact_root = artifact_root_for(project_root)
     snapshot = artifact_root / "viewer.json"
-    previous = _fingerprint(snapshot)
     _run(
         build_command(solid_command),
         cwd=project_root,
@@ -185,8 +177,6 @@ def prepare_project(
         project_root=project_root,
         extra_env=solid_env,
     )
-    if previous is not None and _fingerprint(snapshot) == previous:
-        raise PreparationError("snapshot", name, project_root, "build left the previous viewer snapshot unchanged")
     _validate_snapshot(snapshot, artifact_root, name, project_root)
     return PreparedProject(
         name=name,
@@ -254,10 +244,8 @@ def _validate_snapshot(snapshot: Path, artifact_root: Path, name: str, project_r
     models = tuple(_model_references(value["root"]))
     if not models:
         raise PreparationError("snapshot", name, project_root, "viewer snapshot references no model artifacts")
-    # Resolve here, not in the caller: artifact_root is the build symlink,
-    # and containment has to be judged against the publication it points at
-    # right now. Comparing a resolved artifact against the unresolved link
-    # would reject every artifact in the project.
+    # Publication now uses one real build directory. Resolve the candidate once
+    # for containment; a later atomic rename cannot make this path escape it.
     published = artifact_root.resolve()
     for model in models:
         candidate = (artifact_root / model).resolve()
@@ -275,14 +263,6 @@ def _model_references(value: object) -> Iterator[str]:
     elif isinstance(value, list):
         for child in value:
             yield from _model_references(child)
-
-
-def _fingerprint(path: Path) -> tuple[int, int, int] | None:
-    try:
-        stat = path.stat()
-    except OSError:
-        return None
-    return stat.st_ino, stat.st_size, stat.st_mtime_ns
 
 
 def _command(command: str | Sequence[str]) -> tuple[str, ...]:

@@ -119,9 +119,15 @@ it does not encode a participant's role. The transcript is independently
 scrollable, reveals newly appended messages, sends a non-empty draft on Enter,
 and inserts a newline on Ctrl+Enter.
 
-Floor serves only completed `_build/` artifacts. Its own watcher rebuilds
-changed project source and publishes model-change events; agent sessions do not
-run a callback process or expose project source through the browser service.
+Floor serves only published `_build/` artifacts. One lifespan-owned filesystem
+observer has separate source and artifact handlers: source events outside
+`_build` settle into a `solid build`, while each atomic rename into `_build`
+becomes a named artifact event for the browser. The floor neither hashes or
+diffs publication contents nor forwards deletions; `errors.json` is published
+and reported through the same path. Its artifact route holds one fixed build
+root and therefore does not re-resolve a symlink during a request. Agent
+sessions do not run a callback process or expose project source through the
+browser service.
 
 ## Workspace boundaries
 

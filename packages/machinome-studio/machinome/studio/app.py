@@ -15,9 +15,10 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from watchdog.observers import Observer
 
 from .profiles import RuntimeProfile, load_profile
-from .watcher import ModelWatcher
+from .watcher import ArtifactWatcher, ModelWatcher
 
 
 RUN_ID = "shop-floor"
@@ -457,12 +458,10 @@ class Broker:
             return f"Delivered · {labels.get(recipient, recipient.title())}"
         if kind == "conversation_entry":
             return "Conversation updated"
-        if kind == "model_changed":
-            return "Model updated"
-        if kind == "model_build_failed":
-            return "Model rebuild failed"
-        if kind == "model_build_succeeded":
-            return "Model rebuilt"
+        if kind == "model_artifact_changed":
+            return "Model artifact updated"
+        if kind == "model_build_unavailable":
+            return "Model build unavailable"
         return kind.replace("_", " ").title()
 
     def _envelope(self, sequence: int) -> Envelope:
@@ -481,41 +480,53 @@ def create_app(
     profile: RuntimeProfile | None = None,
     solid_command: Sequence[str] | None = None,
     build_environment: Mapping[str, str] | None = None,
-    poll_interval: float = 0.5,
+    settle_delay: float = 0.5,
 ) -> FastAPI:
     # The watcher belongs to the application, not the orchestrator: the
-    # thing it refreshes is this app's own artifact route, and this app
-    # is what publishes model_changed. Both entry points -- the full
-    # orchestrated floor and broker-only mode -- get it with no
-    # duplicated wiring. An app built without a solid command runs no
-    # watcher and spawns no subprocesses.
+    # thing it refreshes is this app's own artifact route, and this app is what
+    # publishes filesystem events. Both entry points get identical wiring.
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        watcher_task: asyncio.Task[None] | None = None
-        if solid_command is not None and project_root is not None and build_root is not None:
-            watcher = ModelWatcher(
+        observer: Observer | None = None
+        source_watcher: ModelWatcher | None = None
+        artifact_watcher: ArtifactWatcher | None = None
+        if build_root is not None and build_root.is_dir():
+            loop = asyncio.get_running_loop()
+            observer = Observer()
+            artifact_watcher = ArtifactWatcher(build_root, loop, app.state.broker.publish)
+            observer.schedule(artifact_watcher, str(build_root), recursive=True)
+            if solid_command is not None and project_root is not None:
+                source_watcher = ModelWatcher(
                 project_root,
-                build_root,
                 solid_command,
                 app.state.broker.publish,
+                loop=loop,
                 extra_environment=build_environment,
-                poll_interval=poll_interval,
-            )
-            app.state.model_watcher = watcher
-            watcher_task = asyncio.create_task(watcher.run())
+                settle_delay=settle_delay,
+                )
+                observer.schedule(source_watcher, str(project_root), recursive=True)
+            app.state.model_watcher = source_watcher
+            app.state.artifact_watcher = artifact_watcher
+            app.state.observer = observer
+            observer.start()
         try:
             yield
         finally:
-            if watcher_task is not None:
-                watcher_task.cancel()
-                await asyncio.gather(watcher_task, return_exceptions=True)
+            if source_watcher is not None:
+                source_watcher.close()
+            if observer is not None:
+                observer.stop()
+                await asyncio.to_thread(observer.join)
 
     app = FastAPI(title="shop-floor", lifespan=lifespan)
     broker = broker or Broker(profile=profile)
     app.state.broker = broker
     app.state.model_watcher = None
+    app.state.artifact_watcher = None
+    app.state.observer = None
     app.mount("/assets", StaticFiles(directory=STATIC_ROOT / "assets"), name="assets")
-    build_root = artifact_root or (project_root / "_build" if project_root is not None else None)
+    supplied_build_root = artifact_root or (project_root / "_build" if project_root is not None else None)
+    build_root = supplied_build_root.resolve() if supplied_build_root is not None else None
 
     @app.get("/viewer/solid-widget.js")
     async def viewer() -> FileResponse:
@@ -528,7 +539,7 @@ def create_app(
         if build_root is None:
             raise HTTPException(status_code=404, detail="no project build is available")
         candidate = (build_root / artifact_path).resolve()
-        if build_root.resolve() not in candidate.parents and candidate != build_root.resolve():
+        if build_root not in candidate.parents and candidate != build_root:
             raise HTTPException(status_code=404, detail="unknown artifact")
         if not candidate.is_file():
             raise HTTPException(status_code=404, detail="unknown artifact")

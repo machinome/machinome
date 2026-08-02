@@ -1,6 +1,6 @@
 # ADR 0010: The shop watches the project and rebuilds it, rather than asking an agent to
 
-**Status:** Accepted
+**Status:** Accepted (amended by [ADR 0013](./0013-observe-atomic-build-publications.md))
 
 **Date:** 2026-07-31
 

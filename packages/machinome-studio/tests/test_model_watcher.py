@@ -1,12 +1,4 @@
-"""The floor keeps the maker's model view current on its own.
-
-Until now `model_changed` had exactly one source: a POST from a `solid
-develop --callback` process the machinist was told to start and keep
-alive. A maker editing a file by hand, or a designer, or a machinist that
-never started the process, got a silently stale view. These tests drive
-the watcher that replaces it, and the failure reporting that replaces the
-old silence.
-"""
+"""Regression coverage for S1's source-build and publication-event pipeline."""
 
 from __future__ import annotations
 
@@ -18,20 +10,26 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from fastapi.testclient import TestClient
+
 from floor.app import Broker, create_app
-from floor.preparation import artifact_root_for as prepare_like_the_floor
-from floor.watcher import ModelWatcher
 
 
 ROOT = Path(__file__).resolve().parents[1]
 FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
 SOLID_COMMAND = (sys.executable, str(FAKE_SOLID))
-POLL = 0.02
+SETTLE = 0.04
 
 
 def build_state(project: Path, **state: object) -> None:
-    """Steer the next fake build: fail, or publish given viewer content."""
     (project / ".fake-solid-state.json").write_text(json.dumps(state))
+
+
+def atomic_publish(root: Path, name: str, content: str) -> None:
+    target = root / name
+    temporary = root / f".{name}.temporary"
+    temporary.write_text(content)
+    os.replace(temporary, target)
 
 
 class WatcherTestCase(unittest.IsolatedAsyncioTestCase):
@@ -39,233 +37,159 @@ class WatcherTestCase(unittest.IsolatedAsyncioTestCase):
         self.temporary = TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.project = Path(self.temporary.name) / "project"
-        (self.project / "root").mkdir(parents=True)
         self.model = self.project / "root" / "__init__.py"
+        self.model.parent.mkdir(parents=True)
         self.model.write_text("# model\n")
         self.artifacts = self.project / "_build"
         await self.build_once()
-        self.published: list[tuple[str, dict]] = []
 
     async def build_once(self) -> None:
-        process = await asyncio.create_subprocess_exec(
-            *SOLID_COMMAND, "build", "root", cwd=self.project,
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-        )
-        await process.communicate()
+        process = await asyncio.create_subprocess_exec(*SOLID_COMMAND, "build", "root", cwd=self.project)
+        self.assertEqual(await process.wait(), 0)
 
-    def record(self, kind: str, payload: dict) -> None:
-        self.published.append((kind, payload))
-
-    def kinds(self) -> list[str]:
-        return [kind for kind, _ in self.published]
-
-    def payload(self, kind: str) -> dict:
-        return next(payload for published, payload in self.published if published == kind)
-
-    def watcher(self) -> ModelWatcher:
-        return ModelWatcher(
-            self.project,
-            self.artifacts,
-            SOLID_COMMAND,
-            self.record,
-            poll_interval=POLL,
-        )
-
-    async def run_until(self, watcher: ModelWatcher, kind: str, *, edit: str | None = None, timeout: float = 10.0) -> None:
-        """Run the watcher until it publishes `kind`, then stop it.
-
-        An `edit` is applied after the watcher has taken its baseline —
-        editing before it starts is indistinguishable from the project's
-        settled state, which is correct behaviour and not what these
-        tests are about.
-        """
-        task = asyncio.create_task(watcher.run())
+    async def wait_for(self, events: list[tuple[str, dict[str, object]]], kind: str, *, timeout: float = 3) -> dict[str, object]:
         deadline = asyncio.get_running_loop().time() + timeout
-        try:
-            if edit is not None:
-                await asyncio.sleep(POLL * 2)
-                self.touch_model(edit)
-            while kind not in self.kinds():
-                if task.done():
-                    await task
-                    self.fail(f"watcher stopped before publishing {kind}")
-                if asyncio.get_running_loop().time() > deadline:
-                    self.fail(f"timed out waiting for {kind}; saw {self.kinds()}")
-                await asyncio.sleep(POLL / 2)
-        finally:
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
+        while asyncio.get_running_loop().time() < deadline:
+            for actual_kind, payload in events:
+                if actual_kind == kind:
+                    return payload
+            await asyncio.sleep(0.01)
+        self.fail(f"timed out waiting for {kind}; saw {[item[0] for item in events]}")
 
-    async def settle(self, watcher: ModelWatcher, *, seconds: float = 0.6) -> None:
-        """Run the watcher for a fixed spell and stop it."""
-        task = asyncio.create_task(watcher.run())
-        try:
-            await asyncio.sleep(seconds)
-        finally:
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
-
-    def touch_model(self, body: str) -> None:
-        self.model.write_text(body)
-        stamp = self.model.stat().st_mtime + 10
-        os.utime(self.model, (stamp, stamp))
-
-
-class ModelRefreshTest(WatcherTestCase):
-
-    async def test_a_source_change_refreshes_the_view_with_no_agent_action(self) -> None:
-        """Nobody posts a callback and no agent runs: the floor notices."""
-        build_state(self.project, viewer={"version": 1, "root": {"name": "part", "model": "part.stl"}, "revision": 2})
-        watcher = self.watcher()
-
-        await self.run_until(watcher, "model_changed", edit="# edited by the maker, by hand\n")
-
-        self.assertIn("model_changed", self.kinds())
-
-    async def test_a_rebuild_that_changes_nothing_reports_no_model_change(self) -> None:
-        """The published snapshot is the signal, not the fact of a build."""
-        watcher = self.watcher()
-
-        await self.run_until(watcher, "model_build_succeeded", edit="# a comment the model does not depend on\n")
-        await asyncio.sleep(POLL * 4)
-
-        self.assertNotIn("model_changed", self.kinds())
-
-    async def test_an_unchanged_project_builds_nothing(self) -> None:
-        """No edit, no build. The watcher must not trigger itself."""
-        watcher = self.watcher()
-
-        await self.settle(watcher)
-
-        self.assertEqual(self.kinds(), [])
-
-    async def test_writes_into_the_build_tree_do_not_trigger_a_build(self) -> None:
-        """A build writes into the build tree; seeing that would loop forever."""
-        watcher = self.watcher()
-        for directory in ("_build", "_build.abc12345", ".solid-node-build-xyz", "__pycache__", ".git"):
-            noise = self.project / directory
-            noise.mkdir(exist_ok=True)
-            (noise / "generated.py").write_text("# written by the build\n")
-
-        await self.settle(watcher)
-
-        self.assertEqual(self.kinds(), [])
-
-
-class FailedRebuildTest(WatcherTestCase):
-
-    async def test_a_failed_rebuild_is_reported_with_its_diagnostic(self) -> None:
-        """Under the callback design a failed rebuild sent nothing at all."""
-        build_state(self.project, fail="the model source is broken")
-        watcher = self.watcher()
-
-        await self.run_until(watcher, "model_build_failed", edit="# broken\n")
-
-        self.assertIn("the model source is broken", self.payload("model_build_failed")["error"])
-
-    async def test_the_previous_model_stays_inspectable_after_a_failure(self) -> None:
-        before = (self.artifacts / "viewer.json").read_bytes()
-        build_state(self.project, fail="broken")
-        watcher = self.watcher()
-
-        await self.run_until(watcher, "model_build_failed", edit="# broken\n")
-
-        self.assertEqual((self.artifacts / "viewer.json").read_bytes(), before)
-        self.assertNotIn("model_changed", self.kinds())
-
-    async def test_a_later_success_clears_the_failure(self) -> None:
-        build_state(self.project, fail="broken")
-        watcher = self.watcher()
-        await self.run_until(watcher, "model_build_failed", edit="# broken\n")
-
-        self.published.clear()
-        build_state(self.project, viewer={"version": 1, "root": {"name": "part", "model": "part.stl"}, "revision": 3})
-        await self.run_until(watcher, "model_build_succeeded", edit="# fixed\n")
-
-        self.assertIn("model_build_succeeded", self.kinds())
-
-    async def test_a_missing_solid_command_reports_a_failure_rather_than_dying(self) -> None:
-        watcher = ModelWatcher(
-            self.project, self.artifacts, ("/nonexistent/solid",), self.record, poll_interval=POLL,
-        )
-
-        await self.run_until(watcher, "model_build_failed", edit="# edited\n")
-
-        self.assertIn("model_build_failed", self.kinds())
-
-
-class RepublicationTest(WatcherTestCase):
-    """Every build publishes a *new* versioned directory and repoints the
-    `_build` symlink at it, dropping the old one. Anything that resolved
-    that symlink once and kept the answer is holding a path that stops
-    existing on the next build."""
-
-    async def test_the_artifact_route_survives_a_republication(self) -> None:
-        from fastapi.testclient import TestClient
-
-        prepared_root = prepare_like_the_floor(self.project)
-        app = create_app(self.project, artifact_root=prepared_root, broker=Broker())
-        with TestClient(app) as client:
-            self.assertEqual(client.get("/artifacts/viewer.json").status_code, 200)
-            build_state(self.project, viewer={"version": 1, "root": {"name": "part", "model": "part.stl"}, "revision": 9})
-            await self.build_once()
-            self.assertEqual(client.get("/artifacts/viewer.json").status_code, 200)
-
-    async def test_the_watcher_still_sees_snapshots_after_a_republication(self) -> None:
-        watcher = ModelWatcher(
-            self.project,
-            prepare_like_the_floor(self.project),
-            SOLID_COMMAND,
-            self.record,
-            poll_interval=POLL,
-        )
-        build_state(self.project, viewer={"version": 1, "root": {"name": "part", "model": "part.stl"}, "revision": 10})
-        await self.run_until(watcher, "model_changed", edit="# first edit\n")
-
-        self.published.clear()
-        build_state(self.project, viewer={"version": 1, "root": {"name": "part", "model": "part.stl"}, "revision": 11})
-        await self.run_until(watcher, "model_changed", edit="# second edit\n")
-
-        self.assertIn("model_changed", self.kinds())
-
-
-class WatcherWiringTest(WatcherTestCase):
-    """D1: the watcher belongs to the app lifespan, so broker-only mode
-    behaves the same as a full orchestrated floor."""
-
-    async def test_the_app_lifespan_runs_the_watcher(self) -> None:
+    def app(self, *, solid_command: tuple[str, ...] | None = SOLID_COMMAND) -> tuple[object, list[tuple[str, dict[str, object]]]]:
         broker = Broker()
-        published: list[str] = []
+        events: list[tuple[str, dict[str, object]]] = []
         original = broker.publish
-        broker.publish = lambda kind, payload=None: (published.append(kind), original(kind, payload))[1]
 
-        build_state(self.project, viewer={"version": 1, "root": {"name": "part", "model": "part.stl"}, "revision": 4})
-        app = create_app(
+        def record(kind: str, payload: object, **kwargs: object):
+            if isinstance(payload, dict):
+                events.append((kind, payload))
+            return original(kind, payload, **kwargs)
+
+        broker.publish = record  # type: ignore[method-assign]
+        return create_app(
             self.project,
             artifact_root=self.artifacts,
             broker=broker,
-            solid_command=SOLID_COMMAND,
-            poll_interval=POLL,
-        )
-        async with app.router.lifespan_context(app):
-            await asyncio.sleep(POLL * 2)
-            self.touch_model("# edited while the floor is open\n")
-            for _ in range(400):
-                if "model_changed" in published:
-                    break
-                await asyncio.sleep(POLL / 2)
+            solid_command=solid_command,
+            settle_delay=SETTLE,
+        ), events
 
-        self.assertIn("model_changed", published)
 
-    async def test_an_app_without_a_solid_command_runs_no_watcher(self) -> None:
-        """Existing API tests must not gain build subprocesses."""
+class ArtifactWatcherTest(WatcherTestCase):
+    async def test_atomic_rename_reports_exactly_one_named_artifact(self) -> None:
+        app, events = self.app(solid_command=None)
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            atomic_publish(self.artifacts, "leaf.stl", "new leaf")
+            payload = await self.wait_for(events, "model_artifact_changed")
+        self.assertEqual(payload, {"artifact": "leaf.stl"})
+        self.assertEqual([kind for kind, _ in events], ["model_artifact_changed"])
+
+    async def test_external_build_output_is_forwarded_without_a_source_build(self) -> None:
+        app, events = self.app(solid_command=None)
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            atomic_publish(self.artifacts, "other.stl", "external build")
+            await self.wait_for(events, "model_artifact_changed")
+        self.assertEqual(events[0][1], {"artifact": "other.stl"})
+
+    async def test_republishing_one_of_three_artifacts_reports_only_that_artifact(self) -> None:
+        for name in ("one.stl", "two.stl", "three.stl"):
+            (self.artifacts / name).write_text(name)
+        app, events = self.app(solid_command=None)
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            atomic_publish(self.artifacts, "two.stl", "new two")
+            await self.wait_for(events, "model_artifact_changed")
+            await asyncio.sleep(SETTLE * 2)
+        self.assertEqual(events, [("model_artifact_changed", {"artifact": "two.stl"})])
+
+    async def test_deletion_and_direct_write_are_silent_until_rename(self) -> None:
+        app, events = self.app(solid_command=None)
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            (self.artifacts / "part.stl").unlink()
+            (self.artifacts / "draft.stl").write_text("not published")
+            await asyncio.sleep(SETTLE * 3)
+            self.assertEqual(events, [])
+            atomic_publish(self.artifacts, "draft.stl", "published")
+            payload = await self.wait_for(events, "model_artifact_changed")
+        self.assertEqual(payload, {"artifact": "draft.stl"})
+
+    async def test_errors_file_uses_the_same_event_path(self) -> None:
+        app, events = self.app(solid_command=None)
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            atomic_publish(self.artifacts, "errors.json", "broken model")
+            payload = await self.wait_for(events, "model_artifact_changed")
+        self.assertEqual(payload, {"artifact": "errors.json"})
+
+    async def test_startup_does_not_announce_existing_artifacts(self) -> None:
+        app, events = self.app(solid_command=None)
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            await asyncio.sleep(SETTLE * 3)
+        self.assertEqual(events, [])
+
+
+class SourceWatcherTest(WatcherTestCase):
+    async def test_source_burst_coalesces_to_one_build_and_ignores_build_tree(self) -> None:
+        build_state(self.project, viewer={"version": 1, "root": {"name": "part", "model": "part.stl"}, "revision": 2})
+        app, events = self.app()
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            self.model.write_text("# first\n")
+            self.model.write_text("# second\n")
+            await self.wait_for(events, "model_artifact_changed")
+            await asyncio.sleep(SETTLE * 3)
+            published = [payload["artifact"] for kind, payload in events if kind == "model_artifact_changed"]
+            self.assertEqual(published.count("viewer.json"), 1)
+            events.clear()
+            atomic_publish(self.artifacts, "generated.py", "# output")
+            await asyncio.sleep(SETTLE * 3)
+        self.assertEqual([kind for kind, _ in events], ["model_artifact_changed"])
+
+    async def test_unavailable_build_command_has_its_own_event(self) -> None:
+        app, events = self.app(solid_command=("/not/a/solid",))
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            self.model.write_text("# trigger\n")
+            payload = await self.wait_for(events, "model_build_unavailable")
+        self.assertIn("/not/a/solid", str(payload["reason"]))
+
+    async def test_failed_build_forwards_its_error_record_without_a_verdict_event(self) -> None:
+        build_state(self.project, fail="broken model")
+        app, events = self.app()
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            self.model.write_text("# broken\n")
+            payload = await self.wait_for(events, "model_artifact_changed")
+        self.assertEqual(payload, {"artifact": "errors.json"})
+        self.assertEqual([kind for kind, _ in events], ["model_artifact_changed"])
+
+    async def test_project_directories_named_build_prefix_are_watched(self) -> None:
+        prefixed = self.project / "_build.source" / "part.py"
+        prefixed.parent.mkdir()
+        build_state(self.project, viewer={"version": 1, "root": {"name": "part", "model": "part.stl"}, "revision": 3})
+        app, events = self.app()
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            prefixed.write_text("# project code\n")
+            payload = await self.wait_for(events, "model_artifact_changed")
+        self.assertIn(payload["artifact"], {"part.stl", "viewer.json"})
+
+    async def test_app_without_solid_command_observes_output_but_has_no_source_handler(self) -> None:
+        app, events = self.app(solid_command=None)
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            self.assertIsNone(app.state.model_watcher)  # type: ignore[attr-defined]
+            atomic_publish(self.artifacts, "outside.stl", "changed")
+            await self.wait_for(events, "model_artifact_changed")
+        self.assertIsNotNone(app.state.artifact_watcher)  # type: ignore[attr-defined]
+
+    async def test_observer_stops_on_lifespan_shutdown(self) -> None:
+        app, _ = self.app()
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            observer = app.state.observer  # type: ignore[attr-defined]
+            self.assertTrue(observer.is_alive())
+        self.assertFalse(observer.is_alive())
+
+
+class ArtifactRouteTest(WatcherTestCase):
+    async def test_route_serves_a_stable_artifact_during_another_republication(self) -> None:
         app = create_app(self.project, artifact_root=self.artifacts, broker=Broker())
-        async with app.router.lifespan_context(app):
-            self.touch_model("# edited\n")
-            await asyncio.sleep(POLL * 8)
-
-        self.assertIsNone(getattr(app.state, "model_watcher", None))
-
-
-if __name__ == "__main__":
-    unittest.main()
+        with TestClient(app) as client:
+            self.assertEqual(client.get("/artifacts/part.stl").status_code, 200)
+            atomic_publish(self.artifacts, "other.stl", "new sibling")
+            self.assertEqual(client.get("/artifacts/part.stl").status_code, 200)
+            self.assertEqual(client.get("/artifacts/../root/__init__.py").status_code, 404)
