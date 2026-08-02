@@ -42,7 +42,7 @@ in the PRD.
 - `solid-node`
   - Source: `main` @ `acf4292`
   - Sprint branch: `sprint-003`
-  - Content: `acf4292`
+  - Content: `a89cc56`
   - Worktree: `solid-node/WTs/sprint-003`
   - Shop link: `WTs/sprint-003/solid-node`
 
@@ -55,10 +55,10 @@ in the PRD.
   - Story: `STORY-007`
   - Requires: none
   - Branch: `sprint-003-build-mutual-exclusion` from `acf4292`
-  - Worktree: `solid-node/WTs/sprint-003-build-mutual-exclusion`
-  - Commits: pending
-  - Archive: pending
-  - Integrated: pending
+  - Worktree: removed after integration
+  - Commits: `7fb9e68` planning, `a89cc56` implementation and archive
+  - Archive: `openspec/changes/archive/2026-08-02-build-mutual-exclusion`
+  - Integrated: `sprint-003` @ `a89cc56`
 - `solid-node` / `per-file-build-publication`
   - Intent: a single `_build` directory written one artifact at a time by
     atomic rename, manifest last, orphans swept, error file cleared; PRD D1,
@@ -108,11 +108,19 @@ in the PRD.
   `sprint-003` at base `acf4292`, slot 1, backend 8001 / frontend 3001, clean
   apart from ignored bench links. `WTs/sprint-003/solid-node` resolves to the
   registered framework sprint worktree.
-- Combined validation: pending, no cycle integrated yet.
+- Combined validation passed 2026-08-02 for shop content `7397c71` and
+  framework content `a89cc56`, run from `WTs/sprint-003` against its linked
+  `solid-node` checkout: shop `pytest tests` 144 passed with 25 subtests,
+  `tests/dev-env-test.sh` all passed, framework `pytest tests` 394 passed with
+  5 subtests, `openspec validate --all --strict` 13 specs.
 - F1 opened 2026-08-02. `scripts/dev-env sprint-003-build-mutual-exclusion
   setup --base sprint-003` created branch `sprint-003-build-mutual-exclusion`
   at base `acf4292`, equal to the framework `sprint-003` head, slot 3, backend
   8003 / frontend 3003, clean apart from ignored bench links.
+- F1 integrated 2026-08-02 by fast-forwarding framework `sprint-003` from
+  `acf4292` to `a89cc56`. Cycle worktree torn down with `scripts/dev-env
+  sprint-003-build-mutual-exclusion teardown`; the branch is retained. No shop
+  content changed, so shop content remains `7397c71`.
 
 ## Decisions and scope changes
 
