@@ -78,7 +78,7 @@ appears everywhere.
     accessor reports it; brief section 5 (F3)
   - Story: `STORY-006`
   - Requires: `solid-node` / `viewer-package`
-  - Branch: pending
+  - Branch: `sprint-002-viewer-bundle-delivery` from `075104c`
   - Commits: pending
   - Archive: pending
   - Integrated: pending
