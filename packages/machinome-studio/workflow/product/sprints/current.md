@@ -88,7 +88,8 @@ in the PRD.
     D3, D4, section 3.3
   - Story: `STORY-007`
   - Requires: `solid-node` / `per-file-build-publication`
-  - Branch: pending
+  - Branch: `sprint-003-floor-artifact-event-pipeline` from `30ac154`
+  - Worktree: `WTs/sprint-003-floor-artifact-event-pipeline`
   - Commits: pending
   - Archive: pending
   - Integrated: pending
@@ -105,6 +106,13 @@ in the PRD.
 
 ## Paired validation
 
+- S1 opened 2026-08-02. Branch `sprint-003-floor-artifact-event-pipeline` and
+  worktree `WTs/sprint-003-floor-artifact-event-pipeline` created from the shop
+  `sprint-003` head `30ac154`, whose content commit is `7397c71`. Its recorded
+  dependency on F2 is satisfied: framework `sprint-003` is at `582da89`. The
+  ignored link `WTs/sprint-003-floor-artifact-event-pipeline/solid-node`
+  resolves to the framework sprint worktree at that commit, so the cycle builds
+  and tests against the framework content it depends on.
 - Setup verified 2026-08-02. Shop worktree `WTs/sprint-003` on `sprint-003` at
   the ratification commit, clean. Framework worktree
   `solid-node/WTs/sprint-003` created by `scripts/dev-env sprint-003 setup` on
