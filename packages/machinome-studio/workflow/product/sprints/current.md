@@ -101,7 +101,13 @@ in the PRD.
 
 ## Paired validation
 
-- Pending
+- Setup verified 2026-08-02. Shop worktree `WTs/sprint-003` on `sprint-003` at
+  the ratification commit, clean. Framework worktree
+  `solid-node/WTs/sprint-003` created by `scripts/dev-env sprint-003 setup` on
+  `sprint-003` at base `acf4292`, slot 1, backend 8001 / frontend 3001, clean
+  apart from ignored bench links. `WTs/sprint-003/solid-node` resolves to the
+  registered framework sprint worktree.
+- Combined validation: pending, no cycle integrated yet.
 
 ## Decisions and scope changes
 
