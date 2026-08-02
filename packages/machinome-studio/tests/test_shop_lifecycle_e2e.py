@@ -109,64 +109,27 @@ class ShopLifecycleE2E(unittest.TestCase):
 
     def test_initial_floor_build_renders_without_a_lifecycle_reload_race(self) -> None:
         self.page.goto(self.url("/"))
-        self.page.get_by_role("region", name="Artifact view").get_by_role("img", name="Functional model").wait_for(timeout=5_000)
+        self.page.get_by_role("region", name="Model").get_by_role("img", name="Functional model").wait_for(timeout=5_000)
 
-    def test_broker_event_log_loads_updates_and_rolls_over(self) -> None:
+    def test_agent_panel_updates_live_and_deferred_rail_items_do_not_navigate(self) -> None:
         for role, label in (("foreman", "Foreman"), ("designer", "Designer"), ("machinist", "Machinist"), ("librarian", "Librarian")):
             _request(self.url("/api/runs/shop-floor/agents"), "POST", {"role": role, "label": label})
         self.page.goto(self.url("/"))
-        menu = self.page.get_by_role("complementary", name="Shop menu")
-        menu.get_by_text("Profile fordesmac").wait_for()
+        panel = self.page.get_by_role("complementary", name="Agent context")
+        panel.get_by_role("heading", name="Agents").wait_for()
         for role in ("foreman", "designer", "machinist", "librarian"):
-            self.assertEqual(menu.locator(f'[data-agent-role="{role}"][data-agent-state="waiting"]').count(), 1)
+            self.assertEqual(panel.locator(f'[data-agent-role="{role}"][data-agent-state="waiting"]').count(), 1)
 
-        log = self.page.get_by_role("log", name="Broker events")
-        log.get_by_text("Designer manifested").wait_for()
-        self.assertEqual(log.locator("[data-broker-event]").count(), 4)
-        self.assertEqual(
-            log.locator("[data-broker-event]").evaluate_all("entries => entries.map((entry) => entry.dataset.brokerEventSequence)"),
-            ["4", "3", "2", "1"],
-        )
-        self.assertEqual(log.locator("time[datetime]").count(), 4)
-
-        # One delegated acknowledge/report/complete path, observed live without a reload.
         _request(self.url("/api/runs/shop-floor/agents/designer/assignments"), "POST", {"assignment_id": "drawing-1"})
-        log.get_by_text("Assignment · Foreman → Designer").wait_for()
-        self.assertEqual(menu.locator('[data-agent-role="designer"][data-agent-state="waiting"]').count(), 1)
         _request(self.url("/api/runs/shop-floor/agents/designer/acknowledgments"), "POST", {"assignment_id": "drawing-1"})
-        log.get_by_text("Work started · Designer · drawing-1").wait_for()
-        self.assertEqual(menu.locator('[data-agent-role="designer"][data-agent-state="active"]').count(), 1)
-        _request(
-            self.url("/api/runs/shop-floor/envelopes"),
-            "POST",
-            {"kind": "report", "sender": "designer", "recipient": "foreman", "body": "Drawing released.", "assignment_id": "drawing-1"},
-        )
-        log.get_by_text("Report · Designer → Foreman").wait_for()
-        _request(self.url("/api/runs/shop-floor/agents/designer/completions"), "POST", {"assignment_id": "drawing-1"})
-        log.get_by_text("Work completed · Designer · drawing-1").wait_for()
-        self.assertEqual(menu.locator('[data-agent-role="designer"][data-agent-state="waiting"]').count(), 1)
+        panel.locator('[data-agent-role="designer"][data-agent-state="active"]').wait_for()
+        self.assertEqual(self.page.get_by_role("log", name="Broker events").count(), 0)
 
-        for index in range(22):
-            _request(
-                self.url("/api/runs/shop-floor/envelopes"),
-                "POST",
-                {"kind": "direction", "sender": "foreman", "recipient": "designer", "body": f"private instruction {index}"},
-            )
-        log.get_by_text("Direction · Foreman → Designer").last.wait_for(timeout=1_000)
-        self.assertEqual(log.locator("[data-broker-event]").count(), 20)
-        displayed_sequences = log.locator("[data-broker-event]").evaluate_all("entries => entries.map((entry) => Number(entry.dataset.brokerEventSequence))")
-        self.assertEqual(displayed_sequences, sorted(displayed_sequences, reverse=True))
-        self.assertEqual(log.locator("time[datetime]").count(), 20)
-        self.assertNotIn("private instruction", log.inner_text())
-        self.page.reload()
-        reloaded = self.page.get_by_role("log", name="Broker events")
-        reloaded.locator("[data-broker-event]").first.wait_for()
-        self.assertEqual(reloaded.locator("[data-broker-event]").count(), 20)
-        self.assertEqual(
-            reloaded.locator("[data-broker-event]").evaluate_all("entries => entries.map((entry) => Number(entry.dataset.brokerEventSequence))"),
-            displayed_sequences,
-        )
-        self.assertEqual(reloaded.locator("time[datetime]").count(), 20)
+        files = self.page.locator('[data-workspace-area="files"]')
+        before = self.page.url
+        files.hover()
+        self.assertEqual(self.page.url, before)
+        self.assertEqual(self.page.locator('[data-workspace-area="model"][aria-current="page"]').count(), 1)
 
     def test_maker_can_direct_the_foreman_and_reload_the_conversation(self) -> None:
         self.page.goto(self.url("/"))
@@ -225,12 +188,11 @@ class ShopLifecycleE2E(unittest.TestCase):
         self._start_floor(profile="builder", orchestrated=True)
         self.page.goto(self.url("/"))
 
-        menu = self.page.get_by_role("complementary", name="Shop menu")
-        menu.get_by_text("Profile builder").wait_for()
-        waiting = menu.locator('[data-agent-role="builder"][data-agent-state="waiting"]')
+        panel = self.page.get_by_role("complementary", name="Agent context")
+        waiting = panel.locator('[data-agent-role="builder"][data-agent-state="waiting"]')
         waiting.wait_for()
         self.assertEqual(waiting.count(), 1)
-        self.assertEqual(menu.get_by_text("Foreman", exact=True).count(), 0)
+        self.assertEqual(panel.get_by_text("Foreman", exact=True).count(), 0)
         self.assertEqual(
             _status(
                 self.url("/api/runs/shop-floor/agents/builder/assignments"),
@@ -251,7 +213,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         transcript.locator('[data-conversation-author="user"]', has_text="First line").wait_for()
         first_echo = transcript.locator('[data-conversation-author="builder"]', has_text="First line")
         first_echo.wait_for()
-        active = menu.locator('[data-agent-role="builder"][data-agent-state="active"]')
+        active = panel.locator('[data-agent-role="builder"][data-agent-state="active"]')
         active.wait_for()
 
         composer.fill("Steer direct work")
@@ -275,27 +237,28 @@ class ShopLifecycleE2E(unittest.TestCase):
     def test_workspace_has_no_horizontal_overflow_on_a_narrow_viewport(self) -> None:
         self.page.set_viewport_size({"width": 375, "height": 800})
         self.page.goto(self.url("/"))
-        self.page.get_by_role("complementary", name="Shop menu").wait_for()
+        self.page.get_by_role("complementary", name="Agent context").wait_for()
         self.assertTrue(
             self.page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"),
             "workspace must not require horizontal page scrolling",
         )
 
-    def test_desktop_workspace_keeps_the_menu_and_both_content_areas_visible(self) -> None:
+    def test_desktop_workspace_keeps_the_rail_panel_viewport_and_chat_visible(self) -> None:
         self.page.set_viewport_size({"width": 1440, "height": 900})
         self.page.goto(self.url("/"))
-        menu = self.page.get_by_role("complementary", name="Shop menu").bounding_box()
-        view = self.page.get_by_role("region", name="Artifact view").bounding_box()
+        rail = self.page.get_by_role("navigation", name="Workspace areas").bounding_box()
+        panel = self.page.get_by_role("complementary", name="Agent context").bounding_box()
+        view = self.page.get_by_role("region", name="Model").bounding_box()
         chat = self.page.get_by_role("region", name="Chat").bounding_box()
-        self.assertIsNotNone(menu)
+        self.assertIsNotNone(rail)
+        self.assertIsNotNone(panel)
         self.assertIsNotNone(view)
         self.assertIsNotNone(chat)
-        assert menu is not None and view is not None and chat is not None
-        self.assertAlmostEqual(menu["y"], 0, delta=1)
-        self.assertAlmostEqual(menu["height"], 900, delta=1)
-        self.assertGreaterEqual(view["x"], menu["x"] + menu["width"] - 1)
-        self.assertAlmostEqual(view["y"], 0, delta=1)
-        self.assertAlmostEqual(chat["y"], view["y"] + view["height"], delta=1)
+        assert rail is not None and panel is not None and view is not None and chat is not None
+        self.assertAlmostEqual(rail["y"], 38, delta=1)
+        self.assertGreaterEqual(panel["x"], rail["x"] + rail["width"] - 1)
+        self.assertGreaterEqual(view["x"], panel["x"] + panel["width"] - 1)
+        self.assertGreaterEqual(chat["x"], view["x"] + view["width"] - 1)
         self.assertGreater(view["height"], 0)
         self.assertGreater(chat["height"], 0)
 
@@ -314,7 +277,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self._stop_floor()
         self._start_floor(project)
         self.page.goto(self.url("/"))
-        canvas = self.page.get_by_role("region", name="Artifact view").get_by_role("img", name="Functional model")
+        canvas = self.page.get_by_role("region", name="Model").get_by_role("img", name="Functional model")
         canvas.wait_for()
         self.page.wait_for_timeout(250)
         timeline = self.page.get_by_role("button", name="Timeline")
@@ -345,14 +308,15 @@ class ShopLifecycleE2E(unittest.TestCase):
         self._stop_floor()
         self._start_floor(first)
         self.page.goto(self.url("/"))
-        canvas = self.page.get_by_role("region", name="Artifact view").get_by_role("img", name="Functional model")
+        canvas = self.page.get_by_role("region", name="Model").get_by_role("img", name="Functional model")
         canvas.wait_for()
         first_render = canvas.screenshot()
 
         self._stop_floor()
-        self.page.get_by_text("Shop is closed").wait_for(timeout=5_000)
         self._start_floor(second)
-        self.page.get_by_text("Shop is open").wait_for(timeout=5_000)
+        self.page.wait_for_timeout(250)
+        canvas = self.page.get_by_role("region", name="Model").get_by_role("img", name="Functional model")
+        canvas.wait_for()
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline and canvas.screenshot() == first_render:
             self.page.wait_for_timeout(100)

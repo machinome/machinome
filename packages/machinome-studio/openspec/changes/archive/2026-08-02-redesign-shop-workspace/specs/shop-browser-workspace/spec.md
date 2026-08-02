@@ -70,6 +70,17 @@ content until those capabilities are supported by available data and behaviour.
 - **THEN** the central artifact area keeps the last completed model inspectable
   and displays the rebuild error beside it
 
+### Requirement: Browser participant presentation comes from the active profile
+The browser SHALL render the human label, user-facing agent label, roster
+labels, conversation attribution, and accessibility text supplied in run state.
+It MUST NOT hard-code `Maker`, `Foreman`, or another profile participant as the
+meaning of an internal author ID.
+
+#### Scenario: A profile changes the human label
+- **WHEN** a valid profile declares a human label other than `Maker`
+- **THEN** the transcript and relevant accessibility text use that configured
+  label while API identity remains `user`
+
 ## REMOVED Requirements
 
 ### Requirement: The shop menu shows a rolling broker-event log

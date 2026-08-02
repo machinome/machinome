@@ -39,13 +39,6 @@ type BrokerEvent = {
   assignment_id?: string;
 };
 
-function formatEventTimestamp(timestamp: string | undefined): string {
-  if (!timestamp) return "Timestamp unavailable";
-  const recorded = new Date(timestamp);
-  if (Number.isNaN(recorded.valueOf())) return timestamp;
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "medium" }).format(recorded);
-}
-
 type ConversationEntry = {
   sequence: number;
   author: string;
@@ -172,18 +165,17 @@ function ProfileConversation({
   </>;
 }
 
-function AgentMenu({ agents, events, profileId }: { agents: Agent[]; events: BrokerEvent[]; profileId?: string }) {
-  const newestEvents = [...events].reverse();
-  return <>
-    <section aria-labelledby="agents-heading">
+function AgentPanel({ agents }: { agents: Agent[] }) {
+  return (
+    <section className="agent-panel" aria-labelledby="agents-heading">
       <h2 id="agents-heading">Agents</h2>
-      {profileId ? <p className="run-status">Profile {profileId}</p> : null}
       {agents.length === 0 ? (
         <p className="empty">No agents are currently manifested.</p>
       ) : (
-        <ul>
+        <ul className="agent-roster">
           {agents.map((agent) => (
             <li key={agent.role} data-agent-role={agent.role} data-agent-state={agent.state}>
+              <span className={`agent-state-dot ${agent.state}`} aria-hidden="true" />
               <span>{agent.label}</span>
               <span className={`state ${agent.state}`}>{agent.state}</span>
             </li>
@@ -191,21 +183,16 @@ function AgentMenu({ agents, events, profileId }: { agents: Agent[]; events: Bro
         </ul>
       )}
     </section>
-    <section className="broker-events" aria-labelledby="events-heading">
-      <h2 id="events-heading">Broker events</h2>
-      <ol role="log" aria-label="Broker events" aria-live="polite">
-        {events.length === 0 ? (
-          <li className="empty">No broker events yet.</li>
-        ) : newestEvents.map((event) => (
-          <li key={event.sequence} data-broker-event={event.kind} data-broker-event-sequence={event.sequence}>
-            <span>{event.summary}</span>
-            <small><time dateTime={event.timestamp}>{formatEventTimestamp(event.timestamp)}</time> · #{event.sequence}</small>
-          </li>
-        ))}
-      </ol>
-    </section>
-  </>;
+  );
 }
+
+const railItems = [
+  ["model", "◇", "Model"],
+  ["files", "▣", "Files"],
+  ["agents", "●", "Agents"],
+  ["sheets", "═", "Sheets"],
+  ["code", "{ }", "Code"],
+] as const;
 
 function App() {
   const [run, setRun] = useState<Run | null>(null);
@@ -306,20 +293,45 @@ function App() {
 
   return (
     <main className="shop-workspace">
-      <aside className="shop-menu" aria-label="Shop menu">
-        <header className="shop-brand">
-          <h1>shop-floor</h1>
-          <p id="shop-status" aria-live="polite">Shop is {shopOpen ? "open" : "closed"}</p>
-          <p className="run-status">{run ? `Run ${run.id} · ${run.status}` : "Waiting for a run."}</p>
-        </header>
-        <AgentMenu agents={run?.agents ?? []} events={run?.events ?? []} profileId={run?.profile_id} />
-      </aside>
-      <div className="shop-content">
+      <header className="workspace-titlebar">
+        <div className="workspace-title">
+          <span className="shop-mark" aria-hidden="true" />
+          <span>Shop</span>
+        </div>
+        <p className="workspace-run" aria-live="polite">
+          {run ? `run ${run.id} · ${run.status}` : `shop ${shopOpen ? "open" : "closed"}`}
+        </p>
+      </header>
+      <div className="workspace-body">
+        <nav className="activity-rail" aria-label="Workspace areas">
+          {railItems.map(([id, icon, label]) => (
+            <div
+              key={id}
+              className={`rail-item ${id === "model" ? "selected" : ""}`}
+              aria-current={id === "model" ? "page" : undefined}
+              data-workspace-area={id}
+            >
+              <span className={`rail-icon rail-icon-${id}`} aria-hidden="true">{icon}</span>
+              <span>{label}</span>
+            </div>
+          ))}
+        </nav>
+        <aside className="workspace-context" aria-label="Agent context">
+          <AgentPanel agents={run?.agents ?? []} />
+        </aside>
         <section className="artifact-view" aria-labelledby="artifact-heading">
-          <h2 id="artifact-heading">Artifact view</h2>
-          <FunctionalModel generation={modelGeneration} buildError={modelBuildError} />
+          <header className="model-tabs">
+            <h2 id="artifact-heading">Model</h2>
+          </header>
+          <div className="model-viewport">
+            <FunctionalModel generation={modelGeneration} buildError={modelBuildError} />
+          </div>
         </section>
         <section className="conversation" aria-label="Chat">
+          <header className="conversation-header">
+            <span className="conversation-presence" aria-hidden="true" />
+            <h2>{run?.user_agent.label ?? "Agent"}</h2>
+          </header>
           <ProfileConversation
             entries={conversation}
             onSubmit={submitUserMessage}
@@ -327,6 +339,7 @@ function App() {
           />
         </section>
       </div>
+      <footer className="workspace-statusbar" aria-label="Workspace status" />
     </main>
   );
 }
