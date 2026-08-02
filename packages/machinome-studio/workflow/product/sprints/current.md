@@ -98,8 +98,9 @@ appears everywhere.
   - Intent: the development loop shows models through the same viewer and the
     last per-node walk retires; brief section 5 (F4)
   - Story: `STORY-006`
-  - Requires: `solid-node` / `viewer-bundle-delivery`
-  - Branch: pending
+  - Requires: `solid-node` / `viewer-bundle-delivery` - integrated at framework
+    `sprint-002` @ `5c14acf`
+  - Branch: `sprint-002-dev-viewer-on-shared-package` from `5c14acf`
   - Commits: pending
   - Archive: pending
   - Integrated: pending
