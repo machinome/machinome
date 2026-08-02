@@ -42,7 +42,7 @@ in the PRD.
 - `solid-node`
   - Source: `main` @ `acf4292`
   - Sprint branch: `sprint-003`
-  - Content: `a89cc56`
+  - Content: `f34ddc6`
   - Worktree: `solid-node/WTs/sprint-003`
   - Shop link: `WTs/sprint-003/solid-node`
 
@@ -77,10 +77,10 @@ in the PRD.
   - Story: `STORY-007`
   - Requires: none
   - Branch: `sprint-003-viewer-targeted-update` from `a89cc56`
-  - Worktree: `solid-node/WTs/sprint-003-viewer-targeted-update`
-  - Commits: pending
-  - Archive: pending
-  - Integrated: pending
+  - Worktree: torn down
+  - Commits: `57521bf`, `f34ddc6`
+  - Archive: `openspec/changes/archive/2026-08-02-viewer-targeted-update/`
+  - Integrated: `sprint-003` @ `f34ddc6`
 - `solid-node-shop` / `floor-artifact-event-pipeline`
   - Intent: two watchers with distinct jobs, an artifact route with no symlink
     to re-resolve, and SSE carrying the artifact path and nothing else; PRD
@@ -119,6 +119,19 @@ in the PRD.
   setup --base sprint-003` created branch `sprint-003-build-mutual-exclusion`
   at base `acf4292`, equal to the framework `sprint-003` head, slot 3, backend
   8003 / frontend 3003, clean apart from ignored bench links.
+- F3 integrated 2026-08-02 by fast-forwarding framework `sprint-003` from
+  `a89cc56` to `f34ddc6`, after verifying the cycle still descended from that
+  head. Evidence: framework `pytest tests` 395 passed with 5 subtests, widget
+  vitest 29 passed, `npm run typecheck` clean, web app `react-scripts test` 12
+  passed, `openspec validate --all --strict` 13 specs, ADR-037 accepted. Live
+  check on a scaffolded three-file project: editing one leaf source refetched
+  only that leaf's artifact, left the unedited hub artifact alone, and kept the
+  canvas element identical. Combined validation passed for shop content
+  `7397c71` and framework content `f34ddc6`: shop `pytest tests` 144 passed
+  with 25 subtests, `tests/dev-env-test.sh` all passed. Cycle worktree torn
+  down with `scripts/dev-env sprint-003-viewer-targeted-update teardown`; the
+  branch is retained. F2 branches from `a89cc56` and must be rechecked against
+  `f34ddc6` before its fast-forward.
 - F1 integrated 2026-08-02 by fast-forwarding framework `sprint-003` from
   `acf4292` to `a89cc56`. Cycle worktree torn down with `scripts/dev-env
   sprint-003-build-mutual-exclusion teardown`; the branch is retained. No shop
