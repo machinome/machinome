@@ -54,7 +54,8 @@ in the PRD.
     section 5
   - Story: `STORY-007`
   - Requires: none
-  - Branch: pending
+  - Branch: `sprint-003-build-mutual-exclusion` from `acf4292`
+  - Worktree: `solid-node/WTs/sprint-003-build-mutual-exclusion`
   - Commits: pending
   - Archive: pending
   - Integrated: pending
@@ -108,6 +109,10 @@ in the PRD.
   apart from ignored bench links. `WTs/sprint-003/solid-node` resolves to the
   registered framework sprint worktree.
 - Combined validation: pending, no cycle integrated yet.
+- F1 opened 2026-08-02. `scripts/dev-env sprint-003-build-mutual-exclusion
+  setup --base sprint-003` created branch `sprint-003-build-mutual-exclusion`
+  at base `acf4292`, equal to the framework `sprint-003` head, slot 3, backend
+  8003 / frontend 3003, clean apart from ignored bench links.
 
 ## Decisions and scope changes
 
