@@ -79,7 +79,7 @@ appears everywhere.
   - Story: `STORY-006`
   - Requires: `solid-node` / `viewer-package`
   - Branch: `sprint-002-viewer-bundle-delivery` from `075104c`
-  - Commits: pending
+  - Commits: `8df79e9` (planning), implementation pending
   - Archive: pending
   - Integrated: pending
 - `solid-node-shop` / `floor-uses-framework-viewer`
