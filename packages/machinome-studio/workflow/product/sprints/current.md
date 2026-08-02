@@ -38,7 +38,7 @@ appears everywhere.
 - `solid-node`
   - Source: `main` @ `6f8a5ae`
   - Sprint branch: `sprint-002`
-  - Content: `5c14acf`
+  - Content: `acf4292`
   - Worktree: `solid-node/WTs/sprint-002`
   - Shop link: `WTs/sprint-002/solid-node`
 
@@ -101,9 +101,9 @@ appears everywhere.
   - Requires: `solid-node` / `viewer-bundle-delivery` - integrated at framework
     `sprint-002` @ `5c14acf`
   - Branch: `sprint-002-dev-viewer-on-shared-package` from `5c14acf`
-  - Commits: pending
-  - Archive: pending
-  - Integrated: pending
+  - Commits: `42299be` (planning), `acf4292` (implementation/archive)
+  - Archive: `openspec/changes/archive/2026-08-02-dev-viewer-on-shared-package`
+  - Integrated: framework `sprint-002` @ `acf4292`
 - `solid-node-shop` / `adjust-ignore-framework-link`
   - Story: none - sprint machinery
   - Requires: none
@@ -157,6 +157,13 @@ appears everywhere.
   content `5c14acf`: preparation/API tests (19 passed), frontend typecheck and
   build, the browser model-and-Timeline test, and `bash tests/dev-env-test.sh`.
   The pilot also visually confirmed `v8-engine` in the opened shop.
+- Combined F4 validation passed from `WTs/sprint-002` against framework content
+  `acf4292`: shop tests and `tests/dev-env-test.sh` passed using the workspace
+  virtualenv; framework tests passed (379 plus 5 subtests); app tests (12),
+  production build, widget tests/typecheck/build, and strict OpenSpec
+  validation passed. The pilot visually confirmed the V8 development viewer
+  renders once with a working shared timeline after the Strict Mode lifecycle
+  regression fix.
 
 ## Decisions and scope changes
 
