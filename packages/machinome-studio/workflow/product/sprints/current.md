@@ -88,8 +88,9 @@ appears everywhere.
   - Intent: the shop floor shows models through the framework's viewer instead
     of its own copy; brief section 5 (S2)
   - Story: `STORY-006`
-  - Requires: `solid-node` / `viewer-bundle-delivery`
-  - Branch: pending
+  - Requires: `solid-node` / `viewer-bundle-delivery` - integrated at framework
+    `sprint-002` @ `5c14acf`
+  - Branch: `sprint-002-floor-uses-framework-viewer` from `412eb03`
   - Commits: pending
   - Archive: pending
   - Integrated: pending
