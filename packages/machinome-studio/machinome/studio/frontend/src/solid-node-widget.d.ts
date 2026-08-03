@@ -1,5 +1,5 @@
 type ViewerView = unknown;
-export const SOLID_NODE_VIEWER_API_VERSION: 1;
+export const SOLID_NODE_VIEWER_API_VERSION: 2;
 
 type ViewerOptions = {
   baseUrl: string;
@@ -12,6 +12,9 @@ type ViewerOptions = {
 
 type ViewerHandle = {
   apiVersion: number;
+  artifactChanged(path: string): Promise<void>;
+  manifestChanged(): Promise<void>;
+  reload(): Promise<void>;
   dispose(): void;
   view(): ViewerView;
 };

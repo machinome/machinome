@@ -85,8 +85,8 @@ button, textarea { font: inherit; }
 .artifact-view { background: radial-gradient(120% 120% at 50% 35%, #171b21 0%, #0f1115 70%); display: grid; grid-template-rows: 40px minmax(0, 1fr); min-height: 0; overflow: hidden; }
 .model-tabs { align-items: center; border-bottom: 1px solid #1e232a; display: flex; padding: 0 14px; }
 .model-tabs h2 { background: #1c2128; border-radius: 5px; color: #e6e8ec; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 400; padding: 5px 10px; }
-.model-viewport { min-height: 0; padding: 14px; position: relative; }
-.functional-model-host { height: 100%; position: relative; width: 100%; }
+.model-viewport { display: flex; flex-direction: column; min-height: 0; padding: 14px; position: relative; }
+.functional-model-host { flex: 1; min-height: 0; position: relative; width: 100%; }
 .functional-model { display: block; height: 100%; outline: 0; touch-action: none; width: 100%; }
 .animation-controls { align-items: center; background: rgba(18, 20, 25, .9); border-top: 1px solid #262b33; bottom: 0; color: #c3c8d1; display: flex; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; gap: .5rem; left: 0; padding: 9px 14px; position: absolute; right: 0; }
 .animation-controls[hidden] { display: none; }
@@ -94,7 +94,7 @@ button, textarea { font: inherit; }
 .animation-controls button { background: none; border: 0; color: #e0a350; cursor: pointer; }
 .animation-controls input { flex: 1; }
 .model-viewport .empty { align-items: center; display: flex; height: 100%; justify-content: center; margin: 0; }
-.model-build-error { background: #2a1a1a; border: 1px solid #5a2a2a; border-radius: 8px; color: #f0b4b4; font: 11.5px ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0 0 8px; padding: 8px; position: relative; white-space: pre-wrap; z-index: 1; }
+.model-build-error, .model-update-error { background: #2a1a1a; border: 1px solid #5a2a2a; border-radius: 8px; color: #f0b4b4; font: 11.5px ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0 0 8px; padding: 8px; position: relative; white-space: pre-wrap; z-index: 1; }
 
 .conversation { border-left: 1px solid #262b33; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
 .conversation-header { align-items: center; border-bottom: 1px solid #262b33; display: flex; gap: 8px; min-height: 52px; padding: 12px 16px; }

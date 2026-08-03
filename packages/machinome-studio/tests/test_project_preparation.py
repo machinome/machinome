@@ -80,7 +80,7 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertEqual(prepared.model, Path("root"))
         self.assertEqual(prepared.artifact_root, (project / "_build").resolve())
         self.assertTrue(prepared.viewer_bundle.is_file())
-        self.assertEqual(prepared.viewer_api_version, 1)
+        self.assertEqual(prepared.viewer_api_version, 2)
         self.assertEqual(self.call_log.read_text().splitlines()[0], "new:new-engine")
         self.assertTrue((project / "root" / "__init__.py").is_file())
         self.assertEqual(
@@ -143,7 +143,7 @@ class ProjectPreparationTest(unittest.TestCase):
     def test_rejects_a_missing_or_incompatible_viewer_before_building(self) -> None:
         project = self.home / "existing"
         _make_repository(project)
-        for state, expected in (({"viewer_missing": True}, "build the solid-node viewer bundle"), ({"viewer_api_version": 0}, "viewer API 1 is required but installed viewer API is 0")):
+        for state, expected in (({"viewer_missing": True}, "build the solid-node viewer bundle"), ({"viewer_api_version": 1}, "viewer API 2 is required but installed viewer API is 1")):
             with self.subTest(state=state):
                 (project / ".fake-solid-state.json").write_text(json.dumps(state))
                 with self.assertRaises(PreparationError) as raised:
@@ -280,6 +280,6 @@ elif command == "viewer":
         print("build the solid-node viewer bundle", file=sys.stderr)
         raise SystemExit(18)
     bundle = Path(tempfile.gettempdir()) / f"fake-solid-widget-{os.getpid()}.js"
-    bundle.write_text("globalThis.SolidNodeWidget={apiVersion:1,mount(){return Promise.resolve({apiVersion:1,view(){return{}},dispose(){}})}};")
-    print(json.dumps({"path": str(bundle), "apiVersion": state.get("viewer_api_version", 1)}))
+    bundle.write_text("globalThis.SolidNodeWidget={apiVersion:2,mount(){return Promise.resolve({apiVersion:2,artifactChanged(){return Promise.resolve()},manifestChanged(){return Promise.resolve()},reload(){return Promise.resolve()},view(){return{}},dispose(){}})}};")
+    print(json.dumps({"path": str(bundle), "apiVersion": state.get("viewer_api_version", 2)}))
 '''

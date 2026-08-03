@@ -41,6 +41,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         *,
         profile: str = "fordesmac",
         orchestrated: bool = False,
+        static_root: Path | None = None,
     ) -> None:
         self._project_number += 1
         name = f"browser-{self._project_number}"
@@ -51,6 +52,8 @@ class ShopLifecycleE2E(unittest.TestCase):
             "GIT_COMMITTER_NAME": "Shop Test",
             "GIT_COMMITTER_EMAIL": "shop@example.invalid",
         })
+        if static_root is not None:
+            environment["SHOP_FLOOR_STATIC_ROOT"] = str(static_root)
         if project is not None:
             target = self.project_home / name
             shutil.copytree(project, target)
@@ -64,6 +67,7 @@ class ShopLifecycleE2E(unittest.TestCase):
             model = value["root"]["model"]
             environment["FAKE_SOLID_MODEL"] = model
             environment["FAKE_SOLID_MODEL_CONTENT"] = (target / "_build" / model).read_text()
+        self.project = target if project is not None else self.project_home / name
         module = "floor.orchestrator" if orchestrated else "floor"
         command = [
             "python",
@@ -297,6 +301,75 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.wait_for_timeout(100)
         self.assertNotEqual(before_orbit, canvas.screenshot(), "orbiting the functional model must redraw the canvas")
 
+    def test_a_republished_artifact_updates_the_existing_canvas_only(self) -> None:
+        self.page.goto(self.url("/"))
+        canvas = self.page.get_by_role("region", name="Model").get_by_role("img", name="Functional model")
+        canvas.wait_for()
+        self.page.wait_for_timeout(1_100)
+        canvas.evaluate("element => { window.__testCanvas = element; }")
+        history = self.page.evaluate("window.__solidNodeWidgetHistory")
+        self._publish_artifact("part.stl", "solid changed")
+        self.page.wait_for_function("() => window.__solidNodeWidgetHistory.updates.some(([kind, path]) => kind === 'artifactChanged' && path === 'part.stl')", timeout=5_000)
+        self.assertTrue(canvas.evaluate("element => element === window.__testCanvas"))
+        current = self.page.evaluate("window.__solidNodeWidgetHistory")
+        self.assertEqual(current["mounts"], 1)
+        self.assertEqual(current["fetches"][len(history["fetches"]):], ["/artifacts/part.stl"])
+
+    def test_a_failed_targeted_update_keeps_the_model_and_recovers(self) -> None:
+        self.page.goto(self.url("/"))
+        canvas = self.page.get_by_role("region", name="Model").get_by_role("img", name="Functional model")
+        canvas.wait_for()
+        self.page.wait_for_timeout(1_100)
+        canvas.evaluate("element => { window.__testCanvas = element; }")
+        self._publish_artifact("viewer.json", json.dumps({"version": 2, "root": {"name": "missing", "model": "missing.stl"}}))
+        self.page.get_by_text("Failed to load /artifacts/missing.stl").wait_for(timeout=5_000)
+        self.assertTrue(canvas.evaluate("element => element === window.__testCanvas"))
+        self._publish_artifact("viewer.json", json.dumps({"version": 3, "root": {"name": "part", "model": "part.stl"}}))
+        self.page.wait_for_function("() => !document.body.innerText.includes('Failed to load /artifacts/missing.stl')", timeout=5_000)
+        self.assertTrue(canvas.evaluate("element => element === window.__testCanvas"))
+
+    def test_document_only_and_node_removal_updates_do_not_fetch_geometry(self) -> None:
+        self.page.goto(self.url("/"))
+        self.page.get_by_role("region", name="Model").get_by_role("img", name="Functional model").wait_for()
+        self.page.wait_for_timeout(1_100)
+        history = self.page.evaluate("window.__solidNodeWidgetHistory")
+        self._publish_artifact("viewer.json", json.dumps({"version": 2, "root": {"name": "part", "color": "#22c55e", "model": "part.stl"}}))
+        self.page.wait_for_function("() => window.__solidNodeWidgetHistory.updates.some(([kind]) => kind === 'manifestChanged')", timeout=5_000)
+        current = self.page.evaluate("window.__solidNodeWidgetHistory")
+        self.assertEqual(current["fetches"][len(history["fetches"]):], ["/artifacts/viewer.json"])
+        history = current
+        self._publish_artifact("viewer.json", json.dumps({"version": 3, "root": {"name": "empty"}}))
+        self.page.wait_for_function("() => window.__solidNodeWidgetHistory.updates.filter(([kind]) => kind === 'manifestChanged').length === 2", timeout=5_000)
+        current = self.page.evaluate("window.__solidNodeWidgetHistory")
+        self.assertEqual(current["fetches"][len(history["fetches"]):], ["/artifacts/viewer.json"])
+
+    def test_a_development_build_mounts_the_viewer_exactly_once(self) -> None:
+        # The shipped bundle is a production build, where React runs each effect
+        # once. A mount effect that cannot survive being torn down and re-run --
+        # which StrictMode does on every development mount -- leaves no trace in
+        # any other test here, so the maker meets it before the suite does.
+        bundle = Path(self.temporary.name) / "development-static"
+        _build_frontend(bundle)
+        self._stop_floor()
+        self._start_floor(static_root=bundle)
+        self.page.goto(self.url("/"))
+        canvas = self.page.get_by_role("region", name="Model").get_by_role("img", name="Functional model")
+        canvas.wait_for(timeout=5_000)
+        canvas.evaluate("element => { window.__testCanvas = element; }")
+        self.assertEqual(self.page.evaluate("window.__solidNodeWidgetHistory.mounts"), 1)
+        self._publish_artifact("part.stl", "solid changed")
+        self.page.wait_for_function("() => window.__solidNodeWidgetHistory.updates.some(([kind, path]) => kind === 'artifactChanged' && path === 'part.stl')", timeout=5_000)
+        self.assertTrue(canvas.evaluate("element => element === window.__testCanvas"))
+        history = self.page.evaluate("window.__solidNodeWidgetHistory")
+        self.assertEqual(history["mounts"], 1)
+        self.assertEqual([update for update in history["updates"] if update[0] == "artifactChanged"], [["artifactChanged", "part.stl"]])
+
+    def _publish_artifact(self, name: str, content: str) -> None:
+        target = self.project / "_build" / name
+        temporary = target.with_name(f".{name}.test")
+        temporary.write_text(content)
+        os.replace(temporary, target)
+
     def test_reloads_the_initial_build_when_a_new_project_floor_reopens(self) -> None:
         first = Path(tempfile.mkdtemp())
         second = Path(tempfile.mkdtemp())
@@ -334,6 +407,21 @@ class ShopLifecycleE2E(unittest.TestCase):
             self.floor.wait(timeout=5)
         if self.floor.stderr is not None:
             self.floor.stderr.close()
+
+
+def _build_frontend(destination: Path) -> None:
+    """Build the floor's browser bundle in development mode into ``destination``."""
+    frontend = ROOT / "floor" / "frontend"
+    if not (frontend / "node_modules").is_dir():
+        raise unittest.SkipTest(f"{frontend}/node_modules is absent; run npm install to exercise the development bundle")
+    subprocess.run(
+        ["npx", "vite", "build", "--mode", "development", "--outDir", str(destination), "--emptyOutDir"],
+        cwd=frontend,
+        check=True,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "NODE_ENV": "development"},
+    )
 
 
 def _free_port() -> int:

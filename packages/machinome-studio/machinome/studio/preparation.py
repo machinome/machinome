@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 PROJECT_NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
-REQUIRED_VIEWER_API = 1
+REQUIRED_VIEWER_API = 2
 
 
 @dataclass(frozen=True)

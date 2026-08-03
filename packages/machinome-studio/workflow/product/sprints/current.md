@@ -101,12 +101,51 @@ in the PRD.
     `solid-node-shop` / `floor-artifact-event-pipeline`
   - Branch: `sprint-003-floor-in-place-model-updates` from `659f5fa`
   - Worktree: `WTs/sprint-003-floor-in-place-model-updates`
-  - Commits: pending
-  - Archive: pending
+  - Commits: `c06cc78` planning, implementation and archive pending record
+  - Archive: `openspec/changes/archive/2026-08-03-floor-in-place-model-updates/`
   - Integrated: pending
 
 ## Paired validation
 
+- S2 reviewed and repaired 2026-08-03 before integration. The handover was
+  green on 151 shop tests and still shipped a defect no test here could see.
+  Its mount effect guarded re-entry with a ref shared across effect instances,
+  so React's StrictMode remount -- which tears the effect down and re-runs it
+  synchronously -- skipped the second mount while the first disposed itself and
+  left no viewer at all. The shipped bundle is a production build, where each
+  effect runs once, so every existing assertion passed. Reproduced by building
+  the same source in development mode and rerunning the suite against it: four
+  e2e tests failed on a canvas that never appeared, and the same experiment on
+  `659f5fa` passed, establishing it as S2's regression rather than a
+  pre-existing one. Mounts, updates and disposal now share one queue, so a
+  torn-down mount resolves before the next attempt instead of blocking it.
+  `STATIC_ROOT` honours `SHOP_FLOOR_STATIC_ROOT` so the new
+  `test_a_development_build_mounts_the_viewer_exactly_once` can drive the
+  maker's browser against a development bundle; it was confirmed red against
+  the handed-over code.
+- S2 live-checked 2026-08-03 against framework `sprint-003` content `582da89`,
+  reached through `PYTHONPATH` and a `--solid-command` wrapper rather than the
+  installed `solid_node`, which resolves to framework `main` -- the distinction
+  the S1 record had to correct. On a scaffolded two-leaf project with the real
+  `solid` CLI and the real widget bundle rebuilt from that worktree: editing
+  one leaf preserved the canvas element and the orbited camera, fetched only
+  that leaf's STL and never the untouched leaf's, and changed the render; a
+  broken source showed the failure banner while the published model stayed
+  rendered, and fixing it cleared the banner and updated the model with no
+  reload; a `solid build` run from a terminal outside the shop reached the
+  browser as an in-place update; and eight consecutive edits held the page heap
+  at 4.56 MB -> 4.77 MB, flat after the third, with one canvas throughout,
+  measured through CDP because `performance.memory` is quantised.
+- S2 finding, measured not fixed: one edit costs two fetches of the changed
+  artifact. The framework publishes the artifact and then the manifest, so the
+  floor forwards two events as D3 decides; `artifactChanged()` replaces the
+  mesh without recording the new `mtime`, so the following `manifestChanged()`
+  finds the node stale and refetches the same bytes. The redundancy is F3's
+  bookkeeping in `widget/src/tree.ts`. The shop cannot suppress either update
+  without correlating or interpreting events, which D3 and D4 forbid, so this
+  belongs to a framework cycle and is recorded in ADR 0013's consequences. The
+  sprint's outcome still holds: only the changed artifact is fetched, and the
+  untouched parts of the model are never requested.
 - S2 opened 2026-08-03. Branch `sprint-003-floor-in-place-model-updates` and
   worktree `WTs/sprint-003-floor-in-place-model-updates` created from the shop
   `sprint-003` head `659f5fa`, which is also the shop content commit: the S1

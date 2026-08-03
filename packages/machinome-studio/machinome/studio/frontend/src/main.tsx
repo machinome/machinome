@@ -45,32 +45,96 @@ type ConversationEntry = {
   text: string;
 };
 
-function FunctionalModel({ generation, buildError }: { generation: number; buildError: string | null }) {
+type ModelArtifact = { path: string; sequence: number };
+
+function FunctionalModel({ artifact, reconnect, buildError }: {
+  artifact: ModelArtifact | null;
+  reconnect: number;
+  buildError: string | null;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const view = useRef<ViewerView | undefined>(undefined);
+  const handle = useRef<ViewerHandle | undefined>(undefined);
+  const remount = useRef<(() => void) | undefined>(undefined);
+  // Mounts, updates and disposal share one queue so they cannot interleave.
+  // StrictMode remounts this effect synchronously, so a mount in flight must be
+  // resolved before the next attempt rather than blocking it with a flag.
+  const queue = useRef(Promise.resolve());
+  const applied = useRef(-1);
+  const reconnected = useRef(0);
   const [error, setError] = useState<string | null>(null);
+
+  const enqueue = (work: () => Promise<void>) => {
+    queue.current = queue.current.catch(() => undefined).then(work);
+  };
+
+  const update = (path: string) => {
+    enqueue(async () => {
+      const mounted = handle.current;
+      if (!mounted) {
+        remount.current?.();
+        return;
+      }
+      try {
+        if (path === "viewer.json") await mounted.manifestChanged();
+        else await mounted.artifactChanged(path);
+        setError(null);
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : String(reason));
+      }
+    });
+  };
+
   useEffect(() => {
     const target = container.current;
     if (!target) return;
     let disposed = false;
-    let mounted: ViewerHandle | undefined;
-    setError(null);
-    void window.SolidNodeWidget.mount(target, `/artifacts/viewer.json?generation=${generation}`, {
-      baseUrl: "/artifacts/",
-      animation: "toggle",
-      view: view.current,
-      className: "functional-model",
-      role: "img",
-      ariaLabel: "Functional model",
-    }).then((handle) => {
-        const cleanup = () => { view.current = handle.view(); handle.dispose(); };
-        if (disposed) cleanup(); else mounted = handle;
-      })
-      .catch((reason: Error) => { if (!disposed) setError(reason.message); });
-    return () => { disposed = true; if (mounted) { view.current = mounted.view(); mounted.dispose(); } };
-  }, [generation]);
-  // S1 keeps the existing coarse reload bridge; S2 replaces it with the
-  // viewer's targeted artifact update without unmounting this host on error.
+    const mount = () => {
+      enqueue(async () => {
+        if (disposed || handle.current) return;
+        try {
+          const mountedHandle = await window.SolidNodeWidget.mount(target, "/artifacts/viewer.json", {
+            baseUrl: "/artifacts/",
+            animation: "toggle",
+            view: view.current,
+            className: "functional-model",
+            role: "img",
+            ariaLabel: "Functional model",
+          });
+          if (disposed) { view.current = mountedHandle.view(); mountedHandle.dispose(); return; }
+          handle.current = mountedHandle;
+          setError(null);
+        } catch (reason) {
+          if (!disposed) setError(reason instanceof Error ? reason.message : String(reason));
+        }
+      });
+    };
+    remount.current = mount;
+    mount();
+    return () => {
+      disposed = true;
+      remount.current = undefined;
+      enqueue(async () => {
+        if (!handle.current) return;
+        view.current = handle.current.view();
+        handle.current.dispose();
+        handle.current = undefined;
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    if (artifact === null || artifact.sequence === applied.current) return;
+    applied.current = artifact.sequence;
+    update(artifact.path);
+  }, [artifact?.sequence]);
+
+  useEffect(() => {
+    if (reconnect === 0 || reconnect === reconnected.current) return;
+    reconnected.current = reconnect;
+    update("viewer.json");
+  }, [reconnect]);
+
   return (
     <>
       {buildError === null ? null : (
@@ -78,7 +142,8 @@ function FunctionalModel({ generation, buildError }: { generation: number; build
           Model rebuild failed: {buildError}
         </p>
       )}
-      {error ? <p className="empty">{error}</p> : <div className="functional-model-host" ref={container} />}
+      {error === null ? null : <p className="model-update-error" role="status" aria-live="polite">{error}</p>}
+      <div className="functional-model-host" ref={container} />
     </>
   );
 }
@@ -197,7 +262,8 @@ function App() {
   const [run, setRun] = useState<Run | null>(null);
   const [shopOpen, setShopOpen] = useState(false);
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
-  const [modelGeneration, setModelGeneration] = useState(0);
+  const [modelArtifact, setModelArtifact] = useState<ModelArtifact | null>(null);
+  const [modelReconnect, setModelReconnect] = useState(0);
   const [modelBuildError, setModelBuildError] = useState<string | null>(null);
   const lifecycleOpened = useRef(false);
 
@@ -205,7 +271,7 @@ function App() {
     const lifecycle = new EventSource("/events/lifecycle");
     lifecycle.onopen = () => {
       setShopOpen(true);
-      if (lifecycleOpened.current) setModelGeneration((generation) => generation + 1);
+      if (lifecycleOpened.current) setModelReconnect((current) => current + 1);
       lifecycleOpened.current = true;
     };
     lifecycle.onerror = () => setShopOpen(false);
@@ -237,12 +303,14 @@ function App() {
           const { artifact } = event.payload as { artifact?: string };
           if (artifact === "viewer.json") {
             setModelBuildError(null);
-            setModelGeneration((generation) => generation + 1);
+            setModelArtifact({ path: artifact, sequence: event.event.sequence });
           } else if (artifact === "errors.json") {
             void fetch("/artifacts/errors.json")
               .then((response) => response.ok ? response.text() : Promise.reject(new Error("the model could not be rebuilt")))
               .then((error) => setModelBuildError(error || "the model could not be rebuilt"))
               .catch(() => setModelBuildError("the model could not be rebuilt"));
+          } else if (artifact) {
+            setModelArtifact({ path: artifact, sequence: event.event.sequence });
           }
           return;
         }
@@ -334,7 +402,7 @@ function App() {
             <h2 id="artifact-heading">Model</h2>
           </header>
           <div className="model-viewport">
-            <FunctionalModel generation={modelGeneration} buildError={modelBuildError} />
+            <FunctionalModel artifact={modelArtifact} reconnect={modelReconnect} buildError={modelBuildError} />
           </div>
         </section>
         <section className="conversation" aria-label="Chat">

@@ -48,10 +48,13 @@ independent handlers on it.
   checks each requested candidate against that fixed root once. Atomic rename,
   rather than route retry or symlink re-resolution, prevents torn reads.
 
-S1 retains a browser bridge: a `viewer.json` artifact event performs the
-existing coarse reload and clears an error banner; an `errors.json` event fills
-the banner. S2 replaces that bridge with the framework viewer's targeted
-in-place update.
+The browser mounts the framework viewer once and maps each named publication to
+the narrowest viewer action: `viewer.json` reconciles the manifest,
+`errors.json` updates the build-failure banner, and every other path updates
+only the geometry it names. An update failure is reported beside the still-live
+viewer and the next publication can recover it. Because targeted requests reuse
+their artifact URLs, the artifact route requires revalidation with
+`Cache-Control: no-cache`.
 
 ## Alternatives rejected
 
@@ -81,3 +84,16 @@ in-place update.
 - A successful build that clears a transient failure without republishing
   `viewer.json` can leave a stale failure banner. The framework publication
   path owns that edge, not the floor; F2 records it as such.
+- One edit costs two fetches of the changed artifact, measured live against
+  framework `sprint-003`. `artifactChanged()` replaces the mesh without
+  recording the new `mtime`, so the `manifestChanged()` that follows the
+  manifest's own publication finds the node stale and refetches the same bytes.
+  The floor forwards two publications because the framework publishes two
+  files, which is D3 working as decided; the redundancy is the viewer's
+  bookkeeping and belongs to a framework cycle. The shop cannot suppress either
+  update without inspecting or correlating events, which D3 and D4 forbid.
+- The browser bundle the floor serves is a production build, where React runs
+  each effect once. A mount that cannot survive being torn down and re-run is
+  therefore invisible to every test that exercises the shipped bundle, and
+  reaches the maker first in development. `STATIC_ROOT` is overridable so one
+  test can drive the maker's browser against a development build instead.

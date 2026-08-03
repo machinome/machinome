@@ -129,6 +129,13 @@ root and therefore does not re-resolve a symlink during a request. Agent
 sessions do not run a callback process or expose project source through the
 browser service.
 
+The browser mounts the framework viewer once for the floor's lifetime. It maps
+each published path directly to the viewer: the manifest reconciles the model,
+a regular artifact updates only the geometry that names it, and `errors.json`
+updates the separate build-failure banner. A failed targeted request reports
+beside the retained model and the next publication retries normally; the browser
+does not remount the viewer or interpret artifact contents.
+
 ## Workspace boundaries
 
 Each `projects/<name>/` directory is an independent Git repository. The

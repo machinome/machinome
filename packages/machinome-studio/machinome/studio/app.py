@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from collections import deque
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
@@ -22,7 +23,10 @@ from .watcher import ArtifactWatcher, ModelWatcher
 
 
 RUN_ID = "shop-floor"
-STATIC_ROOT = Path(__file__).parent / "static"
+# The browser bundle the floor serves. Overridable so a test can run the
+# maker's browser against a development build of the same source: React only
+# double-invokes effects there, and the shipped bundle cannot exercise that.
+STATIC_ROOT = Path(os.environ.get("SHOP_FLOOR_STATIC_ROOT") or Path(__file__).parent / "static")
 MESSAGE_KINDS = {"direction", "assignment", "report"}
 
 
@@ -543,7 +547,7 @@ def create_app(
             raise HTTPException(status_code=404, detail="unknown artifact")
         if not candidate.is_file():
             raise HTTPException(status_code=404, detail="unknown artifact")
-        return FileResponse(candidate)
+        return FileResponse(candidate, headers={"Cache-Control": "no-cache"})
 
     @app.get("/")
     async def browser_page() -> FileResponse:

@@ -204,6 +204,12 @@ class SourceWatcherTest(WatcherTestCase):
 
 
 class ArtifactRouteTest(WatcherTestCase):
+    async def test_republished_artifacts_must_revalidate(self) -> None:
+        app = create_app(self.project, artifact_root=self.artifacts, broker=Broker())
+        with TestClient(app) as client:
+            response = client.get("/artifacts/part.stl")
+        self.assertEqual(response.headers["cache-control"], "no-cache")
+
     async def test_route_serves_a_stable_artifact_during_another_republication(self) -> None:
         app = create_app(self.project, artifact_root=self.artifacts, broker=Broker())
         with TestClient(app) as client:
