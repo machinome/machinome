@@ -19,8 +19,8 @@ class RuntimeProfileTest(unittest.TestCase):
         self.assertEqual(builder.user_agent.id, "builder")
         self.assertEqual(builder.work_mode, "direct")
         self.assertEqual([(agent.id, agent.label) for agent in builder.agents], [("builder", "Builder")])
-        self.assertEqual(builder.user_agent.runtime.model, "gpt-5.6-terra")
-        self.assertEqual(builder.user_agent.runtime.effort, "medium")
+        self.assertEqual(builder.user_agent.runtime.model, "gpt-5.3-codex-spark")
+        self.assertEqual(builder.user_agent.runtime.effort, "high")
         self.assertEqual(builder.user_agent.runtime.tools, "inherit")
 
         fordesmac = load_profile("fordesmac", shop_root=ROOT, backend="claude")

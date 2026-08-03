@@ -10,7 +10,7 @@ prompt = "builder.md"
 assigns = []
 
 [agents.backends.codex]
-model = "codex-5.3-spark"
+model = "gpt-5.3-codex-spark"
 effort = "high"
 tools = "inherit"
 
