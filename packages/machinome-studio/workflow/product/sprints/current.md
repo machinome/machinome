@@ -106,6 +106,21 @@ in the PRD.
 
 ## Paired validation
 
+- S1 defect fixed 2026-08-03 on `sprint-003`. Review of the integrated S1 found
+  the source handler dispatching on `on_any_event`, so inotify's `opened` and
+  `closed_no_write` events from a build's own source reads triggered the next
+  build, indefinitely. Measured live against framework `sprint-003` (`582da89`)
+  with the real `solid build`: one edit produced 14 builds in 40 seconds before
+  the fix and exactly 1 after, with no further build for the remaining 40
+  seconds. The suite was blind to it because `tests/fixtures/fake_solid.py`
+  never opened the project's sources; the fixture now reads them, and
+  `test_a_build_reading_the_sources_does_not_trigger_another_build` is red
+  without the fix. All 147 shop tests pass. ADR 0013 and the
+  `functional-model-inspection` baseline spec record what the source handler
+  listens for. Correcting the S1 record below: task 5.3's live check ran
+  against installed `solid_node` (framework `main` @ `acf4292`), not the sprint
+  worktree, and no SSE-level or external-build coverage was added to
+  `tests/test_shop_lifecycle_e2e.py` under tasks 5.1 and 5.2.
 - S1 integrated 2026-08-02 by fast-forwarding shop `sprint-003` from
   `30ac154` to `6817520`. Combined validation passed from `WTs/sprint-003`
   against linked framework content `582da89`: shop `pytest tests`,

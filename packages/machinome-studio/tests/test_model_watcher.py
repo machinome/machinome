@@ -128,6 +128,24 @@ class ArtifactWatcherTest(WatcherTestCase):
 
 
 class SourceWatcherTest(WatcherTestCase):
+    def builds(self) -> int:
+        log = self.project / ".fake-solid-builds"
+        return len(log.read_text().splitlines()) if log.is_file() else 0
+
+    async def test_a_build_reading_the_sources_does_not_trigger_another_build(self) -> None:
+        # The build opens every source it loads.  If those reads counted as
+        # source changes, one edit would rebuild the project forever.
+        sibling = self.project / "root" / "sibling.py"
+        sibling.write_text("# untouched\n")
+        build_state(self.project, viewer={"version": 1, "root": {"name": "part", "model": "part.stl"}, "revision": 4})
+        app, events = self.app()
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            before = self.builds()
+            self.model.write_text("# edited\n")
+            await self.wait_for(events, "model_artifact_changed")
+            await asyncio.sleep(SETTLE * 20)
+            self.assertEqual(self.builds() - before, 1)
+
     async def test_source_burst_coalesces_to_one_build_and_ignores_build_tree(self) -> None:
         build_state(self.project, viewer={"version": 1, "root": {"name": "part", "model": "part.stl"}, "revision": 2})
         app, events = self.app()

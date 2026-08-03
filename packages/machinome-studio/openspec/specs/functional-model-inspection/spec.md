@@ -38,7 +38,10 @@ nothing further about it, without regard to what the file is. The system SHALL
 report such an event whichever publisher produced the file, including a
 publisher that is not the shop. The system SHALL NOT report the removal of a
 file, SHALL NOT compare, open, or interpret published contents to decide what
-to report, and SHALL NOT import or execute project Python.
+to report, and SHALL NOT import or execute project Python. A build reads the
+model source it loads; the system SHALL treat only source that is created,
+modified, relocated, or removed as changed, and SHALL NOT treat a build's own
+reads as a change.
 
 #### Scenario: Any author changes the model
 - **WHEN** the project's model source changes while the shop floor is open, by whichever author changed it
@@ -51,6 +54,10 @@ to report, and SHALL NOT import or execute project Python.
 #### Scenario: One part of the model changes
 - **WHEN** a change to the model republishes one artifact and leaves the project's other artifacts untouched
 - **THEN** the system reports that one artifact and reports no event for the untouched ones
+
+#### Scenario: A build reads the model source it is building
+- **WHEN** a build the shop ran reads the project's model source files while the shop floor is open
+- **THEN** the system runs no further build on account of those reads
 
 #### Scenario: A rebuild produces no change to the published model
 - **WHEN** a rebuild completes and leaves the published model artifacts unchanged

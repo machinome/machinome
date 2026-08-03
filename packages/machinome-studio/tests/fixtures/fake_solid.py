@@ -29,6 +29,16 @@ elif command == "build":
     if state_file.is_file():
         state = json.loads(state_file.read_text())
 
+    # A real build imports the project's sources, so it opens every one of
+    # them.  The fixture reads them for the same reason a watcher must not
+    # treat a read as a change.
+    for source in sorted(cwd.rglob("*.py")):
+        if "_build" in source.relative_to(cwd).parts:
+            continue
+        source.read_text()
+    with (cwd / ".fake-solid-builds").open("a") as log:
+        log.write("build\n")
+
     build = cwd / "_build"
     build.mkdir(exist_ok=True)
 

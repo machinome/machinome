@@ -74,7 +74,23 @@ class ModelWatcher(FileSystemEventHandler):
         self._build: asyncio.Task[None] | None = None
         self._pending_trigger: str | None = None
 
-    def on_any_event(self, event: FileSystemEvent) -> None:
+    # Only the four events that mean "this source is different now" may
+    # trigger a build.  A real ``solid build`` opens every source it loads, so
+    # dispatching on ``on_any_event`` would let inotify's ``opened`` and
+    # ``closed_no_write`` events from one build trigger the next, forever.
+    def on_created(self, event: FileSystemEvent) -> None:
+        self._source_event(event)
+
+    def on_modified(self, event: FileSystemEvent) -> None:
+        self._source_event(event)
+
+    def on_moved(self, event: FileSystemEvent) -> None:
+        self._source_event(event)
+
+    def on_deleted(self, event: FileSystemEvent) -> None:
+        self._source_event(event)
+
+    def _source_event(self, event: FileSystemEvent) -> None:
         if event.is_directory:
             return
         paths = [Path(event.src_path)]

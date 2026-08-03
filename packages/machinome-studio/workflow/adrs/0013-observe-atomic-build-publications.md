@@ -32,6 +32,10 @@ independent handlers on it.
 - A source handler watches Python source paths outside `_build`, coalesces an
   event burst with one settle timer, and triggers `solid build root`. It does
   not poll, fingerprint source, hash a manifest, or report a build verdict.
+  It reacts only to creation, modification, move, and deletion — never to
+  every filesystem event. inotify also reports opens and read-closes, and a
+  build reads every project source it loads, so a handler that accepts any
+  event makes each build trigger the next one indefinitely.
 - An artifact handler watches `_build` recursively and forwards only
   `FileMovedEvent` destinations as `model_artifact_changed` events carrying
   `{"artifact": <path relative to _build>}`. A rename is publication. The
@@ -70,6 +74,10 @@ in-place update.
   failure no longer promises the prior complete model remains intact.
 - The floor remains within ADR 0004: it neither imports nor executes project
   Python, and it serves only the published build directory.
+- Events make the floor strictly more sensitive than ADR 0010's poll, which was
+  immune to reads because reading a file changes neither mtime nor size. The
+  source handler has to spend that new sensitivity deliberately: what it listens
+  for is now part of the decision, not an implementation detail.
 - A successful build that clears a transient failure without republishing
   `viewer.json` can leave a stale failure banner. The framework publication
   path owns that edge, not the floor; F2 records it as such.
