@@ -88,7 +88,8 @@ in the PRD.
     regression from the Snowman floor validation.
   - Story: `STORY-007`
   - Requires: `solid-node` / `viewer-targeted-update`
-  - Branch: pending
+  - Branch: `sprint-003-assembly-fusion-manifest-reconcile` from `b9279ea`
+  - Worktree: `solid-node/WTs/sprint-003-assembly-fusion-manifest-reconcile`
   - Commits: pending
   - Archive: pending
   - Integrated: pending
