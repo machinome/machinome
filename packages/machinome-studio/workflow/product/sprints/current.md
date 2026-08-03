@@ -37,7 +37,7 @@ in the PRD.
 - `solid-node-shop`
   - Source: `main` @ `7397c71`
   - Sprint branch: `sprint-003`
-  - Content: `659f5fa`
+  - Content: `5e2c56a`
   - Worktree: `WTs/sprint-003`
 - `solid-node`
   - Source: `main` @ `acf4292`
@@ -101,11 +101,24 @@ in the PRD.
     `solid-node-shop` / `floor-artifact-event-pipeline`
   - Branch: `sprint-003-floor-in-place-model-updates` from `659f5fa`
   - Worktree: `WTs/sprint-003-floor-in-place-model-updates`
-  - Commits: `c06cc78` planning, implementation and archive pending record
+  - Commits: `c06cc78` planning, `5e2c56a` implementation and archive
   - Archive: `openspec/changes/archive/2026-08-03-floor-in-place-model-updates/`
-  - Integrated: pending
+  - Integrated: `sprint-003` @ `5e2c56a`
 
 ## Paired validation
+
+- S2 integrated 2026-08-03 by fast-forwarding shop `sprint-003` from
+  `659f5fa` to `5e2c56a`, after rechecking that the cycle still descended from
+  that head. Combined validation passed from `WTs/sprint-003` against its
+  linked framework checkout at content `582da89`: shop `pytest tests` 151
+  passed, 1 skipped, 24 subtests; `tests/dev-env-test.sh` all passed;
+  `openspec validate --all --strict` 13 specs; framework `pytest tests` 395
+  passed with 5 subtests. The one skip is
+  `test_a_development_build_mounts_the_viewer_exactly_once`, which needs
+  `floor/frontend/node_modules` to build the development bundle and is absent
+  from an integration worktree by design; it ran and passed in the cycle
+  worktree, where the same commit is under test with those dependencies
+  present. Every cycle in this sprint is now integrated.
 
 - S2 reviewed and repaired 2026-08-03 before integration. The handover was
   green on 151 shop tests and still shipped a defect no test here could see.
