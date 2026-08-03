@@ -37,7 +37,7 @@ in the PRD.
 - `solid-node-shop`
   - Source: `main` @ `7397c71`
   - Sprint branch: `sprint-003`
-  - Content: `5e2c56a`
+  - Content: `037d44b`
   - Worktree: `WTs/sprint-003`
 - `solid-node`
   - Source: `main` @ `acf4292`
@@ -90,9 +90,9 @@ in the PRD.
   - Requires: `solid-node-shop` / `floor-artifact-event-pipeline`
   - Branch: `sprint-003-reliable-live-model-event-delivery` from `233cdad`
   - Worktree: `WTs/sprint-003-reliable-live-model-event-delivery`
-  - Commits: pending
-  - Archive: pending
-  - Integrated: pending
+  - Commits: `5f5cb96` planning, `037d44b` implementation and archive
+  - Archive: `openspec/changes/archive/2026-08-03-reliable-live-model-event-delivery/`
+  - Integrated: `sprint-003` @ `037d44b`
 - `solid-node-shop` / `floor-artifact-event-pipeline`
   - Intent: two watchers with distinct jobs, an artifact route with no symlink
     to re-resolve, and SSE carrying the artifact path and nothing else; PRD
@@ -117,6 +117,15 @@ in the PRD.
   - Integrated: `sprint-003` @ `5e2c56a`
 
 ## Paired validation
+
+- Live-event repair integrated 2026-08-03. Combined validation passed from
+  `WTs/sprint-003` against shop content `037d44b` and framework content
+  `b9279ea`: focused Floor API and lifecycle browser tests passed; the
+  development-environment contract passed; and `openspec validate --all
+  --strict` passed 13 checks. The regression holds an `api/runs/latest`
+  snapshot, publishes the assembly-to-fusion `viewer.json` before releasing
+  that snapshot to the browser, then proves the existing canvas receives
+  `manifestChanged()` with one viewer mount and no navigation.
 
 - The double-fetch finding S2 recorded is fixed 2026-08-03, on explicit pilot
   direction, as a direct framework commit rather than a full F-cycle --
