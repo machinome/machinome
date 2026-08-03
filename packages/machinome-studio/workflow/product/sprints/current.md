@@ -82,6 +82,16 @@ in the PRD.
   - Commits: `57521bf`, `f34ddc6`
   - Archive: `openspec/changes/archive/2026-08-02-viewer-targeted-update/`
   - Integrated: `sprint-003` @ `f34ddc6`
+- `solid-node` / `assembly-fusion-manifest-reconcile`
+  - Intent: a manifest publication that replaces an assembly hierarchy with a
+    fused rigid model updates the existing viewer canvas to the new topology;
+    regression from the Snowman floor validation.
+  - Story: `STORY-007`
+  - Requires: `solid-node` / `viewer-targeted-update`
+  - Branch: pending
+  - Commits: pending
+  - Archive: pending
+  - Integrated: pending
 - `solid-node-shop` / `floor-artifact-event-pipeline`
   - Intent: two watchers with distinct jobs, an artifact route with no symlink
     to re-resolve, and SSE carrying the artifact path and nothing else; PRD
