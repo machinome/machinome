@@ -266,6 +266,7 @@ function App() {
   const [modelReconnect, setModelReconnect] = useState(0);
   const [modelBuildError, setModelBuildError] = useState<string | null>(null);
   const lifecycleOpened = useRef(false);
+  const latestEvent = useRef(0);
 
   useEffect(() => {
     const lifecycle = new EventSource("/events/lifecycle");
@@ -287,9 +288,13 @@ function App() {
       if (connectedRunId === currentRun.id) return;
       source?.close();
       connectedRunId = currentRun.id;
-      source = new EventSource(`/api/runs/${currentRun.id}/stream`);
+      const snapshotSequence = currentRun.events.at(-1)?.sequence ?? 0;
+      latestEvent.current = Math.max(latestEvent.current, snapshotSequence);
+      source = new EventSource(`/api/runs/${currentRun.id}/stream?after=${latestEvent.current}`);
       source.addEventListener("shop-floor", (message) => {
         const event = JSON.parse((message as MessageEvent<string>).data) as LifecycleEvent;
+        if (event.event.sequence <= latestEvent.current) return;
+        latestEvent.current = event.event.sequence;
         setRun((previous) => {
           if (!previous || previous.events.some((item) => item.sequence === event.event.sequence)) return previous;
           return { ...previous, events: [...previous.events, event.event].slice(-20) };

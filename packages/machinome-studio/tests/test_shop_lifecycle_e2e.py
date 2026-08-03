@@ -315,6 +315,35 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual(current["mounts"], 1)
         self.assertEqual(current["fetches"][len(history["fetches"]):], ["/artifacts/part.stl"])
 
+    def test_a_manifest_published_between_snapshot_and_stream_updates_without_reload(self) -> None:
+        """A Snowman-style assembly-to-fusion update cannot be lost at startup."""
+        fusion = self.project / "_build" / "fusion.stl"
+        fusion.write_text("solid fused snowman")
+        intercepted = False
+
+        def publish_after_snapshot(route):
+            nonlocal intercepted
+            response = route.fetch()
+            if not intercepted:
+                intercepted = True
+                self._publish_artifact(
+                    "viewer.json",
+                    json.dumps({"version": 2, "root": {"name": "snowman", "model": "fusion.stl"}}),
+                )
+            route.fulfill(response=response)
+
+        self.page.route("**/api/runs/latest", publish_after_snapshot)
+        self.page.goto(self.url("/"))
+        canvas = self.page.get_by_role("region", name="Model").get_by_role("img", name="Functional model")
+        canvas.wait_for()
+        canvas.evaluate("element => { window.__testCanvas = element; }")
+        self.page.wait_for_function(
+            "() => window.__solidNodeWidgetHistory.updates.some(([kind]) => kind === 'manifestChanged')",
+            timeout=5_000,
+        )
+        self.assertTrue(canvas.evaluate("element => element === window.__testCanvas"))
+        self.assertEqual(self.page.evaluate("window.__solidNodeWidgetHistory.mounts"), 1)
+
     def test_a_failed_targeted_update_keeps_the_model_and_recovers(self) -> None:
         self.page.goto(self.url("/"))
         canvas = self.page.get_by_role("region", name="Model").get_by_role("img", name="Functional model")

@@ -4,9 +4,7 @@
 
 Present a completed solid-node build in the shop floor without loading project
 Python into Floor.
-
 ## Requirements
-
 ### Requirement: The shop floor builds the selected functional model before opening
 When opening a named project shop floor, the system SHALL use a solid-node CLI
 one-shot build of the project's default `root` functional model before starting
@@ -75,7 +73,10 @@ reported artifact's path alone: the published document reconciles the rendered
 tree, the failure record updates the reported failure, and any other artifact
 replaces the geometry of the nodes referencing that exact path. The browser
 SHALL NOT open, compare, or interpret an artifact's contents, and SHALL NOT
-request an artifact that no reported path named.
+request an artifact that no reported path named. A browser that has obtained a
+Floor run snapshot SHALL receive every later reported artifact, including one
+published before its live-event subscription is established, and apply it to
+the mounted viewer without a page reload.
 
 #### Scenario: One part of the model is republished
 - **WHEN** the shop floor reports one model artifact of a model with many
@@ -106,6 +107,13 @@ request an artifact that no reported path named.
   the republished document
 - **THEN** the displayed model reflects the change and the browser requests no
   model geometry
+
+#### Scenario: A publication arrives during the browser subscription hand-off
+- **WHEN** an already-open Floor browser has read its run snapshot, an
+  assembly-to-fusion build publishes `viewer.json`, and the browser's live
+  event subscription becomes active afterward
+- **THEN** the browser reconciles the mounted model to the fused publication
+  without navigating, reloading, or mounting a second viewer
 
 ### Requirement: A failed model update leaves the model standing
 A request the browser cannot complete SHALL NOT remove the displayed model. The

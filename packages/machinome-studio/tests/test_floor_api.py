@@ -106,6 +106,40 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual([item["sequence"] for item in received], sorted(item["sequence"] for item in received))
         self.assertEqual(_status(self.url("/api/runs/shop-floor/foreman/receive"), "POST", {"after": "0"}), 404)
 
+    def test_run_stream_replays_a_publication_after_the_browser_snapshot(self) -> None:
+        """The snapshot-to-stream hand-off must not need a browser reload."""
+        snapshot = _request(self.url("/api/runs/latest"), "GET")
+        cursor = snapshot["events"][-1]["sequence"] if snapshot["events"] else 0
+        _request(self.url("/api/runs/shop-floor/conversation"), "POST", {"text": "Publish the fused model."})
+
+        received: list[dict[str, object]] = []
+        connected = threading.Event()
+
+        def listen() -> None:
+            with urlopen(self.url(f"/api/runs/shop-floor/stream?after={cursor}"), timeout=5) as response:  # nosec: local floor
+                connected.set()
+                for raw_line in response:
+                    line = raw_line.decode().strip()
+                    if line.startswith("data: "):
+                        received.append(json.loads(line.removeprefix("data: ")))
+                        return
+
+        listener = threading.Thread(target=listen)
+        listener.start()
+        try:
+            self.assertTrue(connected.wait(1), "the browser stream did not open")
+            listener.join(timeout=0.5)
+            self.assertFalse(listener.is_alive(), "the stream lost the publication between snapshot and subscription")
+        finally:
+            # Release the old implementation's waiting stream so this test
+            # never leaves a request thread behind when the assertion is red.
+            if listener.is_alive():
+                _request(self.url("/api/runs/shop-floor/conversation"), "POST", {"text": "Release the test stream."})
+                listener.join(timeout=2)
+
+        self.assertEqual(received[0]["kind"], "conversation_entry")
+        self.assertEqual(received[0]["payload"]["text"], "Publish the fused model.")
+
     def test_serves_only_completed_build_artifacts_and_not_project_source(self) -> None:
         project = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: __import__("shutil").rmtree(project, ignore_errors=True))

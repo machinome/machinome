@@ -67,9 +67,12 @@ class BrokerEvent:
     recipient: str = ""
     assignment_id: str = ""
     envelope_sequence: int | None = None
+    payload: dict[str, object] = field(default_factory=dict, repr=False)
 
     def browser_value(self) -> dict[str, object]:
-        return {key: value for key, value in asdict(self).items() if value not in ("", None)}
+        value = asdict(self)
+        value.pop("payload")
+        return {key: item for key, item in value.items() if item not in ("", None)}
 
 
 @dataclass(frozen=True)
@@ -353,6 +356,7 @@ class Broker:
             recipient=recipient,
             assignment_id=assignment_id,
             envelope_sequence=envelope_sequence,
+            payload=value,
         )
         self.events.append(event)
         self._event_changed.set()
@@ -662,21 +666,24 @@ def create_app(
         return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
     @app.get("/api/runs/{run_id}/stream")
-    async def stream(run_id: str, request: Request) -> StreamingResponse:
+    async def stream(run_id: str, request: Request, after: int = 0) -> StreamingResponse:
         _require_run(run_id)
-        subscriber: asyncio.Queue[dict[str, object]] = asyncio.Queue()
 
         async def events() -> AsyncIterator[str]:
-            broker.subscribers.add(subscriber)
-            try:
-                while not await request.is_disconnected():
-                    try:
-                        event = await asyncio.wait_for(subscriber.get(), timeout=15)
-                        yield f"event: shop-floor\ndata: {json.dumps(event)}\n\n"
-                    except TimeoutError:
-                        yield ": keepalive\n\n"
-            finally:
-                broker.subscribers.discard(subscriber)
+            cursor = after
+            while not await request.is_disconnected():
+                try:
+                    events = await asyncio.wait_for(broker.wait_for_events(cursor), timeout=15)
+                    for event in events:
+                        value = {
+                            "kind": event.kind,
+                            "payload": event.payload,
+                            "event": event.browser_value(),
+                        }
+                        yield f"event: shop-floor\ndata: {json.dumps(value)}\n\n"
+                        cursor = event.sequence
+                except TimeoutError:
+                    yield ": keepalive\n\n"
 
         return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
