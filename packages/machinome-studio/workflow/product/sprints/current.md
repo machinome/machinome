@@ -82,14 +82,13 @@ in the PRD.
   - Commits: `57521bf`, `f34ddc6`
   - Archive: `openspec/changes/archive/2026-08-02-viewer-targeted-update/`
   - Integrated: `sprint-003` @ `f34ddc6`
-- `solid-node` / `assembly-fusion-manifest-reconcile`
-  - Intent: a manifest publication that replaces an assembly hierarchy with a
-    fused rigid model updates the existing viewer canvas to the new topology;
-    regression from the Snowman floor validation.
+- `solid-node-shop` / `reliable-live-model-event-delivery`
+  - Intent: an already-open browser receives every published model manifest
+    after its initial run snapshot, so an assembly-to-fusion change appears
+    without a manual reload; regression from the Snowman floor validation.
   - Story: `STORY-007`
-  - Requires: `solid-node` / `viewer-targeted-update`
-  - Branch: `sprint-003-assembly-fusion-manifest-reconcile` from `b9279ea`
-  - Worktree: `solid-node/WTs/sprint-003-assembly-fusion-manifest-reconcile`
+  - Requires: `solid-node-shop` / `floor-artifact-event-pipeline`
+  - Branch: pending
   - Commits: pending
   - Archive: pending
   - Integrated: pending
