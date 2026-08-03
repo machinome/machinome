@@ -84,14 +84,15 @@ their artifact URLs, the artifact route requires revalidation with
 - A successful build that clears a transient failure without republishing
   `viewer.json` can leave a stale failure banner. The framework publication
   path owns that edge, not the floor; F2 records it as such.
-- One edit costs two fetches of the changed artifact, measured live against
-  framework `sprint-003`. `artifactChanged()` replaces the mesh without
-  recording the new `mtime`, so the `manifestChanged()` that follows the
-  manifest's own publication finds the node stale and refetches the same bytes.
-  The floor forwards two publications because the framework publishes two
-  files, which is D3 working as decided; the redundancy is the viewer's
-  bookkeeping and belongs to a framework cycle. The shop cannot suppress either
-  update without inspecting or correlating events, which D3 and D4 forbid.
+- One edit was measured to cost two fetches of the changed artifact, live
+  against framework `sprint-003` at `582da89`. The floor forwards two
+  publications because the framework publishes the artifact and then the
+  manifest naming it, which is D3 working as decided; the redundant fetch was
+  the viewer's bookkeeping, not the floor's, and the shop could not have
+  suppressed it without inspecting or correlating events, which D3 and D4
+  forbid. Fixed at the framework in `b9279ea`: a node now remembers that
+  `artifactChanged()` supplied its current geometry, so the `manifestChanged()`
+  that immediately follows trusts it instead of comparing `mtime`.
 - The browser bundle the floor serves is a production build, where React runs
   each effect once. A mount that cannot survive being torn down and re-run is
   therefore invisible to every test that exercises the shipped bundle, and

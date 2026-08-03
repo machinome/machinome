@@ -42,7 +42,7 @@ in the PRD.
 - `solid-node`
   - Source: `main` @ `acf4292`
   - Sprint branch: `sprint-003`
-  - Content: `582da89`
+  - Content: `b9279ea`
   - Worktree: `solid-node/WTs/sprint-003`
   - Shop link: `WTs/sprint-003/solid-node`
 
@@ -107,6 +107,28 @@ in the PRD.
 
 ## Paired validation
 
+- The double-fetch finding S2 recorded is fixed 2026-08-03, on explicit pilot
+  direction, as a direct framework commit rather than a full F-cycle --
+  `db59935` on `main` is the precedent for a bounded framework fix committed
+  without a proposal cycle. Framework `sprint-003` advances from `582da89` to
+  `b9279ea`: a `WidgetTree` node now remembers that `artifactChanged()`
+  supplied its current geometry, and the `manifestChanged()` that immediately
+  follows trusts it instead of comparing `mtime`, consuming the memory either
+  way so a later genuine change is still detected. Added as a scenario to
+  `viewer-package`'s geometry-identity requirement rather than a proposal
+  directory. Reproduced red with a `tree.test.ts` case before the fix and
+  green after; framework `pytest tests` 395 passed with 5 subtests;
+  `openspec validate --all --strict` 13 specs. ADR 0013's recorded finding is
+  updated to record the fix rather than the open question.
+  Re-verified live against the rebuilt widget bundle on the same scaffolded
+  project: one edit now produces exactly one geometry fetch, where it
+  previously produced two. Combined validation re-run from `WTs/sprint-003`
+  against the advanced framework content: shop `pytest tests` 151 passed, 1
+  skipped, 24 subtests; `tests/dev-env-test.sh` all passed; `openspec validate
+  --all --strict` 13 specs. The cycle worktree `WTs/sprint-003-floor-in-place-model-updates`,
+  whose framework link tracks the same branch, was re-run in full against the
+  fixed bundle: 13/13 `test_shop_lifecycle_e2e.py` passed, including the
+  development-bundle guard that needs `node_modules`.
 - S2 integrated 2026-08-03 by fast-forwarding shop `sprint-003` from
   `659f5fa` to `5e2c56a`, after rechecking that the cycle still descended from
   that head. Combined validation passed from `WTs/sprint-003` against its
