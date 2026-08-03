@@ -37,7 +37,7 @@ in the PRD.
 - `solid-node-shop`
   - Source: `main` @ `7397c71`
   - Sprint branch: `sprint-003`
-  - Content: `6817520`
+  - Content: `659f5fa`
   - Worktree: `WTs/sprint-003`
 - `solid-node`
   - Source: `main` @ `acf4292`
@@ -99,13 +99,25 @@ in the PRD.
   - Story: `STORY-007`
   - Requires: `solid-node` / `viewer-targeted-update`,
     `solid-node-shop` / `floor-artifact-event-pipeline`
-  - Branch: pending
+  - Branch: `sprint-003-floor-in-place-model-updates` from `659f5fa`
+  - Worktree: `WTs/sprint-003-floor-in-place-model-updates`
   - Commits: pending
   - Archive: pending
   - Integrated: pending
 
 ## Paired validation
 
+- S2 opened 2026-08-03. Branch `sprint-003-floor-in-place-model-updates` and
+  worktree `WTs/sprint-003-floor-in-place-model-updates` created from the shop
+  `sprint-003` head `659f5fa`, which is also the shop content commit: the S1
+  defect fix carried `floor/watcher.py`, ADR 0013 and a baseline spec, so the
+  Content field above is corrected from `6817520` to `659f5fa`. Both recorded
+  dependencies are satisfied: F3 `viewer-targeted-update` is integrated at
+  framework `f34ddc6`, an ancestor of framework `sprint-003` head `582da89`,
+  and S1 is integrated at `6817520`, an ancestor of `659f5fa`. The framework
+  link `WTs/sprint-003/solid-node` resolves to the registered framework sprint
+  worktree at `582da89`, whose widget package reports
+  `solidNodeViewerApi: 2` — the interface this cycle consumes.
 - S1 defect fixed 2026-08-03 on `sprint-003`. Review of the integrated S1 found
   the source handler dispatching on `on_any_event`, so inotify's `opened` and
   `closed_no_write` events from a build's own source reads triggered the next
