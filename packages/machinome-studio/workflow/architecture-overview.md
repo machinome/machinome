@@ -102,9 +102,11 @@ plugins do not execute. Archived authenticated verification proves exact role
 contract composition and one corrected tool turn with native ancestry and one
 portable completion on the tested 1.18.11 runtime.
 
-The initial operational matrix is Builder/Foreman/Machinist/Librarian:
-Claude `sonnet`, Codex `gpt-5.6-terra`, medium effort; Designer uses Claude
-`opus` and Codex `gpt-5.6-sol`, also medium effort. Hermes explicitly inherits
+The operational matrix is Builder/Foreman/Machinist/Librarian: Claude
+`sonnet`, medium effort. On Codex, Builder uses `gpt-5.3-codex-spark` at high
+effort while Foreman/Machinist/Librarian use `gpt-5.6-terra` at medium effort;
+Designer uses Claude `opus` and Codex `gpt-5.6-sol`, both at medium effort.
+Hermes explicitly inherits
 all three controls. OpenCode instead inherits its operator model and variant
 under its adapter-owned compatibility policy. These choices are backend
 configuration, not broker semantics.
