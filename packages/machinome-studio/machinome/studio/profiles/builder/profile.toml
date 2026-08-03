@@ -10,8 +10,8 @@ prompt = "builder.md"
 assigns = []
 
 [agents.backends.codex]
-model = "gpt-5.6-terra"
-effort = "medium"
+model = "codex-5.3-spark"
+effort = "high"
 tools = "inherit"
 
 [agents.backends.claude]
