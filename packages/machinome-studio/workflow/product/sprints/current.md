@@ -88,7 +88,8 @@ in the PRD.
     without a manual reload; regression from the Snowman floor validation.
   - Story: `STORY-007`
   - Requires: `solid-node-shop` / `floor-artifact-event-pipeline`
-  - Branch: pending
+  - Branch: `sprint-003-reliable-live-model-event-delivery` from `233cdad`
+  - Worktree: `WTs/sprint-003-reliable-live-model-event-delivery`
   - Commits: pending
   - Archive: pending
   - Integrated: pending
