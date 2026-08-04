@@ -16,7 +16,7 @@ in the PRD.
 
 ## Stories
 
-- [ ] STORY-007 - See the model change as it is made
+- [x] STORY-007 - See the model change as it is made
   - Source: `docs/product/stories/STORY-007-see-the-model-change-as-it-is-made.md`
   - Derived from: `docs/product/sprints/PRD.md`
 
@@ -118,6 +118,20 @@ in the PRD.
 
 ## Paired validation
 
+- Final archival validation passed 2026-08-04 from `WTs/sprint-003` against its
+  linked `solid-node` checkout, for shop content `037d44b` at sprint head
+  `e4dd677` and framework content `b9279ea`: shop `pytest tests` 153 passed, 1
+  skipped, 25 subtests; `tests/dev-env-test.sh` all passed; shop `openspec
+  validate --all --strict` 13 passed; framework `pytest tests` 395 passed;
+  framework `openspec validate --all --strict` 13 passed. The single skip
+  remains `test_a_development_build_mounts_the_viewer_exactly_once`, which
+  needs `floor/frontend/node_modules` absent from an integration worktree by
+  design and which passed in the cycle worktree. Shop `sprint-003` had by then
+  absorbed `main` through three merges (`0528f9d`, `b7c8b6c`, `e4dd677`)
+  carrying `ab9375b`, `138866f` and `38948ff` — builder profile and
+  documentation work outside this sprint's scope, which changes no sprint
+  content commit; this run confirms the paired state still holds with them
+  present.
 - Live-event repair integrated 2026-08-03. Combined validation passed from
   `WTs/sprint-003` against shop content `037d44b` and framework content
   `b9279ea`: focused Floor API and lifecycle browser tests passed; the
@@ -332,4 +346,23 @@ in the PRD.
 
 ## Outcome
 
-Completed when the sprint is archived.
+Completed 2026-08-04. The maker watches a model take shape: a part that
+finishes rebuilding appears on its own, the rest of the model and the camera
+stay put, and nothing reloads. All six cycles are integrated — three framework
+cycles establishing build mutual exclusion, per-artifact atomic publication
+into a single `_build` directory, and a viewer interface for targeted artifact
+and manifest updates; three shop cycles carrying the floor's two watchers and
+content-only event stream, the browser's in-place model updates, and the
+delivery repair that replays publications after the browser's run snapshot. A
+build started from a terminal outside the shop reaches the browser the same
+way an agent's build does.
+
+Four defects were found by exercising real projects rather than by the suites,
+and each was fixed and covered before archival: a manifest left a build behind
+when the candidate directory disappeared; a source handler dispatching on
+`on_any_event` turned a build's own reads into 14 further builds; a mount
+effect sharing a re-entry ref across instances left StrictMode with no viewer
+at all; and one edit fetched the changed artifact twice. The last of these was
+fixed as a direct framework commit on explicit pilot direction.
+
+Final content: shop `037d44b`, framework `b9279ea`.
