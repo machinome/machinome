@@ -131,6 +131,76 @@ human display label and SHALL be valid with Codex, Claude, and Hermes.
 - **WHEN** the `fordesmac` profile is validated
 - **THEN** its complete standing roster contains Foreman, Designer, Machinist, and Librarian with only the declared Foreman-specialist assignment and report edges
 
+### Requirement: A released drawing states continuity, transmission, and body counts
+Within the `fordesmac` profile, a drawing Designer releases SHALL name every
+separately manufactured item the slice releases together with the number of
+printed bodies it must resolve to, normally one. Wherever a component is built
+from several features, the drawing SHALL state material continuity as a
+contract: which named features fuse into one printed body, and the minimum weld
+at each junction. For a pair that transmits motion, the drawing SHALL state the
+pitch geometry, the tooth phase relation, and the backlash window; ratio and
+centre distance alone MUST NOT stand as the specification of a driving pair.
+
+#### Scenario: A component is built from several features
+- **WHEN** Designer releases a drawing for a component whose features are manufactured separately, such as blades on a hub or a boss on a plate
+- **THEN** the drawing names which features fuse into one printed body and the minimum overlap at each junction
+
+#### Scenario: A drawing releases a driving pair
+- **WHEN** Designer releases a drawing specifying a pair that transmits motion
+- **THEN** the drawing states the pitch geometry, the backlash window, and which tooth of one member sits in which gap of the other at a named instant
+
+#### Scenario: A drawing releases manufactured items
+- **WHEN** Designer releases any drawing
+- **THEN** each separately manufactured item it releases is named with the number of printed bodies it must resolve to
+
+### Requirement: Machining evidence is inspected at the defect's scale
+Within the `fordesmac` profile, before declaring an increment done Machinist
+SHALL render and inspect an isometric of the assembly, a view aligned with the
+slice's important interface, and a close-up framed on that interface itself, at
+a scale where a fraction of a millimetre is legible. A whole-assembly view
+alone MUST NOT be accepted as evidence for a defect it cannot resolve.
+
+#### Scenario: The slice delivers a junction or a mesh
+- **WHEN** Machinist finishes building an increment whose interface is a gear mesh, a weld, or a similar small feature
+- **THEN** the inspected snapshots include a close-up framed on that interface at a scale where a fraction of a millimetre is legible, alongside the isometric and axis views
+
+### Requirement: Machining guidance requires both geometric discipline safety nets
+The shared machining skill exposed to runtime agents SHALL state connectivity
+discipline alongside adjacency discipline and SHALL treat neither as optional
+nor as a substitute for the other: every project root carries both a sweep
+asserting that no two parts intersect and a sweep asserting that every part is
+one connected body. It SHALL state that a rigid part is exactly one connected
+solid, that watertightness does not imply connectedness, that a backend union
+of solids that do not overlap yields a compound rather than failing, that
+features which must be one piece interpenetrate by a stated weld, and that a
+part deliberately made of several bodies declares that count.
+
+#### Scenario: An agent follows the machining skill on a new project
+- **WHEN** a runtime agent sets up a project's root contracts from the shared machining skill
+- **THEN** the skill requires both the pairwise non-intersection sweep and the tree-wide connectivity sweep at the project root
+
+#### Scenario: A part is built from separately rendered features
+- **WHEN** a runtime agent builds one printed part from several solids
+- **THEN** the skill requires them to overlap by a stated weld and the junction to be asserted, rather than relying on watertightness or a backend union
+
+### Requirement: Machining guidance requires proven transmission and measured contracts
+The shared machining skill SHALL require a driving pair to be shown to drive
+rather than inferred from a tooth-count ratio and non-interference: engagement
+is a paired perturbation contract in which the driven member fouls its mate
+just past the backlash in both directions and stays free within it, with the
+backlash angle derived in the test from the drawing rather than from the node.
+It SHALL require meshing geometry to be sampled over one tooth pitch rather
+than over the animation cycle, and SHALL require a contract to assert measured
+geometry rather than an attribute the node code sets.
+
+#### Scenario: A project contracts a gear pair
+- **WHEN** a runtime agent writes the contracts for a pair that transmits motion
+- **THEN** the skill requires the paired blocked-beyond and free-within engagement contracts and a phase relation taken from the drawing, not a ratio computed from tooth counts
+
+#### Scenario: A contract is written against node metadata
+- **WHEN** a runtime agent asserts an attribute the node code itself sets
+- **THEN** the skill treats that as no contract at all, since it cannot fail for any reason a maker cares about
+
 ### Requirement: Builder tests a new leaf only after that leaf exists
 Builder SHALL use a disassembled-leaf-first workflow for each new leaf. It
 SHALL first create and wire the leaf into the model in a deliberately
