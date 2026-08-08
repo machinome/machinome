@@ -13,10 +13,15 @@ transmit torque) are expressed as tests over the rendered meshes.
 
 Commands (run from the project directory, with the project's venv):
 
-    solid build root            # build once and publish the model
+    solid build                 # build once and publish the model
     solid test root/<node>.py   # run tests for one node (passing the
                                 # test_*.py path works too)
-    solid snapshot root -o out.png --autocenter   # render an image
+    solid snapshot -o out.png --autocenter   # render an image
+
+Commands take an optional node reference — `package.module:Class`,
+`path/to/file.py`, or `path/to/file.py:Class`. Omit it and the project's
+model from `[tool.solid-node]` in `pyproject.toml` is used. A directory is
+not a reference.
 
 `solid develop` also exists, and serves a live viewer that rebuilds on save.
 Do not run it here: the shop already watches the project, rebuilds it, and
@@ -292,7 +297,7 @@ def test_no_two_parts_intersect(self):   # pairs x instants booleans
    change the model the maker sees is not done. You run no server;
    verify from a finite build:
 
-       solid build root
+       solid build
 
    It exits nonzero if the build fails, and on success publishes the
    whole current model. Read `viewer.json` in the build directory
@@ -304,7 +309,7 @@ def test_no_two_parts_intersect(self):   # pairs x instants booleans
 6. LOOK at the result — a correct build tree does not mean the model
    looks right, and the user judges pixels. Render and read images:
 
-       solid snapshot root -o out.png --autocenter --time 0.1
+       solid snapshot -o out.png --autocenter --time 0.1
 
    Render at least an isometric view and one view along the axis that
    the new component's alignments live on, and inspect them before

@@ -38,7 +38,7 @@ class RoleContractTest(unittest.TestCase):
     def test_machinist_uses_finite_builds_not_a_live_model_process(self) -> None:
         machinist = (ROOT / "profiles" / "fordesmac" / "machinist.md").read_text()
         self.assertNotIn("solid develop", machinist)
-        self.assertIn("solid build root", machinist)
+        self.assertIn("solid build", machinist)
         self.assertIn("--sender\nmachinist --recipient foreman", machinist)
 
 

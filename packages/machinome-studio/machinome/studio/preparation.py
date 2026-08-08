@@ -43,7 +43,9 @@ def artifact_root_for(project_root: Path) -> Path:
 
 
 def build_command(solid_command: str | Sequence[str]) -> tuple[str, ...]:
-    return (*_command(solid_command), "build", "root")
+    # No node reference: the framework resolves the project's model from
+    # [tool.solid-node] in the project's pyproject.toml.
+    return (*_command(solid_command), "build")
 
 
 def build_environment(shop_root: Path | None) -> dict[str, str] | None:

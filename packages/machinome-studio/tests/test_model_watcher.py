@@ -44,7 +44,7 @@ class WatcherTestCase(unittest.IsolatedAsyncioTestCase):
         await self.build_once()
 
     async def build_once(self) -> None:
-        process = await asyncio.create_subprocess_exec(*SOLID_COMMAND, "build", "root", cwd=self.project)
+        process = await asyncio.create_subprocess_exec(*SOLID_COMMAND, "build", cwd=self.project)
         self.assertEqual(await process.wait(), 0)
 
     async def wait_for(self, events: list[tuple[str, dict[str, object]]], kind: str, *, timeout: float = 3) -> dict[str, object]:

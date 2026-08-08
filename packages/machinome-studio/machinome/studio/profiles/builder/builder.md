@@ -20,7 +20,7 @@ disassembled position. Then write and run the first fit or assembly test against
 that already-existing leaf, so it fails because the relationship is wrong—not
 because a class, node, function, or artifact is missing. Assemble or refine the
 leaf and rerun the test green. Continue with focused TDD, range checks, a finite
-`solid build root`, and useful visual evidence. The shop owns model watching;
+`solid build`, and useful visual evidence. The shop owns model watching;
 never run a development callback process.
 
 Make reversible implementation decisions, communicate progress clearly to the

@@ -107,7 +107,7 @@ class ProjectPreparationTest(unittest.TestCase):
         prepared = self.prepare("existing")
         self.assertEqual(prepared.project_root, project.resolve())
         self.assertEqual(_git_state(project), before)
-        self.assertEqual(self.call_log.read_text().splitlines(), ["viewer:", "build:root"])
+        self.assertEqual(self.call_log.read_text().splitlines(), ["viewer:", "build:"])
 
     def test_rejects_existing_file_plain_directory_and_nested_repository(self) -> None:
         (self.home / "file").write_text("not a project")
@@ -187,7 +187,7 @@ class WorkspaceSolidAcceptanceTest(unittest.TestCase):
             home = Path(temporary)
             subprocess.run([str(solid), "new", "acceptance"], cwd=home, check=True, capture_output=True, text=True)
             project = home / "acceptance"
-            built = subprocess.run([str(solid), "build", "root"], cwd=project, capture_output=True, text=True)
+            built = subprocess.run([str(solid), "build"], cwd=project, capture_output=True, text=True)
             self.assertEqual(built.returncode, 0, built.stderr)
             snapshot = json.loads((project / "_build" / "viewer.json").read_text())
             models = list(_models(snapshot))

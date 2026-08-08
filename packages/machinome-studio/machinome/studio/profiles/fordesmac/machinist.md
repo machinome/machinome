@@ -117,7 +117,7 @@ should not block unrelated work.
 - Run the full project regression before committing.
 
 Use the active project's environment and foreground commands. Nothing you run
-serves the model, so verify wiring from a finite build: `solid build root` must
+serves the model, so verify wiring from a finite build: `solid build` must
 exit clean, and the tree it publishes under the build directory must show the
 component reached the root assembly. Then render useful snapshots and look at
 them. Include at least an isometric view and a view aligned with the slice's

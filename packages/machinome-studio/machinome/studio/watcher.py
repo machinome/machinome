@@ -151,7 +151,7 @@ class ModelWatcher(FileSystemEventHandler):
             self._source_changed(trigger)
 
     async def _rebuild(self, trigger: str) -> None:
-        command = (*self.solid_command, "build", "root")
+        command = (*self.solid_command, "build")
         environment = {**os.environ, **self.extra_environment}
         try:
             process = await asyncio.create_subprocess_exec(
