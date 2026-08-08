@@ -62,6 +62,12 @@ instance attributes. Never create children inside `render()` (render runs
 once per keyframe; identity must persist), and never as class attributes
 (a second instantiation would re-apply their placement operations).
 
+A leaf's `render()` may return several solids and nothing checks that
+they touch. If they are one printed part, union them with real
+overlap; if they are not, they are separate nodes. A backend "union"
+of solids that do not overlap does not fail — it hands back a
+compound, which exports as one file holding several loose pieces.
+
 A file with exactly one node class needs nothing extra; a file defining
 several must name the main one with a module attribute after the class
 definitions — `NODE = MyAssembly` — or the loader fails loudly.
@@ -141,8 +147,9 @@ snake_case alias of the test class name: `SpurGearTest` gets
 `assertIntersecting`, `assertInside`, `assertClose`, `assertFar`,
 `assertIntersectVolumeAbove`, `assertIntersectVolumeBelow`,
 `assertBlockedBeyond`, `assertFreeWithin`,
-`assertNoPairwiseIntersections` — all take nodes; `node.mesh` is a
-trimesh in world coordinates.
+`assertNoPairwiseIntersections`, `assertOneBody`, `assertBodyCount`,
+`assertJoined`, `assertNoDisconnectedParts` — all take nodes;
+`node.mesh` is a trimesh in world coordinates.
 
 - Sweep the animation with `@testing_steps(n, start=..., end=...)` or pin
   an instant with `@testing_instant(t)`. Sweep only the period over which
@@ -209,14 +216,65 @@ Contract design principles:
   profiles shrink holes); model them as small locational clearances.
   `assertIntersectVolume*` is for detecting contact, never for
   legitimizing overlap.
-- Every project root gets the discipline safety net — one test that
-  walks the assembled tree and asserts pairwise non-intersection over
-  sampled instants, covering any adjacency nobody thought to test:
+- CONNECTIVITY DISCIPLINE, its twin, and never skip it: a rigid part
+  is exactly ONE connected solid. Adjacency discipline alone is a
+  one-sided force — it pushes parts APART, and a part that has fallen
+  into floating fragments satisfies every non-interference contract in
+  the project. Nothing else reports it either: watertightness is a
+  per-shell property, so a mesh of five disjoint closed shells is
+  watertight, has positive volume, exports a valid STL, and renders in
+  the viewer looking like a part. Features that must be one piece have
+  to INTERPENETRATE by a stated weld (~0.5mm is a sound default);
+  solids that abut tangentially, or that stop a couple of millimetres
+  short of each other, stay separate bodies. Assert
+  `assertOneBody(part)` for each printed part whose features are
+  built separately, and `assertJoined(a, b, min_weld_volume=...)`
+  where the drawing names a junction — the one place two solids are
+  REQUIRED to share volume, and it applies only within one printed
+  part. A part deliberately made of several bodies declares
+  `bodies = N`; a `FusionNode` declares 1 and the build enforces it.
+  The classic generators: a feature located from a typed radius
+  instead of from the surface it must land on, and a sub-feature
+  placed in its own node so the gap never even looks like a gap.
+- A DRIVING PAIR must be shown to drive. Non-interference plus a ratio
+  computed from tooth counts proves nothing — two gears a millimetre
+  apart satisfy both, and so do two gears whose teeth sweep straight
+  through each other. Engagement is a perturbation contract:
+  `assertBlockedBeyond(driven, backlash_angle + margin, driver)`
+  paired with `assertFreeWithin(driven, backlash_angle, driver)`. The
+  driven member must foul its mate in BOTH directions just past the
+  backlash and stay clear within it. Derive `backlash_angle` in the
+  test from the drawing's linear backlash and pitch radius, never from
+  the node. A pair also needs a PHASE relation — a tooth of one member
+  sitting in a gap of the other — and the drawing owns it; without a
+  phase term the two members turn at exactly the right speeds through
+  each other. Teeth built as separate primitives are unioned to the
+  blank and located from the blank's surface AT THAT STATION (the cone
+  or cylinder radius where the tooth sits), which is connectivity
+  discipline applied to the one feature most often typed by eye.
+- Sample MESHING geometry over one tooth pitch, not over the animation
+  cycle. `@testing_steps(3)` across a full cycle samples three
+  arbitrary tooth phases and misses interference at every other one;
+  it is not coverage for anything whose geometry repeats per tooth.
+- A contract asserts GEOMETRY, not a claim about it. `assertTrue(
+  part.is_open_topped)` and `assertEqual(part.foot_count, 6)` test
+  that an attribute the node code sets still holds the value the node
+  code set — they cannot fail for any reason a maker cares about.
+  Metadata may LOCATE or PARAMETERIZE a measurement; the assertion
+  itself measures the mesh.
+- Every project root gets BOTH discipline safety nets, covering the
+  adjacencies and the junctions nobody thought to test. Neither is
+  optional and neither substitutes for the other: the first says
+  parts stay out of each other, the second says each part holds
+  together.
 
 ```python
 @testing_steps(4)   # scale instants down (3) past ~20 leaves: cost is
 def test_no_two_parts_intersect(self):   # pairs x instants booleans
     self.assertNoPairwiseIntersections(self.root_node)
+
+def test_every_part_is_one_body(self):   # geometry, not pose: one
+    self.assertNoDisconnectedParts(self.root_node)   # instant is enough
 ```
 
 - Preconditions fail at construction, not in a mesh test (e.g. a gear

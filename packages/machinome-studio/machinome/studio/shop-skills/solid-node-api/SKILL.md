@@ -66,6 +66,11 @@ Class attributes:
 - `fn = N`
 - `optimize` — defaults true; false preserves unflattened OpenSCAD viewer data
 - `rigid` — true for leaves and fusions, false for assemblies
+- `bodies` — how many connected solids this node's built mesh must
+  have, or `None` (the default) to leave it unchecked. The build
+  refuses to publish a model whose node violates its declared count.
+  `FusionNode` declares `1`, so a fusion whose children do not
+  actually overlap fails the build instead of arriving in pieces.
 
 Instance surface:
 
@@ -122,7 +127,22 @@ assertBlockedBeyond(node, amount, against, axis=None,
 assertFreeWithin(node, amount, against, axis=None,
                  volume_epsilon=0.0, along=None, directions='both')
 assertNoPairwiseIntersections(root, volume_epsilon=0.0)
+assertOneBody(node)
+assertBodyCount(node, expected)
+assertJoined(node1, node2, min_weld_volume=0.0)
+assertNoDisconnectedParts(root)
 ```
+
+The connectivity assertions count connected solids in a node's mesh.
+`assertOneBody` is the ordinary contract for a printed part;
+`assertBodyCount` is for a part deliberately made of several bodies;
+`assertNoDisconnectedParts` walks the tree and holds every leaf to one
+body, or to the count its `bodies` attribute declares. `assertJoined`
+requires two features to fuse into a single body — the one case where
+sharing volume is required rather than forbidden — and
+`min_weld_volume` (mm³) additionally requires that shared volume to be
+substantial. Watertightness does not imply connectedness: a mesh of
+several disjoint closed shells is watertight and exports normally.
 
 `assertClose` bounds every vertex of the second node within a maximum distance
 of the first; `assertFar` requires every vertex to remain at least the minimum
