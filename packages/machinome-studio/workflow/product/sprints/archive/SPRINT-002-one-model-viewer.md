@@ -30,7 +30,7 @@ appears everywhere.
 
 ## Repositories
 
-- `solid-node-shop`
+- `solid-node-studio`
   - Source: `main` @ `595eb00`
   - Sprint branch: `sprint-002`
   - Content: `8f31328`
@@ -53,7 +53,7 @@ appears everywhere.
   - Commits: `69f9c2e` (planning), `b1e05b9` (implementation/archive)
   - Archive: `openspec/changes/archive/2026-08-01-unified-node-serializer`
   - Integrated: framework `sprint-002` @ `b1e05b9`
-- `solid-node-shop` / dev-env frontend package discovery
+- `solid-node-studio` / dev-env frontend package discovery
   - Intent: a framework bench can build any viewer package without installing
     inside a worktree; brief section 5 (S1)
   - Story: `STORY-006`
@@ -84,7 +84,7 @@ appears everywhere.
     `369977c` is the commit on the branch.
   - Archive: `openspec/changes/archive/2026-08-02-viewer-bundle-delivery`
   - Integrated: framework `sprint-002` @ `5c14acf`
-- `solid-node-shop` / `floor-uses-framework-viewer`
+- `solid-node-studio` / `floor-uses-framework-viewer`
   - Intent: the shop floor shows models through the framework's viewer instead
     of its own copy; brief section 5 (S2)
   - Story: `STORY-006`
@@ -104,7 +104,7 @@ appears everywhere.
   - Commits: `42299be` (planning), `acf4292` (implementation/archive)
   - Archive: `openspec/changes/archive/2026-08-02-dev-viewer-on-shared-package`
   - Integrated: framework `sprint-002` @ `acf4292`
-- `solid-node-shop` / `adjust-ignore-framework-link`
+- `solid-node-studio` / `adjust-ignore-framework-link`
   - Story: none - sprint machinery
   - Requires: none
   - Branch: `sprint-002-adjust-ignore-framework-link` from `a0d74d3`
@@ -245,7 +245,7 @@ shop `sprint-002` into `main` at merge `0fc689f`, framework `sprint-002` into
 `595eb00`, so fast-forward archive integration was unavailable, as this record
 anticipated; the archive commit reaches `main` through an ordinary merge.
 
-The `Content` field for `solid-node-shop` above was stale at `5a93a4b` and is
+The `Content` field for `solid-node-studio` above was stale at `5a93a4b` and is
 corrected to `8f31328`, the last shop content commit; every later commit on
 `sprint-002` was evidence-only. Some cycle hashes in this record predate the
 recorded rebase and no longer resolve on the branch.

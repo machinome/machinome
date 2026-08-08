@@ -115,6 +115,11 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.goto(self.url("/"))
         self.page.get_by_role("region", name="Model").get_by_role("img", name="Functional model").wait_for(timeout=5_000)
 
+    def test_workspace_presents_the_solidnode_studio_brand(self) -> None:
+        self.page.goto(self.url("/"))
+        self.assertEqual(self.page.title(), "SolidNode Studio")
+        self.assertEqual(self.page.get_by_text("SolidNode Studio", exact=True).count(), 1)
+
     def test_agent_panel_updates_live_and_deferred_rail_items_do_not_navigate(self) -> None:
         for role, label in (("foreman", "Foreman"), ("designer", "Designer"), ("machinist", "Machinist"), ("librarian", "Librarian")):
             _request(self.url("/api/runs/shop-floor/agents"), "POST", {"role": role, "label": label})

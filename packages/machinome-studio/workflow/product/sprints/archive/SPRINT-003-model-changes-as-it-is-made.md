@@ -34,7 +34,7 @@ in the PRD.
 
 ## Repositories
 
-- `solid-node-shop`
+- `solid-node-studio`
   - Source: `main` @ `7397c71`
   - Sprint branch: `sprint-003`
   - Content: `037d44b`
@@ -82,18 +82,18 @@ in the PRD.
   - Commits: `57521bf`, `f34ddc6`
   - Archive: `openspec/changes/archive/2026-08-02-viewer-targeted-update/`
   - Integrated: `sprint-003` @ `f34ddc6`
-- `solid-node-shop` / `reliable-live-model-event-delivery`
+- `solid-node-studio` / `reliable-live-model-event-delivery`
   - Intent: an already-open browser receives every published model manifest
     after its initial run snapshot, so an assembly-to-fusion change appears
     without a manual reload; regression from the Snowman floor validation.
   - Story: `STORY-007`
-  - Requires: `solid-node-shop` / `floor-artifact-event-pipeline`
+  - Requires: `solid-node-studio` / `floor-artifact-event-pipeline`
   - Branch: `sprint-003-reliable-live-model-event-delivery` from `233cdad`
   - Worktree: `WTs/sprint-003-reliable-live-model-event-delivery`
   - Commits: `5f5cb96` planning, `037d44b` implementation and archive
   - Archive: `openspec/changes/archive/2026-08-03-reliable-live-model-event-delivery/`
   - Integrated: `sprint-003` @ `037d44b`
-- `solid-node-shop` / `floor-artifact-event-pipeline`
+- `solid-node-studio` / `floor-artifact-event-pipeline`
   - Intent: two watchers with distinct jobs, an artifact route with no symlink
     to re-resolve, and SSE carrying the artifact path and nothing else; PRD
     D3, D4, section 3.3
@@ -104,12 +104,12 @@ in the PRD.
   - Commits: `534b50b` planning, `6817520` implementation and archive
   - Archive: `openspec/changes/archive/2026-08-02-floor-artifact-event-pipeline/`
   - Integrated: `sprint-003` @ `6817520`
-- `solid-node-shop` / `floor-in-place-model-updates`
+- `solid-node-studio` / `floor-in-place-model-updates`
   - Intent: the browser updates the model in place through the framework
     viewer, answering PRD defects A and B by construction; PRD section 6
   - Story: `STORY-007`
   - Requires: `solid-node` / `viewer-targeted-update`,
-    `solid-node-shop` / `floor-artifact-event-pipeline`
+    `solid-node-studio` / `floor-artifact-event-pipeline`
   - Branch: `sprint-003-floor-in-place-model-updates` from `659f5fa`
   - Worktree: `WTs/sprint-003-floor-in-place-model-updates`
   - Commits: `c06cc78` planning, `5e2c56a` implementation and archive

@@ -94,8 +94,8 @@ class CodexBackend:
             "initialize",
             {
                 "clientInfo": {
-                    "name": "solid-node-shop-orchestrator",
-                    "title": "solid-node shop orchestrator",
+                    "name": "solid-node-studio-orchestrator",
+                    "title": "SolidNode Studio orchestrator",
                     "version": "0.1.0",
                 },
                 "capabilities": {"experimentalApi": True},
@@ -127,7 +127,7 @@ class CodexBackend:
                 "sandbox": "danger-full-access",
                 "approvalPolicy": "never",
                 "runtimeWorkspaceRoots": [str(project)],
-                "serviceName": f"solid-node-shop-{role}",
+                "serviceName": f"solid-node-studio-{role}",
             },
         )
         thread_id = str(result["thread"]["id"])

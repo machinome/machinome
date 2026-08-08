@@ -1,7 +1,7 @@
 ## Why
 
 Sprint 1 defines shop-floor as the browser-based interface for the AI-first
-solid-node shop. A maker should use Codex to open and close that interface,
+SolidNode Studio. A maker should use Codex to open and close that interface,
 instead of operating the shop-floor service themselves.
 
 This change establishes that entry and exit point as the first independent

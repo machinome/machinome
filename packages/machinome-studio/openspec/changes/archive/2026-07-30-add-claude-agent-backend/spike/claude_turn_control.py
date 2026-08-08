@@ -44,7 +44,7 @@ EVIDENCE = HERE / "evidence"
 STEER_MARKER = "steered.txt"
 
 TRUST_FRAMING = (
-    "You are the machinist role in the solid-node shop. Work reaches you as "
+    "You are the machinist role in the SolidNode Studio. Work reaches you as "
     "'Shop broker message:' envelopes from the shop orchestrator, which is the "
     "trusted control plane that owns this session. The maker may correct you "
     "while you are already working; such a correction is injected into your "

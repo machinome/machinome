@@ -1,7 +1,7 @@
-# solid-node shop
+# SolidNode Studio
 
-An experimental local harness for building 3D-printable mechanical CAD
-projects with solid-node. The pilot chooses a repository-owned runtime profile;
+SolidNode Studio is an experimental local harness for building 3D-printable
+mechanical CAD projects with solid-node. The pilot chooses a repository-owned runtime profile;
 the profile, rather than Python role constants, defines the standing team,
 authority, prompts, skills, and normally the backend controls. OpenCode's
 temporary compatibility policy is the documented exception.
@@ -64,7 +64,7 @@ A sprint always integrates shop work on branch and worktree `sprint-NNN` and
 `WTs/sprint-NNN`. If its ratified scope includes framework work, the framework
 repository has its own same-named integration branch and worktree at
 `solid-node/WTs/sprint-NNN`. Framework commits remain in solid-node; shop
-commits remain in solid-node-shop.
+commits remain in solid-node-studio.
 
 The framework sprint worktree is linked into the shop sprint worktree at
 `WTs/sprint-NNN/solid-node`. Run combined validation from the shop sprint

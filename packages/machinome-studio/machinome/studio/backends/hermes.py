@@ -150,8 +150,8 @@ class HermesBackend:
                 "protocolVersion": 1,
                 "clientCapabilities": {},
                 "clientInfo": {
-                    "name": "solid-node-shop-orchestrator",
-                    "title": "solid-node shop orchestrator",
+                    "name": "solid-node-studio-orchestrator",
+                    "title": "SolidNode Studio orchestrator",
                     "version": "0.1.0",
                 },
             },

@@ -9,17 +9,20 @@ context, artifact inspection, and foreman conversation.
 
 ### Requirement: The shop floor provides a structured browser workspace
 The shop floor SHALL present the maker with one full-height browser workspace
-at the shop-floor browser location. On a desktop browser, it SHALL provide a
-title bar and status bar surrounding an activity rail, an agent context panel,
-a central artifact area, and a right conversation area. The activity rail SHALL
-show Model as selected and SHALL show Files, Agents, Sheets, and Code as
-hoverable, non-interactive deferred areas. The status bar SHALL be visible and
-need not contain status content until that information is available.
+at the shop-floor browser location. The browser document title and visible
+workspace title bar SHALL identify the product as `SolidNode Studio`. On a
+desktop browser, the workspace SHALL provide a title bar and status bar
+surrounding an activity rail, an agent context panel, a central artifact area,
+and a right conversation area. The activity rail SHALL show Model as selected
+and SHALL show Files, Agents, Sheets, and Code as hoverable, non-interactive
+deferred areas. The status bar SHALL be visible and need not contain status
+content until that information is available.
 
 #### Scenario: A maker opens the shop floor
 - **WHEN** the maker opens the running shop-floor browser location
-- **THEN** the page shows the activity rail, agent context panel, artifact area,
-  and conversation area within the desktop workspace shell
+- **THEN** the browser and visible title bar identify `SolidNode Studio`, and
+  the page shows the activity rail, agent context panel, artifact area, and
+  conversation area within the desktop workspace shell
 
 #### Scenario: A maker views the desktop workspace
 - **WHEN** the maker opens the shop floor in a desktop browser window

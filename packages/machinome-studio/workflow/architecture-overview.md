@@ -1,6 +1,6 @@
-# Shop architecture overview
+# SolidNode Studio architecture overview
 
-The solid-node shop is a local agent harness for mechanical CAD projects. A
+SolidNode Studio is a local agent harness for mechanical CAD projects. A
 human pilot owns intent and consequential choices; the runtime opens a
 repository-owned, validated team profile for one named project. `AGENTS.md`
 governs how this repository is changed. This document describes the running

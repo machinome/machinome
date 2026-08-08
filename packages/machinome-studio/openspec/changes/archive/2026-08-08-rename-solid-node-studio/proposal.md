@@ -1,7 +1,7 @@
 ## Why
 
-The project has been renamed from solid-node-shop to solid-node-studio, but the
-repository still exposes the old identity throughout its package metadata,
+The project has been renamed to solid-node-studio, but the repository still
+exposes its former identity throughout package metadata,
 plugin manifests, runtime integration identifiers, documentation, and user
 interface. The active product must present one coherent identity: SolidNode
 Studio to people and `solid-node-studio` where a machine-readable name is
@@ -9,8 +9,8 @@ required.
 
 ## What Changes
 
-- **BREAKING**: Rename the Python distribution and plugin identifier from
-  `solid-node-shop` to `solid-node-studio`.
+- **BREAKING**: Rename the Python distribution and plugin identifier to
+  `solid-node-studio`.
 - Replace active runtime service, agent, temporary-resource, and integration
   identifiers derived from the former product name.
 - Present the customer-facing product name as “SolidNode Studio” in the browser,

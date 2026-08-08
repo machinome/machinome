@@ -58,7 +58,7 @@ class OpenCodeBackend:
         self.stop_timeout = stop_timeout
         self.port = self._unused_port()
         self.password = secrets.token_urlsafe(32)
-        self.agent_name = f"solid-node-shop-{secrets.token_hex(6)}"
+        self.agent_name = f"solid-node-studio-{secrets.token_hex(6)}"
 
         self.process: asyncio.subprocess.Process | None = None
         self.notifications: asyncio.Queue[BackendEvent] = asyncio.Queue()
@@ -93,7 +93,7 @@ class OpenCodeBackend:
         self._backend_failed = False
         self.port = self._unused_port()
         self.password = secrets.token_urlsafe(32)
-        self._temporary = tempfile.TemporaryDirectory(prefix="solid-node-shop-opencode-")
+        self._temporary = tempfile.TemporaryDirectory(prefix="solid-node-studio-opencode-")
         temporary = Path(self._temporary.name)
         config = temporary / "opencode.json"
         config_dir = temporary / "config"
@@ -175,7 +175,7 @@ class OpenCodeBackend:
 
     async def open_role(self, role: str, context: RoleContext) -> RoleHandle:
         """Open one persistent session without a conversational bootstrap."""
-        result = await self._request("POST", "/session", {"title": f"solid-node shop: {role}"})
+        result = await self._request("POST", "/session", {"title": f"SolidNode Studio: {role}"})
         session_id = str(result["id"])
         self._handles[session_id] = role
         self._contracts[session_id] = self._system_contract(role, context)

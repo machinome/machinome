@@ -1,8 +1,8 @@
 ## Context
 
-The checkout directory has already moved from `solid-node-shop/` to
-`solid-node-studio/`, while active repository content still uses the former
-name. The old string appears in public metadata, machine identifiers, runtime
+The checkout directory has already moved to `solid-node-studio/`, while active
+repository content still uses the former name. The old string appears in
+public metadata, machine identifiers, runtime
 session labels, operating instructions, current specifications, and product
 design material. “Shop” also remains a legitimate domain term for the floor,
 worktrees, roles, and mechanical workflow, so a blind replacement would damage
@@ -63,8 +63,8 @@ the requested customer-facing name must be observable in the tool itself.
 
 ## Risks / Trade-offs
 
-- [External automation still addresses `solid-node-shop`] → Treat the identifier
-  rename as breaking and document the new value consistently.
+- [External automation still addresses the former identifier] → Treat the
+  identifier rename as breaking and document the new value consistently.
 - [A former-name occurrence is missed in a non-obvious active file] → Search
   tracked text case-insensitively after implementation and review every residue.
 - [Historical records become internally inconsistent] → Keep captured evidence

@@ -379,7 +379,7 @@ function App() {
       <header className="workspace-titlebar">
         <div className="workspace-title">
           <span className="shop-mark" aria-hidden="true" />
-          <span>Shop</span>
+          <span>SolidNode Studio</span>
         </div>
         <p className="workspace-run" aria-live="polite">
           {run ? `run ${run.id} · ${run.status}` : `shop ${shopOpen ? "open" : "closed"}`}

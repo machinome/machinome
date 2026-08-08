@@ -1,8 +1,8 @@
-# Handoff: Shop desktop shell (project hub, first run, redesigned workspace)
+# Handoff: SolidNode Studio desktop shell (project hub, first run, redesigned workspace)
 
 ## Overview
 
-`solid-node-shop` currently opens one screen — the shop floor workspace — after
+`solid-node-studio` currently opens one screen — the shop floor workspace — after
 the operator supplies profile, backend and project name as CLI flags
 (`python -m floor.orchestrator <project> --profile builder --backend codex`).
 The current browser UI (`floor/frontend/src/main.tsx` + `styles.css`) is a

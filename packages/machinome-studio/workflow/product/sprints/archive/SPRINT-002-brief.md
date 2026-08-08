@@ -11,7 +11,7 @@ where to re-verify it; treat a finding that no longer reproduces as a change in
 the world, not as licence to drop the cycle.
 
 All paths are relative to the repository named in the heading of each section.
-Framework paths are in `solid-node`; shop paths are in `solid-node-shop`.
+Framework paths are in `solid-node`; shop paths are in `solid-node-studio`.
 
 ## 1. The problem
 
@@ -272,7 +272,7 @@ schema and does not make build publications portable. Accept and document the
 committed-export churn caused by additive `mtime`. Do not rename a document,
 change path rooting, or make build publications portable.
 
-### S1 — `solid-node-shop` / dev-env frontend package discovery
+### S1 — `solid-node-studio` / dev-env frontend package discovery
 
 Not a cycle. `scripts/dev-env` hardcodes one frontend package (`APP_DIR`), so a
 framework worktree cannot build the widget (F-5). The fix is to discover every
@@ -314,7 +314,7 @@ sources and no bundle, and a fresh development workspace has no viewer.
 Evidence: build a distribution and assert the bundle inside it; CLI tests. Do not
 make floor import `solid_node`.
 
-### S2 — `solid-node-shop` / `floor-uses-framework-viewer`
+### S2 — `solid-node-studio` / `floor-uses-framework-viewer`
 
 Delete `floor/frontend/src/viewer.ts`; obtain the bundle through the CLI accessor
 and serve it from floor's static route; keep the React wrapper in `main.tsx`.
