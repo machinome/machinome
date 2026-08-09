@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from dataclasses import replace
 from types import SimpleNamespace
 from pathlib import Path
 from typing import cast
@@ -1227,6 +1228,22 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(argv[argv.index("--model") + 1], "sonnet")
         self.assertIn("Bash", argv[argv.index("--tools") + 1])
         self.assertIn("--safe-mode", argv)
+        self.assertEqual(argv[argv.index("--permission-mode") + 1], "bypassPermissions")
+        await self.claude.close()
+
+    async def test_manual_permission_policy_retains_confirmation_mode(self) -> None:
+        context = self.context("machinist")
+        context = replace(
+            context,
+            agent=replace(
+                context.agent,
+                runtime=replace(context.agent.runtime, permission="manual"),
+            ),
+        )
+        await self.claude.start()
+        await self.claude.open_role("machinist", context)
+        argv = next(i for i in self.captured() if i["kind"] == "environment")["argv"]
+        self.assertEqual(argv[argv.index("--permission-mode") + 1], "manual")
         await self.claude.close()
 
     async def test_delivery_is_completed_under_the_minted_identifier(self) -> None:

@@ -15,6 +15,7 @@ PROFILE_BACKENDS = ("codex", "claude", "hermes")
 _TOP_LEVEL = {"schema_version", "user_label", "user_agent", "work_mode", "agents"}
 _AGENT = {"id", "label", "prompt", "assigns", "reports_to", "backends"}
 _RUNTIME = {"model", "effort", "tools"}
+_CLAUDE_RUNTIME = _RUNTIME | {"permission"}
 _EFFORTS = {"low", "medium", "high", "xhigh", "max", "ultra"}
 _CODEX_MODELS = {"gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.3-codex-spark"}
 _CLAUDE_MODELS = {"sonnet", "opus"}
@@ -31,6 +32,7 @@ class BackendRuntime:
     model: str
     effort: str
     tools: str | tuple[str, ...]
+    permission: str = "inherit"
 
 
 @dataclass(frozen=True)
@@ -234,10 +236,13 @@ def _skill_path(root: Path, skill: str, profile: str) -> Path:
 def _runtime(value: Any, profile: str, agent: str, backend: str) -> BackendRuntime:
     if not isinstance(value, dict):
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend} must be a table")
-    _only(value, _RUNTIME, f"profile {profile}.{agent}.backends.{backend}")
-    if set(value) != _RUNTIME:
-        raise ProfileError(f"profile {profile}.{agent}.backends.{backend} must declare model, effort, and tools")
+    fields = _CLAUDE_RUNTIME if backend == "claude" else _RUNTIME
+    _only(value, fields, f"profile {profile}.{agent}.backends.{backend}")
+    if set(value) != fields:
+        suffix = ", effort, tools, and permission" if backend == "claude" else ", effort, and tools"
+        raise ProfileError(f"profile {profile}.{agent}.backends.{backend} must declare model{suffix}")
     model, effort, tools = value["model"], value["effort"], value["tools"]
+    permission = value.get("permission", "inherit")
     if not isinstance(model, str) or not model:
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.model must be concrete or inherit")
     if backend == "codex" and model not in _CODEX_MODELS | {"inherit"}:
@@ -257,9 +262,11 @@ def _runtime(value: Any, profile: str, agent: str, backend: str) -> BackendRunti
         len(tools) != len(set(tools)) or any(tool not in _CLAUDE_TOOLS for tool in tools)
     ):
         raise ProfileError(f"profile {profile}.{agent}.backends.claude.tools is unsupported")
+    if backend == "claude" and permission not in {"manual", "autonomous"}:
+        raise ProfileError(f"profile {profile}.{agent}.backends.claude.permission is unsupported")
     if backend == "hermes" and (model != "inherit" or effort != "inherit" or tools != "inherit"):
         raise ProfileError(f"profile {profile}.{agent}.backends.hermes must explicitly inherit unsupported controls")
-    return BackendRuntime(model, effort, tools if isinstance(tools, str) else tuple(tools))
+    return BackendRuntime(model, effort, tools if isinstance(tools, str) else tuple(tools), permission)
 
 
 def _topology(profile: str, mode: str, agents: tuple[ProfileAgent, ...], ids: set[str], user_agent: str) -> None:

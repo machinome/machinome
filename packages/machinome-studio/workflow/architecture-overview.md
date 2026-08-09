@@ -76,7 +76,11 @@ generic compatibility delivery operation.
 
 Codex translates a profile's selected model and effort into `thread/start`.
 Claude launches one isolated CLI process per profile agent and translates the
-selected model, effort, and permitted tools into its supported command fields.
+selected model, effort, permitted tools, and explicit permission policy into
+its supported command fields. An autonomous Claude policy bypasses confirmation
+prompts only for its profile-declared tools; it does not grant extra tools or
+provide operating-system sandboxing. Claude safe mode remains active, so local
+assistant configuration cannot alter the repository-owned contract.
 Hermes explicitly inherits model, effort, and tools because ACP does not expose
 per-session controls; it still receives the same validated profile prompt and
 skills. These three adapters consume the selected profile runtime table and

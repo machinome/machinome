@@ -17,6 +17,7 @@ tools = "inherit"
 model = "sonnet"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
+permission = "autonomous"
 [agents.backends.hermes]
 model = "inherit"
 effort = "inherit"
@@ -36,6 +37,7 @@ tools = "inherit"
 model = "opus"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
+permission = "autonomous"
 [agents.backends.hermes]
 model = "inherit"
 effort = "inherit"
@@ -55,6 +57,7 @@ tools = "inherit"
 model = "sonnet"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
+permission = "autonomous"
 [agents.backends.hermes]
 model = "inherit"
 effort = "inherit"
@@ -74,6 +77,7 @@ tools = "inherit"
 model = "sonnet"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"]
+permission = "autonomous"
 [agents.backends.hermes]
 model = "inherit"
 effort = "inherit"

@@ -32,6 +32,7 @@ class RuntimeProfileTest(unittest.TestCase):
         )
         self.assertEqual(fordesmac.agent("designer").runtime.model, "opus")
         self.assertEqual(fordesmac.agent("designer").runtime.effort, "medium")
+        self.assertEqual(fordesmac.agent("designer").runtime.permission, "autonomous")
         self.assertEqual(fordesmac.agent("designer").reports_to, "foreman")
         self.assertEqual(fordesmac.agent("foreman").assigns, ("designer", "machinist", "librarian"))
 
@@ -87,6 +88,18 @@ class RuntimeProfileTest(unittest.TestCase):
             manifest.write_text(value.replace('[agents.backends.claude]\nmodel = "sonnet"\neffort = "medium"', '[agents.backends.claude]\nmodel = "sonnet"\neffort = "ultra"'))
             with self.assertRaisesRegex(ProfileError, "claude.*effort.*unsupported"):
                 load_profile("builder", shop_root=shop, backend="claude")
+
+            manifest.write_text(value.replace('permission = "autonomous"', 'permission = "unattended"'))
+            with self.assertRaisesRegex(ProfileError, "claude.*permission.*unsupported"):
+                load_profile("builder", shop_root=shop, backend="claude")
+
+            manifest.write_text(value.replace('permission = "autonomous"\n', ''))
+            with self.assertRaisesRegex(ProfileError, "claude.*must declare model, effort, tools, and permission"):
+                load_profile("builder", shop_root=shop, backend="claude")
+
+            manifest.write_text(value.replace('tools = "inherit"\n\n[agents.backends.claude]', 'tools = "inherit"\npermission = "autonomous"\n\n[agents.backends.claude]'))
+            with self.assertRaisesRegex(ProfileError, "codex.*unknown key.*permission"):
+                load_profile("builder", shop_root=shop, backend="codex")
 
 
 if __name__ == "__main__":

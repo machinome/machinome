@@ -271,6 +271,9 @@ class ClaudeBackend:
             command += ["--effort", runtime.effort]
         if runtime.tools != "inherit":
             command += ["--tools", ",".join(runtime.tools)]
+        if runtime.permission != "inherit":
+            permission_mode = "bypassPermissions" if runtime.permission == "autonomous" else "manual"
+            command += ["--permission-mode", permission_mode]
         return tuple(command)
 
     def _role_contract(self, role: str, context: RoleContext, agent=None) -> str:

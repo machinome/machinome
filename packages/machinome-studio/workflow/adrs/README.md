@@ -27,6 +27,7 @@ the overview says *what is true now*.
 | `0012` | [Use a bounded adapter-owned OpenCode compatibility policy](./0012-bounded-opencode-compatibility-policy.md) | Accepted | 2026-08-01 |
 | `0013` | [Observe atomic build publications separately from source-triggered builds](./0013-observe-atomic-build-publications.md) | Accepted | 2026-08-02 |
 | `0014` | [Use snapshot-first live state for the Floor browser](./0014-use-snapshot-first-live-state-for-the-floor-browser.md) | Accepted | 2026-08-09 |
+| `0015` | [Make Claude autonomous permissions profile-owned](./0015-profile-owned-claude-autonomous-permissions.md) | Accepted | 2026-08-09 |
 
 ## Conventions
 
