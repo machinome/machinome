@@ -123,6 +123,12 @@ component reached the root assembly. Then render useful snapshots and look at
 them. Include at least an isometric view and a view aligned with the slice's
 important interface. Pixels are evidence, not decoration.
 
+Do not ask a snapshot to resolve a fraction of a millimetre. A half-millimetre
+gap at a gear tooth or a blade that never reached its hub is caught by the
+connectivity and engagement contracts, which fail deterministically at any
+scale; a picture of them is a guess about framing. Snapshots confirm that the
+slice is wired and posed as intended — the geometry itself is the tests' job.
+
 ## Delivery
 
 One released drawing normally produces one coherent commit, regardless of how

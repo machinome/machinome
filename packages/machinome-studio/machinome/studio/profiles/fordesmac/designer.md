@@ -145,7 +145,9 @@ The body contains only what the machinist needs for this slice:
 4. Derived dimensions and mechanical formulas, with signs and frames worked
    out and sanity-checked at representative values.
 5. Component interfaces and functional contracts.
-6. Explicit deferrals, unverified judgments, and stable versus provisional
+6. Every separately manufactured item this slice releases, each with the
+   number of printed bodies it must resolve to — normally one.
+7. Explicit deferrals, unverified judgments, and stable versus provisional
    details.
 
 The base commit must be an ancestor of the machinist's eventual HEAD; equality
@@ -219,7 +221,11 @@ ranges. Use this vocabulary:
 
 - clearance and containment;
 - non-interference;
+- material continuity: which named features are one printed body, and the
+  minimum weld at each junction;
 - engagement and intended play;
+- transmission: for a driving pair, the pitch geometry, the tooth phase
+  relation, and the backlash window;
 - dimension and derived position;
 - process and envelope guards; and
 - kinematic position, phase, and convention truth.
@@ -228,6 +234,19 @@ For each contract, name the independent failure it must catch. Pair
 non-interference with the relationship that keeps the parts meaningfully
 located; parts a metre apart are not a successful fit. Separate independently
 failing gaps or behaviors.
+
+Non-interference is a one-sided force. It is satisfied by moving things
+apart — including the pieces of a single component, which is why an
+unstated junction is exactly what a green suite lets fall apart. Wherever a
+component is built from several features, state material continuity: which
+features fuse into one printed body, and by how much they must overlap.
+"Blades on a hub" and "a boss on a plate" are contracts, not descriptions.
+
+A pair that transmits motion is not specified by ratio and centre distance.
+Those permit two members that never touch and two members that turn at
+exactly the right speeds through each other. State the phase relation as
+well: which tooth of one sits in which gap of the other, at a named instant.
+Phase is yours; never leave it to be discovered.
 
 Stress, friction retention, assembly force, support-free printability, and
 similar claims remain engineering judgments unless the public API supports a

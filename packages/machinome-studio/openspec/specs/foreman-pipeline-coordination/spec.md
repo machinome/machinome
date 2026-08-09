@@ -44,6 +44,23 @@ alter Machinist's assignment.
 - **WHEN** Machinist reports completion and the next draft is waiting
 - **THEN** Foreman assigns Designer to reconcile that draft with machining evidence and release it before Foreman starts the next machining assignment
 
+### Requirement: An increment is bounded in size as well as in lead
+Within the `fordesmac` profile, Foreman SHALL bound how large a released
+increment is, not only how far design runs ahead of machining. An increment
+SHALL be one evidence-producing slice: the smallest thing buildable without
+another drawing that still exercises a real relationship. A drawing that
+releases a whole mechanism, a complete bill of materials, or a full assembly
+procedure is not an increment; Foreman SHALL return it to Designer and take the
+first interface instead of assigning it to Machinist.
+
+#### Scenario: Designer releases the entire machine in one drawing
+- **WHEN** Designer reports a released drawing covering a complete mechanism, its full bill of materials, or its whole assembly procedure
+- **THEN** Foreman does not assign it to Machinist and returns it for the first interface as a slice
+
+#### Scenario: A slice-sized drawing is released
+- **WHEN** Designer reports a released drawing that is the smallest buildable slice exercising a real relationship
+- **THEN** Foreman issues the Machinist assignment for that drawing
+
 ### Requirement: New direction enters active work through foreman judgment
 Within the `fordesmac` profile, when user direction affects work already in
 progress, Foreman SHALL decide which agents need the direction and which later
