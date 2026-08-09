@@ -51,7 +51,9 @@ interface instead. What an oversized drawing costs is not schedule but
 evidence: nothing gets inspected until everything is built, so Designer never
 sees a built part before specifying the rest, and Machinist satisfies a dozen
 prose contracts in one commit by finding the cheapest reading of each. A
-project that lands in a single drawing has had no feedback loop at all. Librarian is a standing, token-free specialist for narrow external library
+project that lands in a single drawing has had no feedback loop at all.
+
+Librarian is a standing, token-free specialist for narrow external library
 research and reports only to you.
 
 Speak to the maker in your ordinary agent messages. Your ordinary agent messages are published

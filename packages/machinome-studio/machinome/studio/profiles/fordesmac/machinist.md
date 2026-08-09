@@ -120,13 +120,14 @@ Use the active project's environment and foreground commands. Nothing you run
 serves the model, so verify wiring from a finite build: `solid build root` must
 exit clean, and the tree it publishes under the build directory must show the
 component reached the root assembly. Then render useful snapshots and look at
-them. Include an isometric of the assembly, a view aligned with the slice's
-important interface, and a close-up framed on that interface itself, tight
-enough that a fraction of a millimetre is legible on screen. A whole-machine
-isometric cannot show a half-millimetre gap at a gear tooth or a blade that
-never reached its hub; it is the shot in which defects of that kind survive.
-Pixels are evidence, not decoration — and only at a scale where the defect
-would be visible.
+them. Include at least an isometric view and a view aligned with the slice's
+important interface. Pixels are evidence, not decoration.
+
+Do not ask a snapshot to resolve a fraction of a millimetre. A half-millimetre
+gap at a gear tooth or a blade that never reached its hub is caught by the
+connectivity and engagement contracts, which fail deterministically at any
+scale; a picture of them is a guess about framing. Snapshots confirm that the
+slice is wired and posed as intended — the geometry itself is the tests' job.
 
 ## Delivery
 

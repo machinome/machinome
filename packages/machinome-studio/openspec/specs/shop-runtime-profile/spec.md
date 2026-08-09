@@ -153,16 +153,18 @@ centre distance alone MUST NOT stand as the specification of a driving pair.
 - **WHEN** Designer releases any drawing
 - **THEN** each separately manufactured item it releases is named with the number of printed bodies it must resolve to
 
-### Requirement: Machining evidence is inspected at the defect's scale
+### Requirement: Geometric defects are caught by contracts, not by snapshots
 Within the `fordesmac` profile, before declaring an increment done Machinist
-SHALL render and inspect an isometric of the assembly, a view aligned with the
-slice's important interface, and a close-up framed on that interface itself, at
-a scale where a fraction of a millimetre is legible. A whole-assembly view
-alone MUST NOT be accepted as evidence for a defect it cannot resolve.
+SHALL render and inspect an isometric of the assembly and a view aligned with
+the slice's important interface. A defect below the scale a snapshot resolves,
+such as an unmade junction or a mesh whose members never touch, SHALL be
+covered by a deterministic contract rather than by rendering the interface more
+closely; snapshot inspection stands as evidence that the component is wired and
+posed as intended.
 
 #### Scenario: The slice delivers a junction or a mesh
 - **WHEN** Machinist finishes building an increment whose interface is a gear mesh, a weld, or a similar small feature
-- **THEN** the inspected snapshots include a close-up framed on that interface at a scale where a fraction of a millimetre is legible, alongside the isometric and axis views
+- **THEN** that interface is held by connectivity and engagement contracts that fail deterministically, and the snapshot evidence remains the isometric and axis views
 
 ### Requirement: Machining guidance requires both geometric discipline safety nets
 The shared machining skill exposed to runtime agents SHALL state connectivity

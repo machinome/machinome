@@ -364,14 +364,14 @@ def test_every_part_is_one_body(self):   # geometry, not pose: one
 
        solid snapshot root -o out.png --autocenter --time 0.1
 
-   Render an isometric, a view along the axis the new component's
-   alignments live on, and a CLOSE-UP framed on the interface this
-   slice was about — use `--camera` to put the joint or the mesh in
-   frame at a scale where a few tenths of a millimetre are legible.
-   A whole-machine isometric resolves nothing at that size, and it is
-   the shot in which a gear pair that never touches, or a blade that
-   stops 3mm short of its hub, goes on looking fine. Inspect all
-   three before declaring done.
+   Render at least an isometric view and one view along the axis that
+   the new component's alignments live on, and inspect them before
+   declaring done. Do not try to see a defect a snapshot cannot
+   resolve: a gear pair that never touches, or a blade stopping 3mm
+   short of its hub, is what the connectivity and engagement contracts
+   are for — they fail deterministically, at any scale, without a
+   framing guess. Snapshots answer whether the component is wired and
+   posed as intended.
 7. A broken save is not private. A failed build exits nonzero and
    writes `errors.json` into the build directory instead of publishing;
    the previous publication keeps serving, so the maker goes on seeing
