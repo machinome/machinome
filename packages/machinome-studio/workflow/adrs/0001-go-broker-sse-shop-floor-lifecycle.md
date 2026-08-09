@@ -1,6 +1,6 @@
 # ADR 0001: Use a FastAPI broker and Server-Sent Events for shop-floor lifecycle
 
-**Status:** Accepted
+**Status:** Accepted (amended by [ADR 0014](./0014-use-snapshot-first-live-state-for-the-floor-browser.md))
 
 **Date:** 2026-07-19
 

@@ -26,10 +26,12 @@ depends on browser chrome.
 references created in HTML** — prototypes of intended look and behaviour, not
 production code to copy. Implement them in the existing frontend environment:
 **React 19 + TypeScript + Vite**, in `floor/frontend/src/`. Keep the existing
-data layer (`/api/runs/latest`, `/api/runs/:id/conversation`,
-`/api/runs/:id/stream`, `/events/lifecycle`, `/artifacts/viewer.json`) and the
-existing three.js viewer (`viewer.ts`) — only presentation changes, plus new
-endpoints listed under "Backend surface required".
+data layer (`/api/stream`, `POST /api/runs/:id/conversation`,
+`/artifacts/viewer.json`) and the existing three.js viewer (`viewer.ts`) — only
+presentation changes, plus new endpoints listed under "Backend surface
+required". The live connection opens with run state and conversation, carries
+subsequent changes, and owns open/closed lifecycle status; do not add polling
+or a second lifecycle connection.
 
 `current-workspace.html` is an exact recreation of today's UI, included as the
 before-state for diffing.

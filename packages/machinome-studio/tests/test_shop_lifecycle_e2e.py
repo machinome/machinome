@@ -178,6 +178,102 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual(messages[0], "MakerPlease begin with the housing.")
         self.assertEqual(messages[-1], "MakerI will review the drawing and report back.")
 
+    def test_reconnect_restores_a_conversation_entry_without_legacy_recovery_requests(self) -> None:
+        self.page.goto(self.url("/"))
+        transcript = self.page.get_by_role("region", name="Chat").get_by_role("list", name="Conversation transcript")
+        self.page.context.set_offline(True)
+        self.page.route("**/api/runs/latest", lambda route: route.abort())
+        self.page.route("**/api/runs/*/stream*", lambda route: route.abort())
+        try:
+            _request(
+                self.url("/api/runs/shop-floor/conversation"),
+                "POST",
+                {"text": "Recorded while disconnected."},
+            )
+            self.page.context.set_offline(False)
+            restored = transcript.locator(
+                '[data-conversation-author="user"]',
+                has_text="Recorded while disconnected.",
+            )
+            restored.wait_for(timeout=5_000)
+            self.assertEqual(restored.count(), 1)
+        finally:
+            self.page.context.set_offline(False)
+
+    def test_reconnect_restores_current_agent_work_without_legacy_recovery_requests(self) -> None:
+        self.page.goto(self.url("/"))
+        panel = self.page.get_by_role("complementary", name="Agent context")
+        self.page.context.set_offline(True)
+        self.page.route("**/api/runs/latest", lambda route: route.abort())
+        self.page.route("**/api/runs/*/stream*", lambda route: route.abort())
+        try:
+            _request(self.url("/api/runs/shop-floor/agents"), "POST", {"role": "designer", "label": "Designer"})
+            _request(
+                self.url("/api/runs/shop-floor/agents/designer/assignments"),
+                "POST",
+                {"assignment_id": "offline-drawing"},
+            )
+            _request(
+                self.url("/api/runs/shop-floor/agents/designer/acknowledgments"),
+                "POST",
+                {"assignment_id": "offline-drawing"},
+            )
+            self.page.context.set_offline(False)
+            active = panel.locator('[data-agent-role="designer"][data-agent-state="active"]')
+            active.wait_for(timeout=5_000)
+            self.assertEqual(active.count(), 1)
+        finally:
+            self.page.context.set_offline(False)
+
+    def test_open_page_recovers_current_and_subsequent_state_after_floor_restart(self) -> None:
+        self.page.goto(self.url("/"))
+        self.page.get_by_role("complementary", name="Agent context").wait_for()
+        for index in range(5):
+            _request(self.url("/api/runs/shop-floor/conversation"), "POST", {"text": f"Old process {index}"})
+        self.page.get_by_text("Old process 4").wait_for()
+        self.page.route("**/api/runs/latest", lambda route: route.abort())
+
+        self._stop_floor()
+        self._start_floor()
+        self.page.wait_for_function(
+            "() => !document.body.innerText.includes('Old process 4')",
+            timeout=10_000,
+        )
+        _request(
+            self.url("/api/runs/shop-floor/conversation"),
+            "POST",
+            {"text": "New process conversation."},
+        )
+        _request(self.url("/api/runs/shop-floor/agents"), "POST", {"role": "designer", "label": "Designer"})
+        _request(
+            self.url("/api/runs/shop-floor/agents/designer/assignments"),
+            "POST",
+            {"assignment_id": "restart-drawing"},
+        )
+        _request(
+            self.url("/api/runs/shop-floor/agents/designer/acknowledgments"),
+            "POST",
+            {"assignment_id": "restart-drawing"},
+        )
+
+        self.page.get_by_text("New process conversation.").wait_for(timeout=5_000)
+        self.page.locator('[data-agent-role="designer"][data-agent-state="active"]').wait_for(timeout=5_000)
+
+    def test_idle_page_does_not_repeat_run_state_or_conversation_requests(self) -> None:
+        requests: list[str] = []
+        self.page.on("request", lambda request: requests.append(request.url))
+        self.page.goto(self.url("/"))
+        self.page.get_by_role("complementary", name="Agent context").wait_for()
+        requests.clear()
+
+        self.page.wait_for_timeout(2_200)
+
+        repeated = [
+            url for url in requests
+            if url.endswith("/api/runs/latest") or ("/api/runs/" in url and url.endswith("/conversation"))
+        ]
+        self.assertEqual(repeated, [])
+
     def test_chat_composer_sends_with_enter_and_adds_lines_with_control_enter(self) -> None:
         self.page.goto(self.url("/"))
         conversation = self.page.get_by_role("region", name="Chat")
@@ -324,20 +420,18 @@ class ShopLifecycleE2E(unittest.TestCase):
         """A Snowman-style assembly-to-fusion update cannot be lost at startup."""
         fusion = self.project / "_build" / "fusion.stl"
         fusion.write_text("solid fused snowman")
-        intercepted = False
+        published = False
 
-        def publish_after_snapshot(route):
-            nonlocal intercepted
-            response = route.fetch()
-            if not intercepted:
-                intercepted = True
+        def publish_after_snapshot(response):
+            nonlocal published
+            if response.url.endswith("/api/stream") and not published:
+                published = True
                 self._publish_artifact(
                     "viewer.json",
                     json.dumps({"version": 2, "root": {"name": "snowman", "model": "fusion.stl"}}),
                 )
-            route.fulfill(response=response)
 
-        self.page.route("**/api/runs/latest", publish_after_snapshot)
+        self.page.on("response", publish_after_snapshot)
         self.page.goto(self.url("/"))
         canvas = self.page.get_by_role("region", name="Model").get_by_role("img", name="Functional model")
         canvas.wait_for()

@@ -137,6 +137,21 @@ updates the separate build-failure banner. A failed targeted request reports
 beside the retained model and the next publication retries normally; the browser
 does not remount the viewer or interpret artifact contents.
 
+The browser holds one run-agnostic live-state connection to `/api/stream` and
+does not poll run or conversation state. Each connection opens with a snapshot
+of complete run state and the full ordered conversation, then carries
+subsequent broker changes. The broker subscribes the connection before reading
+the snapshot, and the snapshot carries the broker's explicit latest event
+sequence so the browser can discard that hand-off overlap exactly once.
+
+Every reconnection repeats the snapshot path. The browser assigns its event
+position from that snapshot rather than retaining a higher position from a
+previous process, so an already-open page adopts the current situation after a
+floor restart. Connection state drives the displayed open/closed lifecycle;
+reopening also prompts the mounted viewer to re-read its model because artifact
+events are not recoverable broker state. The bounded broker event history is
+reserved for a future activity display and is never read for recovery.
+
 ## Workspace boundaries
 
 Each `projects/<name>/` directory is an independent Git repository. The

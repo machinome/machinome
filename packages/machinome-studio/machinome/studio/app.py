@@ -122,7 +122,6 @@ class Broker:
         self.events: deque[BrokerEvent] = deque(maxlen=event_history_limit)
         self.latest_event_sequence = 0
         self._next_envelope_sequence = 0
-        self._event_changed = asyncio.Event()
 
     def run(self) -> dict[str, object]:
         return {
@@ -134,7 +133,20 @@ class Broker:
             "roster": [{"id": agent.id, "label": agent.label} for agent in self.profile.agents],
             "agents": [agent.browser_value() for agent in self.agents.values()],
             "events": [event.browser_value() for event in self.events],
+            "latest_event_sequence": self.latest_event_sequence,
         }
+
+    def snapshot(self) -> dict[str, object]:
+        return {
+            "run": self.run(),
+            "conversation": [entry.browser_value() for entry in self.conversation],
+        }
+
+    def subscribe_snapshot(self) -> tuple[asyncio.Queue[dict[str, object]], dict[str, object]]:
+        """Register a live subscriber before serialising its initial state."""
+        subscriber: asyncio.Queue[dict[str, object]] = asyncio.Queue()
+        self.subscribers.add(subscriber)
+        return subscriber, self.snapshot()
 
     def manifest(self, role: str, label: str) -> Agent:
         declared = self._profile_agent(role)
@@ -299,16 +311,6 @@ class Broker:
             self.send("direction", "user", self.profile.user_agent_id, text)
         return entry
 
-    async def wait_for_events(self, after: int) -> list[BrokerEvent]:
-        while True:
-            events = [event for event in self.events if event.sequence > after]
-            if events:
-                return events
-            self._event_changed.clear()
-            if any(event.sequence > after for event in self.events):
-                continue
-            await self._event_changed.wait()
-
     async def deliveries(self) -> AsyncIterator[Envelope]:
         queue: asyncio.Queue[Envelope | None] = asyncio.Queue()
         self.delivery_subscribers.add(queue)
@@ -359,7 +361,6 @@ class Broker:
             payload=value,
         )
         self.events.append(event)
-        self._event_changed.set()
         live_event: dict[str, object] = {"kind": kind, "payload": value, "event": event.browser_value()}
         for subscriber in tuple(self.subscribers):
             subscriber.put_nowait(live_event)
@@ -561,16 +562,6 @@ def create_app(
     async def health() -> dict[str, str]:
         return {"status": "open"}
 
-    @app.get("/events/lifecycle")
-    async def lifecycle_events(request: Request) -> StreamingResponse:
-        async def events() -> AsyncIterator[str]:
-            yield "event: lifecycle\ndata: open\n\n"
-            while not await request.is_disconnected():
-                yield ": keepalive\n\n"
-                await asyncio.sleep(15)
-
-        return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
-
     @app.get("/api/runs/latest")
     async def latest_run() -> dict[str, object]:
         return broker.run()
@@ -665,27 +656,30 @@ def create_app(
 
         return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
-    @app.get("/api/runs/{run_id}/stream")
-    async def stream(run_id: str, request: Request, after: int = 0) -> StreamingResponse:
-        _require_run(run_id)
-
+    def live_state_stream(request: Request) -> StreamingResponse:
         async def events() -> AsyncIterator[str]:
-            cursor = after
-            while not await request.is_disconnected():
-                try:
-                    events = await asyncio.wait_for(broker.wait_for_events(cursor), timeout=15)
-                    for event in events:
-                        value = {
-                            "kind": event.kind,
-                            "payload": event.payload,
-                            "event": event.browser_value(),
-                        }
-                        yield f"event: shop-floor\ndata: {json.dumps(value)}\n\n"
-                        cursor = event.sequence
-                except TimeoutError:
-                    yield ": keepalive\n\n"
+            subscriber, snapshot = broker.subscribe_snapshot()
+            try:
+                yield f"event: snapshot\ndata: {json.dumps(snapshot)}\n\n"
+                while not await request.is_disconnected():
+                    try:
+                        event = await asyncio.wait_for(subscriber.get(), timeout=15)
+                        yield f"event: shop-floor\ndata: {json.dumps(event)}\n\n"
+                    except TimeoutError:
+                        yield ": keepalive\n\n"
+            finally:
+                broker.subscribers.discard(subscriber)
 
         return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
+
+    @app.get("/api/stream")
+    async def stream(request: Request) -> StreamingResponse:
+        return live_state_stream(request)
+
+    @app.get("/api/runs/{run_id}/stream")
+    async def run_stream(run_id: str, request: Request) -> StreamingResponse:
+        _require_run(run_id)
+        return live_state_stream(request)
 
     return app
 

@@ -90,11 +90,12 @@ shop was not opened and SHALL leave no listening floor or running shop agent.
 
 ### Requirement: The browser shows the shop lifecycle without a reload
 The shop-floor service SHALL serve a browser page that displays `Shop is open`
-while its lifecycle-status stream is connected. The page SHALL maintain a
-Server-Sent Events connection to the service and display `Shop is closed` when
-that connection is lost. If the service restarts at the same local browser
-location, the already-open page SHALL reconnect and display `Shop is open`
-again without a page reload.
+while its live connection to the service is established, and `Shop is closed`
+when that connection is lost. The page SHALL NOT maintain a second connection
+for lifecycle status. If the service restarts at the same local browser
+location, the already-open page SHALL reconnect, display `Shop is open` again,
+and display the restarted shop's actual state — not merely the open indicator —
+without a page reload.
 
 #### Scenario: The browser opens while shop-floor is running
 - **WHEN** a maker opens the shop-floor browser location while the service is running
@@ -106,7 +107,11 @@ again without a page reload.
 
 #### Scenario: The service restarts while the browser page remains open
 - **WHEN** the shop-floor service restarts at the same browser location after the page displayed `Shop is closed`
-- **THEN** the page reconnects through Server-Sent Events and displays `Shop is open` without a page reload
+- **THEN** the page reconnects, displays `Shop is open`, and displays the agents, work states, and conversation of the restarted shop without a page reload
+
+#### Scenario: The restarted service publishes new work
+- **WHEN** a page has reconnected to a restarted shop-floor service and that service manifests an agent or records a conversation entry
+- **THEN** the page displays that change without a page reload
 
 ### Requirement: A maker can open the shop with the Claude backend
 The shop runtime SHALL support both initial profiles through Claude using the
@@ -120,4 +125,3 @@ as the other backends.
 #### Scenario: Fordesmac opens with Claude
 - **WHEN** the user opens with `--profile fordesmac --backend claude`
 - **THEN** the runtime opens four project-sandboxed Claude sessions carrying the Fordesmac contracts
-

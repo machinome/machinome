@@ -597,9 +597,9 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
         else:
             self.fail("orchestrator did not open")
 
-        stream = urlopen(f"http://127.0.0.1:{port}/events/lifecycle", timeout=2)  # nosec: local test server
+        stream = urlopen(f"http://127.0.0.1:{port}/api/stream", timeout=2)  # nosec: local test server
         self.addCleanup(stream.close)
-        self.assertIn(b"event: lifecycle", stream.readline())
+        self.assertIn(b"event: snapshot", stream.readline())
         process.send_signal(signal.SIGINT)
 
         self.assertEqual(process.wait(timeout=5), 0)

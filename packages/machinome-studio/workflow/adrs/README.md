@@ -13,7 +13,7 @@ the overview says *what is true now*.
 
 | # | Title | Status | Date |
 |---|---|---|---|
-| `0001` | [Use a FastAPI broker and Server-Sent Events for shop-floor lifecycle](./0001-go-broker-sse-shop-floor-lifecycle.md) | Accepted | 2026-07-19 |
+| `0001` | [Use a FastAPI broker and Server-Sent Events for shop-floor lifecycle](./0001-go-broker-sse-shop-floor-lifecycle.md) | Accepted (amended by 0014) | 2026-07-19 |
 | `0002` | [Use Python Playwright for shop-floor browser E2E tests](./0002-python-playwright-shop-floor-e2e.md) | Accepted | 2026-07-19 |
 | `0003` | [Separate the porter lifecycle role from the foreman](./0003-porter-and-foreman-boundary.md) | Superseded by 0005 | 2026-07-20 |
 | `0004` | [Use published build artifacts as the functional-model boundary](./0004-static-build-artifact-boundary-for-functional-model-inspection.md) | Accepted (callback mechanism superseded by 0010) | 2026-07-20 |
@@ -26,6 +26,7 @@ the overview says *what is true now*.
 | `0011` | [Define shop runtime topology with declarative profiles](./0011-profile-defined-shop-runtime.md) | Accepted (amended by 0012) | 2026-07-31 |
 | `0012` | [Use a bounded adapter-owned OpenCode compatibility policy](./0012-bounded-opencode-compatibility-policy.md) | Accepted | 2026-08-01 |
 | `0013` | [Observe atomic build publications separately from source-triggered builds](./0013-observe-atomic-build-publications.md) | Accepted | 2026-08-02 |
+| `0014` | [Use snapshot-first live state for the Floor browser](./0014-use-snapshot-first-live-state-for-the-floor-browser.md) | Accepted | 2026-08-09 |
 
 ## Conventions
 

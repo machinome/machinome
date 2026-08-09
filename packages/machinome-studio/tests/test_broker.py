@@ -51,15 +51,15 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(agent.pending_assignments, [])
         self.assertEqual([item.sequence for item in self.broker.pending_for("designer")], [first.sequence, second.sequence])
 
-    async def test_event_wait_is_signal_driven_and_history_is_bounded(self) -> None:
-        cursor = self.broker.latest_event_sequence
-        waiting = asyncio.create_task(self.broker.wait_for_events(cursor))
-        await asyncio.sleep(0)
-        self.assertFalse(waiting.done())
-
-        envelope = self.broker.send("direction", "foreman", "machinist", "Hold position.")
-        events = await asyncio.wait_for(waiting, timeout=0.1)
-        self.assertEqual(events[-1].envelope_sequence, envelope.sequence)
+    async def test_subscriber_queue_is_signal_driven_and_history_is_bounded(self) -> None:
+        subscriber: asyncio.Queue[dict[str, object]] = asyncio.Queue()
+        self.broker.subscribers.add(subscriber)
+        try:
+            envelope = self.broker.send("direction", "foreman", "machinist", "Hold position.")
+            live = await asyncio.wait_for(subscriber.get(), timeout=0.1)
+        finally:
+            self.broker.subscribers.discard(subscriber)
+        self.assertEqual(live["event"]["envelope_sequence"], envelope.sequence)
 
         for index in range(25):
             self.broker.publish("test_event", {"role": "foreman", "body": f"private-{index}"})
@@ -68,15 +68,14 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("private-24", str(snapshot["events"]), "display history must exclude message bodies")
 
     async def test_event_snapshots_and_live_events_include_utc_publication_timestamps(self) -> None:
-        cursor = self.broker.latest_event_sequence
-        waiting = asyncio.create_task(self.broker.wait_for_events(cursor))
-        await asyncio.sleep(0)
-
+        subscriber: asyncio.Queue[dict[str, object]] = asyncio.Queue()
+        self.broker.subscribers.add(subscriber)
         self.broker.publish("test_event", {"role": "foreman"})
-        live_event = (await asyncio.wait_for(waiting, timeout=0.1))[-1]
+        live_event = await asyncio.wait_for(subscriber.get(), timeout=0.1)
+        self.broker.subscribers.discard(subscriber)
         snapshot_event = self.broker.run()["events"][-1]
 
-        self.assertEqual(snapshot_event["timestamp"], live_event.browser_value()["timestamp"])
+        self.assertEqual(snapshot_event["timestamp"], live_event["event"]["timestamp"])
         recorded = datetime.fromisoformat(str(snapshot_event["timestamp"]).replace("Z", "+00:00"))
         self.assertIsNotNone(recorded.tzinfo)
         self.assertEqual(recorded.utcoffset().total_seconds(), 0)

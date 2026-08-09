@@ -20,6 +20,7 @@ type Run = {
   roster: { id: string; label: string }[];
   agents: Agent[];
   events: BrokerEvent[];
+  latest_event_sequence: number;
 };
 
 type LifecycleEvent = {
@@ -265,100 +266,76 @@ function App() {
   const [modelArtifact, setModelArtifact] = useState<ModelArtifact | null>(null);
   const [modelReconnect, setModelReconnect] = useState(0);
   const [modelBuildError, setModelBuildError] = useState<string | null>(null);
-  const lifecycleOpened = useRef(false);
+  const streamOpened = useRef(false);
   const latestEvent = useRef(0);
 
   useEffect(() => {
-    const lifecycle = new EventSource("/events/lifecycle");
-    lifecycle.onopen = () => {
+    const source = new EventSource("/api/stream");
+    source.onopen = () => {
       setShopOpen(true);
-      if (lifecycleOpened.current) setModelReconnect((current) => current + 1);
-      lifecycleOpened.current = true;
+      if (streamOpened.current) setModelReconnect((current) => current + 1);
+      streamOpened.current = true;
     };
-    lifecycle.onerror = () => setShopOpen(false);
-    return () => lifecycle.close();
-  }, []);
-
-  useEffect(() => {
-    let source: EventSource | undefined;
-    let cancelled = false;
-    let connectedRunId: string | undefined;
-
-    const connect = (currentRun: Run) => {
-      if (connectedRunId === currentRun.id) return;
-      source?.close();
-      connectedRunId = currentRun.id;
-      const snapshotSequence = currentRun.events.at(-1)?.sequence ?? 0;
-      latestEvent.current = Math.max(latestEvent.current, snapshotSequence);
-      source = new EventSource(`/api/runs/${currentRun.id}/stream?after=${latestEvent.current}`);
-      source.addEventListener("shop-floor", (message) => {
-        const event = JSON.parse((message as MessageEvent<string>).data) as LifecycleEvent;
-        if (event.event.sequence <= latestEvent.current) return;
-        latestEvent.current = event.event.sequence;
-        setRun((previous) => {
-          if (!previous || previous.events.some((item) => item.sequence === event.event.sequence)) return previous;
-          return { ...previous, events: [...previous.events, event.event].slice(-20) };
-        });
-        if (event.kind === "conversation_entry") {
-          const entry = event.payload as ConversationEntry;
-          setConversation((previous) => previous.some((item) => item.sequence === entry.sequence) ? previous : [...previous, entry]);
-          return;
-        }
-        if (event.kind === "model_artifact_changed") {
-          const { artifact } = event.payload as { artifact?: string };
-          if (artifact === "viewer.json") {
-            setModelBuildError(null);
-            setModelArtifact({ path: artifact, sequence: event.event.sequence });
-          } else if (artifact === "errors.json") {
-            void fetch("/artifacts/errors.json")
-              .then((response) => response.ok ? response.text() : Promise.reject(new Error("the model could not be rebuilt")))
-              .then((error) => setModelBuildError(error || "the model could not be rebuilt"))
-              .catch(() => setModelBuildError("the model could not be rebuilt"));
-          } else if (artifact) {
-            setModelArtifact({ path: artifact, sequence: event.event.sequence });
-          }
-          return;
-        }
-        if (event.kind === "model_build_unavailable") {
-          const { reason } = event.payload as { reason?: string };
-          setModelBuildError(reason ?? "the shop could not start a model build");
-          return;
-        }
-        if (
-          !event.kind.startsWith("agent_")
-          && !event.kind.startsWith("work_")
-          && !event.kind.startsWith("direct_work_")
-        ) return;
-        const { role, label, state } = event.payload as Agent;
-        setRun((previous) => {
-          if (!previous) return previous;
-          const agents = previous.agents.filter((agent) => agent.role !== role);
-          if (state !== null && event.kind !== "agent_stopped") {
-            agents.push({ role, label, state });
-          }
-          return { ...previous, agents: agents.sort((left, right) => left.role.localeCompare(right.role)) };
-        });
+    source.onerror = () => setShopOpen(false);
+    source.addEventListener("snapshot", (message) => {
+      const snapshot = JSON.parse((message as MessageEvent<string>).data) as {
+        run: Run;
+        conversation: ConversationEntry[];
+      };
+      latestEvent.current = snapshot.run.latest_event_sequence;
+      setRun(snapshot.run);
+      setConversation(snapshot.conversation);
+    });
+    source.addEventListener("shop-floor", (message) => {
+      const event = JSON.parse((message as MessageEvent<string>).data) as LifecycleEvent;
+      if (event.event.sequence <= latestEvent.current) return;
+      latestEvent.current = event.event.sequence;
+      setRun((previous) => {
+        if (!previous || previous.events.some((item) => item.sequence === event.event.sequence)) return previous;
+        return { ...previous, events: [...previous.events, event.event].slice(-20) };
       });
-    };
-
-    const load = async () => {
-      const response = await fetch("/api/runs/latest");
-      if (!response.ok || cancelled) return;
-      const currentRun = (await response.json()) as Run;
-      const conversationResponse = await fetch(`/api/runs/${currentRun.id}/conversation`);
-      if (!conversationResponse.ok || cancelled) return;
-      const currentConversation = (await conversationResponse.json()) as { entries: ConversationEntry[] };
-      setRun(currentRun);
-      setConversation(currentConversation.entries);
-      connect(currentRun);
-    };
-
-    void load();
-    const interval = window.setInterval(() => void load(), 1_000);
+      if (event.kind === "conversation_entry") {
+        const entry = event.payload as ConversationEntry;
+        setConversation((previous) => previous.some((item) => item.sequence === entry.sequence) ? previous : [...previous, entry]);
+        return;
+      }
+      if (event.kind === "model_artifact_changed") {
+        const { artifact } = event.payload as { artifact?: string };
+        if (artifact === "viewer.json") {
+          setModelBuildError(null);
+          setModelArtifact({ path: artifact, sequence: event.event.sequence });
+        } else if (artifact === "errors.json") {
+          void fetch("/artifacts/errors.json")
+            .then((response) => response.ok ? response.text() : Promise.reject(new Error("the model could not be rebuilt")))
+            .then((error) => setModelBuildError(error || "the model could not be rebuilt"))
+            .catch(() => setModelBuildError("the model could not be rebuilt"));
+        } else if (artifact) {
+          setModelArtifact({ path: artifact, sequence: event.event.sequence });
+        }
+        return;
+      }
+      if (event.kind === "model_build_unavailable") {
+        const { reason } = event.payload as { reason?: string };
+        setModelBuildError(reason ?? "the shop could not start a model build");
+        return;
+      }
+      if (
+        !event.kind.startsWith("agent_")
+        && !event.kind.startsWith("work_")
+        && !event.kind.startsWith("direct_work_")
+      ) return;
+      const { role, label, state } = event.payload as Agent;
+      setRun((previous) => {
+        if (!previous) return previous;
+        const agents = previous.agents.filter((agent) => agent.role !== role);
+        if (state !== null && event.kind !== "agent_stopped") {
+          agents.push({ role, label, state });
+        }
+        return { ...previous, agents: agents.sort((left, right) => left.role.localeCompare(right.role)) };
+      });
+    });
     return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-      source?.close();
+      source.close();
     };
   }, []);
 
@@ -382,7 +359,7 @@ function App() {
           <span>SolidNode Studio</span>
         </div>
         <p className="workspace-run" aria-live="polite">
-          {run ? `run ${run.id} · ${run.status}` : `shop ${shopOpen ? "open" : "closed"}`}
+          {shopOpen && run ? `run ${run.id} · ${run.status}` : `shop ${shopOpen ? "open" : "closed"}`}
         </p>
       </header>
       <div className="workspace-body">

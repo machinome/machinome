@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import socket
 import subprocess
@@ -11,6 +12,8 @@ import unittest
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+
+from floor.app import Broker, create_app
 
 from tests.fixtures.primary_shop import isolated_primary_shop, subprocess_environment
 
@@ -69,6 +72,21 @@ class FloorAPITest(unittest.TestCase):
         )
         self.assertEqual(_status(self.url("/api/runs/shop-floor/conversation"), "POST", {"text": "   "}), 400)
 
+    def test_live_state_stream_starts_with_complete_snapshot(self) -> None:
+        manifested = _request(
+            self.url("/api/runs/shop-floor/agents"),
+            "POST",
+            {"role": "builder", "label": "Builder"},
+        )
+        first = _request(self.url("/api/runs/shop-floor/conversation"), "POST", {"text": "Build the bracket."})
+        second = _request(self.url("/api/runs/shop-floor/conversation"), "POST", {"text": "Use the thinner stock."})
+
+        event, snapshot = _read_sse_event(self.url("/api/stream"))
+
+        self.assertEqual(event, "snapshot")
+        self.assertEqual(snapshot["run"]["agents"], [manifested])
+        self.assertEqual(snapshot["conversation"], [first, second])
+
     def test_orchestrator_stream_blocks_then_emits_ordered_user_direction(self) -> None:
         received: list[dict[str, object]] = []
 
@@ -106,39 +124,55 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual([item["sequence"] for item in received], sorted(item["sequence"] for item in received))
         self.assertEqual(_status(self.url("/api/runs/shop-floor/foreman/receive"), "POST", {"after": "0"}), 404)
 
-    def test_run_stream_replays_a_publication_after_the_browser_snapshot(self) -> None:
-        """The snapshot-to-stream hand-off must not need a browser reload."""
-        snapshot = _request(self.url("/api/runs/latest"), "GET")
-        cursor = snapshot["events"][-1]["sequence"] if snapshot["events"] else 0
-        _request(self.url("/api/runs/shop-floor/conversation"), "POST", {"text": "Publish the fused model."})
+    def test_live_state_stream_subscribes_before_serialising_snapshot(self) -> None:
+        broker = Broker()
+        original_snapshot = broker.snapshot
 
-        received: list[dict[str, object]] = []
-        connected = threading.Event()
+        def snapshot_that_publishes() -> dict[str, object]:
+            broker.publish("conversation_entry", {"sequence": 1, "author": "builder", "text": "Published during snapshot."})
+            return original_snapshot()
 
-        def listen() -> None:
-            with urlopen(self.url(f"/api/runs/shop-floor/stream?after={cursor}"), timeout=5) as response:  # nosec: local floor
-                connected.set()
-                for raw_line in response:
-                    line = raw_line.decode().strip()
-                    if line.startswith("data: "):
-                        received.append(json.loads(line.removeprefix("data: ")))
-                        return
+        broker.snapshot = snapshot_that_publishes  # type: ignore[method-assign]
+        app = create_app(broker=broker)
+        endpoint = next(route.endpoint for route in app.routes if getattr(route, "path", None) == "/api/stream")
 
-        listener = threading.Thread(target=listen)
-        listener.start()
-        try:
-            self.assertTrue(connected.wait(1), "the browser stream did not open")
-            listener.join(timeout=0.5)
-            self.assertFalse(listener.is_alive(), "the stream lost the publication between snapshot and subscription")
-        finally:
-            # Release the old implementation's waiting stream so this test
-            # never leaves a request thread behind when the assertion is red.
-            if listener.is_alive():
-                _request(self.url("/api/runs/shop-floor/conversation"), "POST", {"text": "Release the test stream."})
-                listener.join(timeout=2)
+        class ConnectedRequest:
+            async def is_disconnected(self) -> bool:
+                return False
 
-        self.assertEqual(received[0]["kind"], "conversation_entry")
-        self.assertEqual(received[0]["payload"]["text"], "Publish the fused model.")
+        async def read_handoff() -> tuple[tuple[str, dict[str, object]], tuple[str, dict[str, object]]]:
+            response = await endpoint(ConnectedRequest())
+            iterator = response.body_iterator
+            snapshot_frame = _parse_sse_chunk(await anext(iterator))
+            live_frame = _parse_sse_chunk(await anext(iterator))
+            self.assertEqual(len(broker.subscribers), 1)
+            self.assertTrue(next(iter(broker.subscribers)).empty(), "the hand-off event must be queued exactly once")
+            await iterator.aclose()
+            self.assertEqual(broker.subscribers, set())
+            return snapshot_frame, live_frame
+
+        (snapshot_event, snapshot), (live_event, live) = asyncio.run(read_handoff())
+
+        self.assertEqual(snapshot_event, "snapshot")
+        self.assertEqual(live_event, "shop-floor")
+        self.assertEqual(snapshot["run"]["latest_event_sequence"], live["event"]["sequence"])
+        self.assertEqual(live["kind"], "conversation_entry")
+        self.assertEqual(live["payload"]["text"], "Published during snapshot.")
+
+    def test_snapshot_has_explicit_latest_sequence_when_history_is_empty_or_trimmed(self) -> None:
+        broker = Broker(event_history_limit=2)
+        self.assertEqual(broker.snapshot()["run"]["latest_event_sequence"], 0)
+
+        for index in range(5):
+            broker.publish("test_event", {"role": "builder", "index": index})
+
+        snapshot = broker.snapshot()
+        self.assertEqual(len(snapshot["run"]["events"]), 2)
+        self.assertEqual(snapshot["run"]["latest_event_sequence"], 5)
+        self.assertEqual(snapshot["run"]["events"][0]["sequence"], 4)
+
+    def test_separate_lifecycle_stream_is_removed(self) -> None:
+        self.assertEqual(_status(self.url("/events/lifecycle"), "GET"), 404)
 
     def test_serves_only_completed_build_artifacts_and_not_project_source(self) -> None:
         project = Path(tempfile.mkdtemp())
@@ -243,6 +277,27 @@ def _request(url: str, method: str, body: dict[str, str] | None = None) -> dict[
 def _raw(url: str) -> str:
     with urlopen(url, timeout=5) as response:  # nosec: local floor service
         return response.read().decode()
+
+
+def _read_sse_event(url: str) -> tuple[str, dict[str, object]]:
+    event = ""
+    data = ""
+    with urlopen(url, timeout=1) as response:  # nosec: local floor service
+        for raw_line in response:
+            line = raw_line.decode().rstrip("\r\n")
+            if not line:
+                return event, json.loads(data)
+            if line.startswith("event: "):
+                event = line.removeprefix("event: ")
+            elif line.startswith("data: "):
+                data = line.removeprefix("data: ")
+    raise AssertionError("live-state stream ended before its first event")
+
+
+def _parse_sse_chunk(chunk: str | bytes) -> tuple[str, dict[str, object]]:
+    value = chunk.decode() if isinstance(chunk, bytes) else chunk
+    fields = dict(line.split(": ", 1) for line in value.strip().splitlines())
+    return fields["event"], json.loads(fields["data"])
 
 
 def _status(url: str, method: str, body: dict[str, str] | None = None) -> int:
