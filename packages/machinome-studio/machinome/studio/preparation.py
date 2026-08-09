@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -144,16 +145,24 @@ def prepare_project(
     created = not project_root.exists()
     solid_env = build_environment(shop_root)
     if created:
-        _run(
-            (*_command(solid_command), "new", name),
-            cwd=project_home.resolve(),
-            stage="scaffold",
-            name=name,
-            project_root=project_root,
-            extra_env=solid_env,
-        )
-        if not project_root.is_dir():
-            raise PreparationError("scaffold", name, project_root, "solid new did not create the named project directory")
+        package_name = name.replace("-", "_")
+        with tempfile.TemporaryDirectory(prefix=f".{name}-", dir=project_home.resolve()) as temporary:
+            staging_home = Path(temporary)
+            staged_project = staging_home / package_name
+            _run(
+                (*_command(solid_command), "new", package_name),
+                cwd=staging_home,
+                stage="scaffold",
+                name=name,
+                project_root=project_root,
+                extra_env=solid_env,
+            )
+            if not staged_project.is_dir():
+                raise PreparationError("scaffold", name, project_root, "solid new did not create the normalized project scaffold")
+            try:
+                staged_project.rename(project_root)
+            except OSError as error:
+                raise PreparationError("scaffold", name, project_root, str(error)) from error
         _run(("git", "init", "-q", "-b", "main", str(project_root)), stage="git-init", name=name, project_root=project_root)
         _require_exact_repository(project_root, name)
         _run(("git", "-C", str(project_root), "add", "--all"), stage="git-add", name=name, project_root=project_root)

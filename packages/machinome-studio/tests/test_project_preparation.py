@@ -77,11 +77,12 @@ class ProjectPreparationTest(unittest.TestCase):
         prepared = self.prepare()
         project = self.home / "new-engine"
         self.assertEqual(prepared.project_root, project.resolve())
+        self.assertFalse((self.home / "new_engine").exists())
         self.assertEqual(prepared.model, Path("root"))
         self.assertEqual(prepared.artifact_root, (project / "_build").resolve())
         self.assertTrue(prepared.viewer_bundle.is_file())
         self.assertEqual(prepared.viewer_api_version, 2)
-        self.assertEqual(self.call_log.read_text().splitlines()[0], "new:new-engine")
+        self.assertEqual(self.call_log.read_text().splitlines()[0], "new:new_engine")
         self.assertTrue((project / "root" / "__init__.py").is_file())
         self.assertEqual(
             subprocess.run(["git", "-C", str(project), "rev-list", "--count", "HEAD"], check=True, text=True, capture_output=True).stdout.strip(),
@@ -247,10 +248,11 @@ cwd = Path.cwd()
 with Path(os.environ["SOLID_CALL_LOG"]).open("a") as calls:
     calls.write(f"{command}:{argument}\n")
 if command == "new":
-    if argument == "fail-new":
+    if argument == "fail_new":
         print("scaffold exploded", file=sys.stderr)
         raise SystemExit(9)
-    project = cwd / argument
+    # The real CLI normalizes its scaffold directory to a Python package name.
+    project = cwd / argument.replace("-", "_")
     (project / "root").mkdir(parents=True)
     (project / "root" / "__init__.py").write_text("# scaffold\n")
     (project / ".gitignore").write_text("_build/\n")
