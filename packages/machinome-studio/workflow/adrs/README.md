@@ -29,6 +29,8 @@ the overview says *what is true now*.
 | `0014` | [Use snapshot-first live state for the Floor browser](./0014-use-snapshot-first-live-state-for-the-floor-browser.md) | Accepted | 2026-08-09 |
 | `0015` | [Make Claude autonomous permissions profile-owned](./0015-profile-owned-claude-autonomous-permissions.md) | Accepted | 2026-08-09 |
 | `0016` | [Retire Hermes as a shop agent backend](./0016-retire-hermes-agent-backend.md) | Accepted | 2026-08-09 |
+| `0017` | [Select backend, provider, model, and reasoning level per agent from the project](./0017-project-selected-per-agent-runtime.md) | Proposed | 2026-08-09 |
+| `0018` | [Let one shop floor run several agent backends at once](./0018-multi-backend-orchestration.md) | Proposed | 2026-08-09 |
 
 ## Conventions
 
