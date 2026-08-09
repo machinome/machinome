@@ -6,7 +6,6 @@ Define how the shop manifests its standing role team and reflects each role's
 acknowledged assignment state in the shop-floor roster.
 
 ## Requirements
-
 ### Requirement: An open shop manifests the working team
 Each newly opened shop SHALL manifest exactly the complete standing agent set
 declared by its selected validated profile. The orchestrator SHALL create each
@@ -22,7 +21,7 @@ the profile's stable agent IDs and display labels.
 - **THEN** the roster shows waiting Foreman, Designer, Machinist, and Librarian agents
 
 #### Scenario: Either team starts through another backend
-- **WHEN** either initial profile opens through Codex, Claude, or Hermes
+- **WHEN** either initial profile opens through Codex, Claude, or OpenCode
 - **THEN** the roster contains the same profile-declared agent IDs and labels
 
 #### Scenario: An undeclared role is addressed

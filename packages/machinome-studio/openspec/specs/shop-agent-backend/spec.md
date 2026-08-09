@@ -3,24 +3,19 @@
 ## Purpose
 
 Define the portable runtime boundary that lets the shop orchestrator own and
-route persistent role sessions through Codex app-server, Hermes ACP, Claude
-Code CLI, or OpenCode without leaking backend-native identifiers into the
-broker.
+route persistent role sessions through Codex app-server, Claude Code CLI, or
+OpenCode without leaking backend-native identifiers into the broker.
 ## Requirements
 ### Requirement: The orchestrator accepts a configurable agent backend
 The shop orchestrator SHALL accept a `--backend` flag with values `codex`,
-`hermes`, `claude`, and `opencode`. When omitted, the orchestrator SHALL use
-`codex` as the default backend. An unknown backend value SHALL cause the
-orchestrator to exit with an error before starting the broker or any agent
-session.
+`claude`, and `opencode`. When omitted, the orchestrator SHALL use `codex` as
+the default backend. An unknown backend value, including the retired `hermes`
+value, SHALL cause the orchestrator to exit with an error before starting the
+broker or any agent session.
 
 #### Scenario: Codex backend is the default
 - **WHEN** a maker opens the shop without specifying `--backend`
 - **THEN** the orchestrator uses the Codex backend
-
-#### Scenario: Hermes backend is selected
-- **WHEN** a maker opens the shop with `--backend hermes`
-- **THEN** the orchestrator uses the Hermes backend
 
 #### Scenario: Claude backend is selected
 - **WHEN** a maker opens the shop with `--backend claude`
@@ -30,8 +25,8 @@ session.
 - **WHEN** a maker opens the shop with `--backend opencode`
 - **THEN** the orchestrator uses the OpenCode backend
 
-#### Scenario: Unknown backend is rejected
-- **WHEN** a maker opens the shop with `--backend unknown`
+#### Scenario: Unknown or retired backend is rejected
+- **WHEN** a maker opens the shop with `--backend unknown` or `--backend hermes`
 - **THEN** the orchestrator exits with an error before starting any service or agent
 
 ### Requirement: The backend owns its agent sessions
@@ -85,7 +80,7 @@ whose native interrupt spends a session SHALL NOT return it to standby.
 - **THEN** it delivers no further envelopes to that agent and does not report it waiting
 
 #### Scenario: Every backend is independently testable
-- **WHEN** fake Codex, Hermes, Claude, or OpenCode fixtures are selected
+- **WHEN** fake Codex, Claude, or OpenCode fixtures are selected
 - **THEN** each fixture opens and exercises every agent in either initial profile through the same portable backend operations
 
 ### Requirement: The orchestrator is backend-neutral
@@ -98,7 +93,7 @@ SHALL instead use the bounded adapter-owned compatibility policy defined below.
 
 #### Scenario: Orchestrator code references no backend identifiers or role adapters
 - **WHEN** the profile runtime is implemented
-- **THEN** `floor/orchestrator.py` contains no Codex, Hermes, Claude, or OpenCode wire identifier and no global backend role-adapter lookup
+- **THEN** `floor/orchestrator.py` contains no Codex, Claude, or OpenCode wire identifier and no global backend role-adapter lookup
 
 #### Scenario: Backends receive one resolved role interpretation
 - **WHEN** a profile agent is opened through any backend
@@ -107,84 +102,6 @@ SHALL instead use the bounded adapter-owned compatibility policy defined below.
 #### Scenario: OpenCode does not add a profile policy lookup
 - **WHEN** a validated existing profile is opened through OpenCode
 - **THEN** the adapter applies its compatibility policy without requiring or reading an OpenCode table in that profile
-
-### Requirement: The Hermes backend operates a real acp subprocess
-The Hermes backend SHALL launch `hermes acp` as a subprocess during `start()`.
-It SHALL complete ACP `initialize` handshake before returning. It SHALL speak
-the ACP JSON-RPC protocol (newline-delimited JSON over stdio) using the same
-request/response and notification plumbing as the Codex backend.
-
-Steering an active Hermes turn SHALL preserve that turn. The backend SHALL NOT
-send `session/cancel` as part of steering. It SHALL deliver the correction as an
-additional `session/prompt` on the same session, which Hermes applies to the
-turn already running.
-
-The backend SHALL decide whether a correction steered the active turn or lost a
-completion race using its own record of whether the original prompt is still
-outstanding. It SHALL NOT decide this from the agent's natural-language reply.
-
-#### Scenario: Hermes backend starts the acp process
-- **WHEN** the orchestrator opens the shop with `--backend hermes`
-- **THEN** the Hermes backend launches `hermes acp` as a subprocess and completes the `initialize` handshake
-
-#### Scenario: Hermes backend creates role sessions
-- **WHEN** `open_role("designer", context)` is called
-- **THEN** the backend sends ACP `session/new` with `cwd` set to the active project, sends and awaits an initial `session/prompt` that loads the designer role card and named skills, and only then returns the role handle
-
-#### Scenario: Hermes backend delivers messages
-- **WHEN** `deliver_start(handle, message)` is called on an idle session
-- **THEN** the backend sends `session/prompt` with the message as a text content block and returns an accepted `DeliveryReceipt`
-
-#### Scenario: Hermes backend steers active turns
-- **WHEN** `deliver_steer(handle, expected_id, message)` is called while the prompt identified by `expected_id` is still outstanding
-- **THEN** the backend sends an additional `session/prompt` carrying the correction, sends no `session/cancel`, and returns a receipt that still identifies `expected_id` as the active delivery
-- **AND IF** the prompt identified by `expected_id` has already responded, the backend raises `InactiveTurn`
-
-#### Scenario: The steer acknowledgement is not a turn completion
-- **WHEN** Hermes answers the correction's `session/prompt` immediately while the original prompt remains outstanding
-- **THEN** the backend does not emit `turn_completed` for either delivery and the original turn remains the active delivery until its own response arrives
-
-#### Scenario: Output produced before a correction is retained
-- **WHEN** a foreman turn streams text, is then steered, and later completes
-- **THEN** the assembled `role_message` contains the text streamed before the correction as well as the text streamed after it
-
-#### Scenario: Steering loses a completion race
-- **WHEN** `deliver_steer(handle, expected_id, message)` is called and the prompt identified by `expected_id` has already responded
-- **THEN** the backend raises `InactiveTurn` and the orchestrator retries the envelope as a new turn on the now-idle session
-
-#### Scenario: Hermes backend interrupts sessions
-- **WHEN** `interrupt(handle)` is called
-- **THEN** the backend sends `session/cancel` notification and treats that session as spent
-
-### Requirement: Hermes backend translates ACP events into portable events
-The Hermes backend SHALL consume ACP `session/update` notifications and
-`session/prompt` responses from the subprocess and translate them into
-`BackendEvent` instances consumed by the orchestrator.
-
-A prompt that ends because the shop cancelled it SHALL be reported as a
-completed turn rather than a role failure, whether the subprocess reports that
-cancellation as a stop reason or as a transport-level error. Cancelling a role
-SHALL NOT end the shop run.
-
-#### Scenario: Foreman agent message is published to conversation
-- **WHEN** the ACP subprocess streams `agent_message_chunk` updates for a foreman prompt and then completes that prompt
-- **THEN** the backend emits one `BackendEvent(kind="role_message", role="foreman", text=...)` containing the assembled message before its completion event
-
-#### Scenario: Turn start is tracked
-- **WHEN** a `session/prompt` request is dispatched to the subprocess
-- **THEN** the backend emits a `BackendEvent(kind="turn_started", role=..., delivery_id=...)`
-
-#### Scenario: Turn completion is tracked
-- **WHEN** a `session/prompt` response with `stopReason` is received from the subprocess
-- **THEN** the backend emits a `BackendEvent(kind="turn_completed", role=..., delivery_id=...)`
-
-#### Scenario: A cancelled turn does not end the run
-- **WHEN** the shop cancels an active prompt and the subprocess answers that prompt with an error instead of a stop reason
-- **THEN** the backend emits a completion event for that delivery, does not emit `role_failed`, and the orchestrator keeps routing events
-
-#### Scenario: Backend process failure is reported
-- **WHEN** the `hermes acp` subprocess exits unexpectedly
-- **THEN** the backend emits a `BackendEvent(kind="backend_failed", error=...)`
 
 ### Requirement: A role-contract bootstrap is not bounded by the control-plane timeout
 Opening a role loads that role's card and every skill it names, which is model

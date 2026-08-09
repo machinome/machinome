@@ -453,7 +453,7 @@ def main() -> None:
     parser.add_argument("project_name", help="lowercase kebab-case project name below projects/")
     parser.add_argument("--port", type=int, default=int(os.environ.get("FLOOR_PORT", "9000")))
     parser.add_argument("--cwd", type=Path, default=Path.cwd(), help="shop checkout containing role adapters")
-    parser.add_argument("--backend", choices=("codex", "hermes", "claude", "opencode"), default="codex",
+    parser.add_argument("--backend", choices=("codex", "claude", "opencode"), default="codex",
                         help="agent backend (default: codex)")
     parser.add_argument("--profile", help="runtime profile owned by this shop checkout")
     parser.add_argument("--project-home", type=Path, help=argparse.SUPPRESS)

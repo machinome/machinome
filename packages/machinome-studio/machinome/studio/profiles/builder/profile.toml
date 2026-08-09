@@ -19,8 +19,3 @@ model = "sonnet"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
 permission = "autonomous"
-
-[agents.backends.hermes]
-model = "inherit"
-effort = "inherit"
-tools = "inherit"

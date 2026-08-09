@@ -13,10 +13,10 @@ checkout and load `profiles/<id>/profile.toml`. `--profile builder` is the
 default; `--profile fordesmac` selects the delegated team. A profile is strict
 trusted configuration: it declares the human label, one user-facing agent,
 standing roster, direct or delegated work mode, prompt paths, allowed skills,
-communication edges, and Codex, Claude, and Hermes model/effort/tool policy. A
-project never supplies or overrides that configuration. OpenCode is the bounded
-exception: existing profiles have no OpenCode tables and remain unchanged and
-valid; its adapter owns temporary compatibility defaults.
+communication edges, and Codex and Claude model/effort/tool policy. A project
+never supplies or overrides that configuration. OpenCode is the bounded
+exception: profiles have no OpenCode tables; its adapter owns temporary
+compatibility defaults.
 
 The initial profiles are:
 
@@ -36,8 +36,8 @@ root, while prompts and skills remain shop-owned outside that project.
 ```text
 browser  <-->  Broker  <-->  Orchestrator  <-->  selected backend sessions
                    |               |                     |
-             state, SSE,      resolved profile    Codex / Claude / Hermes /
-             conversation     contracts only            OpenCode
+             state, SSE,      resolved profile     Codex / Claude /
+             conversation     contracts only         OpenCode
 ```
 
 `floor/app.py` is the in-memory broker and browser API. It uses stable internal
@@ -88,10 +88,8 @@ its supported command fields. An autonomous Claude policy bypasses confirmation
 prompts only for its profile-declared tools; it does not grant extra tools or
 provide operating-system sandboxing. Claude safe mode remains active, so local
 assistant configuration cannot alter the repository-owned contract.
-Hermes explicitly inherits model, effort, and tools because ACP does not expose
-per-session controls; it still receives the same validated profile prompt and
-skills. These three adapters consume the selected profile runtime table and
-never parse profile files or load global role adapters.
+These two adapters consume the selected profile runtime table and never parse
+profile files or load global role adapters.
 
 OpenCode owns one password-protected loopback HTTP/SSE server and one persistent
 session per role. Its adapter does not require or read OpenCode profile tables.
@@ -117,9 +115,9 @@ The operational matrix is Builder/Foreman/Machinist/Librarian: Claude
 `sonnet`, medium effort. On Codex, Builder uses `gpt-5.3-codex-spark` at high
 effort while Foreman/Machinist/Librarian use `gpt-5.6-terra` at medium effort;
 Designer uses Claude `opus` and Codex `gpt-5.6-sol`, both at medium effort.
-Hermes explicitly inherits all three controls. OpenCode instead inherits its
-operator model and variant under its adapter-owned compatibility policy. These
-choices are backend configuration, not broker semantics.
+OpenCode instead inherits its operator model and variant under its
+adapter-owned compatibility policy. These choices are backend configuration,
+not broker semantics.
 
 ## Floor and browser
 

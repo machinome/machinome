@@ -2,9 +2,8 @@
 
 The ``create_backend`` factory selects a concrete ``AgentBackend``
 implementation by name.  Each backend owns one external agent-runtime
-process and exposes only role-level operations — no Codex thread or turn
-identifiers, no Hermes ACP session identifiers, and no provider
-configuration escape above this seam.
+process and exposes only role-level operations — no backend-native session or
+turn identifiers and no provider configuration escape above this seam.
 """
 
 from __future__ import annotations
@@ -56,6 +55,5 @@ def _register(name: str, cls: type[AgentBackend]) -> None:
 # map is populated before ``create_backend`` is first called.
 from .base import AgentBackend  # noqa: E402
 from . import codex as _codex  # noqa: E402
-from . import hermes as _hermes  # noqa: E402
 from . import claude as _claude  # noqa: E402
 from . import opencode as _opencode  # noqa: E402

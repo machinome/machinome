@@ -17,7 +17,7 @@ adapter would find convenient:
 * `control_request`/`interrupt` answers
   `{"subtype": "success", "response": {"still_queued": []}}`, then ends the
   turn with `is_error: true` and `terminal_reason: "aborted_tools"`. The
-  session stays usable afterwards — unlike Hermes, nothing is wedged.
+  session stays usable afterwards.
 
 **What this fixture cannot prove.** It always acts on a delivered correction.
 Whether a real model does is a separate, measured, *probabilistic* property

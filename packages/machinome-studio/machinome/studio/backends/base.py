@@ -1,8 +1,8 @@
 """Portable agent-backend protocol and shared types.
 
 Every agent backend implements ``AgentBackend``.  The orchestrator depends
-only on this protocol — never on Codex thread/turn identifiers, Hermes ACP
-session handles, or vendor-specific configuration.
+only on this protocol — never on backend-native session/turn identifiers or
+vendor-specific configuration.
 """
 
 from __future__ import annotations
@@ -22,9 +22,9 @@ class InactiveTurn(RuntimeError):
     """The expected delivery completed before steering was accepted.
 
     Part of the portable contract, not one backend's detail: each backend
-    learns of the race differently — Codex from an error response, Hermes
-    from its own outstanding-prompt record — and a backend whose runtime
-    provides no such signal at all never raises it (see ADR 0008).
+    learns of the race from its own native response or outstanding-delivery
+    record, and a backend whose runtime provides no such signal never raises it
+    (see ADR 0008).
     """
 
 
@@ -97,13 +97,13 @@ class AgentBackend(Protocol):
     """Protocol for a pluggable agent-runtime backend.
 
     A backend owns every external process it starts — one for all roles
-    (``codex app-server``, ``hermes acp``) or one per role (``claude``) —
-    and releases all of them on ``close()``.  It translates between its
-    native protocol and the portable operations and events defined here.
-    Cardinality is a backend's own business; ownership is not (ADR 0008).
+    (``codex app-server``, ``opencode serve``) or one per role (``claude``) —
+    and releases all of them on ``close()``. It translates between its native
+    protocol and the portable operations and events defined here. Cardinality
+    is a backend's own business; ownership is not (ADR 0008).
 
-    The orchestrator never sees thread/turn IDs, ACP session handles, or
-    provider configuration — only the abstractions below.
+    The orchestrator never sees native session/turn IDs or provider
+    configuration — only the abstractions below.
     """
 
     events: AsyncIterator[BackendEvent]

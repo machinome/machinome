@@ -32,7 +32,7 @@ supported.
 - **THEN** the runtime validates that profile and opens Foreman, Designer, Machinist, and Librarian sessions
 
 #### Scenario: Profile and backend are selected independently
-- **WHEN** either initial profile is selected with Codex, Hermes, or Claude
+- **WHEN** either initial profile is selected with Codex, Claude, or OpenCode
 - **THEN** that backend opens exactly the agents declared by that profile
 
 #### Scenario: Profile validation fails

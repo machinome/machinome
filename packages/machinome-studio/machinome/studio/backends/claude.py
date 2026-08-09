@@ -1,6 +1,6 @@
 """Claude agent backend — wraps one ``claude`` CLI process per role.
 
-Unlike the Codex and Hermes backends, which multiplex every role through a
+Unlike the Codex and OpenCode backends, which multiplex every role through a
 single subprocess, Claude Code holds one conversation per process.  This
 backend therefore owns one process per declared profile agent and releases all
 of them on

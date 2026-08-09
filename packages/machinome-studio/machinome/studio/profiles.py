@@ -10,8 +10,8 @@ from typing import Any, Literal
 
 
 PROFILE_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
-BACKENDS = ("codex", "claude", "hermes", "opencode")
-PROFILE_BACKENDS = ("codex", "claude", "hermes")
+BACKENDS = ("codex", "claude", "opencode")
+PROFILE_BACKENDS = ("codex", "claude")
 _TOP_LEVEL = {"schema_version", "user_label", "user_agent", "work_mode", "agents"}
 _AGENT = {"id", "label", "prompt", "assigns", "reports_to", "backends"}
 _RUNTIME = {"model", "effort", "tools"}
@@ -143,7 +143,7 @@ def load_profile(
             raise ProfileError(f"profile {selected}.{agent_id}.backends must declare every backend")
         _only(backend_settings, set(PROFILE_BACKENDS), f"profile {selected}.{agent_id}.backends")
         if set(backend_settings) != set(PROFILE_BACKENDS):
-            raise ProfileError(f"profile {selected}.{agent_id}.backends must declare Codex, Claude, and Hermes")
+            raise ProfileError(f"profile {selected}.{agent_id}.backends must declare Codex and Claude")
         for runtime_backend, runtime_value in backend_settings.items():
             _runtime(runtime_value, selected, agent_id, runtime_backend)
         runtime = (
@@ -256,7 +256,7 @@ def _runtime(value: Any, profile: str, agent: str, backend: str) -> BackendRunti
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.effort is unsupported")
     if not (tools == "inherit" or (isinstance(tools, list) and all(isinstance(item, str) and item for item in tools))):
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.tools must be inherit or a list")
-    if backend in {"codex", "hermes"} and tools != "inherit":
+    if backend == "codex" and tools != "inherit":
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.tools cannot be enforced")
     if backend == "claude" and isinstance(tools, list) and (
         len(tools) != len(set(tools)) or any(tool not in _CLAUDE_TOOLS for tool in tools)
@@ -264,8 +264,6 @@ def _runtime(value: Any, profile: str, agent: str, backend: str) -> BackendRunti
         raise ProfileError(f"profile {profile}.{agent}.backends.claude.tools is unsupported")
     if backend == "claude" and permission not in {"manual", "autonomous"}:
         raise ProfileError(f"profile {profile}.{agent}.backends.claude.permission is unsupported")
-    if backend == "hermes" and (model != "inherit" or effort != "inherit" or tools != "inherit"):
-        raise ProfileError(f"profile {profile}.{agent}.backends.hermes must explicitly inherit unsupported controls")
     return BackendRuntime(model, effort, tools if isinstance(tools, str) else tuple(tools), permission)
 
 

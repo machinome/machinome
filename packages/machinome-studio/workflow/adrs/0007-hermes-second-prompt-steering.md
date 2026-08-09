@@ -1,6 +1,6 @@
 # ADR 0007: Depend on Hermes' off-spec second-prompt steering for active-turn corrections
 
-**Status:** Accepted
+**Status:** Superseded by [ADR 0016](./0016-retire-hermes-agent-backend.md)
 
 **Date:** 2026-07-30
 

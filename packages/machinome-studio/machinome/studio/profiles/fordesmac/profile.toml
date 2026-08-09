@@ -18,10 +18,6 @@ model = "sonnet"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
 permission = "autonomous"
-[agents.backends.hermes]
-model = "inherit"
-effort = "inherit"
-tools = "inherit"
 
 [[agents]]
 id = "designer"
@@ -38,10 +34,6 @@ model = "opus"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
 permission = "autonomous"
-[agents.backends.hermes]
-model = "inherit"
-effort = "inherit"
-tools = "inherit"
 
 [[agents]]
 id = "machinist"
@@ -58,10 +50,6 @@ model = "sonnet"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
 permission = "autonomous"
-[agents.backends.hermes]
-model = "inherit"
-effort = "inherit"
-tools = "inherit"
 
 [[agents]]
 id = "librarian"
@@ -78,7 +66,3 @@ model = "sonnet"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"]
 permission = "autonomous"
-[agents.backends.hermes]
-model = "inherit"
-effort = "inherit"
-tools = "inherit"

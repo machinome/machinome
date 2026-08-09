@@ -26,10 +26,10 @@ root. Runtime prompts belong to `profiles/<id>/`; their shared allowlisted
 skills are in `shop-skills/`. Repository operation and development skills stay
 under `skills/` and are not runtime capabilities.
 
-Four backends are selectable: Codex, Claude, Hermes, and OpenCode. Codex gets
-the profile-configured model and reasoning effort, Claude gets its selected
-model, effort, and supported tools, and Hermes explicitly inherits its process
-configuration. These three use explicit profile runtime tables.
+Three backends are selectable: Codex, Claude, and OpenCode. Codex gets the
+profile-configured model and reasoning effort, while Claude gets its selected
+model, effort, supported tools, and permission policy. These two use explicit
+profile runtime tables.
 
 OpenCode currently uses a bounded compatibility exception. Existing profiles
 remain unchanged and valid and do not contain OpenCode tables. The adapter

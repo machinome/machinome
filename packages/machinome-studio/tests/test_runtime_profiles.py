@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -36,15 +37,25 @@ class RuntimeProfileTest(unittest.TestCase):
         self.assertEqual(fordesmac.agent("designer").reports_to, "foreman")
         self.assertEqual(fordesmac.agent("foreman").assigns, ("designer", "machinist", "librarian"))
 
-    def test_hermes_is_explicitly_inherited_and_skills_are_profile_allowlisted(self) -> None:
-        profile = load_profile("builder", shop_root=ROOT, backend="hermes")
+    def test_skills_are_profile_allowlisted(self) -> None:
+        profile = load_profile("builder", shop_root=ROOT, backend="codex")
         agent = profile.user_agent
-        self.assertEqual((agent.runtime.model, agent.runtime.effort, agent.runtime.tools), ("inherit", "inherit", "inherit"))
         self.assertEqual({path.name for path in agent.skill_paths}, {"solid-node", "solid-node-api"})
         for path in agent.skill_paths:
             self.assertTrue((path / "SKILL.md").is_file())
             self.assertTrue(path.is_symlink())
             self.assertEqual(path.resolve().parent, ROOT / "shop-skills")
+
+    def test_builtin_profiles_declare_only_profile_explicit_backends(self) -> None:
+        for profile_id in ("builder", "fordesmac"):
+            with (ROOT / "profiles" / profile_id / "profile.toml").open("rb") as source:
+                manifest = tomllib.load(source)
+            for agent in manifest["agents"]:
+                self.assertEqual(set(agent["backends"]), {"codex", "claude"})
+
+    def test_retired_hermes_backend_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ProfileError, "unsupported backend 'hermes'"):
+            load_profile("builder", shop_root=ROOT, backend="hermes")
 
     def test_invalid_selection_and_unknown_schema_key_fail_with_actionable_errors(self) -> None:
         with self.assertRaisesRegex(ProfileError, "profile.*lowercase kebab-case"):

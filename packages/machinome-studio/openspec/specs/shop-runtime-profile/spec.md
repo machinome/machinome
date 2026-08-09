@@ -5,7 +5,6 @@
 Define trusted declarative packages that select shop runtime topology, prompts, skills, and enforceable backend policy before project or runtime side effects.
 
 ## Requirements
-
 ### Requirement: A run selects one trusted runtime profile
 The shop launcher SHALL accept `--profile <profile-id>` and SHALL select
 `builder` when the option is omitted. It SHALL resolve a selected profile only
@@ -82,17 +81,20 @@ Runtime agents MUST NOT resolve skills from the repository-development
 - **THEN** profile validation fails
 
 ### Requirement: Backend runtime choices are explicit per agent
-Each profile agent SHALL declare a model, effort, and tool policy for Codex,
-Claude, and Hermes. Each setting SHALL be either a value the backend can
-enforce or the literal `inherit`. Each Claude runtime table SHALL additionally
-declare `permission` as either `manual` or `autonomous`; no Codex or Hermes
-runtime table SHALL declare that field. Selecting a backend SHALL fail
-validation if an agent lacks that backend entry, names an unsupported concrete
-value, or requests a control that backend cannot enforce. A backend MUST NOT
-silently substitute an inherited or differently configured model, effort,
-tool, or Claude permission policy for a concrete profile declaration.
+Each profile agent SHALL declare a model, effort, and tool policy for Codex and
+Claude. Each setting SHALL be either a value the backend can enforce or the
+literal `inherit`. Each Claude runtime table SHALL additionally declare
+`permission` as either `manual` or `autonomous`; Codex runtime tables SHALL NOT
+declare that field. Selecting a profile-explicit backend SHALL fail validation
+if an agent lacks that backend entry, names an unsupported concrete value, or
+requests a control that backend cannot enforce. A backend MUST NOT silently
+substitute an inherited or differently configured model, effort, tool, or
+Claude permission policy for a concrete profile declaration.
 
-The initial profiles SHALL explicitly inherit Hermes model, effort, and tools.
+OpenCode SHALL remain selectable without a profile runtime table under its
+bounded adapter-owned compatibility policy. A profile SHALL reject runtime
+tables for unsupported or retired backends, including Hermes.
+
 Every shipped Claude role SHALL explicitly declare `permission =
 "autonomous"`.
 
@@ -102,22 +104,22 @@ Every shipped Claude role SHALL explicitly declare `permission =
 
 #### Scenario: A Claude profile selects autonomous execution
 - **WHEN** a shipped profile is selected with the Claude backend
-- **THEN** every declared role resolves its explicit `autonomous` permission
-  policy along with its model, effort, and available tools
+- **THEN** every declared role resolves its explicit `autonomous` permission policy along with its model, effort, and available tools
 
-#### Scenario: Hermes intentionally inherits process configuration
-- **WHEN** either initial profile is selected with the Hermes backend
-- **THEN** every agent explicitly inherits model, effort, and tools from the configured ACP process
+#### Scenario: OpenCode uses adapter-owned compatibility policy
+- **WHEN** either initial profile is selected with the OpenCode backend
+- **THEN** the profile is valid without an OpenCode runtime table and the adapter applies its bounded compatibility policy
+
+#### Scenario: A retired backend table is rejected
+- **WHEN** a profile agent declares a Hermes runtime table
+- **THEN** profile validation rejects the unsupported backend key
 
 #### Scenario: A concrete control cannot be enforced
-- **WHEN** the selected backend cannot enforce a concrete model, effort, tool,
-  or Claude permission value declared for an agent
-- **THEN** the runtime rejects that profile/backend combination rather than
-  silently inheriting
+- **WHEN** the selected backend cannot enforce a concrete model, effort, tool, or Claude permission value declared for an agent
+- **THEN** the runtime rejects that profile/backend combination rather than silently inheriting
 
 #### Scenario: A Claude permission policy is omitted or invalid
-- **WHEN** a Claude runtime table omits `permission` or names a value other
-  than `manual` or `autonomous`
+- **WHEN** a Claude runtime table omits `permission` or names a value other than `manual` or `autonomous`
 - **THEN** profile validation fails before any project or runtime side effect
 
 ### Requirement: Profile validation precedes every project side effect
@@ -137,7 +139,7 @@ The `builder` profile SHALL declare one user-facing Builder in direct mode. The
 Librarian agents in delegated mode; Foreman SHALL be user-facing, SHALL be the
 only agent permitted to assign the three specialists, and SHALL be the only
 recipient of their reports. Both profiles SHALL use `Maker` as their initial
-human display label and SHALL be valid with Codex, Claude, and Hermes.
+human display label and SHALL be valid with Codex, Claude, and OpenCode.
 
 #### Scenario: Builder topology is loaded
 - **WHEN** the `builder` profile is validated
