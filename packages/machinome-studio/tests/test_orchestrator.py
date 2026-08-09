@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import unittest
 import json
 import os
@@ -11,6 +12,7 @@ import sys
 import tempfile
 import time
 from dataclasses import replace
+from contextlib import redirect_stderr
 from types import SimpleNamespace
 from pathlib import Path
 from typing import cast
@@ -689,6 +691,73 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
         ):
             __import__("asyncio").run(_serve(arguments))
         self.assertEqual(load_profile.call_args.kwargs["shop_root"], primary)
+
+    def test_project_profile_and_option_override_resolve_for_the_orchestrated_entrypoint(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project_home = Path(temporary) / "projects"
+            project = project_home / "engine"
+            project.mkdir(parents=True)
+            (project / "pyproject.toml").write_text(
+                '[tool.solid-node-studio]\nprofile = "builder"\n'
+            )
+            failure = PreparationError("build", "engine", project, "failed")
+            for option, expected in ((None, "builder"), ("fordesmac", "fordesmac")):
+                arguments = SimpleNamespace(
+                    project_name="engine",
+                    project_home=project_home,
+                    solid_command="solid",
+                    cwd=ROOT,
+                    profile=option,
+                    port=9000,
+                    backend_command=[],
+                )
+                with (
+                    self.subTest(option=option),
+                    patch("floor.orchestrator.primary_shop_root", return_value=ROOT),
+                    patch("floor.orchestrator.resolve_profile_runtime", wraps=resolve_profile_runtime) as resolve,
+                    patch("floor.orchestrator.prepare_project", side_effect=failure),
+                    self.assertRaises(PreparationError),
+                ):
+                    asyncio.run(_serve(arguments))
+                self.assertEqual(resolve.call_args.args[0].id, expected)
+
+    def test_profile_override_ignores_and_reports_declared_roster_selections(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project_home = Path(temporary) / "projects"
+            project = project_home / "engine"
+            project.mkdir(parents=True)
+            (project / "pyproject.toml").write_text(
+                '[tool.solid-node-studio]\n'
+                'profile = "fordesmac"\n'
+                '[tool.solid-node-studio.agents]\n'
+                'designer = "claude:opus"\n'
+                'machinist = "codex:gpt-5.6-sol"\n'
+            )
+            arguments = SimpleNamespace(
+                project_name="engine",
+                project_home=project_home,
+                solid_command="solid",
+                cwd=ROOT,
+                profile="builder",
+                port=9000,
+                backend_command=[],
+            )
+            failure = PreparationError("build", "engine", project, "failed")
+            errors = io.StringIO()
+            with (
+                patch("floor.orchestrator.primary_shop_root", return_value=ROOT),
+                patch("floor.orchestrator.resolve_profile_runtime", wraps=resolve_profile_runtime) as resolve,
+                patch("floor.orchestrator.prepare_project", side_effect=failure),
+                redirect_stderr(errors),
+                self.assertRaises(PreparationError),
+            ):
+                asyncio.run(_serve(arguments))
+
+            profile = resolve_profile_runtime(*resolve.call_args.args)
+            self.assertEqual(profile.id, "builder")
+            self.assertEqual(profile.ignored_agent_ids, ("designer", "machinist"))
+            self.assertIn("ignored runtime selection for agent 'designer'", errors.getvalue())
+            self.assertIn("ignored runtime selection for agent 'machinist'", errors.getvalue())
 
     def test_one_sigint_closes_with_a_live_sse_client(self) -> None:
         temporary = tempfile.TemporaryDirectory()

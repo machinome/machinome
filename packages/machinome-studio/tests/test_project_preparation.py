@@ -84,6 +84,7 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertEqual(prepared.viewer_api_version, 2)
         self.assertEqual(self.call_log.read_text().splitlines()[0], "new:new_engine")
         self.assertTrue((project / "root" / "__init__.py").is_file())
+        self.assertFalse((project / "pyproject.toml").exists())
         self.assertEqual(
             subprocess.run(["git", "-C", str(project), "rev-list", "--count", "HEAD"], check=True, text=True, capture_output=True).stdout.strip(),
             "1",

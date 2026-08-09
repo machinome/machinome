@@ -33,14 +33,17 @@ def main() -> None:
     )
     parser.add_argument("--project-home", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--solid-command", help=argparse.SUPPRESS)
-    parser.add_argument("--profile", help="runtime profile owned by this shop checkout")
+    parser.add_argument("--profile", help="override the project-selected runtime profile")
     arguments = parser.parse_args()
     checkout = Path.cwd()
     project_home = arguments.project_home or default_project_home(checkout)
     try:
         shop_root = primary_shop_root(checkout)
         selection = read_project_runtime(arguments.project_name, project_home=project_home)
-        profile = resolve_profile_runtime(load_profile(arguments.profile, shop_root=shop_root), selection)
+        profile = resolve_profile_runtime(
+            load_profile(arguments.profile, shop_root=shop_root, selection=selection),
+            selection,
+        )
     except (PreparationError, ProfileError, ProjectRuntimeError) as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(1) from error

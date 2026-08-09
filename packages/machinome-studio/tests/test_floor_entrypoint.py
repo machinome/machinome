@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -45,7 +46,27 @@ class FloorEntrypointTest(unittest.TestCase):
         self.assertEqual(prepare.call_args.args[0], "v8-engine")
         create_app.assert_called_once()
         self.assertEqual(create_app.call_args.args, (prepared.project_root,))
-        self.assertEqual(create_app.call_args.kwargs["profile"].id, "builder")
+        self.assertEqual(create_app.call_args.kwargs["profile"].id, "fordesmac")
+
+    def test_project_profile_and_option_override_resolve_for_the_broker_entrypoint(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary) / "projects"
+            project = home / "engine"
+            project.mkdir(parents=True)
+            (project / "pyproject.toml").write_text(
+                '[tool.solid-node-studio]\nprofile = "builder"\n'
+            )
+            for option, expected in (([], "builder"), (["--profile", "fordesmac"], "fordesmac")):
+                with (
+                    self.subTest(option=option),
+                    patch.object(sys, "argv", ["floor", "engine", "--project-home", str(home), *option]),
+                    patch.object(__main__, "primary_shop_root", return_value=ROOT),
+                    patch.object(__main__, "prepare_project", return_value=_prepared()),
+                    patch.object(__main__, "create_app") as create_app,
+                    patch.object(__main__.uvicorn, "run"),
+                ):
+                    __main__.main()
+                self.assertEqual(create_app.call_args.kwargs["profile"].id, expected)
 
     def test_profile_is_validated_before_project_preparation(self) -> None:
         from floor.profiles import ProfileError
@@ -58,6 +79,23 @@ class FloorEntrypointTest(unittest.TestCase):
             __main__.main()
         self.assertEqual(raised.exception.code, 1)
         prepare.assert_not_called()
+
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary) / "projects"
+            project = home / "engine"
+            project.mkdir(parents=True)
+            (project / "pyproject.toml").write_text(
+                '[tool.solid-node-studio]\nprofile = "missing-profile"\n'
+            )
+            with (
+                patch.object(sys, "argv", ["floor", "engine", "--project-home", str(home)]),
+                patch.object(__main__, "primary_shop_root", return_value=ROOT),
+                patch.object(__main__, "prepare_project") as prepare,
+                self.assertRaises(SystemExit) as raised,
+            ):
+                __main__.main()
+            self.assertEqual(raised.exception.code, 1)
+            prepare.assert_not_called()
 
     def test_profile_load_uses_the_primary_shop_root_from_a_checkout_path(self) -> None:
         primary = Path("/primary-shop")

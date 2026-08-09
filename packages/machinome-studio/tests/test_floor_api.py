@@ -31,11 +31,11 @@ class FloorAPITest(unittest.TestCase):
         self.project_home.mkdir()
         self._project_number = 0
         self.shop = self.enterContext(isolated_primary_shop())
-        self._start_floor("floor-api")
+        self._start_floor("floor-api", profile="builder")
         self.addCleanup(self._stop_floor)
         _wait_for_health(self.url("/health"))
 
-    def test_default_profile_run_surface_exposes_profile_metadata(self) -> None:
+    def test_explicit_builder_run_surface_exposes_profile_metadata(self) -> None:
         self.assertEqual(_request(self.url("/health"), "GET"), {"status": "open"})
         run = _request(self.url("/api/runs/latest"), "GET")
         self.assertEqual(run["profile_id"], "builder")
@@ -51,6 +51,23 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual(_status(self.url("/api/runs/shop-floor/agents/builder/assignments"), "POST", {"assignment_id": "x"}), 409)
         self.assertEqual(_status(self.url("/api/runs/shop-floor/agents/builder"), "DELETE"), 204)
         self.assertEqual(_request(self.url("/api/runs/latest"), "GET")["agents"], [])
+
+    def test_bare_entrypoint_exposes_fordesmac_as_the_default_profile(self) -> None:
+        self._stop_floor()
+        self._start_floor("default-profile")
+
+        run = _request(self.url("/api/runs/latest"), "GET")
+        self.assertEqual(run["profile_id"], "fordesmac")
+        self.assertEqual(run["user_agent"], {"id": "foreman", "label": "Foreman"})
+        self.assertEqual(
+            run["roster"],
+            [
+                {"id": "foreman", "label": "Foreman"},
+                {"id": "designer", "label": "Designer"},
+                {"id": "machinist", "label": "Machinist"},
+                {"id": "librarian", "label": "Librarian"},
+            ],
+        )
 
     def test_profile_conversation_is_ordered_and_survives_a_browser_snapshot(self) -> None:
         first = _request(
@@ -220,10 +237,18 @@ class FloorAPITest(unittest.TestCase):
             environment["FAKE_SOLID_MODEL"] = model
             environment["FAKE_SOLID_MODEL_CONTENT"] = (target / "_build" / model).read_text()
         self.project = target
-        self._start_floor(name, environment=environment)
+        self._start_floor(name, environment=environment, profile="builder")
 
-    def _start_floor(self, name: str, *, environment: dict[str, str] | None = None) -> None:
+    def _start_floor(
+        self,
+        name: str,
+        *,
+        environment: dict[str, str] | None = None,
+        profile: str | None = None,
+    ) -> None:
         command = ["python", "-m", "floor", name, "--port", str(self.port), "--project-home", str(self.project_home), "--solid-command", str(FAKE_SOLID)]
+        if profile is not None:
+            command.extend(("--profile", profile))
         self.process = subprocess.Popen(command, cwd=self.shop, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, env=environment or self._environment())
         _wait_for_health(self.url("/health"))
 

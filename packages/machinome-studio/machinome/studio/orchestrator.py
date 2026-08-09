@@ -405,7 +405,11 @@ async def _serve(arguments: argparse.Namespace) -> None:
     project_home = arguments.project_home or default_project_home(arguments.cwd)
     selection = read_project_runtime(arguments.project_name, project_home=project_home)
     profile = resolve_profile_runtime(
-        load_profile(getattr(arguments, "profile", None), shop_root=shop_root),
+        load_profile(
+            getattr(arguments, "profile", None),
+            shop_root=shop_root,
+            selection=selection,
+        ),
         selection,
     )
     for agent_id in profile.ignored_agent_ids:
@@ -502,7 +506,7 @@ def main() -> None:
     parser.add_argument("project_name", help="lowercase kebab-case project name below projects/")
     parser.add_argument("--port", type=int, default=int(os.environ.get("FLOOR_PORT", "9000")))
     parser.add_argument("--cwd", type=Path, default=Path.cwd(), help="shop checkout containing role adapters")
-    parser.add_argument("--profile", help="runtime profile owned by this shop checkout")
+    parser.add_argument("--profile", help="override the project-selected runtime profile")
     parser.add_argument("--project-home", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--solid-command", help=argparse.SUPPRESS)
     parser.add_argument("--backend-command", action="append", default=[], metavar="BACKEND=COMMAND", help=argparse.SUPPRESS)

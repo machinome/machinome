@@ -13,6 +13,7 @@ from .preparation import (
     CLAUDE_MODELS,
     CODEX_EFFORTS,
     CODEX_MODELS,
+    ProjectRuntimeError,
     ProjectRuntimeSelection,
 )
 
@@ -77,12 +78,34 @@ def load_profile(
     profile_id: str | None,
     *,
     shop_root: Path,
-    default: str | None = "builder",
+    default: str | None = "fordesmac",
+    selection: ProjectRuntimeSelection | None = None,
 ) -> RuntimeProfile:
-    """Load one fully validated profile without touching a project or backend."""
-    selected = default if profile_id is None else profile_id
+    """Select and load one validated profile without project or backend side effects."""
+    from_project = profile_id is None and selection is not None and selection.profile is not None
+    if profile_id is not None:
+        selected = profile_id
+    elif from_project:
+        assert selection is not None
+        selected = selection.profile
+    else:
+        selected = default
     if selected is None:
         raise ProfileError("profile is required")
+    try:
+        return _load_profile(selected, shop_root=shop_root)
+    except ProfileError as error:
+        if from_project:
+            assert selection is not None
+            raise ProjectRuntimeError(
+                selection.source_path,
+                f"profile value {selected!r} cannot be loaded: {error}",
+            ) from error
+        raise
+
+
+def _load_profile(selected: str, *, shop_root: Path) -> RuntimeProfile:
+    """Load one named repository-owned profile package."""
     if not PROFILE_ID.fullmatch(selected):
         raise ProfileError(f"profile {selected!r} must be lowercase kebab-case")
     shop = shop_root.resolve()

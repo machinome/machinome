@@ -37,6 +37,7 @@ class ProjectRuntimeSelection:
     project_root: Path
     source_path: Path
     agents: dict[str, ProjectAgentRuntime]
+    profile: str | None = None
 
 
 @dataclass(frozen=True)
@@ -176,9 +177,15 @@ def read_project_runtime(name: str | None, *, project_home: Path) -> ProjectRunt
         return ProjectRuntimeSelection(project_root, source_path, {})
     if not isinstance(table, dict):
         raise ProjectRuntimeError(source_path, "tool.solid-node-studio must be a table")
-    unknown = set(table) - {"agents"}
+    unknown = set(table) - {"agents", "profile"}
     if unknown:
         raise ProjectRuntimeError(source_path, f"tool.solid-node-studio: unknown key {sorted(unknown)[0]!r}")
+    profile = table.get("profile")
+    if profile is not None and (not isinstance(profile, str) or not PROJECT_NAME.fullmatch(profile)):
+        raise ProjectRuntimeError(
+            source_path,
+            f"profile value {profile!r} must be a lowercase kebab-case string",
+        )
     raw_agents = table.get("agents", {})
     if not isinstance(raw_agents, dict):
         raise ProjectRuntimeError(source_path, "tool.solid-node-studio.agents must be a table")
@@ -189,7 +196,7 @@ def read_project_runtime(name: str | None, *, project_home: Path) -> ProjectRunt
         if not isinstance(raw, str):
             raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} must be a string")
         agents[agent_id] = _parse_agent_runtime(agent_id, raw, source_path)
-    return ProjectRuntimeSelection(project_root, source_path, agents)
+    return ProjectRuntimeSelection(project_root, source_path, agents, profile)
 
 
 def _project_path(name: str | None, project_home: Path) -> Path:

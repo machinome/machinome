@@ -1,6 +1,6 @@
 # ADR 0017: Select backend, provider, model, and reasoning level per agent from the project
 
-**Status:** Accepted
+**Status:** Accepted (amended by ADR 0019)
 
 **Date:** 2026-08-09
 

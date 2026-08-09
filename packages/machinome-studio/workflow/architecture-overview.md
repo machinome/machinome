@@ -10,15 +10,17 @@ system.
 
 Before project preparation, both floor entry points resolve the named project
 path and make one side-effect-free read of its `pyproject.toml`, then resolve
-the primary shop checkout and load `profiles/<id>/profile.toml`. `--profile
-builder` is the default; `--profile fordesmac` selects the delegated team. A
-profile is strict trusted configuration: it declares the human label, one
-user-facing agent, standing roster, direct or delegated work mode, prompt
-paths, allowed skills, communication edges, and Codex and Claude runtime
-defaults. The project may select backend, provider, model, and reasoning level
-per agent under `[tool.solid-node-studio.agents]`; profile tool policy and
-Claude permission remain non-overridable. OpenCode has no profile table and is
-available only through an explicit project selection.
+the primary shop checkout and load `profiles/<id>/profile.toml`. `--profile`
+selects the profile when supplied; otherwise the project's
+`[tool.solid-node-studio]` `profile` value selects it, and otherwise the shop
+uses `fordesmac`. A profile is strict trusted configuration: it declares the
+human label, one user-facing agent, standing roster, direct or delegated work
+mode, prompt paths, allowed skills, communication edges, and Codex and Claude
+runtime defaults. The option overrides a project declaration for one run
+without modifying it. The project may select backend, provider, model, and
+reasoning level per agent under `[tool.solid-node-studio.agents]`; profile tool
+policy and Claude permission remain non-overridable. OpenCode has no profile
+table and is available only through an explicit project selection.
 
 The initial profiles are:
 

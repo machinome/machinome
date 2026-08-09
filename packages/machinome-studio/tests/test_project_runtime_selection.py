@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import shutil
 import tempfile
 import unittest
@@ -43,6 +44,17 @@ librarian = "opencode:openai:gpt-5.4:medium"
         self.assertIsNone(selection.agents["machinist"].effort)
         self.assertEqual(selection.agents["librarian"].effort, "medium")
 
+    def test_profile_is_read_beside_agents(self) -> None:
+        selection = self._selection(
+            '[tool.solid-node-studio]\n'
+            'profile = "fordesmac"\n'
+            '[tool.solid-node-studio.agents]\n'
+            'foreman = "codex:gpt-5.6-terra"\n'
+        )
+
+        self.assertEqual(selection.profile, "fordesmac")
+        self.assertEqual(set(selection.agents), {"foreman"})
+
     def test_malformed_selections_are_rejected_with_agent_and_value(self) -> None:
         invalid = (
             "imaginary:model",
@@ -78,26 +90,42 @@ librarian = "opencode:openai:gpt-5.4:medium"
             home = Path(temporary) / "projects"
             selection = read_project_runtime("new-project", project_home=home)
             self.assertEqual(selection.agents, {})
+            self.assertIsNone(selection.profile)
             self.assertFalse(home.exists())
 
             project = home / "existing-project"
             project.mkdir(parents=True)
-            self.assertEqual(
-                read_project_runtime("existing-project", project_home=home).agents,
-                {},
-            )
+            selection = read_project_runtime("existing-project", project_home=home)
+            self.assertEqual(selection.agents, {})
+            self.assertIsNone(selection.profile)
 
             (project / "pyproject.toml").write_text('[tool.solid-node]\nmodel = "part:Part"\n')
-            self.assertEqual(
-                read_project_runtime("existing-project", project_home=home).agents,
-                {},
-            )
+            selection = read_project_runtime("existing-project", project_home=home)
+            self.assertEqual(selection.agents, {})
+            self.assertIsNone(selection.profile)
+
+            (project / "pyproject.toml").write_text('[tool.solid-node-studio]\n')
+            selection = read_project_runtime("existing-project", project_home=home)
+            self.assertEqual(selection.agents, {})
+            self.assertIsNone(selection.profile)
 
     def test_agent_ids_and_unknown_table_keys_are_rejected(self) -> None:
         with self.assertRaisesRegex(ProjectRuntimeError, "BadAgent.*lowercase kebab-case"):
             self._selection('[tool.solid-node-studio.agents]\nBadAgent = "codex:gpt-5.6-terra"\n')
         with self.assertRaisesRegex(ProjectRuntimeError, "unknown key.*effort"):
             self._selection('[tool.solid-node-studio]\neffort = "high"\n')
+
+    def test_profile_must_be_a_lowercase_kebab_case_string(self) -> None:
+        invalid = (42, "../builder", "builder/child", "Builder", "builder..next")
+        for value in invalid:
+            rendered = repr(value)
+            source_value = f'"{value}"' if isinstance(value, str) else str(value)
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(
+                    ProjectRuntimeError,
+                    r"pyproject\.toml.*profile.*" + re.escape(rendered),
+                ):
+                    self._selection(f"[tool.solid-node-studio]\nprofile = {source_value}\n")
 
     def test_resolution_ignores_and_reports_keys_outside_the_roster(self) -> None:
         selection = self._selection(

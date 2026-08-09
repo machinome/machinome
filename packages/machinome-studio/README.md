@@ -1,7 +1,8 @@
 # SolidNode Studio
 
 SolidNode Studio is an experimental local harness for building 3D-printable
-mechanical CAD projects with solid-node. The pilot chooses a repository-owned runtime profile;
+mechanical CAD projects with solid-node. The project normally chooses a
+repository-owned runtime profile;
 the profile defines the standing team, authority, prompts, skills, tool policy,
 and safe runtime defaults. Each project can durably select backend, provider,
 model, and reasoning level per agent.
@@ -9,15 +10,16 @@ model, and reasoning level per agent.
 ## Open a floor
 
 ```text
+python -m floor.orchestrator <project-name>
 python -m floor.orchestrator <project-name> --profile builder
-python -m floor.orchestrator <project-name> --profile fordesmac
-python -m floor <project-name> --profile builder
+python -m floor <project-name>
 ```
 
-`builder` is the default profile and opens one direct Builder session.
-`fordesmac` opens standing Foreman, Designer, Machinist, and Librarian sessions;
-Foreman alone assigns and receives specialist reports. The broker-only command
-does not open a backend. The launcher reads project runtime configuration
+`fordesmac` is the shop default and opens standing Foreman, Designer,
+Machinist, and Librarian sessions; Foreman alone assigns and receives specialist
+reports. `builder` opens one direct Builder session. The broker-only command
+does not open a backend. `--profile` overrides the project's declaration for
+one run without changing it. The launcher reads project runtime configuration
 without creating anything, then validates the profile and resolved runtime
 before the named project is created, built, or served.
 
@@ -26,11 +28,17 @@ their profile's Codex model and effort. A final segment overrides reasoning;
 OpenCode additionally requires a provider:
 
 ```toml
+[tool.solid-node-studio]
+profile = "fordesmac"
+
 [tool.solid-node-studio.agents]
 foreman = "codex:gpt-5.6-terra"
 designer = "opencode:anthropic:claude-sonnet-4-5:high"
 machinist = "claude:sonnet:medium"
 ```
+
+When `profile` and `--profile` are both absent, the launcher uses `fordesmac`.
+A scaffold writes neither a profile nor a shop runtime table.
 
 The launcher has no run-wide backend flag. One floor may open several backends,
 and it starts each distinct selected backend exactly once.
