@@ -1,6 +1,6 @@
 # ADR 0012: Use a bounded adapter-owned OpenCode compatibility policy
 
-**Status:** Accepted
+**Status:** Accepted (amended by ADR 0017)
 
 **Date:** 2026-08-01
 

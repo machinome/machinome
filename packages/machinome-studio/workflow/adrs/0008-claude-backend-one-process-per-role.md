@@ -1,6 +1,6 @@
 # ADR 0008: Add a Claude Code backend, and let a backend own one process per role
 
-**Status:** Accepted
+**Status:** Accepted (amended by ADR 0018)
 
 **Date:** 2026-07-30
 
