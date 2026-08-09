@@ -45,6 +45,7 @@ class OpenCodeBackend:
         command: str | Sequence[str] = "opencode",
         broker_url: str = "http://127.0.0.1:9000",
         solid_command: str | Sequence[str] = "solid",
+        session_id: str | None = None,
         readiness_timeout: float = 10,
         request_timeout: float = 30,
         stop_timeout: float = 5,
@@ -53,6 +54,7 @@ class OpenCodeBackend:
         self.project = (project or cwd).resolve()
         self.command = (command,) if isinstance(command, str) else tuple(command)
         self.broker_url = broker_url
+        self.session_id = session_id
         self.solid_command = solid_command
         self.readiness_timeout = readiness_timeout
         self.request_timeout = request_timeout
@@ -137,6 +139,7 @@ class OpenCodeBackend:
             "OPENCODE_DISABLE_PROJECT_CONFIG": "true",
             "OPENCODE_SERVER_PASSWORD": self.password,
             "FLOOR_URL": self.broker_url,
+            **({"FLOOR_SESSION": self.session_id} if self.session_id else {}),
             "PYTHONPATH": os.pathsep.join(
                 item for item in (str(self.cwd), os.environ.get("PYTHONPATH", "")) if item
             ),

@@ -4,9 +4,12 @@ import re
 import shutil
 import tempfile
 import unittest
+import os
+import sys
 from pathlib import Path
+from unittest.mock import patch
 
-from floor.preparation import ProjectRuntimeError, read_project_runtime
+from floor.preparation import ProjectRuntimeError, prepare_project, read_project_runtime
 from floor.profiles import ProfileError, load_profile, resolve_profile_runtime
 
 
@@ -54,6 +57,24 @@ librarian = "opencode:openai:gpt-5.4:medium"
 
         self.assertEqual(selection.profile, "fordesmac")
         self.assertEqual(set(selection.agents), {"foreman"})
+
+    def test_created_project_declares_the_makers_chosen_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary) / "projects"
+            environment = {
+                "GIT_AUTHOR_NAME": "Shop Test",
+                "GIT_AUTHOR_EMAIL": "shop@example.invalid",
+                "GIT_COMMITTER_NAME": "Shop Test",
+                "GIT_COMMITTER_EMAIL": "shop@example.invalid",
+            }
+            with patch.dict(os.environ, environment):
+                prepare_project(
+                    "created-project",
+                    project_home=home,
+                    solid_command=(sys.executable, str(ROOT / "tests" / "fixtures" / "fake_solid.py")),
+                    profile="builder",
+                )
+            self.assertEqual(read_project_runtime("created-project", project_home=home).profile, "builder")
 
     def test_malformed_selections_are_rejected_with_agent_and_value(self) -> None:
         invalid = (

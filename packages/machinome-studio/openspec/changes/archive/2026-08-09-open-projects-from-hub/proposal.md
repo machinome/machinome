@@ -30,11 +30,12 @@ sheet in the browser, and several projects can be open at once in one service.
   **ephemeral**: nothing survives closing the session or stopping the service.
   Durable sessions are deliberately out of scope and left to a later change.
 - Projects are created from the new-project sheet (design screen 3c), which
-  takes a name and a profile. **BREAKING**: creation now writes the chosen
+  takes a safe direct-child directory name without imposing a naming style and
+  a profile. **BREAKING**: creation now writes the chosen
   profile into the project's `pyproject.toml`, which scaffolding previously was
   required not to do.
-- The hub lists every entry in the working folder. An entry that cannot be
-  opened — an unsafe name, a directory that is not its own Git repository — is
+- The hub lists every directory in the working folder. A directory that cannot
+  be opened — for example, one that is not its own Git repository — is
   listed as unopenable with the reason, instead of being a fatal error that
   prevented the shop from starting at all.
 - Failure to prepare a project or to start its agents leaves the maker on the
@@ -43,8 +44,12 @@ sheet in the browser, and several projects can be open at once in one service.
   cannot currently build.
 - The hub reports which agent backends are present, read-only: each known
   backend's executable, version and configured model, and whether it was found.
-  Enabling, disabling and locating backends stay with the unimplemented setup
-  screens.
+  Detection happens automatically when the hub loads; there is no manual
+  detection control. Enabling, disabling and locating backends stay with the
+  unimplemented setup screens.
+- The project grid uses four columns on full-HD displays, three on ordinary
+  desktop widths, two at compact widths and one on narrow screens. Cards are at
+  least 252 pixels tall with 158-pixel model previews.
 - The workspace is unchanged except that it is served at `/projects/<name>` and
   gains a close control in its title bar.
 

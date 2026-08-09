@@ -2,25 +2,54 @@
 
 SolidNode Studio is a local agent harness for mechanical CAD projects. A
 human pilot owns intent and consequential choices; the runtime opens a
-repository-owned, validated team profile for one named project. `AGENTS.md`
+project hub over one working folder and can hold several isolated project
+sessions, each with a repository-owned validated team profile. `AGENTS.md`
 governs how this repository is changed. This document describes the running
 system.
 
+## Project hub and sessions
+
+The process starts without preparing a project, building a model, or starting
+an agent. `floor/app.py` serves the hub over the configured `projects/` working
+folder. Its inventory is derived from the filesystem: every direct-child
+directory is listed, and exact independent Git repository roots also report
+their declared profile, branch, and last commit time. Regular files are omitted;
+malformed project configuration and non-repository directories remain visible
+with an unopenable reason. Project directory names have no stylistic constraint.
+
+`floor/sessions.py` owns a `SessionRegistry` keyed by project name and also
+indexed by an opaque generated session identifier. A project has at most one
+session; different projects have no cardinality limit. Each `Session` owns the
+verified project and artifact roots, build environment, resolved profile,
+broker, orchestrator and backend processes, delivery/event tasks, model and
+artifact watchers, and filesystem observer. Opening is asynchronous and
+reported on the hub stream. Profile resolution, preparation, and agent start
+are fatal and tear down partial resources; a failed initial model build is
+recorded in the session and does not prevent its workspace from opening.
+
+Agents receive `FLOOR_SESSION` beside `FLOOR_URL`, and every agent-facing API
+route resolves that identifier through the registry. An unknown or expired
+identifier is a 404 and never falls back to a project name or another session.
+Closing removes both registry indexes before boundedly ending agents, routing
+tasks and watchers. Sessions persist nothing; reopening a project generates a
+new identifier and a fresh broker and conversation.
+
 ## Profile-defined runtime
 
-Before project preparation, both floor entry points resolve the named project
-path and make one side-effect-free read of its `pyproject.toml`, then resolve
-the primary shop checkout and load `profiles/<id>/profile.toml`. `--profile`
-selects the profile when supplied; otherwise the project's
-`[tool.solid-node-studio]` `profile` value selects it, and otherwise the shop
-uses `fordesmac`. A profile is strict trusted configuration: it declares the
+When a project is opened, the registry makes one side-effect-free read of its
+`pyproject.toml`, then loads `profiles/<id>/profile.toml` from the primary shop
+checkout. The project's `[tool.solid-node-studio]` `profile` value selects it;
+otherwise the shop uses `fordesmac`. The launcher provides no override. A
+profile is strict trusted configuration: it declares the
 human label, one user-facing agent, standing roster, direct or delegated work
 mode, prompt paths, allowed skills, communication edges, and Codex and Claude
 runtime defaults. The option overrides a project declaration for one run
 without modifying it. The project may select backend, provider, model, and
 reasoning level per agent under `[tool.solid-node-studio.agents]`; profile tool
 policy and Claude permission remain non-overridable. OpenCode has no profile
-table and is available only through an explicit project selection.
+table and is available only through an explicit project selection. Creating a
+project records the profile selected in the hub in that repository's initial
+commit.
 
 The initial profiles are:
 
@@ -38,13 +67,16 @@ root, while prompts and skills remain shop-owned outside that project.
 ## Runtime layers
 
 ```text
-browser  <-->  Broker  <-->  Orchestrator  <-->  per-agent backend owners
-                   |               |                   /    |    \
-             state, SSE,      resolved profile      Codex Claude OpenCode
-             conversation     and runtime map       event streams fan in
+browser hub <--> SessionRegistry <--> Session (one per open project)
+                                         |
+project browser <--> Broker <--> Orchestrator <--> per-agent backend owners
+                         |             |                   /    |    \
+                   state, SSE,    resolved profile      Codex Claude OpenCode
+                   conversation   and runtime map       event streams fan in
 ```
 
-`floor/app.py` is the in-memory broker and browser API. It uses stable internal
+`floor/app.py` contains the in-memory broker and browser API. Each session's
+broker uses stable internal
 identity `user`, profile agent IDs, and profile labels. It validates every
 sender, recipient, assignment edge, reporting edge, lifecycle operation, and
 conversation author against the active profile. Browser run state contains the
@@ -129,37 +161,42 @@ profile. These choices are backend configuration, not broker semantics.
 
 ## Floor and browser
 
-After the bounded project-configuration read, profile validation and runtime
-resolution complete before preparation creates or verifies the named independent
-project repository and validates its initial build. Only then does the floor
-bind a listener or the orchestrator start a backend. The browser renders
+The service binds its listener before any project is selected. For each open
+request, profile validation and runtime resolution complete before preparation
+creates or verifies the named independent project repository. The initial build
+runs off the event loop and reports an error into that session instead of
+gating it; agent start remains all-or-nothing. The hub remains available during
+opening and after any one project's failure. The browser renders
 profile-provided roster labels, conversation attribution, and event summaries;
 it does not encode a participant's role. The transcript is independently
 scrollable, reveals newly appended messages, sends a non-empty draft on Enter,
 and inserts a newline on Ctrl+Enter.
 
-Floor serves only published `_build/` artifacts. One lifespan-owned filesystem
-observer has separate source and artifact handlers: source events outside
-`_build` settle into a `solid build`, while each atomic rename into `_build`
-becomes a named artifact event for the browser. The floor neither hashes or
+Floor serves only published `_build/` artifacts beneath a project-scoped
+browser path. Every session owns a filesystem observer with separate source and
+artifact handlers: source events outside `_build` settle into a `solid build`,
+while each atomic rename into `_build` becomes a named artifact event for that
+session's browser. The floor neither hashes or
 diffs publication contents nor forwards deletions; `errors.json` is published
-and reported through the same path. Its artifact route holds one fixed build
+and reported through the same path. Each artifact route holds one fixed build
 root and therefore does not re-resolve a symlink during a request. Agent
 sessions do not run a callback process or expose project source through the
 browser service.
 
-The browser mounts the framework viewer once for the floor's lifetime. It maps
+Each project browser mounts its framework viewer for that workspace. It maps
 each published path directly to the viewer: the manifest reconciles the model,
 a regular artifact updates only the geometry that names it, and `errors.json`
 updates the separate build-failure banner. A failed targeted request reports
 beside the retained model and the next publication retries normally; the browser
 does not remount the viewer or interpret artifact contents.
 
-The browser holds one run-agnostic live-state connection to `/api/stream` and
-does not poll run or conversation state. Each connection opens with a snapshot
-of complete run state and the full ordered conversation, then carries
-subsequent broker changes. The broker subscribes the connection before reading
-the snapshot, and the snapshot carries the broker's explicit latest event
+The hub holds one live-state connection to `/api/stream`. It opens with the
+complete project inventory and then carries only project opening, open, failed,
+and closed changes. A workspace holds one connection to its session stream. It
+opens with that broker's complete run state and full ordered conversation, then
+carries only that project's subsequent changes. Neither scope polls live state,
+and the hub never receives a conversation. A broker subscribes the connection
+before reading the snapshot, and its snapshot carries the explicit latest event
 sequence so the browser can discard that hand-off overlap exactly once.
 
 Current run state includes any role-scoped backend failure. The browser shows
@@ -169,18 +206,22 @@ user-facing agent after backend access is restored. The notice is runtime
 state, not participant-authored conversation, and clears when a recovery
 delivery is accepted.
 
-Every reconnection repeats the snapshot path. The browser assigns its event
+Every reconnection repeats the relevant snapshot path. A workspace assigns its event
 position from that snapshot rather than retaining a higher position from a
-previous process, so an already-open page adopts the current situation after a
-floor restart. Connection state drives the displayed open/closed lifecycle;
-reopening also prompts the mounted viewer to re-read its model because artifact
-events are not recoverable broker state. The bounded broker event history is
-reserved for a future activity display and is never read for recovery.
+previous connection. Because sessions are ephemeral, a project page whose
+session ended or disappeared after a service restart returns to the hub.
+Connection state drives the displayed open/closed lifecycle; reconnecting an
+intact session also prompts the mounted viewer to re-read its model because
+artifact events are not recoverable broker state. The bounded broker event
+history is reserved for a future activity display and is never read for
+recovery.
 
 ## Workspace boundaries
 
 Each `projects/<name>/` directory is an independent Git repository. The
 framework checkout belongs under `solid-node/`; framework worktrees belong
 under `solid-node/WTs/`; shop worktrees belong under `WTs/`. Runtime agents use
-only the active project's verified root plus their selected profile contract.
-They do not inspect sibling mechanical projects.
+only their session's verified project root plus their selected profile contract.
+The session identifier is the routing boundary as well as the process
+environment supplied to the agent; runtime agents do not inspect sibling
+mechanical projects.

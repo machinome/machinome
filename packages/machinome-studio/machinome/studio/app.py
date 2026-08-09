@@ -22,7 +22,6 @@ from .profiles import RuntimeProfile, load_profile, resolve_profile_runtime
 from .watcher import ArtifactWatcher, ModelWatcher
 
 
-RUN_ID = "shop-floor"
 # The browser bundle the floor serves. Overridable so a test can run the
 # maker's browser against a development build of the same source: React only
 # double-invokes effects there, and the shipped bundle cannot exercise that.
@@ -112,13 +111,19 @@ class EnvelopeInput(BaseModel):
     assignment_id: str = ""
 
 
+class ProjectInput(BaseModel):
+    name: str
+    profile: str | None = None
+
+
 class Broker:
     """One in-memory run's portable coordination state."""
 
-    def __init__(self, profile: RuntimeProfile | None = None, *, event_history_limit: int = 20) -> None:
+    def __init__(self, profile: RuntimeProfile | None = None, *, session_id: str = "unbound", event_history_limit: int = 20) -> None:
         self.profile = profile or resolve_profile_runtime(
             load_profile(None, shop_root=Path(__file__).resolve().parents[1])
         )
+        self.session_id = session_id
         self.agents: dict[str, Agent] = {}
         self.subscribers: set[asyncio.Queue[dict[str, object]]] = set()
         self.delivery_subscribers: set[asyncio.Queue[Envelope | None]] = set()
@@ -131,10 +136,11 @@ class Broker:
         self.events: deque[BrokerEvent] = deque(maxlen=event_history_limit)
         self.latest_event_sequence = 0
         self._next_envelope_sequence = 0
+        self.model_build_error: str | None = None
 
     def run(self) -> dict[str, object]:
         return {
-            "id": RUN_ID,
+            "id": self.session_id,
             "status": "running",
             "profile_id": self.profile.id,
             "user_label": self.profile.user_label,
@@ -143,6 +149,7 @@ class Broker:
             "agents": [agent.browser_value() for agent in self.agents.values()],
             "events": [event.browser_value() for event in self.events],
             "latest_event_sequence": self.latest_event_sequence,
+            "model_build_error": self.model_build_error,
         }
 
     def snapshot(self) -> dict[str, object]:
@@ -379,6 +386,10 @@ class Broker:
         envelope_sequence: int | None = None,
     ) -> BrokerEvent:
         value = payload if isinstance(payload, dict) else payload.browser_value()
+        if kind == "model_build_unavailable":
+            self.model_build_error = str(value.get("reason") or "the shop could not start a model build")
+        elif kind == "model_artifact_changed" and value.get("artifact") == "viewer.json":
+            self.model_build_error = None
         role = role or str(value.get("role", ""))
         sender = sender or str(value.get("sender", ""))
         recipient = recipient or str(value.get("recipient", ""))
@@ -537,73 +548,82 @@ class Broker:
             raise ValueError("unknown envelope") from error
 
 
-def create_app(
-    project_root: Path | None = None,
-    *,
-    artifact_root: Path | None = None,
-    viewer_bundle: Path | None = None,
-    broker: Broker | None = None,
-    profile: RuntimeProfile | None = None,
-    solid_command: Sequence[str] | None = None,
-    build_environment: Mapping[str, str] | None = None,
-    settle_delay: float = 0.5,
-) -> FastAPI:
-    # The watcher belongs to the application, not the orchestrator: the
-    # thing it refreshes is this app's own artifact route, and this app is what
-    # publishes filesystem events. Both entry points get identical wiring.
+def create_app(working_folder: Path, *, registry: object) -> FastAPI:
+    """Serve the project hub and all registry-owned session surfaces."""
+
     @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        observer: Observer | None = None
-        source_watcher: ModelWatcher | None = None
-        artifact_watcher: ArtifactWatcher | None = None
-        if build_root is not None and build_root.is_dir():
-            loop = asyncio.get_running_loop()
-            observer = Observer()
-            artifact_watcher = ArtifactWatcher(build_root, loop, app.state.broker.publish)
-            observer.schedule(artifact_watcher, str(build_root), recursive=True)
-            if solid_command is not None and project_root is not None:
-                source_watcher = ModelWatcher(
-                project_root,
-                solid_command,
-                app.state.broker.publish,
-                loop=loop,
-                extra_environment=build_environment,
-                settle_delay=settle_delay,
-                )
-                observer.schedule(source_watcher, str(project_root), recursive=True)
-            app.state.model_watcher = source_watcher
-            app.state.artifact_watcher = artifact_watcher
-            app.state.observer = observer
-            observer.start()
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         try:
             yield
         finally:
-            if source_watcher is not None:
-                source_watcher.close()
-            if observer is not None:
-                observer.stop()
-                await asyncio.to_thread(observer.join)
+            await registry.close_all()  # type: ignore[attr-defined]
 
-    app = FastAPI(title="shop-floor", lifespan=lifespan)
-    broker = broker or Broker(profile=profile)
-    app.state.broker = broker
-    app.state.model_watcher = None
-    app.state.artifact_watcher = None
-    app.state.observer = None
+    app = FastAPI(title="solid-node-studio", lifespan=lifespan)
+    app.state.working_folder = working_folder.resolve()
+    app.state.registry = registry
     app.mount("/assets", StaticFiles(directory=STATIC_ROOT / "assets"), name="assets")
-    supplied_build_root = artifact_root or (project_root / "_build" if project_root is not None else None)
-    build_root = supplied_build_root.resolve() if supplied_build_root is not None else None
 
-    @app.get("/viewer/solid-widget.js")
-    async def viewer() -> FileResponse:
-        if viewer_bundle is None or not viewer_bundle.is_file():
+    def session(session_id: str):
+        try:
+            return registry.require_id(session_id)  # type: ignore[attr-defined]
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="unknown session") from error
+
+    def project_session(name: str):
+        value = registry.by_project(name)  # type: ignore[attr-defined]
+        if value is None:
+            raise HTTPException(status_code=404, detail="project is not open")
+        return value
+
+    @app.get("/health")
+    async def health() -> dict[str, str]:
+        return {"status": "open"}
+
+    @app.get("/api/projects")
+    async def projects() -> dict[str, object]:
+        return {"working_folder": str(working_folder.resolve()), "projects": await registry.projects()}  # type: ignore[attr-defined]
+
+    @app.post("/api/projects")
+    async def create_project(input: ProjectInput) -> JSONResponse:
+        try:
+            value = await registry.create(input.name, input.profile)  # type: ignore[attr-defined]
+        except (ValueError, RuntimeError) as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return JSONResponse(value, status_code=202)
+
+    @app.post("/api/projects/{name}/session")
+    async def open_project(name: str) -> JSONResponse:
+        try:
+            value = await registry.request_open(name)  # type: ignore[attr-defined]
+        except (ValueError, RuntimeError) as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return JSONResponse(value, status_code=200 if value.get("state") == "open" else 202)
+
+    @app.delete("/api/sessions/{session_id}")
+    async def close_project(session_id: str) -> Response:
+        session(session_id)
+        asyncio.create_task(registry.request_close(session_id))  # type: ignore[attr-defined]
+        return Response(status_code=202)
+
+    @app.get("/api/backends")
+    async def backends() -> dict[str, object]:
+        from .backends.probe import probe_backends
+        return {"backends": await asyncio.to_thread(probe_backends, registry.shop_root)}  # type: ignore[attr-defined]
+
+    @app.post("/api/backends/detect")
+    async def detect_backends() -> dict[str, object]:
+        return await backends()
+
+    @app.get("/projects/{name}/viewer/solid-widget.js")
+    async def viewer(name: str) -> FileResponse:
+        bundle = project_session(name).prepared.viewer_bundle
+        if bundle is None or not bundle.is_file():
             raise HTTPException(status_code=404, detail="no framework viewer is available")
-        return FileResponse(viewer_bundle, media_type="text/javascript")
+        return FileResponse(bundle, media_type="text/javascript")
 
-    @app.get("/artifacts/{artifact_path:path}")
-    async def artifact(artifact_path: str) -> FileResponse:
-        if build_root is None:
-            raise HTTPException(status_code=404, detail="no project build is available")
+    @app.get("/projects/{name}/artifacts/{artifact_path:path}")
+    async def artifact(name: str, artifact_path: str) -> FileResponse:
+        build_root = project_session(name).artifact_root.resolve()
         candidate = (build_root / artifact_path).resolve()
         if build_root not in candidate.parents and candidate != build_root:
             raise HTTPException(status_code=404, detail="unknown artifact")
@@ -611,101 +631,76 @@ def create_app(
             raise HTTPException(status_code=404, detail="unknown artifact")
         return FileResponse(candidate, headers={"Cache-Control": "no-cache"})
 
-    @app.get("/")
-    async def browser_page() -> FileResponse:
-        return FileResponse(STATIC_ROOT / "index.html", media_type="text/html")
+    @app.get("/api/sessions/{session_id}")
+    async def run(session_id: str) -> dict[str, object]:
+        return session(session_id).broker.run()
 
-    @app.get("/health")
-    async def health() -> dict[str, str]:
-        return {"status": "open"}
-
-    @app.get("/api/runs/latest")
-    async def latest_run() -> dict[str, object]:
-        return broker.run()
-
-    @app.get("/api/runs/{run_id}")
-    async def run(run_id: str) -> dict[str, object]:
-        _require_run(run_id)
-        return broker.run()
-
-    @app.get("/api/runs/{run_id}/conversation")
-    async def conversation(run_id: str) -> dict[str, object]:
-        _require_run(run_id)
+    @app.get("/api/sessions/{session_id}/conversation")
+    async def conversation(session_id: str) -> dict[str, object]:
+        broker = session(session_id).broker
         return {"entries": [entry.browser_value() for entry in broker.conversation]}
 
-    @app.post("/api/runs/{run_id}/conversation")
-    async def submit_user_message(run_id: str, input: ConversationInput) -> JSONResponse:
-        _require_run(run_id)
-        return JSONResponse((await _conversation_or_400(broker, "user", input.text)).browser_value())
+    @app.post("/api/sessions/{session_id}/conversation")
+    async def submit_user_message(session_id: str, input: ConversationInput) -> JSONResponse:
+        return JSONResponse((await _conversation_or_400(session(session_id).broker, "user", input.text)).browser_value())
 
-    @app.post("/api/runs/{run_id}/agents")
-    async def manifest(run_id: str, input: ManifestInput) -> JSONResponse:
-        _require_run(run_id)
+    @app.post("/api/sessions/{session_id}/agents")
+    async def manifest(session_id: str, input: ManifestInput) -> JSONResponse:
         try:
-            return JSONResponse(broker.manifest(input.role, input.label).browser_value())
+            return JSONResponse(session(session_id).broker.manifest(input.role, input.label).browser_value())
         except ValueError as error:
             raise _broker_http_error(error) from error
 
-    @app.post("/api/runs/{run_id}/envelopes")
-    async def send_envelope(run_id: str, input: EnvelopeInput) -> JSONResponse:
-        _require_run(run_id)
+    @app.post("/api/sessions/{session_id}/envelopes")
+    async def send_envelope(session_id: str, input: EnvelopeInput) -> JSONResponse:
+        broker = session(session_id).broker
         try:
-            envelope = broker.send(
-                input.kind,
-                input.sender,
-                input.recipient,
-                input.body,
-                input.assignment_id,
-            )
+            envelope = broker.send(input.kind, input.sender, input.recipient, input.body, input.assignment_id)
         except ValueError as error:
             raise _broker_http_error(error) from error
         return JSONResponse(envelope.delivery_value())
 
-    @app.post("/api/runs/{run_id}/envelopes/{sequence}/delivered")
-    async def mark_delivered(run_id: str, sequence: int) -> JSONResponse:
-        _require_run(run_id)
+    @app.post("/api/sessions/{session_id}/envelopes/{sequence}/delivered")
+    async def mark_delivered(session_id: str, sequence: int) -> JSONResponse:
         try:
-            return JSONResponse(broker.mark_delivered(sequence).delivery_value())
+            return JSONResponse(session(session_id).broker.mark_delivered(sequence).delivery_value())
         except ValueError as error:
             raise _broker_http_error(error) from error
 
-    @app.post("/api/runs/{run_id}/agents/{role}/assignments")
-    async def assign(run_id: str, role: str, input: AssignmentInput) -> JSONResponse:
-        _require_run(run_id)
+    @app.post("/api/sessions/{session_id}/agents/{role}/assignments")
+    async def assign(session_id: str, role: str, input: AssignmentInput) -> JSONResponse:
+        broker = session(session_id).broker
         try:
             broker.assign(role, input.assignment_id)
             return JSONResponse(broker.agents[role].browser_value())
         except ValueError as error:
             raise _broker_http_error(error) from error
 
-    @app.post("/api/runs/{run_id}/agents/{role}/acknowledgments")
-    async def acknowledge(run_id: str, role: str, input: AssignmentInput) -> JSONResponse:
-        _require_run(run_id)
+    @app.post("/api/sessions/{session_id}/agents/{role}/acknowledgments")
+    async def acknowledge(session_id: str, role: str, input: AssignmentInput) -> JSONResponse:
         try:
-            return JSONResponse(broker.acknowledge(role, input.assignment_id).browser_value())
+            return JSONResponse(session(session_id).broker.acknowledge(role, input.assignment_id).browser_value())
         except ValueError as error:
             raise _broker_http_error(error) from error
 
-    @app.post("/api/runs/{run_id}/agents/{role}/completions")
-    async def complete(run_id: str, role: str, input: AssignmentInput) -> JSONResponse:
-        _require_run(run_id)
+    @app.post("/api/sessions/{session_id}/agents/{role}/completions")
+    async def complete(session_id: str, role: str, input: AssignmentInput) -> JSONResponse:
         try:
-            return JSONResponse(broker.complete(role, input.assignment_id).browser_value())
+            return JSONResponse(session(session_id).broker.complete(role, input.assignment_id).browser_value())
         except ValueError as error:
             raise _broker_http_error(error) from error
 
-    @app.delete("/api/runs/{run_id}/agents/{role}")
-    async def stop(run_id: str, role: str) -> Response:
-        _require_run(run_id)
+    @app.delete("/api/sessions/{session_id}/agents/{role}")
+    async def stop(session_id: str, role: str) -> Response:
         try:
-            broker.stop(role)
+            session(session_id).broker.stop(role)
         except ValueError as error:
             raise _broker_http_error(error) from error
         return Response(status_code=204)
 
-    @app.get("/api/runs/{run_id}/orchestrator/stream")
-    async def orchestrator_stream(run_id: str) -> StreamingResponse:
-        _require_run(run_id)
+    @app.get("/api/sessions/{session_id}/orchestrator/stream")
+    async def orchestrator_stream(session_id: str) -> StreamingResponse:
+        broker = session(session_id).broker
 
         async def events() -> AsyncIterator[str]:
             async for envelope in broker.deliveries():
@@ -713,7 +708,7 @@ def create_app(
 
         return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
-    def live_state_stream(request: Request) -> StreamingResponse:
+    def live_state_stream(request: Request, broker: Broker) -> StreamingResponse:
         async def events() -> AsyncIterator[str]:
             subscriber, snapshot = broker.subscribe_snapshot()
             try:
@@ -729,14 +724,32 @@ def create_app(
 
         return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
-    @app.get("/api/stream")
-    async def stream(request: Request) -> StreamingResponse:
-        return live_state_stream(request)
+    @app.get("/api/sessions/{session_id}/stream")
+    async def session_stream(session_id: str, request: Request) -> StreamingResponse:
+        return live_state_stream(request, session(session_id).broker)
 
-    @app.get("/api/runs/{run_id}/stream")
-    async def run_stream(run_id: str, request: Request) -> StreamingResponse:
-        _require_run(run_id)
-        return live_state_stream(request)
+    @app.get("/api/stream")
+    async def hub_stream(request: Request) -> StreamingResponse:
+        async def events() -> AsyncIterator[str]:
+            subscriber, snapshot = await registry.subscribe_hub()  # type: ignore[attr-defined]
+            try:
+                yield f"event: snapshot\ndata: {json.dumps(snapshot)}\n\n"
+                while not await request.is_disconnected():
+                    try:
+                        event = await asyncio.wait_for(subscriber.get(), timeout=15)
+                        yield f"event: project\ndata: {json.dumps(event)}\n\n"
+                    except TimeoutError:
+                        yield ": keepalive\n\n"
+            finally:
+                registry.unsubscribe_hub(subscriber)  # type: ignore[attr-defined]
+
+        return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
+
+    @app.get("/{browser_path:path}")
+    async def browser_page(browser_path: str) -> FileResponse:
+        if browser_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="unknown API route")
+        return FileResponse(STATIC_ROOT / "index.html", media_type="text/html")
 
     return app
 
@@ -746,11 +759,6 @@ async def _conversation_or_400(broker: Broker, author: str, text: str) -> Conver
         return await broker.record_conversation(author, text)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-
-
-def _require_run(run_id: str) -> None:
-    if run_id != RUN_ID:
-        raise HTTPException(status_code=404, detail="unknown shop run")
 
 
 def _broker_http_error(error: ValueError) -> HTTPException:

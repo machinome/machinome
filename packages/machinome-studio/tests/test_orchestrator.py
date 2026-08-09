@@ -10,6 +10,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from dataclasses import replace
 from contextlib import redirect_stderr
@@ -30,7 +31,7 @@ from floor.orchestrator import (
     _shutdown_runtime,
     _wait_for_runtime,
 )
-from floor.preparation import PreparationError, ProjectAgentRuntime, ProjectRuntimeSelection
+from floor.preparation import PreparationError, ProjectAgentRuntime, ProjectRuntimeSelection, prepare_project
 from floor.profiles import load_profile, resolve_profile_runtime
 
 from tests.fixtures.primary_shop import isolated_primary_shop
@@ -651,114 +652,6 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
 
 
 class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
-    def test_preparation_failure_constructs_no_runtime_and_reports_no_url(self) -> None:
-        arguments = SimpleNamespace(
-            project_name="broken",
-            project_home=Path("/work/projects"),
-            solid_command="solid",
-            cwd=ROOT,
-            port=9000,
-            backend_command=[],
-        )
-        failure = PreparationError("build", "broken", Path("/work/projects/broken"), "failed")
-        with (
-            patch("floor.orchestrator.primary_shop_root", return_value=ROOT),
-            patch("floor.orchestrator.prepare_project", side_effect=failure),
-            patch("floor.orchestrator.Broker") as broker,
-            patch("floor.orchestrator.create_app") as create_app,
-            self.assertRaises(PreparationError),
-        ):
-            __import__("asyncio").run(_serve(arguments))
-        broker.assert_not_called()
-        create_app.assert_not_called()
-
-    def test_orchestrator_normalizes_to_the_primary_root_before_loading_a_profile(self) -> None:
-        arguments = SimpleNamespace(
-            project_name="broken",
-            project_home=Path("/work/projects"),
-            solid_command="solid",
-            cwd=ROOT / "WTs" / "checkout",
-            port=9000,
-            backend_command=[],
-        )
-        primary = ROOT
-        failure = PreparationError("build", "broken", Path("/work/projects/broken"), "failed")
-        with (
-            patch("floor.orchestrator.primary_shop_root", return_value=primary),
-            patch("floor.orchestrator.load_profile", return_value=FORDESMAC) as load_profile,
-            patch("floor.orchestrator.prepare_project", side_effect=failure),
-            self.assertRaises(PreparationError),
-        ):
-            __import__("asyncio").run(_serve(arguments))
-        self.assertEqual(load_profile.call_args.kwargs["shop_root"], primary)
-
-    def test_project_profile_and_option_override_resolve_for_the_orchestrated_entrypoint(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            project_home = Path(temporary) / "projects"
-            project = project_home / "engine"
-            project.mkdir(parents=True)
-            (project / "pyproject.toml").write_text(
-                '[tool.solid-node-studio]\nprofile = "builder"\n'
-            )
-            failure = PreparationError("build", "engine", project, "failed")
-            for option, expected in ((None, "builder"), ("fordesmac", "fordesmac")):
-                arguments = SimpleNamespace(
-                    project_name="engine",
-                    project_home=project_home,
-                    solid_command="solid",
-                    cwd=ROOT,
-                    profile=option,
-                    port=9000,
-                    backend_command=[],
-                )
-                with (
-                    self.subTest(option=option),
-                    patch("floor.orchestrator.primary_shop_root", return_value=ROOT),
-                    patch("floor.orchestrator.resolve_profile_runtime", wraps=resolve_profile_runtime) as resolve,
-                    patch("floor.orchestrator.prepare_project", side_effect=failure),
-                    self.assertRaises(PreparationError),
-                ):
-                    asyncio.run(_serve(arguments))
-                self.assertEqual(resolve.call_args.args[0].id, expected)
-
-    def test_profile_override_ignores_and_reports_declared_roster_selections(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            project_home = Path(temporary) / "projects"
-            project = project_home / "engine"
-            project.mkdir(parents=True)
-            (project / "pyproject.toml").write_text(
-                '[tool.solid-node-studio]\n'
-                'profile = "fordesmac"\n'
-                '[tool.solid-node-studio.agents]\n'
-                'designer = "claude:opus"\n'
-                'machinist = "codex:gpt-5.6-sol"\n'
-            )
-            arguments = SimpleNamespace(
-                project_name="engine",
-                project_home=project_home,
-                solid_command="solid",
-                cwd=ROOT,
-                profile="builder",
-                port=9000,
-                backend_command=[],
-            )
-            failure = PreparationError("build", "engine", project, "failed")
-            errors = io.StringIO()
-            with (
-                patch("floor.orchestrator.primary_shop_root", return_value=ROOT),
-                patch("floor.orchestrator.resolve_profile_runtime", wraps=resolve_profile_runtime) as resolve,
-                patch("floor.orchestrator.prepare_project", side_effect=failure),
-                redirect_stderr(errors),
-                self.assertRaises(PreparationError),
-            ):
-                asyncio.run(_serve(arguments))
-
-            profile = resolve_profile_runtime(*resolve.call_args.args)
-            self.assertEqual(profile.id, "builder")
-            self.assertEqual(profile.ignored_agent_ids, ("designer", "machinist"))
-            self.assertIn("ignored runtime selection for agent 'designer'", errors.getvalue())
-            self.assertIn("ignored runtime selection for agent 'machinist'", errors.getvalue())
-
     def test_one_sigint_closes_with_a_live_sse_client(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -773,13 +666,10 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
                 sys.executable,
                 "-m",
                 "floor.orchestrator",
-                "shutdown-test",
                 "--port",
                 str(port),
                 "--cwd",
                 str(shop),
-                "--backend-command",
-                f"codex={FAKE_APP_SERVER}",
                 "--project-home",
                 str(project_home),
                 "--solid-command",
@@ -819,6 +709,117 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
         if process.poll() is None:
             os.killpg(process.pid, signal.SIGKILL)
             process.wait()
+
+
+class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        from floor.sessions import SessionRegistry
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.home = Path(self.temporary.name) / "projects"
+        self.home.mkdir()
+        self.project = self.home / "engine"
+        (self.project / "root").mkdir(parents=True)
+        (self.project / "root" / "__init__.py").write_text("# model\n")
+        (self.project / ".gitignore").write_text("_build/\n.fake-solid-builds\n")
+        (self.project / "pyproject.toml").write_text('[tool.solid-node-studio]\nprofile = "builder"\n')
+        subprocess.run(["git", "init", "-q", "-b", "main", str(self.project)], check=True)
+        subprocess.run(["git", "-C", str(self.project), "add", "--all"], check=True)
+        subprocess.run([
+            "git", "-C", str(self.project), "-c", "user.name=Shop Test", "-c", "user.email=shop@example.invalid",
+            "commit", "-q", "-m", "fixture",
+        ], check=True)
+        self.backends = []
+
+        def factory(*_args, **_kwargs):
+            from tests.fixtures.fake_backend import FakeBackend
+            backend = FakeBackend()
+            self.backends.append((_kwargs, backend))
+            return backend
+
+        self.registry = SessionRegistry(
+            self.home,
+            shop_root=ROOT,
+            solid_command=(sys.executable, str(FAKE_SOLID)),
+            backend_factory=factory,
+        )
+        self.addAsyncCleanup(self.registry.close_all)
+
+    async def test_open_resolves_prepares_builds_and_starts_agents_inside_one_session(self) -> None:
+        await self.registry.request_open("engine")
+        session = await self.registry.wait_until_settled("engine")
+        self.assertIsNotNone(session)
+        assert session is not None
+        self.assertEqual(session.profile.id, "builder")
+        self.assertEqual(list(session.broker.agents), ["builder"])
+        self.assertNotEqual(session.id, session.name)
+        self.assertEqual(self.backends[0][0]["session_id"], session.id)
+
+    async def test_creation_is_visible_as_a_provisional_project_until_its_directory_exists(self) -> None:
+        started = threading.Event()
+        release = threading.Event()
+
+        def slow_prepare(*args, **kwargs):
+            started.set()
+            if not release.wait(timeout=5):
+                raise TimeoutError("test did not release project preparation")
+            return prepare_project(*args, **kwargs)
+
+        subscriber, _snapshot = await self.registry.subscribe_hub()
+        try:
+            with patch("floor.sessions.prepare_project", side_effect=slow_prepare):
+                response = await self.registry.create("new_project", "builder")
+                self.assertEqual(response, {"state": "opening"})
+                self.assertTrue(await asyncio.to_thread(started.wait, 2))
+
+                event = await asyncio.wait_for(subscriber.get(), timeout=2)
+                self.assertEqual(event, {"kind": "creating", "project": "new_project", "profile": "builder"})
+                projects = {item["name"]: item for item in await self.registry.projects()}
+                self.assertEqual(projects["new_project"]["state"], "creating")
+                self.assertEqual(projects["new_project"]["profile"], "builder")
+                self.assertFalse((self.home / "new_project").exists())
+
+                release.set()
+                self.assertIsNotNone(await self.registry.wait_until_settled("new_project"))
+        finally:
+            release.set()
+            self.registry.unsubscribe_hub(subscriber)
+
+    async def test_profile_failure_is_fatal_before_preparation_and_leaves_no_session(self) -> None:
+        (self.project / "pyproject.toml").write_text('[tool.solid-node-studio]\nprofile = "missing-profile"\n')
+        with patch("floor.sessions.prepare_project") as prepare:
+            await self.registry.request_open("engine")
+            self.assertIsNone(await self.registry.wait_until_settled("engine"))
+        prepare.assert_not_called()
+        self.assertIsNone(self.registry.by_project("engine"))
+        self.assertIn("cannot be loaded", self.registry._failures["engine"])
+
+    async def test_preparation_and_agent_start_failures_leave_no_partial_session(self) -> None:
+        failure = PreparationError("repository", "engine", self.project, "broken")
+        with patch("floor.sessions.prepare_project", side_effect=failure):
+            await self.registry.request_open("engine")
+            self.assertIsNone(await self.registry.wait_until_settled("engine"))
+        self.assertIsNone(self.registry.by_project("engine"))
+
+        class BrokenBackend:
+            events = _empty_events()
+
+            async def start(self):
+                raise RuntimeError("backend start failed")
+
+            async def close(self):
+                return None
+
+        self.registry.backend_factory = lambda *_args, **_kwargs: BrokenBackend()
+        await self.registry.request_open("engine")
+        self.assertIsNone(await self.registry.wait_until_settled("engine"))
+        self.assertIsNone(self.registry.by_project("engine"))
+        self.assertIn("backend start failed", self.registry._failures["engine"])
+
+
+async def _empty_events():
+    if False:
+        yield None
 
 
 # ── AgentBackend protocol acceptance tests ─────────────────────────────────
@@ -1150,6 +1151,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
             project=self.project,
             command=(sys.executable, str(FAKE_CLAUDE_CLI)),
             solid_command=("/work/.venv/bin/solid",),
+            session_id="opaque-session",
         )
     def context(self, role: str) -> RoleContext:
         return _context(role, backend="claude", project=self.project)
@@ -1167,6 +1169,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         for environment in environments:
             self.assertEqual(environment["cwd"], str(self.project))
             self.assertTrue(environment["floorImportable"])
+            self.assertEqual(environment["floor_session"], "opaque-session")
         await self.claude.close()
 
     async def test_role_contract_is_session_level_not_a_turn(self) -> None:

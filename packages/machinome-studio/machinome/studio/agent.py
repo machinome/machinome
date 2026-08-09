@@ -24,7 +24,7 @@ def _request(server: str, path: str, method: str, body: dict[str, Any] | None = 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="shop-floor-agent")
     parser.add_argument("--server", default=os.environ.get("FLOOR_URL", "http://127.0.0.1:9000"))
-    parser.add_argument("--run", default="shop-floor")
+    parser.add_argument("--session", default=os.environ.get("FLOOR_SESSION"))
     commands = parser.add_subparsers(dest="command", required=True)
 
     manifest = commands.add_parser("manifest")
@@ -60,7 +60,9 @@ def main() -> None:
     stop.add_argument("--role", required=True)
 
     arguments = parser.parse_args()
-    base = f"/api/runs/{arguments.run}"
+    if not arguments.session:
+        parser.error("a session is required (set FLOOR_SESSION or pass --session)")
+    base = f"/api/sessions/{arguments.session}"
     if arguments.command == "manifest":
         result = _request(arguments.server, f"{base}/agents", "POST", {"role": arguments.role, "label": arguments.label})
     elif arguments.command == "direction":

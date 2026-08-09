@@ -284,6 +284,8 @@ class OpenCodeSelectionTest(unittest.TestCase):
             check=True,
         )
         self.assertNotIn("--backend", result.stdout)
+        self.assertNotIn("--profile", result.stdout)
+        self.assertNotIn("project_name", result.stdout)
 
 
 if __name__ == "__main__":

@@ -104,17 +104,21 @@ top. Each carries a visible id badge.
 - **Left column** (`#121419`, 1px right border `#262b33`, padding 26/22, gap 28):
   working-folder card (path mono 12px, `6 projects · 2.4 GB`, `Change…`), then
   Backends group with a `2 ready` mono count and one compact row per backend
-  (8px dot + name 13px + mono 11px model line), then `Detect backends`.
+  (8px dot + name 13px + mono 11px model line). Backend detection happens
+  automatically when the hub loads; there is no manual detection control.
 - **Right column** (padding 36/44, gap 26): header row — `Projects` 26px/600
   with a 13px `#8b929e` subline, and a primary `New project` button; then a
-  3-column card grid, gap 18.
+  card grid with gap 18: 4 columns at viewport widths of 1500px and above,
+  3 columns by default, 2 columns at 900px and below, and 1 column at 700px
+  and below.
 - **Project card:** `#171b21`, 1px `#262b33`, radius 10, hover border `#3b434f`.
-  132px thumbnail area `repeating-linear-gradient(45deg,#1b2027 0 9px,#171b21 9px 18px)`
+  Minimum height 252px with a 158px thumbnail area
+  `repeating-linear-gradient(45deg,#1b2027 0 9px,#171b21 9px 18px)`
   with a mono 10px `model preview` label and a bottom border; body padding
   14/15 with the name (14px/500), a status dot (green = currently open, else
   `#4a515c`), and a mono 11px meta line (`open · fordesmac · 4m ago`,
   `sprint-014 · 1 week ago`). Last cell is a dashed `+ New project` tile,
-  min-height 210px.
+  also with min-height 252px.
 
 ### 1b / 2a / 2b — Workspace (chosen direction)
 Single layout; the second column swaps with the rail selection. Model and chat

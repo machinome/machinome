@@ -7,12 +7,16 @@ import json
 import os
 import sys
 import unittest
+from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
 from floor.app import Broker, create_app
+from floor.watcher import ArtifactWatcher, ModelWatcher
+from watchdog.observers import Observer
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,12 +71,11 @@ class WatcherTestCase(unittest.IsolatedAsyncioTestCase):
             return original(kind, payload, **kwargs)
 
         broker.publish = record  # type: ignore[method-assign]
-        return create_app(
+        return _WatcherHarness(
             self.project,
-            artifact_root=self.artifacts,
-            broker=broker,
+            self.artifacts,
+            broker,
             solid_command=solid_command,
-            settle_delay=SETTLE,
         ), events
 
 
@@ -205,15 +208,82 @@ class SourceWatcherTest(WatcherTestCase):
 
 class ArtifactRouteTest(WatcherTestCase):
     async def test_republished_artifacts_must_revalidate(self) -> None:
-        app = create_app(self.project, artifact_root=self.artifacts, broker=Broker())
+        app = _artifact_app(self.project, self.artifacts)
         with TestClient(app) as client:
-            response = client.get("/artifacts/part.stl")
+            response = client.get("/projects/project/artifacts/part.stl")
         self.assertEqual(response.headers["cache-control"], "no-cache")
 
     async def test_route_serves_a_stable_artifact_during_another_republication(self) -> None:
-        app = create_app(self.project, artifact_root=self.artifacts, broker=Broker())
+        app = _artifact_app(self.project, self.artifacts)
         with TestClient(app) as client:
-            self.assertEqual(client.get("/artifacts/part.stl").status_code, 200)
+            self.assertEqual(client.get("/projects/project/artifacts/part.stl").status_code, 200)
             atomic_publish(self.artifacts, "other.stl", "new sibling")
-            self.assertEqual(client.get("/artifacts/part.stl").status_code, 200)
-            self.assertEqual(client.get("/artifacts/../root/__init__.py").status_code, 404)
+            self.assertEqual(client.get("/projects/project/artifacts/part.stl").status_code, 200)
+            self.assertEqual(client.get("/projects/project/artifacts/%2e%2e/root/__init__.py").status_code, 404)
+
+
+class _WatcherHarness:
+    def __init__(self, project: Path, artifacts: Path, broker: Broker, *, solid_command: tuple[str, ...] | None) -> None:
+        self.project = project
+        self.artifacts = artifacts
+        self.broker = broker
+        self.solid_command = solid_command
+        self.state = SimpleNamespace(model_watcher=None, artifact_watcher=None, observer=None)
+        self.router = SimpleNamespace(lifespan_context=self.lifespan_context)
+
+    @asynccontextmanager
+    async def lifespan_context(self, _app):
+        loop = asyncio.get_running_loop()
+        observer = Observer()
+        artifact = ArtifactWatcher(self.artifacts, loop, self.broker.publish)
+        observer.schedule(artifact, str(self.artifacts), recursive=True)
+        source = None
+        if self.solid_command is not None:
+            source = ModelWatcher(
+                self.project,
+                self.solid_command,
+                self.broker.publish,
+                loop=loop,
+                settle_delay=SETTLE,
+            )
+            observer.schedule(source, str(self.project), recursive=True)
+        self.state.model_watcher = source
+        self.state.artifact_watcher = artifact
+        self.state.observer = observer
+        observer.start()
+        try:
+            yield
+        finally:
+            if source is not None:
+                source.close()
+            observer.stop()
+            await asyncio.to_thread(observer.join)
+
+
+def _artifact_app(project: Path, artifacts: Path):
+    session = SimpleNamespace(
+        id="session",
+        name="project",
+        artifact_root=artifacts,
+        prepared=SimpleNamespace(viewer_bundle=None),
+        broker=Broker(),
+    )
+
+    class Registry:
+        shop_root = ROOT
+
+        def by_project(self, name: str):
+            return session if name == "project" else None
+
+        def require_id(self, session_id: str):
+            if session_id != "session":
+                raise KeyError(session_id)
+            return session
+
+        async def close_all(self) -> None:
+            return None
+
+        async def projects(self):
+            return []
+
+    return create_app(project.parent, registry=Registry())

@@ -331,22 +331,37 @@ class ShopOrchestrator:
         for runtime in reversed(tuple(self.roles.values())):
             if runtime.handle is not None and runtime.active_delivery_id is not None:
                 try:
-                    await self._backend(runtime.handle.role).interrupt(runtime.handle)
+                    await asyncio.wait_for(
+                        self._backend(runtime.handle.role).interrupt(runtime.handle),
+                        timeout=2,
+                    )
                 except BaseException as error:
                     errors.append(error)
         for runtime in reversed(tuple(self.roles.values())):
             if runtime.handle is None:
                 continue
             try:
-                await self._backend(runtime.handle.role).close_role(runtime.handle)
+                await asyncio.wait_for(
+                    self._backend(runtime.handle.role).close_role(runtime.handle),
+                    timeout=2,
+                )
             except BaseException as error:
                 errors.append(error)
         self.roles.clear()
-        for backend in reversed(self.backends):
+
+        async def close_backend(backend: AgentBackend) -> BaseException | None:
             try:
-                await backend.close()
+                # Concrete process owners escalate to termination and kill;
+                # this outer bound also covers a wedged native close request.
+                await asyncio.wait_for(backend.close(), timeout=16)
             except BaseException as error:
-                errors.append(error)
+                return error
+            return None
+
+        backend_errors = await asyncio.gather(
+            *(close_backend(backend) for backend in reversed(self.backends))
+        )
+        errors.extend(error for error in backend_errors if error is not None)
         if errors:
             raise errors[0]
 
@@ -403,30 +418,17 @@ async def _shutdown_runtime(
 async def _serve(arguments: argparse.Namespace) -> None:
     shop_root = primary_shop_root(arguments.cwd)
     project_home = arguments.project_home or default_project_home(arguments.cwd)
-    selection = read_project_runtime(arguments.project_name, project_home=project_home)
-    profile = resolve_profile_runtime(
-        load_profile(
-            getattr(arguments, "profile", None),
-            shop_root=shop_root,
-            selection=selection,
-        ),
-        selection,
-    )
-    for agent_id in profile.ignored_agent_ids:
-        print(f"warning: ignored runtime selection for agent {agent_id!r} outside profile {profile.id!r}", file=sys.stderr)
     solid_command = arguments.solid_command or default_solid_command(arguments.cwd)
-    prepared = prepare_project(arguments.project_name, project_home=project_home, solid_command=solid_command,
-                               shop_root=shop_root)
-    broker = Broker(profile=profile)
-    app = create_app(
-        prepared.project_root,
-        artifact_root=prepared.artifact_root,
-        viewer_bundle=prepared.viewer_bundle,
-        broker=broker,
-        solid_command=prepared.solid_command,
-        build_environment=prepared.build_environment,
-        profile=profile,
+    command_overrides = parse_backend_command_overrides(getattr(arguments, "backend_command", None))
+    from .sessions import SessionRegistry
+    registry = SessionRegistry(
+        project_home,
+        shop_root=shop_root,
+        solid_command=solid_command,
+        broker_url=f"http://127.0.0.1:{arguments.port}",
+        backend_commands=command_overrides,
     )
+    app = create_app(project_home, registry=registry)
     server = uvicorn.Server(
         uvicorn.Config(
             app,
@@ -437,76 +439,26 @@ async def _serve(arguments: argparse.Namespace) -> None:
         )
     )
     server_task = asyncio.create_task(server.serve())
-    orchestrator: ShopOrchestrator | None = None
-    delivery_task: asyncio.Task[None] | None = None
-    event_tasks: list[asyncio.Task[None]] = []
     try:
         while not server.started and not server_task.done():
             await asyncio.sleep(0.01)
         if server_task.done():
             await server_task
             raise RuntimeError("shop-floor server stopped before opening")
-
-        command_overrides = parse_backend_command_overrides(getattr(arguments, "backend_command", None))
-        backend_instances: dict[str, AgentBackend] = {}
-        for agent in profile.agents:
-            if agent.runtime is None:
-                raise RuntimeError(f"agent {agent.id!r} has no resolved runtime")
-            name = agent.runtime.backend
-            if name not in backend_instances:
-                backend_instances[name] = create_backend(
-                    name,
-                    cwd=arguments.cwd,
-                    project=prepared.project_root,
-                    broker_url=f"http://127.0.0.1:{arguments.port}",
-                    command_overrides=command_overrides,
-                    solid_command=solid_command,
-                )
-        backends_by_agent = {
-            agent.id: backend_instances[agent.runtime.backend]
-            for agent in profile.agents
-            if agent.runtime is not None
-        }
-        orchestrator = ShopOrchestrator(
-            backends_by_agent,
-            LocalBrokerControl(broker),
-            profile=profile,
-            shop_checkout=shop_root,
-            active_project=prepared.project_root,
-        )
-
-        await orchestrator.open()
         print(f"shop-floor open at http://127.0.0.1:{arguments.port}", flush=True)
-
-        async def route_deliveries() -> None:
-            assert orchestrator is not None
-            async for envelope in broker.deliveries():
-                await orchestrator.deliver(envelope)
-
-        delivery_task = asyncio.create_task(route_deliveries())
-        event_tasks = [
-            asyncio.create_task(_route_backend_events(orchestrator, backend))
-            for backend in backend_instances.values()
-        ]
-        await _wait_for_runtime(server_task, (delivery_task, *event_tasks))
+        await server_task
     except asyncio.CancelledError:
         pass
     finally:
-        broker.shutdown()
-        route_tasks = tuple(task for task in (delivery_task, *event_tasks) if task is not None)
-        for task in route_tasks:
-            task.cancel()
-        if route_tasks:
-            await asyncio.gather(*route_tasks, return_exceptions=True)
-        await _shutdown_runtime(orchestrator, server, server_task)
+        if not server_task.done():
+            server.should_exit = True
+            await server_task
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the event-driven agent shop")
-    parser.add_argument("project_name", help="lowercase kebab-case project name below projects/")
     parser.add_argument("--port", type=int, default=int(os.environ.get("FLOOR_PORT", "9000")))
     parser.add_argument("--cwd", type=Path, default=Path.cwd(), help="shop checkout containing role adapters")
-    parser.add_argument("--profile", help="override the project-selected runtime profile")
     parser.add_argument("--project-home", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--solid-command", help=argparse.SUPPRESS)
     parser.add_argument("--backend-command", action="append", default=[], metavar="BACKEND=COMMAND", help=argparse.SUPPRESS)

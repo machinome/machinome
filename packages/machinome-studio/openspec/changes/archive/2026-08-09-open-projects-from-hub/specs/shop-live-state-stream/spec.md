@@ -5,9 +5,10 @@ The shop SHALL deliver the complete current state of what a browser is looking
 at as the first thing that browser receives on a live connection, on every
 connection and not only the first. For a project workspace that state SHALL be
 the complete run state and the complete ordered conversation of that project.
-For the hub that state SHALL be the working folder's projects with, for each,
-whether it is open and whether it can be opened. A browser SHALL NOT be required
-to make any further request to display correct state.
+For the hub that state SHALL be the working folder's projects plus any accepted
+creation still in progress, with each project's current lifecycle state and
+whether it can be opened. A browser SHALL NOT be required to make any further
+request to display correct state.
 
 #### Scenario: A browser connects to a project with work already under way
 - **WHEN** a maker opens a project workspace after its agents have manifested and messages have been exchanged
@@ -20,6 +21,10 @@ to make any further request to display correct state.
 #### Scenario: A browser connects to the hub
 - **WHEN** a maker opens the hub
 - **THEN** the page displays every project of the working folder with its current open state, without issuing any further request
+
+#### Scenario: A browser connects while project creation is running
+- **WHEN** a maker opens the hub after creation was accepted but before the project directory or session is ready
+- **THEN** the first state includes that project as `creating` with its chosen profile
 
 ### Requirement: State missed while disconnected is restored on reconnection
 When a browser's live connection is lost and re-established, the shop SHALL

@@ -38,7 +38,7 @@ class RuntimeProfileTest(unittest.TestCase):
         self.assertEqual(fordesmac.agent("designer").reports_to, "foreman")
         self.assertEqual(fordesmac.agent("foreman").assigns, ("designer", "machinist", "librarian"))
 
-    def test_option_project_and_default_profile_precedence(self) -> None:
+    def test_requested_project_and_default_profile_precedence(self) -> None:
         source_path = ROOT / "projects" / "sample" / "pyproject.toml"
         declared = ProjectRuntimeSelection(source_path.parent, source_path, {}, "builder")
 
@@ -46,7 +46,7 @@ class RuntimeProfileTest(unittest.TestCase):
         self.assertEqual(load_profile(None, shop_root=ROOT, selection=declared).id, "builder")
         self.assertEqual(load_profile(None, shop_root=ROOT).id, "fordesmac")
 
-    def test_project_profile_resolution_errors_name_the_source_and_can_be_overridden(self) -> None:
+    def test_project_profile_resolution_errors_name_the_source_and_explicit_requests_still_validate(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             source_path = Path(temporary) / "projects" / "sample" / "pyproject.toml"
             declared = ProjectRuntimeSelection(source_path.parent, source_path, {}, "missing-profile")

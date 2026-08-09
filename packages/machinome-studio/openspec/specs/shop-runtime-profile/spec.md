@@ -5,32 +5,26 @@
 Define trusted declarative packages that select shop runtime topology, prompts, skills, and enforceable backend policy before project or runtime side effects.
 ## Requirements
 ### Requirement: A run selects one trusted runtime profile
-The shop launcher SHALL accept `--profile <profile-id>` and SHALL resolve the
-profile for a run from exactly one of three sources, in this order of
-precedence: the `--profile` option when it is given, the active project's
-declared profile when the option is absent and the project declares one, and
-otherwise the shop default `fordesmac`. It SHALL resolve a selected profile only
-from `profiles/<profile-id>/profile.toml` beneath the primary shop checkout. The
-broker-only and orchestrated entry points SHALL use the same profile selection
-contract. A project SHALL declare a profile only as the default for its own
-runs; `--profile` SHALL override that declaration for one run without altering
-the project.
+The shop SHALL resolve the profile for a session from exactly one of two
+sources, in this order of precedence: the project's declared profile when it
+declares one, and otherwise the shop default `fordesmac`. It SHALL resolve a
+selected profile only from `profiles/<profile-id>/profile.toml` beneath the
+primary shop checkout. The broker-only and orchestrated entry points SHALL use
+the same profile selection contract. A project's declaration SHALL govern every
+session of that project; the shop SHALL provide no way to open a project under a
+profile it does not declare.
 
 #### Scenario: The default profile is selected
-- **WHEN** the user opens a shop without `--profile` for a project that declares no profile
-- **THEN** the runtime selects the repository-owned `fordesmac` profile
+- **WHEN** a project that declares no profile is opened
+- **THEN** the shop selects the repository-owned `fordesmac` profile
 
 #### Scenario: The project's declared profile is selected
-- **WHEN** the user opens a shop without `--profile` for a project that declares one
-- **THEN** the runtime selects the profile that project declares
+- **WHEN** a project that declares a profile is opened
+- **THEN** the shop selects the profile that project declares
 
-#### Scenario: The option overrides the project
-- **WHEN** the user opens a shop with `--profile builder` for a project that declares `fordesmac`
-- **THEN** the runtime selects `builder` for that run and the project's declaration is unchanged
-
-#### Scenario: An unknown or escaping profile is selected
-- **WHEN** `--profile` does not identify a valid lowercase kebab-case directory directly beneath `profiles/`
-- **THEN** the runtime exits with an error before preparing a project, binding a listener, or starting a backend
+#### Scenario: An unknown or escaping profile is declared
+- **WHEN** a project's declared profile does not identify a valid lowercase kebab-case directory directly beneath `profiles/`
+- **THEN** the shop refuses to open that project with an error, before preparing it or starting a backend, and remains available for every other project
 
 ### Requirement: A profile explicitly declares its complete standing topology
 A profile SHALL use the supported strict TOML schema to declare its schema

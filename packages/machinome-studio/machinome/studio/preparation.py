@@ -11,11 +11,12 @@ import tempfile
 import tomllib
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 
-PROJECT_NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
-AGENT_ID = PROJECT_NAME
+LOWER_KEBAB_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
+AGENT_ID = LOWER_KEBAB_ID
 REQUIRED_VIEWER_API = 2
 CODEX_MODELS = {"gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.3-codex-spark"}
 CLAUDE_MODELS = {"sonnet", "opus"}
@@ -50,6 +51,7 @@ class PreparedProject:
     viewer_api_version: int | None = None
     solid_command: tuple[str, ...] = ()
     build_environment: dict[str, str] | None = None
+    build_error: str | None = None
 
     def build_invocation(self) -> tuple[tuple[str, ...], dict[str, str] | None]:
         """The command and environment overlay that builds this project.
@@ -59,6 +61,30 @@ class PreparedProject:
         keeps one definition rather than two that can drift apart.
         """
         return build_command(self.solid_command), self.build_environment
+
+
+@dataclass(frozen=True)
+class ProjectListing:
+    """One filesystem entry as presented by the project hub."""
+
+    name: str
+    openable: bool
+    reason: str | None
+    profile: str
+    branch: str | None = None
+    last_commit: str | None = None
+
+    def browser_value(self, *, state: str = "closed", session_id: str | None = None) -> dict[str, object]:
+        return {
+            "name": self.name,
+            "openable": self.openable,
+            "reason": self.reason,
+            "profile": self.profile,
+            "branch": self.branch,
+            "last_commit": self.last_commit,
+            "state": state,
+            "session_id": session_id,
+        }
 
 
 def artifact_root_for(project_root: Path) -> Path:
@@ -143,6 +169,50 @@ def default_solid_command(checkout: Path) -> tuple[str, ...]:
     return (str(executable),)
 
 
+def list_projects(project_home: Path) -> list[ProjectListing]:
+    """Describe every project directory in the working folder without mutating it."""
+    home = project_home.resolve()
+    if not home.exists():
+        return []
+    if not home.is_dir():
+        raise PreparationError("project-home", None, home, "workspace projects directory is not a directory")
+    directories = (entry for entry in home.iterdir() if entry.is_dir() and not entry.is_symlink())
+    return [_project_listing(entry, home) for entry in sorted(directories, key=lambda item: item.name)]
+
+
+def _project_listing(entry: Path, home: Path) -> ProjectListing:
+    name = entry.name
+    try:
+        selection = read_project_runtime(name, project_home=home)
+    except (PreparationError, ProjectRuntimeError) as error:
+        return ProjectListing(name, False, str(error), "fordesmac")
+    profile = selection.profile or "fordesmac"
+    try:
+        root = _run(
+            ("git", "-C", str(entry), "rev-parse", "--show-toplevel"),
+            stage="repository",
+            name=name,
+            project_root=entry,
+        ).stdout.strip()
+        if Path(root).resolve() != entry.resolve():
+            raise PreparationError(
+                "repository", name, entry,
+                "location is not the exact root of an independent Git repository",
+            )
+        branch = _run(
+            ("git", "-C", str(entry), "rev-parse", "--abbrev-ref", "HEAD"),
+            stage="repository", name=name, project_root=entry,
+        ).stdout.strip()
+        timestamp = _run(
+            ("git", "-C", str(entry), "log", "-1", "--format=%cI"),
+            stage="repository", name=name, project_root=entry,
+        ).stdout.strip()
+        last_commit = datetime.fromisoformat(timestamp).astimezone(UTC).isoformat() if timestamp else None
+    except (PreparationError, ValueError) as error:
+        return ProjectListing(name, False, str(error), profile)
+    return ProjectListing(name, True, None, profile, branch, last_commit)
+
+
 def resolve_project(name: str | None, project_home: Path) -> Path:
     candidate = _project_path(name, project_home)
     assert name is not None
@@ -154,6 +224,16 @@ def resolve_project(name: str | None, project_home: Path) -> Path:
     if not home.is_dir():
         raise PreparationError("project-home", name, home, "workspace projects directory does not exist")
     return candidate
+
+
+def validate_new_project(name: str | None, project_home: Path) -> Path:
+    """Validate a creation target before creating the working folder or project."""
+    _validate_project_name(name)
+    assert name is not None
+    candidate = project_home.resolve() / name
+    if candidate.exists() or candidate.is_symlink():
+        raise PreparationError("project-name", name, candidate, "an entry with this name already exists")
+    return _project_path(name, project_home)
 
 
 def read_project_runtime(name: str | None, *, project_home: Path) -> ProjectRuntimeSelection:
@@ -181,7 +261,7 @@ def read_project_runtime(name: str | None, *, project_home: Path) -> ProjectRunt
     if unknown:
         raise ProjectRuntimeError(source_path, f"tool.solid-node-studio: unknown key {sorted(unknown)[0]!r}")
     profile = table.get("profile")
-    if profile is not None and (not isinstance(profile, str) or not PROJECT_NAME.fullmatch(profile)):
+    if profile is not None and (not isinstance(profile, str) or not LOWER_KEBAB_ID.fullmatch(profile)):
         raise ProjectRuntimeError(
             source_path,
             f"profile value {profile!r} must be a lowercase kebab-case string",
@@ -200,8 +280,8 @@ def read_project_runtime(name: str | None, *, project_home: Path) -> ProjectRunt
 
 
 def _project_path(name: str | None, project_home: Path) -> Path:
-    if name is None or not PROJECT_NAME.fullmatch(name):
-        raise PreparationError("project-name", name, None, "a lowercase kebab-case project name is required")
+    _validate_project_name(name)
+    assert name is not None
     home = project_home.resolve()
     if project_home.exists() and not project_home.is_dir():
         raise PreparationError("project-home", name, home, "workspace projects directory is not a directory")
@@ -214,6 +294,23 @@ def _project_path(name: str | None, project_home: Path) -> Path:
     if candidate.exists() and not candidate.is_dir():
         raise PreparationError("project-path", name, candidate, "project location is not a directory")
     return resolved
+
+
+def _validate_project_name(name: str | None) -> None:
+    if (
+        not isinstance(name, str)
+        or not name
+        or name in {".", ".."}
+        or "/" in name
+        or "\\" in name
+        or "\0" in name
+    ):
+        raise PreparationError(
+            "project-name",
+            name,
+            None,
+            "project name must be one safe directory name without a path separator",
+        )
 
 
 def _parse_agent_runtime(agent_id: str, raw: str, source_path: Path) -> ProjectAgentRuntime:
@@ -248,6 +345,8 @@ def prepare_project(
     project_home: Path,
     solid_command: str | Sequence[str],
     shop_root: Path | None = None,
+    profile: str | None = None,
+    allow_build_failure: bool = False,
 ) -> PreparedProject:
     project_root = resolve_project(name, project_home)
     assert name is not None
@@ -272,6 +371,8 @@ def prepare_project(
                 staged_project.rename(project_root)
             except OSError as error:
                 raise PreparationError("scaffold", name, project_root, str(error)) from error
+        if profile is not None:
+            _write_project_profile(project_root, profile)
         _run(("git", "init", "-q", "-b", "main", str(project_root)), stage="git-init", name=name, project_root=project_root)
         _require_exact_repository(project_root, name)
         _run(("git", "-C", str(project_root), "add", "--all"), stage="git-add", name=name, project_root=project_root)
@@ -289,15 +390,21 @@ def prepare_project(
     )
     artifact_root = artifact_root_for(project_root)
     snapshot = artifact_root / "viewer.json"
-    _run(
-        build_command(solid_command),
-        cwd=project_root,
-        stage="build",
-        name=name,
-        project_root=project_root,
-        extra_env=solid_env,
-    )
-    _validate_snapshot(snapshot, artifact_root, name, project_root)
+    build_error: str | None = None
+    try:
+        _run(
+            build_command(solid_command),
+            cwd=project_root,
+            stage="build",
+            name=name,
+            project_root=project_root,
+            extra_env=solid_env,
+        )
+        _validate_snapshot(snapshot, artifact_root, name, project_root)
+    except PreparationError as error:
+        if not allow_build_failure:
+            raise
+        build_error = str(error)
     return PreparedProject(
         name=name,
         project_root=project_root,
@@ -307,7 +414,28 @@ def prepare_project(
         viewer_api_version=viewer_api_version,
         solid_command=_command(solid_command),
         build_environment=solid_env,
+        build_error=build_error,
     )
+
+
+def _write_project_profile(project_root: Path, profile: str) -> None:
+    if not LOWER_KEBAB_ID.fullmatch(profile):
+        raise PreparationError("profile", project_root.name, project_root, "profile must be lowercase kebab-case")
+    path = project_root / "pyproject.toml"
+    try:
+        source = path.read_text() if path.exists() else ""
+        if "[tool.solid-node-studio]" in source:
+            marker = "[tool.solid-node-studio]"
+            before, after = source.split(marker, 1)
+            if re.search(r"(?m)^profile\s*=", after.split("\n[", 1)[0]):
+                raise PreparationError("profile", project_root.name, project_root, "scaffold already declares a runtime profile")
+            source = f'{before}{marker}\nprofile = "{profile}"{after}'
+        else:
+            separator = "" if not source else ("" if source.endswith("\n\n") else "\n" if source.endswith("\n") else "\n\n")
+            source = f'{source}{separator}[tool.solid-node-studio]\nprofile = "{profile}"\n'
+        path.write_text(source)
+    except OSError as error:
+        raise PreparationError("profile", project_root.name, project_root, str(error)) from error
 
 
 def _viewer_info(

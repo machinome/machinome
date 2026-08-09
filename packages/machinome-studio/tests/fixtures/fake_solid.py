@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 
@@ -14,6 +15,8 @@ command = sys.argv[1]
 argument = sys.argv[2] if len(sys.argv) > 2 else ""
 cwd = Path.cwd()
 if command == "new":
+    if delay := os.environ.get("FAKE_SOLID_NEW_DELAY"):
+        time.sleep(float(delay))
     project = cwd / argument
     (project / "root").mkdir(parents=True)
     (project / "root" / "__init__.py").write_text("# test scaffold\n")

@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from floor.preparation import REQUIRED_VIEWER_API, PreparationError, default_project_home, prepare_project, primary_shop_root, resolve_project
+from floor.preparation import REQUIRED_VIEWER_API, PreparationError, default_project_home, list_projects, prepare_project, primary_shop_root, resolve_project, validate_new_project
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,11 +25,16 @@ class ProjectResolutionTest(unittest.TestCase):
     def test_accepts_lowercase_kebab_case(self) -> None:
         self.assertEqual(resolve_project("v8-engine", self.home), self.home / "v8-engine")
 
+    def test_accepts_project_names_without_enforcing_a_style_convention(self) -> None:
+        for name in ("v8_engine", "V8 engine", ".prototype"):
+            with self.subTest(name=name):
+                self.assertEqual(resolve_project(name, self.home), self.home / name)
+
     def test_projects_are_scoped_to_the_checkout_that_launches_the_floor(self) -> None:
         self.assertEqual(default_project_home(ROOT), ROOT / "projects")
 
     def test_rejects_missing_and_unsafe_names(self) -> None:
-        for name in (None, "", "V8-engine", "v8 engine", "v8_engine", "../v8", ".", "v8/engine", "/tmp/v8"):
+        for name in (None, "", "../v8", ".", "..", "v8/engine", "v8\\engine", "/tmp/v8", "bad\0name"):
             with self.subTest(name=name), self.assertRaises(PreparationError) as raised:
                 resolve_project(name, self.home)
             self.assertEqual(raised.exception.stage, "project-name")
@@ -49,6 +54,41 @@ class ProjectResolutionTest(unittest.TestCase):
         with self.assertRaises(PreparationError) as raised:
             resolve_project("alias", self.home)
         self.assertEqual(raised.exception.stage, "project-path")
+
+    def test_creation_refuses_a_name_used_by_any_existing_entry_without_mutation(self) -> None:
+        for name, directory in (("occupied-directory", True), ("occupied-file", False)):
+            entry = self.home / name
+            entry.mkdir() if directory else entry.write_text("keep me")
+            before = entry.stat()
+            with self.subTest(name=name), self.assertRaises(PreparationError) as raised:
+                validate_new_project(name, self.home)
+            self.assertEqual(raised.exception.stage, "project-name")
+            self.assertEqual(entry.stat(), before)
+
+    def test_listing_keeps_valid_and_unopenable_entries_independent(self) -> None:
+        valid = self.home / "valid_project"
+        _make_repository(valid)
+        (valid / "pyproject.toml").write_text('[tool.solid-node-studio]\nprofile = "builder"\n')
+        subprocess.run(["git", "-C", str(valid), "add", "pyproject.toml"], check=True)
+        subprocess.run([
+            "git", "-C", str(valid), "-c", "user.name=Shop Test", "-c", "user.email=shop@example.invalid",
+            "commit", "-q", "-m", "profile",
+        ], check=True)
+        (self.home / "not-a-repository").mkdir()
+        (self.home / "Bad Name").mkdir()
+        (self.home / "README.md").write_text("working-folder notes")
+
+        values = {item.name: item for item in list_projects(self.home)}
+
+        self.assertNotIn("README.md", values)
+        self.assertTrue(values["valid_project"].openable)
+        self.assertEqual(values["valid_project"].profile, "builder")
+        self.assertEqual(values["valid_project"].branch, "main")
+        self.assertIsNotNone(values["valid_project"].last_commit)
+        self.assertFalse(values["not-a-repository"].openable)
+        self.assertIn("repository", values["not-a-repository"].reason or "")
+        self.assertFalse(values["Bad Name"].openable)
+        self.assertIn("repository", values["Bad Name"].reason or "")
 
 
 class ProjectPreparationTest(unittest.TestCase):
@@ -93,6 +133,35 @@ class ProjectPreparationTest(unittest.TestCase):
             set(subprocess.run(["git", "-C", str(project), "ls-files"], check=True, text=True, capture_output=True).stdout.splitlines()),
             {".gitignore", "root/__init__.py"},
         )
+
+    def test_creation_records_the_chosen_profile_in_the_initial_commit(self) -> None:
+        with patch.dict(os.environ, self.git_environment):
+            prepare_project(
+                "profiled-project",
+                project_home=self.home,
+                solid_command=self.command,
+                profile="builder",
+            )
+        project = self.home / "profiled-project"
+        self.assertIn('profile = "builder"', (project / "pyproject.toml").read_text())
+        committed = subprocess.run(
+            ["git", "-C", str(project), "show", "HEAD:pyproject.toml"],
+            check=True,
+            text=True,
+            capture_output=True,
+        ).stdout
+        self.assertIn('profile = "builder"', committed)
+
+    def test_build_failure_can_be_reported_without_abandoning_preparation(self) -> None:
+        with patch.dict(os.environ, self.git_environment):
+            prepared = prepare_project(
+                "fail-build",
+                project_home=self.home,
+                solid_command=self.command,
+                allow_build_failure=True,
+            )
+        self.assertIn("build exploded", prepared.build_error or "")
+        self.assertTrue(prepared.project_root.is_dir())
 
     def test_missing_project_home_is_created_for_a_first_launch(self) -> None:
         home = self.home.parent / "fresh-projects"

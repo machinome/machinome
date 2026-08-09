@@ -3,8 +3,9 @@
 ### Requirement: Every shop opens for one named workspace project
 The system SHALL require a project name for every project-open request and SHALL
 resolve that identity only to a directory directly beneath the configured
-working folder. The accepted name SHALL be a single lowercase kebab-case
-directory name and SHALL NOT resolve outside that working folder.
+working folder. The accepted name SHALL be one safe direct-child directory name
+and SHALL NOT resolve outside that working folder. The system SHALL NOT impose a
+stylistic naming convention on project directories.
 
 A name the system cannot accept SHALL be refused for that project alone. It
 SHALL NOT prevent the shop from starting, prevent the working folder from being
@@ -19,8 +20,12 @@ listed, or prevent another project from being opened.
 - **THEN** the system rejects the request before opening any part of a session and explains that a project name is required
 
 #### Scenario: A project name is unsafe or ambiguous
-- **WHEN** a supplied project name contains a path separator, dot component, uppercase character, whitespace, or otherwise does not form one lowercase kebab-case name
+- **WHEN** a supplied project name is empty, is a dot component, contains a path separator, or otherwise does not identify one direct child directory
 - **THEN** the system rejects the request without accessing anything outside the working folder, and the shop and every other project remain available
+
+#### Scenario: A project name uses a different style
+- **WHEN** a supplied project name uses underscores, uppercase characters, whitespace, or another filesystem-safe style
+- **THEN** the system accepts the name without warning about a naming convention
 
 ### Requirement: A missing named project receives a standard first state
 If the named project does not exist beneath the working folder, the system SHALL

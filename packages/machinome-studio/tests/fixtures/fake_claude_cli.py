@@ -155,6 +155,7 @@ def main() -> None:
             "cwd": os.getcwd(),
             "pythonpath": os.environ.get("PYTHONPATH", ""),
             "floor_url": os.environ.get("FLOOR_URL", ""),
+            "floor_session": os.environ.get("FLOOR_SESSION", ""),
             "floorImportable": importlib.util.find_spec("floor") is not None,
         }
     )

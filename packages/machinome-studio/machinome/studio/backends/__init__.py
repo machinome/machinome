@@ -22,6 +22,7 @@ def create_backend(
     command: str | None = None,
     command_overrides: Mapping[str, str] | None = None,
     solid_command: str = "solid",
+    session_id: str | None = None,
     **_kwargs: Any,
 ) -> "AgentBackend":
     """Return the AgentBackend for *name*.
@@ -37,6 +38,7 @@ def create_backend(
         broker_url=broker_url,
         command=backend_command,
         solid_command=solid_command,
+        session_id=session_id,
     )
 
 

@@ -1,19 +1,15 @@
 from __future__ import annotations
 
-import asyncio
 import json
+import os
 import socket
 import subprocess
-import shutil
 import tempfile
-import threading
 import time
 import unittest
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
-
-from floor.app import Broker, create_app
 
 from tests.fixtures.primary_shop import isolated_primary_shop, subprocess_environment
 
@@ -29,248 +25,191 @@ class FloorAPITest(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.project_home = Path(self.temporary.name) / "projects"
         self.project_home.mkdir()
-        self._project_number = 0
         self.shop = self.enterContext(isolated_primary_shop())
-        self._start_floor("floor-api", profile="builder")
-        self.addCleanup(self._stop_floor)
-        _wait_for_health(self.url("/health"))
-
-    def test_explicit_builder_run_surface_exposes_profile_metadata(self) -> None:
-        self.assertEqual(_request(self.url("/health"), "GET"), {"status": "open"})
-        run = _request(self.url("/api/runs/latest"), "GET")
-        self.assertEqual(run["profile_id"], "builder")
-        self.assertEqual(run["user_label"], "Maker")
-        self.assertEqual(run["user_agent"], {"id": "builder", "label": "Builder"})
-        self.assertEqual(run["roster"], [{"id": "builder", "label": "Builder"}])
-        manifested = _request(
-            self.url("/api/runs/shop-floor/agents"),
-            "POST",
-            {"role": "builder", "label": "Builder"},
-        )
-        self.assertEqual(manifested["state"], "waiting")
-        self.assertEqual(_status(self.url("/api/runs/shop-floor/agents/builder/assignments"), "POST", {"assignment_id": "x"}), 409)
-        self.assertEqual(_status(self.url("/api/runs/shop-floor/agents/builder"), "DELETE"), 204)
-        self.assertEqual(_request(self.url("/api/runs/latest"), "GET")["agents"], [])
-
-    def test_bare_entrypoint_exposes_fordesmac_as_the_default_profile(self) -> None:
-        self._stop_floor()
-        self._start_floor("default-profile")
-
-        run = _request(self.url("/api/runs/latest"), "GET")
-        self.assertEqual(run["profile_id"], "fordesmac")
-        self.assertEqual(run["user_agent"], {"id": "foreman", "label": "Foreman"})
-        self.assertEqual(
-            run["roster"],
+        self.process = subprocess.Popen(
             [
-                {"id": "foreman", "label": "Foreman"},
-                {"id": "designer", "label": "Designer"},
-                {"id": "machinist", "label": "Machinist"},
-                {"id": "librarian", "label": "Librarian"},
+                "python", "-m", "floor", "--port", str(self.port),
+                "--project-home", str(self.project_home),
+                "--solid-command", str(FAKE_SOLID),
             ],
+            cwd=self.shop,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=subprocess_environment({
+                **os.environ,
+                "GIT_AUTHOR_NAME": "Shop Test",
+                "GIT_AUTHOR_EMAIL": "shop@example.invalid",
+                "GIT_COMMITTER_NAME": "Shop Test",
+                "GIT_COMMITTER_EMAIL": "shop@example.invalid",
+            }),
         )
+        self.addCleanup(self._stop_floor)
+        _wait_for(lambda: _request(self.url("/health"), "GET") == {"status": "open"})
 
-    def test_profile_conversation_is_ordered_and_survives_a_browser_snapshot(self) -> None:
-        first = _request(
-            self.url("/api/runs/shop-floor/conversation"),
-            "POST",
-            {"text": "Build the bracket."},
-        )
-        second = _request(
-            self.url("/api/runs/shop-floor/conversation"),
-            "POST",
-            {"text": "Use the thinner stock."},
-        )
-
-        conversation = _request(self.url("/api/runs/shop-floor/conversation"), "GET")
-        self.assertEqual(
-            conversation["entries"],
-            [first, second],
-            "a freshly loaded browser snapshot must retain the recorded order",
-        )
-        self.assertEqual(_status(self.url("/api/runs/shop-floor/conversation"), "POST", {"text": "   "}), 400)
-
-    def test_live_state_stream_starts_with_complete_snapshot(self) -> None:
-        manifested = _request(
-            self.url("/api/runs/shop-floor/agents"),
-            "POST",
-            {"role": "builder", "label": "Builder"},
-        )
-        first = _request(self.url("/api/runs/shop-floor/conversation"), "POST", {"text": "Build the bracket."})
-        second = _request(self.url("/api/runs/shop-floor/conversation"), "POST", {"text": "Use the thinner stock."})
-
+    def test_shop_starts_on_an_empty_hub_without_preparing_a_project(self) -> None:
+        projects = _request(self.url("/api/projects"), "GET")
+        self.assertEqual(projects["working_folder"], str(self.project_home))
+        self.assertEqual(projects["projects"], [])
         event, snapshot = _read_sse_event(self.url("/api/stream"))
-
         self.assertEqual(event, "snapshot")
-        self.assertEqual(snapshot["run"]["agents"], [manifested])
-        self.assertEqual(snapshot["conversation"], [first, second])
+        self.assertEqual(snapshot["projects"], [])
+        self.assertEqual(_status(self.url("/api/runs/shop-floor"), "GET"), 404)
 
-    def test_orchestrator_stream_blocks_then_emits_ordered_user_direction(self) -> None:
-        received: list[dict[str, object]] = []
+    def test_two_projects_hold_independent_sessions_brokers_rosters_and_conversations(self) -> None:
+        self._make_project("alpha")
+        self._make_project("bravo")
+        alpha = self._open("alpha")
+        bravo = self._open("bravo")
 
-        def wait_for_direction() -> None:
-            with urlopen(self.url("/api/runs/shop-floor/orchestrator/stream"), timeout=5) as response:  # nosec: local floor
-                for raw_line in response:
-                    line = raw_line.decode().strip()
-                    if line.startswith("data: "):
-                        received.append(json.loads(line.removeprefix("data: ")))
-                        if len(received) == 3:
-                            return
+        self.assertNotEqual(alpha, bravo)
+        for session_id in (alpha, bravo):
+            manifested = _request(
+                self.url(f"/api/sessions/{session_id}/agents"), "POST",
+                {"role": "builder", "label": "Builder"},
+            )
+            self.assertEqual(manifested["state"], "waiting")
+        _request(self.url(f"/api/sessions/{alpha}/conversation"), "POST", {"text": "Alpha only"})
+        _request(self.url(f"/api/sessions/{bravo}/conversation"), "POST", {"text": "Bravo only"})
 
-        listener = threading.Thread(target=wait_for_direction)
-        listener.start()
-        time.sleep(0.1)
-        self.assertTrue(listener.is_alive(), "the orchestrator stream must wait without polling")
-        _request(
-            self.url("/api/runs/shop-floor/conversation"),
-            "POST",
-            {"text": "Start with the frame."},
+        alpha_state = _request(self.url(f"/api/sessions/{alpha}"), "GET")
+        bravo_state = _request(self.url(f"/api/sessions/{bravo}"), "GET")
+        self.assertEqual(alpha_state["agents"], bravo_state["agents"])
+        self.assertEqual(
+            [entry["text"] for entry in _request(self.url(f"/api/sessions/{alpha}/conversation"), "GET")["entries"]],
+            ["Alpha only"],
         )
-        _request(
-            self.url("/api/runs/shop-floor/conversation"),
-            "POST",
-            {"text": "Add gussets."},
+        self.assertEqual(
+            [entry["text"] for entry in _request(self.url(f"/api/sessions/{bravo}/conversation"), "GET")["entries"]],
+            ["Bravo only"],
         )
-        _request(
-            self.url("/api/runs/shop-floor/conversation"),
-            "POST",
-            {"text": "Keep the corners round."},
+
+    def test_unknown_session_is_refused_and_a_closed_id_cannot_reach_a_reopened_project(self) -> None:
+        self._make_project("engine")
+        first = self._open("engine")
+        self.assertEqual(_status(self.url("/api/sessions/missing/agents"), "POST", {"role": "builder", "label": "Builder"}), 404)
+        self.assertEqual(_status(self.url(f"/api/sessions/{first}"), "DELETE"), 202)
+        _wait_for(lambda: self._project("engine")["state"] == "closed")
+        second = self._open("engine")
+        self.assertNotEqual(first, second)
+        self.assertEqual(_status(self.url(f"/api/sessions/{first}"), "GET"), 404)
+        self.assertEqual(_status(self.url(f"/api/sessions/{first}/conversation"), "POST", {"text": "stale"}), 404)
+        self.assertEqual(_request(self.url(f"/api/sessions/{second}/conversation"), "GET")["entries"], [])
+
+    def test_second_open_joins_the_existing_session(self) -> None:
+        self._make_project("engine")
+        first = self._open("engine")
+        response = _request(self.url("/api/projects/engine/session"), "POST")
+        self.assertEqual(response, {"state": "open", "session_id": first})
+
+    def test_project_and_hub_streams_have_disjoint_scopes(self) -> None:
+        self._make_project("alpha")
+        self._make_project("bravo")
+        alpha = self._open("alpha")
+        bravo = self._open("bravo")
+        _request(self.url(f"/api/sessions/{alpha}/conversation"), "POST", {"text": "Alpha only"})
+        _request(self.url(f"/api/sessions/{bravo}/conversation"), "POST", {"text": "Bravo only"})
+
+        event, project = _read_sse_event(self.url(f"/api/sessions/{alpha}/stream"))
+        self.assertEqual(event, "snapshot")
+        self.assertEqual([entry["text"] for entry in project["conversation"]], ["Alpha only"])
+        event, hub = _read_sse_event(self.url("/api/stream"))
+        self.assertEqual(event, "snapshot")
+        self.assertNotIn("conversation", hub)
+        self.assertEqual({item["name"] for item in hub["projects"]}, {"alpha", "bravo"})
+
+    def test_inventory_lists_unopenable_entries_without_blocking_a_valid_project(self) -> None:
+        self._make_project("valid_project")
+        (self.project_home / "not-a-repository").mkdir()
+        (self.project_home / "Bad Name").mkdir()
+        (self.project_home / "README.md").write_text("working-folder notes")
+        projects = {item["name"]: item for item in _request(self.url("/api/projects"), "GET")["projects"]}
+        self.assertNotIn("README.md", projects)
+        self.assertTrue(projects["valid_project"]["openable"])
+        self.assertFalse(projects["not-a-repository"]["openable"])
+        self.assertIn("repository", projects["not-a-repository"]["reason"])
+        self.assertFalse(projects["Bad Name"]["openable"])
+        self.assertIn("repository", projects["Bad Name"]["reason"])
+        self.assertEqual(self._project("valid_project")["state"], "closed")
+        self.assertTrue(self._open("valid_project"))
+
+    def test_creation_writes_the_chosen_profile_and_rejects_every_collision(self) -> None:
+        response = _request(
+            self.url("/api/projects"), "POST", {"name": "new_engine", "profile": "builder"}
         )
-        listener.join(timeout=2)
-        self.assertFalse(listener.is_alive())
-        self.assertEqual([item["body"] for item in received], ["Start with the frame.", "Add gussets.", "Keep the corners round."])
-        self.assertEqual([item["sequence"] for item in received], sorted(item["sequence"] for item in received))
-        self.assertEqual(_status(self.url("/api/runs/shop-floor/foreman/receive"), "POST", {"after": "0"}), 404)
+        self.assertEqual(response["state"], "opening")
+        _wait_for(lambda: self._project("new_engine")["state"] == "open")
+        self.assertIn('profile = "builder"', (self.project_home / "new_engine" / "pyproject.toml").read_text())
+        self.assertEqual(
+            subprocess.run(
+                ["git", "-C", str(self.project_home / "new_engine"), "show", "HEAD:pyproject.toml"],
+                check=True, text=True, capture_output=True,
+            ).stdout.count('profile = "builder"'),
+            1,
+        )
 
-    def test_live_state_stream_subscribes_before_serialising_snapshot(self) -> None:
-        broker = Broker()
-        original_snapshot = broker.snapshot
+        (self.project_home / "occupied").write_text("not a directory")
+        self.assertEqual(_status(self.url("/api/projects"), "POST", {"name": "occupied", "profile": "builder"}), 409)
+        self.assertEqual(_status(self.url("/api/projects"), "POST", {"name": "../escape", "profile": "builder"}), 409)
 
-        def snapshot_that_publishes() -> dict[str, object]:
-            broker.publish("conversation_entry", {"sequence": 1, "author": "builder", "text": "Published during snapshot."})
-            return original_snapshot()
+    def test_a_failed_initial_build_still_opens_and_artifacts_are_project_scoped(self) -> None:
+        project = self._make_project("broken-model")
+        (project / ".fake-solid-state.json").write_text(json.dumps({"fail": "model exploded"}))
+        session_id = self._open("broken-model")
+        run = _request(self.url(f"/api/sessions/{session_id}"), "GET")
+        self.assertTrue(any(event["kind"] == "model_build_unavailable" for event in run["events"]))
+        self.assertEqual(_status(self.url("/projects/broken-model/artifacts/viewer.json"), "GET"), 404)
 
-        broker.snapshot = snapshot_that_publishes  # type: ignore[method-assign]
-        app = create_app(broker=broker)
-        endpoint = next(route.endpoint for route in app.routes if getattr(route, "path", None) == "/api/stream")
+        healthy = self._make_project("healthy")
+        healthy_id = self._open("healthy")
+        self.assertTrue(healthy_id)
+        self.assertIn("part.stl", _raw(self.url("/projects/healthy/artifacts/viewer.json")))
+        self.assertEqual(_status(self.url("/projects/broken-model/artifacts/../healthy/_build/viewer.json"), "GET"), 404)
 
-        class ConnectedRequest:
-            async def is_disconnected(self) -> bool:
-                return False
+    def test_backend_detection_is_read_only_and_repeatable(self) -> None:
+        first = _request(self.url("/api/backends"), "GET")["backends"]
+        second = _request(self.url("/api/backends/detect"), "POST")["backends"]
+        self.assertEqual({item["id"] for item in first}, {"codex", "claude", "opencode"})
+        self.assertEqual([item["id"] for item in first], [item["id"] for item in second])
+        self.assertTrue(all(set(item) == {"id", "found", "executable", "version", "model"} for item in first))
 
-        async def read_handoff() -> tuple[tuple[str, dict[str, object]], tuple[str, dict[str, object]]]:
-            response = await endpoint(ConnectedRequest())
-            iterator = response.body_iterator
-            snapshot_frame = _parse_sse_chunk(await anext(iterator))
-            live_frame = _parse_sse_chunk(await anext(iterator))
-            self.assertEqual(len(broker.subscribers), 1)
-            self.assertTrue(next(iter(broker.subscribers)).empty(), "the hand-off event must be queued exactly once")
-            await iterator.aclose()
-            self.assertEqual(broker.subscribers, set())
-            return snapshot_frame, live_frame
+    def _make_project(self, name: str, profile: str = "builder") -> Path:
+        project = self.project_home / name
+        (project / "root").mkdir(parents=True)
+        (project / "root" / "__init__.py").write_text("# model\n")
+        (project / ".gitignore").write_text("_build/\n.fake-solid-builds\n.fake-solid-state.json\n")
+        (project / "pyproject.toml").write_text(f'[tool.solid-node-studio]\nprofile = "{profile}"\n')
+        subprocess.run(["git", "init", "-q", "-b", "main", str(project)], check=True)
+        subprocess.run(["git", "-C", str(project), "add", "--all"], check=True)
+        subprocess.run([
+            "git", "-C", str(project), "-c", "user.name=Shop Test", "-c", "user.email=shop@example.invalid",
+            "commit", "-q", "-m", "fixture",
+        ], check=True)
+        return project
 
-        (snapshot_event, snapshot), (live_event, live) = asyncio.run(read_handoff())
+    def _open(self, name: str) -> str:
+        response = _request(self.url(f"/api/projects/{name}/session"), "POST")
+        self.assertIn(response["state"], {"opening", "open"})
+        _wait_for(lambda: self._project(name)["state"] in {"open", "failed"})
+        project = self._project(name)
+        self.assertEqual(project["state"], "open", project.get("failure"))
+        return str(project["session_id"])
 
-        self.assertEqual(snapshot_event, "snapshot")
-        self.assertEqual(live_event, "shop-floor")
-        self.assertEqual(snapshot["run"]["latest_event_sequence"], live["event"]["sequence"])
-        self.assertEqual(live["kind"], "conversation_entry")
-        self.assertEqual(live["payload"]["text"], "Published during snapshot.")
-
-    def test_snapshot_has_explicit_latest_sequence_when_history_is_empty_or_trimmed(self) -> None:
-        broker = Broker(event_history_limit=2)
-        self.assertEqual(broker.snapshot()["run"]["latest_event_sequence"], 0)
-
-        for index in range(5):
-            broker.publish("test_event", {"role": "builder", "index": index})
-
-        snapshot = broker.snapshot()
-        self.assertEqual(len(snapshot["run"]["events"]), 2)
-        self.assertEqual(snapshot["run"]["latest_event_sequence"], 5)
-        self.assertEqual(snapshot["run"]["events"][0]["sequence"], 4)
-
-    def test_separate_lifecycle_stream_is_removed(self) -> None:
-        self.assertEqual(_status(self.url("/events/lifecycle"), "GET"), 404)
-
-    def test_serves_only_completed_build_artifacts_and_not_project_source(self) -> None:
-        project = Path(tempfile.mkdtemp())
-        self.addCleanup(lambda: __import__("shutil").rmtree(project, ignore_errors=True))
-        build = project / "_build"
-        build.mkdir()
-        (build / "viewer.json").write_text('{"version": 1, "root": {"name": "part", "model": "part.stl"}}')
-        (build / "part.stl").write_text("solid part")
-
-        # A project source file must never be exposed through the artifact route.
-        (project / "__init__.py").write_text("raise RuntimeError('must not import')")
-        self._restart_floor(project)
-
-        self.assertIn("part.stl", _raw(self.url("/artifacts/viewer.json")))
-        self.assertEqual(_raw(self.url("/artifacts/part.stl")), "solid part")
-        self.assertEqual(_status(self.url("/artifacts/../__init__.py"), "GET"), 404)
-
-    def test_serves_the_framework_viewer_bundle(self) -> None:
-        self.assertIn("SolidNodeWidget", _raw(self.url("/viewer/solid-widget.js")))
-
-    def test_the_removed_model_callback_route_is_gone(self) -> None:
-        # The floor refreshes the model itself now; nothing may post a
-        # refresh into it. See tests/test_model_watcher.py.
-        self.assertEqual(_status(self.url("/api/runs/shop-floor/model/ready/anything"), "POST"), 404)
+    def _project(self, name: str) -> dict[str, object]:
+        projects = _request(self.url("/api/projects"), "GET")["projects"]
+        return next(item for item in projects if item["name"] == name)
 
     def url(self, path: str) -> str:
         return f"http://127.0.0.1:{self.port}{path}"
 
-    def _restart_floor(self, project: Path) -> None:
-        self._stop_floor()
-        self._project_number += 1
-        name = f"restart-{self._project_number}"
-        target = self.project_home / name
-        shutil.copytree(project, target)
-        (target / ".gitignore").write_text("_build/\n")
-        subprocess.run(["git", "init", "-q", "-b", "main", str(target)], check=True)
-        subprocess.run(["git", "-C", str(target), "add", "--all"], check=True)
-        subprocess.run(["git", "-C", str(target), "-c", "user.name=Shop Test", "-c", "user.email=shop@example.invalid", "commit", "-q", "-m", "fixture"], check=True)
-        environment = self._environment()
-        viewer = target / "_build" / "viewer.json"
-        if viewer.is_file():
-            environment["FAKE_SOLID_VIEWER"] = viewer.read_text()
-            value = json.loads(viewer.read_text())
-            model = value["root"]["model"]
-            environment["FAKE_SOLID_MODEL"] = model
-            environment["FAKE_SOLID_MODEL_CONTENT"] = (target / "_build" / model).read_text()
-        self.project = target
-        self._start_floor(name, environment=environment, profile="builder")
-
-    def _start_floor(
-        self,
-        name: str,
-        *,
-        environment: dict[str, str] | None = None,
-        profile: str | None = None,
-    ) -> None:
-        command = ["python", "-m", "floor", name, "--port", str(self.port), "--project-home", str(self.project_home), "--solid-command", str(FAKE_SOLID)]
-        if profile is not None:
-            command.extend(("--profile", profile))
-        self.process = subprocess.Popen(command, cwd=self.shop, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, env=environment or self._environment())
-        _wait_for_health(self.url("/health"))
-
-    @staticmethod
-    def _environment() -> dict[str, str]:
-        return subprocess_environment({
-            **__import__("os").environ,
-            "GIT_AUTHOR_NAME": "Shop Test",
-            "GIT_AUTHOR_EMAIL": "shop@example.invalid",
-            "GIT_COMMITTER_NAME": "Shop Test",
-            "GIT_COMMITTER_EMAIL": "shop@example.invalid",
-        })
-
     def _stop_floor(self) -> None:
-        if self.process.poll() is not None:
-            return
-        self.process.terminate()
-        try:
-            self.process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            self.process.kill()
-            self.process.wait(timeout=5)
+        if self.process.poll() is None:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait(timeout=5)
         if self.process.stderr is not None:
             self.process.stderr.close()
 
@@ -281,33 +220,54 @@ def _free_port() -> int:
         return probe.getsockname()[1]
 
 
-def _wait_for_health(url: str) -> None:
-    deadline = time.monotonic() + 5
+def _wait_for(predicate, timeout: float = 8) -> None:
+    deadline = time.monotonic() + timeout
+    last_error: Exception | None = None
     while time.monotonic() < deadline:
         try:
-            if _request(url, "GET") == {"status": "open"}:
+            if predicate():
                 return
-        except OSError:
-            time.sleep(0.05)
-    raise AssertionError(f"floor did not become ready at {url}")
+        except (OSError, StopIteration) as error:
+            last_error = error
+        time.sleep(0.05)
+    raise AssertionError(f"condition did not become true: {last_error}")
 
 
 def _request(url: str, method: str, body: dict[str, str] | None = None) -> dict[str, object]:
-    request = Request(url, data=json.dumps(body).encode() if body else None, method=method, headers={"Content-Type": "application/json"})
-    with urlopen(request, timeout=5) as response:  # nosec: local floor service
+    request = Request(
+        url,
+        data=json.dumps(body).encode() if body is not None else None,
+        method=method,
+        headers={"Content-Type": "application/json"},
+    )
+    with urlopen(request, timeout=5) as response:  # nosec: local test service
         data = response.read()
         return json.loads(data) if data else {}
 
 
+def _status(url: str, method: str, body: dict[str, str] | None = None) -> int:
+    try:
+        request = Request(
+            url,
+            data=json.dumps(body).encode() if body is not None else None,
+            method=method,
+            headers={"Content-Type": "application/json"},
+        )
+        with urlopen(request, timeout=5) as response:  # nosec: local test service
+            return response.status
+    except HTTPError as error:
+        return error.code
+
+
 def _raw(url: str) -> str:
-    with urlopen(url, timeout=5) as response:  # nosec: local floor service
+    with urlopen(url, timeout=5) as response:  # nosec: local test service
         return response.read().decode()
 
 
 def _read_sse_event(url: str) -> tuple[str, dict[str, object]]:
     event = ""
     data = ""
-    with urlopen(url, timeout=1) as response:  # nosec: local floor service
+    with urlopen(url, timeout=5) as response:  # nosec: local test service
         for raw_line in response:
             line = raw_line.decode().rstrip("\r\n")
             if not line:
@@ -316,19 +276,8 @@ def _read_sse_event(url: str) -> tuple[str, dict[str, object]]:
                 event = line.removeprefix("event: ")
             elif line.startswith("data: "):
                 data = line.removeprefix("data: ")
-    raise AssertionError("live-state stream ended before its first event")
+    raise AssertionError("stream ended before its first event")
 
 
-def _parse_sse_chunk(chunk: str | bytes) -> tuple[str, dict[str, object]]:
-    value = chunk.decode() if isinstance(chunk, bytes) else chunk
-    fields = dict(line.split(": ", 1) for line in value.strip().splitlines())
-    return fields["event"], json.loads(fields["data"])
-
-
-def _status(url: str, method: str, body: dict[str, str] | None = None) -> int:
-    try:
-        request = Request(url, data=json.dumps(body).encode() if body else None, method=method, headers={"Content-Type": "application/json"})
-        with urlopen(request, timeout=5) as response:  # nosec: local floor service
-            return response.status
-    except HTTPError as error:
-        return error.code
+if __name__ == "__main__":
+    unittest.main()

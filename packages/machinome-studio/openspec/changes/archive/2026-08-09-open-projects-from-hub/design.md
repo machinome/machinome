@@ -97,6 +97,12 @@ hub stream carries `opening`, then `open` or `failed` with a reason. The hub is
 the natural place for this, because at that moment the maker is on the hub and
 the workspace cannot render a project that has no session.
 
+Creation adds a provisional registry entry before preparation begins. Hub
+snapshots and events expose it with the chosen profile and a `creating` state,
+even before its directory exists, so every connected browser can render the
+same immediate card. Once the project is ready, the ordinary `open` event
+replaces that provisional state; a failure replaces it with the reason.
+
 Profile resolution, project preparation and agent start are fatal: on failure
 the partially built session is torn down completely and the project is reported
 not open. The initial model build is not fatal — the session opens and the
@@ -137,9 +143,19 @@ introduce one deliberately, with the durability question in front of it.
 
 `floor/backends/` gains a probe per backend: `shutil.which` for the executable,
 one version invocation, and the configured model from the profile. The hub
-reports found or missing; `POST /api/backends/detect` re-probes. No enable flag,
-no manual path, no persisted backend settings — those are 3b, and adding them
-here would mean introducing the settings store this cycle otherwise avoids.
+reports found or missing automatically when it loads. The service keeps
+`POST /api/backends/detect` as a read-only re-probe operation, but the hub does
+not expose a manual detection control. No enable flag, no manual path, no
+persisted backend settings — those are 3b, and adding them here would mean
+introducing the settings store this cycle otherwise avoids.
+
+### The project grid has explicit density and card proportions
+
+The hub uses four columns at viewport widths of 1500 pixels and above, three
+columns by default, two at 900 pixels and below, and one at 700 pixels and
+below. Project cards and the new-project tile have a 252-pixel minimum height,
+with 158 pixels reserved for each project preview. These values preserve the
+accepted desktop proportions while keeping the existing compact breakpoints.
 
 ### The launcher loses its arguments and gains no replacement
 

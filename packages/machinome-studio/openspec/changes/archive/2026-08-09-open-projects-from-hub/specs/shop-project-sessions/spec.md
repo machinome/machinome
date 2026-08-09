@@ -17,6 +17,10 @@ the outcome when it finishes.
 - **WHEN** a project is opening and the maker is looking at the hub
 - **THEN** the hub shows that project as opening until it is open or has failed, without the maker asking again
 
+#### Scenario: A newly requested project is not on disk yet
+- **WHEN** creation has been accepted and project preparation has not yet created its directory
+- **THEN** the hub still shows a provisional card in the `creating` state until the project opens or fails
+
 ### Requirement: A project has at most one session
 The shop SHALL hold at most one session per project. A request to open a project
 that is already open SHALL join that existing session rather than start a second

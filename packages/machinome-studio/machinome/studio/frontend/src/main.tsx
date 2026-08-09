@@ -22,6 +22,7 @@ type Run = {
   agents: Agent[];
   events: BrokerEvent[];
   latest_event_sequence: number;
+  model_build_error: string | null;
 };
 
 type LifecycleEvent = {
@@ -49,10 +50,31 @@ type ConversationEntry = {
 
 type ModelArtifact = { path: string; sequence: number };
 
-function FunctionalModel({ artifact, reconnect, buildError }: {
+type Project = {
+  name: string;
+  openable: boolean;
+  reason: string | null;
+  profile: string;
+  branch: string | null;
+  last_commit: string | null;
+  state: "closed" | "creating" | "opening" | "open" | "failed";
+  session_id: string | null;
+  failure: string | null;
+};
+
+type BackendStatus = {
+  id: string;
+  found: boolean;
+  executable: string | null;
+  version: string | null;
+  model: string | null;
+};
+
+function FunctionalModel({ artifact, reconnect, buildError, project }: {
   artifact: ModelArtifact | null;
   reconnect: number;
   buildError: string | null;
+  project: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const view = useRef<ViewerView | undefined>(undefined);
@@ -95,8 +117,10 @@ function FunctionalModel({ artifact, reconnect, buildError }: {
       enqueue(async () => {
         if (disposed || handle.current) return;
         try {
-          const mountedHandle = await window.SolidNodeWidget.mount(target, "/artifacts/viewer.json", {
-            baseUrl: "/artifacts/",
+          if (!window.SolidNodeWidget) throw new Error("the framework viewer is unavailable");
+          const prefix = `/projects/${encodeURIComponent(project)}/artifacts/`;
+          const mountedHandle = await window.SolidNodeWidget.mount(target, `${prefix}viewer.json`, {
+            baseUrl: prefix,
             animation: "toggle",
             view: view.current,
             className: "functional-model",
@@ -123,7 +147,7 @@ function FunctionalModel({ artifact, reconnect, buildError }: {
         handle.current = undefined;
       });
     };
-  }, []);
+  }, [project]);
 
   useEffect(() => {
     if (artifact === null || artifact.sequence === applied.current) return;
@@ -282,7 +306,210 @@ const railItems = [
   ["code", "{ }", "Code"],
 ] as const;
 
-function App() {
+function navigate(path: string) {
+  window.history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+function relativeTime(value: string | null) {
+  if (!value) return "no commits";
+  const seconds = Math.max(0, (Date.now() - Date.parse(value)) / 1000);
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+}
+
+function loadViewer(project: string) {
+  if (window.SolidNodeWidget) return Promise.resolve();
+  return new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>("script[data-solid-node-viewer]");
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("the framework viewer is unavailable")), { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.dataset.solidNodeViewer = "true";
+    script.src = `/projects/${encodeURIComponent(project)}/viewer/solid-widget.js`;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("the framework viewer is unavailable"));
+    document.head.append(script);
+  });
+}
+
+function Hub() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [workingFolder, setWorkingFolder] = useState("");
+  const [backends, setBackends] = useState<BackendStatus[]>([]);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [profile, setProfile] = useState<"builder" | "fordesmac" | "">("");
+  const [formError, setFormError] = useState("");
+  const pendingOpen = useRef<string | null>(null);
+
+  useEffect(() => {
+    void fetch("/api/backends").then((response) => response.json()).then((value: { backends: BackendStatus[] }) => setBackends(value.backends));
+    const source = new EventSource("/api/stream");
+    source.onopen = () => setShopOpen(true);
+    source.onerror = () => setShopOpen(false);
+    source.addEventListener("snapshot", (message) => {
+      const snapshot = JSON.parse((message as MessageEvent<string>).data) as { working_folder: string; projects: Project[] };
+      setWorkingFolder(snapshot.working_folder);
+      setProjects(snapshot.projects);
+    });
+    source.addEventListener("project", (message) => {
+      const event = JSON.parse((message as MessageEvent<string>).data) as { kind: Project["state"] | "closed"; project: string; profile?: string; session_id?: string; reason?: string };
+      setProjects((previous) => {
+        const update = (project: Project): Project => ({
+          ...project,
+          state: event.kind === "closed" ? "closed" : event.kind,
+          session_id: event.kind === "open" ? event.session_id ?? null : null,
+          failure: event.reason ?? null,
+        });
+        if (previous.some((project) => project.name === event.project)) {
+          return previous.map((project) => project.name === event.project ? update(project) : project);
+        }
+        if (event.kind !== "creating") return previous;
+        return [...previous, update({
+          name: event.project,
+          profile: event.profile ?? "fordesmac",
+          openable: true,
+          reason: null,
+          branch: null,
+          last_commit: null,
+          state: "creating",
+          session_id: null,
+          failure: null,
+        })];
+      });
+      if (event.kind === "open" && pendingOpen.current === event.project) {
+        pendingOpen.current = null;
+        navigate(`/projects/${encodeURIComponent(event.project)}`);
+      } else if (event.kind === "failed" && pendingOpen.current === event.project) {
+        pendingOpen.current = null;
+      }
+    });
+    return () => source.close();
+  }, []);
+
+  const openProject = async (project: Project) => {
+    if (!project.openable || project.state === "creating" || project.state === "opening") return;
+    if (project.state === "open") {
+      navigate(`/projects/${encodeURIComponent(project.name)}`);
+      return;
+    }
+    pendingOpen.current = project.name;
+    setProjects((previous) => previous.map((item) => item.name === project.name ? { ...item, state: "opening", failure: null } : item));
+    const response = await fetch(`/api/projects/${encodeURIComponent(project.name)}/session`, { method: "POST" });
+    if (!response.ok) {
+      const value = await response.json() as { detail?: string };
+      setProjects((previous) => previous.map((item) => item.name === project.name ? { ...item, state: "failed", failure: value.detail ?? "opening failed" } : item));
+    }
+  };
+
+  const createProject = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError("");
+    if (!name || name === "." || name === ".." || /[\\/\0]/.test(name)) {
+      setFormError("Use one folder name without a path separator.");
+      return;
+    }
+    if (!profile) {
+      setFormError("Choose a runtime profile.");
+      return;
+    }
+    pendingOpen.current = name;
+    const optimistic: Project = {
+      name, profile, openable: true, reason: null, branch: "main", last_commit: null,
+      state: "creating", session_id: null, failure: null,
+    };
+    setProjects((previous) => [...previous.filter((item) => item.name !== name), optimistic]);
+    setSheetOpen(false);
+    const response = await fetch("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, profile }),
+    });
+    if (!response.ok) {
+      const value = await response.json() as { detail?: string };
+      setFormError(value.detail ?? "The project could not be created.");
+      pendingOpen.current = null;
+      setProjects((previous) => previous.filter((item) => item.name !== name));
+      setSheetOpen(true);
+      return;
+    }
+    const accepted = await response.json() as { state: "opening" | "open"; session_id?: string };
+    if (accepted.state === "open") {
+      pendingOpen.current = null;
+      navigate(`/projects/${encodeURIComponent(name)}`);
+    }
+  };
+
+  return <main className={`hub-shell ${sheetOpen ? "sheet-visible" : ""}`}>
+    <header className="workspace-titlebar">
+      <div className="workspace-title"><span className="shop-mark" aria-hidden="true" /><span>SolidNode Studio</span></div>
+      <p className="workspace-run">Shop is {shopOpen ? "open" : "closed"}</p>
+    </header>
+    <div className="hub-body">
+      <aside className="hub-sidebar">
+        <section className="folder-card">
+          <span>Working folder</span>
+          <strong>{workingFolder || "Loading…"}</strong>
+          <small>{projects.length} {projects.length === 1 ? "project" : "projects"}</small>
+        </section>
+        <section className="backend-group">
+          <header><h2>Backends</h2><span>{backends.filter((item) => item.found).length} ready</span></header>
+          {backends.map((backend) => <div className="backend-row" key={backend.id} data-found={backend.found}>
+            <span className="backend-dot" aria-hidden="true" />
+            <div><strong>{backend.id}</strong><small>{backend.found ? `${backend.model ?? "default"} · ${backend.version}` : "no executable on PATH"}</small></div>
+          </div>)}
+        </section>
+      </aside>
+      <section className="project-area">
+        <header className="project-heading">
+          <div><h1>Projects</h1><p>Open a project or start something new.</p></div>
+          <button className="primary-button" onClick={() => setSheetOpen(true)}>New project</button>
+        </header>
+        {projects.length === 0 ? <p className="hub-empty">No projects yet. Create one to begin.</p> : null}
+        <div className="project-grid">
+          {projects.map((project) => <button
+            className={`project-card ${project.openable ? "" : "unopenable"}`}
+            key={project.name}
+            disabled={!project.openable}
+            onClick={() => void openProject(project)}
+          >
+            <span className="project-preview">model preview</span>
+            <span className="project-card-body">
+              <span className="project-name"><strong>{project.name}</strong><i data-state={project.state} /></span>
+              <span className="project-meta">{project.state} · {project.profile} · {relativeTime(project.last_commit)}</span>
+              {project.reason || project.failure ? <span className="project-reason">{project.failure ?? project.reason}</span> : null}
+            </span>
+          </button>)}
+          <button className="new-project-tile" onClick={() => setSheetOpen(true)}>＋<span>New project</span></button>
+        </div>
+      </section>
+    </div>
+    {sheetOpen ? <div className="sheet-layer" role="presentation">
+      <form className="new-project-sheet" onSubmit={createProject}>
+        <header><h2>New project</h2><p>Create a repository and open its first session.</p></header>
+        <label>Project name<input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="bracket-assembly" /></label>
+        <fieldset><legend>Runtime profile</legend><div className="profile-grid">
+          {(["builder", "fordesmac"] as const).map((value) => <button type="button" className={profile === value ? "selected" : ""} onClick={() => setProfile(value)} key={value}>
+            <strong>{value === "builder" ? "Builder" : "Fordesmac"}</strong>
+            <span>{value === "builder" ? "One direct agent" : "Four-agent mechanical shop"}</span>
+          </button>)}
+        </div></fieldset>
+        <p className="runtime-note">Agents use project-declared runtime selections or the profile's Codex defaults.</p>
+        {formError ? <p className="form-error" role="alert">{formError}</p> : null}
+        <footer><span>stored in the working folder</span><div><button type="button" className="outline-button" onClick={() => setSheetOpen(false)}>Cancel</button><button className="primary-button">Create and open</button></div></footer>
+      </form>
+    </div> : null}
+  </main>;
+}
+
+function Workspace({ project }: { project: string }) {
   const [run, setRun] = useState<Run | null>(null);
   const [shopOpen, setShopOpen] = useState(false);
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
@@ -291,15 +518,36 @@ function App() {
   const [modelBuildError, setModelBuildError] = useState<string | null>(null);
   const streamOpened = useRef(false);
   const latestEvent = useRef(0);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [viewerReady, setViewerReady] = useState(false);
 
   useEffect(() => {
-    const source = new EventSource("/api/stream");
+    let source: EventSource | null = null;
+    let cancelled = false;
+    void Promise.all([
+      fetch("/api/projects").then((response) => response.json()) as Promise<{ projects: Project[] }>,
+      loadViewer(project).then(() => true).catch(() => false),
+    ]).then(([inventory, viewer]) => {
+      if (cancelled) return;
+      const selected = inventory.projects.find((item) => item.name === project);
+      if (!selected?.session_id || selected.state !== "open") {
+        navigate("/");
+        return;
+      }
+      setSessionId(selected.session_id);
+      setViewerReady(viewer);
+      source = new EventSource(`/api/sessions/${encodeURIComponent(selected.session_id)}/stream`);
     source.onopen = () => {
       setShopOpen(true);
       if (streamOpened.current) setModelReconnect((current) => current + 1);
       streamOpened.current = true;
     };
-    source.onerror = () => setShopOpen(false);
+      source.onerror = () => {
+        setShopOpen(false);
+        void fetch("/api/projects").then((response) => response.json()).then((value: { projects: Project[] }) => {
+          if (!value.projects.some((item) => item.name === project && item.state === "open")) navigate("/");
+        });
+      };
     source.addEventListener("snapshot", (message) => {
       const snapshot = JSON.parse((message as MessageEvent<string>).data) as {
         run: Run;
@@ -308,6 +556,7 @@ function App() {
       latestEvent.current = snapshot.run.latest_event_sequence;
       setRun(snapshot.run);
       setConversation(snapshot.conversation);
+      setModelBuildError(snapshot.run.model_build_error);
     });
     source.addEventListener("shop-floor", (message) => {
       const event = JSON.parse((message as MessageEvent<string>).data) as LifecycleEvent;
@@ -328,7 +577,7 @@ function App() {
           setModelBuildError(null);
           setModelArtifact({ path: artifact, sequence: event.event.sequence });
         } else if (artifact === "errors.json") {
-          void fetch("/artifacts/errors.json")
+          void fetch(`/projects/${encodeURIComponent(project)}/artifacts/errors.json`)
             .then((response) => response.ok ? response.text() : Promise.reject(new Error("the model could not be rebuilt")))
             .then((error) => setModelBuildError(error || "the model could not be rebuilt"))
             .catch(() => setModelBuildError("the model could not be rebuilt"));
@@ -356,15 +605,17 @@ function App() {
         }
         return { ...previous, agents: agents.sort((left, right) => left.role.localeCompare(right.role)) };
       });
+      });
     });
     return () => {
-      source.close();
+      cancelled = true;
+      source?.close();
     };
-  }, []);
+  }, [project]);
 
   const submitUserMessage = async (text: string) => {
-    if (!run) return;
-    const response = await fetch(`/api/runs/${run.id}/conversation`, {
+    if (!sessionId) return;
+    const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/conversation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
@@ -374,16 +625,22 @@ function App() {
     setConversation((previous) => previous.some((item) => item.sequence === entry.sequence) ? previous : [...previous, entry]);
   };
 
+  const closeProject = async () => {
+    if (!sessionId) return;
+    const active = run?.agents.some((agent) => agent.state === "active") ?? false;
+    if (active && !window.confirm("An agent is working. Close this project and discard work in progress?")) return;
+    await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+    navigate("/");
+  };
+
   return (
     <main className="shop-workspace">
       <header className="workspace-titlebar">
         <div className="workspace-title">
           <span className="shop-mark" aria-hidden="true" />
-          <span>SolidNode Studio</span>
+          <span>SolidNode Studio / {project}</span>
         </div>
-        <p className="workspace-run" aria-live="polite">
-          {shopOpen && run ? `run ${run.id} · ${run.status}` : `shop ${shopOpen ? "open" : "closed"}`}
-        </p>
+        <div className="title-actions"><p className="workspace-run" aria-live="polite">{shopOpen && run ? `${run.profile_id} · open` : `Shop is ${shopOpen ? "open" : "closed"}`}</p><button className="close-project" onClick={() => void closeProject()}>Close project</button></div>
       </header>
       <div className="workspace-body">
         <nav className="activity-rail" aria-label="Workspace areas">
@@ -407,7 +664,7 @@ function App() {
             <h2 id="artifact-heading">Model</h2>
           </header>
           <div className="model-viewport">
-            <FunctionalModel artifact={modelArtifact} reconnect={modelReconnect} buildError={modelBuildError} />
+            {viewerReady ? <FunctionalModel artifact={modelArtifact} reconnect={modelReconnect} buildError={modelBuildError} project={project} /> : <p className="empty">no completed build yet</p>}
           </div>
         </section>
         <section className="conversation" aria-label="Chat">
@@ -427,6 +684,17 @@ function App() {
       <footer className="workspace-statusbar" aria-label="Workspace status" />
     </main>
   );
+}
+
+function App() {
+  const [path, setPath] = useState(window.location.pathname);
+  useEffect(() => {
+    const update = () => setPath(window.location.pathname);
+    window.addEventListener("popstate", update);
+    return () => window.removeEventListener("popstate", update);
+  }, []);
+  const match = /^\/projects\/([^/]+)$/.exec(path);
+  return match ? <Workspace project={decodeURIComponent(match[1])} /> : <Hub />;
 }
 
 createRoot(document.getElementById("root")!).render(

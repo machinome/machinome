@@ -10,18 +10,25 @@ model, and reasoning level per agent.
 ## Open a floor
 
 ```text
-python -m floor.orchestrator <project-name>
-python -m floor.orchestrator <project-name> --profile builder
-python -m floor <project-name>
+python -m floor.orchestrator
+python -m floor
 ```
 
-`fordesmac` is the shop default and opens standing Foreman, Designer,
-Machinist, and Librarian sessions; Foreman alone assigns and receives specialist
-reports. `builder` opens one direct Builder session. The broker-only command
-does not open a backend. `--profile` overrides the project's declaration for
-one run without changing it. The launcher reads project runtime configuration
-without creating anything, then validates the profile and resolved runtime
-before the named project is created, built, or served.
+The orchestrator starts a project hub over the workspace `projects/` working
+folder and takes no project or profile. The pilot opens an existing project or
+creates one in the browser; several projects may be open at once. `fordesmac`
+is the default and opens standing Foreman, Designer, Machinist, and Librarian
+sessions; Foreman alone assigns and receives specialist reports. `builder`
+opens one direct Builder session. The broker-only command serves the same hub
+without opening a backend.
+
+Opening a project reads its runtime configuration without changing it, then
+validates the profile and resolved runtime before preparation or agents start.
+A failed initial model build still opens the project so it can be repaired in
+the workspace; profile, preparation, and agent-start failures leave no partial
+session and are reported on the hub. Closing a project ends its ephemeral
+conversation, agents, watcher, and backend resources without stopping the hub
+or another project.
 
 Declare runtime choices in the project's `pyproject.toml`. Omitted agents use
 their profile's Codex model and effort. A final segment overrides reasoning;
@@ -37,11 +44,12 @@ designer = "opencode:anthropic:claude-sonnet-4-5:high"
 machinist = "claude:sonnet:medium"
 ```
 
-When `profile` and `--profile` are both absent, the launcher uses `fordesmac`.
-A scaffold writes neither a profile nor a shop runtime table.
+When `profile` is absent, the project uses `fordesmac`. A project created from
+the hub records the profile chosen in the new-project sheet in its initial
+commit.
 
-The launcher has no run-wide backend flag. One floor may open several backends,
-and it starts each distinct selected backend exactly once.
+The launcher has no project, profile, or run-wide backend flag. Each project
+session starts each distinct selected backend exactly once.
 
 Each runtime agent receives the exact verified `projects/<name>` repository
 root. Runtime prompts belong to `profiles/<id>/`; their shared allowlisted
@@ -77,9 +85,13 @@ No backend loads global shop role cards or `.codex/agents` runtime adapters.
 ## Workspace
 
 `projects/<name>/` is an independent Git repository. `solid-node/` and its
-`WTs/` are framework checkouts; top-level `WTs/` holds shop worktrees. The
-floor prepares and validates the selected project before opening. It serves
-only completed `_build/` artifacts and refreshes them with its own watcher.
+`WTs/` are framework checkouts; top-level `WTs/` holds shop worktrees. The hub
+lists every entry under `projects/`, including unopenable entries with their
+reason. Each open project has one opaque session identifier, an isolated
+broker, profile roster, conversation, model build and watcher. Agent processes
+receive only their own identifier through `FLOOR_SESSION`; a stale identifier
+cannot reach a later session of the same project. The service serves only each
+session's completed `_build/` artifacts and refreshes them with its own watcher.
 
 ## Cross-Repository Sprints
 
