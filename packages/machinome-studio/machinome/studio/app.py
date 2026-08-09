@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from watchdog.observers import Observer
 
-from .profiles import RuntimeProfile, load_profile
+from .profiles import RuntimeProfile, load_profile, resolve_profile_runtime
 from .watcher import ArtifactWatcher, ModelWatcher
 
 
@@ -116,7 +116,9 @@ class Broker:
     """One in-memory run's portable coordination state."""
 
     def __init__(self, profile: RuntimeProfile | None = None, *, event_history_limit: int = 20) -> None:
-        self.profile = profile or load_profile(None, shop_root=Path(__file__).resolve().parents[1], backend="codex")
+        self.profile = profile or resolve_profile_runtime(
+            load_profile(None, shop_root=Path(__file__).resolve().parents[1])
+        )
         self.agents: dict[str, Agent] = {}
         self.subscribers: set[asyncio.Queue[dict[str, object]]] = set()
         self.delivery_subscribers: set[asyncio.Queue[Envelope | None]] = set()

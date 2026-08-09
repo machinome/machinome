@@ -66,6 +66,7 @@ class FloorEntrypointTest(unittest.TestCase):
             patch.object(sys, "argv", ["floor", "engine"]),
             patch.object(__main__, "primary_shop_root", return_value=primary),
             patch.object(__main__, "load_profile", return_value=object()) as load_profile,
+            patch.object(__main__, "resolve_profile_runtime", side_effect=lambda profile, selection: profile),
             patch.object(__main__, "prepare_project", return_value=prepared) as prepare,
             patch.object(__main__, "create_app"),
             patch.object(__main__.uvicorn, "run"),

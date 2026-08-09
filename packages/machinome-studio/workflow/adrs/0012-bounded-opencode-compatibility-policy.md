@@ -39,7 +39,11 @@ password-protected loopback HTTP/SSE server and one persistent session per
 profile role. Existing profiles SHALL remain unchanged and valid; they SHALL
 not require OpenCode tables.
 
-For now, the OpenCode adapter SHALL own a compatibility policy:
+When ADR 0017's project configuration selects an OpenCode provider and model,
+the adapter SHALL send that exact pair on every role prompt and SHALL send an
+optional selected reasoning level as OpenCode's per-prompt variant. When no
+concrete provider/model pair is resolved, the OpenCode adapter SHALL own a
+compatibility policy:
 
 - inherit the authenticated operator model, variant, and configuration;
 - run in `--pure` mode so external plugins do not execute;
@@ -60,7 +64,8 @@ external plugins SHALL not execute. Effective non-secret configuration SHALL be
 recorded in real-runtime evidence.
 
 This is a temporary, bounded exception to ADR 0011's profile-explicit runtime
-policy. It is not a claim that OpenCode exposes equivalent model, variant,
+policy only where the project selects no concrete provider/model pair. It is
+not a claim that OpenCode exposes equivalent model, variant,
 effort, tool, permission, or isolation controls. A later change may replace the
 exception with profile-declared controls only when their semantics and
 enforcement have been measured and designed explicitly.
@@ -74,9 +79,9 @@ enforcement have been measured and designed explicitly.
   adapter-owned exception.
 - Builder and Fordesmac remain valid without manifest edits.
 - OpenCode behavior can vary with authenticated operator model, variant, and
-  global configuration even though external plugins are disabled. Documentation
-  and evidence must state that boundary rather than promising isolation or
-  cross-backend equivalence.
+  global configuration when no project provider/model pair is resolved, even
+  though external plugins are disabled. Documentation and evidence must state
+  that boundary rather than promising isolation or cross-backend equivalence.
 - Native project OpenCode customization remains disabled, while one exact root
   `AGENTS.md` can be included under explicit subordinate framing.
 - Fake-server acceptance coverage and authenticated real-runtime evidence are

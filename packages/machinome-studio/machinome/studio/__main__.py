@@ -10,8 +10,16 @@ from pathlib import Path
 import uvicorn
 
 from .app import create_app
-from .preparation import PreparationError, default_project_home, default_solid_command, prepare_project, primary_shop_root
-from .profiles import ProfileError, load_profile
+from .preparation import (
+    PreparationError,
+    ProjectRuntimeError,
+    default_project_home,
+    default_solid_command,
+    prepare_project,
+    primary_shop_root,
+    read_project_runtime,
+)
+from .profiles import ProfileError, load_profile, resolve_profile_runtime
 
 
 def main() -> None:
@@ -28,13 +36,14 @@ def main() -> None:
     parser.add_argument("--profile", help="runtime profile owned by this shop checkout")
     arguments = parser.parse_args()
     checkout = Path.cwd()
+    project_home = arguments.project_home or default_project_home(checkout)
     try:
         shop_root = primary_shop_root(checkout)
-        profile = load_profile(arguments.profile, shop_root=shop_root, backend="codex")
-    except ProfileError as error:
+        selection = read_project_runtime(arguments.project_name, project_home=project_home)
+        profile = resolve_profile_runtime(load_profile(arguments.profile, shop_root=shop_root), selection)
+    except (PreparationError, ProfileError, ProjectRuntimeError) as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(1) from error
-    project_home = arguments.project_home or default_project_home(checkout)
     solid_command = arguments.solid_command or default_solid_command(checkout)
     try:
         prepared = prepare_project(

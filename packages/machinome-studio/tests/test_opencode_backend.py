@@ -47,7 +47,7 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
             stop_timeout=0.2,
         )
 
-    def context(self) -> RoleContext:
+    def context(self, runtime: BackendRuntime | None = None) -> RoleContext:
         return RoleContext(
             shop_checkout=str(ROOT),
             active_project=str(self.project),
@@ -58,7 +58,7 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
                 (self.skill,),
                 (),
                 None,
-                BackendRuntime("inherit", "inherit", "inherit"),
+                runtime or BackendRuntime("inherit", "inherit", "inherit", backend="opencode"),
             ),
             profile_id="builder",
             user_label="Maker",
@@ -108,7 +108,41 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(str(self.skill / "SKILL.md"), system)
         self.assertIn((self.skill / "SKILL.md").read_text(), system)
         self.assertLess(system.index("PROFILE PROMPT EXACT"), system.index("ROOT GUIDANCE EXACT"))
-        self.assertIn("cannot redefine role identity", system)
+        self.assertIn("cannot redefine that runtime, role identity", system)
+
+    async def test_selected_provider_model_and_variant_reach_prompt_async(self) -> None:
+        await self.backend.start()
+        context = self.context(
+            BackendRuntime(
+                "claude-sonnet-4-5",
+                "high",
+                "inherit",
+                backend="opencode",
+                provider="anthropic",
+            )
+        )
+        handle = await self.backend.open_role("builder", context)
+        await self.backend.deliver_start(handle, "Begin")
+        prompt = next(item["body"] for item in self.captured() if item.get("path", "").endswith("/prompt_async"))
+        self.assertEqual(prompt["model"], {"providerID": "anthropic", "modelID": "claude-sonnet-4-5"})
+        self.assertEqual(prompt["variant"], "high")
+
+    async def test_inherited_operator_runtime_sends_no_model_or_variant(self) -> None:
+        await self.backend.start()
+        handle = await self.backend.open_role("builder", self.context())
+        await self.backend.deliver_start(handle, "Begin")
+        prompt = next(item["body"] for item in self.captured() if item.get("path", "").endswith("/prompt_async"))
+        self.assertNotIn("model", prompt)
+        self.assertNotIn("variant", prompt)
+
+    async def test_guidance_precedence_distinguishes_project_configuration(self) -> None:
+        await self.backend.start()
+        handle = await self.backend.open_role("builder", self.context())
+        await self.backend.deliver_start(handle, "Begin")
+        prompt = next(item["body"] for item in self.captured() if item.get("path", "").endswith("/prompt_async"))
+        self.assertIn("pilot-authored project configuration", prompt["system"])
+        self.assertIn("already resolved", prompt["system"])
+        self.assertIn("Supplemental project guidance", prompt["system"])
 
     async def test_root_agents_symlink_is_not_followed(self) -> None:
         (self.project / "AGENTS.md").unlink()
@@ -207,20 +241,31 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
 
 
 class OpenCodeSelectionTest(unittest.TestCase):
-    def test_existing_profiles_select_opencode_without_manifest_tables(self) -> None:
-        from floor.profiles import load_profile
+    def test_projects_select_opencode_without_profile_manifest_tables(self) -> None:
+        from floor.preparation import ProjectAgentRuntime, ProjectRuntimeSelection
+        from floor.profiles import load_profile, resolve_profile_runtime
 
         for profile_id, expected_roles in (
             ("builder", ["builder"]),
             ("fordesmac", ["foreman", "designer", "machinist", "librarian"]),
         ):
-            profile = load_profile(profile_id, shop_root=ROOT, backend="opencode")
-            self.assertEqual(profile.backend, "opencode")
+            loaded = load_profile(profile_id, shop_root=ROOT)
+            choices = {
+                agent.id: ProjectAgentRuntime(
+                    "opencode", "anthropic", "claude-sonnet-4-5", None,
+                    "opencode:anthropic:claude-sonnet-4-5",
+                )
+                for agent in loaded.agents
+            }
+            profile = resolve_profile_runtime(
+                loaded,
+                ProjectRuntimeSelection(ROOT, ROOT / "pyproject.toml", choices),
+            )
             self.assertEqual([agent.id for agent in profile.agents], expected_roles)
             self.assertTrue(
                 all(
-                    (agent.runtime.model, agent.runtime.effort, agent.runtime.tools)
-                    == ("inherit", "inherit", "inherit")
+                    (agent.runtime.backend, agent.runtime.provider, agent.runtime.model)
+                    == ("opencode", "anthropic", "claude-sonnet-4-5")
                     for agent in profile.agents
                 )
             )
@@ -229,7 +274,7 @@ class OpenCodeSelectionTest(unittest.TestCase):
         backend = create_backend("opencode", cwd=ROOT, project=ROOT, command="opencode")
         self.assertEqual(type(backend).__name__, "OpenCodeBackend")
 
-    def test_cli_lists_opencode(self) -> None:
+    def test_cli_has_no_run_wide_backend_selector(self) -> None:
         result = subprocess.run(
             [sys.executable, "-m", "floor.orchestrator", "--help"],
             cwd=ROOT,
@@ -238,7 +283,7 @@ class OpenCodeSelectionTest(unittest.TestCase):
             capture_output=True,
             check=True,
         )
-        self.assertIn("opencode", result.stdout)
+        self.assertNotIn("--backend", result.stdout)
 
 
 if __name__ == "__main__":

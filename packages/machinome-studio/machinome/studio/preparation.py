@@ -8,13 +8,35 @@ import re
 import subprocess
 import sys
 import tempfile
+import tomllib
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 
 PROJECT_NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
+AGENT_ID = PROJECT_NAME
 REQUIRED_VIEWER_API = 2
+CODEX_MODELS = {"gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.3-codex-spark"}
+CLAUDE_MODELS = {"sonnet", "opus"}
+CODEX_EFFORTS = {"low", "medium", "high", "xhigh", "max", "ultra"}
+CLAUDE_EFFORTS = {"low", "medium", "high"}
+
+
+@dataclass(frozen=True)
+class ProjectAgentRuntime:
+    backend: str
+    provider: str | None
+    model: str
+    effort: str | None
+    source: str
+
+
+@dataclass(frozen=True)
+class ProjectRuntimeSelection:
+    project_root: Path
+    source_path: Path
+    agents: dict[str, ProjectAgentRuntime]
 
 
 @dataclass(frozen=True)
@@ -76,6 +98,14 @@ class PreparationError(RuntimeError):
         super().__init__(f"project preparation failed during {stage}{location}: {reason}")
 
 
+class ProjectRuntimeError(ValueError):
+    """The active project's shop runtime selection is malformed or unsafe."""
+
+    def __init__(self, source_path: Path, reason: str) -> None:
+        self.source_path = source_path
+        super().__init__(f"project runtime configuration at {source_path}: {reason}")
+
+
 def primary_shop_root(checkout: Path) -> Path:
     """Return this repository's primary checkout, including from a worktree."""
     result = _run(
@@ -113,8 +143,8 @@ def default_solid_command(checkout: Path) -> tuple[str, ...]:
 
 
 def resolve_project(name: str | None, project_home: Path) -> Path:
-    if name is None or not PROJECT_NAME.fullmatch(name):
-        raise PreparationError("project-name", name, None, "a lowercase kebab-case project name is required")
+    candidate = _project_path(name, project_home)
+    assert name is not None
     home = project_home.resolve()
     try:
         home.mkdir(parents=True, exist_ok=True)
@@ -122,6 +152,52 @@ def resolve_project(name: str | None, project_home: Path) -> Path:
         raise PreparationError("project-home", name, home, str(error)) from error
     if not home.is_dir():
         raise PreparationError("project-home", name, home, "workspace projects directory does not exist")
+    return candidate
+
+
+def read_project_runtime(name: str | None, *, project_home: Path) -> ProjectRuntimeSelection:
+    """Read project-owned agent runtime choices without creating anything."""
+    project_root = _project_path(name, project_home)
+    source_path = project_root / "pyproject.toml"
+    if not source_path.exists():
+        return ProjectRuntimeSelection(project_root, source_path, {})
+    if source_path.is_symlink() or not source_path.is_file():
+        raise ProjectRuntimeError(source_path, "pyproject.toml must be a regular non-symlink file")
+    try:
+        with source_path.open("rb") as source:
+            document = tomllib.load(source)
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        raise ProjectRuntimeError(source_path, f"invalid TOML: {error}") from error
+    tool = document.get("tool", {})
+    if not isinstance(tool, dict):
+        raise ProjectRuntimeError(source_path, "tool must be a table")
+    table = tool.get("solid-node-studio")
+    if table is None:
+        return ProjectRuntimeSelection(project_root, source_path, {})
+    if not isinstance(table, dict):
+        raise ProjectRuntimeError(source_path, "tool.solid-node-studio must be a table")
+    unknown = set(table) - {"agents"}
+    if unknown:
+        raise ProjectRuntimeError(source_path, f"tool.solid-node-studio: unknown key {sorted(unknown)[0]!r}")
+    raw_agents = table.get("agents", {})
+    if not isinstance(raw_agents, dict):
+        raise ProjectRuntimeError(source_path, "tool.solid-node-studio.agents must be a table")
+    agents: dict[str, ProjectAgentRuntime] = {}
+    for agent_id, raw in raw_agents.items():
+        if not isinstance(agent_id, str) or not AGENT_ID.fullmatch(agent_id):
+            raise ProjectRuntimeError(source_path, f"agent key {agent_id!r} must be lowercase kebab-case")
+        if not isinstance(raw, str):
+            raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} must be a string")
+        agents[agent_id] = _parse_agent_runtime(agent_id, raw, source_path)
+    return ProjectRuntimeSelection(project_root, source_path, agents)
+
+
+def _project_path(name: str | None, project_home: Path) -> Path:
+    if name is None or not PROJECT_NAME.fullmatch(name):
+        raise PreparationError("project-name", name, None, "a lowercase kebab-case project name is required")
+    home = project_home.resolve()
+    if project_home.exists() and not project_home.is_dir():
+        raise PreparationError("project-home", name, home, "workspace projects directory is not a directory")
     candidate = home / name
     if candidate.is_symlink():
         raise PreparationError("project-path", name, candidate, "project location must not be a symbolic link")
@@ -131,6 +207,32 @@ def resolve_project(name: str | None, project_home: Path) -> Path:
     if candidate.exists() and not candidate.is_dir():
         raise PreparationError("project-path", name, candidate, "project location is not a directory")
     return resolved
+
+
+def _parse_agent_runtime(agent_id: str, raw: str, source_path: Path) -> ProjectAgentRuntime:
+    parts = raw.split(":")
+    if any(not part for part in parts):
+        raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} contains an empty segment")
+    backend = parts[0] if parts else ""
+    if backend not in {"codex", "claude", "opencode"}:
+        raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} names an unknown backend")
+    expected = {2, 3} if backend in {"codex", "claude"} else {3, 4}
+    if len(parts) not in expected:
+        raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} has the wrong segment count")
+    if backend == "opencode":
+        _, provider, model, *tail = parts
+    else:
+        _, model, *tail = parts
+        provider = None
+    effort = tail[0] if tail else None
+    if backend == "codex" and model not in CODEX_MODELS:
+        raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} names an unsupported Codex model")
+    if backend == "claude" and model not in CLAUDE_MODELS:
+        raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} names an unsupported Claude model")
+    supported_efforts = CODEX_EFFORTS if backend == "codex" else CLAUDE_EFFORTS if backend == "claude" else None
+    if effort is not None and supported_efforts is not None and effort not in supported_efforts:
+        raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} names an unsupported reasoning level")
+    return ProjectAgentRuntime(backend, provider, model, effort, raw)
 
 
 def prepare_project(

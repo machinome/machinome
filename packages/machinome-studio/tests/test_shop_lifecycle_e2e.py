@@ -71,6 +71,23 @@ class ShopLifecycleE2E(unittest.TestCase):
             environment["FAKE_SOLID_MODEL"] = model
             environment["FAKE_SOLID_MODEL_CONTENT"] = (target / "_build" / model).read_text()
         self.project = target if project is not None else self.project_home / name
+        if backend != "codex":
+            if not self.project.exists():
+                (self.project / "root").mkdir(parents=True)
+                (self.project / "root" / "__init__.py").write_text("# project runtime fixture\n")
+                (self.project / ".gitignore").write_text("_build/\n")
+                subprocess.run(["git", "init", "-q", "-b", "main", str(self.project)], check=True)
+            agents = ["builder"] if profile == "builder" else ["foreman", "designer", "machinist", "librarian"]
+            runtime = "claude:sonnet" if backend == "claude" else "opencode:openai:gpt-5.4"
+            with (self.project / "pyproject.toml").open("a") as manifest:
+                manifest.write("\n[tool.solid-node-studio.agents]\n")
+                for agent in agents:
+                    manifest.write(f'{agent} = "{runtime}"\n')
+            subprocess.run(["git", "-C", str(self.project), "add", "--all"], check=True)
+            subprocess.run(
+                ["git", "-C", str(self.project), "-c", "user.name=Shop Test", "-c", "user.email=shop@example.invalid", "commit", "-q", "-m", "runtime fixture"],
+                check=True,
+            )
         module = "floor.orchestrator" if orchestrated else "floor"
         command = [
             "python",
@@ -91,10 +108,8 @@ class ShopLifecycleE2E(unittest.TestCase):
                 (
                     "--cwd",
                     str(self.shop),
-                    "--backend",
-                    backend,
                     "--backend-command",
-                    str(backend_command or FAKE_CODEX_ECHO),
+                    f"{backend}={backend_command or FAKE_CODEX_ECHO}",
                 )
             )
         self.floor = subprocess.Popen(

@@ -25,7 +25,7 @@ retired backends, including Hermes and OpenCode.
 
 Every shipped Claude role SHALL explicitly declare `permission = "autonomous"`.
 
-#### Scenario: A complete backend mapping supplies defaults
+#### Scenario: A complete backend mapping is selected
 - **WHEN** the Builder profile is loaded and the project selects no runtime for Builder
 - **THEN** Builder opens on Codex with the model, effort, and tool policy that profile declares for Codex
 
@@ -48,6 +48,10 @@ Every shipped Claude role SHALL explicitly declare `permission = "autonomous"`.
 #### Scenario: An OpenCode table is rejected
 - **WHEN** a profile agent declares an OpenCode runtime table
 - **THEN** profile validation rejects the unsupported backend key
+
+#### Scenario: OpenCode uses adapter-owned compatibility policy
+- **WHEN** the active project selects OpenCode for an agent
+- **THEN** the profile is valid without an OpenCode runtime table and the adapter applies its bounded compatibility policy
 
 #### Scenario: A retired backend table is rejected
 - **WHEN** a profile agent declares a Hermes runtime table

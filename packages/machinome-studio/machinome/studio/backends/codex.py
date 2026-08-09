@@ -107,6 +107,8 @@ class CodexBackend:
         """Create a persistent Codex thread for *role* with *context*."""
         agent = context.agent
         runtime = agent.runtime
+        if runtime is None:
+            raise RuntimeError(f"Codex role {role!r} has no resolved runtime")
         runtime_instructions = (
             f"Shop checkout: {context.shop_checkout}\n"
             f"Active project: {context.active_project}\n"

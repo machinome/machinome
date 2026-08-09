@@ -253,6 +253,8 @@ class ClaudeBackend:
         """Build the argv for one role session."""
         agent = context.agent
         runtime = agent.runtime
+        if runtime is None:
+            raise RuntimeError(f"Claude role {role!r} has no resolved runtime")
         command = [
             *self.command,
             "-p",

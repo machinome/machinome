@@ -13,7 +13,7 @@ ROOT = __import__("pathlib").Path(__file__).resolve().parents[1]
 
 class BrokerTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        self.broker = Broker(load_profile("fordesmac", shop_root=ROOT, backend="codex"), event_history_limit=20)
+        self.broker = Broker(load_profile("fordesmac", shop_root=ROOT), event_history_limit=20)
         for agent in self.broker.profile.agents:
             self.broker.manifest(agent.id, agent.label)
 
@@ -108,7 +108,7 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
 
 class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
     async def test_direct_profile_routes_user_and_turn_state_without_assignment_ceremony(self) -> None:
-        broker = Broker(profile=load_profile("builder", shop_root=ROOT, backend="codex"))
+        broker = Broker(profile=load_profile("builder", shop_root=ROOT))
         builder = broker.manifest("builder", "Builder")
         entry = await broker.record_conversation("user", "Build a bracket.")
         direction = broker.pending_for("builder")[0]
@@ -132,7 +132,7 @@ class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
                 operation()
 
     async def test_direct_role_failure_ends_only_the_failed_turn(self) -> None:
-        broker = Broker(profile=load_profile("builder", shop_root=ROOT, backend="codex"))
+        broker = Broker(profile=load_profile("builder", shop_root=ROOT))
         builder = broker.manifest("builder", "Builder")
         broker.register_direct_delivery("builder", "turn-1")
         broker.turn_started("builder", "turn-1")
@@ -144,7 +144,7 @@ class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(builder.failure, "quota exhausted")
 
     async def test_delegated_profile_enforces_declared_edges_and_keeps_completion_assignment_based(self) -> None:
-        broker = Broker(profile=load_profile("fordesmac", shop_root=ROOT, backend="codex"))
+        broker = Broker(profile=load_profile("fordesmac", shop_root=ROOT))
         for agent in broker.profile.agents:
             broker.manifest(agent.id, agent.label)
         with self.assertRaisesRegex(ValueError, "assignment edge"):
@@ -160,7 +160,7 @@ class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(broker.agents["librarian"].state, "waiting")
 
     async def test_only_declared_user_agent_output_reaches_the_conversation(self) -> None:
-        broker = Broker(profile=load_profile("fordesmac", shop_root=ROOT, backend="codex"))
+        broker = Broker(profile=load_profile("fordesmac", shop_root=ROOT))
         await broker.record_conversation("foreman", "Public update")
         self.assertEqual(broker.conversation[-1].author, "foreman")
         with self.assertRaisesRegex(ValueError, "user-facing"):

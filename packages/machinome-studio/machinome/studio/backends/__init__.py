@@ -8,6 +8,7 @@ turn identifiers and no provider configuration escape above this seam.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,7 @@ def create_backend(
     project: Path | None = None,
     broker_url: str = "http://127.0.0.1:9000",
     command: str | None = None,
+    command_overrides: Mapping[str, str] | None = None,
     solid_command: str = "solid",
     **_kwargs: Any,
 ) -> "AgentBackend":
@@ -28,7 +30,7 @@ def create_backend(
     """
     if name not in _BACKENDS:
         raise ValueError(f"unknown backend: {name!r} (choose from: {', '.join(sorted(_BACKENDS))})")
-    backend_command = command or name  # default: backend name as the command
+    backend_command = (command_overrides or {}).get(name) or command or name
     return _BACKENDS[name](
         cwd=cwd,
         project=project,
@@ -36,6 +38,21 @@ def create_backend(
         command=backend_command,
         solid_command=solid_command,
     )
+
+
+def parse_backend_command_overrides(values: Sequence[str] | None) -> dict[str, str]:
+    """Parse repeatable BACKEND=COMMAND fixture overrides."""
+    parsed: dict[str, str] = {}
+    for value in values or ():
+        backend, separator, command = value.partition("=")
+        if not separator or not backend or not command:
+            raise ValueError("backend command override must be BACKEND=COMMAND")
+        if backend not in _BACKENDS:
+            raise ValueError(f"backend command override names unknown backend {backend!r}")
+        if backend in parsed:
+            raise ValueError(f"backend command override repeats {backend!r}")
+        parsed[backend] = command
+    return parsed
 
 
 # ---------------------------------------------------------------------------

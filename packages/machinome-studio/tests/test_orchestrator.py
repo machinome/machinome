@@ -23,12 +23,13 @@ from floor.backends.base import AgentBackend, BackendEvent, DeliveryReceipt, Ina
 from floor.orchestrator import (
     LocalBrokerControl,
     ShopOrchestrator,
+    _route_backend_events,
     _serve,
     _shutdown_runtime,
     _wait_for_runtime,
 )
-from floor.preparation import PreparationError
-from floor.profiles import load_profile
+from floor.preparation import PreparationError, ProjectAgentRuntime, ProjectRuntimeSelection
+from floor.profiles import load_profile, resolve_profile_runtime
 
 from tests.fixtures.primary_shop import isolated_primary_shop
 
@@ -36,11 +37,27 @@ from tests.fixtures.primary_shop import isolated_primary_shop
 ROOT = Path(__file__).resolve().parents[1]
 FAKE_APP_SERVER = ROOT / "tests" / "fixtures" / "fake_codex_app_server.py"
 FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
-FORDESMAC = load_profile("fordesmac", shop_root=ROOT, backend="codex")
+def _resolved_profile(profile_id: str, backend: str = "codex"):
+    profile = load_profile(profile_id, shop_root=ROOT)
+    agents = {}
+    if backend != "codex":
+        for agent in profile.agents:
+            if backend == "claude":
+                default = agent.backends["claude"]
+                source = f"claude:{default.model}"
+                agents[agent.id] = ProjectAgentRuntime("claude", None, default.model, None, source)
+            else:
+                source = "opencode:openai:gpt-5.4"
+                agents[agent.id] = ProjectAgentRuntime("opencode", "openai", "gpt-5.4", None, source)
+    selection = ProjectRuntimeSelection(ROOT, ROOT / "pyproject.toml", agents)
+    return resolve_profile_runtime(profile, selection)
+
+
+FORDESMAC = _resolved_profile("fordesmac")
 
 
 def _context(role: str, *, backend: str = "codex", project: Path | None = None) -> RoleContext:
-    profile = load_profile("fordesmac", shop_root=ROOT, backend=backend)
+    profile = _resolved_profile("fordesmac", backend)
     return RoleContext(
         shop_checkout=str(ROOT),
         active_project=str((project or ROOT / "projects" / "snowman").resolve()),
@@ -213,9 +230,122 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.broker.conversation, [("foreman", "Hello from Foreman.")])
 
 
+class MultiBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
+    async def test_each_distinct_backend_opens_and_closes_once_for_its_agents(self) -> None:
+        from tests.fixtures.fake_backend import FakeBackend
+
+        class CountingBackend(FakeBackend):
+            def __init__(self) -> None:
+                super().__init__()
+                self.start_count = 0
+                self.close_count = 0
+
+            async def start(self) -> None:
+                self.start_count += 1
+                await super().start()
+
+            async def close(self) -> None:
+                self.close_count += 1
+                await super().close()
+
+        profile = load_profile("fordesmac", shop_root=ROOT)
+        selection = ProjectRuntimeSelection(
+            ROOT,
+            ROOT / "pyproject.toml",
+            {
+                "designer": ProjectAgentRuntime("claude", None, "opus", None, "claude:opus"),
+            },
+        )
+        profile = resolve_profile_runtime(profile, selection)
+        codex, claude = CountingBackend(), CountingBackend()
+        orchestrator = ShopOrchestrator(
+            {
+                "foreman": codex,
+                "designer": claude,
+                "machinist": codex,
+                "librarian": codex,
+            },
+            FakeBroker(),
+            profile=profile,
+            shop_checkout=ROOT,
+            active_project=ROOT,
+        )
+
+        await orchestrator.open()
+        self.assertTrue(codex.started)
+        self.assertTrue(claude.started)
+        self.assertEqual([role for role, _ in codex.opened_roles], ["foreman", "machinist", "librarian"])
+        self.assertEqual([role for role, _ in claude.opened_roles], ["designer"])
+        await orchestrator.close()
+        self.assertEqual([handle.role for handle in codex.closed_roles], ["librarian", "machinist", "foreman"])
+        self.assertEqual([handle.role for handle in claude.closed_roles], ["designer"])
+        self.assertTrue(codex.closed)
+        self.assertTrue(claude.closed)
+        self.assertEqual((codex.start_count, claude.start_count), (1, 1))
+        self.assertEqual((codex.close_count, claude.close_count), (1, 1))
+
+    async def test_later_backend_start_failure_closes_every_backend(self) -> None:
+        from tests.fixtures.fake_backend import FakeBackend
+
+        class FailingStartBackend(FakeBackend):
+            async def start(self) -> None:
+                raise RuntimeError("second backend failed")
+
+        first, second = FakeBackend(), FailingStartBackend()
+        orchestrator = ShopOrchestrator(
+            {agent.id: (second if agent.id == "designer" else first) for agent in FORDESMAC.agents},
+            FakeBroker(), profile=FORDESMAC, shop_checkout=ROOT, active_project=ROOT,
+        )
+        with self.assertRaisesRegex(RuntimeError, "second backend failed"):
+            await orchestrator.open()
+        self.assertTrue(first.closed)
+        self.assertTrue(second.closed)
+
+    async def test_event_streams_from_both_backends_are_consumed(self) -> None:
+        from tests.fixtures.fake_backend import FakeBackend
+
+        class QueueBackend(FakeBackend):
+            def __init__(self) -> None:
+                super().__init__()
+                self.queue: asyncio.Queue[BackendEvent] = asyncio.Queue()
+                self.events = self._queue_events()
+
+            async def _queue_events(self):
+                while True:
+                    yield await self.queue.get()
+
+        class RecordingOrchestrator(ShopOrchestrator):
+            def __init__(self, *args, **kwargs) -> None:
+                super().__init__(*args, **kwargs)
+                self.seen: list[tuple[str, str | None]] = []
+
+            async def handle_event(self, event: BackendEvent) -> None:
+                self.seen.append((event.kind, event.role))
+                await super().handle_event(event)
+
+        codex, claude = QueueBackend(), QueueBackend()
+        profile = FORDESMAC
+        orchestrator = RecordingOrchestrator(
+            {agent.id: (claude if agent.id == "designer" else codex) for agent in profile.agents},
+            FakeBroker(), profile=profile, shop_checkout=ROOT, active_project=ROOT,
+        )
+        tasks = [
+            asyncio.create_task(_route_backend_events(orchestrator, backend))
+            for backend in (codex, claude)
+        ]
+        self.addAsyncCleanup(lambda: [task.cancel() for task in tasks])
+        await codex.queue.put(BackendEvent(kind="role_message", role="foreman", text="from codex"))
+        await claude.queue.put(BackendEvent(kind="role_message", role="designer", text="from claude"))
+        for _ in range(20):
+            if len(orchestrator.seen) == 2:
+                break
+            await asyncio.sleep(0)
+        self.assertEqual(set(orchestrator.seen), {("role_message", "foreman"), ("role_message", "designer")})
+
+
 class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
     async def test_direct_start_event_that_wins_the_receipt_race_is_adopted(self) -> None:
-        profile = load_profile("builder", shop_root=ROOT, backend="codex")
+        profile = _resolved_profile("builder")
         broker = Broker(profile=profile)
 
         class RacingCodex(FakeCodex):
@@ -253,7 +383,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_direct_completion_that_wins_the_receipt_race_stays_waiting(self) -> None:
-        profile = load_profile("builder", shop_root=ROOT, backend="codex")
+        profile = _resolved_profile("builder")
         broker = Broker(profile=profile)
 
         class RacingCodex(FakeCodex):
@@ -293,7 +423,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         from tests.fixtures.fake_backend import FakeBackend
 
         project = ROOT / "projects" / "verified-root"
-        profile = load_profile("fordesmac", shop_root=ROOT, backend="codex")
+        profile = _resolved_profile("fordesmac")
         backend = FakeBackend()
         orchestrator = ShopOrchestrator(
             backend,
@@ -310,7 +440,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_profile_order_contract_and_only_user_agent_output_are_generic(self) -> None:
-        profile = load_profile("fordesmac", shop_root=ROOT, backend="codex")
+        profile = _resolved_profile("fordesmac")
         codex = FakeCodex()
         broker = FakeBroker()
         orchestrator = ShopOrchestrator(codex, broker, profile=profile, shop_checkout=ROOT, active_project=ROOT)
@@ -322,7 +452,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(broker.conversation, [("foreman", "Public")])
 
     async def test_direct_turn_events_update_the_builder_broker_without_assignment_ids(self) -> None:
-        profile = load_profile("builder", shop_root=ROOT, backend="codex")
+        profile = _resolved_profile("builder")
         broker = Broker(profile=profile)
         codex = FakeCodex()
         orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker), profile=profile, shop_checkout=ROOT, active_project=ROOT)
@@ -338,7 +468,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(broker.agents["builder"].state, "waiting")
 
     async def test_direct_lifecycle_ignores_stale_events_and_preserves_the_steered_delivery_identity(self) -> None:
-        profile = load_profile("builder", shop_root=ROOT, backend="codex")
+        profile = _resolved_profile("builder")
         broker = Broker(profile=profile)
         codex = FakeCodex()
         orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker), profile=profile, shop_checkout=ROOT, active_project=ROOT)
@@ -526,8 +656,7 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
             solid_command="solid",
             cwd=ROOT,
             port=9000,
-            backend="codex",
-            backend_command="codex",
+            backend_command=[],
         )
         failure = PreparationError("build", "broken", Path("/work/projects/broken"), "failed")
         with (
@@ -548,8 +677,7 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
             solid_command="solid",
             cwd=ROOT / "WTs" / "checkout",
             port=9000,
-            backend="codex",
-            backend_command="codex",
+            backend_command=[],
         )
         primary = ROOT
         failure = PreparationError("build", "broken", Path("/work/projects/broken"), "failed")
@@ -582,7 +710,7 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
                 "--cwd",
                 str(shop),
                 "--backend-command",
-                str(FAKE_APP_SERVER),
+                f"codex={FAKE_APP_SERVER}",
                 "--project-home",
                 str(project_home),
                 "--solid-command",
@@ -892,6 +1020,15 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
 
 class BackendFlagAcceptanceTest(unittest.TestCase):
+    def test_backend_command_overrides_are_keyed_per_backend(self) -> None:
+        from floor.backends import create_backend, parse_backend_command_overrides
+
+        overrides = parse_backend_command_overrides(("codex=/tmp/fake-codex", "claude=/tmp/fake-claude"))
+        codex = create_backend("codex", cwd=Path("/tmp"), command_overrides=overrides)
+        claude = create_backend("claude", cwd=Path("/tmp"), command_overrides=overrides)
+        self.assertEqual(codex.command, ("/tmp/fake-codex",))
+        self.assertEqual(claude.command, ("/tmp/fake-claude",))
+
     def test_unknown_backend_rejected(self) -> None:
         from pathlib import Path
         from floor.backends import create_backend

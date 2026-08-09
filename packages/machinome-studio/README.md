@@ -2,39 +2,54 @@
 
 SolidNode Studio is an experimental local harness for building 3D-printable
 mechanical CAD projects with solid-node. The pilot chooses a repository-owned runtime profile;
-the profile, rather than Python role constants, defines the standing team,
-authority, prompts, skills, and normally the backend controls. OpenCode's
-temporary compatibility policy is the documented exception.
+the profile defines the standing team, authority, prompts, skills, tool policy,
+and safe runtime defaults. Each project can durably select backend, provider,
+model, and reasoning level per agent.
 
 ## Open a floor
 
 ```text
-python -m floor.orchestrator <project-name> --profile builder --backend codex
-python -m floor.orchestrator <project-name> --profile fordesmac --backend claude
-python -m floor.orchestrator <project-name> --profile builder --backend opencode
+python -m floor.orchestrator <project-name> --profile builder
+python -m floor.orchestrator <project-name> --profile fordesmac
 python -m floor <project-name> --profile builder
 ```
 
 `builder` is the default profile and opens one direct Builder session.
 `fordesmac` opens standing Foreman, Designer, Machinist, and Librarian sessions;
 Foreman alone assigns and receives specialist reports. The broker-only command
-does not open a backend. A profile is validated before the named project is
-created, built, or served.
+does not open a backend. The launcher reads project runtime configuration
+without creating anything, then validates the profile and resolved runtime
+before the named project is created, built, or served.
+
+Declare runtime choices in the project's `pyproject.toml`. Omitted agents use
+their profile's Codex model and effort. A final segment overrides reasoning;
+OpenCode additionally requires a provider:
+
+```toml
+[tool.solid-node-studio.agents]
+foreman = "codex:gpt-5.6-terra"
+designer = "opencode:anthropic:claude-sonnet-4-5:high"
+machinist = "claude:sonnet:medium"
+```
+
+The launcher has no run-wide backend flag. One floor may open several backends,
+and it starts each distinct selected backend exactly once.
 
 Each runtime agent receives the exact verified `projects/<name>` repository
 root. Runtime prompts belong to `profiles/<id>/`; their shared allowlisted
 skills are in `shop-skills/`. Repository operation and development skills stay
 under `skills/` and are not runtime capabilities.
 
-Three backends are selectable: Codex, Claude, and OpenCode. Codex gets the
-profile-configured model and reasoning effort, while Claude gets its selected
-model, effort, supported tools, and permission policy. These two use explicit
-profile runtime tables.
+Three backends are selectable per agent: Codex, Claude, and OpenCode. Codex and
+Claude resolve project-selected model/reasoning values over explicit profile
+defaults; supported tools and Claude permission remain profile-owned.
 
 OpenCode currently uses a bounded compatibility exception. Existing profiles
-remain unchanged and valid and do not contain OpenCode tables. The adapter
-inherits the authenticated operator model, variant, and global OpenCode
-configuration and owns temporary model/variant/tool defaults. One generated
+remain unchanged and valid and do not contain OpenCode tables. A project-selected
+provider/model pair is sent on each prompt, with an optional reasoning variant.
+When no concrete pair is resolved, the adapter inherits the authenticated
+operator model, variant, and global OpenCode configuration and owns temporary
+model/variant/tool defaults. One generated
 deny-by-default primary agent serves persistent role sessions; every prompt
 carries that session's exact profile prompt and allowlisted skill instructions.
 This does not claim that OpenCode exposes controls equivalent to the other

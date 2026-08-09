@@ -3,8 +3,9 @@
 ## Overview
 
 `solid-node-studio` currently opens one screen — the shop floor workspace — after
-the operator supplies profile, backend and project name as CLI flags
-(`python -m floor.orchestrator <project> --profile builder --backend codex`).
+the operator supplies a project and profile at the CLI
+(`python -m floor.orchestrator <project> --profile builder`), while the project
+records per-agent runtime selection in `pyproject.toml`.
 The current browser UI (`floor/frontend/src/main.tsx` + `styles.css`) is a
 left menu column with a right content column split **horizontally** into
 artifact-above-conversation.
@@ -83,17 +84,19 @@ top. Each carries a visible id badge.
   `no executable on PATH`.
 
 ### 3c — New project sheet
-- **Purpose:** replaces `<project-name> --profile … --backend …`.
+- **Purpose:** replaces `<project-name> --profile …`; runtime choices remain
+  durable project configuration rather than transient UI state.
 - **Layout:** hub behind at `filter: blur(1.5px); opacity:.55`, scrim
   `rgba(9,10,13,.55)`, modal `width: 620px`, `#14171c`, 1px `#2e343d`,
   radius 12, `box-shadow: 0 30px 80px rgba(0,0,0,.6)`.
 - **Components:** name input (mono 13px, `#171b21`, 1px `#3b434f`, radius 8);
   profile as two selectable cards in a 2-col grid (selected: `#1c2128` bg +
-  1px `#e0a350`); backend as mono chips (selected: `#1c2128` + amber border;
-  unavailable: dashed border, `#4a515c`, not clickable); footer bar `#121419`
-  with a mono hint on the left and Cancel / `Create and open`.
+  1px `#e0a350`); a read-only runtime note that agents use project-declared
+  selections or profile Codex defaults; footer bar `#121419` with a mono hint
+  on the left and Cancel / `Create and open`.
 - **Validation:** name must be a valid directory name, unique within the
-  working folder; profile and an enabled backend both required.
+  working folder; profile is required. Creating a project does not write a
+  runtime selection.
 
 ### 1a — Project hub
 - **Purpose:** landing screen; every session starts here.
@@ -256,7 +259,7 @@ Not present today; needed for the hub and setup:
   configured model/effort, enabled flag; `POST /api/backends/detect`;
   `PUT /api/backends/:id` to enable/disable or set a manual path.
 - `GET /api/projects` — projects under the working folder with branch and last
-  opened; `POST /api/projects` — `{ name, profile, backend }`, creates the
+  opened; `POST /api/projects` — `{ name, profile }`, creates the
   repository and opens a run (the current orchestrator entry point).
 - `POST /api/runs` / `DELETE /api/runs/:id` — open/close a run for an existing
   project, so opening a project does not require restarting the process.

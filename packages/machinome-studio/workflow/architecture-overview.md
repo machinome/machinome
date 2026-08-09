@@ -8,15 +8,17 @@ system.
 
 ## Profile-defined runtime
 
-Before project preparation, both floor entry points resolve the primary shop
-checkout and load `profiles/<id>/profile.toml`. `--profile builder` is the
-default; `--profile fordesmac` selects the delegated team. A profile is strict
-trusted configuration: it declares the human label, one user-facing agent,
-standing roster, direct or delegated work mode, prompt paths, allowed skills,
-communication edges, and Codex and Claude model/effort/tool policy. A project
-never supplies or overrides that configuration. OpenCode is the bounded
-exception: profiles have no OpenCode tables; its adapter owns temporary
-compatibility defaults.
+Before project preparation, both floor entry points resolve the named project
+path and make one side-effect-free read of its `pyproject.toml`, then resolve
+the primary shop checkout and load `profiles/<id>/profile.toml`. `--profile
+builder` is the default; `--profile fordesmac` selects the delegated team. A
+profile is strict trusted configuration: it declares the human label, one
+user-facing agent, standing roster, direct or delegated work mode, prompt
+paths, allowed skills, communication edges, and Codex and Claude runtime
+defaults. The project may select backend, provider, model, and reasoning level
+per agent under `[tool.solid-node-studio.agents]`; profile tool policy and
+Claude permission remain non-overridable. OpenCode has no profile table and is
+available only through an explicit project selection.
 
 The initial profiles are:
 
@@ -34,10 +36,10 @@ root, while prompts and skills remain shop-owned outside that project.
 ## Runtime layers
 
 ```text
-browser  <-->  Broker  <-->  Orchestrator  <-->  selected backend sessions
-                   |               |                     |
-             state, SSE,      resolved profile     Codex / Claude /
-             conversation     contracts only         OpenCode
+browser  <-->  Broker  <-->  Orchestrator  <-->  per-agent backend owners
+                   |               |                   /    |    \
+             state, SSE,      resolved profile      Codex Claude OpenCode
+             conversation     and runtime map       event streams fan in
 ```
 
 `floor/app.py` is the in-memory broker and browser API. It uses stable internal
@@ -62,10 +64,12 @@ state: each manifested agent can carry a current failure reason without losing
 or completing its assignment, and that reason is part of broker snapshots and
 live events.
 
-`floor/orchestrator.py` is deterministic and backend-neutral. It opens profile
-agents in declaration order, constructs a required `RoleContext` containing the
-validated `ProfileAgent`, labels, shop root, and verified project root, and
-closes the arbitrary roster in reverse order. It
+`floor/orchestrator.py` is deterministic and backend-neutral. It instantiates
+each distinct selected backend once, maps every agent to its owner, consumes
+all owners' event streams concurrently, and opens profile agents in declaration
+order. It constructs a required `RoleContext` containing the validated and
+resolved `ProfileAgent`, labels, shop root, and verified project root, and
+closes the arbitrary roster in reverse order before closing each backend once. It
 uses `deliver_start()` for idle delivery and `deliver_steer()` only for the
 currently active delivery. Native session and turn identifiers never enter the
 broker. A role-scoped failure clears only that role's active delivery and keeps
@@ -81,20 +85,22 @@ The portable `AgentBackend` protocol owns external processes and exposes
 `close`. It emits portable role-message, turn, and failure events. It has no
 generic compatibility delivery operation.
 
-Codex translates a profile's selected model and effort into `thread/start`.
+Codex translates the resolved project/profile model and effort into `thread/start`.
 Claude launches one isolated CLI process per profile agent and translates the
 selected model, effort, permitted tools, and explicit permission policy into
 its supported command fields. An autonomous Claude policy bypasses confirmation
 prompts only for its profile-declared tools; it does not grant extra tools or
 provide operating-system sandboxing. Claude safe mode remains active, so local
 assistant configuration cannot alter the repository-owned contract.
-These two adapters consume the selected profile runtime table and never parse
+These two adapters consume one resolved runtime and never parse project or
 profile files or load global role adapters.
 
 OpenCode owns one password-protected loopback HTTP/SSE server and one persistent
 session per role. Its adapter does not require or read OpenCode profile tables.
-It inherits the authenticated operator model, variant, and global configuration
-and owns temporary model/variant/tool compatibility defaults. For each role it
+When a project selects an OpenCode provider and model, each prompt carries that
+exact `{providerID, modelID}` pair and its optional reasoning variant. Otherwise
+the adapter inherits the authenticated operator model, variant, and global
+configuration and owns temporary model/variant/tool compatibility defaults. For each role it
 uses one shared generated primary agent with a deny-by-default permission policy;
 every role delivery carries the exact profile prompt and exact allowlisted skill
 instructions as that session's system contract. This is a bounded exception to
@@ -111,17 +117,18 @@ plugins do not execute. Archived authenticated verification proves exact role
 contract composition and one corrected tool turn with native ancestry and one
 portable completion on the tested 1.18.11 runtime.
 
-The operational matrix is Builder/Foreman/Machinist/Librarian: Claude
+The profile defaults are Builder/Foreman/Machinist/Librarian on Claude
 `sonnet`, medium effort. On Codex, Builder uses `gpt-5.3-codex-spark` at high
 effort while Foreman/Machinist/Librarian use `gpt-5.6-terra` at medium effort;
-Designer uses Claude `opus` and Codex `gpt-5.6-sol`, both at medium effort.
-OpenCode instead inherits its operator model and variant under its
-adapter-owned compatibility policy. These choices are backend configuration,
-not broker semantics.
+Designer uses Claude `opus` and Codex `gpt-5.6-sol`, both at medium effort. An
+unnamed project agent uses its Codex default. A project selection replaces the
+model and optional effort, while tool and permission values still come from the
+profile. These choices are backend configuration, not broker semantics.
 
 ## Floor and browser
 
-After profile validation, preparation creates or verifies the named independent
+After the bounded project-configuration read, profile validation and runtime
+resolution complete before preparation creates or verifies the named independent
 project repository and validates its initial build. Only then does the floor
 bind a listener or the orchestrator start a backend. The browser renders
 profile-provided roster labels, conversation attribution, and event summaries;

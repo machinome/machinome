@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class RoleContractTest(unittest.TestCase):
     def test_runtime_prompts_are_profile_owned_and_runtime_skills_are_allowlisted(self) -> None:
         for profile_id in ("builder", "fordesmac"):
-            profile = load_profile(profile_id, shop_root=ROOT, backend="codex")
+            profile = load_profile(profile_id, shop_root=ROOT)
             for agent in profile.agents:
                 text = agent.prompt_path.read_text()
                 self.assertNotIn("repository `skills/`", text)

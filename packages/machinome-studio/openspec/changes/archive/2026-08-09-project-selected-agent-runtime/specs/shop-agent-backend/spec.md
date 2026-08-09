@@ -66,7 +66,7 @@ whose native interrupt spends a session SHALL NOT return it to standby.
 - **WHEN** a backend role-open or delivery call raises an error
 - **THEN** the orchestrator unwinds partial state and reports the failure
 
-#### Scenario: A partially opened run releases what it started
+#### Scenario: A partially opened multi-process backend releases what it started
 - **WHEN** opening fails on a later profile agent
 - **THEN** every backend already started releases every process and session it opened before the failure is reported
 
@@ -102,6 +102,10 @@ SHALL own translation of the resolved runtime it is given.
 - **WHEN** a profile agent is opened through any backend
 - **THEN** the backend receives the same validated prompt and skill paths, stable identity, and labels from the profile loader
 
+#### Scenario: OpenCode does not add a profile policy lookup
+- **WHEN** a validated existing profile is opened through OpenCode
+- **THEN** the adapter applies its compatibility policy without requiring or reading an OpenCode table in that profile
+
 ### Requirement: OpenCode uses bounded adapter-owned compatibility defaults
 The OpenCode adapter SHALL NOT require or read OpenCode declarations from a
 profile manifest, and profiles SHALL remain valid without one. When the active
@@ -125,7 +129,7 @@ be represented as equivalent control across backends.
 - **WHEN** a project declares `opencode:<provider>:<model>` for an agent
 - **THEN** that agent's OpenCode sessions use exactly that provider and model rather than the operator default
 
-#### Scenario: Existing profile selects OpenCode without a project selection
+#### Scenario: Existing profile selects OpenCode
 - **WHEN** Builder or Fordesmac opens an agent on OpenCode and the project names no provider and model
 - **THEN** profile validation succeeds without an OpenCode table and the adapter supplies the compatibility defaults
 

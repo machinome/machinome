@@ -10,16 +10,24 @@ import shlex
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
 import uvicorn
 
 from .app import Broker, Envelope, create_app
 from .backends.base import AgentBackend, BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle
-from .backends import create_backend
-from .preparation import PreparationError, default_project_home, default_solid_command, prepare_project, primary_shop_root
-from .profiles import ProfileError, RuntimeProfile, load_profile
+from .backends import create_backend, parse_backend_command_overrides
+from .preparation import (
+    PreparationError,
+    ProjectRuntimeError,
+    default_project_home,
+    default_solid_command,
+    prepare_project,
+    primary_shop_root,
+    read_project_runtime,
+)
+from .profiles import ProfileError, RuntimeProfile, load_profile, resolve_profile_runtime
 
 
 class BrokerControl(Protocol):
@@ -78,16 +86,32 @@ class ShopOrchestrator:
 
     def __init__(
         self,
-        backend: AgentBackend,
+        backends: Mapping[str, AgentBackend] | AgentBackend,
         broker: BrokerControl,
         *,
         profile: RuntimeProfile,
         shop_checkout: Path,
         active_project: Path,
     ) -> None:
-        self.backend = backend
         self.broker = broker
         self.profile = profile
+        if isinstance(backends, Mapping):
+            self.backends_by_agent = dict(backends)
+        else:
+            self.backends_by_agent = {agent.id: backends for agent in profile.agents}
+        roster = {agent.id for agent in profile.agents}
+        if set(self.backends_by_agent) != roster:
+            missing = sorted(roster - set(self.backends_by_agent))
+            extra = sorted(set(self.backends_by_agent) - roster)
+            raise ValueError(f"backend ownership must match the profile roster (missing={missing}, extra={extra})")
+        distinct: list[AgentBackend] = []
+        seen: set[int] = set()
+        for agent in profile.agents:
+            backend = self.backends_by_agent[agent.id]
+            if id(backend) not in seen:
+                seen.add(id(backend))
+                distinct.append(backend)
+        self.backends = tuple(distinct)
         self.shop_checkout = shop_checkout.resolve()
         self.active_project = active_project.resolve()
         self.roles: dict[str, RoleRuntime] = {}
@@ -97,12 +121,12 @@ class ShopOrchestrator:
 
     async def open(self) -> None:
         """Start the backend and open one persistent session per role."""
-        if hasattr(self.backend, "start"):
-            await self.backend.start()
         try:
+            for backend in self.backends:
+                await backend.start()
             for agent in self.profile.agents:
                 role = agent.id
-                handle = await self.backend.open_role(role, self._role_context(role))
+                handle = await self._backend(role).open_role(role, self._role_context(role))
                 self.roles[role] = RoleRuntime(handle=handle)
                 await self.broker.manifest(role, agent.label)
         except BaseException as opening_error:
@@ -129,18 +153,18 @@ class ShopOrchestrator:
             if runtime.handle is None:
                 raise RuntimeError(f"{role} has no open backend session")
             if runtime.active_delivery_id is None:
-                receipt = await self.backend.deliver_start(runtime.handle, message)
+                receipt = await self._backend(role).deliver_start(runtime.handle, message)
                 await self._adopt_started_delivery(role, runtime, receipt.delivery_id)
             else:
                 active_delivery_id = runtime.active_delivery_id
                 try:
-                    receipt = await self.backend.deliver_steer(
+                    receipt = await self._backend(role).deliver_steer(
                         runtime.handle, active_delivery_id, message
                     )
                     if receipt.delivery_id != active_delivery_id:
                         raise RuntimeError("backend steering changed the active delivery identity")
                 except InactiveTurn:
-                    receipt = await self.backend.deliver_start(runtime.handle, message)
+                    receipt = await self._backend(role).deliver_start(runtime.handle, message)
                     await self._adopt_started_delivery(role, runtime, receipt.delivery_id)
             await self.broker.mark_delivered(sequence)
 
@@ -153,14 +177,15 @@ class ShopOrchestrator:
     ) -> None:
         """Use a surviving failed session, or replace a dead one exactly once."""
         error: Exception | None = None
+        backend = self._backend(role)
         if runtime.handle is not None:
             try:
-                receipt = await self.backend.deliver_start(runtime.handle, message)
+                receipt = await backend.deliver_start(runtime.handle, message)
             except Exception as delivery_error:
                 error = delivery_error
                 failed_handle, runtime.handle = runtime.handle, None
                 try:
-                    await self.backend.close_role(failed_handle)
+                    await backend.close_role(failed_handle)
                 except Exception:
                     pass
             else:
@@ -170,15 +195,15 @@ class ShopOrchestrator:
 
         replacement: RoleHandle | None = None
         try:
-            replacement = await self.backend.open_role(role, self._role_context(role))
+            replacement = await backend.open_role(role, self._role_context(role))
             runtime.handle = replacement
-            receipt = await self.backend.deliver_start(replacement, message)
+            receipt = await backend.deliver_start(replacement, message)
         except Exception as recovery_error:
             error = recovery_error
             if replacement is not None:
                 runtime.handle = None
                 try:
-                    await self.backend.close_role(replacement)
+                    await backend.close_role(replacement)
                 except Exception:
                     pass
         else:
@@ -274,6 +299,9 @@ class ShopOrchestrator:
             user_agent_label=self.profile.user_agent.label,
         )
 
+    def _backend(self, role: str) -> AgentBackend:
+        return self.backends_by_agent[role]
+
     @staticmethod
     def _message(value: dict[str, Any]) -> str:
         lines = [
@@ -303,21 +331,22 @@ class ShopOrchestrator:
         for runtime in reversed(tuple(self.roles.values())):
             if runtime.handle is not None and runtime.active_delivery_id is not None:
                 try:
-                    await self.backend.interrupt(runtime.handle)
+                    await self._backend(runtime.handle.role).interrupt(runtime.handle)
                 except BaseException as error:
                     errors.append(error)
         for runtime in reversed(tuple(self.roles.values())):
             if runtime.handle is None:
                 continue
             try:
-                await self.backend.close_role(runtime.handle)
+                await self._backend(runtime.handle.role).close_role(runtime.handle)
             except BaseException as error:
                 errors.append(error)
         self.roles.clear()
-        try:
-            await self.backend.close()
-        except BaseException as error:
-            errors.append(error)
+        for backend in reversed(self.backends):
+            try:
+                await backend.close()
+            except BaseException as error:
+                errors.append(error)
         if errors:
             raise errors[0]
 
@@ -339,6 +368,14 @@ async def _wait_for_runtime(
             await task
             raise RuntimeError("shop routing task stopped unexpectedly")
     await server_task
+
+
+async def _route_backend_events(
+    orchestrator: ShopOrchestrator,
+    backend: AgentBackend,
+) -> None:
+    async for event in backend.events:
+        await orchestrator.handle_event(event)
 
 
 async def _shutdown_runtime(
@@ -365,12 +402,14 @@ async def _shutdown_runtime(
 
 async def _serve(arguments: argparse.Namespace) -> None:
     shop_root = primary_shop_root(arguments.cwd)
-    profile = load_profile(
-        getattr(arguments, "profile", None),
-        shop_root=shop_root,
-        backend=arguments.backend,
-    )
     project_home = arguments.project_home or default_project_home(arguments.cwd)
+    selection = read_project_runtime(arguments.project_name, project_home=project_home)
+    profile = resolve_profile_runtime(
+        load_profile(getattr(arguments, "profile", None), shop_root=shop_root),
+        selection,
+    )
+    for agent_id in profile.ignored_agent_ids:
+        print(f"warning: ignored runtime selection for agent {agent_id!r} outside profile {profile.id!r}", file=sys.stderr)
     solid_command = arguments.solid_command or default_solid_command(arguments.cwd)
     prepared = prepare_project(arguments.project_name, project_home=project_home, solid_command=solid_command,
                                shop_root=shop_root)
@@ -396,7 +435,7 @@ async def _serve(arguments: argparse.Namespace) -> None:
     server_task = asyncio.create_task(server.serve())
     orchestrator: ShopOrchestrator | None = None
     delivery_task: asyncio.Task[None] | None = None
-    event_task: asyncio.Task[None] | None = None
+    event_tasks: list[asyncio.Task[None]] = []
     try:
         while not server.started and not server_task.done():
             await asyncio.sleep(0.01)
@@ -404,16 +443,28 @@ async def _serve(arguments: argparse.Namespace) -> None:
             await server_task
             raise RuntimeError("shop-floor server stopped before opening")
 
-        backend = create_backend(
-            arguments.backend,
-            cwd=arguments.cwd,
-            project=prepared.project_root,
-            broker_url=f"http://127.0.0.1:{arguments.port}",
-            command=getattr(arguments, "backend_command", None),
-            solid_command=solid_command,
-        )
+        command_overrides = parse_backend_command_overrides(getattr(arguments, "backend_command", None))
+        backend_instances: dict[str, AgentBackend] = {}
+        for agent in profile.agents:
+            if agent.runtime is None:
+                raise RuntimeError(f"agent {agent.id!r} has no resolved runtime")
+            name = agent.runtime.backend
+            if name not in backend_instances:
+                backend_instances[name] = create_backend(
+                    name,
+                    cwd=arguments.cwd,
+                    project=prepared.project_root,
+                    broker_url=f"http://127.0.0.1:{arguments.port}",
+                    command_overrides=command_overrides,
+                    solid_command=solid_command,
+                )
+        backends_by_agent = {
+            agent.id: backend_instances[agent.runtime.backend]
+            for agent in profile.agents
+            if agent.runtime is not None
+        }
         orchestrator = ShopOrchestrator(
-            backend,
+            backends_by_agent,
             LocalBrokerControl(broker),
             profile=profile,
             shop_checkout=shop_root,
@@ -428,19 +479,17 @@ async def _serve(arguments: argparse.Namespace) -> None:
             async for envelope in broker.deliveries():
                 await orchestrator.deliver(envelope)
 
-        async def route_events() -> None:
-            assert orchestrator is not None
-            async for event in backend.events:
-                await orchestrator.handle_event(event)
-
         delivery_task = asyncio.create_task(route_deliveries())
-        event_task = asyncio.create_task(route_events())
-        await _wait_for_runtime(server_task, (delivery_task, event_task))
+        event_tasks = [
+            asyncio.create_task(_route_backend_events(orchestrator, backend))
+            for backend in backend_instances.values()
+        ]
+        await _wait_for_runtime(server_task, (delivery_task, *event_tasks))
     except asyncio.CancelledError:
         pass
     finally:
         broker.shutdown()
-        route_tasks = tuple(task for task in (delivery_task, event_task) if task is not None)
+        route_tasks = tuple(task for task in (delivery_task, *event_tasks) if task is not None)
         for task in route_tasks:
             task.cancel()
         if route_tasks:
@@ -453,15 +502,13 @@ def main() -> None:
     parser.add_argument("project_name", help="lowercase kebab-case project name below projects/")
     parser.add_argument("--port", type=int, default=int(os.environ.get("FLOOR_PORT", "9000")))
     parser.add_argument("--cwd", type=Path, default=Path.cwd(), help="shop checkout containing role adapters")
-    parser.add_argument("--backend", choices=("codex", "claude", "opencode"), default="codex",
-                        help="agent backend (default: codex)")
     parser.add_argument("--profile", help="runtime profile owned by this shop checkout")
     parser.add_argument("--project-home", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--solid-command", help=argparse.SUPPRESS)
-    parser.add_argument("--backend-command", default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--backend-command", action="append", default=[], metavar="BACKEND=COMMAND", help=argparse.SUPPRESS)
     try:
         asyncio.run(_serve(parser.parse_args()))
-    except (PreparationError, ProfileError) as error:
+    except (PreparationError, ProfileError, ProjectRuntimeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(1) from error
 

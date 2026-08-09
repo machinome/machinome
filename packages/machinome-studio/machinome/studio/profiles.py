@@ -4,22 +4,25 @@ from __future__ import annotations
 
 import re
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Literal
 
+from .preparation import (
+    CLAUDE_EFFORTS,
+    CLAUDE_MODELS,
+    CODEX_EFFORTS,
+    CODEX_MODELS,
+    ProjectRuntimeSelection,
+)
+
 
 PROFILE_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
-BACKENDS = ("codex", "claude", "opencode")
 PROFILE_BACKENDS = ("codex", "claude")
 _TOP_LEVEL = {"schema_version", "user_label", "user_agent", "work_mode", "agents"}
 _AGENT = {"id", "label", "prompt", "assigns", "reports_to", "backends"}
 _RUNTIME = {"model", "effort", "tools"}
 _CLAUDE_RUNTIME = _RUNTIME | {"permission"}
-_EFFORTS = {"low", "medium", "high", "xhigh", "max", "ultra"}
-_CODEX_MODELS = {"gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.3-codex-spark"}
-_CLAUDE_MODELS = {"sonnet", "opus"}
-_CLAUDE_EFFORTS = {"low", "medium", "high"}
 _CLAUDE_TOOLS = {"Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch"}
 
 
@@ -33,6 +36,8 @@ class BackendRuntime:
     effort: str
     tools: str | tuple[str, ...]
     permission: str = "inherit"
+    backend: str = "codex"
+    provider: str | None = None
 
 
 @dataclass(frozen=True)
@@ -43,7 +48,8 @@ class ProfileAgent:
     skill_paths: tuple[Path, ...]
     assigns: tuple[str, ...]
     reports_to: str | None
-    runtime: BackendRuntime
+    runtime: BackendRuntime | None
+    backends: dict[str, BackendRuntime] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -54,7 +60,7 @@ class RuntimeProfile:
     user_agent_id: str
     work_mode: Literal["direct", "delegated"]
     agents: tuple[ProfileAgent, ...]
-    backend: str
+    ignored_agent_ids: tuple[str, ...] = ()
 
     @property
     def user_agent(self) -> ProfileAgent:
@@ -71,7 +77,6 @@ def load_profile(
     profile_id: str | None,
     *,
     shop_root: Path,
-    backend: str,
     default: str | None = "builder",
 ) -> RuntimeProfile:
     """Load one fully validated profile without touching a project or backend."""
@@ -80,8 +85,6 @@ def load_profile(
         raise ProfileError("profile is required")
     if not PROFILE_ID.fullmatch(selected):
         raise ProfileError(f"profile {selected!r} must be lowercase kebab-case")
-    if backend not in BACKENDS:
-        raise ProfileError(f"profile {selected}: unsupported backend {backend!r}")
     shop = shop_root.resolve()
     profiles_root = shop / "profiles"
     root = profiles_root / selected
@@ -144,16 +147,46 @@ def load_profile(
         _only(backend_settings, set(PROFILE_BACKENDS), f"profile {selected}.{agent_id}.backends")
         if set(backend_settings) != set(PROFILE_BACKENDS):
             raise ProfileError(f"profile {selected}.{agent_id}.backends must declare Codex and Claude")
-        for runtime_backend, runtime_value in backend_settings.items():
-            _runtime(runtime_value, selected, agent_id, runtime_backend)
-        runtime = (
-            BackendRuntime("inherit", "inherit", "inherit")
-            if backend == "opencode"
-            else _runtime(backend_settings[backend], selected, agent_id, backend)
-        )
-        agents.append(ProfileAgent(agent_id, str(raw["label"]), prompt, skill_paths, assigns, reports_to, runtime))
+        runtimes = {
+            runtime_backend: _runtime(runtime_value, selected, agent_id, runtime_backend)
+            for runtime_backend, runtime_value in backend_settings.items()
+        }
+        agents.append(ProfileAgent(agent_id, str(raw["label"]), prompt, skill_paths, assigns, reports_to, None, runtimes))
     _topology(selected, work_mode, tuple(agents), ids, user_agent_id)
-    return RuntimeProfile(selected, resolved_root, user_label, user_agent_id, work_mode, tuple(agents), backend)
+    return RuntimeProfile(selected, resolved_root, user_label, user_agent_id, work_mode, tuple(agents))
+
+
+def resolve_profile_runtime(
+    profile: RuntimeProfile,
+    selection: ProjectRuntimeSelection | None = None,
+) -> RuntimeProfile:
+    """Merge project choices over trusted profile defaults per declared agent."""
+    roster = {agent.id for agent in profile.agents}
+    choices = selection.agents if selection is not None else {}
+    ignored = tuple(sorted(set(choices) - roster))
+    resolved: list[ProfileAgent] = []
+    for agent in profile.agents:
+        choice = choices.get(agent.id)
+        if choice is None:
+            runtime = agent.backends["codex"]
+        elif choice.backend == "opencode":
+            runtime = BackendRuntime(
+                choice.model,
+                choice.effort or "inherit",
+                "inherit",
+                backend="opencode",
+                provider=choice.provider,
+            )
+        else:
+            default_runtime = agent.backends[choice.backend]
+            runtime = replace(
+                default_runtime,
+                model=choice.model,
+                effort=choice.effort or default_runtime.effort,
+                provider=choice.provider,
+            )
+        resolved.append(replace(agent, runtime=runtime))
+    return replace(profile, agents=tuple(resolved), ignored_agent_ids=ignored)
 
 
 def _only(value: dict[str, Any], permitted: set[str], context: str) -> None:
@@ -245,13 +278,13 @@ def _runtime(value: Any, profile: str, agent: str, backend: str) -> BackendRunti
     permission = value.get("permission", "inherit")
     if not isinstance(model, str) or not model:
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.model must be concrete or inherit")
-    if backend == "codex" and model not in _CODEX_MODELS | {"inherit"}:
+    if backend == "codex" and model not in CODEX_MODELS | {"inherit"}:
         raise ProfileError(f"profile {profile}.{agent}.backends.codex.model is unsupported")
-    if backend == "claude" and model not in _CLAUDE_MODELS | {"inherit"}:
+    if backend == "claude" and model not in CLAUDE_MODELS | {"inherit"}:
         raise ProfileError(f"profile {profile}.{agent}.backends.claude.model is unsupported")
     if not isinstance(effort, str):
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.effort is unsupported")
-    supported_efforts = _CLAUDE_EFFORTS if backend == "claude" else _EFFORTS
+    supported_efforts = CLAUDE_EFFORTS if backend == "claude" else CODEX_EFFORTS
     if effort not in supported_efforts | {"inherit"}:
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.effort is unsupported")
     if not (tools == "inherit" or (isinstance(tools, list) and all(isinstance(item, str) and item for item in tools))):
@@ -264,7 +297,13 @@ def _runtime(value: Any, profile: str, agent: str, backend: str) -> BackendRunti
         raise ProfileError(f"profile {profile}.{agent}.backends.claude.tools is unsupported")
     if backend == "claude" and permission not in {"manual", "autonomous"}:
         raise ProfileError(f"profile {profile}.{agent}.backends.claude.permission is unsupported")
-    return BackendRuntime(model, effort, tools if isinstance(tools, str) else tuple(tools), permission)
+    return BackendRuntime(
+        model,
+        effort,
+        tools if isinstance(tools, str) else tuple(tools),
+        permission,
+        backend=backend,
+    )
 
 
 def _topology(profile: str, mode: str, agents: tuple[ProfileAgent, ...], ids: set[str], user_agent: str) -> None:

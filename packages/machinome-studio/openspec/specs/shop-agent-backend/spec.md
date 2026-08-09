@@ -6,37 +6,18 @@ Define the portable runtime boundary that lets the shop orchestrator own and
 route persistent role sessions through Codex app-server, Claude Code CLI, or
 OpenCode without leaking backend-native identifiers into the broker.
 ## Requirements
-### Requirement: The orchestrator accepts a configurable agent backend
-The shop orchestrator SHALL accept a `--backend` flag with values `codex`,
-`claude`, and `opencode`. When omitted, the orchestrator SHALL use `codex` as
-the default backend. An unknown backend value, including the retired `hermes`
-value, SHALL cause the orchestrator to exit with an error before starting the
-broker or any agent session.
-
-#### Scenario: Codex backend is the default
-- **WHEN** a maker opens the shop without specifying `--backend`
-- **THEN** the orchestrator uses the Codex backend
-
-#### Scenario: Claude backend is selected
-- **WHEN** a maker opens the shop with `--backend claude`
-- **THEN** the orchestrator uses the Claude backend
-
-#### Scenario: OpenCode backend is selected
-- **WHEN** a maker opens the shop with `--backend opencode`
-- **THEN** the orchestrator uses the OpenCode backend
-
-#### Scenario: Unknown or retired backend is rejected
-- **WHEN** a maker opens the shop with `--backend unknown` or `--backend hermes`
-- **THEN** the orchestrator exits with an error before starting any service or agent
-
 ### Requirement: The backend owns its agent sessions
-The selected backend SHALL own the lifecycle of every standing agent session
-declared by the selected profile. The orchestrator SHALL call `open_role()`
-once per declared agent in profile order with that agent's resolved contract,
-`deliver_start()` for an envelope addressed to an idle agent,
-`deliver_steer()` for an envelope addressed to an active agent, `interrupt()`
-on close or shutdown, and `close_role()` to release the session. The backend
-SHALL translate native events into portable `BackendEvent` instances.
+Each standing agent SHALL be owned by the backend its resolved runtime selects.
+A run MAY therefore have several backends open at once, and the orchestrator
+SHALL open each distinct selected backend exactly once and close each exactly
+once regardless of how many agents it owns. The orchestrator SHALL call
+`open_role()` once per declared agent in profile order, on that agent's own
+backend, with that agent's resolved contract; `deliver_start()` for an envelope
+addressed to an idle agent; `deliver_steer()` for an envelope addressed to an
+active agent; `interrupt()` on close or shutdown; and `close_role()` to release
+the session. Every backend SHALL translate native events into portable
+`BackendEvent` instances, and the orchestrator SHALL consume every open
+backend's event stream concurrently.
 
 A backend MAY own one process per agent session rather than one process for all
 agents. Process cardinality SHALL NOT change ownership: it SHALL release every
@@ -49,27 +30,35 @@ whose native interrupt spends a session SHALL NOT return it to standby.
 
 #### Scenario: Backend creates Builder profile sessions
 - **WHEN** the orchestrator opens the `builder` profile
-- **THEN** the backend receives one `open_role()` call carrying Builder's resolved profile contract
+- **THEN** Builder's selected backend receives one `open_role()` call carrying Builder's resolved profile contract
 
 #### Scenario: Backend creates Fordesmac profile sessions
-- **WHEN** the orchestrator opens the `fordesmac` profile
-- **THEN** the backend receives `open_role()` for Foreman, Designer, Machinist, and Librarian in profile declaration order
+- **WHEN** the orchestrator opens the `fordesmac` profile with every agent on one backend
+- **THEN** that backend receives `open_role()` for Foreman, Designer, Machinist, and Librarian in profile declaration order
+
+#### Scenario: A run opens several backends
+- **WHEN** the resolved runtime selects two different backends across a profile's agents
+- **THEN** each backend is instantiated once, receives `open_role()` only for the agents it owns, and has its event stream consumed alongside the other's
+
+#### Scenario: A backend owning several agents is closed once
+- **WHEN** the shop closes a run in which one backend owns three agents
+- **THEN** each of those agent sessions is released and that backend is closed exactly once
 
 #### Scenario: Backend delivers an envelope
 - **WHEN** the broker emits an envelope addressed to an idle declared agent
-- **THEN** the orchestrator calls `backend.deliver_start()` for that agent with the envelope body
+- **THEN** the orchestrator calls `deliver_start()` on that agent's own backend with the envelope body
 
 #### Scenario: Backend reports a role message
 - **WHEN** an agent session publishes a message
-- **THEN** the backend emits a `role_message` event with that stable profile agent ID
+- **THEN** its backend emits a `role_message` event with that stable profile agent ID
 
 #### Scenario: Backend fails during an agent operation
 - **WHEN** a backend role-open or delivery call raises an error
 - **THEN** the orchestrator unwinds partial state and reports the failure
 
 #### Scenario: A partially opened multi-process backend releases what it started
-- **WHEN** a per-agent backend fails while opening a later profile agent
-- **THEN** it releases every process it already started before reporting failure
+- **WHEN** opening fails on a later profile agent
+- **THEN** every backend already started releases every process and session it opened before the failure is reported
 
 #### Scenario: One role process exiting is a role failure
 - **WHEN** a per-agent backend observes one declared agent process exit unexpectedly
@@ -87,13 +76,17 @@ whose native interrupt spends a session SHALL NOT return it to standby.
 The orchestrator SHALL depend only on the portable `AgentBackend` protocol and
 resolved profile/agent data. It SHALL NOT reference any backend-native
 identifier, wire format, session handle, global role adapter path, or
-backend-specific profile parsing. A backend SHALL own translation of resolved
-profile controls when the profile declares controls for that backend. OpenCode
-SHALL instead use the bounded adapter-owned compatibility policy defined below.
+backend-specific profile parsing. Routing an agent to its owning backend SHALL
+use the resolved runtime alone and SHALL NOT branch on a backend name. A backend
+SHALL own translation of the resolved runtime it is given.
 
 #### Scenario: Orchestrator code references no backend identifiers or role adapters
 - **WHEN** the profile runtime is implemented
 - **THEN** `floor/orchestrator.py` contains no Codex, Claude, or OpenCode wire identifier and no global backend role-adapter lookup
+
+#### Scenario: Agents are routed without backend branching
+- **WHEN** the orchestrator delivers to an agent in a run with several open backends
+- **THEN** it selects that agent's backend from resolved runtime data rather than testing which backend name it is
 
 #### Scenario: Backends receive one resolved role interpretation
 - **WHEN** a profile agent is opened through any backend
@@ -274,11 +267,14 @@ unrelated existing OpenCode server or session.
 - **THEN** the shop relies on authentication already configured by the operator and does not receive the credential
 
 ### Requirement: OpenCode uses bounded adapter-owned compatibility defaults
-Existing profiles SHALL remain unchanged and valid when OpenCode is selected.
-The OpenCode adapter SHALL NOT require or read OpenCode model, variant, effort,
-tool, or permission declarations from a profile manifest. It SHALL inherit the
+The OpenCode adapter SHALL NOT require or read OpenCode declarations from a
+profile manifest, and profiles SHALL remain valid without one. When the active
+project selects an OpenCode provider and model for an agent, the adapter SHALL
+apply exactly that provider and model to that agent's sessions. When the project
+selects no OpenCode provider and model, the adapter SHALL inherit the
 authenticated operator model, variant, and configuration and SHALL own temporary
-compatibility defaults for model/variant/tool handling.
+compatibility defaults for model/variant/tool handling. Effort, tool, and
+permission handling SHALL remain adapter-owned in both cases.
 
 The adapter SHALL generate one primary OpenCode agent shared by its persistent
 role sessions and SHALL apply a deny-by-default permission policy. Every
@@ -289,8 +285,12 @@ subagents, interactive questions, external directories, and native skill
 discovery. This bounded exception to profile-explicit runtime policy SHALL NOT
 be represented as equivalent control across backends.
 
+#### Scenario: A project selects an OpenCode provider and model
+- **WHEN** a project declares `opencode:<provider>:<model>` for an agent
+- **THEN** that agent's OpenCode sessions use exactly that provider and model rather than the operator default
+
 #### Scenario: Existing profile selects OpenCode
-- **WHEN** Builder or Fordesmac is selected with `--backend opencode`
+- **WHEN** Builder or Fordesmac opens an agent on OpenCode and the project names no provider and model
 - **THEN** profile validation succeeds without an OpenCode table and the adapter supplies the compatibility defaults
 
 #### Scenario: A role agent is generated
@@ -302,8 +302,8 @@ be represented as equivalent control across backends.
 - **THEN** it applies deny-by-default permissions with only required shop tool classes admitted and reads no permission declarations from the profile manifest
 
 #### Scenario: Operator runtime choices are inherited
-- **WHEN** the generated role starts without adapter-selected concrete values
-- **THEN** OpenCode uses the authenticated operator model, variant, and configuration and runtime evidence records the effective non-secret choices
+- **WHEN** the generated role starts without a project-selected provider and model and without adapter-selected concrete values
+- **THEN** OpenCode uses the authenticated operator model, variant, and configuration
 
 ### Requirement: OpenCode uses an explicit project-instruction boundary
 The OpenCode backend SHALL include the verified active project's exact root
