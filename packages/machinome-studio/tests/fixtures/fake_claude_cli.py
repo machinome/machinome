@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Small process-local stand-in for `claude -p --input-format stream-json`.
 
 Speaks the newline-delimited stream-json frames the Claude backend consumes:
@@ -27,6 +28,7 @@ agent obeyed it.
 Prompt text drives the modes:
 
 ``HOLD``          open a turn, emit a `tool_use`, and leave it outstanding.
+``SESSION_LIMIT`` end the turn with a recoverable provider-limit error.
 anything else     an ordinary complete turn answering ``FAKE_REPLY``.
 
 Environment:
@@ -127,15 +129,15 @@ def main() -> None:
             }
         )
 
-    def result(text: str | None, *, aborted: bool = False) -> None:
+    def result(text: str | None, *, aborted: bool = False, failure: bool = False) -> None:
         """One result frame ends one exchange, however many inputs it carried."""
         send(
             {
                 "type": "result",
-                "subtype": "error_during_execution" if aborted else "success",
-                "is_error": bool(aborted),
+                "subtype": "error_during_execution" if aborted or failure else "success",
+                "is_error": bool(aborted or failure),
                 "stop_reason": "tool_use" if aborted else "end_turn",
-                "terminal_reason": "aborted_tools" if aborted else "completed",
+                "terminal_reason": "aborted_tools" if aborted else "error" if failure else "completed",
                 "num_turns": 2,
                 "result": text,
                 "session_id": SESSION_ID,
@@ -222,6 +224,10 @@ def main() -> None:
             tool_id = f"toolu_{uuid.uuid4().hex[:12]}"
             assistant_tool_use(tool_id)
             held = {"tool_id": tool_id}
+            continue
+
+        if "SESSION_LIMIT" in text:
+            result("You've hit your session limit · resets 1pm (UTC)", failure=True)
             continue
 
         assistant_text("FAKE_REPLY")

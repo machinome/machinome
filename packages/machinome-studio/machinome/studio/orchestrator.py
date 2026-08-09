@@ -29,12 +29,16 @@ class BrokerControl(Protocol):
     async def register_direct_delivery(self, role: str, delivery_id: str) -> None: ...
     async def turn_started(self, role: str, delivery_id: str) -> None: ...
     async def turn_completed(self, role: str, delivery_id: str) -> None: ...
+    async def role_failed(self, role: str, error: str) -> None: ...
+    async def role_recovered(self, role: str) -> None: ...
+    async def mark_delivery_failed(self, sequence: int, error: str) -> None: ...
 
 
 @dataclass
 class RoleRuntime:
-    handle: RoleHandle
+    handle: RoleHandle | None
     active_delivery_id: str | None = None
+    failed: bool = False
 
 
 class LocalBrokerControl:
@@ -58,6 +62,15 @@ class LocalBrokerControl:
 
     async def turn_completed(self, role: str, delivery_id: str) -> None:
         self.broker.turn_completed(role, delivery_id)
+
+    async def role_failed(self, role: str, error: str) -> None:
+        self.broker.role_failed(role, error)
+
+    async def role_recovered(self, role: str) -> None:
+        self.broker.role_recovered(role)
+
+    async def mark_delivery_failed(self, sequence: int, error: str) -> None:
+        self.broker.mark_delivery_failed(sequence, error)
 
 
 class ShopOrchestrator:
@@ -110,6 +123,11 @@ class ShopOrchestrator:
         if runtime is None:
             raise ValueError(f"unknown orchestrated role: {role}")
         async with self._delivery_locks[role]:
+            if runtime.failed:
+                await self._recover_and_deliver(role, runtime, sequence, message)
+                return
+            if runtime.handle is None:
+                raise RuntimeError(f"{role} has no open backend session")
             if runtime.active_delivery_id is None:
                 receipt = await self.backend.deliver_start(runtime.handle, message)
                 await self._adopt_started_delivery(role, runtime, receipt.delivery_id)
@@ -125,6 +143,62 @@ class ShopOrchestrator:
                     receipt = await self.backend.deliver_start(runtime.handle, message)
                     await self._adopt_started_delivery(role, runtime, receipt.delivery_id)
             await self.broker.mark_delivered(sequence)
+
+    async def _recover_and_deliver(
+        self,
+        role: str,
+        runtime: RoleRuntime,
+        sequence: int,
+        message: str,
+    ) -> None:
+        """Use a surviving failed session, or replace a dead one exactly once."""
+        error: Exception | None = None
+        if runtime.handle is not None:
+            try:
+                receipt = await self.backend.deliver_start(runtime.handle, message)
+            except Exception as delivery_error:
+                error = delivery_error
+                failed_handle, runtime.handle = runtime.handle, None
+                try:
+                    await self.backend.close_role(failed_handle)
+                except Exception:
+                    pass
+            else:
+                await self._accept_recovery(role, runtime, receipt.delivery_id)
+                await self.broker.mark_delivered(sequence)
+                return
+
+        replacement: RoleHandle | None = None
+        try:
+            replacement = await self.backend.open_role(role, self._role_context(role))
+            runtime.handle = replacement
+            receipt = await self.backend.deliver_start(replacement, message)
+        except Exception as recovery_error:
+            error = recovery_error
+            if replacement is not None:
+                runtime.handle = None
+                try:
+                    await self.backend.close_role(replacement)
+                except Exception:
+                    pass
+        else:
+            await self._accept_recovery(role, runtime, receipt.delivery_id)
+            await self.broker.mark_delivered(sequence)
+            return
+
+        reason = str(error or "unknown error")
+        await self.broker.role_failed(role, reason)
+        await self.broker.mark_delivery_failed(sequence, reason)
+
+    async def _accept_recovery(
+        self,
+        role: str,
+        runtime: RoleRuntime,
+        delivery_id: str,
+    ) -> None:
+        runtime.failed = False
+        await self._adopt_started_delivery(role, runtime, delivery_id)
+        await self.broker.role_recovered(role)
 
     async def _adopt_started_delivery(
         self,
@@ -171,9 +245,23 @@ class ShopOrchestrator:
                     runtime.active_delivery_id = None
                     if self.profile.work_mode == "direct" and event.role == self.profile.user_agent_id:
                         await self.broker.turn_completed(event.role, event.delivery_id)
-        elif event.kind in {"role_failed", "backend_failed"}:
-            subject = event.role or "agent backend"
-            raise RuntimeError(f"{subject} failed: {event.error or 'unknown error'}")
+        elif event.kind == "role_failed":
+            role = event.role or ""
+            runtime = self.roles.get(role)
+            if runtime is None:
+                raise RuntimeError(f"unknown role failed: {role or 'missing role'}")
+            async with self._delivery_locks[role]:
+                runtime.active_delivery_id = None
+                runtime.failed = True
+                self._started_deliveries = {
+                    key for key in self._started_deliveries if key[0] != role
+                }
+                self._completed_deliveries = {
+                    key for key in self._completed_deliveries if key[0] != role
+                }
+                await self.broker.role_failed(role, event.error or "unknown error")
+        elif event.kind == "backend_failed":
+            raise RuntimeError(f"agent backend failed: {event.error or 'unknown error'}")
 
     def _role_context(self, role: str) -> RoleContext:
         agent = self.profile.agent(role)
@@ -213,12 +301,14 @@ class ShopOrchestrator:
     async def close(self) -> None:
         errors: list[BaseException] = []
         for runtime in reversed(tuple(self.roles.values())):
-            if runtime.active_delivery_id is not None:
+            if runtime.handle is not None and runtime.active_delivery_id is not None:
                 try:
                     await self.backend.interrupt(runtime.handle)
                 except BaseException as error:
                     errors.append(error)
         for runtime in reversed(tuple(self.roles.values())):
+            if runtime.handle is None:
+                continue
             try:
                 await self.backend.close_role(runtime.handle)
             except BaseException as error:

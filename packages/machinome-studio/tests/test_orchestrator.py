@@ -57,6 +57,9 @@ class FakeBroker:
         self.manifested: list[tuple[str, str]] = []
         self.delivered: list[int] = []
         self.conversation: list[tuple[str, str]] = []
+        self.failures: dict[str, str] = {}
+        self.recoveries: list[str] = []
+        self.failed_deliveries: list[tuple[int, str]] = []
 
     async def manifest(self, role: str, label: str) -> None:
         self.manifested.append((role, label))
@@ -66,6 +69,16 @@ class FakeBroker:
 
     async def record_conversation(self, author: str, text: str) -> None:
         self.conversation.append((author, text))
+
+    async def role_failed(self, role: str, error: str) -> None:
+        self.failures[role] = error
+
+    async def role_recovered(self, role: str) -> None:
+        self.failures.pop(role, None)
+        self.recoveries.append(role)
+
+    async def mark_delivery_failed(self, sequence: int, error: str) -> None:
+        self.failed_deliveries.append((sequence, error))
 
 
 class FakeCodex:
@@ -682,15 +695,94 @@ class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(orchestrator.roles["designer"].active_delivery_id, "delivery-1")
         await orchestrator.close()
 
-    async def test_backend_and_role_failures_fail_closed(self) -> None:
-        for event in (
-            BackendEvent(kind="backend_failed", error="process exited"),
-            BackendEvent(kind="role_failed", role="designer", error="prompt failed"),
-        ):
-            with self.subTest(kind=event.kind), self.assertRaisesRegex(
-                RuntimeError, event.error or ""
-            ):
-                await self.orchestrator.handle_event(event)
+    async def test_role_failure_retains_the_session_and_the_next_delivery_recovers_it(self) -> None:
+        await self.orchestrator.deliver(
+            {"sequence": 30, "recipient": "designer", "body": "Begin"}
+        )
+        retained = self.orchestrator.roles["designer"].handle
+
+        await self.orchestrator.handle_event(
+            BackendEvent(kind="role_failed", role="designer", error="session limit")
+        )
+
+        self.assertEqual(self.broker.failures, {"designer": "session limit"})
+        self.assertIsNone(self.orchestrator.roles["designer"].active_delivery_id)
+        await self.orchestrator.deliver(
+            {"sequence": 31, "recipient": "designer", "body": "Resume"}
+        )
+        self.assertEqual(self.backend.deliveries[-1][0], retained)
+        self.assertEqual(self.broker.recoveries, ["designer"])
+        self.assertNotIn("designer", self.broker.failures)
+
+    async def test_dead_failed_session_is_replaced_once_for_the_recovery_delivery(self) -> None:
+        from tests.fixtures.fake_backend import FakeBackend
+
+        class DeadSessionBackend(FakeBackend):
+            failed_handle: RoleHandle | None = None
+
+            async def deliver_start(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
+                if handle == self.failed_handle:
+                    raise RuntimeError("session pipe is closed")
+                return await super().deliver_start(handle, message)
+
+        backend = DeadSessionBackend()
+        broker = FakeBroker()
+        orchestrator = ShopOrchestrator(backend, broker, profile=FORDESMAC, shop_checkout=ROOT, active_project=ROOT)
+        await orchestrator.open()
+        backend.failed_handle = orchestrator.roles["machinist"].handle
+        await orchestrator.handle_event(
+            BackendEvent(kind="role_failed", role="machinist", error="process exited")
+        )
+
+        await orchestrator.deliver(
+            {"sequence": 40, "recipient": "machinist", "body": "Resume machining"}
+        )
+
+        self.assertIn(backend.failed_handle, backend.closed_roles)
+        self.assertEqual([role for role, _ in backend.opened_roles].count("machinist"), 2)
+        self.assertNotEqual(orchestrator.roles["machinist"].handle, backend.failed_handle)
+        self.assertEqual(broker.recoveries, ["machinist"])
+        await orchestrator.close()
+
+    async def test_failed_recovery_attempt_is_reported_without_ending_routing(self) -> None:
+        from tests.fixtures.fake_backend import FakeBackend
+
+        class UnavailableBackend(FakeBackend):
+            unavailable = False
+
+            async def open_role(self, role: str, context: RoleContext) -> RoleHandle:
+                if self.unavailable and role == "foreman":
+                    raise RuntimeError("limit still exhausted")
+                return await super().open_role(role, context)
+
+            async def deliver_start(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
+                if self.unavailable and handle.role == "foreman":
+                    raise RuntimeError("limit still exhausted")
+                return await super().deliver_start(handle, message)
+
+        backend = UnavailableBackend()
+        broker = FakeBroker()
+        orchestrator = ShopOrchestrator(backend, broker, profile=FORDESMAC, shop_checkout=ROOT, active_project=ROOT)
+        await orchestrator.open()
+        backend.unavailable = True
+        await orchestrator.handle_event(
+            BackendEvent(kind="role_failed", role="foreman", error="session limit")
+        )
+
+        await orchestrator.deliver(
+            {"sequence": 50, "recipient": "foreman", "body": "Try again"}
+        )
+
+        self.assertEqual(broker.failures["foreman"], "limit still exhausted")
+        self.assertEqual(broker.failed_deliveries, [(50, "limit still exhausted")])
+        self.assertEqual(broker.recoveries, [])
+        await orchestrator.close()
+
+    async def test_backend_failure_remains_runtime_ending(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "process exited"):
+            await self.orchestrator.handle_event(
+                BackendEvent(kind="backend_failed", error="process exited")
+            )
 
     async def test_close_interrupts_active_roles_in_reverse_then_closes_backend(self) -> None:
         await self.orchestrator.deliver(

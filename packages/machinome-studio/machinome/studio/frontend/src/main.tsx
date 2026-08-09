@@ -9,6 +9,7 @@ type Agent = {
   role: string;
   label: string;
   state: AgentState;
+  failure: string;
 };
 
 type Run = {
@@ -151,12 +152,16 @@ function FunctionalModel({ artifact, reconnect, buildError }: {
 
 function ProfileConversation({
   entries,
+  failedAgents,
   onSubmit,
   labels,
+  userAgentLabel,
 }: {
   entries: ConversationEntry[];
+  failedAgents: Agent[];
   onSubmit: (text: string) => Promise<void>;
   labels: Record<string, string>;
+  userAgentLabel: string;
 }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -193,6 +198,17 @@ function ProfileConversation({
   };
 
   return <>
+    {failedAgents.length === 0 ? null : (
+      <div className="role-failure-list">
+        {failedAgents.map((agent) => (
+          <div className="role-failure-notice" role="alert" key={agent.role}>
+            <strong>{agent.label} session failed</strong>
+            <p>{agent.failure}</p>
+            <p>When backend access is restored, message {userAgentLabel} to resume the shop.</p>
+          </div>
+        ))}
+      </div>
+    )}
     <ol className="conversation-transcript" aria-label="Conversation transcript" ref={transcript}>
       {entries.length === 0 ? (
         <li className="empty">Send a message to begin the conversation.</li>
@@ -239,10 +255,17 @@ function AgentPanel({ agents }: { agents: Agent[] }) {
       ) : (
         <ul className="agent-roster">
           {agents.map((agent) => (
-            <li key={agent.role} data-agent-role={agent.role} data-agent-state={agent.state}>
-              <span className={`agent-state-dot ${agent.state}`} aria-hidden="true" />
+            <li
+              key={agent.role}
+              data-agent-role={agent.role}
+              data-agent-state={agent.state}
+              data-agent-failed={agent.failure ? "true" : "false"}
+            >
+              <span className={`agent-state-dot ${agent.failure ? "failed" : agent.state}`} aria-hidden="true" />
               <span>{agent.label}</span>
-              <span className={`state ${agent.state}`}>{agent.state}</span>
+              <span className={`state ${agent.failure ? "failed" : agent.state}`}>
+                {agent.failure ? "failed" : agent.state}
+              </span>
             </li>
           ))}
         </ul>
@@ -324,12 +347,12 @@ function App() {
         && !event.kind.startsWith("work_")
         && !event.kind.startsWith("direct_work_")
       ) return;
-      const { role, label, state } = event.payload as Agent;
+      const { role, label, state, failure } = event.payload as Agent;
       setRun((previous) => {
         if (!previous) return previous;
         const agents = previous.agents.filter((agent) => agent.role !== role);
         if (state !== null && event.kind !== "agent_stopped") {
-          agents.push({ role, label, state });
+          agents.push({ role, label, state, failure });
         }
         return { ...previous, agents: agents.sort((left, right) => left.role.localeCompare(right.role)) };
       });
@@ -394,8 +417,10 @@ function App() {
           </header>
           <ProfileConversation
             entries={conversation}
+            failedAgents={run?.agents.filter((agent) => agent.failure) ?? []}
             onSubmit={submitUserMessage}
             labels={run ? { user: run.user_label, [run.user_agent.id]: run.user_agent.label } : {}}
+            userAgentLabel={run?.user_agent.label ?? "Agent"}
           />
         </section>
       </div>

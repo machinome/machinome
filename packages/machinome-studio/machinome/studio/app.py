@@ -38,9 +38,15 @@ class Agent:
     assignment_id: str = ""
     pending_assignments: list[str] = field(default_factory=list)
     direct_delivery_id: str = ""
+    failure: str = ""
 
     def browser_value(self) -> dict[str, str]:
-        return {"role": self.role, "label": self.label, "state": self.state}
+        return {
+            "role": self.role,
+            "label": self.label,
+            "state": self.state,
+            "failure": self.failure,
+        }
 
 
 @dataclass(frozen=True)
@@ -117,6 +123,7 @@ class Broker:
         self.conversation: list[ConversationEntry] = []
         self.envelopes: list[Envelope] = []
         self.delivered: set[int] = set()
+        self.failed_deliveries: set[int] = set()
         self.available: set[int] = set()
         self.assignment_envelopes: dict[tuple[str, str], int] = {}
         self.events: deque[BrokerEvent] = deque(maxlen=event_history_limit)
@@ -273,6 +280,7 @@ class Broker:
             if envelope.recipient == role
             and envelope.sequence in self.available
             and envelope.sequence not in self.delivered
+            and envelope.sequence not in self.failed_deliveries
         ]
 
     def mark_delivered(self, sequence: int) -> Envelope:
@@ -281,6 +289,8 @@ class Broker:
             raise ValueError("envelope is not available")
         if sequence in self.delivered:
             raise ValueError("envelope already delivered")
+        if sequence in self.failed_deliveries:
+            raise ValueError("envelope delivery already failed")
         self.delivered.add(sequence)
         self.publish(
             "envelope_delivered",
@@ -289,6 +299,30 @@ class Broker:
                 "sender": envelope.sender,
                 "recipient": envelope.recipient,
                 "assignment_id": envelope.assignment_id,
+            },
+            role=envelope.recipient,
+            sender=envelope.sender,
+            recipient=envelope.recipient,
+            assignment_id=envelope.assignment_id,
+            envelope_sequence=envelope.sequence,
+        )
+        return envelope
+
+    def mark_delivery_failed(self, sequence: int, error: str) -> Envelope:
+        envelope = self._envelope(sequence)
+        if sequence not in self.available:
+            raise ValueError("envelope is not available")
+        if sequence in self.delivered or sequence in self.failed_deliveries:
+            raise ValueError("envelope delivery already finished")
+        self.failed_deliveries.add(sequence)
+        self.publish(
+            "envelope_delivery_failed",
+            {
+                "role": envelope.recipient,
+                "sender": envelope.sender,
+                "recipient": envelope.recipient,
+                "assignment_id": envelope.assignment_id,
+                "error": error,
             },
             role=envelope.recipient,
             sender=envelope.sender,
@@ -322,7 +356,7 @@ class Broker:
                 envelope = await queue.get()
                 if envelope is None:
                     return
-                if envelope.sequence not in self.delivered:
+                if envelope.sequence not in self.delivered and envelope.sequence not in self.failed_deliveries:
                     yield envelope
         finally:
             self.delivery_subscribers.discard(queue)
@@ -448,12 +482,31 @@ class Broker:
             return
         self._agent(role).direct_delivery_id = delivery_id
 
+    def role_failed(self, role: str, error: str) -> Agent:
+        agent = self._agent(role)
+        agent.failure = error.strip() or "unknown error"
+        if self.profile.work_mode == "direct" and role == self.profile.user_agent_id:
+            agent.state = "waiting"
+            agent.direct_delivery_id = ""
+        self.publish("agent_failed", agent, role=role)
+        return agent
+
+    def role_recovered(self, role: str) -> Agent:
+        agent = self._agent(role)
+        agent.failure = ""
+        self.publish("agent_recovered", agent, role=role)
+        return agent
+
     def _event_summary(self, kind: str, role: str, sender: str, recipient: str, assignment_id: str) -> str:
         labels = {"user": self.profile.user_label, **{agent.id: agent.label for agent in self.profile.agents}}
         if kind == "agent_manifested":
             return f"{labels.get(role, role.title())} manifested"
         if kind == "agent_stopped":
             return f"{labels.get(role, role.title())} stopped"
+        if kind == "agent_failed":
+            return f"{labels.get(role, role.title())} failed"
+        if kind == "agent_recovered":
+            return f"{labels.get(role, role.title())} recovered"
         if kind.endswith("_available"):
             name = kind.removesuffix("_available").replace("_", " ").title()
             return f"{name} · {labels.get(sender, sender.title())} → {labels.get(recipient, recipient.title())}"
@@ -465,6 +518,8 @@ class Broker:
             return f"Work completed · {labels.get(role, role.title())}" + (f" · {assignment_id}" if assignment_id else "")
         if kind == "envelope_delivered":
             return f"Delivered · {labels.get(recipient, recipient.title())}"
+        if kind == "envelope_delivery_failed":
+            return f"Delivery failed · {labels.get(recipient, recipient.title())}"
         if kind == "conversation_entry":
             return "Conversation updated"
         if kind == "model_artifact_changed":

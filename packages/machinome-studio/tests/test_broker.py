@@ -80,6 +80,31 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(recorded.tzinfo)
         self.assertEqual(recorded.utcoffset().total_seconds(), 0)
 
+    async def test_role_failure_and_recovery_are_live_snapshot_state_without_completing_work(self) -> None:
+        self.broker.assign("designer", "drawing-1")
+        self.broker.acknowledge("designer", "drawing-1")
+        subscriber: asyncio.Queue[dict[str, object]] = asyncio.Queue()
+        self.broker.subscribers.add(subscriber)
+
+        failed = self.broker.role_failed("designer", "session limit resets at 13:00 UTC")
+        failure_event = await asyncio.wait_for(subscriber.get(), timeout=0.1)
+
+        self.assertEqual(failed.state, "active")
+        self.assertEqual(failed.failure, "session limit resets at 13:00 UTC")
+        self.assertEqual(failure_event["kind"], "agent_failed")
+        self.assertEqual(failure_event["payload"], failed.browser_value())
+        snapshot_agent = next(agent for agent in self.broker.run()["agents"] if agent["role"] == "designer")
+        self.assertEqual(snapshot_agent["failure"], "session limit resets at 13:00 UTC")
+
+        recovered = self.broker.role_recovered("designer")
+        recovery_event = await asyncio.wait_for(subscriber.get(), timeout=0.1)
+        self.broker.subscribers.discard(subscriber)
+
+        self.assertEqual(recovered.state, "active")
+        self.assertEqual(recovered.failure, "")
+        self.assertEqual(recovery_event["kind"], "agent_recovered")
+        self.assertEqual(recovery_event["payload"], recovered.browser_value())
+
 
 class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
     async def test_direct_profile_routes_user_and_turn_state_without_assignment_ceremony(self) -> None:
@@ -105,6 +130,18 @@ class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
         ):
             with self.assertRaisesRegex(ValueError, "direct|unavailable"):
                 operation()
+
+    async def test_direct_role_failure_ends_only_the_failed_turn(self) -> None:
+        broker = Broker(profile=load_profile("builder", shop_root=ROOT, backend="codex"))
+        builder = broker.manifest("builder", "Builder")
+        broker.register_direct_delivery("builder", "turn-1")
+        broker.turn_started("builder", "turn-1")
+
+        broker.role_failed("builder", "quota exhausted")
+
+        self.assertEqual(builder.state, "waiting")
+        self.assertEqual(builder.direct_delivery_id, "")
+        self.assertEqual(builder.failure, "quota exhausted")
 
     async def test_delegated_profile_enforces_declared_edges_and_keeps_completion_assignment_based(self) -> None:
         broker = Broker(profile=load_profile("fordesmac", shop_root=ROOT, backend="codex"))

@@ -57,7 +57,10 @@ activate or clear work.
 Delegated profiles retain assignment state. An assignable specialist becomes
 active only after acknowledging its matching assignment and becomes waiting
 only after matching completion. Backend turn events neither activate nor clear
-delegated assignment work.
+delegated assignment work. Backend availability is orthogonal to that work
+state: each manifested agent can carry a current failure reason without losing
+or completing its assignment, and that reason is part of broker snapshots and
+live events.
 
 `floor/orchestrator.py` is deterministic and backend-neutral. It opens profile
 agents in declaration order, constructs a required `RoleContext` containing the
@@ -65,7 +68,11 @@ validated `ProfileAgent`, labels, shop root, and verified project root, and
 closes the arbitrary roster in reverse order. It
 uses `deliver_start()` for idle delivery and `deliver_steer()` only for the
 currently active delivery. Native session and turn identifiers never enter the
-broker.
+broker. A role-scoped failure clears only that role's active delivery and keeps
+the floor and other sessions alive. The next envelope to that role starts a new
+turn on the retained session; if its transport is dead, the orchestrator opens
+one replacement session and retries once. It never polls or retries without a
+new envelope. A backend-wide failure still ends the run.
 
 ## Backend seam
 
@@ -147,6 +154,13 @@ of complete run state and the full ordered conversation, then carries
 subsequent broker changes. The broker subscribes the connection before reading
 the snapshot, and the snapshot carries the broker's explicit latest event
 sequence so the browser can discard that hand-off overlap exactly once.
+
+Current run state includes any role-scoped backend failure. The browser shows
+the profile-labelled reason in an accessible conversation-area notice while
+leaving the composer available, and tells the maker to message the configured
+user-facing agent after backend access is restored. The notice is runtime
+state, not participant-authored conversation, and clears when a recovery
+delivery is accepted.
 
 Every reconnection repeats the snapshot path. The browser assigns its event
 position from that snapshot rather than retaining a higher position from a

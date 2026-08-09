@@ -20,6 +20,7 @@ from tests.fixtures.primary_shop import isolated_primary_shop, subprocess_enviro
 ROOT = Path(__file__).resolve().parents[1]
 FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
 FAKE_CODEX_ECHO = ROOT / "tests" / "fixtures" / "fake_codex_echo_server.py"
+FAKE_CLAUDE = ROOT / "tests" / "fixtures" / "fake_claude_cli.py"
 
 
 class ShopLifecycleE2E(unittest.TestCase):
@@ -42,6 +43,8 @@ class ShopLifecycleE2E(unittest.TestCase):
         profile: str = "fordesmac",
         orchestrated: bool = False,
         static_root: Path | None = None,
+        backend: str = "codex",
+        backend_command: Path | None = None,
     ) -> None:
         self._project_number += 1
         name = f"browser-{self._project_number}"
@@ -89,9 +92,9 @@ class ShopLifecycleE2E(unittest.TestCase):
                     "--cwd",
                     str(self.shop),
                     "--backend",
-                    "codex",
+                    backend,
                     "--backend-command",
-                    str(FAKE_CODEX_ECHO),
+                    str(backend_command or FAKE_CODEX_ECHO),
                 )
             )
         self.floor = subprocess.Popen(
@@ -177,6 +180,38 @@ class ShopLifecycleE2E(unittest.TestCase):
         messages = transcript.locator("[data-conversation-author]").all_text_contents()
         self.assertEqual(messages[0], "MakerPlease begin with the housing.")
         self.assertEqual(messages[-1], "MakerI will review the drawing and report back.")
+
+    def test_role_limit_failure_is_visible_across_reload_and_foreman_can_resume(self) -> None:
+        claude_command = Path(self.temporary.name) / "fake-claude"
+        shutil.copy2(FAKE_CLAUDE, claude_command)
+        claude_command.chmod(0o755)
+        self._stop_floor()
+        self._start_floor(
+            profile="fordesmac",
+            orchestrated=True,
+            backend="claude",
+            backend_command=claude_command,
+        )
+        self.page.goto(self.url("/"))
+        self.page.locator('[data-agent-role="foreman"]').wait_for(timeout=5_000)
+        conversation = self.page.get_by_role("region", name="Chat")
+        composer = conversation.get_by_role("textbox", name="Message")
+        composer.fill("SESSION_LIMIT")
+        composer.press("Enter")
+
+        notice = conversation.get_by_role("alert")
+        notice.get_by_text("Foreman session failed", exact=False).wait_for(timeout=5_000)
+        notice.get_by_text("You've hit your session limit · resets 1pm (UTC)", exact=True).wait_for()
+        self.assertTrue(composer.is_enabled())
+
+        self.page.reload()
+        conversation = self.page.get_by_role("region", name="Chat")
+        conversation.get_by_role("alert").get_by_text("Foreman session failed", exact=False).wait_for()
+        composer = conversation.get_by_role("textbox", name="Message")
+        composer.fill("Resume the shop now.")
+        composer.press("Enter")
+        conversation.locator(".role-failure-notice").wait_for(state="detached", timeout=5_000)
+        conversation.locator('[data-conversation-author="foreman"]', has_text="FAKE_REPLY").wait_for()
 
     def test_reconnect_restores_a_conversation_entry_without_legacy_recovery_requests(self) -> None:
         self.page.goto(self.url("/"))
