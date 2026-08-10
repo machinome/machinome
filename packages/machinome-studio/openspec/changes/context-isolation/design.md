@@ -27,17 +27,17 @@ module already uses.
   restricted to a custom tool set with no native tools reachable.
 - Surface backend-specific mechanics, gotchas, and constraints relevant to a
   future implementation.
+- Specify the floor-provided MCP tool set itself, and which backends carry it.
 
 **Non-Goals:**
-- Deciding the shop-facing capability, its schema, or which backends it will
-  support. That is deferred to a follow-up revision of this change once the
-  pilot picks a direction.
-- Implementing anything in `floor/`.
+- Building out the librarian's tool surface. It becomes provisionally
+  non-functional under this change; restoring it is separate follow-up work.
+- Solving `codex` tool isolation. It is dropped from scope (see Decisions).
 
-## Decisions
+## Findings
 
-No implementation decisions are made in this document. What follows are
-**findings** from live spikes (2026-08-09), each backend driven directly
+The rest of this section is the spike record from the research stage of this
+change (2026-08-09), each backend driven directly
 through its real CLI/protocol using an isolated `venv`-installed MCP SDK and
 a single-tool `hello` MCP server (`hello(name) -> "HELLO_SPIKE_RESULT: hi
 {name}!"`), verified in two directions: a call that should succeed, and an
@@ -147,15 +147,139 @@ false, todoread: false, patch: false}` map, no custom agent needed (default
   is the one confirmed working and should be treated as the reference
   configuration, not the first attempt.
 
+### Subscription auth vs. tool isolation — resolves the `codex` gap for OpenAI
+
+The remaining open question after the three backend spikes was whether release
+as open source is viable given two hard requirements: context isolation must
+work, and it must be usable with a vendor subscription rather than metered API
+billing. `claude` covers Anthropic (confirmed above). `codex` was the backend
+that would have covered OpenAI subscriptions, and it is exactly the one with
+no tool-isolation mechanism — a real conflict, not yet resolved as of the
+three-backend spike.
+
+Checked against opencode's own documentation (`https://opencode.ai/docs/providers`,
+via context7, not yet live-spiked with a real subscribed account):
+
+- **OpenAI**: `opencode auth login` offers two methods for the `openai`
+  provider: `ChatGPT Plus/Pro` (browser-based OAuth) and `Manually enter API
+  Key`. This is opencode's own OAuth integration with OpenAI's subscription
+  login — it does not wrap or shell out to the `codex` CLI. Since `opencode`
+  is the backend already confirmed able to restrict a session to a
+  floor-provided tool set (`tools: {...: false}` + `mcp` config), the same
+  mechanism that isolates tools should apply unchanged to a ChatGPT
+  Plus/Pro-authenticated session — the auth method is orthogonal to the
+  `tools`/`mcp` config keys in `opencode.json`.
+- **Anthropic**: opencode's docs explicitly state it does **not** offer a
+  Claude Pro/Max OAuth option, "due to Anthropic's usage policies" — only
+  manual API key entry. This confirms Anthropic is the vendor that binds
+  subscription auth to its own harness (the `claude` CLI); opencode cannot
+  substitute for it on the Anthropic side.
+
+**Implication:** the shop does not need `codex` to offer an OpenAI-subscription
+path. `claude` (Anthropic subscription, tool-isolation confirmed) and
+`opencode` with ChatGPT Plus/Pro OAuth (OpenAI subscription, tool-isolation
+confirmed) together could cover both vendors' subscription tiers with working
+tool isolation, leaving `codex` as an optional/unsupported third backend
+rather than a blocker to release. This has not been live-spiked end to end
+(ChatGPT Plus/Pro OAuth requires an actual subscribed account to log in) —
+that is the natural next spike.
+
+## Decisions
+
+The pilot has picked a direction based on the findings above. These are now
+settled for this change:
+
+### `codex` is dropped
+
+`codex` will not carry the scoped-tools capability. Its app-server protocol
+has no mechanism to remove or restrict native tools and no per-thread MCP
+scoping (see Findings), and the subscription-auth finding above shows it
+isn't needed to cover OpenAI subscriptions either — `opencode` does that
+directly via its own ChatGPT Plus/Pro OAuth. `claude` and `opencode` are the
+two backends this capability targets.
+
+### Floor-provided MCP tool set
+
+A single MCP server, provided by the floor and wired into both `claude` and
+`opencode` sessions, replaces native tool access for a runtime agent. It is
+sandboxed to the active project: every path argument resolves against the
+project root and is rejected if it would escape it. The librarian's tool
+surface is explicitly out of scope and becomes provisionally non-functional
+under this change.
+
+**Filesystem — read:**
+- `list_dir(path, recursive?)` — directory listing, respecting `.gitignore`
+- `find_files(pattern)` — glob-style name search
+- `search_content(pattern, path?, regex?)` — grep-style content search
+- `read_file(path, offset?, limit?)` — text read with optional line range;
+  when the target is a raster image (PNG/JPG/GIF/WEBP) returns image content
+  directly instead of raw bytes-as-text, mirroring `Read`'s existing
+  behavior, so it doubles as the tool for viewing design reference images.
+  SVG stays text (it's read as markup, e.g. for `search_content`), not
+  auto-rendered.
+- `stat(path)` — exists, size, mtime, is_dir, is_symlink
+
+**Filesystem — write:**
+- `write_file(path, content, must_not_exist?)`
+- `edit_file(path, old_string, new_string, replace_all?)`
+- `apply_patch(path, unified_diff)`
+- `delete_file(path)`
+- `move_file(src, dst)`
+- `make_dir(path)`
+
+**Git** (matches `profiles/fordesmac/machinist.md`'s actual git discipline;
+deliberately excludes `push`/`reset`/`checkout`/`branch`/`rebase` — the
+machinist skill requires never pushing and working only inside the active
+project, so the tool surface should not offer more than that discipline
+allows):
+- `git_status()`
+- `git_diff(path?, staged?)`
+- `git_log(path?, limit?)`
+- `git_show(revision, path)`
+- `git_rev_parse_toplevel()`
+- `git_merge_base_is_ancestor(commit, ref?)`
+- `git_head()` — current HEAD sha and branch; needed because the machinist
+  skill requires reporting HEAD after committing, and no other tool in this
+  set exposes it
+- `git_add(paths)`
+- `git_commit(message)`
+
+**solid-node CLI:**
+- `solid_build(path?)`
+- `solid_test(path?, failfast?)`
+- `solid_snapshot(path?, time?, camera?, imgsize?, projection?, colorscheme?, view?, autocenter?, viewall?)`
+  — returns the rendered image directly as tool output. It renders to a
+  temporary path *outside* the project tree and deletes it after reading the
+  bytes back, so a snapshot never appears as an untracked file in
+  `git_status` — leaving stray render artifacts in the project would
+  silently break the machinist's own "no unrelated dirty changes" and
+  "staged paths equal expected set" checks. No `-o` argument is exposed;
+  producing a file on disk is not this tool's job.
+
+`solid_export` and `solid new`/`solid develop` are excluded: export isn't
+part of the machinist's per-increment loop, and the skill already says not to
+run `develop` here (the shop already watches and rebuilds) or `new` (project
+scaffolding, not runtime-agent work).
+
+### Backend wiring implications
+
+- `floor/backends/claude.py` must stop unconditionally passing `--safe-mode`
+  (it disables MCP servers) for a role using this tool set.
+- `floor/backends/opencode.py` must generate an `mcp` entry for the
+  floor tool server plus a `tools: {...: false}` map disabling every native
+  tool, using the default `build` agent (no custom agent/permission block —
+  the spike's first attempt at a custom agent block was a bug, not a working
+  path) and a unique working directory per role launch (session state
+  persists by cwd across `opencode serve` launches).
+- `floor/backends/codex.py` is unaffected; `codex` keeps its current
+  full-access behavior and is documented as not supporting this capability.
+
 ## Risks / Trade-offs
 
-- [`codex` cannot honor this capability at all under its current protocol] →
-  Any future spec must either explicitly exclude `codex`, wait on an
-  upstream codex capability, or accept full native tool access as an
-  unavoidable property of choosing that backend for a role.
-- [`codex`'s global MCP registration leaks unrelated servers into every
-  thread] → Even if codex tool-removal shipped upstream, floor-provided tools
-  would still need per-thread MCP scoping codex does not currently offer.
+- [`codex` roles get no isolation at all] → Accepted: `codex` is dropped from
+  this capability's scope rather than worked around. A role that must run on
+  `codex` keeps full native tool access; that's a property of choosing that
+  backend, not a gap in this change.
 - [`claude`'s `--safe-mode` blocks MCP entirely] → Any implementation for
   this backend requires changing `floor/backends/claude.py` to stop
   unconditionally passing `--safe-mode`, which currently also suppresses
@@ -173,9 +297,10 @@ Not applicable — no implementation yet.
 
 ## Open Questions
 
-- Does the shop want a capability that works only for `claude` and
-  `opencode`, explicitly documenting `codex` as unsupported for
-  tool-scoped roles?
+- Does a real ChatGPT Plus/Pro-authenticated `opencode` session actually
+  combine cleanly with the `tools`/`mcp` isolation config confirmed in the
+  spike above? This needs to be verified live with a real subscribed account
+  — the natural next spike.
 - Is codex's missing tool-restriction capability worth raising upstream as a
   framework wart (see `file-a-wart` skill), given `solid-node-studio` already
   tracks it as a known limitation in `floor/profiles.py`?
@@ -184,3 +309,5 @@ Not applicable — no implementation yet.
   runtime declarations)?
 - How should `--safe-mode` removal for `claude` be reconciled with whatever
   reason it was added in the first place?
+- What restores the librarian's tool surface, and when? Out of scope here,
+  but it's a known follow-up rather than a permanent removal.
