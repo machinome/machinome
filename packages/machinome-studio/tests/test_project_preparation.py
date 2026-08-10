@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import base64
 import os
 import subprocess
 import sys
@@ -142,7 +143,7 @@ class ProjectPreparationTest(unittest.TestCase):
         )
         self.assertEqual(
             set(subprocess.run(["git", "-C", str(project), "ls-files"], check=True, text=True, capture_output=True).stdout.splitlines()),
-            {".gitignore", "root/__init__.py"},
+            {".gitignore", "root/__init__.py", "screenshot.png"},
         )
 
     def test_creation_records_the_chosen_profile_in_the_initial_commit(self) -> None:
@@ -182,14 +183,15 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertEqual(prepared.project_root, home / "new-engine")
         self.assertTrue((home / "new-engine" / "root" / "__init__.py").is_file())
 
-    def test_existing_exact_repository_is_reused_without_git_mutation(self) -> None:
+    def test_existing_exact_repository_acquires_an_uncommitted_screenshot(self) -> None:
         project = self.home / "existing"
         _make_repository(project)
         before = _git_state(project)
         prepared = self.prepare("existing")
         self.assertEqual(prepared.project_root, project.resolve())
-        self.assertEqual(_git_state(project), before)
-        self.assertEqual(self.call_log.read_text().splitlines(), ["viewer:", "build:"])
+        self.assertEqual(_git_state(project)[0], before[0])
+        self.assertEqual(_git_state(project)[1], "?? screenshot.png\n")
+        self.assertEqual(self.call_log.read_text().splitlines(), ["viewer:", "build:", "snapshot:-o"])
 
     def test_rejects_existing_file_plain_directory_and_nested_repository(self) -> None:
         (self.home / "file").write_text("not a project")
@@ -318,6 +320,7 @@ def _models(value: object):
 
 FAKE_SOLID = r'''from pathlib import Path
 import json
+import base64
 import os
 import sys
 import tempfile
@@ -355,6 +358,9 @@ elif command == "build":
     else:
         (build / "part.stl").write_text("solid part")
         (build / "viewer.json").write_text(json.dumps({"version": 1, "root": {"model": "part.stl"}}))
+elif command == "snapshot":
+    output = Path(sys.argv[sys.argv.index("-o") + 1])
+    output.write_bytes(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8/+8dAwMDEwMDAwMDAwAjPwLvkz8BYAAAAABJRU5ErkJggg=="))
 elif command == "viewer":
     state_file = cwd / ".fake-solid-state.json"
     state = json.loads(state_file.read_text()) if state_file.is_file() else {}

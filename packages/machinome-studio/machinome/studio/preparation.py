@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .screenshots import refresh_project_screenshot, screenshot_revision
+
 
 LOWER_KEBAB_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 AGENT_ID = LOWER_KEBAB_ID
@@ -73,6 +75,7 @@ class ProjectListing:
     profile: str
     branch: str | None = None
     last_commit: str | None = None
+    screenshot_revision: str | None = None
 
     def browser_value(self, *, state: str = "closed", session_id: str | None = None) -> dict[str, object]:
         return {
@@ -84,6 +87,7 @@ class ProjectListing:
             "last_commit": self.last_commit,
             "state": state,
             "session_id": session_id,
+            "screenshot_revision": self.screenshot_revision,
         }
 
 
@@ -178,7 +182,7 @@ def _project_listing(entry: Path, home: Path) -> ProjectListing:
         last_commit = datetime.fromisoformat(timestamp).astimezone(UTC).isoformat() if timestamp else None
     except (PreparationError, ValueError) as error:
         return ProjectListing(name, False, str(error), profile)
-    return ProjectListing(name, True, None, profile, branch, last_commit)
+    return ProjectListing(name, True, None, profile, branch, last_commit, screenshot_revision(entry))
 
 
 def resolve_project(name: str | None, project_home: Path) -> Path:
@@ -192,6 +196,14 @@ def resolve_project(name: str | None, project_home: Path) -> Path:
     if not home.is_dir():
         raise PreparationError("project-home", name, home, "workspace projects directory does not exist")
     return candidate
+
+
+def verified_project_root(name: str | None, project_home: Path) -> Path:
+    """Resolve only an exact direct-child project repository for serving."""
+    root = resolve_project(name, project_home)
+    assert name is not None
+    _require_exact_repository(root, name)
+    return root
 
 
 def validate_new_project(name: str | None, project_home: Path) -> Path:
@@ -342,13 +354,6 @@ def prepare_project(
             _write_project_profile(project_root, profile)
         _run(("git", "init", "-q", "-b", "main", str(project_root)), stage="git-init", name=name, project_root=project_root)
         _require_exact_repository(project_root, name)
-        _run(("git", "-C", str(project_root), "add", "--all"), stage="git-add", name=name, project_root=project_root)
-        _run(
-            ("git", "-C", str(project_root), "commit", "-q", "-m", "Initial solid-node scaffold"),
-            stage="git-commit",
-            name=name,
-            project_root=project_root,
-        )
     else:
         _require_exact_repository(project_root, name)
 
@@ -368,10 +373,21 @@ def prepare_project(
             extra_env=solid_env,
         )
         _validate_snapshot(snapshot, artifact_root, name, project_root)
+        # A thumbnail is an optional presentation artifact.  The model build
+        # has already succeeded; do not fold a renderer problem into it.
+        refresh_project_screenshot(project_root, _command(solid_command), extra_environment=solid_env)
     except PreparationError as error:
         if not allow_build_failure:
             raise
         build_error = str(error)
+    if created:
+        _run(("git", "-C", str(project_root), "add", "--all"), stage="git-add", name=name, project_root=project_root)
+        _run(
+            ("git", "-C", str(project_root), "commit", "-q", "-m", "Initial solid-node scaffold"),
+            stage="git-commit",
+            name=name,
+            project_root=project_root,
+        )
     return PreparedProject(
         name=name,
         project_root=project_root,

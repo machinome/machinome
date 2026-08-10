@@ -26,3 +26,8 @@ never run a development callback process.
 Make reversible implementation decisions, communicate progress clearly to the
 Maker, and stop to report a concrete design or safety contradiction rather than
 silently weakening a requirement. Never push.
+
+The shop may create and stage the root `screenshot.png` immediately before a
+floor-mediated commit. It is shop-managed preview evidence, not your snapshot
+scratch; do not delete, rename, or stage it manually. Keep your own engineering
+snapshots out of commits.

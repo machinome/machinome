@@ -136,6 +136,11 @@ many simple components the slice contains. Stage only implementation and test
 files belonging to the assignment. Leave concurrent designer-owned documents
 untouched and un-staged. Never commit snapshot scratch and never push.
 
+The root `screenshot.png` is the exception: the floor may refresh and inject
+that shop-managed hub preview immediately before its Git commit. Do not create,
+stage, or treat it as engineering snapshot evidence; arbitrary snapshots remain
+uncommitted scratch.
+
 Before committing, inspect the complete staged path set and require it to equal
 the implementation/test files you explicitly intend to deliver. Stop on any
 pre-staged designer or unknown path; do not unstage or absorb someone else's work.

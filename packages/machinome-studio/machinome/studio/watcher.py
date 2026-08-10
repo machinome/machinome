@@ -25,11 +25,19 @@ Publisher = Callable[..., Any]
 class ArtifactWatcher(FileSystemEventHandler):
     """Forward each completed atomic publication into the build directory."""
 
-    def __init__(self, artifact_root: Path, loop: asyncio.AbstractEventLoop, publish: Publisher) -> None:
+    def __init__(
+        self,
+        artifact_root: Path,
+        loop: asyncio.AbstractEventLoop,
+        publish: Publisher,
+        *,
+        on_viewer_published: Callable[[], None] | None = None,
+    ) -> None:
         super().__init__()
         self.artifact_root = artifact_root.resolve()
         self.loop = loop
         self.publish = publish
+        self.on_viewer_published = on_viewer_published
 
     def on_moved(self, event: FileMovedEvent) -> None:
         if event.is_directory:
@@ -47,6 +55,8 @@ class ArtifactWatcher(FileSystemEventHandler):
             "model_artifact_changed",
             {"artifact": artifact},
         )
+        if artifact == "viewer.json" and self.on_viewer_published is not None:
+            self.loop.call_soon_threadsafe(self.on_viewer_published)
 
 
 class ModelWatcher(FileSystemEventHandler):
@@ -61,6 +71,7 @@ class ModelWatcher(FileSystemEventHandler):
         loop: asyncio.AbstractEventLoop,
         extra_environment: Mapping[str, str] | None = None,
         settle_delay: float = 0.5,
+        on_build_success: Callable[[], None] | None = None,
     ) -> None:
         super().__init__()
         self.project_root = project_root.resolve()
@@ -70,6 +81,7 @@ class ModelWatcher(FileSystemEventHandler):
         self.loop = loop
         self.extra_environment = dict(extra_environment or {})
         self.settle_delay = settle_delay
+        self.on_build_success = on_build_success
         self._settle_handle: asyncio.TimerHandle | None = None
         self._build: asyncio.Task[None] | None = None
         self._pending_trigger: str | None = None
@@ -162,6 +174,8 @@ class ModelWatcher(FileSystemEventHandler):
                 stderr=asyncio.subprocess.PIPE,
             )
             await process.communicate()
+            if process.returncode == 0 and self.on_build_success is not None:
+                self.on_build_success()
         except OSError as error:
             LOGGER.warning("could not run model rebuild trigger=%s error=%s", trigger, error)
             self.publish("model_build_unavailable", {"reason": str(error), "trigger": trigger})

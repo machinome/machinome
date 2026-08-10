@@ -166,6 +166,19 @@ class FloorAPITest(unittest.TestCase):
         self.assertIn("part.stl", _raw(self.url("/projects/healthy/artifacts/viewer.json")))
         self.assertEqual(_status(self.url("/projects/broken-model/artifacts/../healthy/_build/viewer.json"), "GET"), 404)
 
+    def test_closed_project_screenshot_is_inventory_metadata_and_an_exact_safe_route(self) -> None:
+        project = self._make_project("preview")
+        image = b"\x89PNG\r\n\x1a\npreview"
+        (project / "screenshot.png").write_bytes(image)
+        listed = self._project("preview")
+        self.assertIsInstance(listed["screenshot_revision"], str)
+        self.assertEqual(_status(self.url("/projects/preview/screenshot.png"), "GET"), 200)
+        self.assertEqual(_status(self.url("/projects/missing/screenshot.png"), "GET"), 404)
+        (project / "screenshot.png").unlink()
+        (project / "screenshot.png").symlink_to(project / "root" / "__init__.py")
+        self.assertIsNone(self._project("preview")["screenshot_revision"])
+        self.assertEqual(_status(self.url("/projects/preview/screenshot.png"), "GET"), 404)
+
     def test_backend_detection_is_read_only_and_repeatable(self) -> None:
         first = _request(self.url("/api/backends"), "GET")["backends"]
         second = _request(self.url("/api/backends/detect"), "POST")["backends"]

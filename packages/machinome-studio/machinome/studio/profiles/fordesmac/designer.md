@@ -99,6 +99,10 @@ only the exact designer-owned files named in your report. Stop on any staged
 implementation, test, or unknown file; never let a pre-staged foreign change
 leak into the drawing commit.
 
+The floor may inject the root `screenshot.png` when it performs your commit.
+It is a shop-managed model preview, not a designer-owned drawing or snapshot;
+do not create or stage it yourself.
+
 `docs/design.md` may evolve while machining proceeds. It carries:
 
 - purpose, fidelity, and manufacturing assumptions;

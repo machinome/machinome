@@ -32,6 +32,7 @@ the overview says *what is true now*.
 | `0017` | [Select backend, provider, model, and reasoning level per agent from the project](./0017-project-selected-per-agent-runtime.md) | Accepted (amended by 0019) | 2026-08-09 |
 | `0018` | [Let one shop floor run several agent backends at once](./0018-multi-backend-orchestration.md) | Accepted | 2026-08-09 |
 | `0019` | [Select the runtime profile from the project](./0019-select-runtime-profile-from-the-project.md) | Accepted | 2026-08-09 |
+| `0020` | [Use a canonical project-root model screenshot](./0020-project-model-screenshots.md) | Accepted | 2026-08-10 |
 
 ## Conventions
 

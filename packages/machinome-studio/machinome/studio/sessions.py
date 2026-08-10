@@ -27,6 +27,7 @@ from .preparation import (
     validate_new_project,
 )
 from .profiles import ProfileError, RuntimeProfile, load_profile, resolve_profile_runtime
+from .screenshots import refresh_project_screenshot
 from .watcher import ArtifactWatcher, ModelWatcher
 
 
@@ -48,6 +49,7 @@ class Session:
     observer: Observer | None = None
     source_watcher: ModelWatcher | None = None
     artifact_watcher: ArtifactWatcher | None = None
+    on_screenshot_changed: Callable[[str], None] | None = None
 
     @property
     def project_root(self) -> Path:
@@ -71,15 +73,35 @@ class Session:
             loop=loop,
             extra_environment=self.prepared.build_environment,
             settle_delay=settle_delay,
+            on_build_success=self._request_screenshot_refresh,
         )
         observer.schedule(self.source_watcher, str(self.project_root), recursive=True)
         if self.artifact_root.is_dir():
-            self.artifact_watcher = ArtifactWatcher(self.artifact_root, loop, self.broker.publish)
+            self.artifact_watcher = ArtifactWatcher(
+                self.artifact_root,
+                loop,
+                self.broker.publish,
+                on_viewer_published=self._request_screenshot_refresh,
+            )
             observer.schedule(self.artifact_watcher, str(self.artifact_root), recursive=True)
         observer.start()
         self.observer = observer
         if self.prepared.build_error:
             self.broker.publish("model_build_unavailable", {"reason": self.prepared.build_error, "trigger": "open"})
+
+    def _request_screenshot_refresh(self) -> None:
+        task = asyncio.create_task(self._refresh_screenshot())
+        self.event_tasks.append(task)
+
+    async def _refresh_screenshot(self) -> None:
+        result = await asyncio.to_thread(
+            refresh_project_screenshot,
+            self.project_root,
+            self.prepared.solid_command,
+            extra_environment=self.prepared.build_environment,
+        )
+        if result.updated and result.revision is not None and self.on_screenshot_changed is not None:
+            self.on_screenshot_changed(result.revision)
 
     async def close(self) -> None:
         """Boundedly release every process, routing task and filesystem watch."""
@@ -174,6 +196,7 @@ class SessionRegistry:
                 "state": "creating",
                 "session_id": None,
                 "failure": None,
+                "screenshot_revision": None,
             })
         values.sort(key=lambda value: str(value["name"]))
         return values
@@ -243,7 +266,16 @@ class SessionRegistry:
                 allow_build_failure=True,
             )
             session_id = secrets.token_urlsafe(24)
-            session = Session(session_id, name, prepared, profile, Broker(profile=profile, session_id=session_id))
+            session = Session(
+                session_id,
+                name,
+                prepared,
+                profile,
+                Broker(profile=profile, session_id=session_id),
+                on_screenshot_changed=lambda revision: self.publish_hub(
+                    "screenshot", name, screenshot_revision=revision
+                ),
+            )
             if self.start_agents:
                 await self._start_orchestrator(session)
             await session.start_watchers(settle_delay=self.settle_delay)

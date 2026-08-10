@@ -19,6 +19,8 @@ from pydantic import BaseModel
 from watchdog.observers import Observer
 
 from .profiles import RuntimeProfile, load_profile, resolve_profile_runtime
+from .preparation import PreparationError, verified_project_root
+from .screenshots import is_safe_screenshot, screenshot_path
 from .watcher import ArtifactWatcher, ModelWatcher
 
 
@@ -620,6 +622,16 @@ def create_app(working_folder: Path, *, registry: object) -> FastAPI:
         if bundle is None or not bundle.is_file():
             raise HTTPException(status_code=404, detail="no framework viewer is available")
         return FileResponse(bundle, media_type="text/javascript")
+
+    @app.get("/projects/{name}/screenshot.png")
+    async def project_screenshot(name: str) -> FileResponse:
+        try:
+            root = await asyncio.to_thread(verified_project_root, name, working_folder)
+        except (PreparationError, ValueError) as error:
+            raise HTTPException(status_code=404, detail="unknown project screenshot") from error
+        if not is_safe_screenshot(root):
+            raise HTTPException(status_code=404, detail="unknown project screenshot")
+        return FileResponse(screenshot_path(root), media_type="image/png", headers={"Cache-Control": "no-cache"})
 
     @app.get("/projects/{name}/artifacts/{artifact_path:path}")
     async def artifact(name: str, artifact_path: str) -> FileResponse:

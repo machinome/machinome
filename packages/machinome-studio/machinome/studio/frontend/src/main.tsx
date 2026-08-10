@@ -60,6 +60,7 @@ type Project = {
   state: "closed" | "creating" | "opening" | "open" | "failed";
   session_id: string | null;
   failure: string | null;
+  screenshot_revision: string | null;
 };
 
 type BackendStatus = {
@@ -360,11 +361,23 @@ function Hub() {
       setProjects(snapshot.projects);
     });
     source.addEventListener("project", (message) => {
-      const event = JSON.parse((message as MessageEvent<string>).data) as { kind: Project["state"] | "closed"; project: string; profile?: string; session_id?: string; reason?: string };
+      const event = JSON.parse((message as MessageEvent<string>).data) as {
+        kind: Project["state"] | "closed" | "screenshot";
+        project: string;
+        profile?: string;
+        session_id?: string;
+        reason?: string;
+        screenshot_revision?: string | null;
+      };
       setProjects((previous) => {
+        if (event.kind === "screenshot") {
+          return previous.map((project) => project.name === event.project
+            ? { ...project, screenshot_revision: event.screenshot_revision ?? null }
+            : project);
+        }
         const update = (project: Project): Project => ({
           ...project,
-          state: event.kind === "closed" ? "closed" : event.kind,
+          state: event.kind === "closed" ? "closed" : event.kind as Project["state"],
           session_id: event.kind === "open" ? event.session_id ?? null : null,
           failure: event.reason ?? null,
         });
@@ -382,6 +395,7 @@ function Hub() {
           state: "creating",
           session_id: null,
           failure: null,
+          screenshot_revision: null,
         })];
       });
       if (event.kind === "open" && pendingOpen.current === event.project) {
@@ -423,7 +437,7 @@ function Hub() {
     pendingOpen.current = name;
     const optimistic: Project = {
       name, profile, openable: true, reason: null, branch: "main", last_commit: null,
-      state: "creating", session_id: null, failure: null,
+      state: "creating", session_id: null, failure: null, screenshot_revision: null,
     };
     setProjects((previous) => [...previous.filter((item) => item.name !== name), optimistic]);
     setSheetOpen(false);
@@ -480,7 +494,14 @@ function Hub() {
             disabled={!project.openable}
             onClick={() => void openProject(project)}
           >
-            <span className="project-preview">model preview</span>
+            <span className="project-preview">
+              <span className="project-preview-placeholder">model preview</span>
+              {project.screenshot_revision === null ? null : <img
+                alt={`${project.name} model preview`}
+                src={`/projects/${encodeURIComponent(project.name)}/screenshot.png?revision=${encodeURIComponent(project.screenshot_revision)}`}
+                onError={(event) => { event.currentTarget.hidden = true; }}
+              />}
+            </span>
             <span className="project-card-body">
               <span className="project-name"><strong>{project.name}</strong><i data-state={project.state} /></span>
               <span className="project-meta">{project.state} · {project.profile} · {relativeTime(project.last_commit)}</span>

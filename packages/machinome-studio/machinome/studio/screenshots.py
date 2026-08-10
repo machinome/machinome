@@ -1,0 +1,192 @@
+"""Best-effort publication of a project's canonical model preview."""
+
+from __future__ import annotations
+
+import os
+import subprocess
+import tempfile
+import threading
+from collections import deque
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from io import BytesIO
+from hashlib import sha256
+from pathlib import Path
+from stat import S_ISREG
+
+from PIL import Image
+
+
+SCREENSHOT_NAME = "screenshot.png"
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+_locks: dict[Path, threading.Lock] = {}
+_locks_guard = threading.Lock()
+
+
+@dataclass(frozen=True)
+class ScreenshotResult:
+    """The non-fatal result of one screenshot refresh request."""
+
+    updated: bool = False
+    revision: str | None = None
+    warning: str | None = None
+
+
+def screenshot_path(project_root: Path) -> Path:
+    return project_root / SCREENSHOT_NAME
+
+
+def screenshot_revision(project_root: Path) -> str | None:
+    """Return the content revision only for a regular, local PNG file."""
+    path = screenshot_path(project_root)
+    try:
+        status = path.lstat()
+        if not S_ISREG(status.st_mode):
+            return None
+        data = path.read_bytes()
+    except OSError:
+        return None
+    return sha256(data).hexdigest() if _is_png(data) else None
+
+
+def is_safe_screenshot(project_root: Path) -> bool:
+    """Whether the canonical path is a regular non-symlink PNG file."""
+    return screenshot_revision(project_root) is not None
+
+
+def refresh_project_screenshot(
+    project_root: Path,
+    solid_command: Sequence[str],
+    *,
+    extra_environment: Mapping[str, str] | None = None,
+) -> ScreenshotResult:
+    """Render and atomically publish the fixed 640x360 project thumbnail.
+
+    The rendered output is always outside the project.  A short-lived staging
+    file beside the destination is only used after a valid completed PNG is
+    available, so ``os.replace`` never exposes a partial image to the hub.
+    """
+    root = project_root.resolve()
+    with _lock_for(root):
+        target = screenshot_path(root)
+        try:
+            existing = _existing_bytes(target)
+            if existing is _UNSAFE:
+                return ScreenshotResult(warning="screenshot.png is not a regular non-symlink file")
+            with tempfile.TemporaryDirectory(prefix="solid-node-studio-screenshot-") as temporary:
+                output = Path(temporary) / SCREENSHOT_NAME
+                env = {**os.environ, **dict(extra_environment or {})}
+                result = subprocess.run(
+                    [
+                        *solid_command,
+                        "snapshot",
+                        "-o",
+                        str(output),
+                        "--time",
+                        "0.1",
+                        "--imgsize",
+                        "640x360",
+                        "--projection",
+                        "ortho",
+                        "--autocenter",
+                        "--viewall",
+                    ],
+                    cwd=root,
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                )
+                if result.returncode:
+                    detail = (result.stderr or result.stdout or f"exit {result.returncode}").strip()
+                    return ScreenshotResult(warning=f"screenshot render failed: {detail}")
+                data = _transparent_background(output.read_bytes())
+            if not _is_png(data):
+                return ScreenshotResult(warning="screenshot render produced no valid PNG")
+            if existing == data:
+                return ScreenshotResult(revision=sha256(data).hexdigest())
+            # Refuse a path that turned unsafe during rendering too.
+            if _existing_bytes(target) is _UNSAFE:
+                return ScreenshotResult(warning="screenshot.png became an unsafe path")
+            descriptor, staged_name = tempfile.mkstemp(prefix=".screenshot-", suffix=".png", dir=root)
+            staged = Path(staged_name)
+            try:
+                with os.fdopen(descriptor, "wb") as stream:
+                    stream.write(data)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(staged, target)
+            finally:
+                staged.unlink(missing_ok=True)
+            return ScreenshotResult(updated=True, revision=sha256(data).hexdigest())
+        except (OSError, subprocess.SubprocessError) as error:
+            return ScreenshotResult(warning=f"screenshot refresh failed: {error}")
+
+
+_UNSAFE = object()
+
+
+def _existing_bytes(path: Path) -> bytes | None | object:
+    try:
+        status = path.lstat()
+    except FileNotFoundError:
+        return None
+    except OSError:
+        return _UNSAFE
+    if not S_ISREG(status.st_mode):
+        return _UNSAFE
+    try:
+        return path.read_bytes()
+    except OSError:
+        return _UNSAFE
+
+
+def _is_png(data: bytes) -> bool:
+    return len(data) >= len(PNG_SIGNATURE) and data.startswith(PNG_SIGNATURE)
+
+
+def _transparent_background(data: bytes) -> bytes:
+    """Remove only near-white pixels connected to the rendered image edge.
+
+    The renderer has no alpha-background option. Flooding from the border keeps
+    an enclosed light feature intact while making its opaque canvas transparent.
+    """
+    with Image.open(BytesIO(data)) as opened:
+        image = opened.convert("RGBA")
+    pixels = image.load()
+    width, height = image.size
+    pending: deque[tuple[int, int]] = deque()
+    visited: set[tuple[int, int]] = set()
+    for x in range(width):
+        pending.extend(((x, 0), (x, height - 1)))
+    for y in range(1, height - 1):
+        pending.extend(((0, y), (width - 1, y)))
+    while pending:
+        x, y = pending.popleft()
+        if (x, y) in visited:
+            continue
+        red, green, blue, alpha = pixels[x, y]
+        if not _is_background(red, green, blue, alpha):
+            continue
+        visited.add((x, y))
+        pixels[x, y] = (red, green, blue, 0)
+        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+            if 0 <= nx < width and 0 <= ny < height:
+                pending.append((nx, ny))
+    output = BytesIO()
+    image.save(output, "PNG")
+    return output.getvalue()
+
+
+def _is_background(red: int, green: int, blue: int, alpha: int) -> bool:
+    return (
+        alpha > 0
+        and red >= 238
+        and green >= 238
+        and blue >= 220
+        and max(red, green, blue) - min(red, green, blue) <= 40
+    )
+
+
+def _lock_for(root: Path) -> threading.Lock:
+    with _locks_guard:
+        return _locks.setdefault(root, threading.Lock())

@@ -8,6 +8,10 @@ shop-owned thumbnail recipe, and SHALL atomically replace the path only after a
 complete PNG has been produced and only when its bytes differ from the existing
 regular non-symlink file.
 
+The shop SHALL convert pale near-white pixels connected to the renderer image's
+edge to transparent alpha before comparing and publishing the screenshot. It
+SHALL preserve non-background geometry, including enclosed light-colored areas.
+
 #### Scenario: The model renders a changed screenshot
 - **WHEN** the shop requests a screenshot and the renderer produces a complete PNG whose bytes differ from the current project screenshot
 - **THEN** the shop atomically replaces `<project>/screenshot.png` with the completed image
@@ -15,6 +19,11 @@ regular non-symlink file.
 #### Scenario: The model renders the same screenshot
 - **WHEN** the shop requests a screenshot and the rendered PNG has the same bytes as the current project screenshot
 - **THEN** the shop leaves `screenshot.png` unchanged
+
+#### Scenario: The renderer supplies an opaque pale canvas
+- **WHEN** a successful renderer output has a pale near-white background
+- **THEN** the published screenshot has transparent edge-connected canvas pixels
+  while retaining the model geometry
 
 #### Scenario: The project has no screenshot yet
 - **WHEN** the first successful screenshot render completes for a project without `screenshot.png`

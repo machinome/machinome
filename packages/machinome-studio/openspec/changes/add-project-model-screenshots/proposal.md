@@ -23,7 +23,8 @@ tool is the reliable place to carry a changed preview into project history.
   browsers when an open project's screenshot changes, without carrying project
   conversation or agent work into the hub stream.
 - Rendering uses one fixed, shop-owned thumbnail recipe rather than adding
-  project configuration in this change.
+  project configuration in this change; its edge-connected pale canvas is
+  converted to transparent alpha after rendering.
 
 ## Capabilities
 

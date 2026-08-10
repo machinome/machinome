@@ -308,7 +308,10 @@ animates the viewport.
 ## Assets
 
 None. All glyphs are CSS primitives (rotated squares, circles, rules, the mono
-`{ }`). Project thumbnails are a striped placeholder pending real model
+`{ }`). Project thumbnails use the root `screenshot.png` when available: it is
+contain-fitted within the 158px preview region, cache-busted by its content
+revision, and has model-preview alt text. Missing or failed images retain the
+striped `model preview` placeholder.
 snapshots. Fonts load from Google Fonts in the prototype — vendor IBM Plex
 Sans/Mono locally for an offline desktop app.
 

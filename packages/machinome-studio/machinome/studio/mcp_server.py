@@ -24,6 +24,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .agent import FloorClient
+from .screenshots import is_safe_screenshot, refresh_project_screenshot
 
 
 SERVER_NAME = "floor"
@@ -469,13 +470,27 @@ class ProjectTools:
     def git_commit(self, message: str) -> dict[str, Any]:
         if not isinstance(message, str) or not message:
             raise ValueError("message must be a non-empty string")
-        return self._git("commit", "-m", message)
+        screenshot = refresh_project_screenshot(self.root, self.solid_command)
+        warning = screenshot.warning
+        if is_safe_screenshot(self.root):
+            staged = self._git("add", "--", "screenshot.png")
+            if not staged["ok"]:
+                warning = staged["stderr"] or "could not stage screenshot.png"
+        result = self._git("commit", "-m", message)
+        if warning:
+            result["screenshot_warning"] = warning
+        return result
 
     # -- solid-node --------------------------------------------------
 
     def solid_build(self, path: str | None = None) -> dict[str, Any]:
         reference = self._reference(path)
-        return self._run([*self.solid_command, "build", *([reference] if reference else [])])
+        result = self._run([*self.solid_command, "build", *([reference] if reference else [])])
+        if result["ok"]:
+            screenshot = refresh_project_screenshot(self.root, self.solid_command)
+            if screenshot.warning:
+                result["screenshot_warning"] = screenshot.warning
+        return result
 
     def solid_test(self, path: str | None = None, failfast: bool = False) -> dict[str, Any]:
         reference = self._reference(path)

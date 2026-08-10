@@ -47,6 +47,11 @@ Python. It renders a 640x360 PNG at time `0.1`, with orthographic projection,
 autocenter and view-all enabled, and no diagnostic overlays. This is a stable
 thumbnail recipe, not a design-evidence view and not a new project setting.
 
+The installed renderer has no transparent-background option. After a successful
+PNG render, the shop flood-fills only pale near-white pixels connected to the
+image edge to transparent alpha. It preserves enclosed light geometry and makes
+the card background responsible for the preview canvas rather than the renderer.
+
 The renderer writes to a temporary file outside the project. The shop verifies
 that a PNG was produced, compares its bytes with the existing regular
 non-symlink `screenshot.png`, and atomically replaces the project file only when
@@ -157,6 +162,9 @@ agents do not commit.
 - **Renderer output may vary across machines or framework versions** → Fix all
   shop-controlled rendering inputs and compare final bytes. Framework rendering
   changes are legitimate preview changes rather than hidden compatibility work.
+- **A pale feature touches the canvas edge** → The conservative flood-fill may
+  preserve or remove edge-adjacent pixels according to the fixed threshold;
+  engineering snapshots remain the evidence surface for such inspection.
 - **An open hub could cache an old PNG** → Content-revision URLs change only
   when the bytes change, and live hub metadata updates target the affected card.
 - **A malicious project may place a symlink at `screenshot.png`** → Never

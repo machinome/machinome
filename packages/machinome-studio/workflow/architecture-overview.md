@@ -209,8 +209,13 @@ it does not encode a participant's role. The transcript is independently
 scrollable, reveals newly appended messages, sends a non-empty draft on Enter,
 and inserts a newline on Ctrl+Enter.
 
-Floor serves only published `_build/` artifacts beneath a project-scoped
-browser path. Every session owns a filesystem observer with separate source and
+Floor serves published `_build/` artifacts beneath a project-scoped browser
+path and, separately, the exact regular non-symlink root `screenshot.png` for
+each verified project repository (including closed projects). The screenshot is
+a fixed 640x360 orthographic preview rendered through the selected CLI after an
+observed successful build and before a floor-mediated commit. Rendering and
+staging are best-effort: they never turn a valid build or Git commit into a
+failure. Every session owns a filesystem observer with separate source and
 artifact handlers: source events outside `_build` settle into a `solid build`,
 while each atomic rename into `_build` becomes a named artifact event for that
 session's browser. The floor neither hashes or
@@ -228,13 +233,19 @@ beside the retained model and the next publication retries normally; the browser
 does not remount the viewer or interpret artifact contents.
 
 The hub holds one live-state connection to `/api/stream`. It opens with the
-complete project inventory and then carries only project opening, open, failed,
-and closed changes. A workspace holds one connection to its session stream. It
+complete project inventory, including each usable screenshot's content revision,
+and then carries project opening, open, failed, closed, and screenshot-revision
+changes. A workspace holds one connection to its session stream. It
 opens with that broker's complete run state and full ordered conversation, then
 carries only that project's subsequent changes. Neither scope polls live state,
 and the hub never receives a conversation. A broker subscribes the connection
 before reading the snapshot, and its snapshot carries the explicit latest event
 sequence so the browser can discard that hand-off overlap exactly once.
+
+Project cards use a revision-cache-busted request for that canonical image and
+fall back to their striped placeholder if it is absent or cannot be decoded.
+Screenshot changes are hub metadata only; they do not enter project conversation
+or broker history.
 
 Current run state includes any role-scoped backend failure. The browser shows
 the profile-labelled reason in an accessible conversation-area notice while
