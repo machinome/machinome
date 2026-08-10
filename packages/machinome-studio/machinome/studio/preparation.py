@@ -98,24 +98,6 @@ def build_command(solid_command: str | Sequence[str]) -> tuple[str, ...]:
     return (*_command(solid_command), "build")
 
 
-def build_environment(shop_root: Path | None) -> dict[str, str] | None:
-    """PYTHONPATH overlay for a solid-node checkout inside the shop.
-
-    When solid-node is run from a checkout inside the shop, the checkout
-    must be on PYTHONPATH for ``python -c "from solid_node.cli ..."`` to
-    find the package.
-    """
-    if shop_root is None:
-        return None
-    solid_node_path = shop_root / "solid-node"
-    if not solid_node_path.is_dir():
-        return None
-    existing = os.environ.get("PYTHONPATH", "")
-    return {"PYTHONPATH": os.pathsep.join(
-        item for item in (str(solid_node_path), existing) if item
-    )}
-
-
 class PreparationError(RuntimeError):
     def __init__(self, stage: str, name: str | None, project_root: Path | None, reason: str) -> None:
         self.stage = stage
@@ -133,40 +115,26 @@ class ProjectRuntimeError(ValueError):
         super().__init__(f"project runtime configuration at {source_path}: {reason}")
 
 
-def primary_shop_root(checkout: Path) -> Path:
-    """Return this repository's primary checkout, including from a worktree."""
-    result = _run(
-        ("git", "-C", str(checkout.resolve()), "rev-parse", "--git-common-dir"),
-        stage="workspace",
-        name=None,
-        project_root=None,
-    )
-    common = Path(result.stdout.strip())
-    if not common.is_absolute():
-        common = checkout.resolve() / common
-    return common.resolve().parent
+def shop_resource_root() -> Path:
+    """Return resources belonging to the loaded shop package or source tree.
+
+    This is deliberately derived from the imported module, not process cwd or
+    Git metadata. A source worktree therefore uses its own files, while an
+    installed plugin uses the files shipped beside its loaded ``floor``
+    package.
+    """
+    return Path(__file__).resolve().parents[1]
 
 
-def default_project_home(checkout: Path) -> Path:
-    return checkout.resolve() / "projects"
+def default_solid_command() -> tuple[str, ...]:
+    """Use solid-node from the Python environment running the shop.
 
-
-def default_solid_command(checkout: Path) -> tuple[str, ...]:
-    primary = primary_shop_root(checkout)
-    solid_node_cli = primary / "solid-node" / "solid_node" / "cli.py"
-    if solid_node_cli.is_file():
-        # Prefer the checked-out solid-node framework inside the shop.
-        # Module has no __main__.py, so use -c to call manage() directly.
-        return (sys.executable, "-c", "from solid_node.cli import manage; manage()")
-    executable = primary / ".venv" / "bin" / "solid"
-    if not executable.is_file():
-        raise PreparationError(
-            "solid-command",
-            None,
-            None,
-            f"workspace solid executable is unavailable: {executable}; configure an explicit equivalent",
-        )
-    return (str(executable),)
+    Console-script lookup through ambient ``PATH`` can silently select a
+    different Python installation. The shop and framework are installed into
+    one environment, so binding the command to that interpreter's scripts
+    directory preserves the selected framework without cwd or Git discovery.
+    """
+    return (str(Path(sys.executable).with_name("solid")),)
 
 
 def list_projects(project_home: Path) -> list[ProjectListing]:
@@ -344,14 +312,13 @@ def prepare_project(
     *,
     project_home: Path,
     solid_command: str | Sequence[str],
-    shop_root: Path | None = None,
     profile: str | None = None,
     allow_build_failure: bool = False,
 ) -> PreparedProject:
     project_root = resolve_project(name, project_home)
     assert name is not None
     created = not project_root.exists()
-    solid_env = build_environment(shop_root)
+    solid_env = None
     if created:
         package_name = name.replace("-", "_")
         with tempfile.TemporaryDirectory(prefix=f".{name}-", dir=project_home.resolve()) as temporary:

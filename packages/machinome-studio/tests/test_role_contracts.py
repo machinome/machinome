@@ -39,7 +39,7 @@ class RoleContractTest(unittest.TestCase):
         machinist = (ROOT / "profiles" / "fordesmac" / "machinist.md").read_text()
         self.assertNotIn("solid develop", machinist)
         self.assertIn("solid build", machinist)
-        self.assertIn("--sender\nmachinist --recipient foreman", machinist)
+        self.assertIn('floor_report(sender="machinist", recipient="foreman"', machinist)
 
 
 if __name__ == "__main__":

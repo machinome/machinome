@@ -13,7 +13,7 @@ and [ADR 0017](./0017-project-selected-per-agent-runtime.md)
 
 ## Context
 
-ADR 0011 made the runtime profile a trusted, repository-owned package selected
+ADR 0011 made the runtime profile a trusted, shop-owned package selected
 by `--profile`, with `builder` as the fallback. ADR 0017 then moved backend,
 provider, model, and reasoning selection into each project's `pyproject.toml`
 so the project durably states how its agents normally run. The profile still
@@ -42,13 +42,13 @@ runtime table.
 
 Project parsing SHALL always reject a profile value that is not a string or is
 not lowercase kebab-case, even when an option overrides it. Resolution against
-the repository-owned `profiles/` packages SHALL occur only for the selected
+the running shop's `profiles/` packages SHALL occur only for the selected
 value. Therefore, a well-formed but unavailable project declaration fails with
 an error naming its `pyproject.toml` and value when used, but remains tolerable
 when a valid option overrides it. The launcher SHALL never replace an
 unavailable declared profile with the shop default.
 
-Declaring a profile selects one trusted repository-owned package in its
+Declaring a profile selects one trusted shop-owned package in its
 entirety. Tool policy and Claude permission remain profile-owned and cannot be
 selected, widened, narrowed, or authored independently by the project. Whether
 topology and policy should eventually be separate packages remains out of scope.

@@ -121,7 +121,7 @@ class SessionRegistry:
     ) -> None:
         self.working_folder = working_folder.resolve()
         self.shop_root = shop_root.resolve()
-        self.solid_command = solid_command or default_solid_command(shop_root)
+        self.solid_command = solid_command or default_solid_command()
         self.broker_url = broker_url
         self.backend_commands = dict(backend_commands or {})
         self.backend_factory = backend_factory
@@ -239,7 +239,6 @@ class SessionRegistry:
                 name,
                 project_home=self.working_folder,
                 solid_command=self.solid_command,
-                shop_root=self.shop_root,
                 profile=create_profile,
                 allow_build_failure=True,
             )
@@ -277,7 +276,7 @@ class SessionRegistry:
             if backend_name not in backend_instances:
                 backend_instances[backend_name] = self.backend_factory(
                     backend_name,
-                    cwd=self.shop_root,
+                    shop_root=self.shop_root,
                     project=session.project_root,
                     broker_url=self.broker_url,
                     command_overrides=self.backend_commands,
@@ -293,7 +292,7 @@ class SessionRegistry:
             by_agent,
             LocalBrokerControl(session.broker),
             profile=session.profile,
-            shop_checkout=self.shop_root,
+            shop_root=self.shop_root,
             active_project=session.project_root,
         )
         session.orchestrator = orchestrator

@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from urllib.request import Request, urlopen
 
-from tests.fixtures.primary_shop import isolated_primary_shop, subprocess_environment
+from tests.fixtures.shop_process import isolated_launch_directory, subprocess_environment
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,12 +41,12 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.project_home = Path(self.temporary.name) / "projects"
         self.project_home.mkdir()
-        self.shop = self.enterContext(isolated_primary_shop())
+        self.shop = self.enterContext(isolated_launch_directory())
         self.port = _free_port()
         self.process = subprocess.Popen(
             [
                 "python", "-m", "floor", "--port", str(self.port),
-                "--project-home", str(self.project_home),
+                "--projects-dir", str(self.project_home),
                 "--solid-command", str(FAKE_SOLID),
             ],
             cwd=self.shop,
@@ -111,6 +111,23 @@ class ShopLifecycleE2E(unittest.TestCase):
         bravo_page.get_by_text("Bravo message").wait_for()
         self.assertEqual(alpha_page.get_by_text("Bravo message").count(), 0)
         self.assertEqual(bravo_page.get_by_text("Alpha message").count(), 0)
+
+    def test_overflowing_transcript_ends_above_the_message_composer(self) -> None:
+        self._make_project("long-chat")
+        session_id = self._open("long-chat")
+        for index in range(30):
+            _request(
+                self.url(f"/api/sessions/{session_id}/conversation"),
+                "POST",
+                {"text": f"Conversation message {index:02d}"},
+            )
+        self.page.goto(self.url("/projects/long-chat"))
+        self.page.get_by_text("Conversation message 29").wait_for()
+
+        transcript = self.page.get_by_role("list", name="Conversation transcript").bounding_box()
+        composer = self.page.get_by_role("form", name="Message composer").bounding_box()
+        assert transcript is not None and composer is not None
+        self.assertLessEqual(transcript["y"] + transcript["height"], composer["y"])
 
     def test_failed_initial_model_build_keeps_chat_available_and_states_the_reason(self) -> None:
         project = self._make_project("broken-model")

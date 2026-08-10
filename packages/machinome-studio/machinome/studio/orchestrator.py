@@ -21,11 +21,10 @@ from .backends import create_backend, parse_backend_command_overrides
 from .preparation import (
     PreparationError,
     ProjectRuntimeError,
-    default_project_home,
     default_solid_command,
     prepare_project,
-    primary_shop_root,
     read_project_runtime,
+    shop_resource_root,
 )
 from .profiles import ProfileError, RuntimeProfile, load_profile, resolve_profile_runtime
 
@@ -90,7 +89,7 @@ class ShopOrchestrator:
         broker: BrokerControl,
         *,
         profile: RuntimeProfile,
-        shop_checkout: Path,
+        shop_root: Path,
         active_project: Path,
     ) -> None:
         self.broker = broker
@@ -112,7 +111,7 @@ class ShopOrchestrator:
                 seen.add(id(backend))
                 distinct.append(backend)
         self.backends = tuple(distinct)
-        self.shop_checkout = shop_checkout.resolve()
+        self.shop_root = shop_root.resolve()
         self.active_project = active_project.resolve()
         self.roles: dict[str, RoleRuntime] = {}
         self._delivery_locks = {agent.id: asyncio.Lock() for agent in self.profile.agents}
@@ -291,7 +290,7 @@ class ShopOrchestrator:
     def _role_context(self, role: str) -> RoleContext:
         agent = self.profile.agent(role)
         return RoleContext(
-            shop_checkout=str(self.shop_checkout),
+            shop_root=str(self.shop_root),
             active_project=str(self.active_project),
             agent=agent,
             profile_id=self.profile.id,
@@ -302,8 +301,7 @@ class ShopOrchestrator:
     def _backend(self, role: str) -> AgentBackend:
         return self.backends_by_agent[role]
 
-    @staticmethod
-    def _message(value: dict[str, Any]) -> str:
+    def _message(self, value: dict[str, Any]) -> str:
         lines = [
             "Shop broker message:",
             f"kind: {value.get('kind', 'direction')}",
@@ -314,11 +312,22 @@ class ShopOrchestrator:
         if assignment_id:
             lines.append(f"assignment: {assignment_id}")
         if value.get("kind") == "assignment" and assignment_id:
+            runtime = self.profile.agent(str(value["recipient"])).runtime
+            if runtime is not None and runtime.backend in {"claude", "opencode"}:
+                acknowledgement = (
+                    f'floor_acknowledge(role="{value["recipient"]}", '
+                    f'assignment="{assignment_id}")'
+                )
+            else:
+                acknowledgement = (
+                    f"python -m floor.agent acknowledge --role {value['recipient']} "
+                    f"--assignment {assignment_id}"
+                )
             lines.extend(
                 (
                     "ASSIGNMENT LIFECYCLE GATE:",
                     "Before anything else, your FIRST TOOL CALL must be:",
-                    f"python -m floor.agent acknowledge --role {value['recipient']} --assignment {assignment_id}",
+                    acknowledgement,
                     "Do not read files or investigate, load a role card or skill, start a development process, "
                     "or make any other tool call until that command succeeds.",
                 )
@@ -416,9 +425,9 @@ async def _shutdown_runtime(
 
 
 async def _serve(arguments: argparse.Namespace) -> None:
-    shop_root = primary_shop_root(arguments.cwd)
-    project_home = arguments.project_home or default_project_home(arguments.cwd)
-    solid_command = arguments.solid_command or default_solid_command(arguments.cwd)
+    shop_root = shop_resource_root()
+    project_home = arguments.projects_dir
+    solid_command = arguments.solid_command or default_solid_command()
     command_overrides = parse_backend_command_overrides(getattr(arguments, "backend_command", None))
     from .sessions import SessionRegistry
     registry = SessionRegistry(
@@ -458,8 +467,12 @@ async def _serve(arguments: argparse.Namespace) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the event-driven agent shop")
     parser.add_argument("--port", type=int, default=int(os.environ.get("FLOOR_PORT", "9000")))
-    parser.add_argument("--cwd", type=Path, default=Path.cwd(), help="shop checkout containing role adapters")
-    parser.add_argument("--project-home", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--projects-dir",
+        type=Path,
+        required=True,
+        help="exact directory containing project repositories",
+    )
     parser.add_argument("--solid-command", help=argparse.SUPPRESS)
     parser.add_argument("--backend-command", action="append", default=[], metavar="BACKEND=COMMAND", help=argparse.SUPPRESS)
     try:

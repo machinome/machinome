@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from dataclasses import dataclass
 from typing import Any
 from urllib.request import Request, urlopen
 
@@ -19,6 +20,93 @@ def _request(server: str, path: str, method: str, body: dict[str, Any] | None = 
     with urlopen(request, timeout=10) as response:  # nosec: explicit local shop-floor server
         data = response.read()
         return json.loads(data) if data else {}
+
+
+@dataclass(frozen=True)
+class FloorClient:
+    """Bounded client for one already-selected shop-floor session."""
+
+    server: str
+    session: str
+
+    @property
+    def base(self) -> str:
+        return f"/api/sessions/{self.session}"
+
+    def manifest(self, role: str, label: str) -> dict[str, Any]:
+        return _request(
+            self.server,
+            f"{self.base}/agents",
+            "POST",
+            {"role": role, "label": label},
+        )
+
+    def direction(self, sender: str, recipient: str, text: str) -> dict[str, Any]:
+        return _request(
+            self.server,
+            f"{self.base}/envelopes",
+            "POST",
+            {"kind": "direction", "sender": sender, "recipient": recipient, "body": text},
+        )
+
+    def assign(
+        self,
+        sender: str,
+        recipient: str,
+        assignment: str,
+        text: str,
+    ) -> dict[str, Any]:
+        return _request(
+            self.server,
+            f"{self.base}/envelopes",
+            "POST",
+            {
+                "kind": "assignment",
+                "sender": sender,
+                "recipient": recipient,
+                "body": text,
+                "assignment_id": assignment,
+            },
+        )
+
+    def acknowledge(self, role: str, assignment: str) -> dict[str, Any]:
+        return _request(
+            self.server,
+            f"{self.base}/agents/{role}/acknowledgments",
+            "POST",
+            {"assignment_id": assignment},
+        )
+
+    def report(
+        self,
+        sender: str,
+        recipient: str,
+        text: str,
+        assignment: str = "",
+    ) -> dict[str, Any]:
+        return _request(
+            self.server,
+            f"{self.base}/envelopes",
+            "POST",
+            {
+                "kind": "report",
+                "sender": sender,
+                "recipient": recipient,
+                "body": text,
+                "assignment_id": assignment,
+            },
+        )
+
+    def complete(self, role: str, assignment: str) -> dict[str, Any]:
+        return _request(
+            self.server,
+            f"{self.base}/agents/{role}/completions",
+            "POST",
+            {"assignment_id": assignment},
+        )
+
+    def stop(self, role: str) -> dict[str, Any]:
+        return _request(self.server, f"{self.base}/agents/{role}", "DELETE")
 
 
 def main() -> None:
@@ -62,58 +150,31 @@ def main() -> None:
     arguments = parser.parse_args()
     if not arguments.session:
         parser.error("a session is required (set FLOOR_SESSION or pass --session)")
-    base = f"/api/sessions/{arguments.session}"
+    client = FloorClient(arguments.server, arguments.session)
     if arguments.command == "manifest":
-        result = _request(arguments.server, f"{base}/agents", "POST", {"role": arguments.role, "label": arguments.label})
+        result = client.manifest(arguments.role, arguments.label)
     elif arguments.command == "direction":
-        result = _request(
-            arguments.server,
-            f"{base}/envelopes",
-            "POST",
-            {"kind": "direction", "sender": arguments.sender, "recipient": arguments.recipient, "body": arguments.text},
-        )
+        result = client.direction(arguments.sender, arguments.recipient, arguments.text)
     elif arguments.command == "assign":
-        result = _request(
-            arguments.server,
-            f"{base}/envelopes",
-            "POST",
-            {
-                "kind": "assignment",
-                "sender": arguments.sender,
-                "recipient": arguments.recipient,
-                "body": arguments.text,
-                "assignment_id": arguments.assignment,
-            },
+        result = client.assign(
+            arguments.sender,
+            arguments.recipient,
+            arguments.assignment,
+            arguments.text,
         )
     elif arguments.command == "acknowledge":
-        result = _request(
-            arguments.server,
-            f"{base}/agents/{arguments.role}/acknowledgments",
-            "POST",
-            {"assignment_id": arguments.assignment},
-        )
+        result = client.acknowledge(arguments.role, arguments.assignment)
     elif arguments.command == "report":
-        result = _request(
-            arguments.server,
-            f"{base}/envelopes",
-            "POST",
-            {
-                "kind": "report",
-                "sender": arguments.sender,
-                "recipient": arguments.recipient,
-                "body": arguments.text,
-                "assignment_id": arguments.assignment,
-            },
+        result = client.report(
+            arguments.sender,
+            arguments.recipient,
+            arguments.text,
+            arguments.assignment,
         )
     elif arguments.command == "complete":
-        result = _request(
-            arguments.server,
-            f"{base}/agents/{arguments.role}/completions",
-            "POST",
-            {"assignment_id": arguments.assignment},
-        )
+        result = client.complete(arguments.role, arguments.assignment)
     else:
-        result = _request(arguments.server, f"{base}/agents/{arguments.role}", "DELETE")
+        result = client.stop(arguments.role)
     print(json.dumps(result), flush=True)
 
 

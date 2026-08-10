@@ -45,11 +45,12 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
             readiness_timeout=3,
             request_timeout=2,
             stop_timeout=0.2,
+            session_id="opaque-session",
         )
 
     def context(self, runtime: BackendRuntime | None = None) -> RoleContext:
         return RoleContext(
-            shop_checkout=str(ROOT),
+            shop_root=str(ROOT),
             active_project=str(self.project),
             agent=ProfileAgent(
                 "builder",
@@ -58,7 +59,12 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
                 (self.skill,),
                 (),
                 None,
-                runtime or BackendRuntime("inherit", "inherit", "inherit", backend="opencode"),
+                runtime or BackendRuntime(
+                    "inherit",
+                    "inherit",
+                    ("Bash", "Read", "Write", "Edit", "Glob", "Grep"),
+                    backend="opencode",
+                ),
             ),
             profile_id="builder",
             user_label="Maker",
@@ -84,13 +90,23 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(startup["password"])
         self.assertEqual(startup["disableProjectConfig"], "true")
         self.assertEqual(startup["configDirEntries"], [])
-        self.assertTrue(self.backend.agent_name.startswith("solid-node-studio-"))
-        agent = startup["config"]["agent"][self.backend.agent_name]
-        self.assertEqual(agent["mode"], "primary")
-        self.assertEqual(startup["config"]["permission"], "deny")
-        self.assertEqual(agent["permission"]["bash"], "allow")
-        self.assertEqual(agent["permission"]["task"], "deny")
+        self.assertNotIn("agent", startup["config"])
+        self.assertTrue(all(value is False for value in startup["config"]["tools"].values()))
+        server = startup["config"]["mcp"]["floor"]
+        self.assertEqual(server["type"], "local")
+        self.assertTrue(server["enabled"])
+        self.assertIn(str(self.project), server["command"])
+        self.assertIn("--floor-url", server["command"])
+        self.assertEqual(
+            server["command"][server["command"].index("--floor-session") + 1],
+            "opaque-session",
+        )
         self.assertIn(str(ROOT), startup["pythonPath"].split(os.pathsep))
+        event_request = next(
+            item for item in self.captured()
+            if item.get("method") == "GET" and item.get("path") == "/global/event"
+        )
+        self.assertIsNone(event_request["directory"])
 
     async def test_open_role_creates_only_a_session_and_prompt_has_full_contract(self) -> None:
         await self.backend.start()
@@ -103,12 +119,31 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
         await self.backend.deliver_start(handle, "Begin")
         prompt = next(item["body"] for item in self.captured() if item.get("path", "").endswith("/prompt_async"))
         system = prompt["system"]
-        self.assertEqual(prompt["agent"], self.backend.agent_name)
+        self.assertNotIn("agent", prompt)
+        self.assertTrue(prompt["tools"]["floor_read_file"])
+        self.assertFalse(prompt["tools"].get("floor_webfetch", False))
         self.assertIn(self.prompt.read_text(), system)
         self.assertIn(str(self.skill / "SKILL.md"), system)
         self.assertIn((self.skill / "SKILL.md").read_text(), system)
         self.assertLess(system.index("PROFILE PROMPT EXACT"), system.index("ROOT GUIDANCE EXACT"))
         self.assertIn("cannot redefine that runtime, role identity", system)
+
+        create = posts[0]
+        self.assertIn("directory=", create["rawPath"])
+        role_directory = create["directory"]
+        self.assertNotEqual(role_directory, str(self.project))
+        self.assertTrue(Path(role_directory).is_dir())
+
+    async def test_each_role_launch_uses_a_unique_working_directory(self) -> None:
+        await self.backend.start()
+        await self.backend.open_role("builder", self.context())
+        await self.backend.open_role("reviewer", self.context())
+        creates = [
+            item for item in self.captured()
+            if item.get("method") == "POST" and item.get("path") == "/session"
+        ]
+        self.assertEqual(len(creates), 2)
+        self.assertNotEqual(creates[0]["directory"], creates[1]["directory"])
 
     async def test_selected_provider_model_and_variant_reach_prompt_async(self) -> None:
         await self.backend.start()
@@ -169,6 +204,22 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
         later = [await asyncio.wait_for(anext(self.backend.events), 2) for _ in range(3)]
         self.assertEqual([event.text for event in later if event.kind == "role_message"], ["FAKE_REPLY"])
         self.assertEqual(later[-1].delivery_id, second.delivery_id)
+        with self.assertRaises(asyncio.TimeoutError):
+            await asyncio.wait_for(anext(self.backend.events), 0.15)
+
+    async def test_completed_text_parts_arrive_before_session_idle_without_duplicates(self) -> None:
+        await self.backend.start()
+        handle = await self.backend.open_role("builder", self.context())
+        receipt = await self.backend.deliver_start(handle, "PARTS")
+        started = await asyncio.wait_for(anext(self.backend.events), 2)
+        self.assertEqual((started.kind, started.delivery_id), ("turn_started", receipt.delivery_id))
+
+        first = await asyncio.wait_for(anext(self.backend.events), 0.2)
+        self.assertEqual((first.kind, first.text), ("role_message", "FIRST_PART"))
+        second = await asyncio.wait_for(anext(self.backend.events), 0.4)
+        self.assertEqual((second.kind, second.text), ("role_message", "SECOND_PART"))
+        completed = await asyncio.wait_for(anext(self.backend.events), 0.4)
+        self.assertEqual((completed.kind, completed.delivery_id), ("turn_completed", receipt.delivery_id))
         with self.assertRaises(asyncio.TimeoutError):
             await asyncio.wait_for(anext(self.backend.events), 0.15)
 
@@ -271,7 +322,7 @@ class OpenCodeSelectionTest(unittest.TestCase):
             )
 
     def test_factory_selects_opencode(self) -> None:
-        backend = create_backend("opencode", cwd=ROOT, project=ROOT, command="opencode")
+        backend = create_backend("opencode", shop_root=ROOT, project=ROOT, command="opencode")
         self.assertEqual(type(backend).__name__, "OpenCodeBackend")
 
     def test_cli_has_no_run_wide_backend_selector(self) -> None:

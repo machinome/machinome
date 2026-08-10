@@ -9,6 +9,7 @@ import json
 import os
 import secrets
 import socket
+import sys
 import tempfile
 import threading
 import time
@@ -22,6 +23,13 @@ from urllib.request import Request, urlopen
 
 from .base import BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle
 from ..profiles import BackendRuntime
+from ..mcp_server import (
+    NATIVE_OPENCODE_TOOLS,
+    SERVER_NAME,
+    TOOL_NAMES,
+    mcp_command,
+    resolved_tool_names,
+)
 
 
 @dataclass
@@ -39,7 +47,7 @@ class OpenCodeBackend:
 
     def __init__(
         self,
-        cwd: Path,
+        shop_root: Path,
         *,
         project: Path | None = None,
         command: str | Sequence[str] = "opencode",
@@ -50,18 +58,19 @@ class OpenCodeBackend:
         request_timeout: float = 30,
         stop_timeout: float = 5,
     ) -> None:
-        self.cwd = cwd.resolve()
-        self.project = (project or cwd).resolve()
+        self.shop_root = shop_root.resolve()
+        self.project = (project or shop_root).resolve()
         self.command = (command,) if isinstance(command, str) else tuple(command)
         self.broker_url = broker_url
         self.session_id = session_id
-        self.solid_command = solid_command
+        self.solid_command = (
+            (solid_command,) if isinstance(solid_command, str) else tuple(solid_command)
+        )
         self.readiness_timeout = readiness_timeout
         self.request_timeout = request_timeout
         self.stop_timeout = stop_timeout
         self.port = self._unused_port()
         self.password = secrets.token_urlsafe(32)
-        self.agent_name = f"solid-node-studio-{secrets.token_hex(6)}"
 
         self.process: asyncio.subprocess.Process | None = None
         self.notifications: asyncio.Queue[BackendEvent] = asyncio.Queue()
@@ -70,6 +79,7 @@ class OpenCodeBackend:
         self._handles: dict[str, str] = {}
         self._contracts: dict[str, str] = {}
         self._runtimes: dict[str, BackendRuntime] = {}
+        self._role_directories: dict[str, Path] = {}
         self._active: dict[str, _ActiveDelivery] = {}
         self._completed: set[tuple[str, str]] = set()
         self._aborting: set[str] = set()
@@ -106,28 +116,20 @@ class OpenCodeBackend:
             json.dumps(
                 {
                     "$schema": "https://opencode.ai/config.json",
-                    "permission": "deny",
-                    "agent": {
-                        self.agent_name: {
-                            "description": "Generated primary agent for shop-owned role sessions",
-                            "mode": "primary",
-                            "permission": {
-                                "read": "allow",
-                                "edit": "allow",
-                                "glob": "allow",
-                                "grep": "allow",
-                                "list": "allow",
-                                "bash": "allow",
-                                "todowrite": "allow",
-                                "webfetch": "allow",
-                                "websearch": "allow",
-                                "external_directory": "deny",
-                                "task": "deny",
-                                "question": "deny",
-                                "skill": "deny",
-                            },
+                    "mcp": {
+                        SERVER_NAME: {
+                            "type": "local",
+                            "command": mcp_command(
+                                self.project,
+                                self.solid_command,
+                                python=sys.executable,
+                                floor_url=self.broker_url,
+                                floor_session=self.session_id,
+                            ),
+                            "enabled": True,
                         }
-                    }
+                    },
+                    "tools": {name: False for name in NATIVE_OPENCODE_TOOLS},
                 }
             )
             + "\n"
@@ -141,7 +143,7 @@ class OpenCodeBackend:
             "FLOOR_URL": self.broker_url,
             **({"FLOOR_SESSION": self.session_id} if self.session_id else {}),
             "PYTHONPATH": os.pathsep.join(
-                item for item in (str(self.cwd), os.environ.get("PYTHONPATH", "")) if item
+                item for item in (str(self.shop_root), os.environ.get("PYTHONPATH", "")) if item
             ),
         }
         self.process = await asyncio.create_subprocess_exec(
@@ -180,13 +182,27 @@ class OpenCodeBackend:
 
     async def open_role(self, role: str, context: RoleContext) -> RoleHandle:
         """Open one persistent session without a conversational bootstrap."""
-        result = await self._request("POST", "/session", {"title": f"SolidNode Studio: {role}"})
+        if self._temporary is None:
+            raise RuntimeError("OpenCode backend has not been started")
+        directory = (
+            Path(self._temporary.name)
+            / "roles"
+            / f"{role}-{secrets.token_hex(6)}"
+        )
+        directory.mkdir(parents=True)
+        query = quote(str(directory), safe="")
+        result = await self._request(
+            "POST",
+            f"/session?directory={query}",
+            {"title": f"SolidNode Studio: {role}"},
+        )
         session_id = str(result["id"])
         if context.agent.runtime is None:
             raise RuntimeError(f"OpenCode role {role!r} has no resolved runtime")
         self._handles[session_id] = role
         self._contracts[session_id] = self._system_contract(role, context)
         self._runtimes[session_id] = context.agent.runtime
+        self._role_directories[session_id] = directory
         return RoleHandle(backend_id=session_id, role=role)
 
     async def deliver_start(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
@@ -228,16 +244,17 @@ class OpenCodeBackend:
             if active is None:
                 return
             self._aborting.add(session_id)
-            await self._request("POST", f"/session/{quote(session_id, safe='')}/abort", {})
+            await self._request("POST", self._session_path(session_id, "/abort"), {})
             self._complete(session_id, active)
 
     async def close_role(self, handle: RoleHandle) -> None:
         session_id = handle.backend_id
         if session_id in self._handles and self.process is not None:
-            await self._request("DELETE", f"/session/{quote(session_id, safe='')}")
+            await self._request("DELETE", self._session_path(session_id))
         self._handles.pop(session_id, None)
         self._contracts.pop(session_id, None)
         self._runtimes.pop(session_id, None)
+        self._role_directories.pop(session_id, None)
         self._active.pop(session_id, None)
         self._aborting.discard(session_id)
 
@@ -287,6 +304,7 @@ class OpenCodeBackend:
         self._handles.clear()
         self._contracts.clear()
         self._runtimes.clear()
+        self._role_directories.clear()
         self._active.clear()
         self._aborting.clear()
         self.process = None
@@ -314,11 +332,14 @@ class OpenCodeBackend:
         runtime = self._runtimes[session_id]
         payload: dict[str, Any] = {
             "messageID": message_id,
-            "agent": self.agent_name,
             "system": self._contracts[session_id],
             # Reusing the accepted user ID with no new parts starts the
             # loop without duplicating the already-persisted envelope.
             "parts": [] if resume else [{"type": "text", "text": message}],
+            "tools": {
+                f"{SERVER_NAME}_{name}": name in set(resolved_tool_names(runtime.tools))
+                for name in TOOL_NAMES
+            },
         }
         if runtime.model != "inherit" or runtime.provider is not None:
             if runtime.model == "inherit" or runtime.provider is None:
@@ -331,7 +352,7 @@ class OpenCodeBackend:
             payload["variant"] = runtime.effort
         await self._request(
             "POST",
-            f"/session/{quote(session_id, safe='')}/prompt_async",
+            self._session_path(session_id, "/prompt_async"),
             payload,
         )
 
@@ -346,7 +367,24 @@ class OpenCodeBackend:
             if not isinstance(properties, dict):
                 properties = {}
             session_id = self._session_id(properties)
-            if event_type == "session.idle" and session_id is not None:
+            status = properties.get("status")
+            became_idle = event_type == "session.idle" or (
+                event_type == "session.status"
+                and isinstance(status, dict)
+                and status.get("type") == "idle"
+            )
+            if event_type == "message.part.updated":
+                part = properties.get("part")
+                if isinstance(part, dict):
+                    session_id = session_id or self._session_id(part)
+                    part_time = part.get("time")
+                    completed = "delta" not in properties and (
+                        not isinstance(part_time, dict) or "end" in part_time
+                    )
+                    if completed and session_id is not None:
+                        async with self._state_lock:
+                            self._publish_text_part(session_id, part)
+            elif became_idle and session_id is not None:
                 async with self._state_lock:
                     await self._reconcile_idle(session_id)
             elif event_type == "session.error" and session_id is not None:
@@ -363,12 +401,30 @@ class OpenCodeBackend:
                             BackendEvent(kind="role_failed", role=role, error=self._error_text(error))
                         )
 
+    def _publish_text_part(self, session_id: str, part: dict[str, Any]) -> None:
+        active = self._active.get(session_id)
+        role = self._handles.get(session_id)
+        if active is None or role is None or part.get("type") != "text":
+            return
+        message_id = str(part.get("messageID") or part.get("messageId") or "")
+        part_id = str(part.get("id") or "")
+        if not message_id or not part_id or message_id in active.accepted_messages:
+            return
+        text = str(part.get("text", "")).strip()
+        key = (message_id, part_id)
+        if not text or key in active.emitted_parts:
+            return
+        active.emitted_parts.add(key)
+        self.notifications.put_nowait(
+            BackendEvent(kind="role_message", role=role, text=text)
+        )
+
     async def _reconcile_idle(self, session_id: str) -> None:
         active = self._active.get(session_id)
         role = self._handles.get(session_id)
         if active is None or role is None:
             return
-        messages = await self._request("GET", f"/session/{quote(session_id, safe='')}/message")
+        messages = await self._request("GET", self._session_path(session_id, "/message"))
         if not isinstance(messages, list):
             return
         infos: dict[str, dict[str, Any]] = {}
@@ -507,7 +563,7 @@ class OpenCodeBackend:
         connection: http.client.HTTPConnection | None = None
         try:
             connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=None)
-            connection.request("GET", "/event", headers={"Authorization": self._authorization()})
+            connection.request("GET", "/global/event", headers={"Authorization": self._authorization()})
             response = connection.getresponse()
             if response.status != 200:
                 raise RuntimeError(f"OpenCode event stream returned HTTP {response.status}")
@@ -596,6 +652,13 @@ class OpenCodeBackend:
     def _authorization(self) -> str:
         token = base64.b64encode(f"opencode:{self.password}".encode()).decode()
         return f"Basic {token}"
+
+    def _session_path(self, session_id: str, suffix: str = "") -> str:
+        directory = self._role_directories.get(session_id)
+        path = f"/session/{quote(session_id, safe='')}{suffix}"
+        if directory is None:
+            return path
+        return f"{path}?directory={quote(str(directory), safe='')}"
 
     @staticmethod
     def _session_id(properties: dict[str, Any]) -> str | None:

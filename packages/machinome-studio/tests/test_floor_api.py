@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from tests.fixtures.primary_shop import isolated_primary_shop, subprocess_environment
+from tests.fixtures.shop_process import isolated_launch_directory, subprocess_environment
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,11 +25,11 @@ class FloorAPITest(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.project_home = Path(self.temporary.name) / "projects"
         self.project_home.mkdir()
-        self.shop = self.enterContext(isolated_primary_shop())
+        self.shop = self.enterContext(isolated_launch_directory())
         self.process = subprocess.Popen(
             [
                 "python", "-m", "floor", "--port", str(self.port),
-                "--project-home", str(self.project_home),
+                "--projects-dir", str(self.project_home),
                 "--solid-command", str(FAKE_SOLID),
             ],
             cwd=self.shop,

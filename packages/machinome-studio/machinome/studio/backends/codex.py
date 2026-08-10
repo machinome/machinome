@@ -36,7 +36,7 @@ class CodexBackend:
 
     def __init__(
         self,
-        cwd: Path,
+        shop_root: Path,
         *,
         project: Path | None = None,
         command: str | Sequence[str] = "codex",
@@ -44,8 +44,8 @@ class CodexBackend:
         solid_command: str | Sequence[str] = "solid",
         session_id: str | None = None,
     ) -> None:
-        self.cwd = cwd.resolve()
-        self.project = (project or cwd).resolve()
+        self.shop_root = shop_root.resolve()
+        self.project = (project or shop_root).resolve()
         self.command = (command,) if isinstance(command, str) else tuple(command)
         self.broker_url = broker_url
         self.session_id = session_id
@@ -77,7 +77,7 @@ class CodexBackend:
             *self.command,
             "app-server",
             "--stdio",
-            cwd=self.cwd,
+            cwd=self.shop_root,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -86,7 +86,7 @@ class CodexBackend:
                 "FLOOR_URL": self.broker_url,
                 **({"FLOOR_SESSION": self.session_id} if self.session_id else {}),
                 "PYTHONPATH": os.pathsep.join(
-                    item for item in (str(self.cwd), os.environ.get("PYTHONPATH", "")) if item
+                    item for item in (str(self.shop_root), os.environ.get("PYTHONPATH", "")) if item
                 ),
             },
             start_new_session=True,
@@ -113,7 +113,7 @@ class CodexBackend:
         if runtime is None:
             raise RuntimeError(f"Codex role {role!r} has no resolved runtime")
         runtime_instructions = (
-            f"Shop checkout: {context.shop_checkout}\n"
+            f"Shop resources: {context.shop_root}\n"
             f"Active project: {context.active_project}\n"
             f"Profile: {context.profile_id}\n"
             f"Human user label: {context.user_label}\n"

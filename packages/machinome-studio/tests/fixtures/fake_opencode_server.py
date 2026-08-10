@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from queue import Queue
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 
 CAPTURE = Path(os.environ["FAKE_OPENCODE_CAPTURE"])
@@ -38,10 +38,10 @@ def publish(event: dict[str, Any], *, wrapped: bool = False) -> None:
         stream.put(value)
 
 
-def assistant(session_id: str, parent_id: str, text: str) -> None:
-    message_id = f"assistant-{parent_id}"
+def assistant(session_id: str, parent_id: str, text: str, *, suffix: str = "") -> None:
+    message_id = f"assistant-{parent_id}{suffix}"
     part = {
-        "id": f"part-{parent_id}",
+        "id": f"part-{parent_id}{suffix}",
         "sessionID": session_id,
         "messageID": message_id,
         "type": "text",
@@ -95,12 +95,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         if not self.authorized():
             return
-        path = urlparse(self.path).path
-        capture("request", method="GET", path=path)
+        parsed = urlparse(self.path)
+        path = parsed.path
+        capture("request", method="GET", path=path, rawPath=self.path, directory=parse_qs(parsed.query).get("directory", [None])[0])
         if path == "/global/health":
             self.reply({"healthy": True, "version": "fake"})
             return
-        if path == "/event":
+        if path == "/global/event":
             stream: Queue[dict[str, Any] | None] = Queue()
             with LOCK:
                 STREAMS.append(stream)
@@ -115,7 +116,11 @@ class Handler(BaseHTTPRequestHandler):
                     item = stream.get()
                     if item is None:
                         return
-                    self.wfile.write(f"data: {json.dumps(item)}\n\n".encode())
+                    envelope = item if "payload" in item else {
+                        "directory": "/fake/role-directory",
+                        "payload": item,
+                    }
+                    self.wfile.write(f"data: {json.dumps(envelope)}\n\n".encode())
                     self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
@@ -135,9 +140,10 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         if not self.authorized():
             return
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
         body = self.body()
-        capture("request", method="POST", path=path, body=body)
+        capture("request", method="POST", path=path, rawPath=self.path, directory=parse_qs(parsed.query).get("directory", [None])[0], body=body)
         if path == "/session":
             session_id = f"session-{len(SESSIONS) + 1}"
             SESSIONS[session_id] = []
@@ -175,6 +181,19 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if text == "HOLD" and existing is None:
                 return
+            if text == "PARTS" and existing is None:
+                assistant(session_id, message_id, "FIRST_PART", suffix="-first")
+                time.sleep(0.25)
+                assistant(session_id, message_id, "SECOND_PART", suffix="-second")
+                time.sleep(0.25)
+                publish({
+                    "type": "session.status",
+                    "properties": {
+                        "sessionID": session_id,
+                        "status": {"type": "idle"},
+                    },
+                })
+                return
             if existing is not None:
                 assistant(session_id, message_id, "after")
                 publish({"type": "session.idle", "properties": {"sessionID": session_id}}, wrapped=True)
@@ -190,8 +209,24 @@ class Handler(BaseHTTPRequestHandler):
                 assistant(session_id, missing[0], "before")
                 publish({"type": "session.idle", "properties": {"sessionID": session_id}})
             else:
+                publish({
+                    "directory": "/unrelated/location",
+                    "payload": {
+                        "type": "session.status",
+                        "properties": {
+                            "sessionID": "unrelated-session",
+                            "status": {"type": "idle"},
+                        },
+                    },
+                })
                 assistant(session_id, message_id, "FAKE_REPLY")
-                publish({"type": "session.idle", "properties": {"sessionID": session_id}})
+                publish({
+                    "type": "session.status",
+                    "properties": {
+                        "sessionID": session_id,
+                        "status": {"type": "idle"},
+                    },
+                })
             return
         if path.endswith("/abort"):
             session_id = path.split("/")[2]
@@ -211,8 +246,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_DELETE(self) -> None:  # noqa: N802
         if not self.authorized():
             return
-        path = urlparse(self.path).path
-        capture("request", method="DELETE", path=path)
+        parsed = urlparse(self.path)
+        path = parsed.path
+        capture("request", method="DELETE", path=path, rawPath=self.path, directory=parse_qs(parsed.query).get("directory", [None])[0])
         SESSIONS.pop(path.rsplit("/", 1)[-1], None)
         self.reply(True)
 

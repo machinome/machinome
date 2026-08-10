@@ -36,6 +36,8 @@ import asyncio
 import json
 import os
 import shlex
+import sys
+import tempfile
 from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
 from typing import Any
@@ -48,6 +50,7 @@ from .base import (
     RoleContext,
     RoleHandle,
 )
+from ..mcp_server import SERVER_NAME, mcp_command, resolved_tool_names
 
 # Terminal reasons the CLI reports for a turn the shop itself interrupted.
 # They arrive as an errored result; treating them as a role failure would
@@ -72,7 +75,7 @@ class ClaudeBackend:
 
     def __init__(
         self,
-        cwd: Path,
+        shop_root: Path,
         *,
         project: Path | None = None,
         command: str | Sequence[str] = "claude",
@@ -80,10 +83,11 @@ class ClaudeBackend:
         solid_command: str | Sequence[str] = "solid",
         session_id: str | None = None,
         startup_grace: float = 0.5,
+        mcp_readiness_timeout: float = 15,
         stop_timeout: float = 5,
     ) -> None:
-        self.cwd = cwd.resolve()
-        self.project = (project or cwd).resolve()
+        self.shop_root = shop_root.resolve()
+        self.project = (project or shop_root).resolve()
         self.command = (command,) if isinstance(command, str) else tuple(command)
         self.broker_url = broker_url
         self.session_id = session_id
@@ -93,6 +97,7 @@ class ClaudeBackend:
         # How long to watch a freshly launched session for an immediate
         # exit before treating it as started.
         self.startup_grace = startup_grace
+        self.mcp_readiness_timeout = mcp_readiness_timeout
         self.stop_timeout = stop_timeout
 
         self.events_queue: asyncio.Queue[BackendEvent] = asyncio.Queue()
@@ -105,6 +110,11 @@ class ClaudeBackend:
         self._stderr: dict[str, list[str]] = {}
         # backend_id -> delivery_id currently outstanding, if any.
         self._outstanding: dict[str, str] = {}
+        self._ready: dict[str, asyncio.Event] = {}
+        self._readiness_errors: dict[str, str] = {}
+        self._readiness_status: dict[str, str] = {}
+        self._expected_tools: dict[str, tuple[str, ...]] = {}
+        self._temporary: tempfile.TemporaryDirectory[str] | None = None
         self._next_delivery = 0
         self._closing = False
 
@@ -115,11 +125,20 @@ class ClaudeBackend:
     async def start(self) -> None:
         """No backend-wide process exists; roles start their own."""
         self._closing = False
+        if self._temporary is None:
+            self._temporary = tempfile.TemporaryDirectory(
+                prefix="solid-node-studio-claude-"
+            )
 
     async def open_role(self, role: str, context: RoleContext) -> RoleHandle:
         """Launch one ``claude`` process carrying *role*'s contract."""
         backend_id = f"{role}-{len(self.processes)}"
-        command = self._role_command(role, context)
+        runtime = context.agent.runtime
+        if runtime is None:
+            raise RuntimeError(f"Claude role {role!r} has no resolved runtime")
+        scoped = runtime.tools != "inherit"
+        config = self._mcp_config(role, context) if scoped else None
+        command = self._role_command(role, context, config)
         process = await asyncio.create_subprocess_exec(
             *command,
             stdin=asyncio.subprocess.PIPE,
@@ -132,7 +151,7 @@ class ClaudeBackend:
                 **({"FLOOR_SESSION": self.session_id} if self.session_id else {}),
                 "PYTHONPATH": os.pathsep.join(
                     item
-                    for item in (str(self.cwd), os.environ.get("PYTHONPATH", ""))
+                    for item in (str(self.shop_root), os.environ.get("PYTHONPATH", ""))
                     if item
                 ),
             },
@@ -141,16 +160,16 @@ class ClaudeBackend:
         self.processes[backend_id] = process
         self._roles[backend_id] = role
         self._stderr[backend_id] = []
+        if scoped:
+            self._ready[backend_id] = asyncio.Event()
+            self._expected_tools[backend_id] = tuple(
+                f"mcp__{SERVER_NAME}__{name}"
+                for name in resolved_tool_names(runtime.tools)
+            )
         self._readers[backend_id] = (
             asyncio.create_task(self._read_stdout(backend_id)),
             asyncio.create_task(self._drain_stderr(backend_id)),
         )
-        # Readiness cannot be confirmed here.  The CLI emits its system/init
-        # frame only in response to the first input, so probing would mean
-        # sending a message — and the first user message must be a broker
-        # envelope (ADR 0009), which a probe is not.  A session that dies at
-        # startup therefore surfaces as an early exit, checked below, or as a
-        # role failure from the reader once it is running.
         try:
             await asyncio.wait_for(process.wait(), timeout=self.startup_grace)
         except asyncio.TimeoutError:
@@ -167,6 +186,7 @@ class ClaudeBackend:
     ) -> DeliveryReceipt:
         """Start a delivery on an idle role session."""
         delivery_id = await self._send_user(handle, message)
+        await self._await_mcp_ready(handle)
         return DeliveryReceipt(delivery_id=delivery_id, accepted=True)
 
     async def deliver_steer(
@@ -221,14 +241,67 @@ class ClaudeBackend:
                 errors.append(error)
         if errors:
             raise errors[0]
+        if self._temporary is not None:
+            self._temporary.cleanup()
+            self._temporary = None
 
     # ── process lifecycle ──────────────────────────────────────────────
+
+    async def _await_mcp_ready(self, handle: RoleHandle) -> None:
+        """Wait for scoped MCP readiness after the first real user frame."""
+        ready = self._ready.get(handle.backend_id)
+        if ready is None:
+            return
+
+        process = self.processes.get(handle.backend_id)
+        if process is None:
+            raise RuntimeError(f"claude session is not running: {handle.backend_id}")
+
+        ready_task = asyncio.create_task(ready.wait())
+        exit_task = asyncio.create_task(process.wait())
+        done, pending = await asyncio.wait(
+            (ready_task, exit_task),
+            timeout=self.mcp_readiness_timeout,
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
+
+        if ready_task in done:
+            error = self._readiness_errors.get(handle.backend_id)
+            if error is None:
+                return
+            await self._stop(handle.backend_id)
+            raise RuntimeError(
+                f"claude MCP startup failed for {handle.role}: {error}"
+            )
+
+        if exit_task in done:
+            stderr = "".join(self._stderr.get(handle.backend_id, ())).strip()
+            returncode = process.returncode
+            await self._stop(handle.backend_id)
+            raise RuntimeError(
+                f"claude session for {handle.role} exited during MCP startup "
+                f"with status {returncode}: {stderr or '(no stderr)'}"
+            )
+
+        status = self._readiness_status.get(handle.backend_id, "no init frame")
+        await self._stop(handle.backend_id)
+        raise RuntimeError(
+            f"claude MCP startup timed out for {handle.role} after "
+            f"{self.mcp_readiness_timeout:g}s (last status: {status})"
+        )
 
     async def _stop(self, backend_id: str) -> None:
         """Escalate stdin close -> SIGTERM -> SIGKILL, each bounded."""
         process = self.processes.pop(backend_id, None)
         self._roles.pop(backend_id, None)
         self._outstanding.pop(backend_id, None)
+        self._ready.pop(backend_id, None)
+        self._readiness_errors.pop(backend_id, None)
+        self._readiness_status.pop(backend_id, None)
+        self._expected_tools.pop(backend_id, None)
         readers = self._readers.pop(backend_id, None)
         self._stderr.pop(backend_id, None)
         if process is not None:
@@ -250,9 +323,39 @@ class ClaudeBackend:
                 task.cancel()
             await asyncio.gather(*readers, return_exceptions=True)
 
+    def _mcp_config(self, role: str, context: RoleContext) -> Path:
+        if self._temporary is None:
+            raise RuntimeError("Claude backend has not been started")
+        path = Path(self._temporary.name) / f"{role}-{len(self.processes)}.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "mcpServers": {
+                        SERVER_NAME: {
+                            "command": sys.executable,
+                            "args": mcp_command(
+                                Path(context.active_project),
+                                self.solid_command,
+                                python=sys.executable,
+                                floor_url=self.broker_url,
+                                floor_session=self.session_id,
+                            )[1:],
+                        }
+                    }
+                }
+            )
+            + "\n"
+        )
+        return path
+
     # ── role contract ──────────────────────────────────────────────────
 
-    def _role_command(self, role: str, context: RoleContext) -> tuple[str, ...]:
+    def _role_command(
+        self,
+        role: str,
+        context: RoleContext,
+        mcp_config: Path | None = None,
+    ) -> tuple[str, ...]:
         """Build the argv for one role session."""
         agent = context.agent
         runtime = agent.runtime
@@ -264,10 +367,6 @@ class ClaudeBackend:
             "--input-format", "stream-json",
             "--output-format", "stream-json",
             "--verbose",
-            # Operator-machine customization must not reach a role: the role
-            # card is the sole authority (ADR 0008).  --bare would be stronger
-            # but skips OAuth entirely, excluding a subscription operator.
-            "--safe-mode",
             "--append-system-prompt", self._role_contract(role, context, agent),
         ]
         if runtime.model != "inherit":
@@ -275,7 +374,22 @@ class ClaudeBackend:
         if runtime.effort != "inherit":
             command += ["--effort", runtime.effort]
         if runtime.tools != "inherit":
-            command += ["--tools", ",".join(runtime.tools)]
+            if mcp_config is None:
+                raise RuntimeError("scoped Claude tools require an MCP config")
+            tools = resolved_tool_names(runtime.tools)
+            if not tools:
+                raise RuntimeError(f"Claude role {role!r} resolves to no scoped tools")
+            command += [
+                "--mcp-config", str(mcp_config),
+                "--strict-mcp-config",
+                "--tools", ",".join(
+                    f"mcp__{SERVER_NAME}__{name}" for name in tools
+                ),
+            ]
+        else:
+            # Unscoped compatibility sessions retain the previous isolation
+            # from operator-machine customizations.
+            command += ["--safe-mode"]
         if runtime.permission != "inherit":
             permission_mode = "bypassPermissions" if runtime.permission == "autonomous" else "manual"
             command += ["--permission-mode", permission_mode]
@@ -284,7 +398,7 @@ class ClaudeBackend:
     def _role_contract(self, role: str, context: RoleContext, agent=None) -> str:
         """Session-level instructions: the role contract plus its channel."""
         agent = agent or context.agent
-        shop = Path(context.shop_checkout).resolve()
+        shop = Path(context.shop_root).resolve()
         lines = [
             f"Shop checkout: {shop}",
             f"Active project: {Path(context.active_project).resolve()}",
@@ -354,6 +468,36 @@ class ClaudeBackend:
             except json.JSONDecodeError:
                 continue
             kind = message.get("type")
+
+            if kind == "system" and message.get("subtype") == "init":
+                ready = self._ready.get(backend_id)
+                if ready is not None:
+                    servers = {
+                        str(item.get("name")): str(item.get("status"))
+                        for item in message.get("mcp_servers", ())
+                        if isinstance(item, dict)
+                    }
+                    expected = set(self._expected_tools.get(backend_id, ()))
+                    actual = {
+                        str(item) for item in message.get("tools", ())
+                        if isinstance(item, str)
+                    }
+                    status = servers.get(SERVER_NAME, "missing")
+                    self._readiness_status[backend_id] = status
+                    if status == "connected" and actual != expected:
+                        self._readiness_errors[backend_id] = (
+                            f"tool list mismatch: expected {sorted(expected)!r}, "
+                            f"got {sorted(actual)!r}"
+                        )
+                        ready.set()
+                    elif status == "connected":
+                        ready.set()
+                    elif status in {"failed", "error", "disconnected"}:
+                        self._readiness_errors[backend_id] = (
+                            f"server {SERVER_NAME!r} status is {status!r}"
+                        )
+                        ready.set()
+                continue
 
             if kind == "assistant":
                 text = "\n".join(

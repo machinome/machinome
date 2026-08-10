@@ -34,8 +34,10 @@ must remain orthogonal.
 
 The shop SHALL load one trusted declarative runtime profile before project
 preparation. A run selects it with `--profile <id>`; omission selects
-`builder`. Profiles live only at `profiles/<id>/profile.toml` in the primary
-shop checkout.
+`builder`. Profiles live only at `profiles/<id>/profile.toml` in the running
+shop's loaded resources. A source worktree uses its own resources and an
+installed shop uses its installed resources; profile loading does not discover
+or require a primary Git checkout.
 
 A profile SHALL declare:
 

@@ -28,6 +28,10 @@ module already uses.
 - Surface backend-specific mechanics, gotchas, and constraints relevant to a
   future implementation.
 - Specify the floor-provided MCP tool set itself, and which backends carry it.
+- Preserve source-worktree and installed-package isolation: the running shop
+  must load its own trusted resources and MCP implementation without Git
+  checkout discovery, while the caller-selected `--projects-dir` may be any
+  unrelated directory.
 
 **Non-Goals:**
 - Building out the librarian's tool surface. It becomes provisionally
@@ -71,10 +75,15 @@ claude -p --input-format stream-json --output-format stream-json --verbose \
   backend before floor-provided MCP tools could work at all.
 - MCP server startup is asynchronous relative to the first turn; a session
   that sends its first message immediately after spawn can race a
-  still-connecting server (`status: pending`). The real backend already has a
-  `startup_grace` wait after spawn, which should be enough in practice, but
-  this is worth keeping in mind if a "no tools available" failure shows up
-  intermittently.
+  still-connecting server (`status: pending`). Evidence from Claude Code
+  2.1.220 shows the first init frame around 0.5 seconds with MCP still pending
+  and a later init frame around 7.3 seconds with it connected. The existing
+  0.5-second process-exit grace is therefore not an MCP readiness deadline.
+  Live project-open evidence additionally proves Claude emits no init frame
+  before it receives its first user frame. Readiness cannot gate role process
+  manifestation without deadlocking. The first real broker envelope must
+  remain that first frame and trigger initialization; its delivery then waits
+  for the connected init frame before the adapter accepts it.
 
 ### `codex` — not viable with the current protocol
 
@@ -261,18 +270,80 @@ part of the machinist's per-increment loop, and the skill already says not to
 run `develop` here (the shop already watches and rebuilds) or `new` (project
 scaffolding, not runtime-agent work).
 
+**Shop broker lifecycle:**
+- `floor_assign(sender, recipient, assignment, text)`
+- `floor_direction(sender, recipient, text)`
+- `floor_acknowledge(role, assignment)`
+- `floor_report(sender, recipient, text, assignment?)`
+- `floor_complete(role, assignment)`
+
+These are MCP wrappers around the existing `floor.agent` operations used by
+the Fordesmac role prompts. They use only the floor URL and opaque active
+session injected by the backend; neither value is a tool argument. They expose
+no arbitrary URL, HTTP method, route, headers, or request body. The broker
+continues to validate identities, profile edges, assignment state, and
+lifecycle transitions. `manifest` and `stop` remain backend-owned and are not
+agent tools.
+
+Without these wrappers, removing native `Bash` would make the foreman unable
+to dispatch and specialists unable to acknowledge, report, or complete work.
+The role prompts therefore name these tools directly instead of spelling
+`python -m floor.agent ...` shell commands.
+
 ### Backend wiring implications
 
+The runtime has two independent locations and must not synthesize a third:
+
+- `--projects-dir` is the exact external catalogue of mechanical project
+  repositories. It is the only project-location authority and may be outside
+  the shop package, outside any source tree, or on a host with no shop Git
+  repository at all.
+- The loaded `floor` package owns profiles, prompts, skills, static assets,
+  backend modules, and the MCP server implementation. Source-worktree runs
+  must keep using that worktree's loaded package; installed runs must use the
+  installed package. Resource discovery must not inspect Git metadata or
+  derive a primary checkout from process cwd.
+- The Python environment running `floor` owns the selected solid-node
+  installation. The orchestrator invokes that environment's `solid` console
+  script directly instead of allowing ambient `PATH` order to select an
+  unrelated framework installation.
+
+The orchestrator therefore passes package provenance, not a repository root,
+to child backends. A child MCP process launched from an isolated role working
+directory must import the same `floor.mcp_server` implementation as its parent.
+Project preparation and every scoped tool remain rooted only at the selected
+direct child of `--projects-dir`.
+
 - `floor/backends/claude.py` must stop unconditionally passing `--safe-mode`
-  (it disables MCP servers) for a role using this tool set.
+  (it disables MCP servers) for a role using this tool set. It must preserve
+  the short grace used to detect an immediately exiting process while using a
+  separate bounded MCP readiness timeout. Because stream-json emits no init
+  frame before the first user input, role manifestation checks only immediate
+  process exit. The first real broker envelope remains the session's first user
+  frame and triggers initialization; that delivery is accepted only after a
+  frame reports the floor server connected with exactly the expected tools.
+  `pending` is transitional. Process exit, terminal MCP failure, tool mismatch
+  after connection, or readiness timeout fail that delivery and stop the role.
 - `floor/backends/opencode.py` must generate an `mcp` entry for the
   floor tool server plus a `tools: {...: false}` map disabling every native
   tool, using the default `build` agent (no custom agent/permission block —
   the spike's first attempt at a custom agent block was a bug, not a working
   path) and a unique working directory per role launch (session state
-  persists by cwd across `opencode serve` launches).
+  persists by cwd across `opencode serve` launches). Because OpenCode's
+  ordinary `/event` stream is scoped to one directory, the shared backend
+  must consume its cross-directory event stream and filter events to its
+  registered role sessions; otherwise completions in the isolated role
+  directories never reach the broker. A `message.part.updated` event whose
+  text part has no streaming delta is the completed-part boundary: publish it
+  immediately and deduplicate it by message/part ID. `session.status: idle`
+  remains the turn-completion and reconciliation boundary, not the first point
+  at which accumulated messages become visible.
 - `floor/backends/codex.py` is unaffected; `codex` keeps its current
   full-access behavior and is documented as not supporting this capability.
+- Existing profile tool declarations remain the profile-facing capability
+  vocabulary. Claude and OpenCode resolve those declarations to the concrete
+  floor MCP allowlist; OpenCode inherits the same profile-owned policy rather
+  than adding an OpenCode profile table.
 
 ## Risks / Trade-offs
 
@@ -286,10 +357,32 @@ scaffolding, not runtime-agent work).
   other customizations (skills, plugins, hooks, custom commands/agents) —
   the trade-off of dropping it needs its own evaluation, separate from tool
   scoping.
+- [Claude reports MCP pending before it connects] → Do not reuse the
+  0.5-second process-exit grace as readiness. Wait through `pending` under a
+  separate bounded deadline and validate tools only once the floor server is
+  connected.
+- [Claude emits no init before its first user frame] → Do not block project
+  opening on impossible pre-input readiness. Preserve the first real broker
+  envelope as the first user frame and gate acceptance of that delivery on the
+  resulting connected init frame.
 - [`opencode` session/state bleed across process launches] → Needs a
   concrete mitigation (unique cwd, unique session id, or confirmed-safe
   reuse) before this backend's isolation can be trusted in the real shop,
   not just in a short-lived spike.
+- [Shop package and project catalogue are conflated] → `--projects-dir`
+  remains the sole external project root, while shop resources and child
+  imports resolve from the already-loaded package. Runtime startup performs
+  no Git checkout discovery.
+- [Per-role OpenCode directories hide completion events] → Subscribe to the
+  cross-directory stream and accept events only for registered role session
+  IDs.
+- [Waiting for OpenCode idle batches visible messages] → Publish completed
+  text-part update events as they arrive, retain idle reconciliation as a
+  recovery path, and share the same emitted-part identity set across both.
+- [Optional failure notices shift chat children into the wrong CSS tracks] →
+  Explicitly place the header, failure area, transcript, and composer into
+  their intended grid rows so the transcript's bounded scrolling track never
+  occupies or passes behind the composer.
 
 ## Migration Plan
 

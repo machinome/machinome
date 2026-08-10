@@ -9,7 +9,7 @@ from pathlib import Path
 import uvicorn
 
 from .app import create_app
-from .preparation import default_project_home, default_solid_command, primary_shop_root
+from .preparation import default_solid_command, shop_resource_root
 from .sessions import SessionRegistry
 
 
@@ -21,13 +21,17 @@ def main() -> None:
         default=int(os.environ.get("FLOOR_PORT", "9000")),
         help="local browser port (default: 9000 or FLOOR_PORT)",
     )
-    parser.add_argument("--project-home", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--projects-dir",
+        type=Path,
+        required=True,
+        help="exact directory containing project repositories",
+    )
     parser.add_argument("--solid-command", help=argparse.SUPPRESS)
     arguments = parser.parse_args()
-    checkout = Path.cwd()
-    project_home = arguments.project_home or default_project_home(checkout)
-    shop_root = primary_shop_root(checkout)
-    solid_command = arguments.solid_command or default_solid_command(checkout)
+    project_home = arguments.projects_dir
+    shop_root = shop_resource_root()
+    solid_command = arguments.solid_command or default_solid_command()
     registry = SessionRegistry(
         project_home,
         shop_root=shop_root,

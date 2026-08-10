@@ -35,8 +35,8 @@ class InactiveTurn(RuntimeError):
 class RoleContext:
     """Runtime context injected into a role session at open time."""
 
-    shop_checkout: str
-    """Absolute path to the shop checkout that owns the resolved profile."""
+    shop_root: str
+    """Absolute root of the loaded shop package resources."""
 
     active_project: str
     """Absolute path to the active mechanical-project repository root."""

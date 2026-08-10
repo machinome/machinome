@@ -9,10 +9,24 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from floor.preparation import REQUIRED_VIEWER_API, PreparationError, default_project_home, list_projects, prepare_project, primary_shop_root, resolve_project, validate_new_project
+from floor.preparation import (
+    REQUIRED_VIEWER_API,
+    PreparationError,
+    default_solid_command,
+    list_projects,
+    prepare_project,
+    resolve_project,
+    validate_new_project,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class FrameworkCommandTest(unittest.TestCase):
+    def test_default_uses_the_solid_cli_from_the_shop_python_environment(self) -> None:
+        with patch("floor.preparation.sys.executable", "/opt/shop-env/bin/python"):
+            self.assertEqual(default_solid_command(), ("/opt/shop-env/bin/solid",))
 
 
 class ProjectResolutionTest(unittest.TestCase):
@@ -29,9 +43,6 @@ class ProjectResolutionTest(unittest.TestCase):
         for name in ("v8_engine", "V8 engine", ".prototype"):
             with self.subTest(name=name):
                 self.assertEqual(resolve_project(name, self.home), self.home / name)
-
-    def test_projects_are_scoped_to_the_checkout_that_launches_the_floor(self) -> None:
-        self.assertEqual(default_project_home(ROOT), ROOT / "projects")
 
     def test_rejects_missing_and_unsafe_names(self) -> None:
         for name in (None, "", "../v8", ".", "..", "v8/engine", "v8\\engine", "/tmp/v8", "bad\0name"):
@@ -249,9 +260,8 @@ class ProjectPreparationTest(unittest.TestCase):
 
 class WorkspaceSolidAcceptanceTest(unittest.TestCase):
     def test_selected_workspace_cli_builds_once_and_rejects_an_invalid_model(self) -> None:
-        shop = primary_shop_root(ROOT)
-        solid = shop / ".venv" / "bin" / "solid"
-        framework = shop / "solid-node"
+        solid = ROOT / ".venv" / "bin" / "solid"
+        framework = ROOT / "solid-node"
         if not solid.is_file() or not framework.is_dir():
             self.skipTest("development workspace solid-node installation is unavailable")
         with tempfile.TemporaryDirectory() as temporary:

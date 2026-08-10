@@ -10,8 +10,10 @@ system.
 ## Project hub and sessions
 
 The process starts without preparing a project, building a model, or starting
-an agent. `floor/app.py` serves the hub over the configured `projects/` working
-folder. Its inventory is derived from the filesystem: every direct-child
+an agent. Both entry points require `--projects-dir`, which names the exact
+external catalogue served by `floor/app.py`. The runtime neither appends a
+directory name nor derives a location from cwd or Git metadata. Its inventory
+is derived from the filesystem: every direct-child
 directory is listed, and exact independent Git repository roots also report
 their declared profile, branch, and last commit time. Regular files are omitted;
 malformed project configuration and non-repository directories remain visible
@@ -37,8 +39,10 @@ new identifier and a fresh broker and conversation.
 ## Profile-defined runtime
 
 When a project is opened, the registry makes one side-effect-free read of its
-`pyproject.toml`, then loads `profiles/<id>/profile.toml` from the primary shop
-checkout. The project's `[tool.solid-node-studio]` `profile` value selects it;
+`pyproject.toml`, then loads `profiles/<id>/profile.toml` from the running shop
+package resources. A source-worktree launch therefore exercises that worktree;
+an installed launch uses its installed resources and requires no Git checkout.
+The project's `[tool.solid-node-studio]` `profile` value selects it;
 otherwise the shop uses `fordesmac`. The launcher provides no override. A
 profile is strict trusted configuration: it declares the
 human label, one user-facing agent, standing roster, direct or delegated work
@@ -50,6 +54,15 @@ policy and Claude permission remain non-overridable. OpenCode has no profile
 table and is available only through an explicit project selection. Creating a
 project records the profile selected in the hub in that repository's initial
 commit.
+
+The profile's Claude tool list is also the shared capability vocabulary for
+scoped Claude and OpenCode sessions. The adapters resolve those names to a
+floor-owned MCP allowlist; OpenCode inherits the policy without adding a
+profile table. Codex cannot enforce it and retains `tools = "inherit"` and its
+native surface. The Fordesmac librarian is provisionally non-functional on the
+scoped backends because this surface intentionally has no web or external
+documentation tools; it remains usable on Codex pending a bounded research
+surface.
 
 The initial profiles are:
 
@@ -122,12 +135,27 @@ generic compatibility delivery operation.
 Codex translates the resolved project/profile model and effort into `thread/start`.
 Claude launches one isolated CLI process per profile agent and translates the
 selected model, effort, permitted tools, and explicit permission policy into
-its supported command fields. An autonomous Claude policy bypasses confirmation
-prompts only for its profile-declared tools; it does not grant extra tools or
-provide operating-system sandboxing. Claude safe mode remains active, so local
-assistant configuration cannot alter the repository-owned contract.
-These two adapters consume one resolved runtime and never parse project or
-profile files or load global role adapters.
+its supported command fields. For a scoped role it writes a strict MCP config,
+removes `--safe-mode` because that flag disables MCP and passes only the resolved
+`mcp__floor__*` names. Because Claude emits no init
+before its first user input, project opening manifests the process after the
+short exit grace without a warm-up turn. The first real broker envelope triggers
+initialization, and that delivery is accepted only after `system/init` reports
+the floor server connected with exactly that tool set, waiting through
+transitional `pending` frames within a separate bounded readiness deadline. An autonomous Claude policy
+bypasses confirmation prompts only for those tools; it does not grant extras or
+provide operating-system sandboxing. An unscoped compatibility role retains
+safe mode. These two adapters consume one resolved runtime and never parse
+project or profile files or load global role adapters.
+
+The floor MCP server is rooted at the exact active project. Every path-bearing
+filesystem, Git, and solid-node operation resolves and rejects escapes before
+acting. It exposes text and raster reads, bounded writes, non-destructive Git
+and commit operations, finite build/test, and temporary image-returning
+snapshots. Its broker lifecycle wrappers can assign, direct, acknowledge,
+report, and complete only through the backend-injected floor URL and opaque
+session; they expose no generic network operation. Push, reset, checkout,
+branch, rebase, arbitrary shell, web, and arbitrary HTTP are absent.
 
 OpenCode owns one password-protected loopback HTTP/SSE server and one persistent
 session per role. Its adapter does not require or read OpenCode profile tables.
@@ -135,11 +163,16 @@ When a project selects an OpenCode provider and model, each prompt carries that
 exact `{providerID, modelID}` pair and its optional reasoning variant. Otherwise
 the adapter inherits the authenticated operator model, variant, and global
 configuration and owns temporary model/variant/tool compatibility defaults. For each role it
-uses one shared generated primary agent with a deny-by-default permission policy;
-every role delivery carries the exact profile prompt and exact allowlisted skill
-instructions as that session's system contract. This is a bounded exception to
-profile-explicit runtime policy, not a claim that OpenCode exposes equivalent
-controls.
+uses the default `build` agent, globally disables the proven native tool set,
+registers the floor MCP server, and sends a per-prompt allowlist of the role's
+resolved floor tools. Every role launch gets a unique temporary working
+directory so OpenCode cannot reuse directory-keyed conversation state. The
+adapter consumes OpenCode's server-global event stream and filters it to known
+role session IDs, preserving completion and failure delivery across those
+isolated directories, while the MCP server remains rooted at the verified
+project. Every role delivery
+carries the exact profile prompt and exact allowlisted skill instructions as
+that session's system contract.
 
 OpenCode native project configuration is disabled. If the exact verified
 project-root `AGENTS.md` is a regular non-symlink file, the adapter manually
@@ -147,9 +180,10 @@ appends it after explicit subordinate-guidance framing. It does not follow a
 symlink or search another location. OpenCode 1.18.11 evidence confirms that
 project configuration can be disabled while operator-global authentication and
 provider defaults remain available. The server uses `--pure` so external
-plugins do not execute. Archived authenticated verification proves exact role
-contract composition and one corrected tool turn with native ancestry and one
-portable completion on the tested 1.18.11 runtime.
+plugins do not execute. Archived authenticated verification proves the
+transport and role-contract composition on the tested 1.18.11 runtime; scoped
+tool replacement is covered by the repository's adapter and MCP protocol
+fixtures.
 
 The profile defaults are Builder/Foreman/Machinist/Librarian on Claude
 `sonnet`, medium effort. On Codex, Builder uses `gpt-5.3-codex-spark` at high
@@ -164,6 +198,9 @@ profile. These choices are backend configuration, not broker semantics.
 The service binds its listener before any project is selected. For each open
 request, profile validation and runtime resolution complete before preparation
 creates or verifies the named independent project repository. The initial build
+runs through the `solid` console script installed beside the Python interpreter
+running the shop, so an unrelated executable earlier on ambient `PATH` cannot
+select a different framework installation. The build
 runs off the event loop and reports an error into that session instead of
 gating it; agent start remains all-or-nothing. The hub remains available during
 opening and after any one project's failure. The browser renders
@@ -218,7 +255,9 @@ recovery.
 
 ## Workspace boundaries
 
-Each `projects/<name>/` directory is an independent Git repository. The
+Each `<projects-dir>/<name>/` directory is an independent Git repository. The
+required catalogue directory is an external runtime input and may be unrelated
+to the shop installation. In this repository's development workspace, the
 framework checkout belongs under `solid-node/`; framework worktrees belong
 under `solid-node/WTs/`; shop worktrees belong under `WTs/`. Runtime agents use
 only their session's verified project root plus their selected profile contract.

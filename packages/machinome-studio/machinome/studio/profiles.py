@@ -1,4 +1,4 @@
-"""Validated, repository-owned runtime profiles for the shop floor."""
+"""Validated, shop-owned runtime profiles loaded from package resources."""
 
 from __future__ import annotations
 
@@ -24,7 +24,9 @@ _TOP_LEVEL = {"schema_version", "user_label", "user_agent", "work_mode", "agents
 _AGENT = {"id", "label", "prompt", "assigns", "reports_to", "backends"}
 _RUNTIME = {"model", "effort", "tools"}
 _CLAUDE_RUNTIME = _RUNTIME | {"permission"}
-_CLAUDE_TOOLS = {"Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch"}
+# These profile-owned capability names are resolved to floor MCP tools for
+# Claude and OpenCode. Codex cannot enforce a tool policy and remains inherit.
+_PROFILE_TOOLS = {"Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch"}
 
 
 class ProfileError(ValueError):
@@ -105,7 +107,7 @@ def load_profile(
 
 
 def _load_profile(selected: str, *, shop_root: Path) -> RuntimeProfile:
-    """Load one named repository-owned profile package."""
+    """Load one named profile package from the running shop resources."""
     if not PROFILE_ID.fullmatch(selected):
         raise ProfileError(f"profile {selected!r} must be lowercase kebab-case")
     shop = shop_root.resolve()
@@ -196,7 +198,7 @@ def resolve_profile_runtime(
             runtime = BackendRuntime(
                 choice.model,
                 choice.effort or "inherit",
-                "inherit",
+                agent.backends["claude"].tools,
                 backend="opencode",
                 provider=choice.provider,
             )
@@ -315,7 +317,7 @@ def _runtime(value: Any, profile: str, agent: str, backend: str) -> BackendRunti
     if backend == "codex" and tools != "inherit":
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.tools cannot be enforced")
     if backend == "claude" and isinstance(tools, list) and (
-        len(tools) != len(set(tools)) or any(tool not in _CLAUDE_TOOLS for tool in tools)
+        len(tools) != len(set(tools)) or any(tool not in _PROFILE_TOOLS for tool in tools)
     ):
         raise ProfileError(f"profile {profile}.{agent}.backends.claude.tools is unsupported")
     if backend == "claude" and permission not in {"manual", "autonomous"}:

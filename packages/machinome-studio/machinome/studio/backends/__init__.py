@@ -16,7 +16,7 @@ from typing import Any
 def create_backend(
     name: str,
     *,
-    cwd: Path,
+    shop_root: Path,
     project: Path | None = None,
     broker_url: str = "http://127.0.0.1:9000",
     command: str | None = None,
@@ -33,7 +33,7 @@ def create_backend(
         raise ValueError(f"unknown backend: {name!r} (choose from: {', '.join(sorted(_BACKENDS))})")
     backend_command = (command_overrides or {}).get(name) or command or name
     return _BACKENDS[name](
-        cwd=cwd,
+        shop_root=shop_root,
         project=project,
         broker_url=broker_url,
         command=backend_command,

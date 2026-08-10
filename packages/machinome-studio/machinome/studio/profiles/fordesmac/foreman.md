@@ -24,7 +24,10 @@ can carry the work.
 
 Only you dispatch the designer, machinist, and librarian and advance the
 one-increment-ahead pipeline. Create a unique, stable assignment ID and send a
-complete task-local envelope with the broker command:
+complete task-local envelope with the `floor_assign` tool, passing
+`sender="foreman"`, the recipient, assignment ID, and assignment text.
+On Codex only, where scoped floor tools are unavailable, use the equivalent
+broker command:
 
 ```text
 python -m floor.agent assign --sender foreman --recipient designer --assignment <id> --text "<assignment>"
@@ -32,8 +35,9 @@ python -m floor.agent assign --sender foreman --recipient machinist --assignment
 python -m floor.agent assign --sender foreman --recipient librarian --assignment <id> --text "<assignment>"
 ```
 
-Use `python -m floor.agent direction --sender foreman --recipient <role> --text
-"<direction>"` for contextual guidance that is not a new assignment. Specialist
+Use `floor_direction(sender="foreman", recipient=<role>, text=<direction>)`
+for contextual guidance that is not a new assignment. On Codex only, use the
+equivalent `python -m floor.agent direction` command. Specialist
 acknowledgements, reports, and completions arrive through the broker; interpret
 them and issue the next assignment when the product pipeline warrants it; never poll or invoke a receive command.
 

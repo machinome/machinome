@@ -160,18 +160,30 @@ def main() -> None:
         }
     )
 
-    send(
-        {
+    mcp_server_names: list[str] = []
+    tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
+    if "--mcp-config" in sys.argv:
+        config = json.loads(open(sys.argv[sys.argv.index("--mcp-config") + 1]).read())
+        mcp_server_names = list(config.get("mcpServers", {}))
+        tools = sys.argv[sys.argv.index("--tools") + 1].split(",")
+
+    def init(mcp_status: str) -> None:
+        send({
             "type": "system",
             "subtype": "init",
             "cwd": os.getcwd(),
             "session_id": SESSION_ID,
-            "tools": ["Bash", "Read", "Write", "Edit", "Glob", "Grep"],
+            "tools": tools,
             "model": "claude-sonnet-5",
             "permissionMode": "bypassPermissions",
-            "mcp_servers": [],
-        }
-    )
+            "mcp_servers": [
+                {"name": name, "status": mcp_status}
+                for name in mcp_server_names
+            ],
+        })
+
+    pending_delay = float(os.environ.get("FAKE_CLAUDE_MCP_PENDING_DELAY", "0"))
+    initialized = False
 
     # The turn currently outstanding, if any: its tool id and whether a
     # correction has been queued into it.
@@ -204,6 +216,13 @@ def main() -> None:
 
         if message.get("type") != "user":
             continue
+
+        if not initialized:
+            if mcp_server_names and pending_delay:
+                init("pending")
+                time.sleep(pending_delay)
+            init(os.environ.get("FAKE_CLAUDE_MCP_FINAL_STATUS", "connected"))
+            initialized = True
 
         text = "".join(
             block.get("text", "")

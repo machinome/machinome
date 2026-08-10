@@ -107,13 +107,13 @@ Rejected. The line falls at what a control governs. Model and reasoning level
 determine how much thinking a role is given and what it costs, which is a
 per-project judgement and the reason this change exists. Tool policy and Claude
 permission govern what a role may touch, and the profile is the trusted,
-repository-owned package that ADR 0011 established to hold exactly that.
+shop-owned profile package that ADR 0011 established to hold exactly that.
 
 ### Give OpenCode a profile default like Codex and Claude
 
 Rejected by the pilot. OpenCode's provider and model space is open, so a shipped
 default would encode one operator's authenticated configuration into a
-repository-owned package. Leaving it selection-only keeps ADR 0012's inherited
+shop-owned profile package. Leaving it selection-only keeps ADR 0012's inherited
 operator default as the no-configuration behaviour.
 
 ## Consequences
