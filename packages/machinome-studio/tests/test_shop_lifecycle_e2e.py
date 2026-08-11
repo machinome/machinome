@@ -163,6 +163,9 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_title("root/__init__.py").click()
         editor = self.page.locator(".monaco-editor").first
         editor.wait_for(timeout=10_000)
+        editor_box = editor.bounding_box()
+        assert editor_box is not None
+        self.assertGreater(editor_box["height"], 500)
         editor_input = editor.locator(".native-edit-context, textarea.inputarea")
         self.page.get_by_role("textbox", name="Message", exact=True).wait_for()
 
