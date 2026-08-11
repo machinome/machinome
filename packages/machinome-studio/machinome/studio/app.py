@@ -21,6 +21,7 @@ from watchdog.observers import Observer
 from .profiles import RuntimeProfile, load_profile, resolve_profile_runtime
 from .preparation import PreparationError, verified_project_root
 from .screenshots import is_safe_screenshot, screenshot_path
+from .source_files import SourceConflict, SourceUnavailable
 from .watcher import ArtifactWatcher, ModelWatcher
 
 
@@ -58,6 +59,18 @@ class Envelope:
     recipient: str
     body: str
     assignment_id: str = ""
+
+    def delivery_value(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class SystemNotice:
+    sequence: int
+    kind: str
+    recipient: str
+    path: str
+    revision: str
 
     def delivery_value(self) -> dict[str, object]:
         return asdict(self)
@@ -118,6 +131,11 @@ class ProjectInput(BaseModel):
     profile: str | None = None
 
 
+class SourceSaveInput(BaseModel):
+    content: str
+    expected_revision: str
+
+
 class Broker:
     """One in-memory run's portable coordination state."""
 
@@ -138,6 +156,8 @@ class Broker:
         self.events: deque[BrokerEvent] = deque(maxlen=event_history_limit)
         self.latest_event_sequence = 0
         self._next_envelope_sequence = 0
+        self._next_notice_sequence = 0
+        self.system_notices: dict[str, list[SystemNotice]] = {}
         self.model_build_error: str | None = None
 
     def run(self) -> dict[str, object]:
@@ -293,6 +313,68 @@ class Broker:
             and envelope.sequence not in self.delivered
             and envelope.sequence not in self.failed_deliveries
         ]
+
+    def queue_user_file_changed(self, path: str, revision: str) -> list[SystemNotice]:
+        queued: list[SystemNotice] = []
+        for role, agent in self.agents.items():
+            if agent.state != "active":
+                continue
+            pending = self.system_notices.setdefault(role, [])
+            notice = next(
+                (
+                    item
+                    for item in pending
+                    if item.kind == "user_file_changed" and item.path == path
+                ),
+                None,
+            )
+            if notice is None:
+                self._next_notice_sequence += 1
+                notice = SystemNotice(
+                    self._next_notice_sequence,
+                    "user_file_changed",
+                    role,
+                    path,
+                    revision,
+                )
+                pending.append(notice)
+            else:
+                self._next_notice_sequence += 1
+                notice = SystemNotice(
+                    self._next_notice_sequence,
+                    "user_file_changed",
+                    role,
+                    path,
+                    revision,
+                )
+                pending[:] = [
+                    notice if item.kind == "user_file_changed" and item.path == path else item
+                    for item in pending
+                ]
+            queued.append(notice)
+            self.publish(
+                "system_notice_queued",
+                {"role": role, "notice_kind": notice.kind},
+                role=role,
+            )
+        return queued
+
+    def pending_system_notices(self, role: str) -> list[SystemNotice]:
+        if role not in self._agent_ids:
+            raise ValueError("unknown agent")
+        return list(self.system_notices.get(role, ()))
+
+    def mark_system_notices_delivered(self, role: str, sequences: list[int]) -> None:
+        if role not in self._agent_ids:
+            raise ValueError("unknown agent")
+        delivered = set(sequences)
+        pending = self.system_notices.get(role, [])
+        removed = [notice for notice in pending if notice.sequence in delivered]
+        self.system_notices[role] = [
+            notice for notice in pending if notice.sequence not in delivered
+        ]
+        for _notice in removed:
+            self.publish("system_notice_delivered", {"role": role}, role=role)
 
     def mark_delivered(self, sequence: int) -> Envelope:
         envelope = self._envelope(sequence)
@@ -651,6 +733,49 @@ def create_app(working_folder: Path, *, registry: object) -> FastAPI:
     async def conversation(session_id: str) -> dict[str, object]:
         broker = session(session_id).broker
         return {"entries": [entry.browser_value() for entry in broker.conversation]}
+
+    @app.get("/api/sessions/{session_id}/source")
+    async def source_entries(session_id: str) -> dict[str, object]:
+        workspace = session(session_id).source_workspace
+        try:
+            entries = await asyncio.to_thread(workspace.entries)
+        except SourceUnavailable as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        return {"entries": [entry.browser_value() for entry in entries]}
+
+    @app.get("/api/sessions/{session_id}/source/{source_path:path}")
+    async def source_file(session_id: str, source_path: str) -> dict[str, str]:
+        workspace = session(session_id).source_workspace
+        try:
+            document = await asyncio.to_thread(workspace.read, source_path)
+        except SourceUnavailable as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        return document.browser_value()
+
+    @app.put("/api/sessions/{session_id}/source/{source_path:path}")
+    async def save_source_file(
+        session_id: str,
+        source_path: str,
+        input: SourceSaveInput,
+    ) -> JSONResponse:
+        project = session(session_id)
+        try:
+            document = await project.save_source(
+                source_path,
+                input.content,
+                input.expected_revision,
+            )
+        except SourceConflict as error:
+            return JSONResponse(
+                {
+                    "detail": str(error),
+                    "current": error.document.browser_value(),
+                },
+                status_code=409,
+            )
+        except SourceUnavailable as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        return JSONResponse(document.browser_value())
 
     @app.post("/api/sessions/{session_id}/conversation")
     async def submit_user_message(session_id: str, input: ConversationInput) -> JSONResponse:

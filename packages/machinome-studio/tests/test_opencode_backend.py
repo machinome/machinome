@@ -254,6 +254,20 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(InactiveTurn):
             await self.backend.deliver_steer(handle, receipt.delivery_id, "Too late")
 
+    async def test_notice_never_starts_a_completed_delivery(self) -> None:
+        await self.backend.start()
+        handle = await self.backend.open_role("builder", self.context())
+        receipt = await self.backend.deliver_start(handle, "HOLD")
+        await asyncio.wait_for(anext(self.backend.events), 2)
+
+        self.assertTrue(await self.backend.deliver_notice(handle, receipt.delivery_id, "Notice"))
+        await self.backend.interrupt(handle)
+        await asyncio.wait_for(anext(self.backend.events), 2)
+        before = len([item for item in self.captured() if item.get("path", "").endswith("/prompt_async")])
+        self.assertFalse(await self.backend.deliver_notice(handle, receipt.delivery_id, "Too late"))
+        after = len([item for item in self.captured() if item.get("path", "").endswith("/prompt_async")])
+        self.assertEqual(after, before)
+
     async def test_interrupt_completes_and_close_role_deletes_session(self) -> None:
         await self.backend.start()
         handle = await self.backend.open_role("builder", self.context())

@@ -23,8 +23,8 @@ with an unopenable reason. Project directory names have no stylistic constraint.
 indexed by an opaque generated session identifier. A project has at most one
 session; different projects have no cardinality limit. Each `Session` owns the
 verified project and artifact roots, build environment, resolved profile,
-broker, orchestrator and backend processes, delivery/event tasks, model and
-artifact watchers, and filesystem observer. Opening is asynchronous and
+broker, orchestrator and backend processes, delivery/event tasks, source
+workspace, source/model/artifact watchers, and filesystem observer. Opening is asynchronous and
 reported on the hub stream. Profile resolution, preparation, and agent start
 are fatal and tear down partial resources; a failed initial model build is
 recorded in the session and does not prevent its workspace from opening.
@@ -82,10 +82,12 @@ root, while prompts and skills remain shop-owned outside that project.
 ```text
 browser hub <--> SessionRegistry <--> Session (one per open project)
                                          |
-project browser <--> Broker <--> Orchestrator <--> per-agent backend owners
-                         |             |                   /    |    \
-                   state, SSE,    resolved profile      Codex Claude OpenCode
-                   conversation   and runtime map       event streams fan in
+project browser <--> source service      +--> filesystem/build watchers
+        |               |
+        +-----------> Broker <--> Orchestrator <--> per-agent backend owners
+                          |             |                   /    |    \
+                    state, SSE,    resolved profile      Codex Claude OpenCode
+                    conversation   and runtime map       event streams fan in
 ```
 
 `floor/app.py` contains the in-memory broker and browser API. Each session's
@@ -111,6 +113,14 @@ state: each manifested agent can carry a current failure reason without losing
 or completing its assignment, and that reason is part of broker snapshots and
 live events.
 
+An accepted maker source save snapshots the roles whose broker work state is
+active and queues a trusted `user_file_changed` notice for each. Notices are
+separate from conversation, direction, assignment, and reporting envelopes;
+they do not change direct or delegated work state. A later unsent revision for
+the same role and path supersedes the earlier notice. Delivery removes only the
+exact accepted notice, so a newer revision queued during an in-flight delivery
+remains pending.
+
 `floor/orchestrator.py` is deterministic and backend-neutral. It instantiates
 each distinct selected backend once, maps every agent to its owner, consumes
 all owners' event streams concurrently, and opens profile agents in declaration
@@ -125,12 +135,21 @@ turn on the retained session; if its transport is dead, the orchestrator opens
 one replacement session and retries once. It never polls or retries without a
 new envelope. A backend-wide failure still ends the run.
 
+Before an ordinary delivery, the orchestrator prepends that role's pending
+trusted notices and acknowledges them only after the backend accepts the
+ordinary message. Immediately after a maker save it may also call the
+backend's notice-only operation for the exact active delivery. Rejection or a
+completion race retains the notice for the next ordinary delivery; notice-only
+delivery never opens a replacement session or starts a turn.
+
 ## Backend seam
 
 The portable `AgentBackend` protocol owns external processes and exposes
-`open_role`, `deliver_start`, `deliver_steer`, `interrupt`, `close_role`, and
-`close`. It emits portable role-message, turn, and failure events. It has no
-generic compatibility delivery operation.
+`open_role`, `deliver_start`, `deliver_steer`, `deliver_notice`, `interrupt`,
+`close_role`, and `close`. It emits portable role-message, turn, and failure
+events. `deliver_notice` is steer-only: each adapter verifies that the expected
+delivery is still active and returns false instead of starting a turn. The
+protocol has no generic compatibility delivery operation.
 
 Codex translates the resolved project/profile model and effort into `thread/start`.
 Claude launches one isolated CLI process per profile agent and translates the
@@ -216,14 +235,28 @@ a fixed 640x360 preview rendered through the selected CLI after an
 observed successful build and before a floor-mediated commit. Rendering and
 staging are best-effort: they never turn a valid build or Git commit into a
 failure. Every session owns a filesystem observer with separate source and
-artifact handlers: source events outside `_build` settle into a `solid build`,
-while each atomic rename into `_build` becomes a named artifact event for that
-session's browser. The floor neither hashes or
-diffs publication contents nor forwards deletions; `errors.json` is published
-and reported through the same path. Each artifact route holds one fixed build
-root and therefore does not re-resolve a symlink during a request. Agent
-sessions do not run a callback process or expose project source through the
-browser service.
+artifact handlers. Qualifying Python changes outside `_build` settle into one
+`solid build`, regardless of whether the writer is an agent, the Code
+workspace, or another local process. Source create, modify, move, and delete
+events also become project-scoped browser invalidations after the watcher
+re-evaluates Git visibility; they carry paths and operations, never content or
+actor attribution. Each atomic rename into `_build` becomes a named artifact
+event for that session's browser. The floor neither hashes nor diffs
+publication contents nor forwards artifact deletions; `errors.json` is
+published and reported through the same path. Each artifact route holds one
+fixed build root and therefore does not re-resolve a symlink during a request.
+Agent sessions do not run a callback process.
+
+Each session has a project-rooted source service for the browser Code area. Git
+defines the working set as tracked plus non-ignored untracked files; `.git`,
+`_build`, and build-staging families are always excluded. Directory rows are
+synthesized from those paths. Read and save revalidate Git visibility, reject
+escapes, symlinks, and non-regular files, and accept at most one MiB of UTF-8
+text. A read returns the SHA-256 byte revision. A save runs under the session's
+source lock, compares the expected revision, preserves the file mode, flushes a
+same-directory temporary file, and atomically replaces the original. It does
+not create absent files or invoke a build. A mismatch returns the current
+document as a conflict without writing.
 
 Each project browser mounts its framework viewer for that workspace. It maps
 each published path directly to the viewer: the manifest reconciles the model,
@@ -232,15 +265,27 @@ updates the separate build-failure banner. A failed targeted request reports
 beside the retained model and the next publication retries normally; the browser
 does not remount the viewer or interpret artifact contents.
 
+The activity rail has interactive Model and Code areas, in that order; Agents
+and Sheets remain deferred and there is no Files area. Code shows the
+Git-visible project-root navigator and a locally bundled Monaco editor. Each
+path owns a Monaco model, tab, undo history, and view state. Ctrl/Cmd+S sends a
+revision-checked save. Clean open models accept external content through a
+guarded edit; dirty models preserve maker text and expose the external document
+as an explicit reload conflict. Source invalidations refresh the tree, so an
+agent-created non-ignored untracked file appears without instrumenting agent
+tools. Model, Code, and conversation components remain mounted while visibility
+changes, preserving viewer, editor, transcript, scroll, and draft state.
+
 The hub holds one live-state connection to `/api/stream`. It opens with the
 complete project inventory, including each usable screenshot's content revision,
 and then carries project opening, open, failed, closed, and screenshot-revision
 changes. A workspace holds one connection to its session stream. It
 opens with that broker's complete run state and full ordered conversation, then
-carries only that project's subsequent changes. Neither scope polls live state,
-and the hub never receives a conversation. A broker subscribes the connection
-before reading the snapshot, and its snapshot carries the explicit latest event
-sequence so the browser can discard that hand-off overlap exactly once.
+carries only that project's subsequent changes, including source invalidations.
+Neither scope polls live state, and the hub never receives a conversation. A
+broker subscribes the connection before reading the snapshot, and its snapshot
+carries the explicit latest event sequence so the browser can discard that
+hand-off overlap exactly once.
 
 Project cards use a revision-cache-busted request for that canonical image and
 fall back to their striped placeholder if it is absent or cannot be decoded.
@@ -260,9 +305,10 @@ previous connection. Because sessions are ephemeral, a project page whose
 session ended or disappeared after a service restart returns to the hub.
 Connection state drives the displayed open/closed lifecycle; reconnecting an
 intact session also prompts the mounted viewer to re-read its model because
-artifact events are not recoverable broker state. The bounded broker event
-history is reserved for a future activity display and is never read for
-recovery.
+artifact events are not recoverable broker state. Reconnect also re-lists the
+source tree and re-reads every open source path, using the same clean-update or
+dirty-conflict rule as a live invalidation. The bounded broker event history is
+reserved for a future activity display and is never read for recovery.
 
 ## Workspace boundaries
 

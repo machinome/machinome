@@ -17,9 +17,99 @@ from typing import Any
 
 from watchdog.events import FileMovedEvent, FileSystemEvent, FileSystemEventHandler
 
+from .source_files import SourceUnavailable, SourceWorkspace
+
 
 LOGGER = logging.getLogger(__name__)
 Publisher = Callable[..., Any]
+
+
+class SourceFileWatcher(FileSystemEventHandler):
+    """Publish Git-visible source invalidations without attributing an author."""
+
+    def __init__(
+        self,
+        project_root: Path,
+        loop: asyncio.AbstractEventLoop,
+        publish: Publisher,
+    ) -> None:
+        super().__init__()
+        self.project_root = project_root.resolve()
+        self.loop = loop
+        self.publish = publish
+        self.workspace = SourceWorkspace(self.project_root)
+        try:
+            self.visible = self.workspace.visible_paths()
+        except SourceUnavailable:
+            self.visible = set()
+
+    def on_created(self, event: FileSystemEvent) -> None:
+        self._change("created", event)
+
+    def on_modified(self, event: FileSystemEvent) -> None:
+        self._change("modified", event)
+
+    def on_moved(self, event: FileSystemEvent) -> None:
+        self._change("moved", event)
+
+    def on_deleted(self, event: FileSystemEvent) -> None:
+        self._change("deleted", event)
+
+    def _change(self, operation: str, event: FileSystemEvent) -> None:
+        if event.is_directory:
+            return
+        source = self._relative(event.src_path)
+        destination_value = getattr(event, "dest_path", "")
+        destination = self._relative(destination_value) if destination_value else None
+        if source is None and destination is None:
+            return
+
+        before = self.visible
+        try:
+            after = self.workspace.visible_paths()
+        except SourceUnavailable:
+            return
+        self.visible = after
+
+        payload: dict[str, str]
+        if operation == "moved":
+            if source not in before and destination not in after:
+                return
+            path = destination or source
+            if path is None:
+                return
+            payload = {"operation": operation, "path": path}
+            if source is not None:
+                payload["previous_path"] = source
+        elif operation == "deleted":
+            if source is None or source not in before:
+                return
+            payload = {"operation": operation, "path": source}
+        else:
+            path = destination or source
+            if path is None or path not in after:
+                return
+            payload = {"operation": operation, "path": path}
+        self.loop.call_soon_threadsafe(self.publish, "source_file_changed", payload)
+
+    def _relative(self, value: str) -> str | None:
+        try:
+            relative = Path(value).absolute().relative_to(self.project_root).as_posix()
+        except (OSError, ValueError):
+            return None
+        if not relative or relative == ".":
+            return None
+        parts = Path(relative).parts
+        first = parts[0]
+        if (
+            first == ".git"
+            or first == "_build"
+            or first.startswith("_build.")
+            or first.startswith(".solid-node-build-")
+            or any(part.startswith(".solid-node-studio-save-") for part in parts)
+        ):
+            return None
+        return relative
 
 
 class ArtifactWatcher(FileSystemEventHandler):

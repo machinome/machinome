@@ -208,6 +208,14 @@ class ClaudeBackend:
             return DeliveryReceipt(delivery_id=expected_delivery_id, accepted=True)
         return await self.deliver_start(handle, message)
 
+    async def deliver_notice(
+        self, handle: RoleHandle, expected_delivery_id: str, message: str
+    ) -> bool:
+        if self._outstanding.get(handle.backend_id) != expected_delivery_id:
+            return False
+        await self._write_user(handle, message)
+        return True
+
     async def interrupt(self, handle: RoleHandle) -> None:
         """Interrupt the active turn.  The session survives (ADR 0008)."""
         process = self.processes.get(handle.backend_id)

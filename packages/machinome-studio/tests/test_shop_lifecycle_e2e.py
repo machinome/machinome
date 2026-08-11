@@ -148,6 +148,61 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual(history["mounts"], 1)
         self.assertIn("/projects/viewer-project/artifacts/viewer.json", history["fetches"])
 
+    def test_code_workspace_saves_and_reconciles_agent_file_changes(self) -> None:
+        project = self._make_project("code-project")
+        (project / ".gitignore").write_text(
+            (project / ".gitignore").read_text() + "ignored.py\n"
+        )
+        (project / "ignored.py").write_text("# ignored\n")
+        self._open("code-project")
+        self.page.goto(self.url("/projects/code-project"))
+
+        self.page.get_by_role("button", name="Code", exact=True).click()
+        self.assertEqual(self.page.get_by_text("Files", exact=True).count(), 0)
+        self.assertEqual(self.page.get_by_title("ignored.py").count(), 0)
+        self.page.get_by_title("root/__init__.py").click()
+        editor = self.page.locator(".monaco-editor").first
+        editor.wait_for(timeout=10_000)
+        editor_input = editor.locator(".native-edit-context, textarea.inputarea")
+        self.page.get_by_role("textbox", name="Message", exact=True).wait_for()
+
+        editor_input.focus()
+        self.page.keyboard.press("Control+A")
+        self.page.keyboard.type("# saved in Code\n")
+        self.page.keyboard.press("Control+S")
+        _wait_for(lambda: (project / "root" / "__init__.py").read_text() == "# saved in Code\n")
+        _wait_for(lambda: (project / ".fake-solid-builds").read_text().count("build\n") >= 2)
+        self.page.get_by_text("saved", exact=True).wait_for()
+
+        (project / "agent_created.py").write_text("# made by an agent\n")
+        self.page.get_by_title("agent_created.py").wait_for(timeout=10_000)
+        self.page.get_by_title("agent_created.py").click()
+        self.page.get_by_text("made by an agent", exact=False).wait_for(timeout=10_000)
+
+        (project / "agent_created.py").write_text("# clean agent revision\n")
+        self.page.get_by_text("clean agent revision", exact=False).wait_for(timeout=10_000)
+
+        composer = self.page.get_by_role("textbox", name="Message", exact=True)
+        composer.fill("persistent draft")
+        self.page.get_by_role("button", name="Model", exact=True).click()
+        self.page.get_by_role("button", name="Code", exact=True).click()
+        self.page.get_by_title("agent_created.py").last.wait_for()
+        self.assertEqual(composer.input_value(), "persistent draft")
+        self.assertEqual(self.page.evaluate("() => window.__solidNodeWidgetHistory.mounts"), 1)
+
+        editor_input.focus()
+        self.page.keyboard.press("End")
+        self.page.keyboard.type("# unsaved maker text")
+        self.page.get_by_text("unsaved", exact=True).wait_for()
+        (project / "agent_created.py").write_text("# changed by an agent\n")
+        self.page.get_by_text("external changes", exact=True).wait_for(timeout=10_000)
+        self.page.get_by_text("Your unsaved text is preserved.", exact=False).wait_for()
+        editor_input.focus()
+        self.page.keyboard.press("Control+S")
+        self.assertEqual((project / "agent_created.py").read_text(), "# changed by an agent\n")
+        self.page.get_by_role("button", name="Reload external version").click()
+        self.page.get_by_text("changed by an agent", exact=False).wait_for(timeout=10_000)
+
     def _make_project(self, name: str) -> Path:
         project = self.project_home / name
         (project / "root").mkdir(parents=True)

@@ -105,6 +105,44 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(recovery_event["kind"], "agent_recovered")
         self.assertEqual(recovery_event["payload"], recovered.browser_value())
 
+    async def test_maker_file_notices_snapshot_active_roles_and_coalesce_by_path(self) -> None:
+        self.broker.assign("designer", "drawing-1")
+        self.broker.acknowledge("designer", "drawing-1")
+        conversation_before = list(self.broker.conversation)
+
+        first = self.broker.queue_user_file_changed("root/plate.py", "revision-1")
+        second = self.broker.queue_user_file_changed("root/plate.py", "revision-2")
+
+        self.assertEqual([notice.recipient for notice in first], ["designer"])
+        self.assertEqual([notice.recipient for notice in second], ["designer"])
+        pending = self.broker.pending_system_notices("designer")
+        self.assertEqual(len(pending), 1)
+        self.assertEqual((pending[0].path, pending[0].revision), ("root/plate.py", "revision-2"))
+        self.assertEqual(self.broker.pending_system_notices("foreman"), [])
+        self.assertEqual(self.broker.conversation, conversation_before)
+        self.assertEqual(self.broker.agents["designer"].state, "active")
+
+        self.broker.mark_system_notices_delivered("designer", [pending[0].sequence])
+        self.assertEqual(self.broker.pending_system_notices("designer"), [])
+
+    async def test_maker_file_notice_keeps_a_newer_revision_queued_during_delivery(self) -> None:
+        self.broker.assign("designer", "drawing-1")
+        self.broker.acknowledge("designer", "drawing-1")
+        self.broker.queue_user_file_changed("root/plate.py", "revision-1")
+        delivering = self.broker.pending_system_notices("designer")[0]
+
+        self.broker.queue_user_file_changed("root/plate.py", "revision-2")
+        self.broker.mark_system_notices_delivered("designer", [delivering.sequence])
+
+        pending = self.broker.pending_system_notices("designer")
+        self.assertEqual(len(pending), 1)
+        self.assertEqual(pending[0].revision, "revision-2")
+        self.assertNotEqual(pending[0].sequence, delivering.sequence)
+
+    async def test_maker_file_notice_queues_nothing_when_every_role_is_waiting(self) -> None:
+        self.assertEqual(self.broker.queue_user_file_changed("root/plate.py", "revision"), [])
+        self.assertTrue(all(not self.broker.pending_system_notices(role) for role in self.broker.agents))
+
 
 class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
     async def test_direct_profile_routes_user_and_turn_state_without_assignment_ceremony(self) -> None:

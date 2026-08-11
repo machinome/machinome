@@ -76,6 +76,8 @@ class FakeBroker:
         self.failures: dict[str, str] = {}
         self.recoveries: list[str] = []
         self.failed_deliveries: list[tuple[int, str]] = []
+        self.system_notices: dict[str, list[dict[str, object]]] = {}
+        self.delivered_system_notices: list[tuple[str, list[int]]] = []
 
     async def manifest(self, role: str, label: str) -> None:
         self.manifested.append((role, label))
@@ -96,6 +98,17 @@ class FakeBroker:
     async def mark_delivery_failed(self, sequence: int, error: str) -> None:
         self.failed_deliveries.append((sequence, error))
 
+    async def pending_system_notices(self, role: str) -> list[dict[str, object]]:
+        return list(self.system_notices.get(role, ()))
+
+    async def mark_system_notices_delivered(self, role: str, sequences: list[int]) -> None:
+        self.delivered_system_notices.append((role, sequences))
+        delivered = set(sequences)
+        self.system_notices[role] = [
+            notice for notice in self.system_notices.get(role, ())
+            if int(notice["sequence"]) not in delivered
+        ]
+
 
 class FakeCodex:
     def __init__(self) -> None:
@@ -105,6 +118,8 @@ class FakeCodex:
         self.interrupted: list[tuple[str, str]] = []
         self.closed: list[str] = []
         self.fail_next_steer = False
+        self.accept_notices = True
+        self.notice_deliveries: list[tuple[str, str, str]] = []
 
     async def start_thread(self, role: str) -> str:
         self.started_threads.append(role)
@@ -147,6 +162,12 @@ class FakeCodex:
     ) -> DeliveryReceipt:
         await self.steer_turn(handle.backend_id, expected_delivery_id, message)
         return DeliveryReceipt(delivery_id=expected_delivery_id, accepted=True)
+
+    async def deliver_notice(
+        self, handle: RoleHandle, expected_delivery_id: str, message: str
+    ) -> bool:
+        self.notice_deliveries.append((handle.backend_id, expected_delivery_id, message))
+        return self.accept_notices
 
     async def interrupt(self, handle: RoleHandle) -> None:
         await self.interrupt_turn(handle.backend_id, handle.backend_id)
@@ -235,6 +256,41 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.codex.started_turns[-1][0], "thread-machinist")
         self.assertIn("instruction:\nCorrection", self.codex.started_turns[-1][1])
         self.assertEqual(self.broker.delivered[-1], 13)
+
+    async def test_notice_steers_a_continuing_turn_without_starting_or_changing_work(self) -> None:
+        await self.orchestrator.deliver({"sequence": 20, "recipient": "designer", "body": "First"})
+        self.broker.system_notices["designer"] = [
+            {"sequence": 1, "kind": "user_file_changed", "path": "root/plate.py", "revision": "new"}
+        ]
+        started = len(self.codex.started_turns)
+
+        await self.orchestrator.deliver_pending_notices("designer")
+
+        self.assertEqual(len(self.codex.started_turns), started)
+        self.assertIn("kind: user_file_changed", self.codex.notice_deliveries[-1][2])
+        self.assertEqual(self.broker.delivered_system_notices, [("designer", [1])])
+
+    async def test_unaccepted_notice_waits_for_the_next_ordinary_delivery(self) -> None:
+        await self.orchestrator.deliver({"sequence": 21, "recipient": "designer", "body": "First"})
+        self.broker.system_notices["designer"] = [
+            {"sequence": 2, "kind": "user_file_changed", "path": "root/plate.py", "revision": "new"}
+        ]
+        self.codex.accept_notices = False
+        started = len(self.codex.started_turns)
+
+        await self.orchestrator.deliver_pending_notices("designer")
+        self.assertEqual(len(self.codex.started_turns), started)
+        self.assertEqual(self.broker.delivered_system_notices, [])
+
+        await self.orchestrator.handle_event(
+            BackendEvent(kind="turn_completed", role="designer", delivery_id="turn-1")
+        )
+        await self.orchestrator.deliver({"sequence": 22, "recipient": "designer", "body": "Continue"})
+
+        self.assertEqual(len(self.codex.started_turns), started + 1)
+        self.assertIn("kind: user_file_changed", self.codex.started_turns[-1][1])
+        self.assertIn("instruction:\nContinue", self.codex.started_turns[-1][1])
+        self.assertEqual(self.broker.delivered_system_notices, [("designer", [2])])
 
     async def test_standby_does_not_start_or_steer_a_turn_and_close_interrupts_active_work(self) -> None:
         self.assertEqual(self.codex.started_turns, [])
@@ -545,6 +601,19 @@ class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         completed = await asyncio.wait_for(anext(codex.events), timeout=1)
         self.assertEqual(completed.kind, "turn_completed")
         self.assertEqual(completed.delivery_id, receipt.delivery_id)
+
+    async def test_notice_steers_only_the_expected_active_turn(self) -> None:
+        codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
+        await codex.start()
+        self.addAsyncCleanup(codex.close)
+        handle = await codex.open_role("designer", _context("designer"))
+        receipt = await codex.deliver_start(handle, "Begin")
+        await asyncio.wait_for(anext(codex.events), timeout=1)
+
+        self.assertTrue(await codex.deliver_notice(handle, receipt.delivery_id, "Notice"))
+        await codex.interrupt(handle)
+        await asyncio.wait_for(anext(codex.events), timeout=1)
+        self.assertFalse(await codex.deliver_notice(handle, receipt.delivery_id, "Too late"))
 
     async def test_unexpected_process_exit_emits_backend_failure(self) -> None:
         codex = CodexAppServer(
@@ -1347,6 +1416,20 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         )
         with self.assertRaises(asyncio.TimeoutError):
             await asyncio.wait_for(anext(self.claude.events), timeout=0.5)
+
+    async def test_notice_never_starts_a_completed_claude_delivery(self) -> None:
+        await self.claude.start()
+        handle = await self.claude.open_role("machinist", self.context("machinist"))
+        receipt = await self.claude.deliver_start(handle, "HOLD")
+        await asyncio.wait_for(anext(self.claude.events), timeout=5)
+        self.assertTrue(await self.claude.deliver_notice(handle, receipt.delivery_id, "Notice"))
+        await asyncio.wait_for(anext(self.claude.events), timeout=5)
+        await asyncio.wait_for(anext(self.claude.events), timeout=5)
+        messages = len([item for item in self.captured() if item["kind"] == "message"])
+
+        self.assertFalse(await self.claude.deliver_notice(handle, receipt.delivery_id, "Too late"))
+        self.assertEqual(len([item for item in self.captured() if item["kind"] == "message"]), messages)
+        await self.claude.close()
         await self.claude.close()
 
     async def test_steer_after_completion_becomes_a_new_delivery(self) -> None:

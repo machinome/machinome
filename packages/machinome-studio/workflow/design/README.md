@@ -2,13 +2,10 @@
 
 ## Overview
 
-`solid-node-studio` currently opens one screen — the shop floor workspace — after
-the operator supplies a project and profile at the CLI
-(`python -m floor.orchestrator <project> --profile builder`), while the project
-records per-agent runtime selection in `pyproject.toml`.
-The current browser UI (`floor/frontend/src/main.tsx` + `styles.css`) is a
-left menu column with a right content column split **horizontally** into
-artifact-above-conversation.
+`solid-node-studio` opens a project hub and then a shop workspace. The project
+records its profile and per-agent runtime selection in `pyproject.toml`. The
+workspace has persistent Model and Code areas with the project conversation at
+the right.
 
 This handoff replaces that with a desktop-like application shell:
 
@@ -121,8 +118,8 @@ top. Each carries a visible id badge.
   also with min-height 252px.
 
 ### 1b / 2a / 2b — Workspace (chosen direction)
-Single layout; the second column swaps with the rail selection. Model and chat
-never move.
+Single layout; Model and Code swap the navigator/context and center content.
+The mounted model, editor state, and chat are preserved across the switch.
 
 - **Grid:** `74px 270px minmax(0,1fr) 400px` between a 38px title bar and a
   26px status bar. In 2b the panel column widens to `330px`. All columns
@@ -131,9 +128,10 @@ never move.
   square mark, `Shop`, `/` in `#4a515c`, project name, mono 11px
   `fordesmac · claude`; right side mono 11px `run 2f9c41 · open` with a green
   dot.
-- **Activity rail** (`#121419`): five items — MODEL (diamond: 14px square
-  rotated 45°), FILES (14px rounded square), AGENTS (circle), SHEETS (two
-  horizontal rules), CODE (mono `{ }`). Each item is a full-width column,
+- **Activity rail** (`#121419`): four items — MODEL (diamond: 14px square
+  rotated 45°), CODE (mono `{ }`), AGENTS (circle), and SHEETS (two horizontal
+  rules). Model and Code are interactive; Agents and Sheets are visibly
+  deferred. There is no Files area. Each item is a full-width column,
   padding 10px 0, gap 6, with a mono 9px uppercase label. Selected: `#1c2128`
   bg + 2px left border `#e0a350` + amber glyph and label; idle glyph/label
   `#8b929e`; hover `#171b21`. **Do not substitute an icon font — these are the
@@ -145,10 +143,12 @@ never move.
     `#8b929e` labels, mono `#c3c8d1` values, `complete` in `#5f9e6a`), Agents
     list (rows `#171b21`, radius 6, padding 7/8: dot + label 12.5px + mono
     10.5px state).
-  - *FILES (2a):* project name as a mono 10px uppercase section label, then a
-    file tree — mono 12px rows, 16px indent per depth, 7px type chip
-    (`#e0a350` model, `#4fb6b8` source, `#8b929e` config, `#4a515c`
-    directories/build output); the open file gets `#1c2128` + `#e6e8ec`.
+  - *CODE (2a):* `PROJECT ROOT` as a mono 10px uppercase section label, then a
+    Git-visible file tree — mono 12px rows, 14–16px indent per depth, 7px teal
+    source chip, and muted directory rows. The open file gets `#1c2128` +
+    `#e6e8ec`. The tree contains tracked files and non-ignored untracked files;
+    `.git`, ignored paths, build output, and build staging never appear. It has
+    refresh but no create, rename, delete, Git, or terminal controls.
   - *AGENTS (2b):* roster of selectable rows (selected: `#1c2128` +
     1px `#2a3d40`), then a detail block separated by a 1px `#262b33` rule —
     agent name 14px/600 + elapsed time, `backend / assignment / from`
@@ -156,11 +156,11 @@ never move.
     and a Steps list: mono 11.5px rows with a 7px dot — done `#5f9e6a` +
     `#8b929e` text, active `#4fb6b8` + `#e6e8ec` text on `#1c2128`, pending
     `#3d4450` + `#6b7280`.
-- **Center — tab strip** (40px, bottom 1px `#1e232a`): mono 11px tabs, padding
-  5/10, radius 5; active `#1c2128` + `#e6e8ec`, idle `#8b929e` with `#171b21`
-  hover. Right side shows context (`iso · mm`, or
-  `edited by Designer · unsaved` in amber, or
-  `Designer's changes highlighted` in `#4fb6b8`).
+- **Center — tab strip** (40px, bottom 1px `#1e232a`): in Code, mono 11px file
+  tabs use `#171b21`, with the active tab at `#1c2128` + `#e6e8ec`. A dot marks
+  unsaved text and `!` marks an external conflict or deletion. The right side
+  states `saved`, `unsaved`, `external changes`, or `deleted externally`. Do
+  not attribute filesystem changes to an agent.
 - **Center — model viewport:** `radial-gradient(120% 120% at 50% 35%, #171b21 0%, #0f1115 70%)`
   with a 48px grid overlay
   (`repeating-linear-gradient(0deg|90deg, rgba(255,255,255,.022) 0 1px, transparent 1px 48px)`).
@@ -173,12 +173,13 @@ never move.
   and mono `0.34 · 24 fps`. This replaces today's hidden-by-default
   `.animation-controls` bar; the toggle stays for users who want it out of the
   way.
-- **Center — code tab (2a):** mono 12.5px / line-height 1.75, 44px right-aligned
-  gutter in `#3d4450`, 16px gutter gap. Agent-changed lines:
-  `rgba(224,163,80,.09)` row background, 2px left border `#e0a350`, text
-  `#f0dcbc`. Below the editor a 150px live preview strip (`#0d0f13`, top 1px
-  `#1e232a`) with a mono `rebuild on save` note top-right — the model stays
-  visible while editing.
+- **Center — Code editor (2a):** locally bundled Monaco, dark theme, mono
+  12.5px, no minimap. Each project path owns a tab/model with independent undo
+  and view state. Ctrl/Cmd+S saves. A clean external revision replaces the
+  model without recreating it. A dirty external revision keeps the maker's
+  text, shows an amber conflict strip, and offers `Reload external version`;
+  there is no force-overwrite or merge in this increment. Model preview remains
+  in the separate Model area rather than a Code preview strip.
 - **Right — chat column** (`#121419`, left 1px `#262b33`,
   `grid-template-rows: auto minmax(0,1fr) auto`):
   - Header 12/16: 8px amber dot, `Foreman` 13px/500, mono 11px
@@ -213,14 +214,18 @@ Kept on the canvas for context only. 1c moved activity to a bottom drawer,
 
 ## Interactions & behaviour
 
-- **Rail selection** swaps the panel column only; viewport state (camera,
-  timeline position) must survive the swap. The existing `ViewerView`
-  preserve-camera mechanism in `viewer.ts` already covers rebuilds; extend it
-  to panel/tab changes.
-- **Opening a file** adds a tab beside `bracket.model`; the model tab is never
-  closable. Saving triggers the source watcher; each atomic publication reaches
-  the browser over SSE, and the S1 bridge refreshes the model when it receives
-  the `viewer.json` artifact event.
+- **Rail selection** switches Model and Code visibility without unmounting the
+  viewer, Monaco models, or chat. Viewer camera/timeline, file tabs, undo/view
+  state, dirty buffers, transcript scroll, and the chat draft survive.
+- **Opening a file** adds a closable source tab. Saving is revision-checked and
+  atomically replaces the existing file; it triggers the same source watcher as
+  an agent write, and a qualifying Python change reaches the existing build
+  path. The save route does not invoke a second build.
+- **External source changes** arrive as unattributed SSE invalidations. The
+  browser refreshes the complete Git-visible tree and affected open paths.
+  Agent-created non-ignored untracked files appear; clean buffers reload; dirty
+  buffers preserve maker text and enter conflict. Reconnect performs the same
+  reconciliation without polling.
 - **Rebuild failure** reports the published `errors.json` record beside the
   model (`model-build-error`); a partial model is an honest observable state.
   Use `#2a1a1a` bg, 1px `#5a2a2a`, text `#f0b4b4`, radius 8, mono 11.5px.
@@ -248,8 +253,12 @@ New:
   `workingFolder === null` or no backend is enabled.
 - `workspace.projects` — list from the service: `{ name, branch, lastOpened,
   isOpen, profileId }`.
-- `workspace.activePanel` — `"model" | "files" | "agents" | "sheets" | "code"`.
-- `workspace.openTabs` / `activeTab` — model tab plus opened files.
+- `workspace.activePanel` — `"model" | "code"`; Agents and Sheets remain
+  disabled rail affordances.
+- `workspace.openTabs` / `activeTab` — opened source files only, keyed by
+  project-relative path.
+- `workspace.sourceBuffers` — content, saved content, SHA-256 revision,
+  conflict document, and deletion state for every open path.
 - `workspace.selectedAgent` — drives the AGENTS detail block.
 - `agentStatus` — derived from broker events, the newest line per agent, used
   for both the roster state text and the inline chat status lines.
@@ -267,6 +276,14 @@ Not present today; needed for the hub and setup:
   repository and opens a run (the current orchestrator entry point).
 - `POST /api/runs` / `DELETE /api/runs/:id` — open/close a run for an existing
   project, so opening a project does not require restarting the process.
+
+Present for Code:
+
+- `GET /api/sessions/:id/source` — Git-visible file and synthesized directory
+  entries for the verified project root.
+- `GET /api/sessions/:id/source/:path` — bounded UTF-8 content and revision.
+- `PUT /api/sessions/:id/source/:path` — existing content plus expected
+  revision; atomically save or return the current document as a conflict.
 
 ## Design tokens
 

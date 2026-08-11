@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import socket
+import stat
 import subprocess
 import tempfile
 import time
@@ -185,6 +186,47 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual({item["id"] for item in first}, {"codex", "claude", "opencode"})
         self.assertEqual([item["id"] for item in first], [item["id"] for item in second])
         self.assertTrue(all(set(item) == {"id", "found", "executable", "version", "model"} for item in first))
+
+    def test_source_routes_list_read_and_revision_check_atomic_saves_per_session(self) -> None:
+        alpha_project = self._make_project("source-alpha")
+        bravo_project = self._make_project("source-bravo")
+        (alpha_project / "agent.py").write_text("agent = True\n")
+        (alpha_project / "ignored.py").write_text("ignored = True\n")
+        with (alpha_project / ".gitignore").open("a") as ignore:
+            ignore.write("ignored.py\n")
+        alpha = self._open("source-alpha")
+        bravo = self._open("source-bravo")
+
+        entries = _request(self.url(f"/api/sessions/{alpha}/source"), "GET")["entries"]
+        paths = {entry["path"] for entry in entries}
+        self.assertIn("agent.py", paths)
+        self.assertIn("root/__init__.py", paths)
+        self.assertNotIn("ignored.py", paths)
+        self.assertFalse(any(path == ".git" or path.startswith((".git/", "_build")) for path in paths))
+
+        opened = _request(self.url(f"/api/sessions/{alpha}/source/root/__init__.py"), "GET")
+        mode = stat.S_IMODE((alpha_project / "root" / "__init__.py").stat().st_mode)
+        saved = _request(
+            self.url(f"/api/sessions/{alpha}/source/root/__init__.py"),
+            "PUT",
+            {"content": "# maker edit\n", "expected_revision": opened["revision"]},
+        )
+        self.assertNotEqual(opened["revision"], saved["revision"])
+        self.assertEqual((alpha_project / "root" / "__init__.py").read_text(), "# maker edit\n")
+        self.assertEqual(stat.S_IMODE((alpha_project / "root" / "__init__.py").stat().st_mode), mode)
+
+        self.assertEqual(
+            _status(
+                self.url(f"/api/sessions/{alpha}/source/root/__init__.py"),
+                "PUT",
+                {"content": "# stale\n", "expected_revision": opened["revision"]},
+            ),
+            409,
+        )
+        self.assertEqual((alpha_project / "root" / "__init__.py").read_text(), "# maker edit\n")
+        self.assertEqual(_status(self.url(f"/api/sessions/{alpha}/source/new.py"), "PUT", {"content": "new\n", "expected_revision": "0" * 64}), 404)
+        self.assertEqual(_status(self.url(f"/api/sessions/{bravo}/source/agent.py"), "GET"), 404)
+        self.assertEqual((bravo_project / "root" / "__init__.py").read_text(), "# model\n")
 
     def _make_project(self, name: str, profile: str = "builder") -> Path:
         project = self.project_home / name

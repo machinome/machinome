@@ -237,6 +237,19 @@ class OpenCodeBackend:
             active.accepted_messages[message_id] = message
         return DeliveryReceipt(delivery_id=expected_delivery_id, accepted=True)
 
+    async def deliver_notice(
+        self, handle: RoleHandle, expected_delivery_id: str, message: str
+    ) -> bool:
+        session_id = handle.backend_id
+        async with self._state_lock:
+            active = self._active.get(session_id)
+            if active is None or active.delivery_id != expected_delivery_id:
+                return False
+            message_id = self._message_id()
+            await self._prompt(session_id, message_id, message)
+            active.accepted_messages[message_id] = message
+        return True
+
     async def interrupt(self, handle: RoleHandle) -> None:
         session_id = handle.backend_id
         async with self._state_lock:

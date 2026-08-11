@@ -1,5 +1,8 @@
 import { FormEvent, StrictMode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import Editor from "@monaco-editor/react";
+import type { Monaco, OnMount } from "@monaco-editor/react";
 import { createRoot } from "react-dom/client";
+import "./monaco";
 import "./styles.css";
 import type { ViewerHandle, ViewerView } from "./solid-node-widget";
 
@@ -27,7 +30,7 @@ type Run = {
 
 type LifecycleEvent = {
   kind: string;
-  payload: Agent | ConversationEntry | { artifact?: string; reason?: string };
+  payload: Agent | ConversationEntry | SourceInvalidation | { artifact?: string; reason?: string };
   event: BrokerEvent;
 };
 
@@ -69,6 +72,20 @@ type BackendStatus = {
   executable: string | null;
   version: string | null;
   model: string | null;
+};
+
+type SourceEntry = { path: string; kind: "file" | "directory" };
+type SourceDocument = { path: string; content: string; revision: string };
+type SourceInvalidation = {
+  operation: "created" | "modified" | "moved" | "deleted";
+  path: string;
+  previous_path?: string;
+};
+type SourceEvent = SourceInvalidation & { sequence: number };
+type FileBuffer = SourceDocument & {
+  savedContent: string;
+  conflict: SourceDocument | null;
+  missing: boolean;
 };
 
 function FunctionalModel({ artifact, reconnect, buildError, project }: {
@@ -300,11 +317,10 @@ function AgentPanel({ agents }: { agents: Agent[] }) {
 }
 
 const railItems = [
-  ["model", "◇", "Model"],
-  ["files", "▣", "Files"],
-  ["agents", "●", "Agents"],
-  ["sheets", "═", "Sheets"],
-  ["code", "{ }", "Code"],
+  ["model", "◇", "Model", true],
+  ["code", "{ }", "Code", true],
+  ["agents", "●", "Agents", false],
+  ["sheets", "═", "Sheets", false],
 ] as const;
 
 function navigate(path: string) {
@@ -530,13 +546,311 @@ function Hub() {
   </main>;
 }
 
+function sourceModelPath(path: string) {
+  return `file:///${path.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+function sourceLanguage(path: string) {
+  const extension = path.split(".").pop()?.toLowerCase();
+  return ({
+    css: "css", html: "html", js: "javascript", json: "javascript", jsx: "javascript",
+    md: "markdown", py: "python", toml: "ini", ts: "typescript", tsx: "typescript",
+    yaml: "yaml", yml: "yaml",
+  } as Record<string, string>)[extension ?? ""] ?? "plaintext";
+}
+
+function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible }: {
+  sessionId: string | null;
+  sourceEvent: SourceEvent | null;
+  reconnect: number;
+  visible: boolean;
+}) {
+  const [entries, setEntries] = useState<SourceEntry[]>([]);
+  const [files, setFiles] = useState<Record<string, FileBuffer>>({});
+  const [tabs, setTabs] = useState<string[]>([]);
+  const [activePath, setActivePath] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const filesRef = useRef(files);
+  const saving = useRef(new Set<string>());
+  const deferred = useRef(new Set<string>());
+  const applying = useRef(new Set<string>());
+  const monacoRef = useRef<Monaco | null>(null);
+  const saveCurrent = useRef<() => void>(() => undefined);
+  filesRef.current = files;
+
+  const sourceUrl = (path = "") => {
+    if (!sessionId) return "";
+    const root = `/api/sessions/${encodeURIComponent(sessionId)}/source`;
+    return path ? `${root}/${path.split("/").map(encodeURIComponent).join("/")}` : root;
+  };
+
+  const refreshEntries = async () => {
+    if (!sessionId) return;
+    const response = await fetch(sourceUrl());
+    if (!response.ok) {
+      setError("The project source tree is unavailable.");
+      return;
+    }
+    const value = await response.json() as { entries: SourceEntry[] };
+    setEntries(value.entries.slice().sort((left, right) => left.path.localeCompare(right.path)));
+  };
+
+  const applyExternal = (path: string, content: string) => {
+    const monaco = monacoRef.current;
+    if (!monaco) return;
+    const model = monaco.editor.getModel(monaco.Uri.parse(sourceModelPath(path)));
+    if (!model || model.getValue() === content) return;
+    applying.current.add(path);
+    try {
+      model.pushEditOperations(
+        null,
+        [{ range: model.getFullModelRange(), text: content }],
+        () => null,
+      );
+    } finally {
+      applying.current.delete(path);
+    }
+  };
+
+  const closePath = (path: string) => {
+    setTabs((previous) => {
+      const next = previous.filter((item) => item !== path);
+      setActivePath((active) => active === path ? next[next.length - 1] ?? null : active);
+      return next;
+    });
+    setFiles((previous) => {
+      const next = { ...previous };
+      delete next[path];
+      return next;
+    });
+  };
+
+  const reconcilePath = async (path: string) => {
+    const existing = filesRef.current[path];
+    if (!sessionId || !existing) return;
+    if (saving.current.has(path)) {
+      deferred.current.add(path);
+      return;
+    }
+    const response = await fetch(sourceUrl(path));
+    if (!response.ok) {
+      if (existing.content === existing.savedContent) closePath(path);
+      else setFiles((previous) => previous[path]
+        ? { ...previous, [path]: { ...previous[path], conflict: null, missing: true } }
+        : previous);
+      return;
+    }
+    const document = await response.json() as SourceDocument;
+    setFiles((previous) => {
+      const current = previous[path];
+      if (!current || current.revision === document.revision) return previous;
+      if (current.content !== current.savedContent) {
+        return { ...previous, [path]: { ...current, conflict: document, missing: false } };
+      }
+      applyExternal(path, document.content);
+      return {
+        ...previous,
+        [path]: {
+          ...document,
+          savedContent: document.content,
+          conflict: null,
+          missing: false,
+        },
+      };
+    });
+  };
+
+  const openFile = async (path: string) => {
+    if (filesRef.current[path]) {
+      setActivePath(path);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(sourceUrl(path));
+      if (!response.ok) {
+        const value = await response.json().catch(() => ({})) as { detail?: string };
+        throw new Error(value.detail ?? "This file is unavailable for editing.");
+      }
+      const document = await response.json() as SourceDocument;
+      const saved = {
+        ...document,
+        savedContent: document.content,
+        conflict: null,
+        missing: false,
+      };
+      const nextFiles = { ...filesRef.current, [path]: saved };
+      filesRef.current = nextFiles;
+      setFiles(nextFiles);
+      setTabs((previous) => previous.includes(path) ? previous : [...previous, path]);
+      setActivePath(path);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const save = async (path: string) => {
+    const file = filesRef.current[path];
+    if (!sessionId || !file || file.missing || file.conflict || file.content === file.savedContent) return;
+    saving.current.add(path);
+    setError(null);
+    try {
+      const response = await fetch(sourceUrl(path), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: file.content, expected_revision: file.revision }),
+      });
+      if (response.status === 409) {
+        const value = await response.json() as { current: SourceDocument };
+        setFiles((previous) => previous[path]
+          ? { ...previous, [path]: { ...previous[path], conflict: value.current, missing: false } }
+          : previous);
+        return;
+      }
+      if (!response.ok) {
+        const value = await response.json().catch(() => ({})) as { detail?: string };
+        throw new Error(value.detail ?? "The file could not be saved.");
+      }
+      const document = await response.json() as SourceDocument;
+      setFiles((previous) => ({
+        ...previous,
+        [path]: { ...document, savedContent: document.content, conflict: null, missing: false },
+      }));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      saving.current.delete(path);
+      if (deferred.current.delete(path)) void reconcilePath(path);
+    }
+  };
+
+  const reloadConflict = (path: string) => {
+    const file = filesRef.current[path];
+    if (!file) return;
+    if (file.missing) {
+      closePath(path);
+      return;
+    }
+    if (!file.conflict) return;
+    applyExternal(path, file.conflict.content);
+    const document = file.conflict;
+    setFiles((previous) => ({
+      ...previous,
+      [path]: { ...document, savedContent: document.content, conflict: null, missing: false },
+    }));
+  };
+
+  useEffect(() => {
+    if (!sessionId) return;
+    setEntries([]);
+    setFiles({});
+    setTabs([]);
+    setActivePath(null);
+    void refreshEntries();
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!sourceEvent) return;
+    void refreshEntries();
+    void reconcilePath(sourceEvent.path);
+    if (sourceEvent.previous_path) void reconcilePath(sourceEvent.previous_path);
+  }, [sourceEvent?.sequence]);
+
+  useEffect(() => {
+    if (!sessionId || reconnect === 0) return;
+    void refreshEntries();
+    for (const path of Object.keys(filesRef.current)) void reconcilePath(path);
+  }, [reconnect]);
+
+  const handleMount: OnMount = (editor, monaco) => {
+    monacoRef.current = monaco;
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => saveCurrent.current());
+  };
+  saveCurrent.current = () => { if (activePath) void save(activePath); };
+  const active = activePath ? files[activePath] : null;
+  const dirty = active ? active.content !== active.savedContent : false;
+
+  return <>
+    <aside className={`source-navigator ${visible ? "" : "area-hidden"}`} aria-label="Project source">
+      <header><span>Project root</span><button onClick={() => void refreshEntries()} aria-label="Refresh source tree">↻</button></header>
+      <div className="source-tree">
+        {entries.length === 0 ? <p className="empty">No Git-visible files.</p> : entries.map((entry) => {
+          const depth = entry.path.split("/").length - 1;
+          const label = entry.path.split("/").pop();
+          return entry.kind === "directory"
+            ? <div className="source-directory" key={`directory:${entry.path}`} style={{ paddingLeft: `${8 + depth * 14}px` }}>▾ {label}</div>
+            : <button
+                className={activePath === entry.path ? "selected" : ""}
+                key={entry.path}
+                onClick={() => void openFile(entry.path)}
+                style={{ paddingLeft: `${10 + depth * 14}px` }}
+                title={entry.path}
+              ><span className="source-chip" />{label}</button>;
+        })}
+      </div>
+    </aside>
+    <section className={`code-area ${visible ? "" : "area-hidden"}`} aria-label="Code editor">
+      <header className="code-tabs">
+        {tabs.length === 0 ? <span className="empty-tab">Open a file from the project root</span> : tabs.map((path) => {
+          const file = files[path];
+          const changed = file && file.content !== file.savedContent;
+          return <button className={activePath === path ? "active" : ""} onClick={() => setActivePath(path)} key={path} title={path}>
+            {path.split("/").pop()}{file?.conflict || file?.missing ? " !" : changed ? " ●" : ""}
+            <span onClick={(event) => { event.stopPropagation(); closePath(path); }} aria-label={`Close ${path}`}>×</span>
+          </button>;
+        })}
+        {active ? <span className={`code-state ${active.conflict || active.missing ? "conflict" : dirty ? "dirty" : ""}`}>
+          {active.missing ? "deleted externally" : active.conflict ? "external changes" : dirty ? "unsaved" : "saved"}
+        </span> : null}
+      </header>
+      {error ? <div className="code-error" role="alert">{error}</div> : null}
+      {active?.conflict || active?.missing ? <div className="code-conflict" role="status">
+        This file changed outside the editor. Your unsaved text is preserved.
+        <button onClick={() => reloadConflict(active.path)}>{active.missing ? "Close deleted file" : "Reload external version"}</button>
+      </div> : null}
+      <div className="code-editor-host">
+        {loading ? <p className="empty">Loading source…</p> : active ? <Editor
+          path={sourceModelPath(active.path)}
+          defaultLanguage={sourceLanguage(active.path)}
+          defaultValue={active.content}
+          theme="vs-dark"
+          saveViewState
+          keepCurrentModel
+          onMount={handleMount}
+          onChange={(value) => {
+            if (applying.current.has(active.path)) return;
+            setFiles((previous) => previous[active.path]
+              ? { ...previous, [active.path]: { ...previous[active.path], content: value ?? "" } }
+              : previous);
+          }}
+          options={{
+            automaticLayout: true,
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+            fontSize: 12.5,
+            minimap: { enabled: false },
+            padding: { top: 12 },
+            scrollBeyondLastLine: false,
+          }}
+        /> : <p className="empty code-empty">Select a text file to edit.</p>}
+      </div>
+    </section>
+  </>;
+}
+
 function Workspace({ project }: { project: string }) {
+  const [activeArea, setActiveArea] = useState<"model" | "code">("model");
   const [run, setRun] = useState<Run | null>(null);
   const [shopOpen, setShopOpen] = useState(false);
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
   const [modelArtifact, setModelArtifact] = useState<ModelArtifact | null>(null);
   const [modelReconnect, setModelReconnect] = useState(0);
   const [modelBuildError, setModelBuildError] = useState<string | null>(null);
+  const [sourceEvent, setSourceEvent] = useState<SourceEvent | null>(null);
+  const [sourceReconnect, setSourceReconnect] = useState(0);
   const streamOpened = useRef(false);
   const latestEvent = useRef(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -560,7 +874,10 @@ function Workspace({ project }: { project: string }) {
       source = new EventSource(`/api/sessions/${encodeURIComponent(selected.session_id)}/stream`);
     source.onopen = () => {
       setShopOpen(true);
-      if (streamOpened.current) setModelReconnect((current) => current + 1);
+      if (streamOpened.current) {
+        setModelReconnect((current) => current + 1);
+        setSourceReconnect((current) => current + 1);
+      }
       streamOpened.current = true;
     };
       source.onerror = () => {
@@ -610,6 +927,10 @@ function Workspace({ project }: { project: string }) {
       if (event.kind === "model_build_unavailable") {
         const { reason } = event.payload as { reason?: string };
         setModelBuildError(reason ?? "the shop could not start a model build");
+        return;
+      }
+      if (event.kind === "source_file_changed") {
+        setSourceEvent({ ...(event.payload as SourceInvalidation), sequence: event.event.sequence });
         return;
       }
       if (
@@ -665,22 +986,25 @@ function Workspace({ project }: { project: string }) {
       </header>
       <div className="workspace-body">
         <nav className="activity-rail" aria-label="Workspace areas">
-          {railItems.map(([id, icon, label]) => (
-            <div
+          {railItems.map(([id, icon, label, interactive]) => (
+            <button
               key={id}
-              className={`rail-item ${id === "model" ? "selected" : ""}`}
-              aria-current={id === "model" ? "page" : undefined}
+              type="button"
+              className={`rail-item ${activeArea === id ? "selected" : ""}`}
+              aria-current={activeArea === id ? "page" : undefined}
               data-workspace-area={id}
+              disabled={!interactive}
+              onClick={() => { if (id === "model" || id === "code") setActiveArea(id); }}
             >
               <span className={`rail-icon rail-icon-${id}`} aria-hidden="true">{icon}</span>
               <span>{label}</span>
-            </div>
+            </button>
           ))}
         </nav>
-        <aside className="workspace-context" aria-label="Agent context">
+        <aside className={`workspace-context ${activeArea === "model" ? "" : "area-hidden"}`} aria-label="Agent context">
           <AgentPanel agents={run?.agents ?? []} />
         </aside>
-        <section className="artifact-view" aria-labelledby="artifact-heading">
+        <section className={`artifact-view ${activeArea === "model" ? "" : "area-hidden"}`} aria-labelledby="artifact-heading">
           <header className="model-tabs">
             <h2 id="artifact-heading">Model</h2>
           </header>
@@ -688,6 +1012,12 @@ function Workspace({ project }: { project: string }) {
             {viewerReady ? <FunctionalModel artifact={modelArtifact} reconnect={modelReconnect} buildError={modelBuildError} project={project} /> : <p className="empty">no completed build yet</p>}
           </div>
         </section>
+        <CodeWorkspace
+          sessionId={sessionId}
+          sourceEvent={sourceEvent}
+          reconnect={sourceReconnect}
+          visible={activeArea === "code"}
+        />
         <section className="conversation" aria-label="Chat">
           <header className="conversation-header">
             <span className="conversation-presence" aria-hidden="true" />

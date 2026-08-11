@@ -16,7 +16,7 @@ the overview says *what is true now*.
 | `0001` | [Use a FastAPI broker and Server-Sent Events for shop-floor lifecycle](./0001-go-broker-sse-shop-floor-lifecycle.md) | Accepted (amended by 0014) | 2026-07-19 |
 | `0002` | [Use Python Playwright for shop-floor browser E2E tests](./0002-python-playwright-shop-floor-e2e.md) | Accepted | 2026-07-19 |
 | `0003` | [Separate the porter lifecycle role from the foreman](./0003-porter-and-foreman-boundary.md) | Superseded by 0005 | 2026-07-20 |
-| `0004` | [Use published build artifacts as the functional-model boundary](./0004-static-build-artifact-boundary-for-functional-model-inspection.md) | Accepted (callback mechanism superseded by 0010) | 2026-07-20 |
+| `0004` | [Use published build artifacts as the functional-model boundary](./0004-static-build-artifact-boundary-for-functional-model-inspection.md) | Accepted (callback mechanism superseded by 0010; source-serving clause amended by 0021) | 2026-07-20 |
 | `0005` | [Use one app-server owner for live Codex shop orchestration](./0005-single-owner-codex-shop-orchestration.md) | Superseded by 0006 | 2026-07-21 |
 | `0006` | [Generalize shop orchestration to a pluggable agent backend](./0006-pluggable-agent-backend-orchestration.md) | Accepted (amended by 0008, 0011, 0012, 0016, and 0018) | 2026-07-26 |
 | `0007` | [Depend on Hermes' off-spec second-prompt steering for active-turn corrections](./0007-hermes-second-prompt-steering.md) | Superseded by 0016 | 2026-07-30 |
@@ -33,6 +33,7 @@ the overview says *what is true now*.
 | `0018` | [Let one shop floor run several agent backends at once](./0018-multi-backend-orchestration.md) | Accepted | 2026-08-09 |
 | `0019` | [Select the runtime profile from the project](./0019-select-runtime-profile-from-the-project.md) | Accepted | 2026-08-09 |
 | `0020` | [Use a canonical project-root model screenshot](./0020-project-model-screenshots.md) | Accepted | 2026-08-10 |
+| `0021` | [Serve verified project source as inert editable text](./0021-serve-verified-project-source-as-inert-editable-text.md) | Accepted | 2026-08-11 |
 
 ## Conventions
 

@@ -52,6 +52,12 @@ class FakeBackend:
         self.deliveries.append((handle, message))
         return DeliveryReceipt(delivery_id=expected_delivery_id, accepted=True)
 
+    async def deliver_notice(
+        self, handle: RoleHandle, expected_delivery_id: str, message: str
+    ) -> bool:
+        self.deliveries.append((handle, message))
+        return True
+
     async def interrupt(self, handle: RoleHandle) -> None:
         self.interrupted.append(handle)
 

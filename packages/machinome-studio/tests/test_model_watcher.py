@@ -15,7 +15,7 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 
 from floor.app import Broker, create_app
-from floor.watcher import ArtifactWatcher, ModelWatcher
+from floor.watcher import ArtifactWatcher, ModelWatcher, SourceFileWatcher
 from watchdog.observers import Observer
 
 
@@ -60,7 +60,12 @@ class WatcherTestCase(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(0.01)
         self.fail(f"timed out waiting for {kind}; saw {[item[0] for item in events]}")
 
-    def app(self, *, solid_command: tuple[str, ...] | None = SOLID_COMMAND) -> tuple[object, list[tuple[str, dict[str, object]]]]:
+    def app(
+        self,
+        *,
+        solid_command: tuple[str, ...] | None = SOLID_COMMAND,
+        source_events: bool = False,
+    ) -> tuple[object, list[tuple[str, dict[str, object]]]]:
         broker = Broker()
         events: list[tuple[str, dict[str, object]]] = []
         original = broker.publish
@@ -76,6 +81,7 @@ class WatcherTestCase(unittest.IsolatedAsyncioTestCase):
             self.artifacts,
             broker,
             solid_command=solid_command,
+            source_events=source_events,
         ), events
 
 
@@ -206,6 +212,61 @@ class SourceWatcherTest(WatcherTestCase):
         self.assertFalse(observer.is_alive())
 
 
+class SourceInvalidationWatcherTest(WatcherTestCase):
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        (self.project / ".gitignore").write_text("_build/\nignored/\n")
+        subprocess = await asyncio.create_subprocess_exec("git", "init", "-q", "-b", "main", str(self.project))
+        self.assertEqual(await subprocess.wait(), 0)
+        subprocess = await asyncio.create_subprocess_exec("git", "-C", str(self.project), "add", "root/__init__.py", ".gitignore")
+        self.assertEqual(await subprocess.wait(), 0)
+
+    async def test_create_modify_move_and_delete_publish_project_relative_invalidations(self) -> None:
+        app, events = self.app(solid_command=None, source_events=True)
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            created = self.project / "agent.py"
+            created.write_text("one = 1\n")
+            await self._wait_source(events, "created", "agent.py")
+            events.clear()
+
+            created.write_text("two = 2\n")
+            await self._wait_source(events, "modified", "agent.py")
+            events.clear()
+
+            moved = self.project / "renamed.py"
+            os.replace(created, moved)
+            payload = await self._wait_source(events, "moved", "renamed.py")
+            self.assertEqual(payload["previous_path"], "agent.py")
+            events.clear()
+
+            moved.unlink()
+            await self._wait_source(events, "deleted", "renamed.py")
+
+    async def test_ignored_and_build_paths_never_publish_source_invalidations(self) -> None:
+        app, events = self.app(solid_command=None, source_events=True)
+        async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
+            ignored = self.project / "ignored"
+            ignored.mkdir()
+            (ignored / "hidden.py").write_text("hidden = True\n")
+            atomic_publish(self.artifacts, "generated.py", "generated = True\n")
+            await asyncio.sleep(SETTLE * 5)
+        self.assertFalse(any(kind == "source_file_changed" for kind, _ in events), events)
+
+    async def _wait_source(
+        self,
+        events: list[tuple[str, dict[str, object]]],
+        operation: str,
+        path: str,
+    ) -> dict[str, object]:
+        deadline = asyncio.get_running_loop().time() + 3
+        while asyncio.get_running_loop().time() < deadline:
+            for kind, payload in events:
+                if kind == "source_file_changed" and payload.get("operation") == operation and payload.get("path") == path:
+                    return payload
+            await asyncio.sleep(0.01)
+        self.fail(f"timed out waiting for source {operation} {path}; saw {events}")
+
+
 class ArtifactRouteTest(WatcherTestCase):
     async def test_republished_artifacts_must_revalidate(self) -> None:
         app = _artifact_app(self.project, self.artifacts)
@@ -223,12 +284,21 @@ class ArtifactRouteTest(WatcherTestCase):
 
 
 class _WatcherHarness:
-    def __init__(self, project: Path, artifacts: Path, broker: Broker, *, solid_command: tuple[str, ...] | None) -> None:
+    def __init__(
+        self,
+        project: Path,
+        artifacts: Path,
+        broker: Broker,
+        *,
+        solid_command: tuple[str, ...] | None,
+        source_events: bool,
+    ) -> None:
         self.project = project
         self.artifacts = artifacts
         self.broker = broker
         self.solid_command = solid_command
-        self.state = SimpleNamespace(model_watcher=None, artifact_watcher=None, observer=None)
+        self.source_events = source_events
+        self.state = SimpleNamespace(model_watcher=None, artifact_watcher=None, source_file_watcher=None, observer=None)
         self.router = SimpleNamespace(lifespan_context=self.lifespan_context)
 
     @asynccontextmanager
@@ -237,6 +307,10 @@ class _WatcherHarness:
         observer = Observer()
         artifact = ArtifactWatcher(self.artifacts, loop, self.broker.publish)
         observer.schedule(artifact, str(self.artifacts), recursive=True)
+        source_file = None
+        if self.source_events:
+            source_file = SourceFileWatcher(self.project, loop, self.broker.publish)
+            observer.schedule(source_file, str(self.project), recursive=True)
         source = None
         if self.solid_command is not None:
             source = ModelWatcher(
@@ -249,6 +323,7 @@ class _WatcherHarness:
             observer.schedule(source, str(self.project), recursive=True)
         self.state.model_watcher = source
         self.state.artifact_watcher = artifact
+        self.state.source_file_watcher = source_file
         self.state.observer = observer
         observer.start()
         try:

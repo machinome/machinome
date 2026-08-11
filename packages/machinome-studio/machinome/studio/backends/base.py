@@ -139,6 +139,15 @@ class AgentBackend(Protocol):
         """
         ...
 
+    async def deliver_notice(
+        self, handle: RoleHandle, expected_delivery_id: str, message: str
+    ) -> bool:
+        """Steer an informational notice only if the expected delivery is active.
+
+        Returns ``False`` after a completion race and MUST NOT start a turn.
+        """
+        ...
+
     async def interrupt(self, handle: RoleHandle) -> None:
         """Interrupt an active role session (best-effort on close/shutdown)."""
         ...

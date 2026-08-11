@@ -172,6 +172,28 @@ class CodexBackend:
             raise
         return DeliveryReceipt(delivery_id=expected_delivery_id, accepted=True)
 
+    async def deliver_notice(
+        self, handle: RoleHandle, expected_delivery_id: str, message: str
+    ) -> bool:
+        thread_id = handle.backend_id
+        if self._active_turns.get(thread_id) != expected_delivery_id:
+            return False
+        try:
+            await self._request(
+                "turn/steer",
+                {
+                    "threadId": thread_id,
+                    "expectedTurnId": expected_delivery_id,
+                    "input": [{"type": "text", "text": message}],
+                },
+            )
+        except RuntimeError as error:
+            msg = str(error).lower()
+            if "active turn" in msg or "thread not found" in msg:
+                return False
+            raise
+        return True
+
     async def interrupt(self, handle: RoleHandle) -> None:
         """Interrupt the active turn, if this thread currently has one."""
         thread_id = handle.backend_id

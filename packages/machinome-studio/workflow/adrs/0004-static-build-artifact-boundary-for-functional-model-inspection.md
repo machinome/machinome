@@ -1,7 +1,9 @@
 # ADR 0004: Use published build artifacts as the functional-model boundary
 
 **Status:** Accepted — the artifact boundary stands; the callback refresh
-mechanism is superseded by [ADR 0010](./0010-shop-owned-model-watcher.md)
+mechanism is superseded by [ADR 0010](./0010-shop-owned-model-watcher.md), and
+the source-serving clause is amended by
+[ADR 0021](./0021-serve-verified-project-source-as-inert-editable-text.md)
 
 **Date:** 2026-07-20
 
@@ -30,6 +32,11 @@ output.
 Floor SHALL NOT import, execute, reload, inspect, or serve project Python
 source. Project Python execution belongs only to the `solid build` subprocess
 and the framework-owned `solid develop` process.
+
+**Amendment (2026-08-11).** [ADR 0021](./0021-serve-verified-project-source-as-inert-editable-text.md)
+permits Floor to list, read, and atomically replace verified project source as
+inert text for the Code workspace. Floor still does not import, interpret, or
+execute that source, and `_build` remains the only functional-model input.
 
 **Amendment (2026-08-02, Sprint 002).** Floor obtains the framework's static
 browser viewer through `solid viewer` during preparation and serves that one

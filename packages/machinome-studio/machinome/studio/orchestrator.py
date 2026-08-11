@@ -15,7 +15,7 @@ from typing import Any, Protocol
 
 import uvicorn
 
-from .app import Broker, Envelope, create_app
+from .app import Broker, Envelope, SystemNotice, create_app
 from .backends.base import AgentBackend, BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle
 from .backends import create_backend, parse_backend_command_overrides
 from .preparation import (
@@ -39,6 +39,8 @@ class BrokerControl(Protocol):
     async def role_failed(self, role: str, error: str) -> None: ...
     async def role_recovered(self, role: str) -> None: ...
     async def mark_delivery_failed(self, sequence: int, error: str) -> None: ...
+    async def pending_system_notices(self, role: str) -> list[SystemNotice | dict[str, object]]: ...
+    async def mark_system_notices_delivered(self, role: str, sequences: list[int]) -> None: ...
 
 
 @dataclass
@@ -78,6 +80,12 @@ class LocalBrokerControl:
 
     async def mark_delivery_failed(self, sequence: int, error: str) -> None:
         self.broker.mark_delivery_failed(sequence, error)
+
+    async def pending_system_notices(self, role: str) -> list[SystemNotice]:
+        return self.broker.pending_system_notices(role)
+
+    async def mark_system_notices_delivered(self, role: str, sequences: list[int]) -> None:
+        self.broker.mark_system_notices_delivered(role, sequences)
 
 
 class ShopOrchestrator:
@@ -141,13 +149,19 @@ class ShopOrchestrator:
         value = envelope.delivery_value() if isinstance(envelope, Envelope) else envelope
         sequence = int(value["sequence"])
         role = str(value["recipient"])
-        message = self._message(value)
         runtime = self.roles.get(role)
         if runtime is None:
             raise ValueError(f"unknown orchestrated role: {role}")
         async with self._delivery_locks[role]:
+            notices = await self.broker.pending_system_notices(role)
+            message = self._message(value, notices)
             if runtime.failed:
-                await self._recover_and_deliver(role, runtime, sequence, message)
+                accepted = await self._recover_and_deliver(role, runtime, sequence, message)
+                if accepted and notices:
+                    await self.broker.mark_system_notices_delivered(
+                        role,
+                        [self._notice_sequence(notice) for notice in notices],
+                    )
                 return
             if runtime.handle is None:
                 raise RuntimeError(f"{role} has no open backend session")
@@ -166,6 +180,33 @@ class ShopOrchestrator:
                     receipt = await self._backend(role).deliver_start(runtime.handle, message)
                     await self._adopt_started_delivery(role, runtime, receipt.delivery_id)
             await self.broker.mark_delivered(sequence)
+            if notices:
+                await self.broker.mark_system_notices_delivered(
+                    role,
+                    [self._notice_sequence(notice) for notice in notices],
+                )
+
+    async def deliver_pending_notices(self, role: str) -> None:
+        """Steer retained notices only when the role's current turn accepts them."""
+        runtime = self.roles.get(role)
+        if runtime is None:
+            raise ValueError(f"unknown orchestrated role: {role}")
+        async with self._delivery_locks[role]:
+            if runtime.failed or runtime.handle is None or runtime.active_delivery_id is None:
+                return
+            notices = await self.broker.pending_system_notices(role)
+            if not notices:
+                return
+            accepted = await self._backend(role).deliver_notice(
+                runtime.handle,
+                runtime.active_delivery_id,
+                self._system_notice_message(notices),
+            )
+            if accepted:
+                await self.broker.mark_system_notices_delivered(
+                    role,
+                    [self._notice_sequence(notice) for notice in notices],
+                )
 
     async def _recover_and_deliver(
         self,
@@ -173,7 +214,7 @@ class ShopOrchestrator:
         runtime: RoleRuntime,
         sequence: int,
         message: str,
-    ) -> None:
+    ) -> bool:
         """Use a surviving failed session, or replace a dead one exactly once."""
         error: Exception | None = None
         backend = self._backend(role)
@@ -190,7 +231,7 @@ class ShopOrchestrator:
             else:
                 await self._accept_recovery(role, runtime, receipt.delivery_id)
                 await self.broker.mark_delivered(sequence)
-                return
+                return True
 
         replacement: RoleHandle | None = None
         try:
@@ -208,11 +249,12 @@ class ShopOrchestrator:
         else:
             await self._accept_recovery(role, runtime, receipt.delivery_id)
             await self.broker.mark_delivered(sequence)
-            return
+            return True
 
         reason = str(error or "unknown error")
         await self.broker.role_failed(role, reason)
         await self.broker.mark_delivery_failed(sequence, reason)
+        return False
 
     async def _accept_recovery(
         self,
@@ -301,7 +343,11 @@ class ShopOrchestrator:
     def _backend(self, role: str) -> AgentBackend:
         return self.backends_by_agent[role]
 
-    def _message(self, value: dict[str, Any]) -> str:
+    def _message(
+        self,
+        value: dict[str, Any],
+        notices: Sequence[SystemNotice | dict[str, object]] = (),
+    ) -> str:
         lines = [
             "Shop broker message:",
             f"kind: {value.get('kind', 'direction')}",
@@ -333,6 +379,36 @@ class ShopOrchestrator:
                 )
             )
         lines.extend(("instruction:", str(value["body"])))
+        message = "\n".join(lines)
+        if notices:
+            return f"{self._system_notice_message(notices)}\n\n{message}"
+        return message
+
+    @staticmethod
+    def _notice_value(notice: SystemNotice | dict[str, object]) -> dict[str, object]:
+        return notice.delivery_value() if isinstance(notice, SystemNotice) else notice
+
+    def _notice_sequence(self, notice: SystemNotice | dict[str, object]) -> int:
+        return int(self._notice_value(notice)["sequence"])
+
+    def _system_notice_message(
+        self,
+        notices: Sequence[SystemNotice | dict[str, object]],
+    ) -> str:
+        lines = [
+            "Shop broker events:",
+            "These are trusted informational events, not user direction or new assignments.",
+        ]
+        for notice in notices:
+            value = self._notice_value(notice)
+            lines.extend(
+                (
+                    "event:",
+                    f"kind: {value['kind']}",
+                    f"path: {value['path']}",
+                    f"revision: {value['revision']}",
+                )
+            )
         return "\n".join(lines)
 
     async def close(self) -> None:

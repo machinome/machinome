@@ -28,7 +28,8 @@ from .preparation import (
 )
 from .profiles import ProfileError, RuntimeProfile, load_profile, resolve_profile_runtime
 from .screenshots import refresh_project_screenshot
-from .watcher import ArtifactWatcher, ModelWatcher
+from .source_files import SourceDocument, SourceWorkspace
+from .watcher import ArtifactWatcher, ModelWatcher, SourceFileWatcher
 
 
 BackendFactory = Callable[..., AgentBackend]
@@ -48,8 +49,14 @@ class Session:
     event_tasks: list[asyncio.Task[None]] = field(default_factory=list)
     observer: Observer | None = None
     source_watcher: ModelWatcher | None = None
+    source_file_watcher: SourceFileWatcher | None = None
     artifact_watcher: ArtifactWatcher | None = None
     on_screenshot_changed: Callable[[str], None] | None = None
+    source_workspace: SourceWorkspace = field(init=False)
+    source_save_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+
+    def __post_init__(self) -> None:
+        self.source_workspace = SourceWorkspace(self.project_root)
 
     @property
     def project_root(self) -> Path:
@@ -63,9 +70,33 @@ class Session:
     def build_environment(self) -> Mapping[str, str] | None:
         return self.prepared.build_environment
 
+    async def save_source(self, path: str, content: str, expected_revision: str) -> SourceDocument:
+        async with self.source_save_lock:
+            document = await asyncio.to_thread(
+                self.source_workspace.save,
+                path,
+                content,
+                expected_revision,
+            )
+            notices = self.broker.queue_user_file_changed(document.path, document.revision)
+        if self.orchestrator is not None and notices:
+            await asyncio.gather(
+                *(
+                    self.orchestrator.deliver_pending_notices(role)
+                    for role in dict.fromkeys(notice.recipient for notice in notices)
+                )
+            )
+        return document
+
     async def start_watchers(self, *, settle_delay: float = 0.5) -> None:
         loop = asyncio.get_running_loop()
         observer = Observer()
+        self.source_file_watcher = SourceFileWatcher(
+            self.project_root,
+            loop,
+            self.broker.publish,
+        )
+        observer.schedule(self.source_file_watcher, str(self.project_root), recursive=True)
         self.source_watcher = ModelWatcher(
             self.project_root,
             self.prepared.solid_command,
