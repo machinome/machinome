@@ -19,7 +19,7 @@ from .screenshots import refresh_project_screenshot, screenshot_revision
 
 LOWER_KEBAB_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 AGENT_ID = LOWER_KEBAB_ID
-REQUIRED_VIEWER_API = 2
+REQUIRED_VIEWER_API = 4
 CODEX_MODELS = {"gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.3-codex-spark"}
 CLAUDE_MODELS = {"sonnet", "opus"}
 CODEX_EFFORTS = {"low", "medium", "high", "xhigh", "max", "ultra"}

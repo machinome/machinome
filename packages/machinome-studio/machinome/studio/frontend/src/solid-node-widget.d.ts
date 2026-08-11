@@ -1,5 +1,15 @@
 type ViewerView = unknown;
-export const SOLID_NODE_VIEWER_API_VERSION: 2;
+export const SOLID_NODE_VIEWER_API_VERSION: 4;
+
+type AssemblyPath = readonly string[];
+
+type AssemblyNode = {
+  name: string;
+  path: string[];
+  color: string | null;
+  model: boolean;
+  children: AssemblyNode[];
+};
 
 type ViewerOptions = {
   baseUrl: string;
@@ -14,6 +24,9 @@ type ViewerHandle = {
   apiVersion: number;
   artifactChanged(path: string): Promise<void>;
   manifestChanged(): Promise<void>;
+  assembly(): AssemblyNode;
+  setRoot(path: AssemblyPath | null): void;
+  setVisible(path: AssemblyPath, visible: boolean): void;
   reload(): Promise<void>;
   dispose(): void;
   view(): ViewerView;
@@ -28,4 +41,4 @@ declare global {
   }
 }
 
-export { type ViewerHandle, type ViewerOptions, type ViewerView };
+export { type AssemblyNode, type AssemblyPath, type ViewerHandle, type ViewerOptions, type ViewerView };

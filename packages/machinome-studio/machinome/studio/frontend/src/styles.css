@@ -137,6 +137,7 @@ button, input { font: inherit; }
 .rail-icon-sheets { font-size: 20px; transform: rotate(90deg); }
 
 .workspace-context { border-right: 1px solid #262b33; overflow-y: auto; padding: 20px 18px; }
+.assembly-panel h2,
 .agent-panel h2,
 .model-tabs h2,
 .conversation-header h2 {
@@ -144,7 +145,24 @@ button, input { font: inherit; }
   font-weight: 500;
   margin: 0;
 }
-.agent-panel h2 { color: #e6e8ec; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.assembly-panel h2, .agent-panel h2 { color: #e6e8ec; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.assembly-panel { border-bottom: 1px solid #262b33; margin-bottom: 18px; padding-bottom: 18px; }
+.assembly-panel > header { align-items: center; display: flex; gap: 8px; justify-content: space-between; }
+.assembly-panel > header button, .assembly-focus, .assembly-disclosure { background: transparent; border: 0; color: #8b929e; cursor: pointer; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 2px 3px; }
+.assembly-panel > header button:hover, .assembly-focus:hover, .assembly-disclosure:hover { color: #e6e8ec; }
+.assembly-tree { margin-top: 10px; }
+.assembly-row { align-items: center; border-radius: 5px; color: #c3c8d1; display: grid; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; gap: 6px; grid-template-columns: 13px 13px minmax(0, 1fr) auto; min-height: 28px; padding: 4px 5px 4px calc(5px + var(--assembly-depth) * 15px); }
+.assembly-row:hover, .assembly-row.focused-root { background: #1c2128; color: #e6e8ec; }
+.assembly-row:focus-visible, .assembly-visibility:focus-visible, .assembly-disclosure:focus-visible, .assembly-focus:focus-visible, .assembly-panel > header button:focus-visible { outline: 2px solid #e0a350; outline-offset: 1px; }
+.assembly-row.focused-root { box-shadow: inset 2px 0 #4fb6b8; }
+.assembly-disclosure { align-items: center; display: flex; height: 13px; justify-content: center; line-height: 1; width: 13px; }
+.assembly-spacer { height: 13px; width: 13px; }
+.assembly-visibility { appearance: none; background: transparent; border: 1px solid #6b7280; border-radius: 2px; cursor: pointer; height: 12px; margin: 0; width: 12px; }
+.assembly-visibility:checked { background: var(--node-color); border-color: var(--node-color); }
+.assembly-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.assembly-root-label { color: #4fb6b8; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+.assembly-focus { color: #e0a350; opacity: 0; pointer-events: none; }
+.assembly-row:hover .assembly-focus, .assembly-row:focus-visible > .assembly-focus, .assembly-focus:focus-visible { opacity: 1; pointer-events: auto; }
 .empty { color: #8b929e; font-size: 12px; line-height: 1.5; }
 .agent-roster { list-style: none; margin: 12px 0 0; padding: 0; }
 .agent-roster li { align-items: center; background: #171b21; border-radius: 6px; color: #e6e8ec; display: grid; font-size: 12.5px; gap: 7px; grid-template-columns: 7px minmax(0, 1fr) auto; margin: 6px 0; padding: 8px; }
