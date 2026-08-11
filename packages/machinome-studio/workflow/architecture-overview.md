@@ -256,7 +256,10 @@ text. A read returns the SHA-256 byte revision. A save runs under the session's
 source lock, compares the expected revision, preserves the file mode, flushes a
 same-directory temporary file, and atomically replaces the original. It does
 not create absent files or invoke a build. A mismatch returns the current
-document as a conflict without writing.
+document as a conflict without writing. A separate read-only preview operation
+reuses the same visibility, containment, symlink, regular-file, and one-MiB
+checks for `.png` paths, verifies the PNG signature, and returns inert image
+bytes without admitting them to the text save flow.
 
 Each project browser mounts its framework viewer for that workspace. It maps
 each published path directly to the viewer: the manifest reconciles the model,
@@ -267,14 +270,19 @@ does not remount the viewer or interpret artifact contents.
 
 The activity rail has interactive Model and Code areas, in that order; Agents
 and Sheets remain deferred and there is no Files area. Code shows the
-Git-visible project-root navigator and a locally bundled Monaco editor. Each
-path owns a Monaco model, tab, undo history, and view state. Ctrl/Cmd+S sends a
-revision-checked save. Clean open models accept external content through a
-guarded edit; dirty models preserve maker text and expose the external document
-as an explicit reload conflict. Source invalidations refresh the tree, so an
-agent-created non-ignored untracked file appears without instrumenting agent
-tools. Model, Code, and conversation components remain mounted while visibility
-changes, preserving viewer, editor, transcript, scroll, and draft state.
+Git-visible project-root navigator with an always-open root and initially
+collapsed, independently operable directories. One monochrome inline-SVG icon
+family distinguishes folders, Markdown, PNG, Python, and generic files. The
+locally bundled Monaco editor gives each open text path its own model, tab, undo
+history, and view state. Ctrl/Cmd+S sends a revision-checked save. Clean open
+models accept external content through a guarded edit; dirty models preserve
+maker text and expose the external document as an explicit reload conflict. A
+PNG instead opens a closable read-only image tab backed by the bounded preview
+operation and never creates a Monaco model. Source invalidations refresh the
+tree, so an agent-created non-ignored untracked file appears without
+instrumenting agent tools. Model, Code, and conversation components remain
+mounted while visibility changes, preserving viewer, editor, transcript,
+scroll, and draft state.
 
 The hub holds one live-state connection to `/api/stream`. It opens with the
 complete project inventory, including each usable screenshot's content revision,

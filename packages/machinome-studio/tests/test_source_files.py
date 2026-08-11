@@ -67,6 +67,19 @@ class SourceWorkspaceTest(unittest.TestCase):
         self.assertEqual(first.revision, second.revision)
         self.assertEqual(len(first.revision), 64)
 
+    def test_reads_only_bounded_visible_png_files(self) -> None:
+        image = b"\x89PNG\r\n\x1a\npreview"
+        (self.project / "preview.png").write_bytes(image)
+
+        self.assertEqual(self.workspace.read_png("preview.png"), image)
+
+        (self.project / "malformed.png").write_bytes(b"not a png")
+        (self.project / "large.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"x" * 33)
+        (self.project / "alias.png").symlink_to(self.project / "preview.png")
+        for path in ("malformed.png", "large.png", "alias.png", "../preview.png"):
+            with self.subTest(path=path), self.assertRaises(SourceUnavailable):
+                self.workspace.read_png(path)
+
     def test_rejects_binary_oversized_symlink_ignored_and_escaping_paths(self) -> None:
         (self.project / "binary.dat").write_bytes(b"\x00binary")
         (self.project / "large.txt").write_text("x" * 33)

@@ -144,11 +144,14 @@ The mounted model, editor state, and chat are preserved across the switch.
     list (rows `#171b21`, radius 6, padding 7/8: dot + label 12.5px + mono
     10.5px state).
   - *CODE (2a):* `PROJECT ROOT` as a mono 10px uppercase section label, then a
-    Git-visible file tree — mono 12px rows, 14–16px indent per depth, 7px teal
-    source chip, and muted directory rows. The open file gets `#1c2128` +
-    `#e6e8ec`. The tree contains tracked files and non-ignored untracked files;
-    `.git`, ignored paths, build output, and build staging never appear. It has
-    refresh but no create, rename, delete, Git, or terminal controls.
+    Git-visible file tree — mono 12px rows and 14–16px indent per depth. The
+    project root is open; every directory beneath it is initially collapsed and
+    has an operable chevron. Folder, Markdown, PNG, Python, and generic-file
+    glyphs use one 15px monochrome outline family with `currentColor`; file type
+    is conveyed by shape, never by a colored chip. The open file gets `#1c2128`
+    + `#e6e8ec`. The tree contains tracked files and non-ignored untracked
+    files; `.git`, ignored paths, build output, and build staging never appear.
+    It has refresh but no create, rename, delete, Git, or terminal controls.
   - *AGENTS (2b):* roster of selectable rows (selected: `#1c2128` +
     1px `#2a3d40`), then a detail block separated by a 1px `#262b33` rule —
     agent name 14px/600 + elapsed time, `backend / assignment / from`
@@ -178,8 +181,10 @@ The mounted model, editor state, and chat are preserved across the switch.
   and view state. Ctrl/Cmd+S saves. A clean external revision replaces the
   model without recreating it. A dirty external revision keeps the maker's
   text, shows an amber conflict strip, and offers `Reload external version`;
-  there is no force-overwrite or merge in this increment. Model preview remains
-  in the separate Model area rather than a Code preview strip.
+  there is no force-overwrite or merge in this increment. A selected PNG owns
+  a closable read-only tab and is centered at its intrinsic aspect ratio within
+  the available Code area; it never creates a Monaco model or enters the save
+  flow. Functional-model preview remains in the separate Model area.
 - **Right — chat column** (`#121419`, left 1px `#262b33`,
   `grid-template-rows: auto minmax(0,1fr) auto`):
   - Header 12/16: 8px amber dot, `Foreman` 13px/500, mono 11px
@@ -220,7 +225,8 @@ Kept on the canvas for context only. 1c moved activity to a bottom drawer,
 - **Opening a file** adds a closable source tab. Saving is revision-checked and
   atomically replaces the existing file; it triggers the same source watcher as
   an agent write, and a qualifying Python change reaches the existing build
-  path. The save route does not invoke a second build.
+  path. The save route does not invoke a second build. Opening a PNG instead
+  reads it through the bounded session preview route and displays it read-only.
 - **External source changes** arrive as unattributed SSE invalidations. The
   browser refreshes the complete Git-visible tree and affected open paths.
   Agent-created non-ignored untracked files appear; clean buffers reload; dirty
@@ -282,6 +288,8 @@ Present for Code:
 - `GET /api/sessions/:id/source` — Git-visible file and synthesized directory
   entries for the verified project root.
 - `GET /api/sessions/:id/source/:path` — bounded UTF-8 content and revision.
+- `GET /api/sessions/:id/source-preview/:path` — bounded verified PNG bytes for
+  a read-only Code preview.
 - `PUT /api/sessions/:id/source/:path` — existing content plus expected
   revision; atomically save or return the current document as a conflict.
 

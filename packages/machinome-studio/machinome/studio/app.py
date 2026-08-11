@@ -752,6 +752,19 @@ def create_app(working_folder: Path, *, registry: object) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(error)) from error
         return document.browser_value()
 
+    @app.get("/api/sessions/{session_id}/source-preview/{source_path:path}")
+    async def source_preview(session_id: str, source_path: str) -> Response:
+        workspace = session(session_id).source_workspace
+        try:
+            content = await asyncio.to_thread(workspace.read_png, source_path)
+        except SourceUnavailable as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        return Response(
+            content=content,
+            media_type="image/png",
+            headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"},
+        )
+
     @app.put("/api/sessions/{session_id}/source/{source_path:path}")
     async def save_source_file(
         session_id: str,

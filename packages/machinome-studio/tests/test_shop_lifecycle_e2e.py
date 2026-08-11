@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import socket
@@ -15,6 +16,9 @@ from tests.fixtures.shop_process import isolated_launch_directory, subprocess_en
 
 ROOT = Path(__file__).resolve().parents[1]
 FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
+PNG_1X1 = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+)
 
 
 class ShopLifecycleE2E(unittest.TestCase):
@@ -160,6 +164,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_role("button", name="Code", exact=True).click()
         self.assertEqual(self.page.get_by_text("Files", exact=True).count(), 0)
         self.assertEqual(self.page.get_by_title("ignored.py").count(), 0)
+        self.page.get_by_role("button", name="Expand root").click()
         self.page.get_by_title("root/__init__.py").click()
         editor = self.page.locator(".monaco-editor").first
         editor.wait_for(timeout=10_000)
@@ -205,6 +210,44 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual((project / "agent_created.py").read_text(), "# changed by an agent\n")
         self.page.get_by_role("button", name="Reload external version").click()
         self.page.get_by_text("changed by an agent", exact=False).wait_for(timeout=10_000)
+
+    def test_code_navigator_collapses_folders_uses_file_icons_and_previews_png(self) -> None:
+        project = self._make_project("code-browser")
+        (project / "README.md").write_text("# Drawing\n")
+        (project / "preview.png").write_bytes(PNG_1X1)
+        (project / "model.py").write_text("model = True\n")
+        (project / "settings.toml").write_text("enabled = true\n")
+        self._open("code-browser")
+        self.page.goto(self.url("/projects/code-browser"))
+
+        self.page.get_by_role("button", name="Code", exact=True).click()
+        folder = self.page.get_by_role("button", name="Expand root")
+        folder.wait_for()
+        self.assertEqual(self.page.get_by_title("root/__init__.py").count(), 0)
+        self.assertEqual(self.page.locator(".source-chip").count(), 0)
+        for kind in ("folder", "markdown", "image", "python", "file"):
+            with self.subTest(kind=kind):
+                self.assertGreaterEqual(self.page.locator(f'[data-source-icon="{kind}"]').count(), 1)
+        icon_colors = self.page.locator(".source-icon").evaluate_all(
+            "icons => [...new Set(icons.map(icon => getComputedStyle(icon).color))]"
+        )
+        self.assertEqual(len(icon_colors), 1)
+
+        folder.click()
+        self.page.get_by_title("root/__init__.py").wait_for()
+        self.assertIsNotNone(self.page.get_by_role("button", name="Collapse root"))
+        self.page.get_by_role("button", name="Collapse root").click()
+        self.assertEqual(self.page.get_by_title("root/__init__.py").count(), 0)
+
+        self.page.get_by_title("preview.png").click()
+        preview = self.page.get_by_role("img", name="Preview preview.png")
+        preview.wait_for()
+        self.assertEqual(preview.evaluate("image => image.naturalWidth"), 1)
+        self.assertEqual(self.page.locator(".monaco-editor").count(), 0)
+
+        self.page.get_by_title("model.py").click()
+        self.page.locator(".monaco-editor").wait_for()
+        self.page.get_by_text("model = True", exact=False).wait_for()
     def test_model_panel_navigates_the_viewer_assembly(self) -> None:
         project = self._make_project("assembly-project")
         (project / ".fake-solid-state.json").write_text(json.dumps({

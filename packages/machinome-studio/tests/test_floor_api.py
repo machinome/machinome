@@ -228,6 +228,22 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual(_status(self.url(f"/api/sessions/{bravo}/source/agent.py"), "GET"), 404)
         self.assertEqual((bravo_project / "root" / "__init__.py").read_text(), "# model\n")
 
+    def test_source_preview_route_serves_only_valid_png_bytes(self) -> None:
+        project = self._make_project("source-preview")
+        image = b"\x89PNG\r\n\x1a\npreview"
+        (project / "preview.png").write_bytes(image)
+        (project / "malformed.png").write_bytes(b"not a png")
+        session_id = self._open("source-preview")
+
+        with urlopen(self.url(f"/api/sessions/{session_id}/source-preview/preview.png"), timeout=5) as response:  # nosec: local test service
+            self.assertEqual(response.read(), image)
+            self.assertEqual(response.headers.get_content_type(), "image/png")
+            self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+            self.assertEqual(response.headers["Cache-Control"], "no-cache")
+
+        self.assertEqual(_status(self.url(f"/api/sessions/{session_id}/source-preview/malformed.png"), "GET"), 404)
+        self.assertEqual(_status(self.url(f"/api/sessions/{session_id}/source-preview/root/__init__.py"), "GET"), 404)
+
     def _make_project(self, name: str, profile: str = "builder") -> Path:
         project = self.project_home / name
         (project / "root").mkdir(parents=True)

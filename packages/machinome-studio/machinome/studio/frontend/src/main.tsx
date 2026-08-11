@@ -733,6 +733,39 @@ function sourceLanguage(path: string) {
   } as Record<string, string>)[extension ?? ""] ?? "plaintext";
 }
 
+type SourceIconKind = "folder" | "markdown" | "image" | "python" | "file";
+
+function sourceIconKind(path: string): SourceIconKind {
+  const extension = path.split(".").pop()?.toLowerCase();
+  if (extension === "md") return "markdown";
+  if (extension === "png") return "image";
+  if (extension === "py") return "python";
+  return "file";
+}
+
+function isPng(path: string) {
+  return sourceIconKind(path) === "image";
+}
+
+function SourceIcon({ kind }: { kind: SourceIconKind }) {
+  const common = {
+    className: "source-icon",
+    "data-source-icon": kind,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.6,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  if (kind === "folder") return <svg {...common}><path d="M3.5 6.5h6l2 2h9v9.5h-17z" /><path d="M3.5 8.5v-3h6l2 3" /></svg>;
+  if (kind === "image") return <svg {...common}><path d="M5 3.5h10l4 4v13H5z" /><path d="M15 3.5v4h4" /><circle cx="9" cy="11" r="1.3" /><path d="m7.5 17 3.2-3.2 2.2 2.1 1.6-1.6 2.5 2.7" /></svg>;
+  if (kind === "python") return <svg {...common}><path d="M8 9V6.5C8 5.1 9.1 4 10.5 4h3C14.9 4 16 5.1 16 6.5V10H9c-2.2 0-4 1.8-4 4v1.5" /><path d="M16 15v2.5c0 1.4-1.1 2.5-2.5 2.5h-3A2.5 2.5 0 0 1 8 17.5V14h7c2.2 0 4-1.8 4-4V8.5" /><circle cx="11" cy="7" r=".7" fill="currentColor" stroke="none" /><circle cx="13" cy="17" r=".7" fill="currentColor" stroke="none" /></svg>;
+  if (kind === "markdown") return <svg {...common}><path d="M5 3.5h10l4 4v13H5z" /><path d="M15 3.5v4h4" /><path d="M8 16v-5l2 2 2-2v5m2-3 1.5 1.7L17 13m-1.5 1.7V11" /></svg>;
+  return <svg {...common}><path d="M5 3.5h10l4 4v13H5z" /><path d="M15 3.5v4h4" /><path d="M8 12h8M8 15h8" /></svg>;
+}
+
 function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible }: {
   sessionId: string | null;
   sourceEvent: SourceEvent | null;
@@ -740,6 +773,7 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible }: {
   visible: boolean;
 }) {
   const [entries, setEntries] = useState<SourceEntry[]>([]);
+  const [expandedDirectories, setExpandedDirectories] = useState<Set<string>>(() => new Set());
   const [files, setFiles] = useState<Record<string, FileBuffer>>({});
   const [tabs, setTabs] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
@@ -767,7 +801,10 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible }: {
       return;
     }
     const value = await response.json() as { entries: SourceEntry[] };
-    setEntries(value.entries.slice().sort((left, right) => left.path.localeCompare(right.path)));
+    const nextEntries = value.entries.slice().sort((left, right) => left.path.localeCompare(right.path));
+    const directories = new Set(nextEntries.filter((entry) => entry.kind === "directory").map((entry) => entry.path));
+    setEntries(nextEntries);
+    setExpandedDirectories((previous) => new Set([...previous].filter((path) => directories.has(path))));
   };
 
   const applyExternal = (path: string, content: string) => {
@@ -836,6 +873,13 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible }: {
   };
 
   const openFile = async (path: string) => {
+    if (isPng(path)) {
+      setLoading(false);
+      setError(null);
+      setTabs((previous) => previous.includes(path) ? previous : [...previous, path]);
+      setActivePath(path);
+      return;
+    }
     if (filesRef.current[path]) {
       setActivePath(path);
       return;
@@ -921,6 +965,7 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible }: {
   useEffect(() => {
     if (!sessionId) return;
     setEntries([]);
+    setExpandedDirectories(new Set());
     setFiles({});
     setTabs([]);
     setActivePath(null);
@@ -946,24 +991,54 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible }: {
   };
   saveCurrent.current = () => { if (activePath) void save(activePath); };
   const active = activePath ? files[activePath] : null;
+  const activeImage = activePath && isPng(activePath) ? activePath : null;
   const dirty = active ? active.content !== active.savedContent : false;
+  const visibleEntries = entries.filter((entry) => {
+    const parts = entry.path.split("/");
+    for (let depth = 1; depth < parts.length; depth += 1) {
+      if (!expandedDirectories.has(parts.slice(0, depth).join("/"))) return false;
+    }
+    return true;
+  });
+
+  const toggleDirectory = (path: string) => {
+    setExpandedDirectories((previous) => {
+      const next = new Set(previous);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
 
   return <>
     <aside className={`source-navigator ${visible ? "" : "area-hidden"}`} aria-label="Project source">
-      <header><span>Project root</span><button onClick={() => void refreshEntries()} aria-label="Refresh source tree">↻</button></header>
+      <header>
+        <span className="source-root-label" data-source-root="open"><span className="source-disclosure" aria-hidden="true">⌄</span><SourceIcon kind="folder" /><span>Project root</span></span>
+        <button onClick={() => void refreshEntries()} aria-label="Refresh source tree">↻</button>
+      </header>
       <div className="source-tree">
-        {entries.length === 0 ? <p className="empty">No Git-visible files.</p> : entries.map((entry) => {
+        {entries.length === 0 ? <p className="empty">No Git-visible files.</p> : visibleEntries.map((entry) => {
           const depth = entry.path.split("/").length - 1;
           const label = entry.path.split("/").pop();
-          return entry.kind === "directory"
-            ? <div className="source-directory" key={`directory:${entry.path}`} style={{ paddingLeft: `${8 + depth * 14}px` }}>▾ {label}</div>
-            : <button
+          if (entry.kind === "directory") {
+            const expanded = expandedDirectories.has(entry.path);
+            return <button
+              aria-expanded={expanded}
+              aria-label={`${expanded ? "Collapse" : "Expand"} ${label}`}
+              className="source-directory"
+              key={`directory:${entry.path}`}
+              onClick={() => toggleDirectory(entry.path)}
+              style={{ paddingLeft: `${8 + depth * 14}px` }}
+              title={entry.path}
+            ><span className={`source-disclosure ${expanded ? "expanded" : ""}`} aria-hidden="true">›</span><SourceIcon kind="folder" /><span className="source-label">{label}</span></button>;
+          }
+          return <button
                 className={activePath === entry.path ? "selected" : ""}
                 key={entry.path}
                 onClick={() => void openFile(entry.path)}
                 style={{ paddingLeft: `${10 + depth * 14}px` }}
                 title={entry.path}
-              ><span className="source-chip" />{label}</button>;
+              ><span className="source-disclosure placeholder" aria-hidden="true" /><SourceIcon kind={sourceIconKind(entry.path)} /><span className="source-label">{label}</span></button>;
         })}
       </div>
     </aside>
@@ -977,7 +1052,7 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible }: {
             <span onClick={(event) => { event.stopPropagation(); closePath(path); }} aria-label={`Close ${path}`}>×</span>
           </button>;
         })}
-        {active ? <span className={`code-state ${active.conflict || active.missing ? "conflict" : dirty ? "dirty" : ""}`}>
+        {activeImage ? <span className="code-state preview">image preview</span> : active ? <span className={`code-state ${active.conflict || active.missing ? "conflict" : dirty ? "dirty" : ""}`}>
           {active.missing ? "deleted externally" : active.conflict ? "external changes" : dirty ? "unsaved" : "saved"}
         </span> : null}
       </header>
@@ -987,7 +1062,12 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible }: {
         <button onClick={() => reloadConflict(active.path)}>{active.missing ? "Close deleted file" : "Reload external version"}</button>
       </div> : null}
       <div className="code-editor-host">
-        {loading ? <p className="empty">Loading source…</p> : active ? <Editor
+        {loading ? <p className="empty">Loading source…</p> : activeImage ? <figure className="source-image-preview"><img
+          alt={`Preview ${activeImage.split("/").pop()}`}
+          key={`${activeImage}:${sourceEvent?.sequence ?? reconnect}`}
+          onError={() => setError("This PNG image could not be displayed.")}
+          src={`${sourceUrl().replace(/\/source$/, "/source-preview")}/${activeImage.split("/").map(encodeURIComponent).join("/")}?revision=${sourceEvent?.sequence ?? reconnect}`}
+        /></figure> : active ? <Editor
           path={sourceModelPath(active.path)}
           defaultLanguage={sourceLanguage(active.path)}
           defaultValue={active.content}

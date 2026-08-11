@@ -12,6 +12,7 @@ from pathlib import Path, PurePosixPath
 
 
 DEFAULT_MAX_BYTES = 1_048_576
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
 class SourceError(RuntimeError):
@@ -91,6 +92,23 @@ class SourceWorkspace:
         except UnicodeDecodeError as error:
             raise SourceUnavailable("source file is not UTF-8 text") from error
         return SourceDocument(relative, content, self._revision(data))
+
+    def read_png(self, path: str) -> bytes:
+        relative, candidate = self._editable_candidate(path)
+        if PurePosixPath(relative).suffix.lower() != ".png":
+            raise SourceUnavailable("source file is not a PNG image")
+        try:
+            size = candidate.stat().st_size
+            if size > self.max_bytes:
+                raise SourceUnavailable("source image is too large to preview")
+            data = candidate.read_bytes()
+        except OSError as error:
+            raise SourceUnavailable("source image is unavailable") from error
+        if len(data) > self.max_bytes:
+            raise SourceUnavailable("source image is too large to preview")
+        if not data.startswith(PNG_SIGNATURE):
+            raise SourceUnavailable("source file is not a PNG image")
+        return data
 
     def save(self, path: str, content: str, expected_revision: str) -> SourceDocument:
         current = self.read(path)
