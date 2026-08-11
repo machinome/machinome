@@ -84,8 +84,6 @@ def refresh_project_screenshot(
                         "0.1",
                         "--imgsize",
                         "640x360",
-                        "--projection",
-                        "ortho",
                         "--autocenter",
                         "--viewall",
                     ],

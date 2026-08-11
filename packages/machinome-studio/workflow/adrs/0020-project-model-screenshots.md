@@ -17,7 +17,7 @@ Builds and commits remain more important than preview generation.
 ## Decision
 
 The shop owns one canonical preview at `<project>/screenshot.png`. It renders a
-fixed 640x360 orthographic, autocentred, view-all image through the selected
+fixed 640x360 autocentred, view-all image through the selected
 solid-node CLI's web renderer, which supplies a transparent background. The
 shop writes the complete renderer output outside the project and atomically
 replaces only a regular non-symlink target when bytes change. Successful

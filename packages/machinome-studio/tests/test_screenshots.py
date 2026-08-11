@@ -32,4 +32,6 @@ class WebScreenshotTest(unittest.TestCase):
 
             self.assertTrue(result.updated)
             self.assertEqual(observed[:4], ["solid", "snapshot", "--renderer", "web"])
+            # The web renderer rejects the OpenSCAD-only presentation options.
+            self.assertNotIn("--projection", observed)
             self.assertEqual(screenshot_path(project).read_bytes(), PNG)

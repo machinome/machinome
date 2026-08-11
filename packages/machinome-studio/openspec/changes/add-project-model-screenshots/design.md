@@ -43,8 +43,10 @@ must not turn a valid build or an important commit into a failure.
 
 The canonical path is exactly `screenshot.png` beneath the verified project Git
 root. The shop invokes the solid-node CLI as a subprocess and writes no project
-Python. It renders a 640x360 PNG at time `0.1`, with orthographic projection,
-autocenter and view-all enabled, and no diagnostic overlays. This is a stable
+Python. It renders a 640x360 PNG at time `0.1`, with autocenter and view-all
+enabled. The web renderer rejects the OpenSCAD-only presentation options
+(`--projection`, `--colorscheme`, `--view`, `--render`, `--preview`), so the
+recipe passes none of them. This is a stable
 thumbnail recipe, not a design-evidence view and not a new project setting.
 
 The shop selects the solid-node CLI's web renderer, which produces the

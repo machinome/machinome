@@ -212,7 +212,7 @@ and inserts a newline on Ctrl+Enter.
 Floor serves published `_build/` artifacts beneath a project-scoped browser
 path and, separately, the exact regular non-symlink root `screenshot.png` for
 each verified project repository (including closed projects). The screenshot is
-a fixed 640x360 orthographic preview rendered through the selected CLI after an
+a fixed 640x360 preview rendered through the selected CLI after an
 observed successful build and before a floor-mediated commit. Rendering and
 staging are best-effort: they never turn a valid build or Git commit into a
 failure. Every session owns a filesystem observer with separate source and
