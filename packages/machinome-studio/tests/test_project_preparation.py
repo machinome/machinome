@@ -191,7 +191,7 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertEqual(prepared.project_root, project.resolve())
         self.assertEqual(_git_state(project)[0], before[0])
         self.assertEqual(_git_state(project)[1], "?? screenshot.png\n")
-        self.assertEqual(self.call_log.read_text().splitlines(), ["viewer:", "build:", "snapshot:-o"])
+        self.assertEqual(self.call_log.read_text().splitlines(), ["viewer:", "build:", "snapshot:--renderer"])
 
     def test_rejects_existing_file_plain_directory_and_nested_repository(self) -> None:
         (self.home / "file").write_text("not a project")

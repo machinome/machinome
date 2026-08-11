@@ -3,14 +3,13 @@
 ### Requirement: The shop maintains one canonical project model screenshot
 The shop SHALL use the exact project-root path `screenshot.png` as the canonical
 hub preview for a project. It SHALL render the image through the selected
-solid-node CLI without importing project Python, SHALL render with one
-shop-owned thumbnail recipe, and SHALL atomically replace the path only after a
-complete PNG has been produced and only when its bytes differ from the existing
-regular non-symlink file.
+solid-node CLI's web renderer without importing project Python, SHALL render
+with one shop-owned thumbnail recipe, and SHALL atomically replace the path
+only after a complete PNG has been produced and only when its bytes differ from
+the existing regular non-symlink file.
 
-The shop SHALL convert pale near-white pixels connected to the renderer image's
-edge to transparent alpha before comparing and publishing the screenshot. It
-SHALL preserve non-background geometry, including enclosed light-colored areas.
+The shop SHALL compare and publish the complete PNG supplied by the web
+renderer without pixel post-processing.
 
 #### Scenario: The model renders a changed screenshot
 - **WHEN** the shop requests a screenshot and the renderer produces a complete PNG whose bytes differ from the current project screenshot
@@ -20,10 +19,10 @@ SHALL preserve non-background geometry, including enclosed light-colored areas.
 - **WHEN** the shop requests a screenshot and the rendered PNG has the same bytes as the current project screenshot
 - **THEN** the shop leaves `screenshot.png` unchanged
 
-#### Scenario: The renderer supplies an opaque pale canvas
-- **WHEN** a successful renderer output has a pale near-white background
-- **THEN** the published screenshot has transparent edge-connected canvas pixels
-  while retaining the model geometry
+#### Scenario: The web renderer supplies a transparent canvas
+- **WHEN** a successful web renderer output has a transparent background
+- **THEN** the shop publishes those exact complete PNG bytes without flood-fill
+  processing
 
 #### Scenario: The project has no screenshot yet
 - **WHEN** the first successful screenshot render completes for a project without `screenshot.png`

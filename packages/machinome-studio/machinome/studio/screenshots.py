@@ -6,15 +6,11 @@ import os
 import subprocess
 import tempfile
 import threading
-from collections import deque
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from io import BytesIO
 from hashlib import sha256
 from pathlib import Path
 from stat import S_ISREG
-
-from PIL import Image
 
 
 SCREENSHOT_NAME = "screenshot.png"
@@ -80,6 +76,8 @@ def refresh_project_screenshot(
                     [
                         *solid_command,
                         "snapshot",
+                        "--renderer",
+                        "web",
                         "-o",
                         str(output),
                         "--time",
@@ -99,7 +97,7 @@ def refresh_project_screenshot(
                 if result.returncode:
                     detail = (result.stderr or result.stdout or f"exit {result.returncode}").strip()
                     return ScreenshotResult(warning=f"screenshot render failed: {detail}")
-                data = _transparent_background(output.read_bytes())
+                data = output.read_bytes()
             if not _is_png(data):
                 return ScreenshotResult(warning="screenshot render produced no valid PNG")
             if existing == data:
@@ -142,49 +140,6 @@ def _existing_bytes(path: Path) -> bytes | None | object:
 
 def _is_png(data: bytes) -> bool:
     return len(data) >= len(PNG_SIGNATURE) and data.startswith(PNG_SIGNATURE)
-
-
-def _transparent_background(data: bytes) -> bytes:
-    """Remove only near-white pixels connected to the rendered image edge.
-
-    The renderer has no alpha-background option. Flooding from the border keeps
-    an enclosed light feature intact while making its opaque canvas transparent.
-    """
-    with Image.open(BytesIO(data)) as opened:
-        image = opened.convert("RGBA")
-    pixels = image.load()
-    width, height = image.size
-    pending: deque[tuple[int, int]] = deque()
-    visited: set[tuple[int, int]] = set()
-    for x in range(width):
-        pending.extend(((x, 0), (x, height - 1)))
-    for y in range(1, height - 1):
-        pending.extend(((0, y), (width - 1, y)))
-    while pending:
-        x, y = pending.popleft()
-        if (x, y) in visited:
-            continue
-        red, green, blue, alpha = pixels[x, y]
-        if not _is_background(red, green, blue, alpha):
-            continue
-        visited.add((x, y))
-        pixels[x, y] = (red, green, blue, 0)
-        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
-            if 0 <= nx < width and 0 <= ny < height:
-                pending.append((nx, ny))
-    output = BytesIO()
-    image.save(output, "PNG")
-    return output.getvalue()
-
-
-def _is_background(red: int, green: int, blue: int, alpha: int) -> bool:
-    return (
-        alpha > 0
-        and red >= 238
-        and green >= 238
-        and blue >= 220
-        and max(red, green, blue) - min(red, green, blue) <= 40
-    )
 
 
 def _lock_for(root: Path) -> threading.Lock:

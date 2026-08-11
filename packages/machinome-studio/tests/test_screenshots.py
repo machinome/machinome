@@ -1,27 +1,35 @@
 from __future__ import annotations
 
-from io import BytesIO
+import base64
+import subprocess
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
-from PIL import Image
-
-from floor.screenshots import _transparent_background
+from floor.screenshots import refresh_project_screenshot, screenshot_path
 
 
-class TransparentBackgroundTest(unittest.TestCase):
-    def test_only_edge_connected_pale_background_becomes_transparent(self) -> None:
-        image = Image.new("RGB", (5, 5), (255, 254, 238))
-        image.putpixel((2, 2), (255, 214, 37))
-        # An enclosed pale pixel represents a deliberately light feature, not
-        # canvas background, and must stay opaque.
-        for x, y in ((1, 1), (1, 2), (1, 3), (2, 1), (2, 3), (3, 1), (3, 2), (3, 3)):
-            image.putpixel((x, y), (255, 214, 37))
-        image.putpixel((2, 2), (250, 249, 230))
-        raw = BytesIO()
-        image.save(raw, "PNG")
+PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEElEQVR42mNk+M/wHwAFAAH/9X2H7gAAAABJRU5ErkJggg=="
+)
 
-        with Image.open(BytesIO(_transparent_background(raw.getvalue()))) as result:
-            rgba = result.convert("RGBA")
-        self.assertEqual(rgba.getpixel((0, 0))[3], 0)
-        self.assertEqual(rgba.getpixel((1, 1)), (255, 214, 37, 255))
-        self.assertEqual(rgba.getpixel((2, 2)), (250, 249, 230, 255))
+
+class WebScreenshotTest(unittest.TestCase):
+    def test_uses_web_renderer_and_publishes_its_bytes_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            project.mkdir()
+            observed: list[str] = []
+
+            def render(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+                observed.extend(command)
+                Path(command[command.index("-o") + 1]).write_bytes(PNG)
+                return subprocess.CompletedProcess(command, 0, "", "")
+
+            with patch("floor.screenshots.subprocess.run", side_effect=render):
+                result = refresh_project_screenshot(project, ("solid",))
+
+            self.assertTrue(result.updated)
+            self.assertEqual(observed[:4], ["solid", "snapshot", "--renderer", "web"])
+            self.assertEqual(screenshot_path(project).read_bytes(), PNG)
