@@ -6,15 +6,17 @@ description: Build and test parametric mechanical components in a solid-node pro
 # Building solid-node components
 
 solid-node is a Python framework for parametric, 3D-printable mechanical
-projects. A project is a package (conventionally `root/`) whose nodes form a
-tree: leaf nodes produce geometry through a CAD backend, assembly nodes
-compose and animate children. Mechanical contracts (parts mesh, fit, clear,
-transmit torque) are expressed as tests over the rendered meshes.
+projects. A project is a package — `solid new snowman` scaffolds
+`snowman/snowman/`, with the root node in `snowman.py` beside an empty
+`__init__.py`, and `pyproject.toml` naming it under `[tool.solid-node]`. Its
+nodes form a tree: leaf nodes produce geometry through a CAD backend, assembly
+nodes compose and animate children. Mechanical contracts (parts mesh, fit,
+clear, transmit torque) are expressed as tests over the rendered meshes.
 
 Commands (run from the project directory, with the project's venv):
 
     solid build                 # build once and publish the model
-    solid test root/<node>.py   # run tests for one node (passing the
+    solid test <pkg>/<node>.py  # run tests for one node (passing the
                                 # test_*.py path works too)
     solid snapshot -o out.png --autocenter   # render an image
 
@@ -29,11 +31,11 @@ keeps the maker's view current. Your builds are verification of your own work,
 and they are finite.
 
 Read `../solid-node-api/SKILL.md` in full before building unless it is already
-loaded. It is the authoritative public surface. This manual owns implementation
+loaded. It is the authoritative public surface, and it is all you have:
+framework source is not available to you. This manual owns implementation
 craft: parameter flow, placement, contract tests, measurement, and the
-definition of done. Use public interfaces in project code. If a machinist role
-permits framework-source inspection, keep it narrow and diagnostic; source does
-not enlarge the supported API.
+definition of done. If the API skill does not describe the behavior you need,
+report the gap — never infer an interface from a name or a traceback.
 
 ## Writing nodes
 
@@ -73,15 +75,47 @@ overlap; if they are not, they are separate nodes. A backend "union"
 of solids that do not overlap does not fail — it hands back a
 compound, which exports as one file holding several loose pieces.
 
-A file with exactly one node class needs nothing extra; a file defining
-several must name the main one with a module attribute after the class
-definitions — `NODE = MyAssembly` — or the loader fails loudly.
-
 Children are named automatically after the attribute their parent holds
 them under (`self.input_gear` → `input_gear`; members of a list
 attribute get `attr-N`), so the viewer tree and test vocabulary agree.
 An explicit `name=` kwarg overrides; names never affect build
 artifacts, which stay parameter-keyed.
+
+## One node per file
+
+Put exactly one node class in each file. This is the framework's premise, not
+a filing preference: a node's artifacts are keyed to the file it lives in, so
+editing one file rebuilds one node, and the invalidation aggregates upward
+through the assemblies that contain it and nowhere sideways.
+
+Two nodes in one file share one mtime. Editing either rebuilds both, plus
+every assembly above either of them — permanently, at leaf tessellation cost,
+which is the expensive part of a build. A multi-node file also loses the bare
+path reference: `solid build root/parts.py` and `solid snapshot root/parts.py`
+fail as ambiguous, since there is no way to declare a main class. Only
+`solid test` tolerates it, and it then runs every node in the file.
+
+So: one class per file, named after it. Shared values live in a module that
+defines **no** node — the conventional `parameters.py` or `kinematics.py`. The
+framework tracks the modules each node's source imports and invalidates
+exactly the nodes that import the edited one.
+
+Two traps follow from how that tracking works:
+
+- Import shared values from the module that defines them, never through the
+  package. `from .parameters import D_SHAFT` is tracked;
+  `from . import D_SHAFT` re-exported by `__init__.py` is **not**, and editing
+  the value will leave every artifact reporting up to date while the model is
+  stale.
+- Never import one node's file from another node's file. That drags the
+  sibling's source into your node's set, so editing either rebuilds both —
+  the exact coupling this discipline removes. If two nodes need the same
+  number, it belongs in the parameter module.
+
+When you inherit a file holding several nodes, split it: one class per file,
+imports pointed at the parameter module, companion test files renamed to match.
+Until it is split, every `TestCase` in its companion file must declare
+`node = TheClass`, or the run fails listing the candidates.
 
 ## Parameters: master knobs, derived dimensions
 
@@ -144,17 +178,24 @@ meshes follow.
 
 ## Testing
 
-Tests for `root/foo.py` live in `root/test_foo.py` (for a package,
-`root/test.py`); one class subclassing `solid_node.test.TestCase`. The
-runner builds the node at time 0 and exposes it on the test as a
-snake_case alias of the test class name: `SpurGearTest` gets
-`self.spur_gear`. Mesh assertions available: `assertNotIntersecting`,
-`assertIntersecting`, `assertInside`, `assertClose`, `assertFar`,
-`assertIntersectVolumeAbove`, `assertIntersectVolumeBelow`,
-`assertBlockedBeyond`, `assertFreeWithin`,
-`assertNoPairwiseIntersections`, `assertOneBody`, `assertBodyCount`,
-`assertJoined`, `assertNoDisconnectedParts` — all take nodes;
-`node.mesh` is a trimesh in world coordinates.
+Tests for `foo.py` live in `test_foo.py` beside it (for a package,
+`test.py`); one class subclassing `solid_node.test.TestCase`. The
+runner builds the node at time 0 and exposes it on the test as
+`self.node` and as a snake_case alias of the test class name:
+`SpurGearTest` gets `self.spur_gear`. Mesh assertions available:
+`assertNoDisconnectedSolids`, `assertNoSolidInterference`,
+`assertNotIntersecting`, `assertIntersecting`, `assertInside`,
+`assertClose`, `assertFar`, `assertIntersectVolumeAbove`,
+`assertIntersectVolumeBelow`, `assertBlockedBeyond`, `assertFreeWithin`,
+`assertJoined` — all take nodes; `node.mesh` is a trimesh in world
+coordinates.
+
+`assertNoPairwiseIntersections` is DEPRECATED — do not write it. It
+walks leaf pairs and checks leaves, which stopped being the unit of a
+printed part; `assertNoSolidInterference` replaces it. If you inherit a
+project that calls it, replace the call rather than carrying it forward.
+`assertOneBody`, `assertBodyCount`, and `assertNoDisconnectedParts` no
+longer exist at all.
 
 - Sweep the animation with `@testing_steps(n, start=..., end=...)` or pin
   an instant with `@testing_instant(t)`. Sweep only the period over which
@@ -213,34 +254,45 @@ Mesh measurement rules (STL vertices lie exactly on the true surface):
   `scipy`. Neither is pulled in by solid-node — add both to the project
   requirements.
 
+The unit both disciplines below work in is the PRINTED SOLID: the
+topmost rigid node on each branch — a leaf, or a `FusionNode`, whose
+parent is an assembly. The framework stops there and does not look
+inside. Leaves fused into one solid are its ingredients, never compared
+against each other and never individually required to be connected;
+only the solid they make is.
+
 Contract design principles:
 
-- ADJACENCY DISCIPLINE: no two distinct parts may EVER share volume, at
+- ADJACENCY DISCIPLINE: no two distinct solids may EVER share volume, at
   any instant — overlapping rigid bodies are physically impossible.
   Interference (press) fits are print-time compensation (printer
   profiles shrink holes); model them as small locational clearances.
   `assertIntersectVolume*` is for detecting contact, never for
-  legitimizing overlap.
-- CONNECTIVITY DISCIPLINE, its twin, and never skip it: a rigid part
-  is exactly ONE connected solid. Adjacency discipline alone is a
+  legitimizing overlap. `assertNoSolidInterference` admits no epsilon:
+  exact zero-volume boundary contact passes and any positive shared
+  volume fails, so a clearance is a length your drawing states, not a
+  volume of interpenetration you tolerate.
+- CONNECTIVITY DISCIPLINE, its twin, and never skip it: a printed solid
+  is exactly ONE connected body. Adjacency discipline alone is a
   one-sided force — it pushes parts APART, and a part that has fallen
   into floating fragments satisfies every non-interference contract in
-  the project. Nothing else reports it either: watertightness is a
-  per-shell property, so a mesh of five disjoint closed shells is
-  watertight, has positive volume, exports a valid STL, and renders in
-  the viewer looking like a part. Features that must be one piece have
-  to INTERPENETRATE by a stated weld (~0.5mm is a sound default);
-  solids that abut tangentially, or that stop a couple of millimetres
-  short of each other, stay separate bodies. Assert
-  `assertOneBody(part)` for each printed part whose features are
-  built separately, and `assertJoined(a, b, min_weld_volume=...)`
-  where the drawing names a junction — the one place two solids are
-  REQUIRED to share volume, and it applies only within one printed
-  part. A part deliberately made of several bodies declares
-  `bodies = N`; a `FusionNode` declares 1 and the build enforces it.
-  The classic generators: a feature located from a typed radius
-  instead of from the surface it must land on, and a sub-feature
-  placed in its own node so the gap never even looks like a gap.
+  the project. Nothing else reports it either: the build does not check
+  it, and watertightness is a per-shell property, so a mesh of five
+  disjoint closed shells is watertight, has positive volume, exports a
+  valid STL, and renders in the viewer looking like a part. Features
+  that must be one piece have to INTERPENETRATE by a stated weld
+  (~0.5mm is a sound default); solids that abut tangentially, or that
+  stop a couple of millimetres short of each other, stay separate
+  bodies. `assertNoDisconnectedSolids(root)` catches every such part at
+  once, reading each solid's own STL with no placement composed. Add
+  `assertJoined(a, b, min_weld_volume=...)` where the drawing names a
+  junction — the one place two solids are REQUIRED to share volume,
+  and it holds only WITHIN one printed solid: hand it two features from
+  different solids and it fails saying so, because that question is
+  about the model, not the geometry. The classic generators: a feature
+  located from a typed radius instead of from the surface it must land
+  on, and a sub-feature placed in its own node so the gap never even
+  looks like a gap.
 - A DRIVING PAIR must be shown to drive. Non-interference plus a ratio
   computed from tooth counts proves nothing — two gears a millimetre
   apart satisfy both, and so do two gears whose teeth sweep straight
@@ -267,20 +319,41 @@ Contract design principles:
   code set — they cannot fail for any reason a maker cares about.
   Metadata may LOCATE or PARAMETERIZE a measurement; the assertion
   itself measures the mesh.
-- Every project root gets BOTH discipline safety nets, covering the
+- Every project root carries BOTH discipline safety nets, covering the
   adjacencies and the junctions nobody thought to test. Neither is
   optional and neither substitutes for the other: the first says
   parts stay out of each other, the second says each part holds
   together.
 
-```python
-@testing_steps(4)   # scale instants down (3) past ~20 leaves: cost is
-def test_no_two_parts_intersect(self):   # pairs x instants booleans
-    self.assertNoPairwiseIntersections(self.root_node)
+`solid new` writes both into the root test file, so a new project starts
+with them:
 
-def test_every_part_is_one_body(self):   # geometry, not pose: one
-    self.assertNoDisconnectedParts(self.root_node)   # instant is enough
+```python
+def test_solid_integrity(self):          # geometry, not pose: one
+    self.assertNoDisconnectedSolids(self.node)          # instant is enough
+
+@testing_steps(4)                        # poses change: sweep the cycle
+def test_assembly_integrity(self):
+    self.assertNoSolidInterference(self.node)
 ```
+
+They are not decoration and not a formality. LEAVE THEM IN PLACE. The
+framework checks neither property on its own, so deleting them removes
+the project's only structural net. A project that predates the scaffold,
+or one whose root test file lacks them, gets them ADDED as your first
+act on that project — before the slice you were assigned, since every
+later contract is read against them. Replace any inherited
+`assertNoPairwiseIntersections` call with `assertNoSolidInterference` at
+the same time.
+
+Two things to know about them. `test_assembly_integrity` passes
+vacuously while the project is a single leaf or fusion — it selects
+fewer than two solids and has nothing to compare — so it is not evidence
+until the model is an assembly. And the scaffolded form runs at one
+instant; an animated model needs `@testing_steps` on it, because two
+parts that clear each other at t=0 may collide mid-cycle.
+Interference checking is cheap now (a spatial index, milliseconds on a
+model of ~125 solids), so sweep it generously.
 
 - Preconditions fail at construction, not in a mesh test (e.g. a gear
   pair refuses mismatched modules by building both gears from one).
@@ -318,23 +391,30 @@ def test_every_part_is_one_body(self):   # geometry, not pose: one
   the MEASURED bind angle — small-angle atan estimates undershoot
   the true corner-bind by a few tenths of a degree, more at larger
   clearance ratios.
-- Parts that legitimately abut FLUSH (butt-jointed shaft segments)
-  produce float-noise boolean intersections that read as
-  interference: pass `volume_epsilon=1e-6` to
-  `assertNoPairwiseIntersections` / `assertBlockedBeyond` /
-  `assertFreeWithin` — noise sits orders below real engagement
-  volumes, so the threshold is unambiguous. Default 0.0 keeps strict
-  is_empty semantics; don't pass epsilon where nothing abuts flush.
+- `volume_epsilon` on `assertBlockedBeyond` / `assertFreeWithin`
+  dismisses an intersection below the given volume. It exists because
+  parts abutting exactly FLUSH (butt-jointed shaft segments) produce
+  float-noise booleans that read as interference. DO NOT REACH FOR IT.
+  It is documented so you recognise it in a test you inherited, and the
+  right response to finding one is to remove it: give the joint the
+  clearance the drawing owes it, or weld the two features into one
+  solid if they are one part, and the contract then holds at the
+  default 0.0 with no threshold to argue about. A tuned epsilon is a
+  number nobody can derive from the design, and it hides exactly the
+  small interferences worth catching.
+  `assertNoSolidInterference` has no epsilon at all, by design.
 
 ## Definition of done — every component step
 
 1. Write the test file first; run it; watch it fail.
 2. Implement to green.
 3. Full regression: run `solid test` for EVERY node file in the project
-   (a failing run exits nonzero, so chaining files with `&&` works).
-   If you redirect a chained run's output to one log file, only the
-   last command's output survives — redirect per file (or just run
-   them as separate foreground invocations) when you'll inspect logs.
+   (a failing run exits nonzero, so chaining files with `&&` works),
+   including the root, whose two integrity contracts are what catch a
+   part you broke somewhere else. If you redirect a chained run's output
+   to one log file, only the last command's output survives — redirect
+   per file (or just run them as separate foreground invocations) when
+   you'll inspect logs.
 4. Mutation check: break the geometry contract IN NODE CODE (wrong
    phase, a dropped clearance term, a misapplied parameter...), confirm
    the specific contract tests fail, revert, confirm green. Editing the
@@ -364,6 +444,13 @@ def test_every_part_is_one_body(self):   # geometry, not pose: one
    `root` down to the new component, confirm each `operations` entry
    holds the expected rotation/translation (symbolic `$t` for animated
    ones), and confirm every rigid leaf's `model` file exists.
+
+   A build rebuilds only what its source tracking says is stale, and a
+   current leaf is not rendered at all. If a build seems to ignore an
+   edit you just made, you have found a tracking hole, not a caching
+   nicety: you are reaching a value through the package `__init__.py`,
+   or through something a static import walk cannot see. Fix the import
+   rather than deleting the build directory and moving on.
 6. LOOK at the result — a correct build tree does not mean the model
    looks right, and the user judges pixels. Render and read images:
 
@@ -371,7 +458,8 @@ def test_every_part_is_one_body(self):   # geometry, not pose: one
 
    Render at least an isometric view and one view along the axis that
    the new component's alignments live on, and inspect them before
-   declaring done. Do not try to see a defect a snapshot cannot
+   declaring done. Keep the default renderer; `--renderer web` is for a
+   host that needs a transparent background, not for your inspection. Do not try to see a defect a snapshot cannot
    resolve: a gear pair that never touches, or a blade stopping 3mm
    short of its hub, is what the connectivity and engagement contracts
    are for — they fail deterministically, at any scale, without a
@@ -389,5 +477,9 @@ def test_every_part_is_one_body(self):   # geometry, not pose: one
 ## Public API
 
 The complete supported surface is in the separately loaded
-`solid-node-api` skill. If it is unavailable, stop and report the packaging
-gap rather than rediscovering the API from framework implementation.
+`solid-node-api` skill, and it is the only description of the framework
+you have — its source is not available to you. If the skill is
+unavailable, stop and report the packaging gap. If it is loaded but
+silent on something you need, report that gap too: an interface guessed
+from a name or reconstructed from a traceback is not a supported
+interface, and a project built on one breaks at the next release.
