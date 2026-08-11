@@ -253,6 +253,13 @@ They run because the project wrote them down. Nothing else in the framework
 will notice a part that has fallen into fragments or two parts occupying the
 same material.
 
+Both are ordinary test methods, so the animation decorators apply. A project
+whose model moves is expected to decorate `test_assembly_integrity` with
+`@testing_steps(...)`: interference is a question about where the solids are,
+and the scaffolded form only answers it for the instant the runner has
+selected. Connectivity does not vary with pose, so `test_solid_integrity`
+needs no sweep.
+
 ## CLI
 
 ```text

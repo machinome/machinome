@@ -329,31 +329,54 @@ Contract design principles:
 with them:
 
 ```python
-def test_solid_integrity(self):          # geometry, not pose: one
-    self.assertNoDisconnectedSolids(self.node)          # instant is enough
+def test_solid_integrity(self):
+    self.assertNoDisconnectedSolids(self.node)
 
-@testing_steps(4)                        # poses change: sweep the cycle
 def test_assembly_integrity(self):
     self.assertNoSolidInterference(self.node)
 ```
 
-They are not decoration and not a formality. LEAVE THEM IN PLACE. The
-framework checks neither property on its own, so deleting them removes
-the project's only structural net. A project that predates the scaffold,
-or one whose root test file lacks them, gets them ADDED as your first
-act on that project — before the slice you were assigned, since every
-later contract is read against them. Replace any inherited
+Neither is decoration and neither is optional. The framework checks
+neither property on its own, so deleting one removes the project's only
+structural net for it. A project that predates the scaffold, or one
+whose root test file lacks them, gets them ADDED as your first act on
+that project — before the slice you were assigned, since every later
+contract is read against them. Replace any inherited
 `assertNoPairwiseIntersections` call with `assertNoSolidInterference` at
 the same time.
 
-Two things to know about them. `test_assembly_integrity` passes
-vacuously while the project is a single leaf or fusion — it selects
-fewer than two solids and has nothing to compare — so it is not evidence
-until the model is an assembly. And the scaffolded form runs at one
-instant; an animated model needs `@testing_steps` on it, because two
-parts that clear each other at t=0 may collide mid-cycle.
-Interference checking is cheap now (a spatial index, milliseconds on a
-model of ~125 solids), so sweep it generously.
+They are a floor, not a finished contract, and one of them is expected
+to GROW. `test_solid_integrity` asks a question about geometry rather
+than pose — a solid is connected or it is not, whatever the assembly
+does with it — so one instant settles it and the scaffolded form is
+already complete. `test_assembly_integrity` asks where the solids ARE,
+which is exactly what the animation changes. As soon as the model moves,
+sweep it:
+
+```python
+@testing_steps(8)          # a pose contract: one instant is one pose
+def test_assembly_integrity(self):
+    self.assertNoSolidInterference(self.node)
+```
+
+Two parts that clear each other at t=0 routinely collide mid-cycle, and
+the single-instant form cannot see it. Sweeping is the intended
+evolution of that test, not an edit to a contract you were told to leave
+alone; interference checking is cheap (a spatial index, milliseconds on
+a model of ~125 solids), so sweep generously and cover the whole cycle.
+Where a mechanism's geometry repeats faster than the cycle — a gear
+train, a cam — the same rule as any meshing contract applies: sample
+over one tooth or lobe pitch with `start=`/`end=`, and cover the full
+cycle more coarsely alongside it.
+
+What you may not do is weaken either one: no epsilon, no narrowing to a
+subtree that skips the parts you just moved, no deletion because it went
+red. A red integrity test is the net doing its job.
+
+One honest limit: `test_assembly_integrity` passes vacuously while the
+project is still a single leaf or fusion, since it selects fewer than
+two solids and has nothing to compare. It is not evidence until the
+model is an assembly — do not report it as coverage before then.
 
 - Preconditions fail at construction, not in a mesh test (e.g. a gear
   pair refuses mismatched modules by building both gears from one).
