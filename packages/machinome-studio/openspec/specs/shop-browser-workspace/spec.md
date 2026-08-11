@@ -52,20 +52,24 @@ SHALL return the maker to the hub when that project is no longer open.
 - **THEN** the maker is presented with the hub rather than an empty workspace
 
 ### Requirement: The workspace menu preserves live shop context
-The agent context panel SHALL show every profile-declared agent's
-profile-provided display label and live state using the run data of the project
-that workspace shows. It SHALL
-NOT require or invent a separate profile display label, model assembly data,
-build metadata, or per-agent assignment detail, and SHALL NOT show an agent
-belonging to another open project.
+The Model context panel SHALL show the current functional model's supported
+assembly navigator when that model is mounted, alongside every
+profile-declared agent's profile-provided display label and live state using
+the run data of the project that workspace shows. The assembly navigator SHALL
+not require or invent model data outside the viewer's published assembly, and
+the panel SHALL NOT require or invent separate profile display labels, build
+metadata, or per-agent assignment detail. It SHALL NOT show an agent belonging
+to another open project.
 
 #### Scenario: The default profile is visible
 - **WHEN** the maker opens the workspace of a project declaring `builder`
-- **THEN** the agent panel shows Builder's live state
+- **THEN** the Model panel shows the mounted model's assembly navigator and
+  Builder's live state
 
 #### Scenario: Fordesmac is visible
 - **WHEN** the maker opens the workspace of a project declaring `fordesmac`
-- **THEN** the agent panel shows Foreman, Designer, Machinist, and Librarian
+- **THEN** the Model panel shows the mounted model's assembly navigator and
+  Foreman, Designer, Machinist, and Librarian
 
 #### Scenario: An agent changes work state
 - **WHEN** a declared agent's state changes while its project's workspace is open
@@ -73,7 +77,8 @@ belonging to another open project.
 
 #### Scenario: Two project workspaces are open at once
 - **WHEN** the maker views two open projects in two browser locations
-- **THEN** each agent panel shows only its own project's agents and their states
+- **THEN** each Model panel shows only its own project's assembly and agents
+  and their states
 
 ### Requirement: Deferred workspace areas are truthful
 The Model area SHALL present the current interactive functional-model viewer
