@@ -276,6 +276,11 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual(engine_row.evaluate("element => getComputedStyle(element).backgroundColor"), "rgb(28, 33, 40)")
         self.assertEqual(tree.locator(".assembly-row.selected").count(), 0)
         self.assertEqual(self.page.get_by_role("button", name="Show full assembly").count(), 0)
+        self.assertEqual(engine_row.get_attribute("aria-expanded"), "true")
+        housing_row = tree.get_by_role("treeitem").filter(has_text="housing")
+        self.assertEqual(housing_row.get_attribute("aria-expanded"), "false")
+        self.assertEqual(self.page.get_by_role("checkbox", name="Visibility for pin").count(), 0)
+        housing_row.get_by_role("button", name="Expand housing").click()
         pin_visibility = self.page.get_by_role("checkbox", name="Visibility for pin")
         plain_visibility = self.page.get_by_role("checkbox", name="Visibility for unpainted")
         self.assertTrue(pin_visibility.is_checked())
@@ -288,7 +293,6 @@ class ShopLifecycleE2E(unittest.TestCase):
         tree.wait_for()
         self.assertEqual(self.page.evaluate("() => window.__solidNodeWidgetHistory.mounts"), 1)
 
-        housing_row = tree.get_by_role("treeitem").filter(has_text="housing")
         housing_row.get_by_text("housing", exact=True).click()
         self.assertIn("focused-root", engine_row.get_attribute("class") or "")
         self.assertNotIn("focused-root", housing_row.get_attribute("class") or "")
@@ -377,6 +381,8 @@ class ShopLifecycleE2E(unittest.TestCase):
         self._open("real-assembly-viewer")
         self.page.goto(self.url("/projects/real-assembly-viewer"))
 
+        tree = self.page.get_by_role("tree", name="Assembly")
+        tree.get_by_role("button", name="Expand housing").click()
         checkbox = self.page.get_by_role("checkbox", name="Visibility for pin")
         checkbox.wait_for(timeout=10_000)
         self.assertTrue(checkbox.is_checked())

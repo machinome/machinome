@@ -236,6 +236,7 @@ function AssemblyPanel({ assembly, viewer }: {
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
+  const initializedAssembly = useRef(false);
 
   useEffect(() => {
     if (assembly === null) {
@@ -243,17 +244,20 @@ function AssemblyPanel({ assembly, viewer }: {
       setFocused(null);
       setHidden(new Set());
       setExpanded(new Set());
+      initializedAssembly.current = false;
       return;
     }
     const paths = allAssemblyPaths(assembly);
+    const initializeExpansion = !initializedAssembly.current;
     setActive((current) => current !== null && paths.has(current) ? current : pathKey(assembly.path));
     setFocused((current) => current !== null && paths.has(current) ? current : pathKey(assembly.path));
     setHidden((current) => new Set([...current].filter((key) => paths.has(key))));
     setExpanded((current) => {
       const next = new Set([...current].filter((key) => paths.has(key)));
-      paths.forEach((node, key) => { if (node.children.length > 0) next.add(key); });
+      if (initializeExpansion && assembly.children.length > 0) next.add(pathKey(assembly.path));
       return next;
     });
+    initializedAssembly.current = true;
   }, [assembly]);
 
   if (assembly === null || viewer === null) {
