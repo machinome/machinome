@@ -102,7 +102,11 @@ class Handler(BaseHTTPRequestHandler):
             self.reply({"healthy": True, "version": "fake"})
             return
         if path == "/provider":
-            self.reply({"all": [
+            connected = [
+                item for item in os.environ.get("FAKE_OPENCODE_CONNECTED", "anthropic").split(",")
+                if item
+            ]
+            self.reply({"connected": connected, "all": [
                 {
                     "id": "anthropic",
                     "models": {

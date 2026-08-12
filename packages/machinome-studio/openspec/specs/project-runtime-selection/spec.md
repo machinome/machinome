@@ -256,8 +256,9 @@ The Agents workspace SHALL present runtime selection in the order backend,
 provider, model, and reasoning level. The provider control SHALL identify the
 provider independently of the model control. Codex SHALL show `OpenAI` as its
 single fixed provider, Claude SHALL show `Anthropic` as its single fixed
-provider, and OpenCode SHALL show the exact provider IDs returned by its live
-catalogue.
+provider, and OpenCode SHALL show only the exact provider IDs in the live
+endpoint's connected provider set. The shop SHALL NOT expose entries that exist
+only in OpenCode's complete known-provider catalogue.
 
 Changing a backend SHALL replace provider, model, and reasoning drafts with a
 valid combination for that backend. Changing an OpenCode provider SHALL replace
@@ -273,8 +274,16 @@ maker-selectable.
 - **THEN** the provider control shows its single fixed OpenAI or Anthropic provider before the model control
 
 #### Scenario: A maker selects an OpenCode provider
-- **WHEN** a pristine agent's live OpenCode catalogue contains more than one provider and the maker selects one provider ID
-- **THEN** the model control contains only models belonging to that exact provider ID
+- **WHEN** a pristine agent's live OpenCode catalogue contains more than one connected provider and the maker selects one provider ID
+- **THEN** the model control contains only models belonging to that exact connected provider ID
+
+#### Scenario: OpenCode knows providers that are not configured
+- **WHEN** OpenCode's live endpoint lists providers in its complete catalogue that are absent from its connected provider set
+- **THEN** the provider control omits those unconnected providers and all of their models
+
+#### Scenario: OpenCode has no configured provider
+- **WHEN** OpenCode's live endpoint reports no connected providers
+- **THEN** the OpenCode runtime catalogue is unavailable rather than exposing the complete known-provider catalogue
 
 #### Scenario: An upstream selection changes
 - **WHEN** the maker changes backend or OpenCode provider and the previous model or reasoning value is unavailable downstream

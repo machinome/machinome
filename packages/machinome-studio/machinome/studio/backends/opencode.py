@@ -295,15 +295,24 @@ class OpenCodeBackend:
             value = await self._request("GET", f"/provider?directory={quote(str(self.project), safe='')}")
         except RuntimeError as error:
             return RuntimeCatalogue(False, reason=str(error))
-        providers = value.get("all", value) if isinstance(value, dict) else value
+        providers = value.get("all", []) if isinstance(value, dict) else []
+        connected_value = value.get("connected", []) if isinstance(value, dict) else []
+        connected = {
+            item for item in connected_value
+            if isinstance(item, str) and item
+        } if isinstance(connected_value, list) else set()
         items = providers if isinstance(providers, list) else []
         choices: list[RuntimeChoice] = []
         selected_providers = [
             item for item in items
-            if isinstance(item, dict) and (runtime is None or str(item.get("id")) == runtime.provider)
+            if (
+                isinstance(item, dict)
+                and str(item.get("id") or "") in connected
+                and (runtime is None or str(item.get("id")) == runtime.provider)
+            )
         ]
         if runtime is not None and not selected_providers:
-            return RuntimeCatalogue(False, reason=f"OpenCode provider {runtime.provider!r} is absent from the live catalogue")
+            return RuntimeCatalogue(False, reason=f"OpenCode provider {runtime.provider!r} is not connected")
         for selected in selected_providers:
             provider = str(selected.get("id") or "")
             if not provider:
@@ -325,7 +334,11 @@ class OpenCodeBackend:
                 )
                 fallback = (runtime.effort,) if runtime is not None else ("inherit",)
                 choices.append(RuntimeChoice(model_id, efforts or fallback, "opencode", provider))
-        return RuntimeCatalogue(bool(choices), tuple(choices), "" if choices else "OpenCode has no selectable provider models")
+        return RuntimeCatalogue(
+            bool(choices),
+            tuple(choices),
+            "" if choices else "OpenCode has no selectable connected provider models",
+        )
 
     async def update_runtime(self, handle: RoleHandle, runtime: BackendRuntime) -> None:
         current = self._runtimes.get(handle.backend_id)

@@ -188,7 +188,7 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(prompt["model"], {"providerID": "anthropic", "modelID": "claude-opus-4-1"})
         self.assertEqual(prompt["variant"], "high")
 
-    async def test_fresh_session_catalogue_names_live_provider_model_combinations(self) -> None:
+    async def test_fresh_session_catalogue_names_only_connected_provider_models(self) -> None:
         await self.backend.start()
 
         catalogue = await self.backend.runtime_catalog(None)
@@ -199,9 +199,35 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
             {
                 ("opencode", "anthropic", "claude-sonnet-4-5"),
                 ("opencode", "anthropic", "claude-opus-4-1"),
-                ("opencode", "openai", "gpt-5.6-sol"),
             },
         )
+
+    async def test_empty_connected_provider_set_does_not_fall_back_to_all(self) -> None:
+        with patch.dict(os.environ, {"FAKE_OPENCODE_CONNECTED": ""}):
+            await self.backend.start()
+
+        catalogue = await self.backend.runtime_catalog(None)
+
+        self.assertFalse(catalogue.supported)
+        self.assertEqual(catalogue.choices, ())
+        self.assertIn("connected", catalogue.reason)
+
+    async def test_existing_session_provider_must_still_be_connected(self) -> None:
+        await self.backend.start()
+        handle = await self.backend.open_role(
+            "builder",
+            self.context(BackendRuntime(
+                "gpt-5.6-sol", "high", "inherit",
+                backend="opencode", provider="openai",
+            )),
+        )
+
+        catalogue = await self.backend.runtime_catalog(handle)
+
+        self.assertFalse(catalogue.supported)
+        self.assertEqual(catalogue.choices, ())
+        self.assertIn("openai", catalogue.reason)
+        self.assertIn("connected", catalogue.reason)
 
     async def test_native_tool_parts_are_normalized_and_keep_a_stable_update_id(self) -> None:
         await self.backend.start()

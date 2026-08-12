@@ -226,12 +226,14 @@ role session IDs, preserving completion and failure delivery across those
 isolated directories, while the MCP server remains rooted at the verified
 project. Every role delivery
 carries the exact profile prompt and exact allowlisted skill instructions as
-that session's system contract. For a fresh role the adapter exposes every
-provider/model/variant combination returned by the live catalogue. For a
-provider-pinned used role the adapter queries
-OpenCode's live catalogue, limits choices to that same provider, and may replace
-the model/variant used by later prompts without replacing the session. Tool and
-patch parts are normalized into the portable activity schema.
+that session's system contract. For a fresh role the adapter intersects the
+live endpoint's complete catalogue with its connected provider IDs and exposes
+only those provider/model/variant combinations. It never falls back to the
+known-provider catalogue when none are connected. For a provider-pinned used
+role the adapter applies the same connected boundary, limits choices to that
+same provider, and may replace the model/variant used by later prompts without
+replacing the session. Tool and patch parts are normalized into the portable
+activity schema.
 
 OpenCode native project configuration is disabled. If the exact verified
 project-root `AGENTS.md` is a regular non-symlink file, the adapter manually
@@ -274,8 +276,8 @@ role, renders normalized messages, tools, results, failures, file diffs, and
 honest native token counts, and can open an activity path in the existing Code
 workspace. Its runtime controls are ordered backend, provider, model, and
 reasoning. Codex and Claude show their fixed OpenAI and Anthropic providers;
-OpenCode shows exact live provider IDs separately and filters models by the
-selected provider. Profile-owned tools are not part of this choice. The
+OpenCode shows exact connected provider IDs separately and filters models by
+the selected provider. Profile-owned tools are not part of this choice. The
 explicit Apply control fetches the role-owned catalogue, remains disabled
 unless the server reports the role idle, and defaults to writing the selection
 to `pyproject.toml`; unchecking persistence creates a session-only override.
