@@ -233,6 +233,11 @@ class ProjectTools:
     # -- filesystem reads -------------------------------------------
 
     def list_dir(self, path: str = ".", recursive: bool = False) -> list[str]:
+        """List the project files in a directory.
+
+        Ignored and untracked-but-excluded files are omitted.  Paths are
+        relative to the project root; directories end with `/`.
+        """
         target = self._path(path, must_exist=True)
         if not target.is_dir():
             raise ValueError(f"not a directory: {path!r}")
@@ -251,6 +256,7 @@ class ProjectTools:
         return sorted(values)
 
     def find_files(self, pattern: str) -> list[str]:
+        """Find project files whose path or basename matches a glob pattern."""
         if not isinstance(pattern, str) or not pattern or "\x00" in pattern:
             raise ValueError("pattern must be a non-empty string")
         return [
@@ -264,6 +270,7 @@ class ProjectTools:
         path: str = ".",
         regex: bool = False,
     ) -> list[str]:
+        """Search project file contents, returning `path:line:text` matches."""
         if not isinstance(pattern, str) or not pattern:
             raise ValueError("pattern must be a non-empty string")
         matcher = re.compile(pattern) if regex else None
@@ -285,6 +292,14 @@ class ProjectTools:
         offset: int | None = None,
         limit: int | None = None,
     ) -> str | ImagePayload:
+        """Read a project file.
+
+        Text files return their content; PNG, JPG, GIF, and WEBP files return
+        viewable image content instead of raw bytes.  Read the lines you are
+        about to patch immediately before patching them: `apply_patch`
+        matches context against the file as it is now, not as it was earlier
+        in the session.
+        """
         target = self._path(path, must_exist=True)
         if not target.is_file():
             raise ValueError(f"not a file: {path!r}")
@@ -303,6 +318,7 @@ class ProjectTools:
         return "".join(lines[start:stop])
 
     def stat(self, path: str) -> dict[str, Any]:
+        """Report existence, type, size, and modification time for a path."""
         raw = Path(path)
         candidate = raw if raw.is_absolute() else self.root / raw
         target = self._path(path, must_exist=False)
@@ -323,6 +339,12 @@ class ProjectTools:
     # -- filesystem writes ------------------------------------------
 
     def write_file(self, path: str, content: str, must_not_exist: bool = False) -> dict[str, Any]:
+        """Write a file whole, creating it and any missing parent directories.
+
+        This is the way to create a new file: no prior file, `make_dir` call,
+        or patch is needed.  Prefer `edit_file` or `apply_patch` when only
+        part of an existing file changes.
+        """
         target = self._path(path)
         if target.exists() and target.is_dir():
             raise ValueError(f"target is a directory: {path!r}")
@@ -339,6 +361,12 @@ class ProjectTools:
         new_string: str,
         replace_all: bool = False,
     ) -> dict[str, Any]:
+        """Replace an exact string in an existing file.
+
+        The most reliable edit when one known block changes, because it does
+        not depend on line numbers or surrounding context.  `old_string` must
+        match exactly once unless `replace_all` is set.
+        """
         target = self._path(path, must_exist=True)
         content = target.read_text()
         count = content.count(old_string)
@@ -350,12 +378,38 @@ class ProjectTools:
         return {"path": target.relative_to(self.root).as_posix(), "replacements": count if replace_all else 1}
 
     def apply_patch(self, path: str, unified_diff: str) -> dict[str, Any]:
+        """Apply a standard unified diff to one existing file.
+
+        The diff must use ordinary `---`/`+++` headers followed by `@@` hunks.
+        This tool is not Codex `apply_patch`: a `*** Begin Patch` envelope is
+        rejected.  It patches exactly one file per call, and that file must
+        already exist -- create new files with `write_file` instead.
+
+        Context and removed lines must match the file's current content
+        exactly, so re-read the affected lines before building the diff if
+        anything has changed since you last read them.
+        """
         target = self._path(path, must_exist=True)
+        relative = target.relative_to(self.root).as_posix()
         original = target.read_text().splitlines(keepends=True)
         lines = unified_diff.splitlines(keepends=True)
         headers = [index for index, line in enumerate(lines) if line.startswith("--- ")]
+        if any(line.startswith("*** ") for line in lines):
+            raise ValueError(
+                "patch is not a unified diff: remove the '*** Begin Patch' envelope "
+                "and send ordinary '--- a/<path>' and '+++ b/<path>' headers "
+                "followed by '@@' hunks"
+            )
+        if len(headers) > 1:
+            raise ValueError(
+                f"patch contains {len(headers)} file headers; apply_patch changes one "
+                "file per call, so send one diff per file"
+            )
         if len(headers) != 1 or headers[0] + 1 >= len(lines) or not lines[headers[0] + 1].startswith("+++ "):
-            raise ValueError("patch must contain exactly one unified-diff file header")
+            raise ValueError(
+                "patch must start with a unified-diff file header: a '--- a/<path>' "
+                "line immediately followed by a '+++ b/<path>' line"
+            )
         output: list[str] = []
         cursor = 0
         index = headers[0] + 2
@@ -363,7 +417,11 @@ class ProjectTools:
         while index < len(lines):
             match = hunk_pattern.match(lines[index].rstrip("\n"))
             if match is None:
-                raise ValueError(f"invalid unified-diff hunk header: {lines[index].rstrip()!r}")
+                raise ValueError(
+                    f"invalid unified-diff hunk header: {lines[index].rstrip()!r}; "
+                    "expected '@@ -<old-start>,<old-count> +<new-start>,<new-count> @@'"
+                )
+            hunk_header = lines[index].rstrip("\n")
             old_start = int(match.group(1))
             output.extend(original[cursor : old_start - 1])
             cursor = old_start - 1
@@ -374,11 +432,24 @@ class ProjectTools:
                     index += 1
                     continue
                 if not line or line[0] not in " +-":
-                    raise ValueError(f"invalid unified-diff line: {line.rstrip()!r}")
+                    raise ValueError(
+                        f"invalid unified-diff line: {line.rstrip()!r}; every line in a "
+                        "hunk must begin with ' ', '+', or '-'"
+                    )
                 marker, value = line[0], line[1:]
                 if marker in " -":
                     if cursor >= len(original) or original[cursor] != value:
-                        raise ValueError("patch context does not match target file")
+                        actual = (
+                            repr(original[cursor]) if cursor < len(original)
+                            else "end of file"
+                        )
+                        raise ValueError(
+                            f"patch context does not match target file at line "
+                            f"{cursor + 1} of {relative} (hunk {hunk_header!r}): "
+                            f"patch expected {value!r} but the file has {actual}. "
+                            "Re-read the file and rebuild the diff, or use edit_file "
+                            "for a narrow exact replacement. The file is unchanged."
+                        )
                     cursor += 1
                 if marker in " +":
                     output.append(value)
@@ -388,6 +459,7 @@ class ProjectTools:
         return {"path": target.relative_to(self.root).as_posix(), "applied": True}
 
     def delete_file(self, path: str) -> dict[str, Any]:
+        """Delete one existing project file."""
         target = self._path(path, must_exist=True)
         if not target.is_file():
             raise ValueError(f"not a file: {path!r}")
@@ -395,6 +467,7 @@ class ProjectTools:
         return {"path": target.relative_to(self.root).as_posix(), "deleted": True}
 
     def move_file(self, src: str, dst: str) -> dict[str, Any]:
+        """Move or rename a project file; the destination must not exist."""
         source = self._path(src, must_exist=True)
         destination = self._path(dst)
         if destination.exists():
@@ -407,6 +480,7 @@ class ProjectTools:
         }
 
     def make_dir(self, path: str) -> dict[str, Any]:
+        """Create a directory and its parents; `write_file` does not need it."""
         target = self._path(path)
         target.mkdir(parents=True, exist_ok=True)
         return {"path": target.relative_to(self.root).as_posix(), "created": True}
@@ -414,9 +488,11 @@ class ProjectTools:
     # -- git ---------------------------------------------------------
 
     def git_status(self) -> dict[str, Any]:
+        """Show the short branch-annotated working-tree status."""
         return self._git("status", "--short", "--branch")
 
     def git_diff(self, path: str | None = None, staged: bool = False) -> dict[str, Any]:
+        """Show unstaged changes, or staged changes when `staged` is set."""
         args = ["diff"]
         if staged:
             args.append("--cached")
@@ -425,6 +501,7 @@ class ProjectTools:
         return self._git(*args)
 
     def git_log(self, path: str | None = None, limit: int = 20) -> dict[str, Any]:
+        """Show recent commits in one-line decorated form."""
         if limit < 1 or limit > 1000:
             raise ValueError("limit must be between 1 and 1000")
         args = ["log", f"-{limit}", "--oneline", "--decorate"]
@@ -433,10 +510,16 @@ class ProjectTools:
         return self._git(*args)
 
     def git_show(self, revision: str, path: str) -> dict[str, Any]:
+        """Read one file's content as of a given revision.
+
+        Use this to read a released drawing exactly as it was committed,
+        rather than the possibly edited working copy.
+        """
         relative = self._relative(path)
         return self._git("show", f"{self._revision(revision)}:{relative}")
 
     def git_rev_parse_toplevel(self) -> str:
+        """Return the repository root, failing unless it is the active project."""
         result = self._git("rev-parse", "--show-toplevel")
         if not result["ok"]:
             raise RuntimeError(result["stderr"] or "git rev-parse failed")
@@ -446,6 +529,7 @@ class ProjectTools:
         return str(toplevel)
 
     def git_merge_base_is_ancestor(self, commit: str, ref: str = "HEAD") -> dict[str, Any]:
+        """Report whether `commit` is an ancestor of `ref` (default HEAD)."""
         result = self._git(
             "merge-base", "--is-ancestor", self._revision(commit), self._revision(ref)
         )
@@ -453,6 +537,7 @@ class ProjectTools:
         return result
 
     def git_head(self) -> dict[str, Any]:
+        """Return the current commit sha and branch name."""
         sha = self._git("rev-parse", "HEAD")
         branch = self._git("symbolic-ref", "--quiet", "--short", "HEAD")
         if not sha["ok"]:
@@ -463,11 +548,18 @@ class ProjectTools:
         }
 
     def git_add(self, paths: list[str]) -> dict[str, Any]:
+        """Stage the exact paths given; no path is unstaged or substituted."""
         if not paths:
             raise ValueError("paths must not be empty")
         return self._git("add", "--", *(self._relative(path) for path in paths))
 
     def git_commit(self, message: str) -> dict[str, Any]:
+        """Commit the staged changes in the active project.
+
+        The shop also best-effort refreshes and stages the managed root
+        `screenshot.png` preview; a screenshot failure never blocks the
+        commit and is reported separately as a warning.
+        """
         if not isinstance(message, str) or not message:
             raise ValueError("message must be a non-empty string")
         screenshot = refresh_project_screenshot(self.root, self.solid_command)
@@ -484,6 +576,7 @@ class ProjectTools:
     # -- solid-node --------------------------------------------------
 
     def solid_build(self, path: str | None = None) -> dict[str, Any]:
+        """Run `solid build`, returning its exit status and output."""
         reference = self._reference(path)
         result = self._run([*self.solid_command, "build", *([reference] if reference else [])])
         if result["ok"]:
@@ -493,6 +586,7 @@ class ProjectTools:
         return result
 
     def solid_test(self, path: str | None = None, failfast: bool = False) -> dict[str, Any]:
+        """Run `solid test`, returning its exit status and output."""
         reference = self._reference(path)
         command = [*self.solid_command, "test"]
         if failfast:
@@ -513,6 +607,12 @@ class ProjectTools:
         autocenter: bool = False,
         viewall: bool = False,
     ) -> ImagePayload:
+        """Render a snapshot and return the image; nothing is left in the project.
+
+        Accepts the same options as the `solid snapshot` CLI command.  The
+        image is returned as tool output, so it never appears in git status
+        and is never commit evidence.
+        """
         reference = self._reference(path)
         with tempfile.TemporaryDirectory(prefix="solid-node-studio-snapshot-") as temporary:
             output = Path(temporary) / "snapshot.png"
@@ -549,6 +649,7 @@ class ProjectTools:
         assignment: str,
         text: str,
     ) -> dict[str, Any]:
+        """Dispatch an assignment to a role that reports to you."""
         return self._floor().assign(sender, recipient, assignment, text)
 
     def floor_direction(
@@ -557,9 +658,11 @@ class ProjectTools:
         recipient: str,
         text: str,
     ) -> dict[str, Any]:
+        """Send steering direction that does not replace the active assignment."""
         return self._floor().direction(sender, recipient, text)
 
     def floor_acknowledge(self, role: str, assignment: str) -> dict[str, Any]:
+        """Acknowledge a received assignment before starting work on it."""
         return self._floor().acknowledge(role, assignment)
 
     def floor_report(
@@ -569,9 +672,11 @@ class ProjectTools:
         text: str,
         assignment: str = "",
     ) -> dict[str, Any]:
+        """Send progress, findings, or a final report to another role."""
         return self._floor().report(sender, recipient, text, assignment)
 
     def floor_complete(self, role: str, assignment: str) -> dict[str, Any]:
+        """Mark an assignment finished after sending its final report."""
         return self._floor().complete(role, assignment)
 
 
@@ -584,55 +689,165 @@ def _schema(properties: dict[str, Any] | None = None, required: list[str] | None
     }
 
 
-STR = {"type": "string"}
-BOOL = {"type": "boolean"}
-INT = {"type": "integer"}
-NUMBER = {"type": "number"}
+def _param(kind: str, description: str, **extra: Any) -> dict[str, Any]:
+    """Describe one tool parameter so the calling model needs no guesswork."""
+    return {"type": kind, "description": description, **extra}
+
+
+def STR(description: str, **extra: Any) -> dict[str, Any]:
+    return _param("string", description, **extra)
+
+
+def BOOL(description: str) -> dict[str, Any]:
+    return _param("boolean", description)
+
+
+def INT(description: str) -> dict[str, Any]:
+    return _param("integer", description)
+
+
+def NUMBER(description: str) -> dict[str, Any]:
+    return _param("number", description)
+
+
+PROJECT_PATH = "Path relative to the active project root."
 TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
-    "list_dir": _schema({"path": STR, "recursive": BOOL}),
-    "find_files": _schema({"pattern": STR}, ["pattern"]),
-    "search_content": _schema({"pattern": STR, "path": STR, "regex": BOOL}, ["pattern"]),
-    "read_file": _schema({"path": STR, "offset": INT, "limit": INT}, ["path"]),
-    "stat": _schema({"path": STR}, ["path"]),
-    "write_file": _schema({"path": STR, "content": STR, "must_not_exist": BOOL}, ["path", "content"]),
-    "edit_file": _schema({"path": STR, "old_string": STR, "new_string": STR, "replace_all": BOOL}, ["path", "old_string", "new_string"]),
-    "apply_patch": _schema({"path": STR, "unified_diff": STR}, ["path", "unified_diff"]),
-    "delete_file": _schema({"path": STR}, ["path"]),
-    "move_file": _schema({"src": STR, "dst": STR}, ["src", "dst"]),
-    "make_dir": _schema({"path": STR}, ["path"]),
+    "list_dir": _schema({
+        "path": STR(f"Directory to list. {PROJECT_PATH} Defaults to the root."),
+        "recursive": BOOL("List every descendant instead of one level."),
+    }),
+    "find_files": _schema({
+        "pattern": STR("Glob matched against each file's path or basename, such as 'test_*.py'."),
+    }, ["pattern"]),
+    "search_content": _schema({
+        "pattern": STR("Literal text, or a regular expression when 'regex' is true."),
+        "path": STR(f"File or directory to search. {PROJECT_PATH} Defaults to the root."),
+        "regex": BOOL("Treat 'pattern' as a regular expression."),
+    }, ["pattern"]),
+    "read_file": _schema({
+        "path": STR(f"File to read. {PROJECT_PATH}"),
+        "offset": INT("First line to return, counting from 1."),
+        "limit": INT("Maximum number of lines to return."),
+    }, ["path"]),
+    "stat": _schema({"path": STR(f"Path to inspect. {PROJECT_PATH}")}, ["path"]),
+    "write_file": _schema({
+        "path": STR(f"File to write. {PROJECT_PATH} Missing parent directories are created."),
+        "content": STR("Complete new content of the file; it replaces anything already there."),
+        "must_not_exist": BOOL("Fail instead of overwriting an existing file."),
+    }, ["path", "content"]),
+    "edit_file": _schema({
+        "path": STR(f"Existing file to edit. {PROJECT_PATH}"),
+        "old_string": STR("Exact text to replace, including its indentation and line breaks."),
+        "new_string": STR("Replacement text."),
+        "replace_all": BOOL("Replace every occurrence instead of requiring exactly one."),
+    }, ["path", "old_string", "new_string"]),
+    "apply_patch": _schema({
+        "path": STR(f"Existing file the diff applies to. {PROJECT_PATH}"),
+        "unified_diff": STR(
+            "Standard unified diff for that one file: a '--- a/<path>' line, a "
+            "'+++ b/<path>' line, then '@@ -<start>,<count> +<start>,<count> @@' "
+            "hunks whose lines each begin with ' ', '+', or '-'. Not the Codex "
+            "'*** Begin Patch' format, and not a multi-file diff."
+        ),
+    }, ["path", "unified_diff"]),
+    "delete_file": _schema({"path": STR(f"File to delete. {PROJECT_PATH}")}, ["path"]),
+    "move_file": _schema({
+        "src": STR(f"Existing file to move. {PROJECT_PATH}"),
+        "dst": STR(f"Destination, which must not already exist. {PROJECT_PATH}"),
+    }, ["src", "dst"]),
+    "make_dir": _schema({
+        "path": STR(f"Directory to create, with its parents. {PROJECT_PATH}"),
+    }, ["path"]),
     "git_status": _schema(),
-    "git_diff": _schema({"path": STR, "staged": BOOL}),
-    "git_log": _schema({"path": STR, "limit": INT}),
-    "git_show": _schema({"revision": STR, "path": STR}, ["revision", "path"]),
+    "git_diff": _schema({
+        "path": STR(f"Limit the diff to this path. {PROJECT_PATH}"),
+        "staged": BOOL("Show staged changes rather than unstaged ones."),
+    }),
+    "git_log": _schema({
+        "path": STR(f"Limit history to this path. {PROJECT_PATH}"),
+        "limit": INT("Number of commits to show, from 1 to 1000. Defaults to 20."),
+    }),
+    "git_show": _schema({
+        "revision": STR("Commit sha, tag, or ref to read the file from."),
+        "path": STR(f"File to read at that revision. {PROJECT_PATH}"),
+    }, ["revision", "path"]),
     "git_rev_parse_toplevel": _schema(),
-    "git_merge_base_is_ancestor": _schema({"commit": STR, "ref": STR}, ["commit"]),
+    "git_merge_base_is_ancestor": _schema({
+        "commit": STR("Commit tested as the ancestor, such as a released drawing commit."),
+        "ref": STR("Descendant ref to test against. Defaults to HEAD."),
+    }, ["commit"]),
     "git_head": _schema(),
-    "git_add": _schema({"paths": {"type": "array", "items": STR}}, ["paths"]),
-    "git_commit": _schema({"message": STR}, ["message"]),
-    "solid_build": _schema({"path": STR}),
-    "solid_test": _schema({"path": STR, "failfast": BOOL}),
+    "git_add": _schema({
+        "paths": {
+            "type": "array",
+            "items": STR(f"Path to stage. {PROJECT_PATH}"),
+            "description": "Exact paths to stage. Nothing else is staged or unstaged.",
+        },
+    }, ["paths"]),
+    "git_commit": _schema({
+        "message": STR("Commit message for the already staged changes."),
+    }, ["message"]),
+    "solid_build": _schema({
+        "path": STR("Node reference or file to build. Defaults to the project model."),
+    }),
+    "solid_test": _schema({
+        "path": STR("Test file or node reference to run. Defaults to the whole suite."),
+        "failfast": BOOL("Stop at the first failing test."),
+    }),
     "solid_snapshot": _schema({
-        "path": STR, "time": NUMBER, "camera": STR, "imgsize": STR,
-        "projection": {"type": "string", "enum": ["ortho", "perspective"]},
-        "colorscheme": STR, "view": STR, "autocenter": BOOL, "viewall": BOOL,
+        "path": STR("Node reference or file to render. Defaults to the project model."),
+        "time": NUMBER("Animation time to render at."),
+        "camera": STR("Camera placement, as accepted by 'solid snapshot'."),
+        "imgsize": STR("Image size as 'width,height', such as '1024,768'."),
+        "projection": {
+            "type": "string",
+            "enum": ["ortho", "perspective"],
+            "description": "Projection used for the render.",
+        },
+        "colorscheme": STR("Named render colour scheme."),
+        "view": STR("View flags, as accepted by 'solid snapshot'."),
+        "autocenter": BOOL("Centre the model in the frame."),
+        "viewall": BOOL("Zoom so the whole model is visible."),
     }),
     "floor_assign": _schema(
-        {"sender": STR, "recipient": STR, "assignment": STR, "text": STR},
+        {
+            "sender": STR("Your own role id."),
+            "recipient": STR("Role id you are assigning work to."),
+            "assignment": STR("Assignment id this dispatch opens."),
+            "text": STR("Assignment brief."),
+        },
         ["sender", "recipient", "assignment", "text"],
     ),
     "floor_direction": _schema(
-        {"sender": STR, "recipient": STR, "text": STR},
+        {
+            "sender": STR("Your own role id."),
+            "recipient": STR("Role id being steered."),
+            "text": STR("Direction, which does not by itself replace an active assignment."),
+        },
         ["sender", "recipient", "text"],
     ),
     "floor_acknowledge": _schema(
-        {"role": STR, "assignment": STR}, ["role", "assignment"]
+        {
+            "role": STR("Your own role id."),
+            "assignment": STR("Assignment id being acknowledged."),
+        },
+        ["role", "assignment"],
     ),
     "floor_report": _schema(
-        {"sender": STR, "recipient": STR, "text": STR, "assignment": STR},
+        {
+            "sender": STR("Your own role id."),
+            "recipient": STR("Role id to report to."),
+            "text": STR("Progress, findings, blockers, or the final report."),
+            "assignment": STR("Assignment id the report belongs to, when it has one."),
+        },
         ["sender", "recipient", "text"],
     ),
     "floor_complete": _schema(
-        {"role": STR, "assignment": STR}, ["role", "assignment"]
+        {
+            "role": STR("Your own role id."),
+            "assignment": STR("Assignment id being completed."),
+        },
+        ["role", "assignment"],
     ),
 }
 

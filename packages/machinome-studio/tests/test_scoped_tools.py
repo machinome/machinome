@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from floor.mcp_server import ProjectTools, TOOL_NAMES, mcp_command
+from floor.mcp_server import ProjectTools, TOOL_NAMES, TOOL_SCHEMAS, mcp_command
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -93,6 +93,52 @@ class ScopedProjectToolsTest(unittest.TestCase):
         self.tools.delete_file("new/moved.txt")
         self.tools.make_dir("empty/child")
         self.assertTrue((self.project / "empty/child").is_dir())
+
+    def test_every_tool_documents_itself_and_its_parameters(self) -> None:
+        for name in TOOL_NAMES:
+            with self.subTest(tool=name):
+                documentation = getattr(ProjectTools, name).__doc__
+                self.assertTrue(
+                    documentation and documentation.strip(),
+                    f"{name} has no docstring, so agents see only its name",
+                )
+                for parameter, schema in TOOL_SCHEMAS[name]["properties"].items():
+                    self.assertTrue(
+                        schema.get("description", "").strip(),
+                        f"{name}.{parameter} has no description",
+                    )
+
+    def test_patch_failures_explain_the_expected_format_and_the_mismatch(self) -> None:
+        codex = self.assertRaises(ValueError)
+        with codex:
+            self.tools.apply_patch(
+                "part.txt",
+                "*** Begin Patch\n*** Update File: part.txt\n-alpha\n+omega\n*** End Patch\n",
+            )
+        self.assertIn("unified diff", str(codex.exception))
+        self.assertIn("*** Begin Patch", str(codex.exception))
+
+        several = self.assertRaises(ValueError)
+        with several:
+            self.tools.apply_patch(
+                "part.txt",
+                "--- a/part.txt\n+++ b/part.txt\n@@ -1 +1 @@\n-alpha\n+omega\n"
+                "--- a/other.txt\n+++ b/other.txt\n@@ -1 +1 @@\n-one\n+two\n",
+            )
+        self.assertIn("one file per call", str(several.exception))
+
+        stale = self.assertRaises(ValueError)
+        with stale:
+            self.tools.apply_patch(
+                "part.txt",
+                "--- a/part.txt\n+++ b/part.txt\n@@ -2 +2 @@\n-delta\n+omega\n",
+            )
+        message = str(stale.exception)
+        self.assertIn("line 2", message)
+        self.assertIn("part.txt", message)
+        self.assertIn("'delta\\n'", message)
+        self.assertIn("'beta\\n'", message)
+        self.assertEqual((self.project / "part.txt").read_text(), "alpha\nbeta\ngamma\n")
 
     def test_git_tools_are_project_scoped_and_report_exit_status(self) -> None:
         self.tools.write_file("new.txt", "new\n")
