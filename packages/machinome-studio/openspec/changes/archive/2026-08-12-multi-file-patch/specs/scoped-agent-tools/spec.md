@@ -39,6 +39,11 @@ when supplied, SHALL name the only file the diff describes.
 - **THEN** the new file is created with the diff's content, the removed file is
   deleted, and both are reported in the result
 
+#### Scenario: A patch comes straight from git diff
+- **WHEN** `apply_patch` is called with unedited `git diff` output, including
+  its `diff --git` and `index` preamble around each file
+- **THEN** every file it describes is updated as the diff specifies
+
 #### Scenario: A patch reaches outside the project
 - **WHEN** `apply_patch` is called with a diff whose file header resolves
   outside the active project

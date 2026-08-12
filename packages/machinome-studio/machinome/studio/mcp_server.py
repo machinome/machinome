@@ -69,6 +69,13 @@ NATIVE_OPENCODE_TOOLS = (
     "websearch", "task", "todowrite", "todoread", "patch", "question", "skill",
 )
 
+# Metadata `git diff` emits around each file, which carries no hunk content.
+GIT_DIFF_PREAMBLE = (
+    "diff --git ", "index ", "new file mode ", "deleted file mode ",
+    "old mode ", "new mode ", "similarity index ", "dissimilarity index ",
+    "rename from ", "rename to ", "copy from ", "copy to ",
+)
+
 RASTER_MIME_TYPES = {
     ".png": "image/png",
     ".jpg": "image/jpeg",
@@ -377,64 +384,127 @@ class ProjectTools:
         target.write_text(content.replace(old_string, new_string, -1 if replace_all else 1))
         return {"path": target.relative_to(self.root).as_posix(), "replacements": count if replace_all else 1}
 
-    def apply_patch(self, path: str, unified_diff: str) -> dict[str, Any]:
-        """Apply a standard unified diff to one existing file.
+    def apply_patch(self, unified_diff: str, path: str | None = None) -> dict[str, Any]:
+        """Apply a standard unified diff to one or more project files.
 
-        The diff must use ordinary `---`/`+++` headers followed by `@@` hunks.
-        This tool is not Codex `apply_patch`: a `*** Begin Patch` envelope is
-        rejected.  It patches exactly one file per call, and that file must
-        already exist -- create new files with `write_file` instead.
+        The diff names the files it changes, so `path` is optional; supply it
+        only for a single-file diff, where it is checked against the diff.
+        `--- /dev/null` creates a file and `+++ /dev/null` deletes one, so one
+        call can carry a whole coherent edit across implementation and tests.
 
-        Context and removed lines must match the file's current content
-        exactly, so re-read the affected lines before building the diff if
-        anything has changed since you last read them.
+        Every file is verified against its current content before anything is
+        written: if any hunk does not match, no file is modified at all.  So
+        re-read the affected lines before building the diff if anything has
+        changed since you last read them.
+
+        Output from `git diff` applies unedited, including its `diff --git` and
+        `index` preamble.  This tool is not Codex `apply_patch`; a
+        `*** Begin Patch` envelope is rejected.  Hunks must match exactly, with
+        no fuzz or offset search.
         """
-        target = self._path(path, must_exist=True)
-        relative = target.relative_to(self.root).as_posix()
-        original = target.read_text().splitlines(keepends=True)
         lines = unified_diff.splitlines(keepends=True)
-        headers = [index for index, line in enumerate(lines) if line.startswith("--- ")]
         if any(line.startswith("*** ") for line in lines):
             raise ValueError(
                 "patch is not a unified diff: remove the '*** Begin Patch' envelope "
                 "and send ordinary '--- a/<path>' and '+++ b/<path>' headers "
                 "followed by '@@' hunks"
             )
-        if len(headers) > 1:
+        headers = [index for index, line in enumerate(lines) if line.startswith("--- ")]
+        if not headers or any(
+            index + 1 >= len(lines) or not lines[index + 1].startswith("+++ ")
+            for index in headers
+        ):
             raise ValueError(
-                f"patch contains {len(headers)} file headers; apply_patch changes one "
-                "file per call, so send one diff per file"
-            )
-        if len(headers) != 1 or headers[0] + 1 >= len(lines) or not lines[headers[0] + 1].startswith("+++ "):
-            raise ValueError(
-                "patch must start with a unified-diff file header: a '--- a/<path>' "
+                "patch must contain a unified-diff file header: a '--- a/<path>' "
                 "line immediately followed by a '+++ b/<path>' line"
             )
+        if path is not None and len(headers) > 1:
+            raise ValueError(
+                f"patch describes {len(headers)} files but 'path' names one; omit "
+                "'path' for a multi-file diff, since the diff names its own targets"
+            )
+
+        if path is not None:
+            named = self._path(path)
+            described = self._patch_target(lines[headers[0]], lines[headers[0] + 1])
+            if named != described:
+                raise ValueError(
+                    f"patch changes {described.relative_to(self.root).as_posix()} but "
+                    f"'path' names {named.relative_to(self.root).as_posix()}"
+                )
+
+        # Phase one: resolve and verify every file the diff describes.  A file's
+        # hunks end before the next file's `diff --git`/`index` preamble.
+        plans: list[tuple[Path, str, list[str] | None]] = []
+        for position, start in enumerate(headers):
+            stop = headers[position + 1] if position + 1 < len(headers) else len(lines)
+            while stop > start + 2 and lines[stop - 1].startswith(GIT_DIFF_PREAMBLE):
+                stop -= 1
+            plans.append(self._patch_plan(lines, start, stop))
+
+        # Phase two: no plan can fail from here, so the whole diff lands.
+        files: list[dict[str, str]] = []
+        for target, relative, content in plans:
+            if content is None:
+                target.unlink()
+                files.append({"path": relative, "change": "deleted"})
+                continue
+            created = not target.exists()
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("".join(content))
+            files.append({"path": relative, "change": "created" if created else "changed"})
+        return {"files": files, "applied": True}
+
+    HUNK_HEADER = re.compile(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+
+    def _patch_plan(
+        self, lines: list[str], start: int, stop: int
+    ) -> tuple[Path, str, list[str] | None]:
+        """Verify one file's hunks and return its resolved content, or None to delete."""
+        source = self._patch_header_path(lines[start])
+        destination = self._patch_header_path(lines[start + 1])
+        target = self._patch_target(lines[start], lines[start + 1])
+        relative = target.relative_to(self.root).as_posix()
+        if source is None:
+            if target.exists():
+                raise ValueError(
+                    f"patch creates {relative} from /dev/null but that file already "
+                    "exists; diff it against its current content instead"
+                )
+            original: list[str] = []
+        else:
+            if not target.is_file():
+                raise ValueError(
+                    f"patch changes {relative}, which is not an existing file; "
+                    "create new files with write_file or with a '--- /dev/null' header"
+                )
+            original = target.read_text().splitlines(keepends=True)
+
         output: list[str] = []
         cursor = 0
-        index = headers[0] + 2
-        hunk_pattern = re.compile(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
-        while index < len(lines):
-            match = hunk_pattern.match(lines[index].rstrip("\n"))
+        index = start + 2
+        while index < stop:
+            match = self.HUNK_HEADER.match(lines[index].rstrip("\n"))
             if match is None:
                 raise ValueError(
-                    f"invalid unified-diff hunk header: {lines[index].rstrip()!r}; "
-                    "expected '@@ -<old-start>,<old-count> +<new-start>,<new-count> @@'"
+                    f"invalid unified-diff hunk header for {relative}: "
+                    f"{lines[index].rstrip()!r}; expected "
+                    "'@@ -<old-start>,<old-count> +<new-start>,<new-count> @@'"
                 )
             hunk_header = lines[index].rstrip("\n")
-            old_start = int(match.group(1))
+            old_start = max(int(match.group(1)), 1)
             output.extend(original[cursor : old_start - 1])
             cursor = old_start - 1
             index += 1
-            while index < len(lines) and not lines[index].startswith("@@ "):
+            while index < stop and not lines[index].startswith("@@ "):
                 line = lines[index]
                 if line.startswith("\\ No newline at end of file"):
                     index += 1
                     continue
                 if not line or line[0] not in " +-":
                     raise ValueError(
-                        f"invalid unified-diff line: {line.rstrip()!r}; every line in a "
-                        "hunk must begin with ' ', '+', or '-'"
+                        f"invalid unified-diff line for {relative}: {line.rstrip()!r}; "
+                        "every line in a hunk must begin with ' ', '+', or '-'"
                     )
                 marker, value = line[0], line[1:]
                 if marker in " -":
@@ -448,15 +518,39 @@ class ProjectTools:
                             f"{cursor + 1} of {relative} (hunk {hunk_header!r}): "
                             f"patch expected {value!r} but the file has {actual}. "
                             "Re-read the file and rebuild the diff, or use edit_file "
-                            "for a narrow exact replacement. The file is unchanged."
+                            "for a narrow exact replacement. No file was modified."
                         )
                     cursor += 1
                 if marker in " +":
                     output.append(value)
                 index += 1
         output.extend(original[cursor:])
-        target.write_text("".join(output))
-        return {"path": target.relative_to(self.root).as_posix(), "applied": True}
+        if destination is None:
+            if output:
+                raise ValueError(
+                    f"patch deletes {relative} to /dev/null but leaves content behind"
+                )
+            return target, relative, None
+        return target, relative, output
+
+    def _patch_target(self, source_header: str, destination_header: str) -> Path:
+        """Resolve the project file one file header pair describes."""
+        source = self._patch_header_path(source_header)
+        destination = self._patch_header_path(destination_header)
+        if source is None and destination is None:
+            raise ValueError("unified-diff file header names /dev/null on both sides")
+        return self._path(destination if destination is not None else source)
+
+    @staticmethod
+    def _patch_header_path(header: str) -> str | None:
+        """Read a file path out of a '---' or '+++' header, or None for /dev/null."""
+        value = header.split("\t", 1)[0].rstrip("\n")[4:].strip()
+        if not value:
+            raise ValueError(f"unified-diff file header names no path: {header.rstrip()!r}")
+        if value in ("/dev/null", "a/dev/null", "b/dev/null"):
+            return None
+        prefix, separator, remainder = value.partition("/")
+        return remainder if separator and prefix in ("a", "b") else value
 
     def delete_file(self, path: str) -> dict[str, Any]:
         """Delete one existing project file."""
@@ -742,14 +836,21 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
         "replace_all": BOOL("Replace every occurrence instead of requiring exactly one."),
     }, ["path", "old_string", "new_string"]),
     "apply_patch": _schema({
-        "path": STR(f"Existing file the diff applies to. {PROJECT_PATH}"),
         "unified_diff": STR(
-            "Standard unified diff for that one file: a '--- a/<path>' line, a "
-            "'+++ b/<path>' line, then '@@ -<start>,<count> +<start>,<count> @@' "
-            "hunks whose lines each begin with ' ', '+', or '-'. Not the Codex "
-            "'*** Begin Patch' format, and not a multi-file diff."
+            "Standard unified diff. Each file it changes is introduced by a "
+            "'--- a/<path>' line and a '+++ b/<path>' line, followed by "
+            "'@@ -<start>,<count> +<start>,<count> @@' hunks whose lines each "
+            "begin with ' ', '+', or '-'. Several files may appear in one diff, "
+            "and they are all applied together or not at all. Use '/dev/null' on "
+            "the '---' side to create a file or on the '+++' side to delete one. "
+            "Output from 'git diff' is accepted unedited. Not the Codex "
+            "'*** Begin Patch' format."
         ),
-    }, ["path", "unified_diff"]),
+        "path": STR(
+            "Optional. The diff already names its targets; supply this only for a "
+            f"single-file diff, where it is checked against the diff. {PROJECT_PATH}"
+        ),
+    }, ["unified_diff"]),
     "delete_file": _schema({"path": STR(f"File to delete. {PROJECT_PATH}")}, ["path"]),
     "move_file": _schema({
         "src": STR(f"Existing file to move. {PROJECT_PATH}"),

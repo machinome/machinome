@@ -85,8 +85,8 @@ class ScopedProjectToolsTest(unittest.TestCase):
         self.tools.write_file("new/note.txt", "one\n", must_not_exist=True)
         self.tools.edit_file("new/note.txt", "one", "two")
         self.tools.apply_patch(
-            "new/note.txt",
             "--- a/new/note.txt\n+++ b/new/note.txt\n@@ -1 +1 @@\n-two\n+three\n",
+            "new/note.txt",
         )
         self.tools.move_file("new/note.txt", "new/moved.txt")
         self.assertEqual((self.project / "new/moved.txt").read_text(), "three\n")
@@ -112,32 +112,122 @@ class ScopedProjectToolsTest(unittest.TestCase):
         codex = self.assertRaises(ValueError)
         with codex:
             self.tools.apply_patch(
-                "part.txt",
                 "*** Begin Patch\n*** Update File: part.txt\n-alpha\n+omega\n*** End Patch\n",
             )
         self.assertIn("unified diff", str(codex.exception))
         self.assertIn("*** Begin Patch", str(codex.exception))
 
-        several = self.assertRaises(ValueError)
-        with several:
-            self.tools.apply_patch(
-                "part.txt",
-                "--- a/part.txt\n+++ b/part.txt\n@@ -1 +1 @@\n-alpha\n+omega\n"
-                "--- a/other.txt\n+++ b/other.txt\n@@ -1 +1 @@\n-one\n+two\n",
-            )
-        self.assertIn("one file per call", str(several.exception))
-
         stale = self.assertRaises(ValueError)
         with stale:
             self.tools.apply_patch(
-                "part.txt",
                 "--- a/part.txt\n+++ b/part.txt\n@@ -2 +2 @@\n-delta\n+omega\n",
+                "part.txt",
             )
         message = str(stale.exception)
         self.assertIn("line 2", message)
         self.assertIn("part.txt", message)
         self.assertIn("'delta\\n'", message)
         self.assertIn("'beta\\n'", message)
+        self.assertEqual((self.project / "part.txt").read_text(), "alpha\nbeta\ngamma\n")
+
+    def test_one_patch_changes_creates_and_deletes_several_files(self) -> None:
+        (self.project / "other.txt").write_text("one\ntwo\n")
+        result = self.tools.apply_patch(unified_diff=(
+            "--- a/part.txt\n+++ b/part.txt\n"
+            "@@ -1,3 +1,3 @@\n alpha\n-beta\n+BETA\n gamma\n"
+            "--- a/other.txt\n+++ b/other.txt\n"
+            "@@ -1,2 +1,2 @@\n-one\n+ONE\n two\n"
+            "--- /dev/null\n+++ b/added/fresh.txt\n"
+            "@@ -0,0 +1,2 @@\n+first\n+second\n"
+            "--- a/drawing.svg\n+++ /dev/null\n"
+            "@@ -1 +0,0 @@\n-<svg>alpha</svg>\n"
+        ))
+
+        self.assertEqual((self.project / "part.txt").read_text(), "alpha\nBETA\ngamma\n")
+        self.assertEqual((self.project / "other.txt").read_text(), "ONE\ntwo\n")
+        self.assertEqual((self.project / "added/fresh.txt").read_text(), "first\nsecond\n")
+        self.assertFalse((self.project / "drawing.svg").exists())
+        self.assertEqual(
+            {entry["path"]: entry["change"] for entry in result["files"]},
+            {
+                "part.txt": "changed",
+                "other.txt": "changed",
+                "added/fresh.txt": "created",
+                "drawing.svg": "deleted",
+            },
+        )
+
+    def test_a_patch_produced_by_git_diff_applies_unedited(self) -> None:
+        (self.project / "other.txt").write_text("one\ntwo\n")
+        self.tools.apply_patch(
+            "diff --git a/part.txt b/part.txt\n"
+            "index fbbee86..cd964df 100644\n"
+            "--- a/part.txt\n+++ b/part.txt\n"
+            "@@ -1,3 +1,3 @@\n alpha\n-beta\n+BETA\n gamma\n"
+            "diff --git a/other.txt b/other.txt\n"
+            "index 814f4a4..4c1ee58 100644\n"
+            "--- a/other.txt\n+++ b/other.txt\n"
+            "@@ -1,2 +1,2 @@\n-one\n+ONE\n two\n"
+            "diff --git a/fresh.txt b/fresh.txt\n"
+            "new file mode 100644\n"
+            "index 0000000..3e75765\n"
+            "--- /dev/null\n+++ b/fresh.txt\n"
+            "@@ -0,0 +1 @@\n+new\n"
+        )
+        self.assertEqual((self.project / "part.txt").read_text(), "alpha\nBETA\ngamma\n")
+        self.assertEqual((self.project / "other.txt").read_text(), "ONE\ntwo\n")
+        self.assertEqual((self.project / "fresh.txt").read_text(), "new\n")
+
+    def test_a_multi_file_patch_changes_nothing_when_any_file_fails(self) -> None:
+        (self.project / "other.txt").write_text("one\ntwo\n")
+        failure = self.assertRaises(ValueError)
+        with failure:
+            self.tools.apply_patch(unified_diff=(
+                "--- a/part.txt\n+++ b/part.txt\n"
+                "@@ -1,3 +1,3 @@\n alpha\n-beta\n+BETA\n gamma\n"
+                "--- /dev/null\n+++ b/added/fresh.txt\n"
+                "@@ -0,0 +1 @@\n+first\n"
+                "--- a/other.txt\n+++ b/other.txt\n"
+                "@@ -1,2 +1,2 @@\n-STALE\n+ONE\n two\n"
+            ))
+
+        message = str(failure.exception)
+        self.assertIn("other.txt", message)
+        self.assertIn("line 1", message)
+        self.assertIn("'STALE\\n'", message)
+        self.assertEqual((self.project / "part.txt").read_text(), "alpha\nbeta\ngamma\n")
+        self.assertEqual((self.project / "other.txt").read_text(), "one\ntwo\n")
+        self.assertFalse((self.project / "added").exists())
+
+    def test_patch_targets_are_contained_and_agree_with_any_given_path(self) -> None:
+        escape = self.assertRaises(ValueError)
+        with escape:
+            self.tools.apply_patch(unified_diff=(
+                "--- a/part.txt\n+++ b/part.txt\n"
+                "@@ -1,3 +1,3 @@\n alpha\n-beta\n+BETA\n gamma\n"
+                "--- a/../outside.txt\n+++ b/../outside.txt\n"
+                "@@ -1 +1 @@\n-out\n+OUT\n"
+            ))
+        self.assertIn("outside active project", str(escape.exception))
+        self.assertEqual((self.project / "part.txt").read_text(), "alpha\nbeta\ngamma\n")
+
+        disagreement = self.assertRaises(ValueError)
+        with disagreement:
+            self.tools.apply_patch(
+                "--- a/other.txt\n+++ b/other.txt\n@@ -1 +1 @@\n-one\n+ONE\n",
+                "part.txt",
+            )
+        self.assertIn("part.txt", str(disagreement.exception))
+        self.assertIn("other.txt", str(disagreement.exception))
+
+        several = self.assertRaises(ValueError)
+        with several:
+            self.tools.apply_patch(
+                "--- a/part.txt\n+++ b/part.txt\n@@ -1 +1 @@\n-alpha\n+ALPHA\n"
+                "--- a/other.txt\n+++ b/other.txt\n@@ -1 +1 @@\n-one\n+ONE\n",
+                "part.txt",
+            )
+        self.assertIn("describes 2 files", str(several.exception))
         self.assertEqual((self.project / "part.txt").read_text(), "alpha\nbeta\ngamma\n")
 
     def test_git_tools_are_project_scoped_and_report_exit_status(self) -> None:
@@ -189,7 +279,9 @@ class ScopedProjectToolsTest(unittest.TestCase):
             lambda: self.tools.stat("escape"),
             lambda: self.tools.write_file("../outside.txt", "changed"),
             lambda: self.tools.edit_file("../outside.txt", "outside", "changed"),
-            lambda: self.tools.apply_patch("../outside.txt", ""),
+            lambda: self.tools.apply_patch(
+                "--- a/../outside.txt\n+++ b/../outside.txt\n@@ -1 +1 @@\n-outside\n+inside\n"
+            ),
             lambda: self.tools.delete_file("../outside.txt"),
             lambda: self.tools.move_file("../outside.txt", "inside.txt"),
             lambda: self.tools.move_file("part.txt", "../outside.txt"),
