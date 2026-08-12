@@ -272,11 +272,15 @@ Model, Code, and Agents are mounted workspace peers sharing that conversation
 and the session's single snapshot/SSE connection. Agents selects one roster
 role, renders normalized messages, tools, results, failures, file diffs, and
 honest native token counts, and can open an activity path in the existing Code
-workspace. Its explicit Apply control fetches the role-owned catalogue, remains
-disabled unless the server reports the role idle, and defaults to writing the
-selection to `pyproject.toml`; unchecking persistence creates a session-only
-override. The corresponding GET/PATCH runtime routes are role- and
-session-scoped and revision-check durable writes. They accept a complete
+workspace. Its runtime controls are ordered backend, provider, model, and
+reasoning. Codex and Claude show their fixed OpenAI and Anthropic providers;
+OpenCode shows exact live provider IDs separately and filters models by the
+selected provider. Profile-owned tools are not part of this choice. The
+explicit Apply control fetches the role-owned catalogue, remains disabled
+unless the server reports the role idle, and defaults to writing the selection
+to `pyproject.toml`; unchecking persistence creates a session-only override.
+The corresponding GET/PATCH runtime routes are role- and session-scoped and
+revision-check durable writes. They accept a complete
 backend/provider/model/reasoning replacement only while the role is pristine;
 no used session is migrated. No polling or second lifecycle connection is introduced.
 

@@ -322,6 +322,7 @@ class ShopLifecycleE2E(unittest.TestCase):
                     {"backend": "codex", "provider": None, "model": "gpt-5.6-sol", "efforts": ["medium", "high"]},
                     {"backend": "claude", "provider": None, "model": "opus", "efforts": ["high"]},
                     {"backend": "opencode", "provider": "anthropic", "model": "claude-sonnet-4-5", "efforts": ["medium", "high"]},
+                    {"backend": "opencode", "provider": "openai-codex", "model": "gpt-5.6-sol", "efforts": ["high"]},
                 ],
                 "config_revision": revision,
                 "runtime_idle": True,
@@ -336,10 +337,29 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_role("button", name="Agents", exact=True).click()
         self.page.locator(".agents-area").wait_for()
         self.page.get_by_text("Replace this unused session immediately.").wait_for()
+        controls = self.page.locator(".agent-controls")
+        provider_select = controls.get_by_label("Provider", exact=True)
+        model_select = controls.get_by_label("Model", exact=True)
+        self.assertEqual(provider_select.input_value(), "openai")
+        self.assertTrue(provider_select.is_disabled())
+        self.assertEqual(self.page.get_by_text("Tools", exact=True).count(), 0)
         self.assertFalse(self.page.get_by_role("button", name="claude", exact=True).is_disabled())
         self.page.get_by_role("button", name="claude", exact=True).click()
+        self.assertEqual(provider_select.input_value(), "anthropic")
+        self.assertTrue(provider_select.is_disabled())
         self.assertFalse(self.page.get_by_role("button", name="Apply", exact=True).is_disabled())
+        self.page.get_by_role("button", name="opencode", exact=True).click()
+        self.assertFalse(provider_select.is_disabled())
+        self.assertEqual(provider_select.locator("option").all_text_contents(), ["anthropic", "openai-codex"])
+        provider_select.select_option("openai-codex")
+        self.assertEqual(model_select.locator("option").all_text_contents(), ["gpt-5.6-sol"])
+        self.page.get_by_role("button", name="Apply", exact=True).click()
+        self.page.get_by_text("applied · written to pyproject.toml", exact=True).wait_for()
+        self.assertEqual(runtime_requests[-1]["provider"], "openai-codex")
+        self.assertEqual(runtime_requests[-1]["model"], "gpt-5.6-sol")
         self.page.get_by_role("button", name="codex", exact=True).click()
+        self.assertEqual(provider_select.input_value(), "openai")
+        self.assertTrue(provider_select.is_disabled())
         self.assertTrue(self.page.get_by_label("write to pyproject.toml").is_checked())
         self.assertTrue(self.page.get_by_role("button", name="Apply", exact=True).is_disabled())
         self.assertEqual(self.page.locator('[data-agent-role="builder"].selected').count(), 1)
@@ -356,7 +376,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual(composer.input_value(), "keep this draft")
         self.assertEqual(self.page.get_by_role("button", name="files 1", exact=True).get_attribute("class"), "selected")
 
-        self.page.get_by_role("combobox").select_option("codex::gpt-5.6-sol")
+        model_select.select_option("gpt-5.6-sol")
         self.page.get_by_role("button", name="medium", exact=True).click()
         self.page.get_by_role("button", name="Apply", exact=True).click()
         self.page.get_by_text("applied · written to pyproject.toml", exact=True).wait_for()

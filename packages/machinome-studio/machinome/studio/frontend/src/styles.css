@@ -268,9 +268,6 @@ button, input { font: inherit; }
 .backend-picks button.selected, .effort-picks button.selected { background: #1c2128; border-color: #e0a350; color: #e0a350; }
 .backend-picks button:disabled { opacity: .55; }
 .backend-picks button.selected:disabled { opacity: 1; }
-.agent-tools { background: #171b21; border: 1px solid #262b33; border-radius: 8px; display: grid; gap: 5px; padding: 8px 9px; }
-.agent-tools strong { color: #e6e8ec; font: 400 11.5px ui-monospace, SFMono-Regular, Menlo, monospace; }
-.agent-tools small { color: #6b7280; font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agent-apply-row { align-items: center; border-top: 1px solid #1e232a; display: flex; justify-content: space-between; padding-top: 13px; }
 .agent-apply-row > label { align-items: center; color: #c3c8d1; display: flex; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; gap: 7px; }
 .agent-apply-row input { accent-color: #e0a350; height: 12px; margin: 0; width: 12px; }

@@ -222,6 +222,13 @@ Kept on the canvas for context only. 1c moved activity to a bottom drawer,
 - **Rail selection** switches Model, Code, and Agents visibility without unmounting the
   viewer, Monaco models, or chat. Viewer camera/timeline, file tabs, undo/view
   state, dirty buffers, transcript scroll, and the chat draft survive.
+- **Agent runtime selection** is ordered backend, provider, model, then
+  reasoning. Codex shows its fixed `OpenAI` provider and Claude its fixed
+  `Anthropic` provider. OpenCode shows exact live provider IDs in a separate
+  control and limits the model control to the selected provider so the maker
+  can verify the authenticated account and billing path before applying. An
+  upstream change immediately selects a valid downstream combination. Tools
+  remain profile-owned policy and are not shown as a runtime control.
 - **Opening a file** adds a closable source tab. Saving is revision-checked and
   atomically replaces the existing file; it triggers the same source watcher as
   an agent write, and a qualifying Python change reaches the existing build
@@ -298,8 +305,10 @@ Present for Agents:
 - `GET /api/sessions/:id/agents/:role/runtime` — resolved backend/provider,
   current model/reasoning, authoritative idle and pristine state, config
   revision, and backend-owned choices. A pristine role receives fresh-session
-  choices across available backends; OpenCode provider/model choices come from
-  its live catalogue. After first use only context-preserving choices remain.
+  choices across available backends; OpenCode provider/model choices carry
+  exact provider IDs from its live catalogue. The browser presents the implied
+  single providers for Codex and Claude as OpenAI and Anthropic. After first use
+  only context-preserving choices remain.
 - `PATCH /api/sessions/:id/agents/:role/runtime` — complete backend, provider,
   model, and reasoning plus the optional `pyproject.toml` persistence choice
   and expected revision. A backend/provider change requires a pristine role;

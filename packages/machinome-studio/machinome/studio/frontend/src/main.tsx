@@ -1152,8 +1152,18 @@ function activityTime(value: string) {
   return new Date(value).toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-function runtimeChoiceKey(choice: RuntimeChoice) {
-  return `${choice.backend}:${choice.provider ?? ""}:${choice.model}`;
+function runtimeProviderKey(backend: string, provider: string | null) {
+  if (provider) return provider;
+  if (backend === "codex") return "openai";
+  if (backend === "claude") return "anthropic";
+  return "";
+}
+
+function runtimeProviderLabel(backend: string, provider: string | null) {
+  if (provider) return provider;
+  if (backend === "codex") return "OpenAI";
+  if (backend === "claude") return "Anthropic";
+  return "unavailable";
 }
 
 function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
@@ -1207,7 +1217,12 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
     return () => { cancelled = true; };
   }, [visible, sessionId, focused?.role, focused?.backend, focused?.provider, focused?.model, focused?.effort, focused?.runtime_pristine]);
 
-  const choice = catalogue?.choices.find((item) => item.backend === backend && item.provider === provider && item.model === model);
+  const backendChoices = catalogue?.choices.filter((item) => item.backend === backend) ?? [];
+  const providerChoices = backendChoices.filter((item, index, items) =>
+    items.findIndex((candidate) => runtimeProviderKey(candidate.backend, candidate.provider) === runtimeProviderKey(item.backend, item.provider)) === index
+  );
+  const modelChoices = backendChoices.filter((item) => item.provider === provider);
+  const choice = modelChoices.find((item) => item.model === model);
   const ownerDirty = Boolean(focused && (backend !== focused.backend || provider !== focused.provider));
   const dirty = Boolean(focused && (ownerDirty || model !== focused.model || effort !== focused.effort));
   const canApply = Boolean(catalogue?.supported && choice && focused?.runtime_idle && (!ownerDirty || focused.runtime_pristine) && dirty && !loading);
@@ -1219,12 +1234,20 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
   }, {});
   const tokenEntry = [...roleActivity].reverse().find((item) => item.input_tokens !== null || item.output_tokens !== null);
 
-  const selectChoice = (next: string) => {
-    const nextChoice = catalogue?.choices.find((item) => runtimeChoiceKey(item) === next);
+  const selectModel = (next: string) => {
+    const nextChoice = modelChoices.find((item) => item.model === next);
+    if (!nextChoice) return;
+    setModel(nextChoice.model);
+    if (!nextChoice.efforts.includes(effort)) setEffort(nextChoice.efforts[0] ?? "");
+    setNotice("");
+  };
+
+  const selectProvider = (next: string) => {
+    const nextChoice = backendChoices.find((item) => runtimeProviderKey(item.backend, item.provider) === next);
     if (!nextChoice) return;
     setProvider(nextChoice.provider);
     setModel(nextChoice.model);
-    if (nextChoice && !nextChoice.efforts.includes(effort)) setEffort(nextChoice.efforts[0] ?? "");
+    setEffort(nextChoice.efforts.includes(effort) ? effort : nextChoice.efforts[0] ?? "");
     setNotice("");
   };
 
@@ -1279,10 +1302,6 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
     }
   };
 
-  const tools = focused
-    ? Array.isArray(focused.tools) ? focused.tools.join(", ") : focused.tools
-    : "inherit";
-
   return <>
     <aside className={`agents-context ${visible ? "" : "area-hidden"}`} aria-label="Agent roster">
       <section className="agents-roster-panel">
@@ -1304,7 +1323,7 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
       <section className="agents-session-panel">
         <h2>Session</h2>
         <div><span>Profile</span><strong>{run?.profile_id ?? "—"} · delegated</strong><small>{agents.length} standing session{agents.length === 1 ? "" : "s"} · {new Set(agents.map((agent) => agent.backend)).size} backend{new Set(agents.map((agent) => agent.backend)).size === 1 ? "" : "s"}</small></div>
-        <p>Selections resolve over profile defaults. Backend, tools, and Claude permission stay profile-owned.</p>
+        <p>Provider identity is explicit. Runtime selections persist by default; tool policy remains profile-owned.</p>
       </section>
     </aside>
     <section className={`agents-area ${visible ? "" : "area-hidden"}`} aria-label="Agent activity">
@@ -1324,13 +1343,22 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
               onClick={() => selectBackend(value)}
             >{value}</button>)}
           </div><small>{focused?.runtime_pristine ? "Replace this unused session immediately." : "Locked after this agent's first use."}</small></div>
-          <label className="agent-control"><span>Model</span><select
-            value={choice ? runtimeChoiceKey(choice) : ""}
-            disabled={!catalogue?.supported || loading}
-            onChange={(event) => selectChoice(event.target.value)}
+          <label className="agent-control"><span>Provider</span><select
+            aria-label="Provider"
+            value={runtimeProviderKey(backend, provider)}
+            disabled={!catalogue?.supported || loading || backend !== "opencode" || !focused?.runtime_pristine}
+            onChange={(event) => selectProvider(event.target.value)}
           >
-            {catalogue?.choices.filter((item) => item.backend === backend).length ? catalogue.choices.filter((item) => item.backend === backend).map((item) => <option key={runtimeChoiceKey(item)} value={runtimeChoiceKey(item)}>{item.provider ? `${item.provider} · ${item.model}` : item.model}</option>) : <option value="">{model || focused?.model || "unavailable"}</option>}
-          </select><small>{backend === "opencode" ? "provider and model from live catalogue" : "backend catalogue"}</small></label>
+            {providerChoices.length ? providerChoices.map((item) => <option key={runtimeProviderKey(item.backend, item.provider)} value={runtimeProviderKey(item.backend, item.provider)}>{runtimeProviderLabel(item.backend, item.provider)}</option>) : <option value={runtimeProviderKey(backend, provider)}>{runtimeProviderLabel(backend, provider)}</option>}
+          </select><small>{backend === "opencode" ? "exact live ID · verify account and billing" : `${runtimeProviderLabel(backend, provider)} is fixed by this backend`}</small></label>
+          <label className="agent-control"><span>Model</span><select
+            aria-label="Model"
+            value={choice?.model ?? ""}
+            disabled={!catalogue?.supported || loading}
+            onChange={(event) => selectModel(event.target.value)}
+          >
+            {modelChoices.length ? modelChoices.map((item) => <option key={item.model} value={item.model}>{item.model}</option>) : <option value="">{model || focused?.model || "unavailable"}</option>}
+          </select><small>models available from the selected provider</small></label>
           <div className="agent-control"><span>Reasoning</span><div className="effort-picks">
             {(choice?.efforts ?? (effort ? [effort] : [])).map((value) => <button
               className={value === effort ? "selected" : ""}
@@ -1339,7 +1367,6 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
               onClick={() => { setEffort(value); setNotice(""); }}
             >{value}</button>)}
           </div><small>Changes atomically with the model.</small></div>
-          <div className="agent-control"><span>Tools</span><div className="agent-tools"><strong>{Array.isArray(focused?.tools) ? `${focused?.tools.length} floor tools` : tools}</strong><small>{tools}</small></div></div>
         </div>
         <div className="agent-apply-row">
           <label><input type="checkbox" checked={persist} onChange={(event) => setPersist(event.target.checked)} />write to pyproject.toml</label>
