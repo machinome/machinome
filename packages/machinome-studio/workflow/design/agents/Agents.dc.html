@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#0f1115;color:#e6e8ec;font-family:Inter,ui-sans-serif,system-ui,sans-serif;}
+  a{color:#e0a350;text-decoration:none;}
+  a:hover{color:#f0c07a;}
+  @keyframes floorpulse{0%,100%{opacity:1}50%{opacity:.3}}
+</style>
+</helmet>
+<main style="display:grid;grid-template-rows:38px minmax(0,1fr) 26px;height:100dvh;min-width:0;overflow:hidden;">
+  <header style="display:flex;align-items:center;justify-content:space-between;min-width:0;background:#14171c;border-bottom:1px solid #262b33;color:#c3c8d1;padding:0 12px;">
+    <div style="display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;">
+      <span style="display:block;width:11px;height:11px;border-radius:3px;background:#e0a350;"></span>
+      <span>SolidNode Studio / bracket-assembly</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <p style="margin:0;color:#8b929e;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">fordesmac · open</p>
+      <button style="background:transparent;border:1px solid #333a44;border-radius:5px;color:#c3c8d1;cursor:pointer;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;padding:4px 8px;" style-hover="border-color:#e0a350;color:#e6e8ec;">Close project</button>
+    </div>
+  </header>
+
+  <div style="display:grid;grid-template-columns:74px 270px minmax(0,1fr) 400px;min-height:0;overflow:hidden;">
+    <nav style="background:#121419;border-right:1px solid #262b33;padding-top:10px;min-height:0;">
+      <sc-for list="{{ rail }}" as="r" hint-placeholder-count="4">
+        <button style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;min-height:59px;padding:9px 0;background-color:transparent;border:0;border-left:2px solid transparent;color:#8b929e;cursor:default;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px;text-transform:uppercase;{{ r.style }}" style-hover="background-color:#171b21;">
+          <span style="display:flex;align-items:center;justify-content:center;height:16px;font-family:ui-sans-serif,system-ui,sans-serif;font-size:18px;line-height:1;{{ r.iconStyle }}">{{ r.icon }}</span>
+          <span>{{ r.label }}</span>
+        </button>
+      </sc-for>
+    </nav>
+
+    <aside style="background:#121419;border-right:1px solid #262b33;overflow-y:auto;padding:20px 18px;min-height:0;">
+      <section>
+        <header style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <h2 style="margin:0;color:#e6e8ec;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;">Agents</h2>
+          <span style="color:#6b7280;font:10px ui-monospace,SFMono-Regular,Menlo,monospace;">{{ activeCount }} active</span>
+        </header>
+        <ul style="list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px;">
+          <sc-for list="{{ roster }}" as="a" hint-placeholder-count="4">
+            <li style="margin:0;">
+              <button onClick="{{ a.onFocus }}" style="width:100%;display:grid;grid-template-columns:7px minmax(0,1fr) auto;align-items:center;gap:7px;padding:8px;border:0;border-radius:6px;background:#171b21;color:#e6e8ec;font-size:12.5px;text-align:left;cursor:pointer;{{ a.rowStyle }}" style-hover="background:#1c2128;">
+                <sc-if value="{{ a.isActive }}" hint-placeholder-val="{{ true }}"><span style="width:7px;height:7px;border-radius:50%;background:#4fb6b8;"></span></sc-if>
+                <sc-if value="{{ a.isWaiting }}"><span style="width:7px;height:7px;border-radius:50%;background:#6b7280;"></span></sc-if>
+                <sc-if value="{{ a.isFailed }}"><span style="width:7px;height:7px;border-radius:50%;background:#d46a6a;"></span></sc-if>
+                <span style="display:grid;gap:3px;min-width:0;">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ a.label }}</span>
+                  <small style="color:#8b929e;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ a.runtime }}</small>
+                </span>
+                <span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;align-self:start;{{ a.stateStyle }}">{{ a.stateLabel }}</span>
+              </button>
+            </li>
+          </sc-for>
+        </ul>
+      </section>
+      <section style="margin-top:18px;padding-top:18px;border-top:1px solid #262b33;display:grid;gap:8px;">
+        <h2 style="margin:0;color:#e6e8ec;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;">Session</h2>
+        <div style="display:grid;gap:6px;background:#171b21;border:1px solid #262b33;border-radius:9px;padding:12px 13px;">
+          <span style="color:#8b929e;font:10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;">Profile</span>
+          <strong style="color:#e6e8ec;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:400;">fordesmac · delegated</strong>
+          <small style="color:#8b929e;font:11px ui-monospace,SFMono-Regular,Menlo,monospace;">4 standing sessions · 3 backends</small>
+        </div>
+        <p style="margin:0;color:#8b929e;font-size:11.5px;line-height:1.45;background:#171b21;border-radius:8px;padding:10px 12px;">Selections resolve over profile defaults. Tools and Claude permission stay profile-owned.</p>
+      </section>
+    </aside>
+
+    <section style="background:#0f1115;display:grid;grid-template-rows:40px auto auto minmax(0,1fr);min-height:0;overflow:hidden;">
+      <header style="display:flex;align-items:center;gap:10px;border-bottom:1px solid #1e232a;background:#121419;padding:0 14px;min-width:0;">
+        <h2 style="margin:0;background:#1c2128;border-radius:5px;color:#e6e8ec;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:400;padding:5px 10px;">{{ focused.label }}</h2>
+        <span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;white-space:nowrap;{{ focused.stateStyle }}">{{ focused.headerState }}</span>
+        <sc-if value="{{ showTokens }}" hint-placeholder-val="{{ true }}">
+          <span style="margin-left:auto;color:#6b7280;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap;">{{ focused.tokens }}</span>
+        </sc-if>
+        <div style="display:flex;align-items:center;gap:8px;margin-left:10px;">
+          <button onClick="{{ toggleControls }}" style="background:transparent;border:1px solid #333a44;border-radius:5px;color:#c3c8d1;cursor:pointer;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;padding:4px 8px;" style-hover="border-color:#e0a350;color:#e6e8ec;">{{ controlsLabel }}</button>
+          <button style="background:transparent;border:1px solid #333a44;border-radius:5px;color:#c3c8d1;cursor:pointer;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;padding:4px 8px;" style-hover="border-color:#e0a350;color:#e6e8ec;">Stop</button>
+          <button onClick="{{ restart }}" style="background:transparent;border:1px solid #333a44;border-radius:5px;color:#c3c8d1;cursor:pointer;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;padding:4px 8px;" style-hover="border-color:#e0a350;color:#e6e8ec;">Restart</button>
+        </div>
+      </header>
+
+      <sc-if value="{{ controlsOpen }}" hint-placeholder-val="{{ true }}">
+        <div style="background: #121419; border-bottom: 1px solid #262b33; padding: 14px; display: grid; gap: 14px; width: 853px; height: 260px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;">
+            <div style="display:grid;gap:7px;align-content:start;">
+              <span style="color:#8b929e;font:10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;">Backend</span>
+              <div style="display:flex;gap:6px;">
+                <sc-for list="{{ backends }}" as="b" hint-placeholder-count="3">
+                  <button onClick="{{ b.onPick }}" style="flex:1;background:#171b21;border:1px solid #2e343d;border-radius:7px;color:#c3c8d1;cursor:pointer;font:11px ui-monospace,SFMono-Regular,Menlo,monospace;padding:8px 6px;text-transform:capitalize;{{ b.style }}" style-hover="border-color:#4a515c;color:#e6e8ec;">{{ b.id }}</button>
+                </sc-for>
+              </div>
+              <small style="color:#6b7280;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;">{{ backendNote }}</small>
+            </div>
+            <div style="display:grid;gap:7px;align-content:start;">
+              <span style="color:#8b929e;font:10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;">Model</span>
+              <select value="{{ model }}" onChange="{{ onModel }}" style="background:#171b21;border:1px solid #3b434f;border-radius:8px;color:#e6e8ec;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;padding:8px 9px;width:100%;">
+                <sc-for list="{{ models }}" as="m" hint-placeholder-count="3">
+                  <option value="{{ m.value }}">{{ m.label }}</option>
+                </sc-for>
+              </select>
+              <small style="color:#6b7280;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;">profile default {{ profileModel }}</small>
+            </div>
+            <div style="display:grid;gap:7px;align-content:start;">
+              <span style="color:#8b929e;font:10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;">Reasoning</span>
+              <div style="display:flex;gap:6px;">
+                <sc-for list="{{ efforts }}" as="e" hint-placeholder-count="3">
+                  <button onClick="{{ e.onPick }}" style="flex:1;background:#171b21;border:1px solid #2e343d;border-radius:7px;color:#c3c8d1;cursor:pointer;font:11px ui-monospace,SFMono-Regular,Menlo,monospace;padding:8px 4px;{{ e.style }}" style-hover="border-color:#4a515c;color:#e6e8ec;">{{ e.id }}</button>
+                </sc-for>
+              </div>
+              <small style="color:#6b7280;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;">profile default {{ profileEffort }}</small>
+            </div>
+            <div style="display:grid;gap:7px;align-content:start;">
+              <span style="color:#8b929e;font:10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;">Tools</span>
+              <div style="background:#171b21;border:1px solid #262b33;border-radius:8px;padding:8px 9px;display:grid;gap:5px;">
+                <strong style="color:#e6e8ec;font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:400;">{{ toolsSummary }}</strong>
+                <small style="color:#6b7280;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.5;">{{ toolsDetail }}</small>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid #1e232a;padding-top:13px;">
+            <div style="display:flex;gap:6px;">
+              <sc-for list="{{ applyModes }}" as="p" hint-placeholder-count="2">
+                <button onClick="{{ p.onPick }}" style="background:#171b21;border:1px solid #2e343d;border-radius:7px;color:#c3c8d1;cursor:pointer;font:11px ui-monospace,SFMono-Regular,Menlo,monospace;padding:7px 10px;{{ p.style }}" style-hover="border-color:#4a515c;color:#e6e8ec;">{{ p.label }}</button>
+              </sc-for>
+            </div>
+            <label style="display:flex;align-items:center;gap:7px;color:#c3c8d1;font:11px ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer;">
+              <input type="checkbox" checked="{{ savePyproject }}" onChange="{{ onSave }}" style="width:12px;height:12px;margin:0;accent-color:#e0a350;">
+              write to pyproject.toml
+            </label>
+            
+            <div style="display:flex;align-items:center;gap:10px;margin-left:auto;">
+              <span style="color:#8b929e;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;">{{ applyNote }}</span>
+              <button onClick="{{ apply }}" disabled="{{ applyDisabled }}" style="background:#e0a350;border:0;border-radius:6px;color:#14171c;cursor:pointer;font-size:12.5px;font-weight:600;padding:7px 14px;{{ applyStyle }}" style-hover="background:#f0c07a;">Apply</button>
+            </div>
+          </div>
+        </div><div style="display: flex; align-items: center; gap: 8px; background: #121419; border-bottom: 1px solid #1e232a; padding: 7px 14px; min-width: 0; overflow-x: auto; width: 848px; height: 38px">
+        <sc-for list="{{ filters }}" as="f" hint-placeholder-count="5">
+          <button onClick="{{ f.onPick }}" style="flex:0 0 auto;background:#171b21;border:1px solid #262b33;border-radius:6px;color:#8b929e;cursor:pointer;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;padding:5px 9px;{{ f.style }}" style-hover="color:#e6e8ec;border-color:#3b434f;">{{ f.label }}</button>
+        </sc-for>
+        <span style="margin-left:auto;flex:0 0 auto;color:#6b7280;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;">{{ feedMeta }}</span>
+      </div>
+      </sc-if>
+
+      
+
+      <div style="min-height:0;overflow-y:auto;">
+        <sc-if value="{{ focused.isFailed }}">
+          <div style="margin:14px;background:#2a1a1a;border:1px solid #5a2a2a;border-radius:8px;color:#f0b4b4;padding:10px 12px;">
+            <strong style="font:600 11.5px ui-monospace,SFMono-Regular,Menlo,monospace;">{{ focused.label }} session failed</strong>
+            <p style="margin:5px 0 0;font-size:12px;line-height:1.4;">{{ focused.failure }}</p>
+          </div>
+        </sc-if>
+        <sc-for list="{{ entries }}" as="e" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:62px minmax(0,1fr);gap:10px;padding:9px 14px;border-bottom:1px solid #161a20;">
+            <span style="color:#4b525d;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;padding-top:2px;">{{ e.time }}</span><div style="min-width:0;">
+              <sc-if value="{{ e.isTool }}" hint-placeholder-val="{{ true }}">
+                <div>
+                  <button onClick="{{ e.onToggle }}" style="width:100%;display:grid;grid-template-columns:13px auto minmax(0,1fr) auto;align-items:center;gap:9px;background:transparent;border:0;padding:2px 0;color:#aeb4be;cursor:pointer;text-align:left;font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;">
+                    <span style="color:#6b7280;">{{ e.caret }}</span>
+                    <span style="color:#4fb6b8;">{{ e.tool }}</span>
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#8b929e;">{{ e.target }}</span>
+                    <span style="color:#5f9e6a;{{ e.statusStyle }}">{{ e.status }}</span>
+                  </button>
+                  <sc-if value="{{ e.open }}">
+                    <pre style="margin:8px 0 2px;background:#14171c;border:1px solid #262b33;border-radius:8px;color:#8b929e;font:11px ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.6;padding:9px 11px;white-space:pre-wrap;overflow-x:auto;">{{ e.detail }}</pre>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ e.isDiff }}">
+                <div>
+                  <div style="display:flex;align-items:center;gap:9px;font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;">
+                    <span style="flex:0 0 auto;width:7px;height:7px;border-radius:2px;background:#4fb6b8;"></span>
+                    <span style="color:#4fb6b8;">{{ e.tool }}</span>
+                    <span style="color:#e6e8ec;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ e.file }}</span>
+                    <span style="color:#6b7280;flex:0 0 auto;">{{ e.stat }}</span>
+                    <button style="margin-left:auto;flex:0 0 auto;background:transparent;border:1px solid #333a44;border-radius:5px;color:#c3c8d1;cursor:pointer;font:10px ui-monospace,SFMono-Regular,Menlo,monospace;padding:3px 7px;" style-hover="border-color:#e0a350;color:#e6e8ec;">Open in Code</button>
+                  </div>
+                  <div style="margin-top:8px;background:#14171c;border:1px solid #262b33;border-radius:8px;overflow:hidden;">
+                    <sc-for list="{{ e.lines }}" as="l" hint-placeholder-count="6">
+                      <div>
+                        <sc-if value="{{ l.hunk }}" hint-placeholder-val="{{ true }}">
+                          <div style="display:grid;grid-template-columns:22px minmax(0,1fr);background:rgba(79,182,184,.06);color:#6b7280;font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.9;padding:0 10px;white-space:pre;overflow-x:auto;"><span></span><span>{{ l.text }}</span></div>
+                        </sc-if>
+                        <sc-if value="{{ l.add }}">
+                          <div style="display:grid;grid-template-columns:22px minmax(0,1fr);background:rgba(95,158,106,.13);color:#9ed2a6;font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.9;padding:0 10px;white-space:pre;overflow-x:auto;"><span style="color:#5f9e6a;">+</span><span>{{ l.text }}</span></div>
+                        </sc-if>
+                        <sc-if value="{{ l.del }}">
+                          <div style="display:grid;grid-template-columns:22px minmax(0,1fr);background:rgba(212,106,106,.13);color:#f0b4b4;font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.9;padding:0 10px;white-space:pre;overflow-x:auto;"><span style="color:#d46a6a;">−</span><span>{{ l.text }}</span></div>
+                        </sc-if>
+                        <sc-if value="{{ l.ctx }}">
+                          <div style="display:grid;grid-template-columns:22px minmax(0,1fr);color:#7c838e;font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.9;padding:0 10px;white-space:pre;overflow-x:auto;"><span></span><span>{{ l.text }}</span></div>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ e.isMessage }}">
+                <div style="background:#1b2027;border:1px solid #262b33;border-radius:9px;padding:10px 12px;max-width:82%;">
+                  <strong style="display:block;color:#6b7280;font:10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;">{{ e.label }}</strong>
+                  <p style="margin:.25rem 0 0;font-size:13px;line-height:1.5;color:#c3c8d1;">{{ e.text }}</p>
+                  <sc-if value="{{ e.meta }}"><span style="display:block;margin-top:7px;color:#6b7280;font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;">{{ e.meta }}</span></sc-if>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ e.isError }}">
+                <div style="background:#2a1a1a;border:1px solid #5a2a2a;border-radius:8px;color:#f0b4b4;font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.5;padding:9px 11px;white-space:pre-wrap;">{{ e.text }}</div>
+              </sc-if>
+
+              <sc-if value="{{ e.isRunning }}">
+                <div style="display:flex;align-items:center;gap:9px;font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;">
+                  <span style="width:7px;height:7px;border-radius:50%;background:#4fb6b8;animation:floorpulse 1.4s ease-in-out infinite;"></span>
+                  <span style="color:#4fb6b8;">{{ e.tool }}</span>
+                  <span style="color:#8b929e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ e.target }}</span>
+                  <span style="color:#e0a350;">running</span>
+                </div>
+              </sc-if>
+            </div>
+            
+          </div>
+        </sc-for>
+        <sc-if value="{{ feedEmpty }}">
+          <p style="color:#8b929e;font-size:12px;line-height:1.5;padding:16px 14px;margin:0;">Nothing matches this filter in {{ focused.label }}'s session.</p>
+        </sc-if>
+      </div>
+    </section>
+
+    <section style="background:#121419;border-left:1px solid #262b33;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;overflow:hidden;">
+      <header style="display:flex;align-items:center;gap:8px;border-bottom:1px solid #262b33;min-height:52px;padding:12px 16px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#e0a350;"></span>
+        <h2 style="margin:0;font-size:13px;font-weight:500;">Foreman</h2>
+      </header>
+      <div style="display:grid;gap:8px;padding:12px 16px 0;max-height:40%;overflow-y:auto;">
+        <div style="background:#2a1a1a;border:1px solid #5a2a2a;border-radius:8px;color:#f0b4b4;padding:10px 12px;">
+          <strong style="font:600 11.5px ui-monospace,SFMono-Regular,Menlo,monospace;">Librarian session failed</strong>
+          <p style="margin:5px 0 0;font-size:12px;line-height:1.4;">bounded external-research tools are not present on the scoped backend</p>
+          <p style="margin:5px 0 0;font-size:12px;line-height:1.4;">When backend access is restored, message Foreman to resume the shop.</p>
+        </div>
+      </div>
+      <ol style="display:flex;flex-direction:column;gap:12px;list-style:none;margin:0;min-height:0;overflow-y:auto;padding:16px;">
+        <sc-for list="{{ chat }}" as="c" hint-placeholder-count="4">
+          <li style="align-self:flex-start;background:#1b2027;border:1px solid #262b33;border-radius:9px;display:block;margin:0;max-width:88%;padding:10px 12px;{{ c.style }}">
+            <strong style="display:block;color:#6b7280;font:10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;">{{ c.author }}</strong>
+            <p style="margin:.25rem 0 0;font-size:13px;line-height:1.5;white-space:pre-wrap;">{{ c.text }}</p>
+          </li>
+        </sc-for>
+      </ol>
+      <form style="display:flex;align-items:flex-end;gap:8px;border-top:1px solid #262b33;padding:12px 16px;">
+        <textarea aria-label="Message" style="flex:1;background:#171b21;border:1px solid #2e343d;border-radius:8px;color:#e6e8ec;font-size:13px;min-height:74px;padding:10px 12px;resize:vertical;"></textarea>
+        <button style="background:#e0a350;border:0;border-radius:6px;color:#14171c;cursor:pointer;font-size:12.5px;font-weight:600;padding:7px 14px;" style-hover="background:#f0c07a;">Send</button>
+      </form>
+    </section>
+  </div>
+
+  <footer style="display:flex;align-items:center;background:#14171c;border-top:1px solid #262b33;color:#c3c8d1;min-width:0;"></footer>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:1000},&quot;focusedRole&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;foreman&quot;,&quot;designer&quot;,&quot;machinist&quot;,&quot;librarian&quot;],&quot;default&quot;:&quot;designer&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;controlPanelOpen&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;showTokenUsage&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const MONO = "ui-monospace,SFMono-Regular,Menlo,monospace";
+
+const PROFILE = {
+  foreman: { label: "Foreman", codex: ["gpt-5.6-terra", "medium"], claude: ["sonnet", "medium"], tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep"] },
+  designer: { label: "Designer", codex: ["gpt-5.6-sol", "medium"], claude: ["opus", "medium"], tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep"] },
+  machinist: { label: "Machinist", codex: ["gpt-5.6-terra", "medium"], claude: ["sonnet", "medium"], tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep"] },
+  librarian: { label: "Librarian", codex: ["gpt-5.6-terra", "medium"], claude: ["sonnet", "medium"], tools: ["Bash", "Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"] },
+};
+
+const MODELS = {
+  codex: ["gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.3-codex-spark"],
+  claude: ["sonnet", "opus"],
+  opencode: ["anthropic:claude-sonnet-4-5", "inherit operator model"],
+};
+
+const RESOLVED_TOOLS = {
+  Read: ["read_file", "stat"], Glob: ["list_dir", "find_files"], Grep: ["search_content"],
+  Write: ["write_file", "delete_file", "move_file", "make_dir"], Edit: ["edit_file", "apply_patch"],
+  Bash: ["git_status", "git_diff", "git_log", "git_show", "git_head", "git_add", "git_commit", "solid_build", "solid_test", "solid_snapshot", "floor_assign", "floor_direction", "floor_acknowledge", "floor_report", "floor_complete"],
+  WebSearch: [], WebFetch: [],
+};
+
+const DIFF_BRACKET_A = [
+  "@@ -38,9 +38,10 @@ def bracket(part: Part) -> Solid:",
+  "     plate = box(width, depth, plate_thickness)",
+  "-    web_thickness = 6.0",
+  "+    web_thickness = 4.0",
+  "     web = box(web_thickness, depth - 4, height)",
+  "-    boss_wall = web_thickness / 2",
+  "+    boss_wall = 2.0",
+  "     boss = cylinder(boss_wall + M4.insert_radius, boss_height)",
+  "     return plate + web.at(0, 0, plate_thickness) + boss",
+];
+
+const DIFF_BRACKET_B = [
+  "@@ -55,6 +55,8 @@ def fillets(part: Part) -> Solid:",
+  "     edges = part.edges(vertical=True)",
+  "-    return part.fillet(edges, radius=1.5)",
+  "+    radius = min(1.5, boss_wall - 0.2)",
+  "+    return part.fillet(edges, radius=radius)",
+];
+
+const DIFF_PLATE = [
+  "@@ -22,7 +22,7 @@ def fixture_plate() -> Solid:",
+  "     holes = grid(4, 2, pitch=25.0)",
+  "-    clamp_slot = 8.2",
+  "+    clamp_slot = 8.6",
+  "     return plate.cut(holes).cut(slot(clamp_slot))",
+];
+
+const SESSIONS = {
+  foreman: {
+    state: "active", headerState: "active · awaiting two reports", tokens: "38k / 200k context",
+    entries: [
+      { t: "08:41:58", k: "message", label: "MAKER", text: "The bracket is 14 g over budget and the fixture plate slot is tight. Sort both before the print run." },
+      { t: "08:42:04", k: "tool", tool: "read_file", target: "pyproject.toml", status: "ok", detail: '{ "path": "pyproject.toml" }\n→ [tool.solid-node-studio] profile = "fordesmac"\n→ 3 agent selections declared' },
+      { t: "08:42:09", k: "tool", tool: "floor_assign", target: "designer · DES-14", status: "accepted", detail: '{ "recipient": "designer", "assignment_id": "DES-14",\n  "body": "Reduce the bracket web to 4 mm and re-check M4 boss clearance." }\n→ acknowledged 08:42:12' },
+      { t: "08:42:10", k: "tool", tool: "floor_assign", target: "machinist · MAC-7", status: "accepted", detail: '{ "recipient": "machinist", "assignment_id": "MAC-7",\n  "body": "Open the clamp slot to 8.6 mm and re-run the fixture tests." }\n→ acknowledged 08:42:15' },
+      { t: "08:43:22", k: "message", label: "REPORT · MAC-7", meta: "machinist → foreman", text: "Clamp slot at 8.6 mm, fixture tests pass. Committed as 9c41f0e." },
+      { t: "08:43:40", k: "tool", tool: "git_head", target: "main", status: "9c41f0e", detail: "→ 9c41f0e machinist: open clamp slot to 8.6 mm" },
+      { t: "08:44:02", k: "running", tool: "floor_acknowledge", target: "MAC-7" },
+    ],
+  },
+  designer: {
+    state: "active", headerState: "active · DES-14", tokens: "112k / 200k context",
+    entries: [
+      { t: "08:42:11", k: "message", label: "ASSIGNMENT · DES-14", meta: "foreman → designer", text: "Reduce the bracket web to 4 mm and re-check M4 boss clearance before the machinist picks up the fixture plate." },
+      { t: "08:42:13", k: "tool", tool: "read_file", target: "parts/bracket.py", status: "168 lines", detail: '{ "path": "parts/bracket.py" }\n→ 168 lines · revision 4f1a9c' },
+      { t: "08:42:19", k: "tool", tool: "search_content", target: '"web_thickness"', status: "3 matches", detail: '{ "query": "web_thickness", "path": "parts" }\n→ parts/bracket.py:41\n→ parts/bracket.py:57\n→ tests/test_bracket.py:22' },
+      { t: "08:42:31", k: "diff", tool: "edit_file", file: "parts/bracket.py", stat: "+2 −2", lines: DIFF_BRACKET_A },
+      { t: "08:42:36", k: "tool", tool: "solid_build", target: "assembly.py", status: "failed", failed: true, detail: "→ exit 1 · 1.9 s\n→ errors.json written" },
+      { t: "08:42:36", k: "error", text: "solid_build failed — parts/bracket.py:47 boss clearance 0.42 mm is below the 0.60 mm minimum for M4 heat-set inserts." },
+      { t: "08:42:52", k: "message", label: "DESIGNER", text: "Thinning the web pulled the boss shell in with it. Holding the boss wall at 2.0 mm and letting the fillet absorb the change." },
+      { t: "08:43:04", k: "diff", tool: "apply_patch", file: "parts/bracket.py", stat: "+2 −1", lines: DIFF_BRACKET_B },
+      { t: "08:43:11", k: "tool", tool: "solid_build", target: "assembly.py", status: "ok · viewer.json", detail: "→ 3 artifacts refreshed · 2.8 s\n→ mass 186 g (−14 g)" },
+      { t: "08:43:26", k: "tool", tool: "solid_test", target: "tests/test_bracket.py", status: "12 passed", detail: "→ 12 passed, 0 failed · 4.1 s" },
+      { t: "08:43:44", k: "message", label: "REPORT · DES-14", meta: "designer → foreman", text: "Web is 4 mm, boss wall held at 2.0 mm, clearance 0.71 mm. Mass down 14 g. Fixture plate untouched." },
+      { t: "08:44:01", k: "running", tool: "solid_snapshot", target: "assembly.py" },
+    ],
+  },
+  machinist: {
+    state: "waiting", headerState: "waiting · MAC-7 complete", tokens: "61k / 200k context",
+    entries: [
+      { t: "08:42:15", k: "message", label: "ASSIGNMENT · MAC-7", meta: "foreman → machinist", text: "Open the clamp slot to 8.6 mm and re-run the fixture tests." },
+      { t: "08:42:20", k: "tool", tool: "read_file", target: "parts/fixture_plate.py", status: "94 lines", detail: '{ "path": "parts/fixture_plate.py" }\n→ 94 lines · revision 771be2' },
+      { t: "08:42:44", k: "diff", tool: "edit_file", file: "parts/fixture_plate.py", stat: "+1 −1", lines: DIFF_PLATE },
+      { t: "08:42:58", k: "tool", tool: "solid_test", target: "tests/test_fixture.py", status: "8 passed", detail: "→ 8 passed, 0 failed · 2.2 s" },
+      { t: "08:43:14", k: "tool", tool: "git_commit", target: "9c41f0e", status: "committed", detail: '{ "message": "machinist: open clamp slot to 8.6 mm" }\n→ 9c41f0e · 1 file changed' },
+      { t: "08:43:22", k: "message", label: "REPORT · MAC-7", meta: "machinist → foreman", text: "Clamp slot at 8.6 mm, fixture tests pass. Committed as 9c41f0e." },
+    ],
+  },
+  librarian: {
+    state: "failed", headerState: "failed", tokens: "0 / 200k context",
+    failure: "claude: bounded external-research tools are not present on the scoped backend, so WebSearch and WebFetch resolve to no floor tools.",
+    entries: [
+      { t: "08:41:52", k: "tool", tool: "read_file", target: "docs/insert-spec.md", status: "ok", detail: '{ "path": "docs/insert-spec.md" }\n→ 44 lines' },
+      { t: "08:41:53", k: "error", text: "agent_failed — the librarian is provisionally unavailable on the scoped backends because bounded external-research tools are not yet present." },
+    ],
+  },
+};
+
+const CHAT = [
+  { author: "Maker", text: "The bracket is 14 g over budget and the fixture plate slot is tight. Sort both before the print run.", user: true },
+  { author: "Foreman", text: "Assigned. Designer takes the web and boss clearance, Machinist opens the clamp slot." },
+  { author: "Foreman", text: "Machinist is done: slot at 8.6 mm, fixture tests pass, committed as 9c41f0e." },
+  { author: "Foreman", text: "Designer reports the web at 4 mm with 0.71 mm boss clearance and 14 g off the mass. Snapshot is rendering now." },
+];
+
+const FILTERS = [
+  { id: "all", label: "all" },
+  { id: "tool", label: "tools" },
+  { id: "file", label: "files" },
+  { id: "message", label: "messages" },
+  { id: "error", label: "errors" },
+];
+
+class Component extends DCLogic {
+  state = {
+    focused: null,
+    controlsOpen: null,
+    filter: "all",
+    open: {},
+    runtime: {
+      foreman: { backend: "codex", model: "gpt-5.6-terra", effort: "medium" },
+      designer: { backend: "opencode", model: "anthropic:claude-sonnet-4-5", effort: "high" },
+      machinist: { backend: "claude", model: "sonnet", effort: "medium" },
+      librarian: { backend: "claude", model: "sonnet", effort: "medium" },
+    },
+    draft: null,
+    applyMode: "now",
+    savePyproject: true,
+    applied: "",
+    extra: { foreman: [], designer: [], machinist: [], librarian: [] },
+  };
+
+  role() { return this.state.focused ?? this.props.focusedRole ?? "designer"; }
+  controlsOpen() { return this.state.controlsOpen ?? this.props.controlPanelOpen ?? true; }
+  live(role) { return this.state.runtime[role]; }
+  selection(role) { return this.state.draft && this.state.draft.role === role ? this.state.draft : this.live(role); }
+
+  pick(patch) {
+    const role = this.role();
+    const base = this.selection(role);
+    const next = { role, ...base, ...patch };
+    if (patch.backend && !MODELS[patch.backend].includes(next.model)) next.model = MODELS[patch.backend][0];
+    this.setState({ draft: next, applied: "" });
+  }
+
+  apply() {
+    const role = this.role();
+    const draft = this.state.draft;
+    if (!draft || draft.role !== role) return;
+    const { backend, model, effort } = draft;
+    const stamped = `${backend} · ${model} · ${effort}`;
+    if (this.state.applyMode === "now") {
+      const note = { t: "08:44:12", k: "message", label: "SESSION RESTARTED", meta: `${backend}:${model}:${effort}`, text: `${PROFILE[role].label} restarted on ${stamped}. The assignment context was re-sent with the profile prompt and the resolved floor-tool allowlist.` };
+      this.setState((s) => ({
+        runtime: { ...s.runtime, [role]: { backend, model, effort } },
+        draft: null,
+        extra: { ...s.extra, [role]: [...s.extra[role], note] },
+        applied: this.state.savePyproject ? "restarted · written to pyproject.toml" : "restarted · this session only",
+      }));
+      return;
+    }
+    this.setState((s) => ({
+      runtime: { ...s.runtime, [role]: { backend, model, effort } },
+      draft: null,
+      applied: this.state.savePyproject ? "queued for next assignment · written to pyproject.toml" : "queued for next assignment",
+    }));
+  }
+
+  restart() {
+    const role = this.role();
+    const { backend, model, effort } = this.live(role);
+    const note = { t: "08:44:20", k: "message", label: "SESSION RESTARTED", meta: `${backend}:${model}:${effort}`, text: `${PROFILE[role].label} restarted by the Maker on ${backend} · ${model} · ${effort}.` };
+    this.setState((s) => ({ extra: { ...s.extra, [role]: [...s.extra[role], note] } }));
+  }
+
+  renderVals() {
+    const role = this.role();
+    const session = SESSIONS[role];
+    const sel = this.selection(role);
+    const live = this.live(role);
+    const dirty = sel !== live;
+    const profile = PROFILE[role];
+    const filter = this.state.filter;
+
+    const stateStyles = {
+      active: "color:#7fbf8a;",
+      waiting: "color:#8b929e;",
+      failed: "color:#f0b4b4;",
+    };
+
+    const roster = Object.keys(PROFILE).map((id) => {
+      const s = SESSIONS[id];
+      const rt = this.state.runtime[id];
+      return {
+        label: PROFILE[id].label,
+        runtime: `${rt.backend} · ${rt.model}`,
+        stateLabel: s.state,
+        stateStyle: stateStyles[s.state],
+        isActive: s.state === "active",
+        isWaiting: s.state === "waiting",
+        isFailed: s.state === "failed",
+        rowStyle: id === role ? "background:#1c2128;box-shadow:inset 2px 0 #e0a350;" : "",
+        onFocus: () => this.setState({ focused: id, filter: "all", draft: null, applied: "" }),
+      };
+    });
+
+    const raw = [...session.entries, ...this.state.extra[role]];
+    const groupOf = (e) => (e.k === "diff" ? "file" : e.k === "running" ? "tool" : e.k);
+    const entries = raw
+      .filter((e) => filter === "all" || groupOf(e) === filter)
+      .map((e, i) => {
+        const id = `${role}-${i}-${e.t}`;
+        const open = !!this.state.open[id];
+        return {
+          time: e.t,
+          isTool: e.k === "tool",
+          isDiff: e.k === "diff",
+          isMessage: e.k === "message",
+          isError: e.k === "error",
+          isRunning: e.k === "running",
+          tool: e.tool,
+          target: e.target,
+          status: e.status,
+          statusStyle: e.failed ? "color:#f0b4b4;" : "",
+          detail: e.detail,
+          caret: open ? "−" : "+",
+          open,
+          onToggle: () => this.setState((s) => ({ open: { ...s.open, [id]: !s.open[id] } })),
+          file: e.file,
+          stat: e.stat,
+          lines: (e.lines ?? []).map((text) => ({
+            hunk: text.startsWith("@@"),
+            add: text.startsWith("+"),
+            del: text.startsWith("-"),
+            ctx: !text.startsWith("@@") && !text.startsWith("+") && !text.startsWith("-"),
+            text: text.startsWith("@@") ? text : text.slice(1),
+          })),
+          label: e.label,
+          meta: e.meta,
+          text: e.text,
+        };
+      });
+
+    const counts = raw.reduce((acc, e) => { const g = groupOf(e); acc[g] = (acc[g] ?? 0) + 1; return acc; }, {});
+    const resolved = [...new Set(profile.tools.flatMap((t) => RESOLVED_TOOLS[t]))];
+    const scoped = sel.backend !== "codex";
+    const modelSegment = sel.backend === "opencode" && sel.model === "inherit operator model" ? "" : `:${sel.model}`;
+    const pyprojectLine = sel.backend === "codex" || sel.backend === "claude"
+      ? `${role} = "${sel.backend}:${sel.model}:${sel.effort}"`
+      : `${role} = "opencode${modelSegment}:${sel.effort}"`;
+
+    return {
+      rail: [
+        { icon: "◇", label: "Model", style: "", iconStyle: "" },
+        { icon: "{ }", label: "Code", style: "", iconStyle: `font-family:${MONO};font-size:12px;font-weight:700;` },
+        { icon: "●", label: "Agents", style: "background-color:#1c2128;border-left-color:#e0a350;color:#e0a350;", iconStyle: "" },
+        { icon: "═", label: "Sheets", style: "", iconStyle: "font-size:20px;transform:rotate(90deg);" },
+      ],
+      roster,
+      activeCount: Object.values(SESSIONS).filter((s) => s.state === "active").length,
+      focused: {
+        label: profile.label,
+        headerState: session.headerState,
+        stateStyle: stateStyles[session.state],
+        tokens: session.tokens,
+        isFailed: session.state === "failed",
+        failure: session.failure,
+      },
+      showTokens: this.props.showTokenUsage ?? true,
+      controlsOpen: this.controlsOpen(),
+      controlsLabel: this.controlsOpen() ? "Hide controls" : "Controls",
+      toggleControls: () => this.setState({ controlsOpen: !this.controlsOpen() }),
+      restart: () => this.restart(),
+      backends: ["codex", "claude", "opencode"].map((id) => ({
+        id,
+        style: id === sel.backend ? "background:#1c2128;border-color:#e0a350;color:#e0a350;" : "",
+        onPick: () => this.pick({ backend: id }),
+      })),
+      backendNote: scoped
+        ? "floor MCP surface · native tools disabled"
+        : "native tools retained · restriction not enforceable",
+      model: sel.model,
+      models: MODELS[sel.backend].map((value) => ({ value, label: value })),
+      onModel: (event) => this.pick({ model: event.target.value }),
+      profileModel: sel.backend === "opencode" ? "none (compatibility exception)" : PROFILE[role][sel.backend][0],
+      efforts: ["low", "medium", "high"].map((id) => ({
+        id,
+        style: id === sel.effort ? "background:#1c2128;border-color:#e0a350;color:#e0a350;" : "",
+        onPick: () => this.pick({ effort: id }),
+      })),
+      profileEffort: sel.backend === "opencode" ? "none" : PROFILE[role][sel.backend][1],
+      toolsSummary: scoped ? `${resolved.length} floor tools` : "inherit (native)",
+      toolsDetail: scoped
+        ? profile.tools.join(", ") + (role === "librarian" ? " · WebSearch and WebFetch resolve to none" : "")
+        : profile.tools.join(", ") + " · Codex keeps its own tools",
+      applyModes: [
+        { label: "apply now · restarts session", style: this.state.applyMode === "now" ? "background:#1c2128;border-color:#e0a350;color:#e0a350;" : "", onPick: () => this.setState({ applyMode: "now" }) },
+        { label: "on next assignment", style: this.state.applyMode === "next" ? "background:#1c2128;border-color:#e0a350;color:#e0a350;" : "", onPick: () => this.setState({ applyMode: "next" }) },
+      ],
+      savePyproject: this.state.savePyproject,
+      onSave: (event) => this.setState({ savePyproject: event.target.checked }),
+      pyprojectLine,
+      applyNote: dirty ? "unapplied change" : this.state.applied,
+      applyDisabled: !dirty,
+      applyStyle: dirty ? "" : "background:#e0a350;opacity:.45;cursor:not-allowed;",
+      apply: () => this.apply(),
+      filters: FILTERS.map((f) => ({
+        label: f.id === "all" ? `all ${raw.length}` : `${f.label} ${counts[f.id] ?? 0}`,
+        style: f.id === filter ? "background:#1c2128;border-color:#e0a350;color:#e0a350;" : "",
+        onPick: () => this.setState({ filter: f.id }),
+      })),
+      feedMeta: `session ${role} · live`,
+      entries,
+      feedEmpty: entries.length === 0,
+      chat: CHAT.map((c) => ({
+        author: c.author,
+        text: c.text,
+        style: c.user ? "align-self:flex-end;background:rgba(224,163,80,.12);border-color:rgba(224,163,80,.35);color:#f0e3cf;" : "",
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>
