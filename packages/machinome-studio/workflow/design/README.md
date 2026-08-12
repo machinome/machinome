@@ -77,8 +77,7 @@ top. Each carries a visible id badge.
   `Locate…` (outlined). Footer: `Add manually…` (outlined) left, count +
   primary Continue right.
 - **Copy used:** `claude 1.8.2 · ~/.local/bin/claude · sonnet-4.5`,
-  `codex 0.9.1 · /usr/local/bin/codex · gpt-5 · effort high`,
-  `no executable on PATH`.
+  `opencode 1.18.11 · /usr/local/bin/opencode`, `no executable on PATH`.
 
 ### 3c — New project sheet
 - **Purpose:** replaces `<project-name> --profile …`; runtime choices remain
@@ -89,7 +88,7 @@ top. Each carries a visible id badge.
 - **Components:** name input (mono 13px, `#171b21`, 1px `#3b434f`, radius 8);
   profile as two selectable cards in a 2-col grid (selected: `#1c2128` bg +
   1px `#e0a350`); a read-only runtime note that agents use project-declared
-  selections or profile Codex defaults; footer bar `#121419` with a mono hint
+  selections or profile Claude defaults; footer bar `#121419` with a mono hint
   on the left and Cancel / `Create and open`.
 - **Validation:** name must be a valid directory name, unique within the
   working folder; profile is required. Creating a project does not write a
@@ -223,8 +222,8 @@ Kept on the canvas for context only. 1c moved activity to a bottom drawer,
   viewer, Monaco models, or chat. Viewer camera/timeline, file tabs, undo/view
   state, dirty buffers, transcript scroll, and the chat draft survive.
 - **Agent runtime selection** is ordered backend, provider, model, then
-  reasoning. Codex shows its fixed `OpenAI` provider and Claude its fixed
-  `Anthropic` provider. OpenCode shows only exact provider IDs in its live
+  reasoning. Claude shows its fixed `Anthropic` provider. OpenCode shows only
+  exact provider IDs in its live
   connected set—not its complete known-provider catalogue—in a separate control
   and limits the model control to the selected provider so the maker can verify
   the authenticated account and billing path before applying. An upstream
@@ -308,9 +307,9 @@ Present for Agents:
   revision, and backend-owned choices. A pristine role receives fresh-session
   choices across available backends; OpenCode provider/model choices carry
   exact provider IDs from its live connected set and omit unconnected entries
-  from the complete catalogue. The browser presents the implied single
-  providers for Codex and Claude as OpenAI and Anthropic. After first use only
-  context-preserving choices remain.
+  from the complete catalogue. The browser presents Claude's implied single
+  provider as Anthropic. After first use only context-preserving choices
+  remain.
 - `PATCH /api/sessions/:id/agents/:role/runtime` — complete backend, provider,
   model, and reasoning plus the optional `pyproject.toml` persistence choice
   and expected revision. A backend/provider change requires a pristine role;

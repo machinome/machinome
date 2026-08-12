@@ -268,7 +268,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         run = _request(self.url(f"/api/sessions/{session_id}"), "GET")
         agent = run["agents"][0]
         agent.update({
-            "backend": "codex", "provider": None, "model": "gpt-5.3-codex-spark",
+            "backend": "claude", "provider": None, "model": "sonnet",
             "effort": "high", "runtime_idle": True, "runtime_pristine": True, "backend_idle": True,
         })
         run["activity"] = [
@@ -314,13 +314,12 @@ class ShopLifecycleE2E(unittest.TestCase):
                 return
             route.fulfill(status=200, content_type="application/json", body=json.dumps({
                 "role": "builder",
-                "runtime": {"backend": "codex", "provider": None, "model": "gpt-5.3-codex-spark", "effort": "high"},
+                "runtime": {"backend": "claude", "provider": None, "model": "sonnet", "effort": "high"},
                 "supported": True,
                 "reason": None,
                 "choices": [
-                    {"backend": "codex", "provider": None, "model": "gpt-5.3-codex-spark", "efforts": ["high"]},
-                    {"backend": "codex", "provider": None, "model": "gpt-5.6-sol", "efforts": ["medium", "high"]},
-                    {"backend": "claude", "provider": None, "model": "opus", "efforts": ["high"]},
+                    {"backend": "claude", "provider": None, "model": "sonnet", "efforts": ["medium", "high"]},
+                    {"backend": "claude", "provider": None, "model": "opus", "efforts": ["medium", "high"]},
                     {"backend": "opencode", "provider": "anthropic", "model": "claude-sonnet-4-5", "efforts": ["medium", "high"]},
                     {"backend": "opencode", "provider": "openai-codex", "model": "gpt-5.6-sol", "efforts": ["high"]},
                 ],
@@ -340,14 +339,11 @@ class ShopLifecycleE2E(unittest.TestCase):
         controls = self.page.locator(".agent-controls")
         provider_select = controls.get_by_label("Provider", exact=True)
         model_select = controls.get_by_label("Model", exact=True)
-        self.assertEqual(provider_select.input_value(), "openai")
-        self.assertTrue(provider_select.is_disabled())
-        self.assertEqual(self.page.get_by_text("Tools", exact=True).count(), 0)
-        self.assertFalse(self.page.get_by_role("button", name="claude", exact=True).is_disabled())
-        self.page.get_by_role("button", name="claude", exact=True).click()
         self.assertEqual(provider_select.input_value(), "anthropic")
         self.assertTrue(provider_select.is_disabled())
-        self.assertFalse(self.page.get_by_role("button", name="Apply", exact=True).is_disabled())
+        self.assertEqual(self.page.get_by_text("Tools", exact=True).count(), 0)
+        self.assertEqual(self.page.get_by_role("button", name="codex", exact=True).count(), 0)
+        self.assertFalse(self.page.get_by_role("button", name="claude", exact=True).is_disabled())
         self.page.get_by_role("button", name="opencode", exact=True).click()
         self.assertFalse(provider_select.is_disabled())
         self.assertEqual(provider_select.locator("option").all_text_contents(), ["anthropic", "openai-codex"])
@@ -357,8 +353,8 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_text("applied · written to pyproject.toml", exact=True).wait_for()
         self.assertEqual(runtime_requests[-1]["provider"], "openai-codex")
         self.assertEqual(runtime_requests[-1]["model"], "gpt-5.6-sol")
-        self.page.get_by_role("button", name="codex", exact=True).click()
-        self.assertEqual(provider_select.input_value(), "openai")
+        self.page.get_by_role("button", name="claude", exact=True).click()
+        self.assertEqual(provider_select.input_value(), "anthropic")
         self.assertTrue(provider_select.is_disabled())
         self.assertTrue(self.page.get_by_label("write to pyproject.toml").is_checked())
         self.assertTrue(self.page.get_by_role("button", name="Apply", exact=True).is_disabled())
@@ -376,7 +372,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual(composer.input_value(), "keep this draft")
         self.assertEqual(self.page.get_by_role("button", name="files 1", exact=True).get_attribute("class"), "selected")
 
-        model_select.select_option("gpt-5.6-sol")
+        model_select.select_option("opus")
         self.page.get_by_role("button", name="medium", exact=True).click()
         self.page.get_by_role("button", name="Apply", exact=True).click()
         self.page.get_by_text("applied · written to pyproject.toml", exact=True).wait_for()
@@ -399,7 +395,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.reload()
         self.page.get_by_role("button", name="Agents", exact=True).click()
         self.page.get_by_text("Locked after this agent's first use.").wait_for()
-        self.assertTrue(self.page.get_by_role("button", name="claude", exact=True).is_disabled())
+        self.assertTrue(self.page.get_by_role("button", name="opencode", exact=True).is_disabled())
 
     def test_model_panel_navigates_the_viewer_assembly(self) -> None:
         project = self._make_project("assembly-project")

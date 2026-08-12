@@ -21,7 +21,6 @@ from unittest.mock import patch
 from urllib.request import urlopen
 
 from floor.app import Broker
-from floor.backends.codex import CodexBackend as CodexAppServer
 from floor.backends.base import (
     AgentActivity,
     AgentBackend,
@@ -45,20 +44,14 @@ from floor.preparation import PreparationError, ProjectAgentRuntime, ProjectRunt
 from floor.profiles import load_profile, resolve_profile_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
-FAKE_APP_SERVER = ROOT / "tests" / "fixtures" / "fake_codex_app_server.py"
 FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
-def _resolved_profile(profile_id: str, backend: str = "codex"):
+def _resolved_profile(profile_id: str, backend: str = "claude"):
     profile = load_profile(profile_id, shop_root=ROOT)
     agents = {}
-    if backend != "codex":
+    if backend != "claude":
         for agent in profile.agents:
-            if backend == "claude":
-                default = agent.backends["claude"]
-                source = f"claude:{default.model}"
-                agents[agent.id] = ProjectAgentRuntime("claude", None, default.model, None, source)
-            else:
-                source = "opencode:openai:gpt-5.4"
-                agents[agent.id] = ProjectAgentRuntime("opencode", "openai", "gpt-5.4", None, source)
+            source = "opencode:openai:gpt-5.4"
+            agents[agent.id] = ProjectAgentRuntime("opencode", "openai", "gpt-5.4", None, source)
     selection = ProjectRuntimeSelection(ROOT, ROOT / "pyproject.toml", agents)
     return resolve_profile_runtime(profile, selection)
 
@@ -66,7 +59,7 @@ def _resolved_profile(profile_id: str, backend: str = "codex"):
 FORDESMAC = _resolved_profile("fordesmac")
 
 
-def _context(role: str, *, backend: str = "codex", project: Path | None = None) -> RoleContext:
+def _context(role: str, *, backend: str = "claude", project: Path | None = None) -> RoleContext:
     profile = _resolved_profile("fordesmac", backend)
     return RoleContext(
         shop_root=str(ROOT),
@@ -142,8 +135,8 @@ class FakeBroker:
         self.pristine[role] = False
 
 
-class FakeCodex:
-    def __init__(self, backend_name: str = "codex") -> None:
+class FakeMultiplexBackend:
+    def __init__(self, backend_name: str = "claude") -> None:
         self.backend_name = backend_name
         self.started_threads: list[str] = []
         self.started_turns: list[tuple[str, str]] = []
@@ -210,16 +203,18 @@ class FakeCodex:
         self.closed.append(handle.backend_id)
 
     async def runtime_catalog(self, handle: RoleHandle | None) -> RuntimeCatalogue:
-        model = "opus" if self.backend_name == "claude" else "gpt-5.6-sol"
+        claude = self.backend_name == "claude"
+        model = "opus" if claude else "gpt-5.4"
+        provider = None if claude else "openai"
         return RuntimeCatalogue(
             supported=True,
-            choices=(RuntimeChoice(model, ("medium", "high"), self.backend_name),),
+            choices=(RuntimeChoice(model, ("medium", "high"), self.backend_name, provider),),
         )
 
     async def update_runtime(self, handle: RoleHandle, runtime: object) -> None:
         self.runtime_updates.append((handle, runtime))
 
-    # Events — FakeCodex doesn't emit events; tests call handle_notification
+    # Events — the fake doesn't emit events; tests call handle_notification
     # directly.  Provide a dummy async iterator for the protocol.
     async def _empty_events(self):
         while True:
@@ -231,27 +226,27 @@ class FakeCodex:
 
 class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        self.codex = FakeCodex()
+        self.backend = FakeMultiplexBackend()
         self.broker = FakeBroker()
-        self.orchestrator = ShopOrchestrator(self.codex, self.broker, profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
+        self.orchestrator = ShopOrchestrator(self.backend, self.broker, profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
         await self.orchestrator.open()
 
     async def test_open_owns_exactly_the_three_role_threads(self) -> None:
-        self.assertEqual(self.codex.started_threads, ["foreman", "designer", "machinist", "librarian"])
-        self.assertEqual([role for role, _ in self.broker.manifested], self.codex.started_threads)
+        self.assertEqual(self.backend.started_threads, ["foreman", "designer", "machinist", "librarian"])
+        self.assertEqual([role for role, _ in self.broker.manifested], self.backend.started_threads)
 
     async def test_idle_delivery_starts_and_active_delivery_steers_the_same_owner(self) -> None:
         await self.orchestrator.deliver({"sequence": 10, "recipient": "designer", "body": "First"})
         runtime = self.orchestrator.roles["designer"]
-        self.assertIn("instruction:\nFirst", self.codex.started_turns[0][1])
+        self.assertIn("instruction:\nFirst", self.backend.started_turns[0][1])
         self.assertEqual(runtime.active_delivery_id, "turn-1")
 
         await self.orchestrator.deliver({"sequence": 11, "recipient": "designer", "body": "Second"})
-        self.assertEqual(self.codex.steered_turns[0][0:2], ("thread-designer", "turn-1"))
-        self.assertIn("instruction:\nSecond", self.codex.steered_turns[0][2])
+        self.assertEqual(self.backend.steered_turns[0][0:2], ("thread-designer", "turn-1"))
+        self.assertIn("instruction:\nSecond", self.backend.steered_turns[0][2])
         self.assertEqual(self.broker.delivered, [10, 11])
 
-    def test_assignment_delivery_makes_acknowledgement_the_first_tool_call(self) -> None:
+    def test_assignment_delivery_makes_the_floor_acknowledgement_tool_the_first_call(self) -> None:
         message = self.orchestrator._message(
             {
                 "sequence": 10,
@@ -263,42 +258,42 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertIn("FIRST TOOL CALL", message)
-        self.assertIn(
-            "python -m floor.agent acknowledge --role machinist --assignment build-1",
-            message,
-        )
+        self.assertIn('floor_acknowledge(role="machinist", assignment="build-1")', message)
+        self.assertNotIn("python -m floor.agent acknowledge", message)
         self.assertIn("Do not read files or investigate", message)
 
-    def test_scoped_assignment_uses_floor_acknowledgement_tool(self) -> None:
-        orchestrator = ShopOrchestrator(
-            self.codex,
-            self.broker,
-            profile=_resolved_profile("fordesmac", "opencode"),
-            shop_root=ROOT,
-            active_project=ROOT,
-        )
-        message = orchestrator._message(
-            {
-                "sequence": 10,
-                "kind": "assignment",
-                "recipient": "machinist",
-                "assignment_id": "build-1",
-                "body": "Build the released drawing.",
-            }
-        )
+    def test_every_selectable_backend_acknowledges_through_the_floor_tool(self) -> None:
+        for backend in ("claude", "opencode"):
+            with self.subTest(backend=backend):
+                orchestrator = ShopOrchestrator(
+                    self.backend,
+                    self.broker,
+                    profile=_resolved_profile("fordesmac", backend),
+                    shop_root=ROOT,
+                    active_project=ROOT,
+                )
+                message = orchestrator._message(
+                    {
+                        "sequence": 10,
+                        "kind": "assignment",
+                        "recipient": "machinist",
+                        "assignment_id": "build-1",
+                        "body": "Build the released drawing.",
+                    }
+                )
 
-        self.assertIn(
-            'floor_acknowledge(role="machinist", assignment="build-1")',
-            message,
-        )
-        self.assertNotIn("python -m floor.agent acknowledge", message)
+                self.assertIn(
+                    'floor_acknowledge(role="machinist", assignment="build-1")',
+                    message,
+                )
+                self.assertNotIn("python -m floor.agent acknowledge", message)
 
     async def test_completion_race_restarts_the_still_unacknowledged_envelope(self) -> None:
         await self.orchestrator.deliver({"sequence": 12, "recipient": "machinist", "body": "Build"})
-        self.codex.fail_next_steer = True
+        self.backend.fail_next_steer = True
         await self.orchestrator.deliver({"sequence": 13, "recipient": "machinist", "body": "Correction"})
-        self.assertEqual(self.codex.started_turns[-1][0], "thread-machinist")
-        self.assertIn("instruction:\nCorrection", self.codex.started_turns[-1][1])
+        self.assertEqual(self.backend.started_turns[-1][0], "thread-machinist")
+        self.assertIn("instruction:\nCorrection", self.backend.started_turns[-1][1])
         self.assertEqual(self.broker.delivered[-1], 13)
 
     async def test_notice_steers_a_continuing_turn_without_starting_or_changing_work(self) -> None:
@@ -306,12 +301,12 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.broker.system_notices["designer"] = [
             {"sequence": 1, "kind": "user_file_changed", "path": "root/plate.py", "revision": "new"}
         ]
-        started = len(self.codex.started_turns)
+        started = len(self.backend.started_turns)
 
         await self.orchestrator.deliver_pending_notices("designer")
 
-        self.assertEqual(len(self.codex.started_turns), started)
-        self.assertIn("kind: user_file_changed", self.codex.notice_deliveries[-1][2])
+        self.assertEqual(len(self.backend.started_turns), started)
+        self.assertIn("kind: user_file_changed", self.backend.notice_deliveries[-1][2])
         self.assertEqual(self.broker.delivered_system_notices, [("designer", [1])])
 
     async def test_unaccepted_notice_waits_for_the_next_ordinary_delivery(self) -> None:
@@ -319,11 +314,11 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.broker.system_notices["designer"] = [
             {"sequence": 2, "kind": "user_file_changed", "path": "root/plate.py", "revision": "new"}
         ]
-        self.codex.accept_notices = False
-        started = len(self.codex.started_turns)
+        self.backend.accept_notices = False
+        started = len(self.backend.started_turns)
 
         await self.orchestrator.deliver_pending_notices("designer")
-        self.assertEqual(len(self.codex.started_turns), started)
+        self.assertEqual(len(self.backend.started_turns), started)
         self.assertEqual(self.broker.delivered_system_notices, [])
 
         await self.orchestrator.handle_event(
@@ -331,18 +326,18 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         )
         await self.orchestrator.deliver({"sequence": 22, "recipient": "designer", "body": "Continue"})
 
-        self.assertEqual(len(self.codex.started_turns), started + 1)
-        self.assertIn("kind: user_file_changed", self.codex.started_turns[-1][1])
-        self.assertIn("instruction:\nContinue", self.codex.started_turns[-1][1])
+        self.assertEqual(len(self.backend.started_turns), started + 1)
+        self.assertIn("kind: user_file_changed", self.backend.started_turns[-1][1])
+        self.assertIn("instruction:\nContinue", self.backend.started_turns[-1][1])
         self.assertEqual(self.broker.delivered_system_notices, [("designer", [2])])
 
     async def test_standby_does_not_start_or_steer_a_turn_and_close_interrupts_active_work(self) -> None:
-        self.assertEqual(self.codex.started_turns, [])
-        self.assertEqual(self.codex.steered_turns, [])
+        self.assertEqual(self.backend.started_turns, [])
+        self.assertEqual(self.backend.steered_turns, [])
         await self.orchestrator.deliver({"sequence": 14, "recipient": "foreman", "body": "Work"})
         await self.orchestrator.close()
-        self.assertEqual(self.codex.interrupted, [("thread-foreman", "thread-foreman")])
-        self.assertEqual(self.codex.closed, ["thread-librarian", "thread-machinist", "thread-designer", "thread-foreman"])
+        self.assertEqual(self.backend.interrupted, [("thread-foreman", "thread-foreman")])
+        self.assertEqual(self.backend.closed, ["thread-librarian", "thread-machinist", "thread-designer", "thread-foreman"])
 
     async def test_completed_foreman_message_is_published_to_the_maker_conversation(self) -> None:
         await self.orchestrator.handle_event(
@@ -355,7 +350,7 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_idle_runtime_update_preserves_backend_and_changes_model_and_reasoning_together(self) -> None:
         current = self.orchestrator.current_runtime("designer")
-        changed = replace(current, model="gpt-5.6-sol", effort="high")
+        changed = replace(current, model="opus", effort="high")
 
         catalogue = await self.orchestrator.runtime_catalog("designer")
         applied = await self.orchestrator.update_runtime("designer", changed)
@@ -363,20 +358,20 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(catalogue.supported)
         self.assertEqual(applied, changed)
         self.assertEqual(self.orchestrator.roles["designer"].handle.backend_id, "thread-designer")
-        self.assertEqual(self.codex.runtime_updates[-1][1], changed)
+        self.assertEqual(self.backend.runtime_updates[-1][1], changed)
 
     async def test_active_native_delivery_rejects_runtime_update(self) -> None:
         await self.orchestrator.deliver({"sequence": 44, "recipient": "designer", "body": "work"})
-        changed = replace(self.orchestrator.current_runtime("designer"), model="gpt-5.6-sol")
+        changed = replace(self.orchestrator.current_runtime("designer"), model="opus")
 
         with self.assertRaisesRegex(RuntimeError, "not idle"):
             await self.orchestrator.update_runtime("designer", changed)
 
-        self.assertEqual(self.codex.runtime_updates, [])
+        self.assertEqual(self.backend.runtime_updates, [])
 
     async def test_failed_persistence_commit_rolls_back_before_runtime_is_published(self) -> None:
         current = self.orchestrator.current_runtime("designer")
-        changed = replace(current, model="gpt-5.6-sol", effort="high")
+        changed = replace(current, model="opus", effort="high")
 
         with self.assertRaisesRegex(RuntimeError, "stale project config"):
             await self.orchestrator.update_runtime(
@@ -386,46 +381,59 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
             )
 
         self.assertEqual(self.orchestrator.current_runtime("designer"), current)
-        self.assertEqual([item[1] for item in self.codex.runtime_updates], [changed, current])
+        self.assertEqual([item[1] for item in self.backend.runtime_updates], [changed, current])
         self.assertEqual(self.broker.runtime["designer"], current)
 
     async def test_pristine_backend_change_replaces_unused_handle_without_migration(self) -> None:
-        claude = FakeCodex("claude")
+        opencode = FakeMultiplexBackend("opencode")
         async def resolve_backend(name: str) -> AgentBackend:
-            self.assertEqual(name, "claude")
-            return cast(AgentBackend, claude)
+            self.assertEqual(name, "opencode")
+            return cast(AgentBackend, opencode)
         self.orchestrator.backend_resolver = resolve_backend
         current = self.orchestrator.current_runtime("designer")
         requested = replace(
             FORDESMAC.agent("designer").backends["claude"],
-            model="opus",
+            model="gpt-5.4",
             effort="high",
+            backend="opencode",
+            provider="openai",
         )
 
         applied = await self.orchestrator.update_runtime("designer", requested)
 
         self.assertEqual(applied, requested)
         self.assertEqual(self.orchestrator.current_runtime("designer"), requested)
-        self.assertEqual(claude.started_threads, ["designer"])
-        self.assertIn("thread-designer", self.codex.closed)
-        self.assertIs(self.orchestrator.backends_by_agent["designer"], claude)
-        self.assertEqual(current.backend, "codex")
+        self.assertEqual(opencode.started_threads, ["designer"])
+        self.assertIn("thread-designer", self.backend.closed)
+        self.assertIs(self.orchestrator.backends_by_agent["designer"], opencode)
+        self.assertEqual(current.backend, "claude")
 
     async def test_used_role_rejects_backend_change_even_after_it_is_idle(self) -> None:
         self.broker.pristine["designer"] = False
-        requested = replace(FORDESMAC.agent("designer").backends["claude"], model="opus")
+        requested = replace(
+            FORDESMAC.agent("designer").backends["claude"],
+            model="gpt-5.4",
+            backend="opencode",
+            provider="openai",
+        )
 
         with self.assertRaisesRegex(ValueError, "first use"):
             await self.orchestrator.update_runtime("designer", requested)
 
     async def test_failed_pristine_replacement_commit_keeps_old_owner_and_handle(self) -> None:
-        claude = FakeCodex("claude")
+        opencode = FakeMultiplexBackend("opencode")
         async def resolve_backend(_name: str) -> AgentBackend:
-            return cast(AgentBackend, claude)
+            return cast(AgentBackend, opencode)
         self.orchestrator.backend_resolver = resolve_backend
         current = self.orchestrator.current_runtime("designer")
         old_handle = self.orchestrator.roles["designer"].handle
-        requested = replace(FORDESMAC.agent("designer").backends["claude"], model="opus", effort="high")
+        requested = replace(
+            FORDESMAC.agent("designer").backends["claude"],
+            model="gpt-5.4",
+            effort="high",
+            backend="opencode",
+            provider="openai",
+        )
 
         with self.assertRaisesRegex(RuntimeError, "stale project config"):
             await self.orchestrator.update_runtime(
@@ -435,9 +443,9 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(self.orchestrator.current_runtime("designer"), current)
         self.assertIs(self.orchestrator.roles["designer"].handle, old_handle)
-        self.assertIs(self.orchestrator.backends_by_agent["designer"], self.codex)
-        self.assertEqual(claude.closed, ["thread-designer"])
-        self.assertNotIn("thread-designer", self.codex.closed)
+        self.assertIs(self.orchestrator.backends_by_agent["designer"], self.backend)
+        self.assertEqual(opencode.closed, ["thread-designer"])
+        self.assertNotIn("thread-designer", self.backend.closed)
 
     async def test_backend_activity_is_forwarded_without_native_protocol_data(self) -> None:
         activity = AgentActivity(
@@ -477,13 +485,13 @@ class MultiBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
             },
         )
         profile = resolve_profile_runtime(profile, selection)
-        codex, claude = CountingBackend(), CountingBackend()
+        primary, claude = CountingBackend(), CountingBackend()
         orchestrator = ShopOrchestrator(
             {
-                "foreman": codex,
+                "foreman": primary,
                 "designer": claude,
-                "machinist": codex,
-                "librarian": codex,
+                "machinist": primary,
+                "librarian": primary,
             },
             FakeBroker(),
             profile=profile,
@@ -492,17 +500,17 @@ class MultiBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         )
 
         await orchestrator.open()
-        self.assertTrue(codex.started)
+        self.assertTrue(primary.started)
         self.assertTrue(claude.started)
-        self.assertEqual([role for role, _ in codex.opened_roles], ["foreman", "machinist", "librarian"])
+        self.assertEqual([role for role, _ in primary.opened_roles], ["foreman", "machinist", "librarian"])
         self.assertEqual([role for role, _ in claude.opened_roles], ["designer"])
         await orchestrator.close()
-        self.assertEqual([handle.role for handle in codex.closed_roles], ["librarian", "machinist", "foreman"])
+        self.assertEqual([handle.role for handle in primary.closed_roles], ["librarian", "machinist", "foreman"])
         self.assertEqual([handle.role for handle in claude.closed_roles], ["designer"])
-        self.assertTrue(codex.closed)
+        self.assertTrue(primary.closed)
         self.assertTrue(claude.closed)
-        self.assertEqual((codex.start_count, claude.start_count), (1, 1))
-        self.assertEqual((codex.close_count, claude.close_count), (1, 1))
+        self.assertEqual((primary.start_count, claude.start_count), (1, 1))
+        self.assertEqual((primary.close_count, claude.close_count), (1, 1))
 
     async def test_later_backend_start_failure_closes_every_backend(self) -> None:
         from tests.fixtures.fake_backend import FakeBackend
@@ -543,18 +551,18 @@ class MultiBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
                 self.seen.append((event.kind, event.role))
                 await super().handle_event(event)
 
-        codex, claude = QueueBackend(), QueueBackend()
+        opencode, claude = QueueBackend(), QueueBackend()
         profile = FORDESMAC
         orchestrator = RecordingOrchestrator(
-            {agent.id: (claude if agent.id == "designer" else codex) for agent in profile.agents},
+            {agent.id: (claude if agent.id == "designer" else opencode) for agent in profile.agents},
             FakeBroker(), profile=profile, shop_root=ROOT, active_project=ROOT,
         )
         tasks = [
             asyncio.create_task(_route_backend_events(orchestrator, backend))
-            for backend in (codex, claude)
+            for backend in (opencode, claude)
         ]
         self.addAsyncCleanup(lambda: [task.cancel() for task in tasks])
-        await codex.queue.put(BackendEvent(kind="role_message", role="foreman", text="from codex"))
+        await opencode.queue.put(BackendEvent(kind="role_message", role="foreman", text="from opencode"))
         await claude.queue.put(BackendEvent(kind="role_message", role="designer", text="from claude"))
         for _ in range(20):
             if len(orchestrator.seen) == 2:
@@ -568,7 +576,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         profile = _resolved_profile("builder")
         broker = Broker(profile=profile)
 
-        class RacingCodex(FakeCodex):
+        class RacingBackend(FakeMultiplexBackend):
             orchestrator: ShopOrchestrator
 
             async def deliver_start(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
@@ -582,15 +590,15 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
                 )
                 return receipt
 
-        codex = RacingCodex()
+        racing = RacingBackend()
         orchestrator = ShopOrchestrator(
-            cast(AgentBackend, codex),
+            cast(AgentBackend, racing),
             LocalBrokerControl(broker),
             profile=profile,
             shop_root=ROOT,
             active_project=ROOT,
         )
-        codex.orchestrator = orchestrator
+        racing.orchestrator = orchestrator
         await orchestrator.open()
         self.addAsyncCleanup(orchestrator.close)
         await broker.record_conversation("user", "Build")
@@ -606,7 +614,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         profile = _resolved_profile("builder")
         broker = Broker(profile=profile)
 
-        class RacingCodex(FakeCodex):
+        class RacingBackend(FakeMultiplexBackend):
             orchestrator: ShopOrchestrator
 
             async def deliver_start(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
@@ -621,15 +629,15 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
                     )
                 return receipt
 
-        codex = RacingCodex()
+        racing = RacingBackend()
         orchestrator = ShopOrchestrator(
-            cast(AgentBackend, codex),
+            cast(AgentBackend, racing),
             LocalBrokerControl(broker),
             profile=profile,
             shop_root=ROOT,
             active_project=ROOT,
         )
-        codex.orchestrator = orchestrator
+        racing.orchestrator = orchestrator
         await orchestrator.open()
         self.addAsyncCleanup(orchestrator.close)
         await broker.record_conversation("user", "Quick answer")
@@ -661,12 +669,12 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_profile_order_contract_and_only_user_agent_output_are_generic(self) -> None:
         profile = _resolved_profile("fordesmac")
-        codex = FakeCodex()
+        backend = FakeMultiplexBackend()
         broker = FakeBroker()
-        orchestrator = ShopOrchestrator(codex, broker, profile=profile, shop_root=ROOT, active_project=ROOT)
+        orchestrator = ShopOrchestrator(backend, broker, profile=profile, shop_root=ROOT, active_project=ROOT)
         await orchestrator.open()
         self.addAsyncCleanup(orchestrator.close)
-        self.assertEqual(codex.started_threads, ["foreman", "designer", "machinist", "librarian"])
+        self.assertEqual(backend.started_threads, ["foreman", "designer", "machinist", "librarian"])
         await orchestrator.handle_event(BackendEvent(kind="role_message", role="designer", text="Internal"))
         await orchestrator.handle_event(BackendEvent(kind="role_message", role="foreman", text="Public"))
         self.assertEqual(broker.conversation, [("foreman", "Public")])
@@ -674,8 +682,8 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
     async def test_direct_turn_events_update_the_builder_broker_without_assignment_ids(self) -> None:
         profile = _resolved_profile("builder")
         broker = Broker(profile=profile)
-        codex = FakeCodex()
-        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker), profile=profile, shop_root=ROOT, active_project=ROOT)
+        backend = FakeMultiplexBackend()
+        orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker), profile=profile, shop_root=ROOT, active_project=ROOT)
         await orchestrator.open()
         self.addAsyncCleanup(orchestrator.close)
         await broker.record_conversation("user", "Build")
@@ -690,8 +698,8 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
     async def test_direct_lifecycle_ignores_stale_events_and_preserves_the_steered_delivery_identity(self) -> None:
         profile = _resolved_profile("builder")
         broker = Broker(profile=profile)
-        codex = FakeCodex()
-        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker), profile=profile, shop_root=ROOT, active_project=ROOT)
+        backend = FakeMultiplexBackend()
+        orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker), profile=profile, shop_root=ROOT, active_project=ROOT)
         await orchestrator.open()
         self.addAsyncCleanup(orchestrator.close)
         await broker.record_conversation("user", "Build")
@@ -717,159 +725,11 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(broker.agents["builder"].state, "waiting")
 
 
-class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
-    async def test_runtime_update_keeps_thread_and_applies_model_and_effort_to_next_turn(self) -> None:
-        codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
-        await codex.start()
-        self.addAsyncCleanup(codex.close)
-        handle = await codex.open_role("designer", _context("designer"))
-        current = codex._runtimes[handle.backend_id]
-        changed = replace(current, model="gpt-5.6-sol", effort="high")
-
-        catalogue = await codex.runtime_catalog(handle)
-        await codex.update_runtime(handle, changed)
-        receipt = await codex.deliver_start(handle, "Continue")
-
-        self.assertTrue(any(choice.model == changed.model for choice in catalogue.choices))
-        self.assertEqual(codex._runtimes[handle.backend_id], changed)
-        self.assertEqual(handle.backend_id, "thread-1")
-        self.assertTrue(receipt.delivery_id)
-
-    async def test_native_turn_identity_survives_events_steering_and_interrupt(self) -> None:
-        codex = CodexAppServer(
-            ROOT,
-            command=(sys.executable, str(FAKE_APP_SERVER)),
-        )
-        await codex.start()
-        self.addAsyncCleanup(codex.close)
-        context = _context("designer")
-        handle = await codex.open_role("designer", context)
-
-        receipt = await codex.deliver_start(handle, "Begin")
-        started = await asyncio.wait_for(anext(codex.events), timeout=1)
-        self.assertEqual(started.kind, "turn_started")
-        self.assertEqual(started.delivery_id, receipt.delivery_id)
-
-        steered = await codex.deliver_steer(
-            handle, started.delivery_id or "", "Adjust"
-        )
-        self.assertEqual(steered.delivery_id, receipt.delivery_id)
-        await codex.interrupt(handle)
-        completed = await asyncio.wait_for(anext(codex.events), timeout=1)
-        self.assertEqual(completed.kind, "turn_completed")
-        self.assertEqual(completed.delivery_id, receipt.delivery_id)
-
-    async def test_notice_steers_only_the_expected_active_turn(self) -> None:
-        codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
-        await codex.start()
-        self.addAsyncCleanup(codex.close)
-        handle = await codex.open_role("designer", _context("designer"))
-        receipt = await codex.deliver_start(handle, "Begin")
-        await asyncio.wait_for(anext(codex.events), timeout=1)
-
-        self.assertTrue(await codex.deliver_notice(handle, receipt.delivery_id, "Notice"))
-        await codex.interrupt(handle)
-        await asyncio.wait_for(anext(codex.events), timeout=1)
-        self.assertFalse(await codex.deliver_notice(handle, receipt.delivery_id, "Too late"))
-
-    async def test_unexpected_process_exit_emits_backend_failure(self) -> None:
-        codex = CodexAppServer(
-            ROOT,
-            command=(sys.executable, str(FAKE_APP_SERVER)),
-        )
-        await codex.start()
-        self.addAsyncCleanup(codex.close)
-        assert codex.process is not None
-        codex.process.terminate()
-
-        event = await asyncio.wait_for(anext(codex.events), timeout=1)
-        self.assertEqual(event.kind, "backend_failed")
-        self.assertIn("exited unexpectedly", event.error or "")
-
-    async def test_role_threads_work_in_the_active_project_with_explicit_shop_context(self) -> None:
-        project = ROOT / "projects" / "snowman"
-        codex = CodexAppServer(
-            ROOT,
-            project=project,
-            command=(sys.executable, str(FAKE_APP_SERVER)),
-            solid_command=("/work/.venv/bin/solid",),
-        )
-        await codex.start()
-        self.addAsyncCleanup(codex.close)
-
-        await codex.start_thread("foreman", _context("foreman", project=project))
-        notification = await codex.notifications.get()
-        thread = notification["params"]["thread"]
-
-        self.assertEqual(thread["cwd"], str(project.resolve()))
-        self.assertEqual(thread["sandbox"], "danger-full-access")
-        self.assertEqual(thread["approvalPolicy"], "never")
-        self.assertEqual(thread["runtimeWorkspaceRoots"], [str(project.resolve())])
-        self.assertEqual(thread["config"], {"model_reasoning_effort": "medium"})
-        self.assertIn(f"Shop resources: {ROOT.resolve()}", thread["developerInstructions"])
-        self.assertIn(f"Active project: {project.resolve()}", thread["developerInstructions"])
-
-        await codex.start_thread("designer", _context("designer", project=project))
-        designer = (await codex.notifications.get())["params"]["thread"]
-        self.assertEqual(designer["cwd"], str(project.resolve()))
-        self.assertEqual(designer["sandbox"], "danger-full-access")
-        self.assertEqual(designer["approvalPolicy"], "never")
-        self.assertEqual(designer["runtimeWorkspaceRoots"], [str(project.resolve())])
-        self.assertEqual(designer["config"], {"model_reasoning_effort": "medium"})
-
-        await codex.start_thread("machinist", _context("machinist", project=project))
-        machinist = (await codex.notifications.get())["params"]["thread"]
-        self.assertEqual(machinist["cwd"], str(project.resolve()))
-        self.assertEqual(machinist["sandbox"], "danger-full-access")
-        self.assertEqual(machinist["approvalPolicy"], "never")
-        self.assertEqual(machinist["runtimeWorkspaceRoots"], [str(project.resolve())])
-        self.assertEqual(machinist["config"], {"model_reasoning_effort": "medium"})
-        self.assertNotIn("develop root", machinist["developerInstructions"])
-
-    async def test_closing_never_used_role_threads_is_clean(self) -> None:
-        codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
-        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(Broker(FORDESMAC)), profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
-        await orchestrator.open()
-
-        await orchestrator.close()
-
-        self.assertIsNone(codex.process)
-
-    async def test_one_owner_starts_steers_idles_and_closes_all_role_threads(self) -> None:
-        broker = Broker(FORDESMAC)
-        codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
-        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker), profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
-        await orchestrator.open()
-        self.addAsyncCleanup(orchestrator.close)
-
-        self.assertEqual(sorted(broker.agents), ["designer", "foreman", "librarian", "machinist"])
-        request_count_at_standby = codex._next_id
-        await __import__("asyncio").sleep(0.01)
-        self.assertEqual(codex._next_id, request_count_at_standby, "standby must not create turns or tool calls")
-
-        first = broker.send("direction", "foreman", "designer", "Begin")
-        await orchestrator.deliver(first)
-        second = broker.send("direction", "foreman", "designer", "Adjust")
-        await orchestrator.deliver(second)
-        self.assertEqual(broker.delivered, {first.sequence, second.sequence})
-        self.assertIsNotNone(orchestrator.roles["designer"].active_delivery_id)
-
-    async def test_independent_app_server_cannot_steer_the_owners_thread(self) -> None:
-        owner = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
-        inspector = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
-        await owner.start()
-        await inspector.start()
-        self.addAsyncCleanup(owner.close)
-        self.addAsyncCleanup(inspector.close)
-        thread_id = await owner.start_thread("foreman", _context("foreman"))
-        turn_id = await owner.start_turn(thread_id, "Work")
-        with self.assertRaises(InactiveTurn):
-            await inspector.steer_turn(thread_id, turn_id, "Cross-process direction")
-
+class BrokerPipelineRoutingTest(unittest.IsolatedAsyncioTestCase):
     async def test_broker_routes_maker_specialist_and_parallel_pipeline_messages(self) -> None:
         broker = Broker(FORDESMAC)
-        codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
-        orchestrator = ShopOrchestrator(codex, LocalBrokerControl(broker), profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
+        backend = FakeMultiplexBackend()
+        orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker), profile=FORDESMAC, shop_root=ROOT, active_project=ROOT)
         await orchestrator.open()
         self.addAsyncCleanup(orchestrator.close)
 
@@ -1011,9 +871,9 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         catalogue = await session.runtime_catalog("builder")
 
         self.assertTrue(catalogue["runtime_pristine"])
-        self.assertEqual(len(self.backends), 3)
-        self.assertEqual(len(session.orchestrator.backends), 3)
-        self.assertEqual(len(session.event_tasks), 3)
+        self.assertEqual(len(self.backends), 2)
+        self.assertEqual(len(session.orchestrator.backends), 2)
+        self.assertEqual(len(session.event_tasks), 2)
 
     async def test_creation_is_visible_as_a_provisional_project_until_its_directory_exists(self) -> None:
         started = threading.Event()
@@ -1084,8 +944,7 @@ async def _empty_events():
 
 # ── AgentBackend protocol acceptance tests ─────────────────────────────────
 # These tests use the portable AgentBackend protocol and a FakeBackend
-# fixture.  They are RED until Phase 4 switches ShopOrchestrator from
-# CodexControl to AgentBackend.
+# fixture, independently of any concrete backend adapter.
 
 
 class FakeBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
@@ -1353,10 +1212,10 @@ class BackendFlagAcceptanceTest(unittest.TestCase):
     def test_backend_command_overrides_are_keyed_per_backend(self) -> None:
         from floor.backends import create_backend, parse_backend_command_overrides
 
-        overrides = parse_backend_command_overrides(("codex=/tmp/fake-codex", "claude=/tmp/fake-claude"))
-        codex = create_backend("codex", shop_root=Path("/tmp"), command_overrides=overrides)
+        overrides = parse_backend_command_overrides(("opencode=/tmp/fake-opencode", "claude=/tmp/fake-claude"))
+        opencode = create_backend("opencode", shop_root=Path("/tmp"), command_overrides=overrides)
         claude = create_backend("claude", shop_root=Path("/tmp"), command_overrides=overrides)
-        self.assertEqual(codex.command, ("/tmp/fake-codex",))
+        self.assertEqual(opencode.command, ("/tmp/fake-opencode",))
         self.assertEqual(claude.command, ("/tmp/fake-claude",))
 
     def test_unknown_backend_rejected(self) -> None:
@@ -1367,20 +1226,14 @@ class BackendFlagAcceptanceTest(unittest.TestCase):
             create_backend("unknown", shop_root=Path("/tmp"))
         self.assertIn("unknown", str(cm.exception))
 
-    def test_codex_backend_selected(self) -> None:
-        from pathlib import Path
-        from floor.backends import create_backend
-        from floor.backends.codex import CodexBackend
-
-        backend = create_backend("codex", shop_root=Path("/tmp"))
-        self.assertIsInstance(backend, CodexBackend)
-
-    def test_retired_hermes_backend_rejected(self) -> None:
+    def test_retired_backends_rejected(self) -> None:
         from pathlib import Path
         from floor.backends import create_backend
 
-        with self.assertRaisesRegex(ValueError, "unknown backend.*hermes"):
-            create_backend("hermes", shop_root=Path("/tmp"))
+        for retired in ("hermes", "codex"):
+            with self.subTest(backend=retired):
+                with self.assertRaisesRegex(ValueError, f"unknown backend.*{retired}"):
+                    create_backend(retired, shop_root=Path("/tmp"))
 
 
 # ── ClaudeBackend acceptance tests against the fake Claude CLI fixture ─────

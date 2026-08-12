@@ -40,12 +40,8 @@ class ProductIdentityTest(unittest.TestCase):
         self.assertIn(".conversation-composer { grid-row: 4;", styles)
 
     def test_backend_integrations_use_product_derived_identity(self) -> None:
-        codex = (ROOT / "floor" / "backends" / "codex.py").read_text()
         opencode = (ROOT / "floor" / "backends" / "opencode.py").read_text()
 
-        self.assertIn('"name": "solid-node-studio-orchestrator"', codex)
-        self.assertIn('"title": "SolidNode Studio orchestrator"', codex)
-        self.assertIn('f"solid-node-studio-{role}"', codex)
         self.assertIn('f"{role}-{secrets.token_hex(6)}"', opencode)
         self.assertIn('prefix="solid-node-studio-opencode-"', opencode)
         self.assertIn('f"SolidNode Studio: {role}"', opencode)

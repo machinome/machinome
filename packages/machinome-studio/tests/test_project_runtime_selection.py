@@ -42,7 +42,7 @@ class ProjectRuntimeSelectionTest(unittest.TestCase):
         selection = self._selection(
             """
 [tool.solid-node-studio.agents]
-foreman = "codex:gpt-5.6-terra"
+foreman = "claude:sonnet"
 designer = "claude:opus:high"
 machinist = "opencode:anthropic:claude-sonnet-4-5"
 librarian = "opencode:openai:gpt-5.4:medium"
@@ -52,7 +52,7 @@ librarian = "opencode:openai:gpt-5.4:medium"
         self.assertEqual(
             (selection.agents["foreman"].backend, selection.agents["foreman"].provider,
              selection.agents["foreman"].model, selection.agents["foreman"].effort),
-            ("codex", None, "gpt-5.6-terra", None),
+            ("claude", None, "sonnet", None),
         )
         self.assertEqual(selection.agents["designer"].effort, "high")
         self.assertEqual(selection.agents["machinist"].provider, "anthropic")
@@ -64,7 +64,7 @@ librarian = "opencode:openai:gpt-5.4:medium"
             '[tool.solid-node-studio]\n'
             'profile = "fordesmac"\n'
             '[tool.solid-node-studio.agents]\n'
-            'foreman = "codex:gpt-5.6-terra"\n'
+            'foreman = "claude:sonnet"\n'
         )
 
         self.assertEqual(selection.profile, "fordesmac")
@@ -91,8 +91,9 @@ librarian = "opencode:openai:gpt-5.4:medium"
     def test_malformed_selections_are_rejected_with_agent_and_value(self) -> None:
         invalid = (
             "imaginary:model",
-            "codex",
-            "codex:model:high:extra",
+            "codex:gpt-5.6-terra",
+            "claude",
+            "claude:opus:high:extra",
             "opencode:provider",
             "opencode::model",
             "claude:not-a-model",
@@ -103,18 +104,18 @@ librarian = "opencode:openai:gpt-5.4:medium"
                     self._selection(f'[tool.solid-node-studio.agents]\nforeman = "{value}"\n')
 
     def test_reasoning_levels_are_backend_specific(self) -> None:
-        for value in ("codex:gpt-5.6-terra:impossible", "claude:opus:ultra"):
+        for value in ("claude:opus:impossible", "claude:opus:ultra"):
             with self.subTest(value=value):
                 with self.assertRaisesRegex(ProjectRuntimeError, "foreman.*reasoning"):
                     self._selection(f'[tool.solid-node-studio.agents]\nforeman = "{value}"\n')
 
         selection = self._selection(
             '[tool.solid-node-studio.agents]\n'
-            'foreman = "codex:gpt-5.6-terra:ultra"\n'
+            'foreman = "claude:sonnet:low"\n'
             'designer = "claude:opus:high"\n'
             'machinist = "opencode:anthropic:claude-sonnet-4-5:max"\n'
         )
-        self.assertEqual(selection.agents["foreman"].effort, "ultra")
+        self.assertEqual(selection.agents["foreman"].effort, "low")
         self.assertEqual(selection.agents["designer"].effort, "high")
         self.assertEqual(selection.agents["machinist"].effort, "max")
 
@@ -144,7 +145,7 @@ librarian = "opencode:openai:gpt-5.4:medium"
 
     def test_agent_ids_and_unknown_table_keys_are_rejected(self) -> None:
         with self.assertRaisesRegex(ProjectRuntimeError, "BadAgent.*lowercase kebab-case"):
-            self._selection('[tool.solid-node-studio.agents]\nBadAgent = "codex:gpt-5.6-terra"\n')
+            self._selection('[tool.solid-node-studio.agents]\nBadAgent = "claude:sonnet"\n')
         with self.assertRaisesRegex(ProjectRuntimeError, "unknown key.*effort"):
             self._selection('[tool.solid-node-studio]\neffort = "high"\n')
 
@@ -164,16 +165,16 @@ librarian = "opencode:openai:gpt-5.4:medium"
         selection = self._selection(
             '[tool.solid-node-studio.agents]\n'
             'builder = "claude:opus"\n'
-            'designer = "codex:gpt-5.6-sol"\n'
+            'designer = "claude:sonnet"\n'
         )
         profile = resolve_profile_runtime(load_profile("builder", shop_root=ROOT), selection)
         self.assertEqual(profile.user_agent.runtime.backend, "claude")
         self.assertEqual(profile.ignored_agent_ids, ("designer",))
 
-    def test_unnamed_agents_default_to_profile_codex_runtime(self) -> None:
+    def test_unnamed_agents_default_to_profile_claude_runtime(self) -> None:
         selection = self._selection('[tool.solid-node-studio.agents]\ndesigner = "claude:opus"\n')
         profile = resolve_profile_runtime(load_profile("fordesmac", shop_root=ROOT), selection)
-        self.assertEqual(profile.agent("foreman").runtime, profile.agent("foreman").backends["codex"])
+        self.assertEqual(profile.agent("foreman").runtime, profile.agent("foreman").backends["claude"])
 
     def test_project_values_override_only_model_and_reasoning(self) -> None:
         selection = self._selection(
@@ -198,10 +199,10 @@ class RuntimeConfigWriterTest(unittest.TestCase):
             path.write_text(
                 '# maker comment\n[tool.solid-node]\nmodel = "root:Assembly"\n\n'
                 '[tool.solid-node-studio]\nprofile = "fordesmac"\n\n'
-                '[tool.solid-node-studio.agents]\ndesigner = "codex:gpt-5.6-terra:medium" # keep\n'
+                '[tool.solid-node-studio.agents]\ndesigner = "claude:sonnet:medium" # keep\n'
             )
             revision = config_revision(path)
-            runtime = BackendRuntime("gpt-5.6-sol", "high", "inherit")
+            runtime = BackendRuntime("opus", "high", "inherit")
 
             edit = prepare_runtime_edit(path, "designer", runtime, revision)
             published = publish_runtime_edit(edit)
@@ -211,7 +212,7 @@ class RuntimeConfigWriterTest(unittest.TestCase):
             self.assertIn("# maker comment", text)
             self.assertIn('model = "root:Assembly"', text)
             self.assertIn('# keep', text)
-            self.assertIn('designer = "codex:gpt-5.6-sol:high"', text)
+            self.assertIn('designer = "claude:opus:high"', text)
 
     def test_stale_revision_never_overwrites_project_configuration(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -262,7 +263,7 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
             )
 
             temporary_result = await session.update_runtime(
-                "builder", "codex", None, "gpt-5.6-sol", "high", persist=False, expected_revision=None
+                "builder", "claude", None, "opus", "high", persist=False, expected_revision=None
             )
             self.assertFalse(temporary_result["persisted"])
             self.assertEqual(path.read_text(), original)
@@ -270,23 +271,25 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
 
             revision = config_revision(path)
             persisted = await session.update_runtime(
-                "builder", "codex", None, "gpt-5.6-sol", "medium", persist=True, expected_revision=revision
+                "builder", "claude", None, "opus", "medium", persist=True, expected_revision=revision
             )
             self.assertTrue(persisted["persisted"])
-            self.assertIn('builder = "codex:gpt-5.6-sol:medium"', path.read_text())
+            self.assertIn('builder = "claude:opus:medium"', path.read_text())
 
             stale = revision
             current = orchestrator.current_runtime("builder")
             with self.assertRaises(RuntimeConfigConflict):
                 await session.update_runtime(
-                    "builder", "codex", None, "gpt-5.6-sol", "high", persist=True, expected_revision=stale
+                    "builder", "claude", None, "opus", "high", persist=True, expected_revision=stale
                 )
             self.assertEqual(orchestrator.current_runtime("builder"), current)
 
     async def test_pristine_backend_selection_applies_live_and_persists_complete_value(self) -> None:
-        class ClaudeBackend(FakeBackend):
+        class OpenCodeBackend(FakeBackend):
             async def runtime_catalog(self, handle: RoleHandle | None) -> RuntimeCatalogue:
-                return RuntimeCatalogue(True, (RuntimeChoice("opus", ("high",), "claude"),))
+                return RuntimeCatalogue(
+                    True, (RuntimeChoice("gpt-5.4", ("high",), "opencode", "openai"),)
+                )
 
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
@@ -295,14 +298,14 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
             selection = read_project_runtime(project.name, project_home=project.parent)
             profile = resolve_profile_runtime(load_profile("builder", shop_root=ROOT), selection)
             broker = Broker(profile, session_id="runtime-switch")
-            codex, claude = FakeBackend(), ClaudeBackend()
+            original, opencode = FakeBackend(), OpenCodeBackend()
 
             async def resolve_backend(name: str):
-                self.assertEqual(name, "claude")
-                return claude
+                self.assertEqual(name, "opencode")
+                return opencode
 
             orchestrator = ShopOrchestrator(
-                codex,
+                original,
                 LocalBrokerControl(broker),
                 profile=profile,
                 shop_root=ROOT,
@@ -318,15 +321,15 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
             )
 
             result = await session.update_runtime(
-                "builder", "claude", None, "opus", "high",
+                "builder", "opencode", "openai", "gpt-5.4", "high",
                 persist=True, expected_revision=config_revision(path),
             )
 
-            self.assertEqual(result["runtime"]["backend"], "claude")
-            self.assertIn('builder = "claude:opus:high"', path.read_text())
+            self.assertEqual(result["runtime"]["backend"], "opencode")
+            self.assertIn('builder = "opencode:openai:gpt-5.4:high"', path.read_text())
             self.assertTrue(broker.runtime_pristine("builder"))
-            self.assertEqual(claude.opened_roles[-1][1].agent.runtime.backend, "claude")
-            self.assertIn(codex.opened_roles[0][0], [handle.role for handle in codex.closed_roles])
+            self.assertEqual(opencode.opened_roles[-1][1].agent.runtime.backend, "opencode")
+            self.assertIn(original.opened_roles[0][0], [handle.role for handle in original.closed_roles])
 
 
 class ProfileRuntimeTableTest(unittest.TestCase):

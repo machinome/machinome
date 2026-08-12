@@ -755,7 +755,7 @@ function Hub() {
             <span>{value === "builder" ? "One direct agent" : "Four-agent mechanical shop"}</span>
           </button>)}
         </div></fieldset>
-        <p className="runtime-note">Agents use project-declared runtime selections or the profile's Codex defaults.</p>
+        <p className="runtime-note">Agents use project-declared runtime selections or the profile's Claude defaults.</p>
         {formError ? <p className="form-error" role="alert">{formError}</p> : null}
         <footer><span>stored in the working folder</span><div><button type="button" className="outline-button" onClick={() => setSheetOpen(false)}>Cancel</button><button className="primary-button">Create and open</button></div></footer>
       </form>
@@ -1154,14 +1154,12 @@ function activityTime(value: string) {
 
 function runtimeProviderKey(backend: string, provider: string | null) {
   if (provider) return provider;
-  if (backend === "codex") return "openai";
   if (backend === "claude") return "anthropic";
   return "";
 }
 
 function runtimeProviderLabel(backend: string, provider: string | null) {
   if (provider) return provider;
-  if (backend === "codex") return "OpenAI";
   if (backend === "claude") return "Anthropic";
   return "unavailable";
 }
@@ -1336,7 +1334,7 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
       {controlsOpen ? <div className="agent-controls">
         <div className="agent-control-grid">
           <div className="agent-control"><span>Backend</span><div className="backend-picks">
-            {["codex", "claude", "opencode"].map((value) => <button
+            {["claude", "opencode"].map((value) => <button
               disabled={loading || !catalogue?.choices.some((item) => item.backend === value) || (!focused?.runtime_pristine && value !== focused?.backend)}
               className={value === backend ? "selected" : ""}
               key={value}

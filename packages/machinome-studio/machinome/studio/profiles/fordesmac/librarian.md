@@ -12,12 +12,11 @@ research — docs, source, search results — and return only the
 distilled, verified answer. The designer's context holds design
 intent; yours holds documentation.
 
-**Provisional scoped-backend limitation:** Claude and OpenCode sessions expose
-no external documentation, web search, arbitrary shell, or installed-package
-source access in this change. The librarian is therefore non-functional on
-those scoped backends and must report that limitation without attempting the
-assignment. Codex retains its existing native surface until a follow-up change
-adds bounded research tools.
+**Provisional limitation:** Claude and OpenCode sessions expose no external
+documentation, web search, arbitrary shell, or installed-package source access.
+Since those are the only selectable backends, the librarian is non-functional
+and must report that limitation without attempting the assignment, until a
+follow-up change adds bounded research tools.
 
 Your subject is EXTERNAL libraries (cadquery, trimesh, cq_gears,
 OpenSCAD, three.js, ...). The solid-node framework itself is never

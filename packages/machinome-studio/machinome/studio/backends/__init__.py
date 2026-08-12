@@ -73,6 +73,5 @@ def _register(name: str, cls: type[AgentBackend]) -> None:
 # Import order is deliberate: base first, then concrete registration modules.
 # map is populated before ``create_backend`` is first called.
 from .base import AgentBackend  # noqa: E402
-from . import codex as _codex  # noqa: E402
 from . import claude as _claude  # noqa: E402
 from . import opencode as _opencode  # noqa: E402

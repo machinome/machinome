@@ -271,14 +271,13 @@
 const MONO = "ui-monospace,SFMono-Regular,Menlo,monospace";
 
 const PROFILE = {
-  foreman: { label: "Foreman", codex: ["gpt-5.6-terra", "medium"], claude: ["sonnet", "medium"], tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep"] },
-  designer: { label: "Designer", codex: ["gpt-5.6-sol", "medium"], claude: ["opus", "medium"], tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep"] },
-  machinist: { label: "Machinist", codex: ["gpt-5.6-terra", "medium"], claude: ["sonnet", "medium"], tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep"] },
-  librarian: { label: "Librarian", codex: ["gpt-5.6-terra", "medium"], claude: ["sonnet", "medium"], tools: ["Bash", "Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"] },
+  foreman: { label: "Foreman", claude: ["sonnet", "medium"], tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep"] },
+  designer: { label: "Designer", claude: ["opus", "medium"], tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep"] },
+  machinist: { label: "Machinist", claude: ["sonnet", "medium"], tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep"] },
+  librarian: { label: "Librarian", claude: ["sonnet", "medium"], tools: ["Bash", "Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"] },
 };
 
 const MODELS = {
-  codex: ["gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.3-codex-spark"],
   claude: ["sonnet", "opus"],
   opencode: ["anthropic:claude-sonnet-4-5", "inherit operator model"],
 };
@@ -391,7 +390,7 @@ class Component extends DCLogic {
     filter: "all",
     open: {},
     runtime: {
-      foreman: { backend: "codex", model: "gpt-5.6-terra", effort: "medium" },
+      foreman: { backend: "claude", model: "sonnet", effort: "medium" },
       designer: { backend: "opencode", model: "anthropic:claude-sonnet-4-5", effort: "high" },
       machinist: { backend: "claude", model: "sonnet", effort: "medium" },
       librarian: { backend: "claude", model: "sonnet", effort: "medium" },
@@ -516,10 +515,10 @@ class Component extends DCLogic {
 
     const counts = raw.reduce((acc, e) => { const g = groupOf(e); acc[g] = (acc[g] ?? 0) + 1; return acc; }, {});
     const resolved = [...new Set(profile.tools.flatMap((t) => RESOLVED_TOOLS[t]))];
-    const scoped = sel.backend !== "codex";
+    const scoped = true;
     const modelSegment = sel.backend === "opencode" && sel.model === "inherit operator model" ? "" : `:${sel.model}`;
-    const pyprojectLine = sel.backend === "codex" || sel.backend === "claude"
-      ? `${role} = "${sel.backend}:${sel.model}:${sel.effort}"`
+    const pyprojectLine = sel.backend === "claude"
+      ? `${role} = "claude:${sel.model}:${sel.effort}"`
       : `${role} = "opencode${modelSegment}:${sel.effort}"`;
 
     return {
@@ -544,14 +543,12 @@ class Component extends DCLogic {
       controlsLabel: this.controlsOpen() ? "Hide controls" : "Controls",
       toggleControls: () => this.setState({ controlsOpen: !this.controlsOpen() }),
       restart: () => this.restart(),
-      backends: ["codex", "claude", "opencode"].map((id) => ({
+      backends: ["claude", "opencode"].map((id) => ({
         id,
         style: id === sel.backend ? "background:#1c2128;border-color:#e0a350;color:#e0a350;" : "",
         onPick: () => this.pick({ backend: id }),
       })),
-      backendNote: scoped
-        ? "floor MCP surface · native tools disabled"
-        : "native tools retained · restriction not enforceable",
+      backendNote: "floor MCP surface · native tools disabled",
       model: sel.model,
       models: MODELS[sel.backend].map((value) => ({ value, label: value })),
       onModel: (event) => this.pick({ model: event.target.value }),
@@ -562,10 +559,8 @@ class Component extends DCLogic {
         onPick: () => this.pick({ effort: id }),
       })),
       profileEffort: sel.backend === "opencode" ? "none" : PROFILE[role][sel.backend][1],
-      toolsSummary: scoped ? `${resolved.length} floor tools` : "inherit (native)",
-      toolsDetail: scoped
-        ? profile.tools.join(", ") + (role === "librarian" ? " · WebSearch and WebFetch resolve to none" : "")
-        : profile.tools.join(", ") + " · Codex keeps its own tools",
+      toolsSummary: `${resolved.length} floor tools`,
+      toolsDetail: profile.tools.join(", ") + (role === "librarian" ? " · WebSearch and WebFetch resolve to none" : ""),
       applyModes: [
         { label: "apply now · restarts session", style: this.state.applyMode === "now" ? "background:#1c2128;border-color:#e0a350;color:#e0a350;" : "", onPick: () => this.setState({ applyMode: "now" }) },
         { label: "on next assignment", style: this.state.applyMode === "next" ? "background:#1c2128;border-color:#e0a350;color:#e0a350;" : "", onPick: () => this.setState({ applyMode: "next" }) },

@@ -11,21 +11,19 @@ from typing import Any, Literal
 from .preparation import (
     CLAUDE_EFFORTS,
     CLAUDE_MODELS,
-    CODEX_EFFORTS,
-    CODEX_MODELS,
     ProjectRuntimeError,
     ProjectRuntimeSelection,
 )
 
 
 PROFILE_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
-PROFILE_BACKENDS = ("codex", "claude")
+PROFILE_BACKENDS = ("claude",)
 _TOP_LEVEL = {"schema_version", "user_label", "user_agent", "work_mode", "agents"}
 _AGENT = {"id", "label", "prompt", "assigns", "reports_to", "backends"}
 _RUNTIME = {"model", "effort", "tools"}
 _CLAUDE_RUNTIME = _RUNTIME | {"permission"}
-# These profile-owned capability names are resolved to floor MCP tools for
-# Claude and OpenCode. Codex cannot enforce a tool policy and remains inherit.
+# These profile-owned capability names are resolved to floor MCP tools. A
+# backend that cannot enforce a declared tool policy is not selectable.
 _PROFILE_TOOLS = {"Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch"}
 
 
@@ -39,7 +37,7 @@ class BackendRuntime:
     effort: str
     tools: str | tuple[str, ...]
     permission: str = "inherit"
-    backend: str = "codex"
+    backend: str = "claude"
     provider: str | None = None
 
 
@@ -171,7 +169,7 @@ def _load_profile(selected: str, *, shop_root: Path) -> RuntimeProfile:
             raise ProfileError(f"profile {selected}.{agent_id}.backends must declare every backend")
         _only(backend_settings, set(PROFILE_BACKENDS), f"profile {selected}.{agent_id}.backends")
         if set(backend_settings) != set(PROFILE_BACKENDS):
-            raise ProfileError(f"profile {selected}.{agent_id}.backends must declare Codex and Claude")
+            raise ProfileError(f"profile {selected}.{agent_id}.backends must declare Claude")
         runtimes = {
             runtime_backend: _runtime(runtime_value, selected, agent_id, runtime_backend)
             for runtime_backend, runtime_value in backend_settings.items()
@@ -193,7 +191,7 @@ def resolve_profile_runtime(
     for agent in profile.agents:
         choice = choices.get(agent.id)
         if choice is None:
-            runtime = agent.backends["codex"]
+            runtime = agent.backends["claude"]
         elif choice.backend == "opencode":
             runtime = BackendRuntime(
                 choice.model,
@@ -303,19 +301,15 @@ def _runtime(value: Any, profile: str, agent: str, backend: str) -> BackendRunti
     permission = value.get("permission", "inherit")
     if not isinstance(model, str) or not model:
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.model must be concrete or inherit")
-    if backend == "codex" and model not in CODEX_MODELS | {"inherit"}:
-        raise ProfileError(f"profile {profile}.{agent}.backends.codex.model is unsupported")
     if backend == "claude" and model not in CLAUDE_MODELS | {"inherit"}:
         raise ProfileError(f"profile {profile}.{agent}.backends.claude.model is unsupported")
     if not isinstance(effort, str):
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.effort is unsupported")
-    supported_efforts = CLAUDE_EFFORTS if backend == "claude" else CODEX_EFFORTS
+    supported_efforts = CLAUDE_EFFORTS
     if effort not in supported_efforts | {"inherit"}:
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.effort is unsupported")
     if not (tools == "inherit" or (isinstance(tools, list) and all(isinstance(item, str) and item for item in tools))):
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.tools must be inherit or a list")
-    if backend == "codex" and tools != "inherit":
-        raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.tools cannot be enforced")
     if backend == "claude" and isinstance(tools, list) and (
         len(tools) != len(set(tools)) or any(tool not in _PROFILE_TOOLS for tool in tools)
     ):

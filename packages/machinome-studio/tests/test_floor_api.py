@@ -95,8 +95,8 @@ class FloorAPITest(unittest.TestCase):
         route = self.url(f"/api/sessions/{session_id}/agents/builder/runtime")
         self.assertEqual(_status(route, "GET"), 409)
         self.assertEqual(_status(route, "PATCH", {
-            "backend": "codex", "provider": None,
-            "model": "gpt-5.6-sol", "effort": "high", "persist": False,
+            "backend": "claude", "provider": None,
+            "model": "opus", "effort": "high", "persist": False,
         }), 409)
 
     def test_unknown_session_is_refused_and_a_closed_id_cannot_reach_a_reopened_project(self) -> None:
@@ -202,7 +202,7 @@ class FloorAPITest(unittest.TestCase):
     def test_backend_detection_is_read_only_and_repeatable(self) -> None:
         first = _request(self.url("/api/backends"), "GET")["backends"]
         second = _request(self.url("/api/backends/detect"), "POST")["backends"]
-        self.assertEqual({item["id"] for item in first}, {"codex", "claude", "opencode"})
+        self.assertEqual({item["id"] for item in first}, {"claude", "opencode"})
         self.assertEqual([item["id"] for item in first], [item["id"] for item in second])
         self.assertTrue(all(set(item) == {"id", "found", "executable", "version", "model"} for item in first))
 

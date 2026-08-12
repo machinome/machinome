@@ -64,48 +64,52 @@ the backend has more than one, a model, and an optional reasoning level, in that
 order, separated by `:`. A backend with one provider SHALL be written
 `backend:model`; a backend with several providers SHALL be written
 `backend:provider:model`. Either form MAY carry a reasoning level as a final
-segment. Codex and Claude SHALL take the single-provider form and OpenCode SHALL
-take the multi-provider form, so the backend named in the first segment SHALL
-determine how the remaining segments are read. The parts SHALL NOT be declarable
+segment. Claude SHALL take the single-provider form and OpenCode SHALL take the
+multi-provider form, so the backend named in the first segment SHALL determine
+how the remaining segments are read. The parts SHALL NOT be declarable
 separately, in separate tables, or in separate files.
 
 Selections SHALL be declared per agent under
 `[tool.solid-node-studio.agents]`, keyed by profile agent ID. Different agents
 in one run MAY name different backends.
 
-A value SHALL be rejected when it names an unknown backend, carries a segment
-count the named backend does not admit, names a Codex or Claude model outside
+A value SHALL be rejected when it names an unknown or retired backend, carries a
+segment count the named backend does not admit, names a Claude model outside
 that backend's supported set, names a reasoning level outside the set that
 backend supports, names a reasoning level for a backend that cannot enforce one,
 or leaves any segment empty. Rejection SHALL identify the offending agent key
 and value.
 
 #### Scenario: A single-provider selection is resolved
-- **WHEN** an agent is declared as `codex:gpt-5.6-terra`
-- **THEN** that agent opens on the Codex backend with model `gpt-5.6-terra` and its profile-declared effort
+- **WHEN** an agent is declared as `claude:sonnet`
+- **THEN** that agent opens on the Claude backend with model `sonnet` and its profile-declared effort
 
 #### Scenario: A multi-provider selection is resolved
 - **WHEN** an agent is declared as `opencode:anthropic:claude-sonnet-4-5`
 - **THEN** that agent opens on the OpenCode backend with provider `anthropic` and model `claude-sonnet-4-5`
 
 #### Scenario: A reasoning level is selected
-- **WHEN** an agent is declared as `codex:gpt-5.6-terra:high`
-- **THEN** that agent opens on the Codex backend with model `gpt-5.6-terra` and reasoning level `high`, overriding the profile's declared effort
+- **WHEN** an agent is declared as `claude:sonnet:high`
+- **THEN** that agent opens on the Claude backend with model `sonnet` and reasoning level `high`, overriding the profile's declared effort
 
 #### Scenario: A reasoning level is selected alongside a provider
 - **WHEN** an agent is declared as `opencode:anthropic:claude-sonnet-4-5:medium`
 - **THEN** that agent opens with provider `anthropic`, model `claude-sonnet-4-5`, and reasoning level `medium`
 
 #### Scenario: One run mixes backends
-- **WHEN** a project declares one agent on Codex and another on OpenCode
+- **WHEN** a project declares one agent on Claude and another on OpenCode
 - **THEN** both agents open on their own selected backend within the same run
 
 #### Scenario: A malformed selection is rejected
 - **WHEN** a selection names an unknown backend, carries more or fewer segments than the named backend admits, or leaves a segment empty
 - **THEN** the run exits with an error naming that agent key and value before any project or backend side effect
 
+#### Scenario: A retired backend is rejected
+- **WHEN** a selection names the retired `codex` backend
+- **THEN** the run exits with an error naming that agent key and value rather than substituting another backend
+
 #### Scenario: An unsupported concrete model is rejected
-- **WHEN** a Codex or Claude selection names a model outside that backend's supported set
+- **WHEN** a Claude selection names a model outside that backend's supported set
 - **THEN** the run exits with an error rather than passing the value to the backend
 
 #### Scenario: An unsupported reasoning level is rejected
@@ -116,18 +120,18 @@ and value.
 - **WHEN** a selection names a reasoning level for a backend with no enforceable reasoning control
 - **THEN** the run exits with an error rather than accepting the value and ignoring it
 
-### Requirement: Unselected agents fall back to Codex and profile defaults
-An agent the project does not name SHALL open on the Codex backend with the
-model and effort its active profile declares for Codex. An agent whose selection
-omits the reasoning level SHALL keep its profile-declared effort. A project with no
-`[tool.solid-node-studio]` table, no `agents` table, or no `pyproject.toml` at
-all SHALL open every agent that way. A project that does not exist yet SHALL be
-treated as declaring nothing, and scaffolding a new project SHALL NOT write a
-runtime selection.
+### Requirement: Unselected agents fall back to Claude and profile defaults
+An agent the project does not name SHALL open on the Claude backend with the
+model and effort its active profile declares for Claude. An agent whose
+selection omits the reasoning level SHALL keep its profile-declared effort. A
+project with no `[tool.solid-node-studio]` table, no `agents` table, or no
+`pyproject.toml` at all SHALL open every agent that way. A project that does not
+exist yet SHALL be treated as declaring nothing, and scaffolding a new project
+SHALL NOT write a runtime selection.
 
 #### Scenario: An agent is not named
 - **WHEN** a project names some agents but not others
-- **THEN** the unnamed agents open on Codex with their profile-declared Codex model and effort, and the named agents keep their selections
+- **THEN** the unnamed agents open on Claude with their profile-declared Claude model and effort, and the named agents keep their selections
 
 #### Scenario: A selection omits the reasoning level
 - **WHEN** an agent's selection names a backend and model but no reasoning level
@@ -135,11 +139,11 @@ runtime selection.
 
 #### Scenario: A project declares nothing
 - **WHEN** a project has no `[tool.solid-node-studio]` table
-- **THEN** every agent opens on Codex with its profile-declared Codex model and effort
+- **THEN** every agent opens on Claude with its profile-declared Claude model and effort
 
 #### Scenario: A project does not exist yet
 - **WHEN** the shop opens for a named project that must first be scaffolded
-- **THEN** every agent opens on Codex with its profile-declared Codex model and effort, and the scaffold contains no runtime selection
+- **THEN** every agent opens on Claude with its profile-declared Claude model and effort, and the scaffold contains no runtime selection
 
 ### Requirement: Selections are resolved against the active profile roster
 Resolution SHALL apply a selection only to an agent the active profile declares.
@@ -223,10 +227,6 @@ context. First use SHALL permanently end backend/provider replacement for that
 role even after it becomes idle again. The shop SHALL NOT offer a queued or
 next-assignment runtime mode.
 
-#### Scenario: An idle Codex agent changes model
-- **WHEN** the maker applies a supported Codex model and reasoning level to an idle Codex agent
-- **THEN** that agent's next turn uses both new values in its existing persistent thread
-
 #### Scenario: An idle OpenCode agent changes model
 - **WHEN** the maker applies a model and variant from the current OpenCode provider's catalogue to an idle OpenCode agent
 - **THEN** that agent's next prompt uses both new values in its existing persistent session
@@ -254,11 +254,11 @@ next-assignment runtime mode.
 ### Requirement: Runtime controls expose provider before model
 The Agents workspace SHALL present runtime selection in the order backend,
 provider, model, and reasoning level. The provider control SHALL identify the
-provider independently of the model control. Codex SHALL show `OpenAI` as its
-single fixed provider, Claude SHALL show `Anthropic` as its single fixed
-provider, and OpenCode SHALL show only the exact provider IDs in the live
-endpoint's connected provider set. The shop SHALL NOT expose entries that exist
-only in OpenCode's complete known-provider catalogue.
+provider independently of the model control. Claude SHALL show `Anthropic` as
+its single fixed provider, and OpenCode SHALL show only the exact provider IDs
+in the live endpoint's connected provider set. The shop SHALL NOT expose entries
+that exist only in OpenCode's complete known-provider catalogue, and SHALL NOT
+offer a retired backend as a choice.
 
 Changing a backend SHALL replace provider, model, and reasoning drafts with a
 valid combination for that backend. Changing an OpenCode provider SHALL replace
@@ -270,8 +270,12 @@ control. Removing that presentation SHALL NOT make tool policy project- or
 maker-selectable.
 
 #### Scenario: A maker inspects a fixed-provider backend
-- **WHEN** the maker selects the Codex or Claude backend
-- **THEN** the provider control shows its single fixed OpenAI or Anthropic provider before the model control
+- **WHEN** the maker selects the Claude backend
+- **THEN** the provider control shows its single fixed Anthropic provider before the model control
+
+#### Scenario: The backend control offers only selectable backends
+- **WHEN** the maker opens an agent's runtime controls
+- **THEN** the backend control offers Claude and OpenCode and does not offer the retired Codex backend
 
 #### Scenario: A maker selects an OpenCode provider
 - **WHEN** a pristine agent's live OpenCode catalogue contains more than one connected provider and the maker selects one provider ID

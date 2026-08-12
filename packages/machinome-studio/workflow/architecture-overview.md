@@ -48,7 +48,7 @@ The project's `[tool.solid-node-studio]` `profile` value selects it;
 otherwise the shop uses `fordesmac`. The launcher provides no override. A
 profile is strict trusted configuration: it declares the
 human label, one user-facing agent, standing roster, direct or delegated work
-mode, prompt paths, allowed skills, communication edges, and Codex and Claude
+mode, prompt paths, allowed skills, communication edges, and Claude
 runtime defaults. The option overrides a project declaration for one run
 without modifying it. The project may select backend, provider, model, and
 reasoning level per agent under `[tool.solid-node-studio.agents]`; profile tool
@@ -65,11 +65,12 @@ or with a revision-checked update to the same project table.
 The profile's Claude tool list is also the shared capability vocabulary for
 scoped Claude and OpenCode sessions. The adapters resolve those names to a
 floor-owned MCP allowlist; OpenCode inherits the policy without adding a
-profile table. Codex cannot enforce it and retains `tools = "inherit"` and its
-native surface. The Fordesmac librarian is provisionally non-functional on the
-scoped backends because this surface intentionally has no web or external
-documentation tools; it remains usable on Codex pending a bounded research
-surface.
+profile table. Enforcing that allowlist is a condition of being selectable at
+all: Codex was retired as a backend because its sessions keep native command
+execution and file editing whatever the profile declares (ADR 0024). The
+Fordesmac librarian is provisionally non-functional because this surface
+intentionally has no web or external documentation tools, pending a bounded
+research surface.
 
 The initial profiles are:
 
@@ -93,7 +94,7 @@ project browser <--> source service      +--> filesystem/build watchers
         |               |
         +-----------> Broker <--> Orchestrator <--> per-agent backend owners
                           |             |                   /    |    \
-                    state, SSE,    resolved profile      Codex Claude OpenCode
+                    state, SSE,    resolved profile        Claude OpenCode
                     conversation   and runtime map       event streams fan in
 ```
 
@@ -180,10 +181,6 @@ portable role-message, turn, failure, and normalized activity events.
 delivery is still active and returns false instead of starting a turn. The
 protocol has no generic compatibility delivery operation.
 
-Codex translates the resolved project/profile model and effort into
-`thread/start` and supplies the current model and effort again on each
-`turn/start`, allowing an idle role to change later turns without replacing its
-thread. It defensively normalizes command, MCP-tool, and file-change items.
 Claude launches one isolated CLI process per profile agent and translates the
 selected model, effort, permitted tools, and explicit permission policy into
 its supported command fields. For a scoped role it writes a strict MCP config,
@@ -247,11 +244,9 @@ tool replacement is covered by the repository's adapter and MCP protocol
 fixtures.
 
 The profile defaults are Builder/Foreman/Machinist/Librarian on Claude
-`sonnet`, medium effort. On Codex, Builder uses `gpt-5.3-codex-spark` at high
-effort while Foreman/Machinist/Librarian use `gpt-5.6-terra` at medium effort;
-Designer uses Claude `opus` and Codex `gpt-5.6-sol`, both at medium effort. An
-unnamed project agent uses its Codex default. A project selection replaces the
-model and optional effort, while tool and permission values still come from the
+`sonnet` and Designer on Claude `opus`, all at medium effort. An unnamed
+project agent uses that Claude default. A project selection replaces the model
+and optional effort, while tool and permission values still come from the
 profile. These choices are backend configuration, not broker semantics.
 
 ## Floor and browser
@@ -275,9 +270,8 @@ and the session's single snapshot/SSE connection. Agents selects one roster
 role, renders normalized messages, tools, results, failures, file diffs, and
 honest native token counts, and can open an activity path in the existing Code
 workspace. Its runtime controls are ordered backend, provider, model, and
-reasoning. Codex and Claude show their fixed OpenAI and Anthropic providers;
-OpenCode shows exact connected provider IDs separately and filters models by
-the selected provider. Profile-owned tools are not part of this choice. The
+reasoning. Claude shows its fixed Anthropic provider; OpenCode shows exact
+connected provider IDs separately and filters models by the selected provider. Profile-owned tools are not part of this choice. The
 explicit Apply control fetches the role-owned catalogue, remains disabled
 unless the server reports the role idle, and defaults to writing the selection
 to `pyproject.toml`; unchecking persistence creates a session-only override.

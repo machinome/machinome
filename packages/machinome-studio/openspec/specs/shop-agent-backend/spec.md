@@ -3,8 +3,8 @@
 ## Purpose
 
 Define the portable runtime boundary that lets the shop orchestrator own and
-route persistent role sessions through Codex app-server, Claude Code CLI, or
-OpenCode without leaking backend-native identifiers into the broker.
+route persistent role sessions through Claude Code CLI or OpenCode without
+leaking backend-native identifiers into the broker.
 ## Requirements
 ### Requirement: The backend owns its agent sessions
 Each standing agent SHALL be owned by the backend its resolved runtime selects.
@@ -69,8 +69,12 @@ whose native interrupt spends a session SHALL NOT return it to standby.
 - **THEN** it delivers no further envelopes to that agent and does not report it waiting
 
 #### Scenario: Every backend is independently testable
-- **WHEN** fake Codex, Claude, or OpenCode fixtures are selected
+- **WHEN** fake Claude or OpenCode fixtures are selected
 - **THEN** each fixture opens and exercises every agent in either initial profile through the same portable backend operations
+
+#### Scenario: A retired backend is not selectable
+- **WHEN** any surface requests the retired `codex` backend
+- **THEN** backend creation fails with an unknown-backend error before any session is opened
 
 ### Requirement: The orchestrator is backend-neutral
 The orchestrator SHALL depend only on the portable `AgentBackend` protocol and
@@ -82,19 +86,11 @@ SHALL own translation of the resolved runtime it is given.
 
 #### Scenario: Orchestrator code references no backend identifiers or role adapters
 - **WHEN** the profile runtime is implemented
-- **THEN** `floor/orchestrator.py` contains no Codex, Claude, or OpenCode wire identifier and no global backend role-adapter lookup
+- **THEN** `floor/orchestrator.py` contains no Claude or OpenCode wire identifier and no global backend role-adapter lookup
 
 #### Scenario: Agents are routed without backend branching
 - **WHEN** the orchestrator delivers to an agent in a run with several open backends
 - **THEN** it selects that agent's backend from resolved runtime data rather than testing which backend name it is
-
-#### Scenario: Backends receive one resolved role interpretation
-- **WHEN** a profile agent is opened through any backend
-- **THEN** the backend receives the same validated prompt and skill paths, stable identity, and labels from the profile loader
-
-#### Scenario: OpenCode does not add a profile policy lookup
-- **WHEN** a validated existing profile is opened through OpenCode
-- **THEN** the adapter applies its compatibility policy without requiring or reading an OpenCode table in that profile
 
 ### Requirement: A role-contract bootstrap is not bounded by the control-plane timeout
 Opening a role loads that role's card and every skill it names, which is model
@@ -470,10 +466,6 @@ context-preserving model-and-reasoning update, SHALL provide backend-owned model
 choices for that role, and SHALL apply a supported update to the same persistent
 role session. The operation SHALL preserve backend and provider and SHALL reject
 unsupported model or reasoning combinations.
-
-#### Scenario: Codex changes a later turn
-- **WHEN** the orchestrator applies a supported runtime to an idle Codex role
-- **THEN** Codex keeps the existing thread and supplies the new model and effort on every later turn start
 
 #### Scenario: OpenCode changes a later prompt
 - **WHEN** the orchestrator applies a supported runtime to an idle OpenCode role

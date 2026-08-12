@@ -82,33 +82,32 @@ Runtime agents MUST NOT resolve skills from the repository-development
 - **THEN** profile validation fails
 
 ### Requirement: Backend runtime choices are explicit per agent
-Each profile agent SHALL declare a model, effort, and tool policy for Codex and
-Claude. These SHALL be defaults: they supply the model and effort for any agent
-whose active-project selection does not name one, and they supply tool policy
-always. Each setting SHALL be either a value the backend can enforce or the
-literal `inherit`. Each Claude runtime table SHALL additionally declare
-`permission` as either `manual` or `autonomous`; Codex runtime tables SHALL NOT
-declare that field.
+Each profile agent SHALL declare a model, effort, tool policy, and permission
+for Claude. These SHALL be defaults: they supply the model and effort for any
+agent whose active-project selection does not name one, and they supply tool
+policy always. Each setting SHALL be either a value the backend can enforce or
+the literal `inherit`. Each Claude runtime table SHALL declare `permission` as
+either `manual` or `autonomous`.
 
 The loader SHALL validate every declared backend table on every run rather than
 only the table for one selected backend, because a run may open several
-backends. Validation SHALL fail if an agent lacks a Codex or Claude entry, names
-an unsupported concrete value, or requests a control that backend cannot
-enforce. A backend MUST NOT silently substitute an inherited or differently
-configured model, effort, tool, or Claude permission policy for a concrete
-resolved declaration.
+backends. Validation SHALL fail if an agent lacks a Claude entry, names an
+unsupported concrete value, or requests a control that backend cannot enforce. A
+backend MUST NOT silently substitute an inherited or differently configured
+model, effort, tool, or Claude permission policy for a concrete resolved
+declaration.
 
 A profile SHALL NOT declare an OpenCode runtime table. OpenCode has no profile
 default: an agent runs on OpenCode only when the active project selects it, and
 its provider and model come from that selection or from the adapter's bounded
 compatibility policy. A profile SHALL reject runtime tables for unsupported or
-retired backends, including Hermes and OpenCode.
+retired backends, including Hermes, Codex, and OpenCode.
 
 Every shipped Claude role SHALL explicitly declare `permission = "autonomous"`.
 
 #### Scenario: A complete backend mapping is selected
 - **WHEN** the Builder profile is loaded and the project selects no runtime for Builder
-- **THEN** Builder opens on Codex with the model, effort, and tool policy that profile declares for Codex
+- **THEN** Builder opens on Claude with the model, effort, tool policy, and permission that profile declares for Claude
 
 #### Scenario: A project model overrides a profile default
 - **WHEN** the active project selects a Claude model without a reasoning level for an agent whose profile declares a different Claude model
@@ -123,7 +122,7 @@ Every shipped Claude role SHALL explicitly declare `permission = "autonomous"`.
 - **THEN** it resolves its explicit `autonomous` permission policy along with its model, effort, and available tools
 
 #### Scenario: Every declared table is validated
-- **WHEN** a profile declares an unsupported Claude value and the run selects Codex for every agent
+- **WHEN** a profile declares an unsupported Claude value and the run selects OpenCode for every agent
 - **THEN** profile validation fails rather than passing because no agent resolved to Claude
 
 #### Scenario: An OpenCode table is rejected
@@ -135,7 +134,7 @@ Every shipped Claude role SHALL explicitly declare `permission = "autonomous"`.
 - **THEN** the profile is valid without an OpenCode runtime table and the adapter applies its bounded compatibility policy
 
 #### Scenario: A retired backend table is rejected
-- **WHEN** a profile agent declares a Hermes runtime table
+- **WHEN** a profile agent declares a Hermes or Codex runtime table
 - **THEN** profile validation rejects the unsupported backend key
 
 #### Scenario: A concrete control cannot be enforced
@@ -182,7 +181,7 @@ The `builder` profile SHALL declare one user-facing Builder in direct mode. The
 Librarian agents in delegated mode; Foreman SHALL be user-facing, SHALL be the
 only agent permitted to assign the three specialists, and SHALL be the only
 recipient of their reports. Both profiles SHALL use `Maker` as their initial
-human display label and SHALL be valid with Codex, Claude, and OpenCode.
+human display label and SHALL be valid with Claude and OpenCode.
 
 #### Scenario: Builder topology is loaded
 - **WHEN** the `builder` profile is validated

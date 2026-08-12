@@ -419,7 +419,7 @@ class ShopOrchestrator:
             return await self._backend(role).runtime_catalog(runtime.handle)
         choices = []
         reasons: list[str] = []
-        names = ("codex", "claude", "opencode") if self.backend_resolver is not None else (self.current_runtime(role).backend,)
+        names = ("claude", "opencode") if self.backend_resolver is not None else (self.current_runtime(role).backend,)
         for name in names:
             try:
                 backend = await self._backend_for_name(name)
@@ -555,17 +555,12 @@ class ShopOrchestrator:
         if assignment_id:
             lines.append(f"assignment: {assignment_id}")
         if value.get("kind") == "assignment" and assignment_id:
-            runtime = self.profile.agent(str(value["recipient"])).runtime
-            if runtime is not None and runtime.backend in {"claude", "opencode"}:
-                acknowledgement = (
-                    f'floor_acknowledge(role="{value["recipient"]}", '
-                    f'assignment="{assignment_id}")'
-                )
-            else:
-                acknowledgement = (
-                    f"python -m floor.agent acknowledge --role {value['recipient']} "
-                    f"--assignment {assignment_id}"
-                )
+            # Every selectable backend runs its agents inside the floor's scoped
+            # tool set, so acknowledgement is always the floor MCP tool.
+            acknowledgement = (
+                f'floor_acknowledge(role="{value["recipient"]}", '
+                f'assignment="{assignment_id}")'
+            )
             lines.extend(
                 (
                     "ASSIGNMENT LIFECYCLE GATE:",

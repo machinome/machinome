@@ -22,7 +22,7 @@ own roster, and an agent SHALL appear in the roster of its own project only.
 - **THEN** that project's roster shows waiting Foreman, Designer, Machinist, and Librarian agents
 
 #### Scenario: Either team starts through another backend
-- **WHEN** either initial profile opens through Codex, Claude, or OpenCode
+- **WHEN** either initial profile opens through Claude or OpenCode
 - **THEN** the roster contains the same profile-declared agent IDs and labels
 
 #### Scenario: An undeclared role is addressed

@@ -37,7 +37,7 @@ be 9000 and an explicit port SHALL remain supported.
 - **THEN** the shop validates that profile and opens Foreman, Designer, Machinist, and Librarian sessions for that project
 
 #### Scenario: Profile and backend are selected independently
-- **WHEN** a project declares either initial profile with Codex, Claude, or OpenCode runtimes
+- **WHEN** a project declares either initial profile with Claude or OpenCode runtimes
 - **THEN** that backend opens exactly the agents declared by that profile
 
 #### Scenario: Profile validation fails
@@ -150,7 +150,8 @@ not merely the open indicator — without a page reload.
 The shop SHALL support both initial profiles through Claude using the same
 broker, profile prompts, profile skills, topology, and lifecycle outcomes as the
 other backends. Claude SHALL be reached by a project selecting a `claude:<model>`
-runtime for an agent.
+runtime for an agent, and SHALL be the backend an agent opens on when the
+project selects no runtime for it.
 
 #### Scenario: Builder opens with Claude
 - **WHEN** a project declaring `builder` selects a Claude runtime for Builder and is opened
@@ -161,5 +162,5 @@ runtime for an agent.
 - **THEN** the shop opens four project-sandboxed Claude sessions carrying the Fordesmac contracts
 
 #### Scenario: Fordesmac opens across two backends
-- **WHEN** a project declaring `fordesmac` selects Claude for Designer and Codex for the other three agents and is opened
-- **THEN** the shop opens one project-sandboxed Claude session for Designer and three Codex sessions, all on that project's broker with the same lifecycle outcomes
+- **WHEN** a project declaring `fordesmac` selects OpenCode for Designer and names no runtime for the other three agents and is opened
+- **THEN** the shop opens one project-sandboxed OpenCode session for Designer and three Claude sessions, all on that project's broker with the same lifecycle outcomes

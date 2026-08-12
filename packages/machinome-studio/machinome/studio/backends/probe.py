@@ -9,7 +9,7 @@ from pathlib import Path
 from ..profiles import load_profile, resolve_profile_runtime
 
 
-BACKENDS = ("codex", "claude", "opencode")
+BACKENDS = ("claude", "opencode")
 
 
 def probe_backends(shop_root: Path) -> list[dict[str, object]]:
