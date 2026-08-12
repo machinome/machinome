@@ -10,7 +10,7 @@ import shlex
 import sys
 from dataclasses import dataclass, replace
 from pathlib import Path
-from collections.abc import Mapping, Sequence
+from collections.abc import Awaitable, Mapping, Sequence
 from typing import Any, Callable, Protocol
 
 import uvicorn
@@ -45,6 +45,8 @@ class BrokerControl(Protocol):
     async def runtime_changed(self, role: str, runtime: BackendRuntime) -> None: ...
     async def backend_idle_changed(self, role: str, idle: bool) -> None: ...
     async def runtime_idle(self, role: str) -> bool: ...
+    async def runtime_pristine(self, role: str) -> bool: ...
+    async def mark_runtime_used(self, role: str) -> None: ...
 
 
 @dataclass
@@ -103,6 +105,12 @@ class LocalBrokerControl:
     async def runtime_idle(self, role: str) -> bool:
         return self.broker.runtime_idle(role)
 
+    async def runtime_pristine(self, role: str) -> bool:
+        return self.broker.runtime_pristine(role)
+
+    async def mark_runtime_used(self, role: str) -> None:
+        self.broker.mark_runtime_used(role)
+
 
 class ShopOrchestrator:
     """Own role sessions and perform only deterministic lifecycle and routing."""
@@ -115,6 +123,7 @@ class ShopOrchestrator:
         profile: RuntimeProfile,
         shop_root: Path,
         active_project: Path,
+        backend_resolver: Callable[[str], Awaitable[AgentBackend]] | None = None,
     ) -> None:
         self.broker = broker
         self.profile = profile
@@ -134,7 +143,8 @@ class ShopOrchestrator:
             if id(backend) not in seen:
                 seen.add(id(backend))
                 distinct.append(backend)
-        self.backends = tuple(distinct)
+        self.backends = distinct
+        self.backend_resolver = backend_resolver
         self.shop_root = shop_root.resolve()
         self.active_project = active_project.resolve()
         self.roles: dict[str, RoleRuntime] = {}
@@ -298,6 +308,7 @@ class ShopOrchestrator:
         """Correlate a start receipt with events that may have won the race."""
         key = (role, delivery_id)
         runtime.active_delivery_id = delivery_id
+        await self.broker.mark_runtime_used(role)
         await self.broker.backend_idle_changed(role, False)
         direct = self.profile.work_mode == "direct" and role == self.profile.user_agent_id
         if direct:
@@ -380,8 +391,8 @@ class ShopOrchestrator:
         elif event.kind == "backend_failed":
             raise RuntimeError(f"agent backend failed: {event.error or 'unknown error'}")
 
-    def _role_context(self, role: str) -> RoleContext:
-        agent = replace(self.profile.agent(role), runtime=self.current_runtime(role))
+    def _role_context(self, role: str, runtime: BackendRuntime | None = None) -> RoleContext:
+        agent = replace(self.profile.agent(role), runtime=runtime or self.current_runtime(role))
         return RoleContext(
             shop_root=str(self.shop_root),
             active_project=str(self.active_project),
@@ -404,7 +415,26 @@ class ShopOrchestrator:
         runtime = self.roles.get(role)
         if runtime is None or runtime.handle is None:
             raise ValueError(f"unknown orchestrated role: {role}")
-        return await self._backend(role).runtime_catalog(runtime.handle)
+        if not await self.broker.runtime_pristine(role):
+            return await self._backend(role).runtime_catalog(runtime.handle)
+        choices = []
+        reasons: list[str] = []
+        names = ("codex", "claude", "opencode") if self.backend_resolver is not None else (self.current_runtime(role).backend,)
+        for name in names:
+            try:
+                backend = await self._backend_for_name(name)
+                catalogue = await backend.runtime_catalog(None)
+            except Exception as error:
+                reasons.append(f"{name}: {error}")
+                continue
+            choices.extend(catalogue.choices)
+            if not catalogue.supported and catalogue.reason:
+                reasons.append(f"{name}: {catalogue.reason}")
+        return RuntimeCatalogue(
+            bool(choices),
+            tuple(choices),
+            "" if choices else "; ".join(reasons) or "no runtime choices are available",
+        )
 
     async def update_runtime(
         self,
@@ -418,16 +448,22 @@ class ShopOrchestrator:
             raise ValueError(f"unknown orchestrated role: {role}")
         async with self._delivery_locks[role]:
             current = self.current_runtime(role)
-            if requested.backend != current.backend or requested.provider != current.provider:
-                raise ValueError("runtime update cannot change backend or provider")
             if runtime.failed or runtime.handle is None or runtime.active_delivery_id is not None:
                 raise RuntimeError(f"{role} is not idle")
             if not await self.broker.runtime_idle(role):
                 raise RuntimeError(f"{role} is not idle")
-            catalogue = await self._backend(role).runtime_catalog(runtime.handle)
+            pristine = await self.broker.runtime_pristine(role)
+            owner_change = requested.backend != current.backend or requested.provider != current.provider
+            if owner_change and not pristine:
+                raise ValueError("backend or provider cannot change after the role's first use")
+            current_catalogue = await self._backend(role).runtime_catalog(runtime.handle)
+            replace_handle = pristine and (owner_change or not current_catalogue.supported)
+            if replace_handle:
+                return await self._replace_pristine_runtime(role, runtime, requested, commit=commit)
+            catalogue = current_catalogue
             if not catalogue.supported:
                 raise RuntimeError(catalogue.reason or "runtime changes are unsupported")
-            choice = next((item for item in catalogue.choices if item.model == requested.model), None)
+            choice = next((item for item in catalogue.choices if self._choice_matches(item, requested)), None)
             if choice is None or requested.effort not in choice.efforts:
                 raise ValueError("unsupported model and reasoning selection")
             await self._backend(role).update_runtime(runtime.handle, requested)
@@ -443,6 +479,66 @@ class ShopOrchestrator:
             self._runtimes[role] = requested
             await self.broker.runtime_changed(role, requested)
             return requested
+
+    async def _replace_pristine_runtime(
+        self,
+        role: str,
+        runtime: RoleRuntime,
+        requested: BackendRuntime,
+        *,
+        commit: Callable[[], None] | None,
+    ) -> BackendRuntime:
+        old_backend = self._backend(role)
+        old_handle = runtime.handle
+        if old_handle is None:
+            raise RuntimeError(f"{role} has no open backend session")
+        target = await self._backend_for_name(requested.backend)
+        catalogue = await target.runtime_catalog(None)
+        choice = next((item for item in catalogue.choices if self._choice_matches(item, requested)), None)
+        if not catalogue.supported or choice is None or requested.effort not in choice.efforts:
+            raise ValueError("unsupported backend, provider, model, and reasoning selection")
+        replacement_handle: RoleHandle | None = None
+        try:
+            replacement_handle = await target.open_role(role, self._role_context(role, requested))
+            if not await self.broker.runtime_idle(role) or not await self.broker.runtime_pristine(role):
+                raise RuntimeError(f"{role} became active while its runtime was changing")
+            if commit is not None:
+                commit()
+        except BaseException:
+            if replacement_handle is not None:
+                try:
+                    await target.close_role(replacement_handle)
+                except Exception:
+                    pass
+            raise
+        self.backends_by_agent[role] = target
+        runtime.handle = replacement_handle
+        self._runtimes[role] = requested
+        await self.broker.runtime_changed(role, requested)
+        try:
+            await old_backend.close_role(old_handle)
+        except Exception:
+            pass
+        return requested
+
+    @staticmethod
+    def _choice_matches(choice: object, runtime: BackendRuntime) -> bool:
+        return (
+            getattr(choice, "model", None) == runtime.model
+            and (getattr(choice, "backend", "") or runtime.backend) == runtime.backend
+            and getattr(choice, "provider", None) == runtime.provider
+        )
+
+    async def _backend_for_name(self, name: str) -> AgentBackend:
+        for role, runtime in self._runtimes.items():
+            if runtime.backend == name:
+                return self.backends_by_agent[role]
+        if self.backend_resolver is None:
+            raise RuntimeError(f"backend {name!r} is unavailable in this session")
+        backend = await self.backend_resolver(name)
+        if all(existing is not backend for existing in self.backends):
+            self.backends.append(backend)
+        return backend
 
     def _message(
         self,

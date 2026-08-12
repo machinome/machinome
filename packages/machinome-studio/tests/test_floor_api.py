@@ -95,6 +95,7 @@ class FloorAPITest(unittest.TestCase):
         route = self.url(f"/api/sessions/{session_id}/agents/builder/runtime")
         self.assertEqual(_status(route, "GET"), 409)
         self.assertEqual(_status(route, "PATCH", {
+            "backend": "codex", "provider": None,
             "model": "gpt-5.6-sol", "effort": "high", "persist": False,
         }), 409)
 
@@ -121,6 +122,11 @@ class FloorAPITest(unittest.TestCase):
         self._make_project("bravo")
         alpha = self._open("alpha")
         bravo = self._open("bravo")
+        for session_id in (alpha, bravo):
+            _request(
+                self.url(f"/api/sessions/{session_id}/agents"), "POST",
+                {"role": "builder", "label": "Builder"},
+            )
         _request(self.url(f"/api/sessions/{alpha}/conversation"), "POST", {"text": "Alpha only"})
         _request(self.url(f"/api/sessions/{bravo}/conversation"), "POST", {"text": "Bravo only"})
 

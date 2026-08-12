@@ -51,6 +51,7 @@ from .base import (
     RoleContext,
     RoleHandle,
     RuntimeCatalogue,
+    RuntimeChoice,
 )
 from ..profiles import BackendRuntime
 from ..mcp_server import SERVER_NAME, mcp_command, resolved_tool_names
@@ -242,7 +243,15 @@ class ClaudeBackend:
         """Release one role's process."""
         await self._stop(handle.backend_id)
 
-    async def runtime_catalog(self, handle: RoleHandle) -> RuntimeCatalogue:
+    async def runtime_catalog(self, handle: RoleHandle | None) -> RuntimeCatalogue:
+        if handle is None:
+            from ..preparation import CLAUDE_EFFORTS, CLAUDE_MODELS
+
+            efforts = tuple(sorted(CLAUDE_EFFORTS))
+            return RuntimeCatalogue(
+                True,
+                tuple(RuntimeChoice(model, efforts, "claude") for model in sorted(CLAUDE_MODELS)),
+            )
         return RuntimeCatalogue(
             False,
             reason="Claude model changes require a new process and cannot preserve this session's context",

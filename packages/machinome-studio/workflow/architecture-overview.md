@@ -55,8 +55,11 @@ reasoning level per agent under `[tool.solid-node-studio.agents]`; profile tool
 policy and Claude permission remain non-overridable. OpenCode has no profile
 table and is available only through an explicit project selection. Creating a
 project records the profile selected in the hub in that repository's initial
-commit. During an open session, backend and provider remain fixed. A supported
-idle role may replace model and reasoning together for later turns, temporarily
+commit. Before a role's first message, assignment, accepted delivery, or
+activity, an idle role may immediately replace its unused standing handle with
+a complete backend/provider/model/reasoning selection. First use permanently
+locks backend and provider. A supported idle role may still replace model and
+reasoning together for later turns on the same backend and provider, temporarily
 or with a revision-checked update to the same project table.
 
 The profile's Claude tool list is also the shared capability vocabulary for
@@ -129,7 +132,8 @@ exact accepted notice, so a newer revision queued during an in-flight delivery
 remains pending.
 
 `floor/orchestrator.py` is deterministic and backend-neutral. It instantiates
-each distinct selected backend once, maps every agent to its owner, consumes
+each distinct selected backend once, lazily resolves another backend when a
+pristine catalogue or replacement needs it, maps every agent to its owner, consumes
 all owners' event streams concurrently, and opens profile agents in declaration
 order. It constructs a required `RoleContext` containing the validated and
 resolved `ProfileAgent`, labels, shop root, and verified project root, and
@@ -151,18 +155,26 @@ delivery never opens a replacement session or starts a turn.
 
 Runtime mutation uses the same per-role lock as delivery. The orchestrator
 requires no active native delivery, failure, current assignment, pending
-assignment, or active broker work, and rejects any backend or provider change.
-Model and reasoning are one runtime value. For persisted changes the session
+assignment, or active broker work. The broker separately retains a monotonic
+pristine bit that the first message, assignment, accepted delivery, or activity
+clears. Only a pristine role may replace its unused handle across backend or
+provider; a used role rejects that change permanently. Model and reasoning are
+one runtime value. For persisted changes the session
 prepares a comment-preserving TOML edit against its content revision; while the
 role gate remains held, the orchestrator updates the backend and invokes the
 atomic file publication before changing its runtime map or publishing browser
-state. A publication failure restores the old backend runtime first.
+state. A publication failure restores the old backend runtime first. A pristine
+replacement keeps its old handle authoritative until the new handle and file
+publication both succeed, then swaps ownership and closes the unused handle.
 
 ## Backend seam
 
 The portable `AgentBackend` protocol owns external processes and exposes
 `open_role`, `deliver_start`, `deliver_steer`, `deliver_notice`, `interrupt`,
-`close_role`, `runtime_catalog`, `update_runtime`, and `close`. It emits
+`close_role`, `runtime_catalog`, `update_runtime`, and `close`. A runtime
+catalogue without a handle describes fresh-session backend/provider/model
+choices; one with a handle describes context-preserving choices for that
+session. It emits
 portable role-message, turn, failure, and normalized activity events.
 `deliver_notice` is steer-only: each adapter verifies that the expected
 delivery is still active and returns false instead of starting a turn. The
@@ -185,8 +197,9 @@ transitional `pending` frames within a separate bounded readiness deadline. An a
 bypasses confirmation prompts only for those tools; it does not grant extras or
 provide operating-system sandboxing. An unscoped compatibility role retains
 safe mode. Claude normalizes completed tool-use blocks but exposes no mutable
-runtime catalogue: model changes require a new process, for which context
-preservation has not been verified. These two adapters consume one resolved
+runtime catalogue after first use: model changes require a new process, for
+which context preservation has not been verified. Its fresh-session catalogue
+does permit replacement of a pristine process. These two adapters consume one resolved
 runtime and never parse project or profile files or load global role adapters.
 
 The floor MCP server is rooted at the exact active project. Every path-bearing
@@ -213,7 +226,9 @@ role session IDs, preserving completion and failure delivery across those
 isolated directories, while the MCP server remains rooted at the verified
 project. Every role delivery
 carries the exact profile prompt and exact allowlisted skill instructions as
-that session's system contract. For a provider-pinned role the adapter queries
+that session's system contract. For a fresh role the adapter exposes every
+provider/model/variant combination returned by the live catalogue. For a
+provider-pinned used role the adapter queries
 OpenCode's live catalogue, limits choices to that same provider, and may replace
 the model/variant used by later prompts without replacing the session. Tool and
 patch parts are normalized into the portable activity schema.
@@ -261,8 +276,9 @@ workspace. Its explicit Apply control fetches the role-owned catalogue, remains
 disabled unless the server reports the role idle, and defaults to writing the
 selection to `pyproject.toml`; unchecking persistence creates a session-only
 override. The corresponding GET/PATCH runtime routes are role- and
-session-scoped, revision-check durable writes, and never accept backend or
-provider migration. No polling or second lifecycle connection is introduced.
+session-scoped and revision-check durable writes. They accept a complete
+backend/provider/model/reasoning replacement only while the role is pristine;
+no used session is migrated. No polling or second lifecycle connection is introduced.
 
 Floor serves published `_build/` artifacts beneath a project-scoped browser
 path and, separately, the exact regular non-symlink root `screenshot.png` for

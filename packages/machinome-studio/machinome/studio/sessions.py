@@ -26,7 +26,7 @@ from .preparation import (
     resolve_project,
     validate_new_project,
 )
-from .profiles import ProfileError, RuntimeProfile, load_profile, resolve_profile_runtime
+from .profiles import BackendRuntime, ProfileError, RuntimeProfile, load_profile, resolve_profile_runtime
 from .runtime_config import (
     RuntimeConfigConflict,
     config_revision,
@@ -108,11 +108,14 @@ class Session:
             "choices": [asdict(choice) for choice in catalogue.choices],
             "config_revision": await asyncio.to_thread(config_revision, self.project_root / "pyproject.toml"),
             "runtime_idle": self.broker.runtime_idle(role),
+            "runtime_pristine": self.broker.runtime_pristine(role),
         }
 
     async def update_runtime(
         self,
         role: str,
+        backend: str,
+        provider: str | None,
         model: str,
         effort: str,
         *,
@@ -122,8 +125,7 @@ class Session:
         if self.orchestrator is None:
             raise RuntimeError("agent runtime is unavailable for this session")
         async with self.runtime_lock:
-            current = self.orchestrator.current_runtime(role)
-            requested = replace(current, model=model, effort=effort)
+            requested = _selected_runtime(self.profile, role, backend, provider, model, effort)
             edit = None
             if persist:
                 if expected_revision is None:
@@ -153,7 +155,7 @@ class Session:
                 name="runtime changed",
                 summary=f"{applied.backend} · {applied.model} · {applied.effort}",
                 detail="written to pyproject.toml" if persist else "temporary session override",
-            ))
+            ), marks_runtime_used=False)
             return {
                 "agent": self.broker.agents[role].browser_value(),
                 "runtime": _runtime_value(applied),
@@ -424,12 +426,40 @@ class SessionRegistry:
             for agent in session.profile.agents
             if agent.runtime is not None
         }
+        resolver_lock = asyncio.Lock()
+        async def resolve_backend(backend_name: str) -> AgentBackend:
+            async with resolver_lock:
+                existing = backend_instances.get(backend_name)
+                if existing is not None:
+                    return existing
+                backend = self.backend_factory(
+                    backend_name,
+                    shop_root=self.shop_root,
+                    project=session.project_root,
+                    broker_url=self.broker_url,
+                    command_overrides=self.backend_commands,
+                    solid_command=self.solid_command,
+                    session_id=session.id,
+                )
+                try:
+                    await backend.start()
+                except BaseException:
+                    try:
+                        await backend.close()
+                    except BaseException:
+                        pass
+                    raise
+                backend_instances[backend_name] = backend
+                session.event_tasks.append(asyncio.create_task(_route_backend_events(orchestrator, backend)))
+                return backend
+
         orchestrator = ShopOrchestrator(
             by_agent,
             LocalBrokerControl(session.broker),
             profile=session.profile,
             shop_root=self.shop_root,
             active_project=session.project_root,
+            backend_resolver=resolve_backend,
         )
         session.orchestrator = orchestrator
         await orchestrator.open()
@@ -476,3 +506,29 @@ def _runtime_value(runtime) -> dict[str, object]:
         "model": runtime.model,
         "effort": runtime.effort,
     }
+
+
+def _selected_runtime(
+    profile: RuntimeProfile,
+    role: str,
+    backend: str,
+    provider: str | None,
+    model: str,
+    effort: str,
+) -> BackendRuntime:
+    agent = profile.agent(role)
+    if backend in {"codex", "claude"}:
+        if provider is not None:
+            raise ValueError(f"{backend} does not accept a provider")
+        return replace(agent.backends[backend], model=model, effort=effort, provider=None)
+    if backend == "opencode":
+        if not provider:
+            raise ValueError("OpenCode requires a provider from its live catalogue")
+        return BackendRuntime(
+            model,
+            effort,
+            agent.backends["claude"].tools,
+            backend="opencode",
+            provider=provider,
+        )
+    raise ValueError(f"unknown backend: {backend}")

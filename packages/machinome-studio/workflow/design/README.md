@@ -296,13 +296,14 @@ Present for Code:
 Present for Agents:
 
 - `GET /api/sessions/:id/agents/:role/runtime` — resolved backend/provider,
-  current model/reasoning, authoritative idle state, config revision, and the
-  backend-owned context-preserving catalogue. OpenCode choices come from its
-  live provider catalogue; Claude reports the control as unsupported.
-- `PATCH /api/sessions/:id/agents/:role/runtime` — model and reasoning plus the
-  optional `pyproject.toml` persistence choice and expected revision. Backend
-  and provider cannot change, and the role must be idle in both broker and
-  native-backend state.
+  current model/reasoning, authoritative idle and pristine state, config
+  revision, and backend-owned choices. A pristine role receives fresh-session
+  choices across available backends; OpenCode provider/model choices come from
+  its live catalogue. After first use only context-preserving choices remain.
+- `PATCH /api/sessions/:id/agents/:role/runtime` — complete backend, provider,
+  model, and reasoning plus the optional `pyproject.toml` persistence choice
+  and expected revision. A backend/provider change requires a pristine role;
+  every update requires idle broker and native-backend state.
 - The existing session snapshot/SSE carries bounded normalized per-agent
   activity and runtime/idle updates; Agents does not open another lifecycle
   connection or poll.

@@ -48,6 +48,7 @@ class Agent:
     effort: str = ""
     tools: str | list[str] = "inherit"
     backend_idle: bool = True
+    runtime_pristine: bool = True
 
     def browser_value(self) -> dict[str, object]:
         return {
@@ -62,6 +63,7 @@ class Agent:
             "tools": self.tools,
             "backend_idle": self.backend_idle,
             "runtime_idle": self.runtime_idle,
+            "runtime_pristine": self.runtime_pristine,
             "assignment_id": self.assignment_id or None,
             "pending_assignments": list(self.pending_assignments),
         }
@@ -160,6 +162,8 @@ class SourceSaveInput(BaseModel):
 
 
 class RuntimeUpdateInput(BaseModel):
+    backend: str
+    provider: str | None = None
     model: str
     effort: str
     persist: bool = True
@@ -263,8 +267,20 @@ class Broker:
     def runtime_idle(self, role: str) -> bool:
         return self._agent(role).runtime_idle
 
-    def record_activity(self, activity: AgentActivity) -> dict[str, object]:
-        self._agent(activity.role)
+    def runtime_pristine(self, role: str) -> bool:
+        return self._agent(role).runtime_pristine
+
+    def mark_runtime_used(self, role: str) -> Agent:
+        agent = self._agent(role)
+        if not agent.runtime_pristine:
+            return agent
+        agent.runtime_pristine = False
+        self.publish("agent_runtime_used", agent, role=role)
+        return agent
+
+    def record_activity(self, activity: AgentActivity, *, marks_runtime_used: bool = True) -> dict[str, object]:
+        if marks_runtime_used:
+            self.mark_runtime_used(activity.role)
         key = (activity.role, activity.id)
         previous = next(
             (item for item in self.activity if (item.get("role"), item.get("id")) == key),
@@ -600,6 +616,7 @@ class Broker:
             assignment_id=assignment_id,
         )
         self.envelopes.append(envelope)
+        self.mark_runtime_used(recipient)
         return envelope
 
     def _make_available(self, envelope: Envelope) -> None:
@@ -838,6 +855,8 @@ def create_app(working_folder: Path, *, registry: object) -> FastAPI:
         try:
             return JSONResponse(await session(session_id).update_runtime(
                 role,
+                input.backend,
+                input.provider,
                 input.model,
                 input.effort,
                 persist=input.persist,

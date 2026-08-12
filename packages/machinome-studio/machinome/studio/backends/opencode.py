@@ -285,11 +285,11 @@ class OpenCodeBackend:
             key: value for key, value in self._activity_ids.items() if key[0] != session_id
         }
 
-    async def runtime_catalog(self, handle: RoleHandle) -> RuntimeCatalogue:
-        runtime = self._runtimes.get(handle.backend_id)
-        if runtime is None:
+    async def runtime_catalog(self, handle: RoleHandle | None) -> RuntimeCatalogue:
+        runtime = self._runtimes.get(handle.backend_id) if handle is not None else None
+        if handle is not None and runtime is None:
             raise RuntimeError(f"unknown OpenCode role session: {handle.role}")
-        if runtime.provider is None or runtime.model == "inherit":
+        if handle is not None and (runtime.provider is None or runtime.model == "inherit"):
             return RuntimeCatalogue(False, reason="OpenCode operator-default sessions have no fixed provider catalogue")
         try:
             value = await self._request("GET", f"/provider?directory={quote(str(self.project), safe='')}")
@@ -297,30 +297,35 @@ class OpenCodeBackend:
             return RuntimeCatalogue(False, reason=str(error))
         providers = value.get("all", value) if isinstance(value, dict) else value
         items = providers if isinstance(providers, list) else []
-        selected = next(
-            (item for item in items if isinstance(item, dict) and str(item.get("id")) == runtime.provider),
-            None,
-        )
-        if selected is None:
-            return RuntimeCatalogue(False, reason=f"OpenCode provider {runtime.provider!r} is absent from the live catalogue")
-        models = selected.get("models", {})
-        values = models.values() if isinstance(models, dict) else models if isinstance(models, list) else ()
         choices: list[RuntimeChoice] = []
-        for model in values:
-            if not isinstance(model, dict):
+        selected_providers = [
+            item for item in items
+            if isinstance(item, dict) and (runtime is None or str(item.get("id")) == runtime.provider)
+        ]
+        if runtime is not None and not selected_providers:
+            return RuntimeCatalogue(False, reason=f"OpenCode provider {runtime.provider!r} is absent from the live catalogue")
+        for selected in selected_providers:
+            provider = str(selected.get("id") or "")
+            if not provider:
                 continue
-            model_id = str(model.get("id") or "")
-            if not model_id:
-                continue
-            variants = model.get("variants", {})
-            efforts = tuple(
-                str(item) for item in (
-                    variants.keys() if isinstance(variants, dict)
-                    else variants if isinstance(variants, list) else ()
-                ) if item
-            )
-            choices.append(RuntimeChoice(model_id, efforts or (runtime.effort,)))
-        return RuntimeCatalogue(bool(choices), tuple(choices), "" if choices else "OpenCode provider has no selectable models")
+            models = selected.get("models", {})
+            values = models.values() if isinstance(models, dict) else models if isinstance(models, list) else ()
+            for model in values:
+                if not isinstance(model, dict):
+                    continue
+                model_id = str(model.get("id") or "")
+                if not model_id:
+                    continue
+                variants = model.get("variants", {})
+                efforts = tuple(
+                    str(item) for item in (
+                        variants.keys() if isinstance(variants, dict)
+                        else variants if isinstance(variants, list) else ()
+                    ) if item
+                )
+                fallback = (runtime.effort,) if runtime is not None else ("inherit",)
+                choices.append(RuntimeChoice(model_id, efforts or fallback, "opencode", provider))
+        return RuntimeCatalogue(bool(choices), tuple(choices), "" if choices else "OpenCode has no selectable provider models")
 
     async def update_runtime(self, handle: RoleHandle, runtime: BackendRuntime) -> None:
         current = self._runtimes.get(handle.backend_id)

@@ -68,8 +68,8 @@ class FakeBackend:
     async def close_role(self, handle: RoleHandle) -> None:
         self.closed_roles.append(handle)
 
-    async def runtime_catalog(self, handle: RoleHandle) -> RuntimeCatalogue:
-        return RuntimeCatalogue(True, (RuntimeChoice("gpt-5.6-sol", ("medium", "high")),))
+    async def runtime_catalog(self, handle: RoleHandle | None) -> RuntimeCatalogue:
+        return RuntimeCatalogue(True, (RuntimeChoice("gpt-5.6-sol", ("medium", "high"), "codex"),))
 
     async def update_runtime(self, handle: RoleHandle, runtime: BackendRuntime) -> None:
         self.runtime_updates.append((handle, runtime))

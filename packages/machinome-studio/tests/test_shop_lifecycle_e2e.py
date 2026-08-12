@@ -104,6 +104,11 @@ class ShopLifecycleE2E(unittest.TestCase):
         self._make_project("bravo")
         alpha = self._open("alpha")
         bravo = self._open("bravo")
+        for session_id in (alpha, bravo):
+            _request(
+                self.url(f"/api/sessions/{session_id}/agents"), "POST",
+                {"role": "builder", "label": "Builder"},
+            )
         _request(self.url(f"/api/sessions/{alpha}/conversation"), "POST", {"text": "Alpha message"})
         _request(self.url(f"/api/sessions/{bravo}/conversation"), "POST", {"text": "Bravo message"})
 
@@ -119,6 +124,10 @@ class ShopLifecycleE2E(unittest.TestCase):
     def test_overflowing_transcript_ends_above_the_message_composer(self) -> None:
         self._make_project("long-chat")
         session_id = self._open("long-chat")
+        _request(
+            self.url(f"/api/sessions/{session_id}/agents"), "POST",
+            {"role": "builder", "label": "Builder"},
+        )
         for index in range(30):
             _request(
                 self.url(f"/api/sessions/{session_id}/conversation"),
@@ -260,7 +269,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         agent = run["agents"][0]
         agent.update({
             "backend": "codex", "provider": None, "model": "gpt-5.3-codex-spark",
-            "effort": "high", "runtime_idle": True, "backend_idle": True,
+            "effort": "high", "runtime_idle": True, "runtime_pristine": True, "backend_idle": True,
         })
         run["activity"] = [
             {
@@ -289,6 +298,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         revision = "a" * 64
         runtime_requests: list[dict[str, object]] = []
         stale = {"enabled": False}
+        pristine = {"value": True}
 
         def runtime_route(route) -> None:
             if route.request.method == "PATCH":
@@ -308,11 +318,14 @@ class ShopLifecycleE2E(unittest.TestCase):
                 "supported": True,
                 "reason": None,
                 "choices": [
-                    {"model": "gpt-5.3-codex-spark", "efforts": ["high"]},
-                    {"model": "gpt-5.6-sol", "efforts": ["medium", "high"]},
+                    {"backend": "codex", "provider": None, "model": "gpt-5.3-codex-spark", "efforts": ["high"]},
+                    {"backend": "codex", "provider": None, "model": "gpt-5.6-sol", "efforts": ["medium", "high"]},
+                    {"backend": "claude", "provider": None, "model": "opus", "efforts": ["high"]},
+                    {"backend": "opencode", "provider": "anthropic", "model": "claude-sonnet-4-5", "efforts": ["medium", "high"]},
                 ],
                 "config_revision": revision,
                 "runtime_idle": True,
+                "runtime_pristine": pristine["value"],
             }))
 
         self.page.route(f"**/api/sessions/{session_id}/agents/builder/runtime", runtime_route)
@@ -322,7 +335,11 @@ class ShopLifecycleE2E(unittest.TestCase):
 
         self.page.get_by_role("button", name="Agents", exact=True).click()
         self.page.locator(".agents-area").wait_for()
-        self.page.get_by_text("Session migration between backends is not supported.").wait_for()
+        self.page.get_by_text("Replace this unused session immediately.").wait_for()
+        self.assertFalse(self.page.get_by_role("button", name="claude", exact=True).is_disabled())
+        self.page.get_by_role("button", name="claude", exact=True).click()
+        self.assertFalse(self.page.get_by_role("button", name="Apply", exact=True).is_disabled())
+        self.page.get_by_role("button", name="codex", exact=True).click()
         self.assertTrue(self.page.get_by_label("write to pyproject.toml").is_checked())
         self.assertTrue(self.page.get_by_role("button", name="Apply", exact=True).is_disabled())
         self.assertEqual(self.page.locator('[data-agent-role="builder"].selected').count(), 1)
@@ -339,7 +356,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual(composer.input_value(), "keep this draft")
         self.assertEqual(self.page.get_by_role("button", name="files 1", exact=True).get_attribute("class"), "selected")
 
-        self.page.get_by_role("combobox").select_option("gpt-5.6-sol")
+        self.page.get_by_role("combobox").select_option("codex::gpt-5.6-sol")
         self.page.get_by_role("button", name="medium", exact=True).click()
         self.page.get_by_role("button", name="Apply", exact=True).click()
         self.page.get_by_text("applied · written to pyproject.toml", exact=True).wait_for()
@@ -356,6 +373,13 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_text("pyproject.toml changed since the controls were loaded", exact=True).wait_for()
         self.page.set_viewport_size({"width": 760, "height": 900})
         self.assertFalse(self.page.evaluate("() => document.documentElement.scrollWidth > window.innerWidth"))
+
+        agent["runtime_pristine"] = False
+        pristine["value"] = False
+        self.page.reload()
+        self.page.get_by_role("button", name="Agents", exact=True).click()
+        self.page.get_by_text("Locked after this agent's first use.").wait_for()
+        self.assertTrue(self.page.get_by_role("button", name="claude", exact=True).is_disabled())
 
     def test_model_panel_navigates_the_viewer_assembly(self) -> None:
         project = self._make_project("assembly-project")

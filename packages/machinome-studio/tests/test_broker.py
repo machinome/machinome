@@ -19,6 +19,7 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
             self.broker.manifest(agent.id, agent.label)
 
     async def test_direction_and_reports_are_ordered_and_delivery_is_explicit(self) -> None:
+        self.assertTrue(self.broker.agents["designer"].runtime_pristine)
         first = self.broker.send("direction", "foreman", "designer", "Start the first drawing.")
         second = self.broker.send("direction", "foreman", "designer", "Use a 6 mm wall.")
         report = self.broker.send("report", "designer", "foreman", "Drawing released.")
@@ -28,6 +29,20 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
         self.broker.mark_delivered(first.sequence)
         self.assertEqual([item.sequence for item in self.broker.pending_for("designer")], [second.sequence])
         self.assertEqual(self.broker.agents["designer"].state, "waiting", "direction must not mutate work state")
+        self.assertFalse(self.broker.agents["designer"].runtime_pristine)
+
+    async def test_assignment_and_activity_permanently_end_runtime_pristine_state(self) -> None:
+        self.assertTrue(self.broker.run()["agents"][1]["runtime_pristine"])
+        self.broker.assign("designer", "drawing-1")
+        self.broker.acknowledge("designer", "drawing-1")
+        self.broker.complete("designer", "drawing-1")
+        self.assertFalse(self.broker.agents["designer"].runtime_pristine)
+
+        self.assertTrue(self.broker.agents["librarian"].runtime_pristine)
+        self.broker.record_activity(AgentActivity(
+            "search-1", "librarian", "tool", "completed", "search", "catalogue",
+        ))
+        self.assertFalse(self.broker.agents["librarian"].runtime_pristine)
 
     async def test_unknown_and_retired_roles_are_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "unknown agent"):
@@ -58,6 +73,8 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
         try:
             envelope = self.broker.send("direction", "foreman", "machinist", "Hold position.")
             live = await asyncio.wait_for(subscriber.get(), timeout=0.1)
+            if "envelope_sequence" not in live["event"]:
+                live = await asyncio.wait_for(subscriber.get(), timeout=0.1)
         finally:
             self.broker.subscribers.discard(subscriber)
         self.assertEqual(live["event"]["envelope_sequence"], envelope.sequence)

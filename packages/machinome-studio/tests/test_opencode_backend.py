@@ -188,6 +188,21 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(prompt["model"], {"providerID": "anthropic", "modelID": "claude-opus-4-1"})
         self.assertEqual(prompt["variant"], "high")
 
+    async def test_fresh_session_catalogue_names_live_provider_model_combinations(self) -> None:
+        await self.backend.start()
+
+        catalogue = await self.backend.runtime_catalog(None)
+
+        self.assertTrue(catalogue.supported)
+        self.assertEqual(
+            {(choice.backend, choice.provider, choice.model) for choice in catalogue.choices},
+            {
+                ("opencode", "anthropic", "claude-sonnet-4-5"),
+                ("opencode", "anthropic", "claude-opus-4-1"),
+                ("opencode", "openai", "gpt-5.6-sol"),
+            },
+        )
+
     async def test_native_tool_parts_are_normalized_and_keep_a_stable_update_id(self) -> None:
         await self.backend.start()
         handle = await self.backend.open_role("builder", self.context())

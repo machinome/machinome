@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from floor.app import Broker
+from floor.backends.base import RoleHandle, RuntimeCatalogue, RuntimeChoice
 from floor.orchestrator import LocalBrokerControl, ShopOrchestrator
 from floor.preparation import ProjectRuntimeError, prepare_project, read_project_runtime
 from floor.profiles import BackendRuntime, ProfileError, load_profile, resolve_profile_runtime
@@ -261,7 +262,7 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
             )
 
             temporary_result = await session.update_runtime(
-                "builder", "gpt-5.6-sol", "high", persist=False, expected_revision=None
+                "builder", "codex", None, "gpt-5.6-sol", "high", persist=False, expected_revision=None
             )
             self.assertFalse(temporary_result["persisted"])
             self.assertEqual(path.read_text(), original)
@@ -269,7 +270,7 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
 
             revision = config_revision(path)
             persisted = await session.update_runtime(
-                "builder", "gpt-5.6-sol", "medium", persist=True, expected_revision=revision
+                "builder", "codex", None, "gpt-5.6-sol", "medium", persist=True, expected_revision=revision
             )
             self.assertTrue(persisted["persisted"])
             self.assertIn('builder = "codex:gpt-5.6-sol:medium"', path.read_text())
@@ -278,9 +279,54 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
             current = orchestrator.current_runtime("builder")
             with self.assertRaises(RuntimeConfigConflict):
                 await session.update_runtime(
-                    "builder", "gpt-5.6-sol", "high", persist=True, expected_revision=stale
+                    "builder", "codex", None, "gpt-5.6-sol", "high", persist=True, expected_revision=stale
                 )
             self.assertEqual(orchestrator.current_runtime("builder"), current)
+
+    async def test_pristine_backend_selection_applies_live_and_persists_complete_value(self) -> None:
+        class ClaudeBackend(FakeBackend):
+            async def runtime_catalog(self, handle: RoleHandle | None) -> RuntimeCatalogue:
+                return RuntimeCatalogue(True, (RuntimeChoice("opus", ("high",), "claude"),))
+
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary)
+            path = project / "pyproject.toml"
+            path.write_text('[tool.solid-node-studio]\nprofile = "builder"\n')
+            selection = read_project_runtime(project.name, project_home=project.parent)
+            profile = resolve_profile_runtime(load_profile("builder", shop_root=ROOT), selection)
+            broker = Broker(profile, session_id="runtime-switch")
+            codex, claude = FakeBackend(), ClaudeBackend()
+
+            async def resolve_backend(name: str):
+                self.assertEqual(name, "claude")
+                return claude
+
+            orchestrator = ShopOrchestrator(
+                codex,
+                LocalBrokerControl(broker),
+                profile=profile,
+                shop_root=ROOT,
+                active_project=project,
+                backend_resolver=resolve_backend,
+            )
+            await orchestrator.open()
+            self.addAsyncCleanup(orchestrator.close)
+            session = Session(
+                "runtime-switch", project.name,
+                SimpleNamespace(project_root=project, artifact_root=project / "_build", build_environment=None),
+                profile, broker, orchestrator=orchestrator,
+            )
+
+            result = await session.update_runtime(
+                "builder", "claude", None, "opus", "high",
+                persist=True, expected_revision=config_revision(path),
+            )
+
+            self.assertEqual(result["runtime"]["backend"], "claude")
+            self.assertIn('builder = "claude:opus:high"', path.read_text())
+            self.assertTrue(broker.runtime_pristine("builder"))
+            self.assertEqual(claude.opened_roles[-1][1].agent.runtime.backend, "claude")
+            self.assertIn(codex.opened_roles[0][0], [handle.role for handle in codex.closed_roles])
 
 
 class ProfileRuntimeTableTest(unittest.TestCase):

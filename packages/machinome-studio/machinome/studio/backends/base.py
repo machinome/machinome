@@ -83,6 +83,8 @@ class RuntimeChoice:
 
     model: str
     efforts: tuple[str, ...]
+    backend: str = ""
+    provider: str | None = None
 
 
 @dataclass(frozen=True)
@@ -195,8 +197,8 @@ class AgentBackend(Protocol):
         """Release a role session (best-effort, graceful)."""
         ...
 
-    async def runtime_catalog(self, handle: RoleHandle) -> RuntimeCatalogue:
-        """Describe context-preserving runtime choices for an existing role."""
+    async def runtime_catalog(self, handle: RoleHandle | None) -> RuntimeCatalogue:
+        """Describe choices for an existing role, or a fresh role when handle is None."""
         ...
 
     async def update_runtime(self, handle: RoleHandle, runtime: BackendRuntime) -> None:

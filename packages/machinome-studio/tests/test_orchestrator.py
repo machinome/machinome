@@ -91,6 +91,7 @@ class FakeBroker:
         self.activity: list[AgentActivity] = []
         self.runtime: dict[str, object] = {}
         self.backend_idle: dict[str, bool] = {}
+        self.pristine: dict[str, bool] = {agent.id: True for agent in FORDESMAC.agents}
 
     async def manifest(self, role: str, label: str) -> None:
         self.manifested.append((role, label))
@@ -134,9 +135,16 @@ class FakeBroker:
     async def runtime_idle(self, role: str) -> bool:
         return True
 
+    async def runtime_pristine(self, role: str) -> bool:
+        return self.pristine.get(role, True)
+
+    async def mark_runtime_used(self, role: str) -> None:
+        self.pristine[role] = False
+
 
 class FakeCodex:
-    def __init__(self) -> None:
+    def __init__(self, backend_name: str = "codex") -> None:
+        self.backend_name = backend_name
         self.started_threads: list[str] = []
         self.started_turns: list[tuple[str, str]] = []
         self.steered_turns: list[tuple[str, str, str]] = []
@@ -201,10 +209,11 @@ class FakeCodex:
     async def close_role(self, handle: RoleHandle) -> None:
         self.closed.append(handle.backend_id)
 
-    async def runtime_catalog(self, handle: RoleHandle) -> RuntimeCatalogue:
+    async def runtime_catalog(self, handle: RoleHandle | None) -> RuntimeCatalogue:
+        model = "opus" if self.backend_name == "claude" else "gpt-5.6-sol"
         return RuntimeCatalogue(
             supported=True,
-            choices=(RuntimeChoice("gpt-5.6-sol", ("medium", "high")),),
+            choices=(RuntimeChoice(model, ("medium", "high"), self.backend_name),),
         )
 
     async def update_runtime(self, handle: RoleHandle, runtime: object) -> None:
@@ -379,6 +388,56 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.orchestrator.current_runtime("designer"), current)
         self.assertEqual([item[1] for item in self.codex.runtime_updates], [changed, current])
         self.assertEqual(self.broker.runtime["designer"], current)
+
+    async def test_pristine_backend_change_replaces_unused_handle_without_migration(self) -> None:
+        claude = FakeCodex("claude")
+        async def resolve_backend(name: str) -> AgentBackend:
+            self.assertEqual(name, "claude")
+            return cast(AgentBackend, claude)
+        self.orchestrator.backend_resolver = resolve_backend
+        current = self.orchestrator.current_runtime("designer")
+        requested = replace(
+            FORDESMAC.agent("designer").backends["claude"],
+            model="opus",
+            effort="high",
+        )
+
+        applied = await self.orchestrator.update_runtime("designer", requested)
+
+        self.assertEqual(applied, requested)
+        self.assertEqual(self.orchestrator.current_runtime("designer"), requested)
+        self.assertEqual(claude.started_threads, ["designer"])
+        self.assertIn("thread-designer", self.codex.closed)
+        self.assertIs(self.orchestrator.backends_by_agent["designer"], claude)
+        self.assertEqual(current.backend, "codex")
+
+    async def test_used_role_rejects_backend_change_even_after_it_is_idle(self) -> None:
+        self.broker.pristine["designer"] = False
+        requested = replace(FORDESMAC.agent("designer").backends["claude"], model="opus")
+
+        with self.assertRaisesRegex(ValueError, "first use"):
+            await self.orchestrator.update_runtime("designer", requested)
+
+    async def test_failed_pristine_replacement_commit_keeps_old_owner_and_handle(self) -> None:
+        claude = FakeCodex("claude")
+        async def resolve_backend(_name: str) -> AgentBackend:
+            return cast(AgentBackend, claude)
+        self.orchestrator.backend_resolver = resolve_backend
+        current = self.orchestrator.current_runtime("designer")
+        old_handle = self.orchestrator.roles["designer"].handle
+        requested = replace(FORDESMAC.agent("designer").backends["claude"], model="opus", effort="high")
+
+        with self.assertRaisesRegex(RuntimeError, "stale project config"):
+            await self.orchestrator.update_runtime(
+                "designer", requested,
+                commit=lambda: (_ for _ in ()).throw(RuntimeError("stale project config")),
+            )
+
+        self.assertEqual(self.orchestrator.current_runtime("designer"), current)
+        self.assertIs(self.orchestrator.roles["designer"].handle, old_handle)
+        self.assertIs(self.orchestrator.backends_by_agent["designer"], self.codex)
+        self.assertEqual(claude.closed, ["thread-designer"])
+        self.assertNotIn("thread-designer", self.codex.closed)
 
     async def test_backend_activity_is_forwarded_without_native_protocol_data(self) -> None:
         activity = AgentActivity(
@@ -942,6 +1001,19 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(list(session.broker.agents), ["builder"])
         self.assertNotEqual(session.id, session.name)
         self.assertEqual(self.backends[0][0]["session_id"], session.id)
+
+    async def test_pristine_catalogue_lazily_registers_optional_backend_owners(self) -> None:
+        await self.registry.request_open("engine")
+        session = await self.registry.wait_until_settled("engine")
+        assert session is not None
+        self.assertEqual(len(self.backends), 1)
+
+        catalogue = await session.runtime_catalog("builder")
+
+        self.assertTrue(catalogue["runtime_pristine"])
+        self.assertEqual(len(self.backends), 3)
+        self.assertEqual(len(session.orchestrator.backends), 3)
+        self.assertEqual(len(session.event_tasks), 3)
 
     async def test_creation_is_visible_as_a_provisional_project_until_its_directory_exists(self) -> None:
         started = threading.Event()

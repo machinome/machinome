@@ -229,14 +229,14 @@ class CodexBackend:
                 raise
         self._runtimes.pop(thread_id, None)
 
-    async def runtime_catalog(self, handle: RoleHandle) -> RuntimeCatalogue:
-        if handle.backend_id not in self._runtimes:
+    async def runtime_catalog(self, handle: RoleHandle | None) -> RuntimeCatalogue:
+        if handle is not None and handle.backend_id not in self._runtimes:
             raise RuntimeError(f"unknown Codex role session: {handle.role}")
         efforts = tuple(
             effort for effort in ("low", "medium", "high", "xhigh", "max", "ultra")
             if effort in CODEX_EFFORTS
         )
-        return RuntimeCatalogue(True, tuple(RuntimeChoice(model, efforts) for model in sorted(CODEX_MODELS)))
+        return RuntimeCatalogue(True, tuple(RuntimeChoice(model, efforts, "codex") for model in sorted(CODEX_MODELS)))
 
     async def update_runtime(self, handle: RoleHandle, runtime: BackendRuntime) -> None:
         if handle.backend_id not in self._runtimes:

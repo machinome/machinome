@@ -20,6 +20,7 @@ type Agent = {
   tools: string | string[];
   backend_idle: boolean;
   runtime_idle: boolean;
+  runtime_pristine: boolean;
   assignment_id: string | null;
   pending_assignments: string[];
 };
@@ -40,7 +41,7 @@ type AgentActivity = {
   output_tokens: number | null;
 };
 
-type RuntimeChoice = { model: string; efforts: string[] };
+type RuntimeChoice = { backend: string; provider: string | null; model: string; efforts: string[] };
 type RuntimeCatalogue = {
   role: string;
   runtime: { backend: string; provider: string | null; model: string; effort: string };
@@ -49,6 +50,7 @@ type RuntimeCatalogue = {
   choices: RuntimeChoice[];
   config_revision: string;
   runtime_idle: boolean;
+  runtime_pristine: boolean;
 };
 
 type Run = {
@@ -1150,6 +1152,10 @@ function activityTime(value: string) {
   return new Date(value).toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+function runtimeChoiceKey(choice: RuntimeChoice) {
+  return `${choice.backend}:${choice.provider ?? ""}:${choice.model}`;
+}
+
 function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
   sessionId: string | null;
   run: Run | null;
@@ -1158,6 +1164,8 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
 }) {
   const [focusedRole, setFocusedRole] = useState<string | null>(null);
   const [catalogue, setCatalogue] = useState<RuntimeCatalogue | null>(null);
+  const [backend, setBackend] = useState("");
+  const [provider, setProvider] = useState<string | null>(null);
   const [model, setModel] = useState("");
   const [effort, setEffort] = useState("");
   const [persist, setPersist] = useState(true);
@@ -1189,17 +1197,20 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
       .then((value) => {
         if (cancelled) return;
         setCatalogue(value);
+        setBackend(value.runtime.backend);
+        setProvider(value.runtime.provider);
         setModel(value.runtime.model);
         setEffort(value.runtime.effort);
       })
       .catch((reason) => { if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason)); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [visible, sessionId, focused?.role, focused?.model, focused?.effort]);
+  }, [visible, sessionId, focused?.role, focused?.backend, focused?.provider, focused?.model, focused?.effort, focused?.runtime_pristine]);
 
-  const choice = catalogue?.choices.find((item) => item.model === model);
-  const dirty = Boolean(focused && (model !== focused.model || effort !== focused.effort));
-  const canApply = Boolean(catalogue?.supported && focused?.runtime_idle && dirty && !loading);
+  const choice = catalogue?.choices.find((item) => item.backend === backend && item.provider === provider && item.model === model);
+  const ownerDirty = Boolean(focused && (backend !== focused.backend || provider !== focused.provider));
+  const dirty = Boolean(focused && (ownerDirty || model !== focused.model || effort !== focused.effort));
+  const canApply = Boolean(catalogue?.supported && choice && focused?.runtime_idle && (!ownerDirty || focused.runtime_pristine) && dirty && !loading);
   const roleActivity = (run?.activity ?? []).filter((item) => item.role === focused?.role);
   const visibleActivity = roleActivity.filter((item) => filter === "all" || item.category === filter);
   const counts = roleActivity.reduce<Record<string, number>>((result, item) => {
@@ -1208,10 +1219,24 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
   }, {});
   const tokenEntry = [...roleActivity].reverse().find((item) => item.input_tokens !== null || item.output_tokens !== null);
 
-  const selectModel = (next: string) => {
-    setModel(next);
-    const nextChoice = catalogue?.choices.find((item) => item.model === next);
+  const selectChoice = (next: string) => {
+    const nextChoice = catalogue?.choices.find((item) => runtimeChoiceKey(item) === next);
+    if (!nextChoice) return;
+    setProvider(nextChoice.provider);
+    setModel(nextChoice.model);
     if (nextChoice && !nextChoice.efforts.includes(effort)) setEffort(nextChoice.efforts[0] ?? "");
+    setNotice("");
+  };
+
+  const selectBackend = (next: string) => {
+    if (!catalogue) return;
+    const options = catalogue.choices.filter((item) => item.backend === next);
+    const nextChoice = options.find((item) => item.provider === focused?.provider && item.model === focused?.model) ?? options[0];
+    if (!nextChoice) return;
+    setBackend(next);
+    setProvider(nextChoice.provider);
+    setModel(nextChoice.model);
+    setEffort(nextChoice.efforts.includes(effort) ? effort : nextChoice.efforts[0] ?? "");
     setNotice("");
   };
 
@@ -1224,7 +1249,7 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
       const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/agents/${encodeURIComponent(focused.role)}/runtime`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model, effort, persist, expected_revision: catalogue.config_revision }),
+        body: JSON.stringify({ backend, provider, model, effort, persist, expected_revision: catalogue.config_revision }),
       });
       const value = await response.json().catch(() => ({})) as {
         detail?: string; config_revision?: string; persisted?: boolean;
@@ -1235,6 +1260,8 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
           if (refreshed.ok) {
             const current = await refreshed.json() as RuntimeCatalogue;
             setCatalogue(current);
+            setBackend(current.runtime.backend);
+            setProvider(current.runtime.provider);
             setModel(current.runtime.model);
             setEffort(current.runtime.effort);
           }
@@ -1290,15 +1317,20 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
       {controlsOpen ? <div className="agent-controls">
         <div className="agent-control-grid">
           <div className="agent-control"><span>Backend</span><div className="backend-picks">
-            {["codex", "claude", "opencode"].map((backend) => <button disabled className={backend === focused?.backend ? "selected" : ""} key={backend}>{backend}</button>)}
-          </div><small>Session migration between backends is not supported.</small></div>
+            {["codex", "claude", "opencode"].map((value) => <button
+              disabled={loading || !catalogue?.choices.some((item) => item.backend === value) || (!focused?.runtime_pristine && value !== focused?.backend)}
+              className={value === backend ? "selected" : ""}
+              key={value}
+              onClick={() => selectBackend(value)}
+            >{value}</button>)}
+          </div><small>{focused?.runtime_pristine ? "Replace this unused session immediately." : "Locked after this agent's first use."}</small></div>
           <label className="agent-control"><span>Model</span><select
-            value={model}
+            value={choice ? runtimeChoiceKey(choice) : ""}
             disabled={!catalogue?.supported || loading}
-            onChange={(event) => selectModel(event.target.value)}
+            onChange={(event) => selectChoice(event.target.value)}
           >
-            {catalogue?.choices.length ? catalogue.choices.map((item) => <option key={item.model} value={item.model}>{item.model}</option>) : <option value={model}>{model || focused?.model || "unavailable"}</option>}
-          </select><small>{focused?.backend === "opencode" ? "live provider catalogue" : "backend catalogue"}</small></label>
+            {catalogue?.choices.filter((item) => item.backend === backend).length ? catalogue.choices.filter((item) => item.backend === backend).map((item) => <option key={runtimeChoiceKey(item)} value={runtimeChoiceKey(item)}>{item.provider ? `${item.provider} · ${item.model}` : item.model}</option>) : <option value="">{model || focused?.model || "unavailable"}</option>}
+          </select><small>{backend === "opencode" ? "provider and model from live catalogue" : "backend catalogue"}</small></label>
           <div className="agent-control"><span>Reasoning</span><div className="effort-picks">
             {(choice?.efforts ?? (effort ? [effort] : [])).map((value) => <button
               className={value === effort ? "selected" : ""}
@@ -1311,7 +1343,7 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
         </div>
         <div className="agent-apply-row">
           <label><input type="checkbox" checked={persist} onChange={(event) => setPersist(event.target.checked)} />write to pyproject.toml</label>
-          <div><span className={error ? "control-error" : ""}>{error || notice || (loading ? "loading…" : !catalogue?.supported ? catalogue?.reason : !focused?.runtime_idle ? "available when agent is idle" : dirty ? "unapplied change" : "")}</span><button disabled={!canApply} onClick={() => void applyRuntime()}>Apply</button></div>
+          <div><span className={error ? "control-error" : ""}>{error || notice || (loading ? "loading…" : !catalogue?.supported ? catalogue?.reason : !focused?.runtime_idle ? "available when agent is idle" : ownerDirty && !focused?.runtime_pristine ? "backend locked after first use" : dirty ? "unapplied change" : "")}</span><button disabled={!canApply} onClick={() => void applyRuntime()}>Apply</button></div>
         </div>
       </div> : null}
       <div className="activity-filters">

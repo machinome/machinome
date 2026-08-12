@@ -212,12 +212,16 @@ value and never as a key of its own.
 
 ### Requirement: An idle session may override its selected model and reasoning
 The maker MAY replace one manifested agent's model and reasoning level for its
-current session only when the backend and provider remain unchanged and the
-agent is authoritatively idle. Model and reasoning SHALL be applied as one
-validated runtime value and SHALL affect the next delivery immediately without
-changing the agent's session identity or conversation context. The shop SHALL
-NOT offer a queued, next-assignment, backend-migration, or provider-migration
-mode.
+current session when the agent is authoritatively idle. When its backend and
+provider remain unchanged, the shop SHALL apply both values as one validated
+runtime value to the existing persistent session only when that backend proves
+the change preserves context. Before the role has accepted any message,
+delivery, or assignment or produced any activity, the maker MAY instead select
+a different backend or provider together with its model and reasoning; the shop
+SHALL immediately replace that unused standing session without migrating
+context. First use SHALL permanently end backend/provider replacement for that
+role even after it becomes idle again. The shop SHALL NOT offer a queued or
+next-assignment runtime mode.
 
 #### Scenario: An idle Codex agent changes model
 - **WHEN** the maker applies a supported Codex model and reasoning level to an idle Codex agent
@@ -227,22 +231,34 @@ mode.
 - **WHEN** the maker applies a model and variant from the current OpenCode provider's catalogue to an idle OpenCode agent
 - **THEN** that agent's next prompt uses both new values in its existing persistent session
 
-#### Scenario: A request changes backend or provider
-- **WHEN** a runtime update names a different backend or OpenCode provider from the active session
-- **THEN** the shop rejects it without changing live or project runtime
+#### Scenario: A pristine role changes backend
+- **WHEN** the maker applies a supported backend, provider, model, and reasoning combination before the role has accepted a message, delivery, or assignment or produced activity
+- **THEN** the shop closes the unused standing handle, immediately opens that role on the selected runtime, and migrates no session context
 
-#### Scenario: A Claude session cannot preserve context
-- **WHEN** the active backend cannot prove a context-preserving in-session runtime change
+#### Scenario: A pristine role selects OpenCode
+- **WHEN** the maker selects OpenCode for a pristine role
+- **THEN** provider, model, and reasoning choices are limited to combinations in OpenCode's live catalogue
+
+#### Scenario: A used role becomes idle again
+- **WHEN** a role has accepted a message, delivery, or assignment or produced activity and later returns to an idle state
+- **THEN** the shop rejects a backend or provider change without changing live or project runtime
+
+#### Scenario: A pristine Claude role changes model
+- **WHEN** the maker applies a supported Claude model and reasoning level before that role's first use
+- **THEN** the shop replaces the unused Claude process and applies the selection immediately
+
+#### Scenario: A used Claude session cannot preserve context
+- **WHEN** a used Claude role is idle and the maker requests a model change
 - **THEN** the workspace displays its runtime read-only and the API rejects mutation
 
 ### Requirement: A live runtime update may be recorded in project configuration
 The runtime control SHALL default to writing an accepted change to the active
 project's `[tool.solid-node-studio.agents]` table and SHALL let the maker
 explicitly uncheck that option for a session-only override. A persisted change
-SHALL write the complete existing-backend/provider plus new-model/reasoning
-selection using the accepted grammar, preserve unrelated TOML content and
-comments, and atomically replace only an unchanged configuration revision. The
-shop SHALL NOT read or write `[tool.solid-node]`.
+SHALL write the complete selected backend/provider/model/reasoning value using
+the accepted grammar, preserve unrelated TOML content and comments, and
+atomically replace only an unchanged configuration revision. The shop SHALL NOT
+read or write `[tool.solid-node]`.
 
 #### Scenario: The default persisted update succeeds
 - **WHEN** the maker applies an idle runtime update with the default persistence option
