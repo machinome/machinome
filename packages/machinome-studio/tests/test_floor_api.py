@@ -85,6 +85,19 @@ class FloorAPITest(unittest.TestCase):
             ["Bravo only"],
         )
 
+    def test_runtime_routes_refuse_sessions_without_a_persistent_agent_backend(self) -> None:
+        self._make_project("runtime-less")
+        session_id = self._open("runtime-less")
+        _request(
+            self.url(f"/api/sessions/{session_id}/agents"), "POST",
+            {"role": "builder", "label": "Builder"},
+        )
+        route = self.url(f"/api/sessions/{session_id}/agents/builder/runtime")
+        self.assertEqual(_status(route, "GET"), 409)
+        self.assertEqual(_status(route, "PATCH", {
+            "model": "gpt-5.6-sol", "effort": "high", "persist": False,
+        }), 409)
+
     def test_unknown_session_is_refused_and_a_closed_id_cannot_reach_a_reopened_project(self) -> None:
         self._make_project("engine")
         first = self._open("engine")

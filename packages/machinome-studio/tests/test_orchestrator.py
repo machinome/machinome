@@ -22,7 +22,17 @@ from urllib.request import urlopen
 
 from floor.app import Broker
 from floor.backends.codex import CodexBackend as CodexAppServer
-from floor.backends.base import AgentBackend, BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle
+from floor.backends.base import (
+    AgentActivity,
+    AgentBackend,
+    BackendEvent,
+    DeliveryReceipt,
+    InactiveTurn,
+    RoleContext,
+    RoleHandle,
+    RuntimeCatalogue,
+    RuntimeChoice,
+)
 from floor.orchestrator import (
     LocalBrokerControl,
     ShopOrchestrator,
@@ -78,6 +88,9 @@ class FakeBroker:
         self.failed_deliveries: list[tuple[int, str]] = []
         self.system_notices: dict[str, list[dict[str, object]]] = {}
         self.delivered_system_notices: list[tuple[str, list[int]]] = []
+        self.activity: list[AgentActivity] = []
+        self.runtime: dict[str, object] = {}
+        self.backend_idle: dict[str, bool] = {}
 
     async def manifest(self, role: str, label: str) -> None:
         self.manifested.append((role, label))
@@ -109,6 +122,18 @@ class FakeBroker:
             if int(notice["sequence"]) not in delivered
         ]
 
+    async def record_activity(self, activity: AgentActivity) -> None:
+        self.activity.append(activity)
+
+    async def runtime_changed(self, role: str, runtime: object) -> None:
+        self.runtime[role] = runtime
+
+    async def backend_idle_changed(self, role: str, idle: bool) -> None:
+        self.backend_idle[role] = idle
+
+    async def runtime_idle(self, role: str) -> bool:
+        return True
+
 
 class FakeCodex:
     def __init__(self) -> None:
@@ -120,6 +145,7 @@ class FakeCodex:
         self.fail_next_steer = False
         self.accept_notices = True
         self.notice_deliveries: list[tuple[str, str, str]] = []
+        self.runtime_updates: list[tuple[RoleHandle, object]] = []
 
     async def start_thread(self, role: str) -> str:
         self.started_threads.append(role)
@@ -174,6 +200,15 @@ class FakeCodex:
 
     async def close_role(self, handle: RoleHandle) -> None:
         self.closed.append(handle.backend_id)
+
+    async def runtime_catalog(self, handle: RoleHandle) -> RuntimeCatalogue:
+        return RuntimeCatalogue(
+            supported=True,
+            choices=(RuntimeChoice("gpt-5.6-sol", ("medium", "high")),),
+        )
+
+    async def update_runtime(self, handle: RoleHandle, runtime: object) -> None:
+        self.runtime_updates.append((handle, runtime))
 
     # Events — FakeCodex doesn't emit events; tests call handle_notification
     # directly.  Provide a dummy async iterator for the protocol.
@@ -308,6 +343,52 @@ class ShopOrchestratorTest(unittest.IsolatedAsyncioTestCase):
             BackendEvent(kind="role_message", role="designer", text="Internal specialist output.")
         )
         self.assertEqual(self.broker.conversation, [("foreman", "Hello from Foreman.")])
+
+    async def test_idle_runtime_update_preserves_backend_and_changes_model_and_reasoning_together(self) -> None:
+        current = self.orchestrator.current_runtime("designer")
+        changed = replace(current, model="gpt-5.6-sol", effort="high")
+
+        catalogue = await self.orchestrator.runtime_catalog("designer")
+        applied = await self.orchestrator.update_runtime("designer", changed)
+
+        self.assertTrue(catalogue.supported)
+        self.assertEqual(applied, changed)
+        self.assertEqual(self.orchestrator.roles["designer"].handle.backend_id, "thread-designer")
+        self.assertEqual(self.codex.runtime_updates[-1][1], changed)
+
+    async def test_active_native_delivery_rejects_runtime_update(self) -> None:
+        await self.orchestrator.deliver({"sequence": 44, "recipient": "designer", "body": "work"})
+        changed = replace(self.orchestrator.current_runtime("designer"), model="gpt-5.6-sol")
+
+        with self.assertRaisesRegex(RuntimeError, "not idle"):
+            await self.orchestrator.update_runtime("designer", changed)
+
+        self.assertEqual(self.codex.runtime_updates, [])
+
+    async def test_failed_persistence_commit_rolls_back_before_runtime_is_published(self) -> None:
+        current = self.orchestrator.current_runtime("designer")
+        changed = replace(current, model="gpt-5.6-sol", effort="high")
+
+        with self.assertRaisesRegex(RuntimeError, "stale project config"):
+            await self.orchestrator.update_runtime(
+                "designer",
+                changed,
+                commit=lambda: (_ for _ in ()).throw(RuntimeError("stale project config")),
+            )
+
+        self.assertEqual(self.orchestrator.current_runtime("designer"), current)
+        self.assertEqual([item[1] for item in self.codex.runtime_updates], [changed, current])
+        self.assertEqual(self.broker.runtime["designer"], current)
+
+    async def test_backend_activity_is_forwarded_without_native_protocol_data(self) -> None:
+        activity = AgentActivity(
+            id="activity-1", role="designer", category="tool", state="completed",
+            name="read_file", summary="parts/bracket.py", detail="168 lines",
+        )
+
+        await self.orchestrator.handle_event(BackendEvent(kind="activity", role="designer", activity=activity))
+
+        self.assertEqual(self.broker.activity, [activity])
 
 
 class MultiBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
@@ -578,6 +659,23 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
 
 class CodexOwnershipAcceptanceTest(unittest.IsolatedAsyncioTestCase):
+    async def test_runtime_update_keeps_thread_and_applies_model_and_effort_to_next_turn(self) -> None:
+        codex = CodexAppServer(ROOT, command=(sys.executable, str(FAKE_APP_SERVER)))
+        await codex.start()
+        self.addAsyncCleanup(codex.close)
+        handle = await codex.open_role("designer", _context("designer"))
+        current = codex._runtimes[handle.backend_id]
+        changed = replace(current, model="gpt-5.6-sol", effort="high")
+
+        catalogue = await codex.runtime_catalog(handle)
+        await codex.update_runtime(handle, changed)
+        receipt = await codex.deliver_start(handle, "Continue")
+
+        self.assertTrue(any(choice.model == changed.model for choice in catalogue.choices))
+        self.assertEqual(codex._runtimes[handle.backend_id], changed)
+        self.assertEqual(handle.backend_id, "thread-1")
+        self.assertTrue(receipt.delivery_id)
+
     async def test_native_turn_identity_survives_events_steering_and_interrupt(self) -> None:
         codex = CodexAppServer(
             ROOT,
@@ -1249,6 +1347,16 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
     def captured(self) -> list[dict]:
         return [json.loads(line) for line in self.capture.read_text().splitlines()]
 
+    async def test_runtime_control_is_read_only_because_context_cannot_be_preserved(self) -> None:
+        catalogue = await self.claude.runtime_catalog(RoleHandle("not-opened", "designer"))
+        self.assertFalse(catalogue.supported)
+        self.assertIn("cannot preserve", catalogue.reason)
+        with self.assertRaisesRegex(RuntimeError, "cannot preserve"):
+            await self.claude.update_runtime(
+                RoleHandle("not-opened", "designer"),
+                self.context("designer").agent.runtime,
+            )
+
     async def test_open_role_starts_one_process_per_role(self) -> None:
         await self.claude.start()
         await self.claude.open_role("foreman", self.context("foreman"))
@@ -1413,6 +1521,11 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             (completed.kind, completed.delivery_id),
             ("turn_completed", receipt.delivery_id),
+        )
+        activity = await asyncio.wait_for(anext(self.claude.events), timeout=5)
+        self.assertEqual(
+            (activity.kind, activity.activity.category, activity.activity.state),
+            ("activity", "tool", "completed"),
         )
         with self.assertRaises(asyncio.TimeoutError):
             await asyncio.wait_for(anext(self.claude.events), timeout=0.5)

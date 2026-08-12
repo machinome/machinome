@@ -13,6 +13,42 @@ type Agent = {
   label: string;
   state: AgentState;
   failure: string;
+  backend: string;
+  provider: string | null;
+  model: string;
+  effort: string;
+  tools: string | string[];
+  backend_idle: boolean;
+  runtime_idle: boolean;
+  assignment_id: string | null;
+  pending_assignments: string[];
+};
+
+type AgentActivity = {
+  id: string;
+  sequence: number;
+  role: string;
+  category: "tool" | "file" | "message" | "error";
+  state: "running" | "completed" | "failed";
+  name: string;
+  summary: string;
+  detail: string;
+  path: string;
+  diff: string;
+  timestamp: string;
+  input_tokens: number | null;
+  output_tokens: number | null;
+};
+
+type RuntimeChoice = { model: string; efforts: string[] };
+type RuntimeCatalogue = {
+  role: string;
+  runtime: { backend: string; provider: string | null; model: string; effort: string };
+  supported: boolean;
+  reason: string | null;
+  choices: RuntimeChoice[];
+  config_revision: string;
+  runtime_idle: boolean;
 };
 
 type Run = {
@@ -23,6 +59,7 @@ type Run = {
   user_agent: { id: string; label: string };
   roster: { id: string; label: string }[];
   agents: Agent[];
+  activity: AgentActivity[];
   events: BrokerEvent[];
   latest_event_sequence: number;
   model_build_error: string | null;
@@ -30,7 +67,7 @@ type Run = {
 
 type LifecycleEvent = {
   kind: string;
-  payload: Agent | ConversationEntry | SourceInvalidation | { artifact?: string; reason?: string };
+  payload: Agent | AgentActivity | ConversationEntry | SourceInvalidation | { artifact?: string; reason?: string };
   event: BrokerEvent;
 };
 
@@ -497,7 +534,7 @@ function AgentPanel({ agents }: { agents: Agent[] }) {
 const railItems = [
   ["model", "◇", "Model", true],
   ["code", "{ }", "Code", true],
-  ["agents", "●", "Agents", false],
+  ["agents", "●", "Agents", true],
   ["sheets", "═", "Sheets", false],
 ] as const;
 
@@ -770,11 +807,12 @@ function SourceIcon({ kind }: { kind: SourceIconKind }) {
   return <svg {...common}><path d="M5 3.5h10l4 4v13H5z" /><path d="M15 3.5v4h4" /><path d="M8 12h8M8 15h8" /></svg>;
 }
 
-function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible }: {
+function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible, requestedOpen }: {
   sessionId: string | null;
   sourceEvent: SourceEvent | null;
   reconnect: number;
   visible: boolean;
+  requestedOpen: { path: string; nonce: number } | null;
 }) {
   const [entries, setEntries] = useState<SourceEntry[]>([]);
   const [expandedDirectories, setExpandedDirectories] = useState<Set<string>>(() => new Set());
@@ -989,6 +1027,11 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible }: {
     for (const path of Object.keys(filesRef.current)) void reconcilePath(path);
   }, [reconnect]);
 
+  useEffect(() => {
+    if (!sessionId || !requestedOpen) return;
+    void openFile(requestedOpen.path);
+  }, [sessionId, requestedOpen?.nonce]);
+
   const handleMount: OnMount = (editor, monaco) => {
     monacoRef.current = monaco;
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => saveCurrent.current());
@@ -1099,8 +1142,207 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible }: {
   </>;
 }
 
+const activityFilters = ["all", "tool", "file", "message", "error"] as const;
+type ActivityFilter = typeof activityFilters[number];
+
+function activityTime(value: string) {
+  if (!value) return "--:--:--";
+  return new Date(value).toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
+  sessionId: string | null;
+  run: Run | null;
+  visible: boolean;
+  onOpenFile: (path: string) => void;
+}) {
+  const [focusedRole, setFocusedRole] = useState<string | null>(null);
+  const [catalogue, setCatalogue] = useState<RuntimeCatalogue | null>(null);
+  const [model, setModel] = useState("");
+  const [effort, setEffort] = useState("");
+  const [persist, setPersist] = useState(true);
+  const [controlsOpen, setControlsOpen] = useState(true);
+  const [filter, setFilter] = useState<ActivityFilter>("all");
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const agents = run?.agents ?? [];
+  const focused = agents.find((agent) => agent.role === focusedRole) ?? agents[0] ?? null;
+
+  useEffect(() => {
+    if (!focused) return;
+    if (focusedRole !== focused.role) setFocusedRole(focused.role);
+  }, [focused?.role]);
+
+  useEffect(() => {
+    if (!visible || !sessionId || !focused) return;
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    void fetch(`/api/sessions/${encodeURIComponent(sessionId)}/agents/${encodeURIComponent(focused.role)}/runtime`)
+      .then(async (response) => {
+        const value = await response.json().catch(() => ({})) as RuntimeCatalogue & { detail?: string };
+        if (!response.ok) throw new Error(value.detail ?? "Runtime choices are unavailable.");
+        return value;
+      })
+      .then((value) => {
+        if (cancelled) return;
+        setCatalogue(value);
+        setModel(value.runtime.model);
+        setEffort(value.runtime.effort);
+      })
+      .catch((reason) => { if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason)); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [visible, sessionId, focused?.role, focused?.model, focused?.effort]);
+
+  const choice = catalogue?.choices.find((item) => item.model === model);
+  const dirty = Boolean(focused && (model !== focused.model || effort !== focused.effort));
+  const canApply = Boolean(catalogue?.supported && focused?.runtime_idle && dirty && !loading);
+  const roleActivity = (run?.activity ?? []).filter((item) => item.role === focused?.role);
+  const visibleActivity = roleActivity.filter((item) => filter === "all" || item.category === filter);
+  const counts = roleActivity.reduce<Record<string, number>>((result, item) => {
+    result[item.category] = (result[item.category] ?? 0) + 1;
+    return result;
+  }, {});
+  const tokenEntry = [...roleActivity].reverse().find((item) => item.input_tokens !== null || item.output_tokens !== null);
+
+  const selectModel = (next: string) => {
+    setModel(next);
+    const nextChoice = catalogue?.choices.find((item) => item.model === next);
+    if (nextChoice && !nextChoice.efforts.includes(effort)) setEffort(nextChoice.efforts[0] ?? "");
+    setNotice("");
+  };
+
+  const applyRuntime = async () => {
+    if (!sessionId || !focused || !catalogue || !canApply) return;
+    setLoading(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/agents/${encodeURIComponent(focused.role)}/runtime`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model, effort, persist, expected_revision: catalogue.config_revision }),
+      });
+      const value = await response.json().catch(() => ({})) as {
+        detail?: string; config_revision?: string; persisted?: boolean;
+      };
+      if (!response.ok) {
+        if (response.status === 409) {
+          const refreshed = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/agents/${encodeURIComponent(focused.role)}/runtime`);
+          if (refreshed.ok) {
+            const current = await refreshed.json() as RuntimeCatalogue;
+            setCatalogue(current);
+            setModel(current.runtime.model);
+            setEffort(current.runtime.effort);
+          }
+        }
+        throw new Error(value.detail ?? "The runtime could not be changed.");
+      }
+      setCatalogue((previous) => previous && value.config_revision
+        ? { ...previous, config_revision: value.config_revision }
+        : previous);
+      setNotice(value.persisted ? "applied · written to pyproject.toml" : "applied · this session only");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const tools = focused
+    ? Array.isArray(focused.tools) ? focused.tools.join(", ") : focused.tools
+    : "inherit";
+
+  return <>
+    <aside className={`agents-context ${visible ? "" : "area-hidden"}`} aria-label="Agent roster">
+      <section className="agents-roster-panel">
+        <header><h2>Agents</h2><span>{agents.filter((agent) => agent.state === "active").length} active</span></header>
+        <ul>
+          {agents.map((agent) => <li key={agent.role}>
+            <button
+              className={agent.role === focused?.role ? "selected" : ""}
+              onClick={() => { setFocusedRole(agent.role); setFilter("all"); setNotice(""); setError(""); }}
+              data-agent-role={agent.role}
+            >
+              <span className={`agent-state-dot ${agent.failure ? "failed" : agent.state}`} aria-hidden="true" />
+              <span className="agent-roster-runtime"><span>{agent.label}</span><small>{agent.backend} · {agent.model}</small></span>
+              <span className={`state ${agent.failure ? "failed" : agent.state}`}>{agent.failure ? "failed" : agent.state}</span>
+            </button>
+          </li>)}
+        </ul>
+      </section>
+      <section className="agents-session-panel">
+        <h2>Session</h2>
+        <div><span>Profile</span><strong>{run?.profile_id ?? "—"} · delegated</strong><small>{agents.length} standing session{agents.length === 1 ? "" : "s"} · {new Set(agents.map((agent) => agent.backend)).size} backend{new Set(agents.map((agent) => agent.backend)).size === 1 ? "" : "s"}</small></div>
+        <p>Selections resolve over profile defaults. Backend, tools, and Claude permission stay profile-owned.</p>
+      </section>
+    </aside>
+    <section className={`agents-area ${visible ? "" : "area-hidden"}`} aria-label="Agent activity">
+      <header className="agents-header">
+        <h2>{focused?.label ?? "Agents"}</h2>
+        <span className={`state ${focused?.failure ? "failed" : focused?.state ?? "waiting"}`}>{focused?.failure ? "failed" : focused?.state ?? "waiting"}</span>
+        {tokenEntry ? <span className="agent-tokens">{tokenEntry.input_tokens ?? 0} in · {tokenEntry.output_tokens ?? 0} out</span> : null}
+        <button onClick={() => setControlsOpen((current) => !current)}>{controlsOpen ? "Hide controls" : "Controls"}</button>
+      </header>
+      {controlsOpen ? <div className="agent-controls">
+        <div className="agent-control-grid">
+          <div className="agent-control"><span>Backend</span><div className="backend-picks">
+            {["codex", "claude", "opencode"].map((backend) => <button disabled className={backend === focused?.backend ? "selected" : ""} key={backend}>{backend}</button>)}
+          </div><small>Session migration between backends is not supported.</small></div>
+          <label className="agent-control"><span>Model</span><select
+            value={model}
+            disabled={!catalogue?.supported || loading}
+            onChange={(event) => selectModel(event.target.value)}
+          >
+            {catalogue?.choices.length ? catalogue.choices.map((item) => <option key={item.model} value={item.model}>{item.model}</option>) : <option value={model}>{model || focused?.model || "unavailable"}</option>}
+          </select><small>{focused?.backend === "opencode" ? "live provider catalogue" : "backend catalogue"}</small></label>
+          <div className="agent-control"><span>Reasoning</span><div className="effort-picks">
+            {(choice?.efforts ?? (effort ? [effort] : [])).map((value) => <button
+              className={value === effort ? "selected" : ""}
+              disabled={!catalogue?.supported || loading}
+              key={value}
+              onClick={() => { setEffort(value); setNotice(""); }}
+            >{value}</button>)}
+          </div><small>Changes atomically with the model.</small></div>
+          <div className="agent-control"><span>Tools</span><div className="agent-tools"><strong>{Array.isArray(focused?.tools) ? `${focused?.tools.length} floor tools` : tools}</strong><small>{tools}</small></div></div>
+        </div>
+        <div className="agent-apply-row">
+          <label><input type="checkbox" checked={persist} onChange={(event) => setPersist(event.target.checked)} />write to pyproject.toml</label>
+          <div><span className={error ? "control-error" : ""}>{error || notice || (loading ? "loading…" : !catalogue?.supported ? catalogue?.reason : !focused?.runtime_idle ? "available when agent is idle" : dirty ? "unapplied change" : "")}</span><button disabled={!canApply} onClick={() => void applyRuntime()}>Apply</button></div>
+        </div>
+      </div> : null}
+      <div className="activity-filters">
+        {activityFilters.map((value) => <button className={filter === value ? "selected" : ""} onClick={() => setFilter(value)} key={value}>{value === "all" ? `all ${roleActivity.length}` : `${value === "tool" ? "tools" : value === "file" ? "files" : `${value}s`} ${counts[value] ?? 0}`}</button>)}
+        <span>session {focused?.role ?? "—"} · live</span>
+      </div>
+      <div className="activity-feed">
+        {focused?.failure ? <div className="agent-failure"><strong>{focused.label} session failed</strong><p>{focused.failure}</p></div> : null}
+        {visibleActivity.map((entry) => {
+          const isOpen = expanded.has(entry.id);
+          if (entry.category === "file") return <article className="activity-entry" key={`${entry.role}:${entry.id}`}>
+            <time>{activityTime(entry.timestamp)}</time><div className="activity-content">
+              <div className="file-activity-title"><i /><strong>{entry.name}</strong><span>{entry.path || entry.summary}</span>{entry.path ? <button onClick={() => onOpenFile(entry.path)}>Open in Code</button> : null}</div>
+              {entry.diff ? <div className="activity-diff">{entry.diff.split("\n").map((line, index) => <div className={line.startsWith("@@") ? "hunk" : line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : "context"} key={index}><span>{line.startsWith("+") ? "+" : line.startsWith("-") ? "−" : ""}</span><code>{line.startsWith("@@") ? line : line.slice(1)}</code></div>)}</div> : null}
+            </div>
+          </article>;
+          if (entry.category === "message") return <article className="activity-entry" key={`${entry.role}:${entry.id}`}><time>{activityTime(entry.timestamp)}</time><div className="activity-message"><strong>{entry.name}</strong><p>{entry.summary}</p>{entry.detail ? <small>{entry.detail}</small> : null}</div></article>;
+          if (entry.category === "error") return <article className="activity-entry" key={`${entry.role}:${entry.id}`}><time>{activityTime(entry.timestamp)}</time><div className="activity-error">{entry.summary || entry.detail}</div></article>;
+          return <article className="activity-entry" key={`${entry.role}:${entry.id}`}><time>{activityTime(entry.timestamp)}</time><div className="activity-content">
+            <button className="tool-activity-title" onClick={() => setExpanded((previous) => { const next = new Set(previous); if (next.has(entry.id)) next.delete(entry.id); else next.add(entry.id); return next; })}><span>{isOpen ? "−" : "+"}</span><strong>{entry.name}</strong><span>{entry.summary}</span><em className={entry.state}>{entry.state}</em></button>
+            {isOpen && entry.detail ? <pre>{entry.detail}</pre> : null}
+          </div></article>;
+        })}
+        {visibleActivity.length === 0 ? <p className="empty activity-empty">Nothing matches this filter in {focused?.label ?? "this agent"}'s session.</p> : null}
+      </div>
+    </section>
+  </>;
+}
+
 function Workspace({ project }: { project: string }) {
-  const [activeArea, setActiveArea] = useState<"model" | "code">("model");
+  const [activeArea, setActiveArea] = useState<"model" | "code" | "agents">("model");
   const [run, setRun] = useState<Run | null>(null);
   const [shopOpen, setShopOpen] = useState(false);
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
@@ -1109,6 +1351,7 @@ function Workspace({ project }: { project: string }) {
   const [modelBuildError, setModelBuildError] = useState<string | null>(null);
   const [sourceEvent, setSourceEvent] = useState<SourceEvent | null>(null);
   const [sourceReconnect, setSourceReconnect] = useState(0);
+  const [requestedOpen, setRequestedOpen] = useState<{ path: string; nonce: number } | null>(null);
   const streamOpened = useRef(false);
   const latestEvent = useRef(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -1193,17 +1436,31 @@ function Workspace({ project }: { project: string }) {
         setSourceEvent({ ...(event.payload as SourceInvalidation), sequence: event.event.sequence });
         return;
       }
+      if (event.kind === "agent_activity") {
+        const activity = event.payload as AgentActivity;
+        setRun((previous) => {
+          if (!previous) return previous;
+          const matching = previous.activity.findIndex((item) => item.role === activity.role && item.id === activity.id);
+          if (matching === -1) return { ...previous, activity: [...previous.activity, activity].slice(-400) };
+          const next = previous.activity.slice();
+          next[matching] = activity;
+          return { ...previous, activity: next };
+        });
+        return;
+      }
       if (
         !event.kind.startsWith("agent_")
         && !event.kind.startsWith("work_")
         && !event.kind.startsWith("direct_work_")
       ) return;
-      const { role, label, state, failure } = event.payload as Agent;
+      const nextAgent = event.payload as Partial<Agent> & { role: string };
+      const { role } = nextAgent;
       setRun((previous) => {
         if (!previous) return previous;
+        const existing = previous.agents.find((agent) => agent.role === role);
         const agents = previous.agents.filter((agent) => agent.role !== role);
-        if (state !== null && event.kind !== "agent_stopped") {
-          agents.push({ role, label, state, failure });
+        if (event.kind !== "agent_stopped" && (existing || nextAgent.label)) {
+          agents.push({ ...existing, ...nextAgent } as Agent);
         }
         return { ...previous, agents: agents.sort((left, right) => left.role.localeCompare(right.role)) };
       });
@@ -1254,7 +1511,7 @@ function Workspace({ project }: { project: string }) {
               aria-current={activeArea === id ? "page" : undefined}
               data-workspace-area={id}
               disabled={!interactive}
-              onClick={() => { if (id === "model" || id === "code") setActiveArea(id); }}
+          onClick={() => { if (id === "model" || id === "code" || id === "agents") setActiveArea(id); }}
             >
               <span className={`rail-icon rail-icon-${id}`} aria-hidden="true">{icon}</span>
               <span>{label}</span>
@@ -1278,6 +1535,16 @@ function Workspace({ project }: { project: string }) {
           sourceEvent={sourceEvent}
           reconnect={sourceReconnect}
           visible={activeArea === "code"}
+          requestedOpen={requestedOpen}
+        />
+        <AgentsWorkspace
+          sessionId={sessionId}
+          run={run}
+          visible={activeArea === "agents"}
+          onOpenFile={(path) => {
+            setRequestedOpen({ path, nonce: Date.now() });
+            setActiveArea("code");
+          }}
         />
         <section className="conversation" aria-label="Chat">
           <header className="conversation-header">

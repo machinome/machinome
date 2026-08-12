@@ -33,8 +33,10 @@ Agents receive `FLOOR_SESSION` beside `FLOOR_URL`, and every agent-facing API
 route resolves that identifier through the registry. An unknown or expired
 identifier is a 404 and never falls back to a project name or another session.
 Closing removes both registry indexes before boundedly ending agents, routing
-tasks and watchers. Sessions persist nothing; reopening a project generates a
-new identifier and a fresh broker and conversation.
+tasks and watchers. Conversation, activity, temporary runtime overrides, and
+broker state are session-local; reopening generates a new identifier and fresh
+state. A maker may explicitly persist an idle role's supported model/reasoning
+change into the existing project runtime table.
 
 ## Profile-defined runtime
 
@@ -53,7 +55,9 @@ reasoning level per agent under `[tool.solid-node-studio.agents]`; profile tool
 policy and Claude permission remain non-overridable. OpenCode has no profile
 table and is available only through an explicit project selection. Creating a
 project records the profile selected in the hub in that repository's initial
-commit.
+commit. During an open session, backend and provider remain fixed. A supported
+idle role may replace model and reasoning together for later turns, temporarily
+or with a revision-checked update to the same project table.
 
 The profile's Claude tool list is also the shared capability vocabulary for
 scoped Claude and OpenCode sessions. The adapters resolve those names to a
@@ -97,7 +101,10 @@ sender, recipient, assignment edge, reporting edge, lifecycle operation, and
 conversation author against the active profile. Browser run state contains the
 stable profile ID, human label, user-facing agent, and full declared roster.
 Only output from the selected profile's user-facing agent enters the user
-conversation.
+conversation. Browser state also contains each role's resolved runtime,
+backend-native idle flag, authoritative combined editability, and a bounded
+normalized activity history. Running and terminal forms of one activity share
+a stable role/id key and replace rather than duplicate each other.
 
 Direct profiles have no assignment identity or assignment lifecycle. A direct
 user direction is delivered to the user-facing agent; only a matching backend
@@ -142,16 +149,29 @@ backend's notice-only operation for the exact active delivery. Rejection or a
 completion race retains the notice for the next ordinary delivery; notice-only
 delivery never opens a replacement session or starts a turn.
 
+Runtime mutation uses the same per-role lock as delivery. The orchestrator
+requires no active native delivery, failure, current assignment, pending
+assignment, or active broker work, and rejects any backend or provider change.
+Model and reasoning are one runtime value. For persisted changes the session
+prepares a comment-preserving TOML edit against its content revision; while the
+role gate remains held, the orchestrator updates the backend and invokes the
+atomic file publication before changing its runtime map or publishing browser
+state. A publication failure restores the old backend runtime first.
+
 ## Backend seam
 
 The portable `AgentBackend` protocol owns external processes and exposes
 `open_role`, `deliver_start`, `deliver_steer`, `deliver_notice`, `interrupt`,
-`close_role`, and `close`. It emits portable role-message, turn, and failure
-events. `deliver_notice` is steer-only: each adapter verifies that the expected
+`close_role`, `runtime_catalog`, `update_runtime`, and `close`. It emits
+portable role-message, turn, failure, and normalized activity events.
+`deliver_notice` is steer-only: each adapter verifies that the expected
 delivery is still active and returns false instead of starting a turn. The
 protocol has no generic compatibility delivery operation.
 
-Codex translates the resolved project/profile model and effort into `thread/start`.
+Codex translates the resolved project/profile model and effort into
+`thread/start` and supplies the current model and effort again on each
+`turn/start`, allowing an idle role to change later turns without replacing its
+thread. It defensively normalizes command, MCP-tool, and file-change items.
 Claude launches one isolated CLI process per profile agent and translates the
 selected model, effort, permitted tools, and explicit permission policy into
 its supported command fields. For a scoped role it writes a strict MCP config,
@@ -164,8 +184,10 @@ the floor server connected with exactly that tool set, waiting through
 transitional `pending` frames within a separate bounded readiness deadline. An autonomous Claude policy
 bypasses confirmation prompts only for those tools; it does not grant extras or
 provide operating-system sandboxing. An unscoped compatibility role retains
-safe mode. These two adapters consume one resolved runtime and never parse
-project or profile files or load global role adapters.
+safe mode. Claude normalizes completed tool-use blocks but exposes no mutable
+runtime catalogue: model changes require a new process, for which context
+preservation has not been verified. These two adapters consume one resolved
+runtime and never parse project or profile files or load global role adapters.
 
 The floor MCP server is rooted at the exact active project. Every path-bearing
 filesystem, Git, and solid-node operation resolves and rejects escapes before
@@ -191,7 +213,10 @@ role session IDs, preserving completion and failure delivery across those
 isolated directories, while the MCP server remains rooted at the verified
 project. Every role delivery
 carries the exact profile prompt and exact allowlisted skill instructions as
-that session's system contract.
+that session's system contract. For a provider-pinned role the adapter queries
+OpenCode's live catalogue, limits choices to that same provider, and may replace
+the model/variant used by later prompts without replacing the session. Tool and
+patch parts are normalized into the portable activity schema.
 
 OpenCode native project configuration is disabled. If the exact verified
 project-root `AGENTS.md` is a regular non-symlink file, the adapter manually
@@ -227,6 +252,17 @@ profile-provided roster labels, conversation attribution, and event summaries;
 it does not encode a participant's role. The transcript is independently
 scrollable, reveals newly appended messages, sends a non-empty draft on Enter,
 and inserts a newline on Ctrl+Enter.
+
+Model, Code, and Agents are mounted workspace peers sharing that conversation
+and the session's single snapshot/SSE connection. Agents selects one roster
+role, renders normalized messages, tools, results, failures, file diffs, and
+honest native token counts, and can open an activity path in the existing Code
+workspace. Its explicit Apply control fetches the role-owned catalogue, remains
+disabled unless the server reports the role idle, and defaults to writing the
+selection to `pyproject.toml`; unchecking persistence creates a session-only
+override. The corresponding GET/PATCH runtime routes are role- and
+session-scoped, revision-check durable writes, and never accept backend or
+provider migration. No polling or second lifecycle connection is introduced.
 
 Floor serves published `_build/` artifacts beneath a project-scoped browser
 path and, separately, the exact regular non-symlink root `screenshot.png` for
@@ -268,8 +304,8 @@ updates the separate build-failure banner. A failed targeted request reports
 beside the retained model and the next publication retries normally; the browser
 does not remount the viewer or interpret artifact contents.
 
-The activity rail has interactive Model and Code areas, in that order; Agents
-and Sheets remain deferred and there is no Files area. Code shows the
+The activity rail has interactive Model, Code, and Agents areas, in that order;
+Sheets remains deferred and there is no Files area. Code shows the
 Git-visible project-root navigator with an always-open root and initially
 collapsed, independently operable directories. One monochrome inline-SVG icon
 family distinguishes folders, Markdown, PNG, Python, and generic files. The
@@ -280,7 +316,7 @@ maker text and expose the external document as an explicit reload conflict. A
 PNG instead opens a closable read-only image tab backed by the bounded preview
 operation and never creates a Monaco model. Source invalidations refresh the
 tree, so an agent-created non-ignored untracked file appears without
-instrumenting agent tools. Model, Code, and conversation components remain
+instrumenting agent tools. Model, Code, Agents, and conversation components remain
 mounted while visibility changes, preserving viewer, editor, transcript,
 scroll, and draft state.
 
@@ -289,7 +325,8 @@ complete project inventory, including each usable screenshot's content revision,
 and then carries project opening, open, failed, closed, and screenshot-revision
 changes. A workspace holds one connection to its session stream. It
 opens with that broker's complete run state and full ordered conversation, then
-carries only that project's subsequent changes, including source invalidations.
+carries only that project's subsequent changes, including source invalidations,
+runtime/idle state, and normalized agent activity.
 Neither scope polls live state, and the hub never receives a conversation. A
 broker subscribes the connection before reading the snapshot, and its snapshot
 carries the explicit latest event sequence so the browser can discard that
@@ -315,8 +352,9 @@ Connection state drives the displayed open/closed lifecycle; reconnecting an
 intact session also prompts the mounted viewer to re-read its model because
 artifact events are not recoverable broker state. Reconnect also re-lists the
 source tree and re-reads every open source path, using the same clean-update or
-dirty-conflict rule as a live invalidation. The bounded broker event history is
-reserved for a future activity display and is never read for recovery.
+dirty-conflict rule as a live invalidation. Bounded normalized activity is part
+of the snapshot and repopulates the Agents feed after reconnect; generic broker
+event history remains display metadata rather than a recovery log.
 
 ## Workspace boundaries
 

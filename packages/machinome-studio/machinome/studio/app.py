@@ -18,7 +18,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from watchdog.observers import Observer
 
-from .profiles import RuntimeProfile, load_profile, resolve_profile_runtime
+from .backends.base import AgentActivity
+from .profiles import BackendRuntime, RuntimeProfile, load_profile, resolve_profile_runtime
 from .preparation import PreparationError, verified_project_root
 from .screenshots import is_safe_screenshot, screenshot_path
 from .source_files import SourceConflict, SourceUnavailable
@@ -41,14 +42,36 @@ class Agent:
     pending_assignments: list[str] = field(default_factory=list)
     direct_delivery_id: str = ""
     failure: str = ""
+    backend: str = ""
+    provider: str = ""
+    model: str = ""
+    effort: str = ""
+    tools: str | list[str] = "inherit"
+    backend_idle: bool = True
 
-    def browser_value(self) -> dict[str, str]:
+    def browser_value(self) -> dict[str, object]:
         return {
             "role": self.role,
             "label": self.label,
             "state": self.state,
             "failure": self.failure,
+            "backend": self.backend,
+            "provider": self.provider or None,
+            "model": self.model,
+            "effort": self.effort,
+            "tools": self.tools,
+            "backend_idle": self.backend_idle,
+            "runtime_idle": self.runtime_idle,
+            "assignment_id": self.assignment_id or None,
+            "pending_assignments": list(self.pending_assignments),
         }
+
+    @property
+    def runtime_idle(self) -> bool:
+        return (
+            self.state == "waiting" and not self.failure and self.backend_idle
+            and not self.assignment_id and not self.pending_assignments
+        )
 
 
 @dataclass(frozen=True)
@@ -136,6 +159,13 @@ class SourceSaveInput(BaseModel):
     expected_revision: str
 
 
+class RuntimeUpdateInput(BaseModel):
+    model: str
+    effort: str
+    persist: bool = True
+    expected_revision: str | None = None
+
+
 class Broker:
     """One in-memory run's portable coordination state."""
 
@@ -159,6 +189,8 @@ class Broker:
         self._next_notice_sequence = 0
         self.system_notices: dict[str, list[SystemNotice]] = {}
         self.model_build_error: str | None = None
+        self.activity: deque[dict[str, object]] = deque(maxlen=400)
+        self._activity_sequence = 0
 
     def run(self) -> dict[str, object]:
         return {
@@ -172,6 +204,7 @@ class Broker:
             "events": [event.browser_value() for event in self.events],
             "latest_event_sequence": self.latest_event_sequence,
             "model_build_error": self.model_build_error,
+            "activity": list(self.activity),
         }
 
     def snapshot(self) -> dict[str, object]:
@@ -194,10 +227,62 @@ class Broker:
             raise ValueError("unknown agent role")
         if role in self.agents:
             raise ValueError("agent already manifested")
-        agent = Agent(role=role, label=label, state="waiting")
+        runtime = declared.runtime
+        agent = Agent(
+            role=role,
+            label=label,
+            state="waiting",
+            backend=runtime.backend if runtime is not None else "",
+            provider=(runtime.provider or "") if runtime is not None else "",
+            model=runtime.model if runtime is not None else "",
+            effort=runtime.effort if runtime is not None else "",
+            tools=(runtime.tools if isinstance(runtime.tools, str) else list(runtime.tools)) if runtime is not None else "inherit",
+        )
         self.agents[role] = agent
         self.publish("agent_manifested", agent)
         return agent
+
+    def runtime_changed(self, role: str, runtime: BackendRuntime) -> Agent:
+        agent = self._agent(role)
+        agent.backend = runtime.backend
+        agent.provider = runtime.provider or ""
+        agent.model = runtime.model
+        agent.effort = runtime.effort
+        agent.tools = runtime.tools if isinstance(runtime.tools, str) else list(runtime.tools)
+        self.publish("agent_runtime_changed", agent, role=role)
+        return agent
+
+    def backend_idle_changed(self, role: str, idle: bool) -> Agent:
+        agent = self._agent(role)
+        if agent.backend_idle == idle:
+            return agent
+        agent.backend_idle = idle
+        self.publish("agent_backend_idle_changed", agent, role=role)
+        return agent
+
+    def runtime_idle(self, role: str) -> bool:
+        return self._agent(role).runtime_idle
+
+    def record_activity(self, activity: AgentActivity) -> dict[str, object]:
+        self._agent(activity.role)
+        key = (activity.role, activity.id)
+        previous = next(
+            (item for item in self.activity if (item.get("role"), item.get("id")) == key),
+            None,
+        )
+        self._activity_sequence += 1
+        value = asdict(activity)
+        value["sequence"] = self._activity_sequence
+        value["timestamp"] = activity.timestamp or datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        value = {name: item for name, item in value.items() if item not in ("", None)}
+        if previous is not None:
+            items = list(self.activity)
+            items[items.index(previous)] = value
+            self.activity = deque(items, maxlen=self.activity.maxlen)
+        else:
+            self.activity.append(value)
+        self.publish("agent_activity", value, role=activity.role)
+        return value
 
     def stop(self, role: str) -> Agent:
         agent = self.agents.pop(role, None)
@@ -604,6 +689,10 @@ class Broker:
             return f"{labels.get(role, role.title())} failed"
         if kind == "agent_recovered":
             return f"{labels.get(role, role.title())} recovered"
+        if kind == "agent_runtime_changed":
+            return f"Runtime changed · {labels.get(role, role.title())}"
+        if kind == "agent_activity":
+            return f"Activity · {labels.get(role, role.title())}"
         if kind.endswith("_available"):
             name = kind.removesuffix("_available").replace("_", " ").title()
             return f"{name} · {labels.get(sender, sender.title())} → {labels.get(recipient, recipient.title())}"
@@ -728,6 +817,38 @@ def create_app(working_folder: Path, *, registry: object) -> FastAPI:
     @app.get("/api/sessions/{session_id}")
     async def run(session_id: str) -> dict[str, object]:
         return session(session_id).broker.run()
+
+    @app.get("/api/sessions/{session_id}/agents/{role}/runtime")
+    async def agent_runtime_catalog(session_id: str, role: str) -> JSONResponse:
+        try:
+            return JSONResponse(await session(session_id).runtime_catalog(role))
+        except ValueError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        except RuntimeError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+
+    @app.patch("/api/sessions/{session_id}/agents/{role}/runtime")
+    async def update_agent_runtime(
+        session_id: str,
+        role: str,
+        input: RuntimeUpdateInput,
+    ) -> JSONResponse:
+        from .runtime_config import RuntimeConfigConflict
+
+        try:
+            return JSONResponse(await session(session_id).update_runtime(
+                role,
+                input.model,
+                input.effort,
+                persist=input.persist,
+                expected_revision=input.expected_revision,
+            ))
+        except RuntimeConfigConflict as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        except RuntimeError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
 
     @app.get("/api/sessions/{session_id}/conversation")
     async def conversation(session_id: str) -> dict[str, object]:

@@ -8,15 +8,15 @@ import json
 import os
 import shlex
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from collections.abc import Mapping, Sequence
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 import uvicorn
 
 from .app import Broker, Envelope, SystemNotice, create_app
-from .backends.base import AgentBackend, BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle
+from .backends.base import AgentActivity, AgentBackend, BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle, RuntimeCatalogue
 from .backends import create_backend, parse_backend_command_overrides
 from .preparation import (
     PreparationError,
@@ -26,7 +26,7 @@ from .preparation import (
     read_project_runtime,
     shop_resource_root,
 )
-from .profiles import ProfileError, RuntimeProfile, load_profile, resolve_profile_runtime
+from .profiles import BackendRuntime, ProfileError, RuntimeProfile, load_profile, resolve_profile_runtime
 
 
 class BrokerControl(Protocol):
@@ -41,6 +41,10 @@ class BrokerControl(Protocol):
     async def mark_delivery_failed(self, sequence: int, error: str) -> None: ...
     async def pending_system_notices(self, role: str) -> list[SystemNotice | dict[str, object]]: ...
     async def mark_system_notices_delivered(self, role: str, sequences: list[int]) -> None: ...
+    async def record_activity(self, activity: AgentActivity) -> None: ...
+    async def runtime_changed(self, role: str, runtime: BackendRuntime) -> None: ...
+    async def backend_idle_changed(self, role: str, idle: bool) -> None: ...
+    async def runtime_idle(self, role: str) -> bool: ...
 
 
 @dataclass
@@ -87,6 +91,18 @@ class LocalBrokerControl:
     async def mark_system_notices_delivered(self, role: str, sequences: list[int]) -> None:
         self.broker.mark_system_notices_delivered(role, sequences)
 
+    async def record_activity(self, activity: AgentActivity) -> None:
+        self.broker.record_activity(activity)
+
+    async def runtime_changed(self, role: str, runtime: BackendRuntime) -> None:
+        self.broker.runtime_changed(role, runtime)
+
+    async def backend_idle_changed(self, role: str, idle: bool) -> None:
+        self.broker.backend_idle_changed(role, idle)
+
+    async def runtime_idle(self, role: str) -> bool:
+        return self.broker.runtime_idle(role)
+
 
 class ShopOrchestrator:
     """Own role sessions and perform only deterministic lifecycle and routing."""
@@ -122,9 +138,14 @@ class ShopOrchestrator:
         self.shop_root = shop_root.resolve()
         self.active_project = active_project.resolve()
         self.roles: dict[str, RoleRuntime] = {}
+        self._runtimes = {
+            agent.id: agent.runtime for agent in self.profile.agents
+            if agent.runtime is not None
+        }
         self._delivery_locks = {agent.id: asyncio.Lock() for agent in self.profile.agents}
         self._started_deliveries: set[tuple[str, str]] = set()
         self._completed_deliveries: set[tuple[str, str]] = set()
+        self._activity_sequence = 0
 
     async def open(self) -> None:
         """Start the backend and open one persistent session per role."""
@@ -136,6 +157,8 @@ class ShopOrchestrator:
                 handle = await self._backend(role).open_role(role, self._role_context(role))
                 self.roles[role] = RoleRuntime(handle=handle)
                 await self.broker.manifest(role, agent.label)
+                await self.broker.runtime_changed(role, self.current_runtime(role))
+                await self.broker.backend_idle_changed(role, True)
         except BaseException as opening_error:
             try:
                 await self.close()
@@ -275,6 +298,7 @@ class ShopOrchestrator:
         """Correlate a start receipt with events that may have won the race."""
         key = (role, delivery_id)
         runtime.active_delivery_id = delivery_id
+        await self.broker.backend_idle_changed(role, False)
         direct = self.profile.work_mode == "direct" and role == self.profile.user_agent_id
         if direct:
             await self.broker.register_direct_delivery(role, delivery_id)
@@ -282,6 +306,7 @@ class ShopOrchestrator:
                 await self.broker.turn_started(role, delivery_id)
         if key in self._completed_deliveries:
             runtime.active_delivery_id = None
+            await self.broker.backend_idle_changed(role, True)
             if direct:
                 await self.broker.turn_completed(role, delivery_id)
 
@@ -290,6 +315,19 @@ class ShopOrchestrator:
         if event.kind == "role_message" and event.role == self.profile.user_agent_id:
             if event.text and event.text.strip():
                 await self.broker.record_conversation(self.profile.user_agent_id, event.text.strip())
+                self._activity_sequence += 1
+                await self.broker.record_activity(AgentActivity(
+                    id=f"message-{self._activity_sequence}", role=event.role,
+                    category="message", state="completed", name=event.role,
+                    summary=event.text.strip(),
+                ))
+        elif event.kind == "role_message" and event.role is not None and event.text and event.text.strip():
+            self._activity_sequence += 1
+            await self.broker.record_activity(AgentActivity(
+                id=f"message-{self._activity_sequence}", role=event.role,
+                category="message", state="completed", name=event.role,
+                summary=event.text.strip(),
+            ))
         elif event.kind == "turn_started":
             runtime = self.roles.get(event.role or "")
             if runtime is not None and event.role is not None and event.delivery_id is not None:
@@ -309,6 +347,7 @@ class ShopOrchestrator:
                 self._completed_deliveries.add(key)
                 if runtime.active_delivery_id == event.delivery_id:
                     runtime.active_delivery_id = None
+                    await self.broker.backend_idle_changed(event.role, True)
                     if self.profile.work_mode == "direct" and event.role == self.profile.user_agent_id:
                         await self.broker.turn_completed(event.role, event.delivery_id)
         elif event.kind == "role_failed":
@@ -326,11 +365,23 @@ class ShopOrchestrator:
                     key for key in self._completed_deliveries if key[0] != role
                 }
                 await self.broker.role_failed(role, event.error or "unknown error")
+                await self.broker.backend_idle_changed(role, False)
+                self._activity_sequence += 1
+                await self.broker.record_activity(AgentActivity(
+                    id=f"failure-{self._activity_sequence}",
+                    role=role,
+                    category="error",
+                    state="failed",
+                    name="agent failed",
+                    summary=event.error or "unknown error",
+                ))
+        elif event.kind == "activity" and event.activity is not None:
+            await self.broker.record_activity(event.activity)
         elif event.kind == "backend_failed":
             raise RuntimeError(f"agent backend failed: {event.error or 'unknown error'}")
 
     def _role_context(self, role: str) -> RoleContext:
-        agent = self.profile.agent(role)
+        agent = replace(self.profile.agent(role), runtime=self.current_runtime(role))
         return RoleContext(
             shop_root=str(self.shop_root),
             active_project=str(self.active_project),
@@ -342,6 +393,56 @@ class ShopOrchestrator:
 
     def _backend(self, role: str) -> AgentBackend:
         return self.backends_by_agent[role]
+
+    def current_runtime(self, role: str) -> BackendRuntime:
+        try:
+            return self._runtimes[role]
+        except KeyError as error:
+            raise ValueError(f"unknown orchestrated role: {role}") from error
+
+    async def runtime_catalog(self, role: str) -> RuntimeCatalogue:
+        runtime = self.roles.get(role)
+        if runtime is None or runtime.handle is None:
+            raise ValueError(f"unknown orchestrated role: {role}")
+        return await self._backend(role).runtime_catalog(runtime.handle)
+
+    async def update_runtime(
+        self,
+        role: str,
+        requested: BackendRuntime,
+        *,
+        commit: Callable[[], None] | None = None,
+    ) -> BackendRuntime:
+        runtime = self.roles.get(role)
+        if runtime is None:
+            raise ValueError(f"unknown orchestrated role: {role}")
+        async with self._delivery_locks[role]:
+            current = self.current_runtime(role)
+            if requested.backend != current.backend or requested.provider != current.provider:
+                raise ValueError("runtime update cannot change backend or provider")
+            if runtime.failed or runtime.handle is None or runtime.active_delivery_id is not None:
+                raise RuntimeError(f"{role} is not idle")
+            if not await self.broker.runtime_idle(role):
+                raise RuntimeError(f"{role} is not idle")
+            catalogue = await self._backend(role).runtime_catalog(runtime.handle)
+            if not catalogue.supported:
+                raise RuntimeError(catalogue.reason or "runtime changes are unsupported")
+            choice = next((item for item in catalogue.choices if item.model == requested.model), None)
+            if choice is None or requested.effort not in choice.efforts:
+                raise ValueError("unsupported model and reasoning selection")
+            await self._backend(role).update_runtime(runtime.handle, requested)
+            if not await self.broker.runtime_idle(role):
+                await self._backend(role).update_runtime(runtime.handle, current)
+                raise RuntimeError(f"{role} became active while its runtime was changing")
+            if commit is not None:
+                try:
+                    commit()
+                except BaseException:
+                    await self._backend(role).update_runtime(runtime.handle, current)
+                    raise
+            self._runtimes[role] = requested
+            await self.broker.runtime_changed(role, requested)
+            return requested
 
     def _message(
         self,

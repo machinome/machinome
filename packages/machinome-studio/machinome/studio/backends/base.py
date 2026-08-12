@@ -10,9 +10,9 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 
-from ..profiles import ProfileAgent
+from ..profiles import BackendRuntime, ProfileAgent
 
 
 # ── delivery races ────────────────────────────────────────────────────────
@@ -74,6 +74,44 @@ class DeliveryReceipt:
     """True if the backend accepted the input; False if a completion race lost."""
 
 
+# ── runtime catalogues and activity ────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class RuntimeChoice:
+    """One backend-owned model choice and its supported reasoning values."""
+
+    model: str
+    efforts: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class RuntimeCatalogue:
+    """Whether and how one existing role session can change runtime."""
+
+    supported: bool
+    choices: tuple[RuntimeChoice, ...] = ()
+    reason: str = ""
+
+
+@dataclass(frozen=True)
+class AgentActivity:
+    """Portable, browser-safe activity emitted by one role session."""
+
+    id: str
+    role: str
+    category: Literal["tool", "file", "message", "error"]
+    state: Literal["running", "completed", "failed"]
+    name: str
+    summary: str
+    detail: str = ""
+    path: str = ""
+    diff: str = ""
+    timestamp: str = ""
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
+
 # ── backend events ─────────────────────────────────────────────────────────
 
 
@@ -88,6 +126,7 @@ class BackendEvent:
     text: str | None = None
     delivery_id: str | None = None
     error: str | None = None
+    activity: AgentActivity | None = None
 
 
 # ── AgentBackend protocol ──────────────────────────────────────────────────
@@ -154,6 +193,14 @@ class AgentBackend(Protocol):
 
     async def close_role(self, handle: RoleHandle) -> None:
         """Release a role session (best-effort, graceful)."""
+        ...
+
+    async def runtime_catalog(self, handle: RoleHandle) -> RuntimeCatalogue:
+        """Describe context-preserving runtime choices for an existing role."""
+        ...
+
+    async def update_runtime(self, handle: RoleHandle, runtime: BackendRuntime) -> None:
+        """Apply model and effort to the same persistent role session."""
         ...
 
     async def close(self) -> None:

@@ -248,6 +248,115 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_title("model.py").click()
         self.page.locator(".monaco-editor").wait_for()
         self.page.get_by_text("model = True", exact=False).wait_for()
+
+    def test_agents_workspace_is_interactive_mounted_and_reachable_at_narrow_width(self) -> None:
+        self._make_project("agents-workspace")
+        session_id = self._open("agents-workspace")
+        _request(
+            self.url(f"/api/sessions/{session_id}/agents"), "POST",
+            {"role": "builder", "label": "Builder"},
+        )
+        run = _request(self.url(f"/api/sessions/{session_id}"), "GET")
+        agent = run["agents"][0]
+        agent.update({
+            "backend": "codex", "provider": None, "model": "gpt-5.3-codex-spark",
+            "effort": "high", "runtime_idle": True, "backend_idle": True,
+        })
+        run["activity"] = [
+            {
+                "id": "tool-1", "sequence": 1, "role": "builder", "category": "tool",
+                "state": "completed", "name": "solid_test", "summary": "tests/test_model.py",
+                "detail": "8 passed", "path": "", "diff": "", "timestamp": "2026-08-12T08:42:20Z",
+                "input_tokens": 120, "output_tokens": 30,
+            },
+            {
+                "id": "file-1", "sequence": 2, "role": "builder", "category": "file",
+                "state": "completed", "name": "edit_file", "summary": "root/__init__.py",
+                "detail": "", "path": "root/__init__.py",
+                "diff": "@@ -1 +1 @@\n-# model\n+# revised model", "timestamp": "2026-08-12T08:42:44Z",
+                "input_tokens": None, "output_tokens": None,
+            },
+        ]
+        snapshot = {"run": run, "conversation": []}
+        self.page.route(
+            f"**/api/sessions/{session_id}/stream",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="text/event-stream",
+                body=f"event: snapshot\ndata: {json.dumps(snapshot)}\n\n",
+            ),
+        )
+        revision = "a" * 64
+        runtime_requests: list[dict[str, object]] = []
+        stale = {"enabled": False}
+
+        def runtime_route(route) -> None:
+            if route.request.method == "PATCH":
+                runtime_requests.append(route.request.post_data_json)
+                if stale["enabled"]:
+                    stale["enabled"] = False
+                    route.fulfill(status=409, content_type="application/json", body=json.dumps({"detail": "pyproject.toml changed since the controls were loaded"}))
+                    return
+                body = route.request.post_data_json
+                route.fulfill(status=200, content_type="application/json", body=json.dumps({
+                    "config_revision": revision, "persisted": body["persist"],
+                }))
+                return
+            route.fulfill(status=200, content_type="application/json", body=json.dumps({
+                "role": "builder",
+                "runtime": {"backend": "codex", "provider": None, "model": "gpt-5.3-codex-spark", "effort": "high"},
+                "supported": True,
+                "reason": None,
+                "choices": [
+                    {"model": "gpt-5.3-codex-spark", "efforts": ["high"]},
+                    {"model": "gpt-5.6-sol", "efforts": ["medium", "high"]},
+                ],
+                "config_revision": revision,
+                "runtime_idle": True,
+            }))
+
+        self.page.route(f"**/api/sessions/{session_id}/agents/builder/runtime", runtime_route)
+        self.page.goto(self.url("/projects/agents-workspace"))
+        composer = self.page.get_by_role("textbox", name="Message", exact=True)
+        composer.fill("keep this draft")
+
+        self.page.get_by_role("button", name="Agents", exact=True).click()
+        self.page.locator(".agents-area").wait_for()
+        self.page.get_by_text("Session migration between backends is not supported.").wait_for()
+        self.assertTrue(self.page.get_by_label("write to pyproject.toml").is_checked())
+        self.assertTrue(self.page.get_by_role("button", name="Apply", exact=True).is_disabled())
+        self.assertEqual(self.page.locator('[data-agent-role="builder"].selected').count(), 1)
+
+        self.page.get_by_role("button", name="tools 1", exact=True).click()
+        self.page.get_by_role("button", name="solid_test", exact=False).click()
+        self.page.get_by_text("8 passed", exact=True).wait_for()
+        self.page.get_by_role("button", name="files 1", exact=True).click()
+        self.page.get_by_text("# revised model", exact=True).wait_for()
+        self.page.get_by_role("button", name="Open in Code", exact=True).click()
+        self.page.locator(".monaco-editor").wait_for(timeout=10_000)
+
+        self.page.get_by_role("button", name="Agents", exact=True).click()
+        self.assertEqual(composer.input_value(), "keep this draft")
+        self.assertEqual(self.page.get_by_role("button", name="files 1", exact=True).get_attribute("class"), "selected")
+
+        self.page.get_by_role("combobox").select_option("gpt-5.6-sol")
+        self.page.get_by_role("button", name="medium", exact=True).click()
+        self.page.get_by_role("button", name="Apply", exact=True).click()
+        self.page.get_by_text("applied · written to pyproject.toml", exact=True).wait_for()
+        self.assertTrue(runtime_requests[-1]["persist"])
+
+        self.page.get_by_label("write to pyproject.toml").uncheck()
+        self.page.get_by_role("button", name="high", exact=True).click()
+        self.page.get_by_role("button", name="Apply", exact=True).click()
+        self.page.get_by_text("applied · this session only", exact=True).wait_for()
+        self.assertFalse(runtime_requests[-1]["persist"])
+
+        stale["enabled"] = True
+        self.page.get_by_role("button", name="Apply", exact=True).click()
+        self.page.get_by_text("pyproject.toml changed since the controls were loaded", exact=True).wait_for()
+        self.page.set_viewport_size({"width": 760, "height": 900})
+        self.assertFalse(self.page.evaluate("() => document.documentElement.scrollWidth > window.innerWidth"))
+
     def test_model_panel_navigates_the_viewer_assembly(self) -> None:
         project = self._make_project("assembly-project")
         (project / ".fake-solid-state.json").write_text(json.dumps({

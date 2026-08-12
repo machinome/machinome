@@ -10,7 +10,10 @@ from floor.backends.base import (
     DeliveryReceipt,
     RoleContext,
     RoleHandle,
+    RuntimeCatalogue,
+    RuntimeChoice,
 )
+from floor.profiles import BackendRuntime
 
 
 class FakeBackend:
@@ -30,6 +33,7 @@ class FakeBackend:
         self.interrupted: list[RoleHandle] = []
         self.closed_roles: list[RoleHandle] = []
         self.closed = False
+        self.runtime_updates: list[tuple[RoleHandle, BackendRuntime]] = []
         self._event_queue: list[BackendEvent] = []
         self._next_role = 0
         self.events = self._event_iterator()
@@ -63,6 +67,12 @@ class FakeBackend:
 
     async def close_role(self, handle: RoleHandle) -> None:
         self.closed_roles.append(handle)
+
+    async def runtime_catalog(self, handle: RoleHandle) -> RuntimeCatalogue:
+        return RuntimeCatalogue(True, (RuntimeChoice("gpt-5.6-sol", ("medium", "high")),))
+
+    async def update_runtime(self, handle: RoleHandle, runtime: BackendRuntime) -> None:
+        self.runtime_updates.append((handle, runtime))
 
     async def close(self) -> None:
         self.closed = True

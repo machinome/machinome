@@ -101,6 +101,24 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/global/health":
             self.reply({"healthy": True, "version": "fake"})
             return
+        if path == "/provider":
+            self.reply({"all": [
+                {
+                    "id": "anthropic",
+                    "models": {
+                        "claude-sonnet-4-5": {
+                            "id": "claude-sonnet-4-5",
+                            "variants": {"medium": {}, "high": {}},
+                        },
+                        "claude-opus-4-1": {
+                            "id": "claude-opus-4-1",
+                            "variants": {"high": {}},
+                        },
+                    },
+                },
+                {"id": "openai", "models": {"gpt-5.6-sol": {"id": "gpt-5.6-sol", "variants": {"high": {}}}}},
+            ]})
+            return
         if path == "/global/event":
             stream: Queue[dict[str, Any] | None] = Queue()
             with LOCK:

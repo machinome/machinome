@@ -5,6 +5,7 @@ from datetime import datetime
 import unittest
 
 from floor.app import Broker
+from floor.backends.base import AgentActivity
 from floor.profiles import load_profile
 
 
@@ -79,6 +80,27 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
         recorded = datetime.fromisoformat(str(snapshot_event["timestamp"]).replace("Z", "+00:00"))
         self.assertIsNotNone(recorded.tzinfo)
         self.assertEqual(recorded.utcoffset().total_seconds(), 0)
+
+    async def test_activity_updates_replace_by_role_and_id_and_history_is_bounded(self) -> None:
+        first = AgentActivity(
+            "tool-1", "designer", "tool", "running", "solid_test", "tests/test_plate.py"
+        )
+        self.broker.record_activity(first)
+        completed = AgentActivity(
+            "tool-1", "designer", "tool", "completed", "solid_test", "8 passed"
+        )
+        self.broker.record_activity(completed)
+
+        matching = [item for item in self.broker.run()["activity"] if item["id"] == "tool-1"]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0]["state"], "completed")
+        self.assertRegex(str(matching[0]["timestamp"]), r"Z$")
+
+        for index in range(405):
+            self.broker.record_activity(AgentActivity(
+                f"message-{index}", "foreman", "message", "completed", "message", str(index)
+            ))
+        self.assertEqual(len(self.broker.run()["activity"]), 400)
 
     async def test_role_failure_and_recovery_are_live_snapshot_state_without_completing_work(self) -> None:
         self.broker.assign("designer", "drawing-1")

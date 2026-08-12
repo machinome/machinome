@@ -130,8 +130,8 @@ The mounted model, editor state, and chat are preserved across the switch.
   dot.
 - **Activity rail** (`#121419`): four items — MODEL (diamond: 14px square
   rotated 45°), CODE (mono `{ }`), AGENTS (circle), and SHEETS (two horizontal
-  rules). Model and Code are interactive; Agents and Sheets are visibly
-  deferred. There is no Files area. Each item is a full-width column,
+  rules). Model, Code, and Agents are interactive; Sheets is visibly deferred.
+  There is no Files area. Each item is a full-width column,
   padding 10px 0, gap 6, with a mono 9px uppercase label. Selected: `#1c2128`
   bg + 2px left border `#e0a350` + amber glyph and label; idle glyph/label
   `#8b929e`; hover `#171b21`. **Do not substitute an icon font — these are the
@@ -219,7 +219,7 @@ Kept on the canvas for context only. 1c moved activity to a bottom drawer,
 
 ## Interactions & behaviour
 
-- **Rail selection** switches Model and Code visibility without unmounting the
+- **Rail selection** switches Model, Code, and Agents visibility without unmounting the
   viewer, Monaco models, or chat. Viewer camera/timeline, file tabs, undo/view
   state, dirty buffers, transcript scroll, and the chat draft survive.
 - **Opening a file** adds a closable source tab. Saving is revision-checked and
@@ -259,8 +259,8 @@ New:
   `workingFolder === null` or no backend is enabled.
 - `workspace.projects` — list from the service: `{ name, branch, lastOpened,
   isOpen, profileId }`.
-- `workspace.activePanel` — `"model" | "code"`; Agents and Sheets remain
-  disabled rail affordances.
+- `workspace.activePanel` — `"model" | "code" | "agents"`; Sheets remains a
+  disabled rail affordance.
 - `workspace.openTabs` / `activeTab` — opened source files only, keyed by
   project-relative path.
 - `workspace.sourceBuffers` — content, saved content, SHA-256 revision,
@@ -292,6 +292,20 @@ Present for Code:
   a read-only Code preview.
 - `PUT /api/sessions/:id/source/:path` — existing content plus expected
   revision; atomically save or return the current document as a conflict.
+
+Present for Agents:
+
+- `GET /api/sessions/:id/agents/:role/runtime` — resolved backend/provider,
+  current model/reasoning, authoritative idle state, config revision, and the
+  backend-owned context-preserving catalogue. OpenCode choices come from its
+  live provider catalogue; Claude reports the control as unsupported.
+- `PATCH /api/sessions/:id/agents/:role/runtime` — model and reasoning plus the
+  optional `pyproject.toml` persistence choice and expected revision. Backend
+  and provider cannot change, and the role must be idle in both broker and
+  native-backend state.
+- The existing session snapshot/SSE carries bounded normalized per-agent
+  activity and runtime/idle updates; Agents does not open another lifecycle
+  connection or poll.
 
 ## Design tokens
 

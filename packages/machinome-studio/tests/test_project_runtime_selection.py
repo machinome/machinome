@@ -6,11 +6,22 @@ import tempfile
 import unittest
 import os
 import sys
+from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import patch
 
+from floor.app import Broker
+from floor.orchestrator import LocalBrokerControl, ShopOrchestrator
 from floor.preparation import ProjectRuntimeError, prepare_project, read_project_runtime
-from floor.profiles import ProfileError, load_profile, resolve_profile_runtime
+from floor.profiles import BackendRuntime, ProfileError, load_profile, resolve_profile_runtime
+from floor.sessions import Session
+from tests.fixtures.fake_backend import FakeBackend
+from floor.runtime_config import (
+    RuntimeConfigConflict,
+    config_revision,
+    prepare_runtime_edit,
+    publish_runtime_edit,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -177,6 +188,99 @@ librarian = "opencode:openai:gpt-5.4:medium"
         self.assertEqual(designer.runtime.tools, default.tools)
         self.assertEqual(designer.runtime.permission, default.permission)
         self.assertEqual(profile.agent("machinist").runtime.effort, profile.agent("machinist").backends["claude"].effort)
+
+
+class RuntimeConfigWriterTest(unittest.TestCase):
+    def test_updates_one_agent_and_preserves_comments_and_framework_table(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "pyproject.toml"
+            path.write_text(
+                '# maker comment\n[tool.solid-node]\nmodel = "root:Assembly"\n\n'
+                '[tool.solid-node-studio]\nprofile = "fordesmac"\n\n'
+                '[tool.solid-node-studio.agents]\ndesigner = "codex:gpt-5.6-terra:medium" # keep\n'
+            )
+            revision = config_revision(path)
+            runtime = BackendRuntime("gpt-5.6-sol", "high", "inherit")
+
+            edit = prepare_runtime_edit(path, "designer", runtime, revision)
+            published = publish_runtime_edit(edit)
+
+            text = path.read_text()
+            self.assertEqual(published, config_revision(path))
+            self.assertIn("# maker comment", text)
+            self.assertIn('model = "root:Assembly"', text)
+            self.assertIn('# keep', text)
+            self.assertIn('designer = "codex:gpt-5.6-sol:high"', text)
+
+    def test_stale_revision_never_overwrites_project_configuration(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "pyproject.toml"
+            path.write_text('[tool.solid-node-studio]\nprofile = "builder"\n')
+            stale = config_revision(path)
+            path.write_text('[tool.solid-node-studio]\nprofile = "fordesmac"\n')
+
+            with self.assertRaises(RuntimeConfigConflict):
+                prepare_runtime_edit(
+                    path, "builder", BackendRuntime("gpt-5.6-sol", "high", "inherit"), stale
+                )
+
+            self.assertEqual(path.read_text(), '[tool.solid-node-studio]\nprofile = "fordesmac"\n')
+
+
+class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
+    async def test_temporary_and_persisted_updates_share_the_atomic_role_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary)
+            path = project / "pyproject.toml"
+            original = '[tool.solid-node-studio]\nprofile = "builder"\n'
+            path.write_text(original)
+            selection = read_project_runtime(project.name, project_home=project.parent)
+            profile = resolve_profile_runtime(load_profile("builder", shop_root=ROOT), selection)
+            broker = Broker(profile, session_id="runtime-test")
+            backend = FakeBackend()
+            orchestrator = ShopOrchestrator(
+                backend,
+                LocalBrokerControl(broker),
+                profile=profile,
+                shop_root=ROOT,
+                active_project=project,
+            )
+            await orchestrator.open()
+            self.addAsyncCleanup(orchestrator.close)
+            session = Session(
+                "runtime-test",
+                project.name,
+                SimpleNamespace(
+                    project_root=project,
+                    artifact_root=project / "_build",
+                    build_environment=None,
+                ),
+                profile,
+                broker,
+                orchestrator=orchestrator,
+            )
+
+            temporary_result = await session.update_runtime(
+                "builder", "gpt-5.6-sol", "high", persist=False, expected_revision=None
+            )
+            self.assertFalse(temporary_result["persisted"])
+            self.assertEqual(path.read_text(), original)
+            self.assertEqual(orchestrator.current_runtime("builder").effort, "high")
+
+            revision = config_revision(path)
+            persisted = await session.update_runtime(
+                "builder", "gpt-5.6-sol", "medium", persist=True, expected_revision=revision
+            )
+            self.assertTrue(persisted["persisted"])
+            self.assertIn('builder = "codex:gpt-5.6-sol:medium"', path.read_text())
+
+            stale = revision
+            current = orchestrator.current_runtime("builder")
+            with self.assertRaises(RuntimeConfigConflict):
+                await session.update_runtime(
+                    "builder", "gpt-5.6-sol", "high", persist=True, expected_revision=stale
+                )
+            self.assertEqual(orchestrator.current_runtime("builder"), current)
 
 
 class ProfileRuntimeTableTest(unittest.TestCase):

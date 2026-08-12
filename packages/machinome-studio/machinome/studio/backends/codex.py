@@ -17,13 +17,18 @@ from pathlib import Path
 from typing import Any
 
 from .base import (
+    AgentActivity,
     AgentBackend,
     BackendEvent,
     DeliveryReceipt,
     InactiveTurn,
     RoleContext,
     RoleHandle,
+    RuntimeCatalogue,
+    RuntimeChoice,
 )
+from ..preparation import CODEX_EFFORTS, CODEX_MODELS
+from ..profiles import BackendRuntime
 
 
 # ── CodexBackend ───────────────────────────────────────────────────────────
@@ -63,6 +68,9 @@ class CodexBackend:
         # Map thread_id → active turn_id. Thread and turn identifiers are
         # distinct on the Codex wire protocol and must never be substituted.
         self._active_turns: dict[str, str] = {}
+        self._runtimes: dict[str, BackendRuntime] = {}
+        self._activity_ids: dict[str, str] = {}
+        self._next_activity = 0
         self._closing = False
         self.events = self._event_iterator()
 
@@ -138,14 +146,21 @@ class CodexBackend:
         thread_id = str(result["thread"]["id"])
         handle = RoleHandle(backend_id=thread_id, role=role)
         self._handles[thread_id] = (role, thread_id)
+        self._runtimes[thread_id] = runtime
         return handle
 
     async def deliver_start(self, handle: RoleHandle, message: str) -> DeliveryReceipt:
         """Start a new turn on an idle role thread."""
         thread_id = handle.backend_id
+        runtime = self._runtimes[thread_id]
         result = await self._request(
             "turn/start",
-            {"threadId": thread_id, "input": [{"type": "text", "text": message}]},
+            {
+                "threadId": thread_id,
+                "input": [{"type": "text", "text": message}],
+                "model": None if runtime.model == "inherit" else runtime.model,
+                "effort": None if runtime.effort == "inherit" else runtime.effort,
+            },
         )
         turn_id = str(result["turn"]["id"])
         self._active_turns[thread_id] = turn_id
@@ -212,6 +227,25 @@ class CodexBackend:
         except RuntimeError as error:
             if "no rollout found for thread id" not in str(error).lower():
                 raise
+        self._runtimes.pop(thread_id, None)
+
+    async def runtime_catalog(self, handle: RoleHandle) -> RuntimeCatalogue:
+        if handle.backend_id not in self._runtimes:
+            raise RuntimeError(f"unknown Codex role session: {handle.role}")
+        efforts = tuple(
+            effort for effort in ("low", "medium", "high", "xhigh", "max", "ultra")
+            if effort in CODEX_EFFORTS
+        )
+        return RuntimeCatalogue(True, tuple(RuntimeChoice(model, efforts) for model in sorted(CODEX_MODELS)))
+
+    async def update_runtime(self, handle: RoleHandle, runtime: BackendRuntime) -> None:
+        if handle.backend_id not in self._runtimes:
+            raise RuntimeError(f"unknown Codex role session: {handle.role}")
+        if runtime.backend != "codex" or runtime.provider is not None:
+            raise ValueError("Codex runtime update cannot change backend or provider")
+        if runtime.model not in CODEX_MODELS or runtime.effort not in CODEX_EFFORTS:
+            raise ValueError("unsupported Codex model and reasoning selection")
+        self._runtimes[handle.backend_id] = runtime
 
     async def close(self) -> None:
         """Stop the app-server process and release OS resources."""
@@ -239,6 +273,7 @@ class CodexBackend:
         self._pending.clear()
         self._active_turns.clear()
         self._handles.clear()
+        self._runtimes.clear()
         self.process = None
         self._reader_task = None
         self._stderr_task = None
@@ -301,6 +336,9 @@ class CodexBackend:
             if role_info is None:
                 return None
             role = role_info[0]
+            activity = self._item_activity(role, item, "completed")
+            if activity is not None:
+                self.notifications.put_nowait(BackendEvent(kind="activity", role=role, activity=activity))
             if (
                 item.get("type") == "agentMessage"
                 and str(item.get("text", "")).strip()
@@ -311,6 +349,14 @@ class CodexBackend:
                     text=str(item["text"]).strip(),
                 )
             return None
+
+        if method == "item/started":
+            item = params.get("item", {})
+            role_info = self._handles.get(params.get("threadId"))
+            if role_info is None:
+                return None
+            activity = self._item_activity(role_info[0], item, "running")
+            return None if activity is None else BackendEvent(kind="activity", role=role_info[0], activity=activity)
 
         if method == "turn/started":
             thread_id = params.get("threadId")
@@ -340,6 +386,31 @@ class CodexBackend:
             )
 
         return None
+
+    def _item_activity(self, role: str, item: dict[str, Any], state: str) -> AgentActivity | None:
+        item_type = str(item.get("type", ""))
+        if item_type == "agentMessage":
+            return None
+        if item_type not in {"commandExecution", "mcpToolCall", "fileChange"}:
+            return None
+        native = str(item.get("id") or f"{item_type}:{item.get('command') or item.get('name')}")
+        name = str(item.get("name") or item.get("command") or item_type)
+        path = str(item.get("path") or "")
+        diff = str(item.get("diff") or item.get("patch") or "")
+        detail = str(item.get("aggregatedOutput") or item.get("output") or item.get("result") or "")
+        failed = item.get("status") in {"failed", "error"} or bool(item.get("error"))
+        return AgentActivity(
+            self._activity_id(native), role, "file" if item_type == "fileChange" or diff else "tool",
+            "failed" if failed else state, name, path or str(item.get("status") or name), detail, path, diff,
+        )
+
+    def _activity_id(self, native: str) -> str:
+        value = self._activity_ids.get(native)
+        if value is None:
+            self._next_activity += 1
+            value = f"activity-{self._next_activity}"
+            self._activity_ids[native] = value
+        return value
 
     # ── JSON-RPC plumbing ────────────────────────────────────────────────
 

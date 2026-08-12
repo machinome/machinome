@@ -43,13 +43,16 @@ from pathlib import Path
 from typing import Any
 
 from .base import (
+    AgentActivity,
     AgentBackend,
     BackendEvent,
     DeliveryReceipt,
     InactiveTurn,
     RoleContext,
     RoleHandle,
+    RuntimeCatalogue,
 )
+from ..profiles import BackendRuntime
 from ..mcp_server import SERVER_NAME, mcp_command, resolved_tool_names
 
 # Terminal reasons the CLI reports for a turn the shop itself interrupted.
@@ -114,6 +117,7 @@ class ClaudeBackend:
         self._readiness_errors: dict[str, str] = {}
         self._readiness_status: dict[str, str] = {}
         self._expected_tools: dict[str, tuple[str, ...]] = {}
+        self._pending_activity: dict[str, list[AgentActivity]] = {}
         self._temporary: tempfile.TemporaryDirectory[str] | None = None
         self._next_delivery = 0
         self._closing = False
@@ -237,6 +241,17 @@ class ClaudeBackend:
     async def close_role(self, handle: RoleHandle) -> None:
         """Release one role's process."""
         await self._stop(handle.backend_id)
+
+    async def runtime_catalog(self, handle: RoleHandle) -> RuntimeCatalogue:
+        return RuntimeCatalogue(
+            False,
+            reason="Claude model changes require a new process and cannot preserve this session's context",
+        )
+
+    async def update_runtime(self, handle: RoleHandle, runtime: BackendRuntime) -> None:
+        raise RuntimeError(
+            "Claude model changes require a new process and cannot preserve this session's context"
+        )
 
     async def close(self) -> None:
         """Stop every owned process and release OS resources."""
@@ -508,14 +523,25 @@ class ClaudeBackend:
                 continue
 
             if kind == "assistant":
+                blocks = message.get("message", {}).get("content", [])
                 text = "\n".join(
                     block.get("text", "")
-                    for block in message.get("message", {}).get("content", [])
+                    for block in blocks
                     if isinstance(block, dict) and block.get("type") == "text"
                 ).strip()
                 if text:
                     await self.events_queue.put(
                         BackendEvent(kind="role_message", role=role, text=text)
+                    )
+                for index, block in enumerate(blocks):
+                    if not isinstance(block, dict) or block.get("type") != "tool_use":
+                        continue
+                    name = str(block.get("name") or "tool")
+                    self._pending_activity.setdefault(backend_id, []).append(
+                        AgentActivity(
+                            f"tool-{self._next_delivery}-{index}", role, "tool", "running",
+                            name, name, json.dumps(block.get("input", {}), indent=2),
+                        )
                     )
                 continue
 
@@ -525,14 +551,24 @@ class ClaudeBackend:
                     continue
                 terminal = message.get("terminal_reason")
                 if message.get("is_error") and terminal not in ABORTED_TERMINAL_REASONS:
+                    error = str(message.get("result") or message.get("subtype"))
                     await self.events_queue.put(
                         BackendEvent(
                             kind="role_failed",
                             role=role,
                             delivery_id=delivery_id,
-                            error=str(message.get("result") or message.get("subtype")),
+                            error=error,
                         )
                     )
+                    for activity in self._pending_activity.pop(backend_id, []):
+                        await self.events_queue.put(BackendEvent(
+                            kind="activity", role=role, activity=AgentActivity(
+                                activity.id, activity.role, activity.category, "failed",
+                                activity.name, activity.summary, activity.detail,
+                                activity.path, activity.diff, activity.timestamp,
+                                activity.input_tokens, activity.output_tokens,
+                            )
+                        ))
                     continue
                 # An interrupted turn is a completion, not a role failure.
                 await self.events_queue.put(
@@ -540,6 +576,15 @@ class ClaudeBackend:
                         kind="turn_completed", role=role, delivery_id=delivery_id
                     )
                 )
+                for activity in self._pending_activity.pop(backend_id, []):
+                    await self.events_queue.put(BackendEvent(
+                        kind="activity", role=role, activity=AgentActivity(
+                            activity.id, activity.role, activity.category, "completed",
+                            activity.name, activity.summary, activity.detail,
+                            activity.path, activity.diff, activity.timestamp,
+                            activity.input_tokens, activity.output_tokens,
+                        )
+                    ))
 
         if not self._closing and backend_id in self.processes:
             returncode = await process.wait()

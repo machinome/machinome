@@ -111,10 +111,11 @@ unchanged. The writer records the complete backend/provider/model/reasoning
 string even though backend/provider did not change.
 
 The operation validates and prepares the new content before changing the live
-runtime. It then applies the live update and atomically publishes the prepared
-file. A publication failure attempts to restore the prior live runtime before
-returning failure. With `persist=false`, only this ephemeral session changes;
-reopening resolves from the unchanged project file.
+runtime. While the role gate remains held, it applies the backend update and
+atomically publishes the prepared file before changing the orchestrator runtime
+map or publishing browser state. A publication failure restores the prior
+backend runtime before returning failure. With `persist=false`, only this
+ephemeral session changes; reopening resolves from the unchanged project file.
 
 A second sidecar settings file was rejected because project runtime already has
 one durable source. Re-rendering parsed TOML with a home-grown serializer was

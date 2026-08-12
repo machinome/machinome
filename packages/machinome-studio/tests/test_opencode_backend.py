@@ -162,6 +162,53 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(prompt["model"], {"providerID": "anthropic", "modelID": "claude-sonnet-4-5"})
         self.assertEqual(prompt["variant"], "high")
 
+    async def test_provider_catalogue_updates_the_existing_session_runtime(self) -> None:
+        await self.backend.start()
+        handle = await self.backend.open_role(
+            "builder",
+            self.context(BackendRuntime(
+                "claude-sonnet-4-5", "medium", "inherit",
+                backend="opencode", provider="anthropic",
+            )),
+        )
+
+        catalogue = await self.backend.runtime_catalog(handle)
+        await self.backend.update_runtime(
+            handle,
+            BackendRuntime(
+                "claude-opus-4-1", "high", "inherit",
+                backend="opencode", provider="anthropic",
+            ),
+        )
+        await self.backend.deliver_start(handle, "Begin")
+
+        self.assertTrue(catalogue.supported)
+        self.assertEqual([choice.model for choice in catalogue.choices], ["claude-sonnet-4-5", "claude-opus-4-1"])
+        prompt = next(item["body"] for item in self.captured() if item.get("path", "").endswith("/prompt_async"))
+        self.assertEqual(prompt["model"], {"providerID": "anthropic", "modelID": "claude-opus-4-1"})
+        self.assertEqual(prompt["variant"], "high")
+
+    async def test_native_tool_parts_are_normalized_and_keep_a_stable_update_id(self) -> None:
+        await self.backend.start()
+        handle = await self.backend.open_role("builder", self.context())
+        running = {
+            "id": "part-tool-1", "type": "tool", "tool": "solid_test",
+            "state": {"status": "running", "input": {"path": "tests/test_plate.py"}},
+        }
+        self.backend._publish_activity_part(handle.backend_id, running)
+        started = await asyncio.wait_for(anext(self.backend.events), 1)
+        self.assertEqual(
+            (started.activity.category, started.activity.state),
+            ("tool", "running"),
+        )
+        self.assertNotIn("part-tool-1", started.activity.id)
+
+        completed = {**running, "state": {**running["state"], "status": "completed", "output": "8 passed"}}
+        self.backend._publish_activity_part(handle.backend_id, completed)
+        finished = await asyncio.wait_for(anext(self.backend.events), 1)
+        self.assertEqual((finished.activity.id, finished.activity.state), (started.activity.id, "completed"))
+        self.assertIn("8 passed", finished.activity.detail)
+
     async def test_inherited_operator_runtime_sends_no_model_or_variant(self) -> None:
         await self.backend.start()
         handle = await self.backend.open_role("builder", self.context())

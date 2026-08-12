@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import secrets
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +27,13 @@ from .preparation import (
     validate_new_project,
 )
 from .profiles import ProfileError, RuntimeProfile, load_profile, resolve_profile_runtime
+from .runtime_config import (
+    RuntimeConfigConflict,
+    config_revision,
+    prepare_runtime_edit,
+    publish_runtime_edit,
+)
+from .backends.base import AgentActivity
 from .screenshots import refresh_project_screenshot
 from .source_files import SourceDocument, SourceWorkspace
 from .watcher import ArtifactWatcher, ModelWatcher, SourceFileWatcher
@@ -54,6 +61,7 @@ class Session:
     on_screenshot_changed: Callable[[str], None] | None = None
     source_workspace: SourceWorkspace = field(init=False)
     source_save_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    runtime_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     def __post_init__(self) -> None:
         self.source_workspace = SourceWorkspace(self.project_root)
@@ -87,6 +95,71 @@ class Session:
                 )
             )
         return document
+
+    async def runtime_catalog(self, role: str) -> dict[str, object]:
+        if self.orchestrator is None:
+            raise RuntimeError("agent runtime is unavailable for this session")
+        catalogue = await self.orchestrator.runtime_catalog(role)
+        return {
+            "role": role,
+            "runtime": _runtime_value(self.orchestrator.current_runtime(role)),
+            "supported": catalogue.supported,
+            "reason": catalogue.reason or None,
+            "choices": [asdict(choice) for choice in catalogue.choices],
+            "config_revision": await asyncio.to_thread(config_revision, self.project_root / "pyproject.toml"),
+            "runtime_idle": self.broker.runtime_idle(role),
+        }
+
+    async def update_runtime(
+        self,
+        role: str,
+        model: str,
+        effort: str,
+        *,
+        persist: bool,
+        expected_revision: str | None,
+    ) -> dict[str, object]:
+        if self.orchestrator is None:
+            raise RuntimeError("agent runtime is unavailable for this session")
+        async with self.runtime_lock:
+            current = self.orchestrator.current_runtime(role)
+            requested = replace(current, model=model, effort=effort)
+            edit = None
+            if persist:
+                if expected_revision is None:
+                    raise RuntimeConfigConflict("pyproject.toml revision is required for a persisted runtime update")
+                edit = await asyncio.to_thread(
+                    prepare_runtime_edit,
+                    self.project_root / "pyproject.toml",
+                    role,
+                    requested,
+                    expected_revision,
+                )
+            revision = (
+                edit.revision
+                if edit is not None
+                else await asyncio.to_thread(config_revision, self.project_root / "pyproject.toml")
+            )
+            applied = await self.orchestrator.update_runtime(
+                role,
+                requested,
+                commit=(lambda: publish_runtime_edit(edit)) if edit is not None else None,
+            )
+            self.broker.record_activity(AgentActivity(
+                id=f"runtime-{self.broker.latest_event_sequence + 1}",
+                role=role,
+                category="message",
+                state="completed",
+                name="runtime changed",
+                summary=f"{applied.backend} · {applied.model} · {applied.effort}",
+                detail="written to pyproject.toml" if persist else "temporary session override",
+            ))
+            return {
+                "agent": self.broker.agents[role].browser_value(),
+                "runtime": _runtime_value(applied),
+                "config_revision": revision,
+                "persisted": persist,
+            }
 
     async def start_watchers(self, *, settle_delay: float = 0.5) -> None:
         loop = asyncio.get_running_loop()
@@ -394,3 +467,12 @@ class SessionRegistry:
         for session in sessions:
             await session.close()
             self.publish_hub("closed", session.name)
+
+
+def _runtime_value(runtime) -> dict[str, object]:
+    return {
+        "backend": runtime.backend,
+        "provider": runtime.provider,
+        "model": runtime.model,
+        "effort": runtime.effort,
+    }

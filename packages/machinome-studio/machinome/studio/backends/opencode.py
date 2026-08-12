@@ -21,7 +21,16 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from .base import BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle
+from .base import (
+    AgentActivity,
+    BackendEvent,
+    DeliveryReceipt,
+    InactiveTurn,
+    RoleContext,
+    RoleHandle,
+    RuntimeCatalogue,
+    RuntimeChoice,
+)
 from ..profiles import BackendRuntime
 from ..mcp_server import (
     NATIVE_OPENCODE_TOOLS,
@@ -81,6 +90,8 @@ class OpenCodeBackend:
         self._runtimes: dict[str, BackendRuntime] = {}
         self._role_directories: dict[str, Path] = {}
         self._active: dict[str, _ActiveDelivery] = {}
+        self._activity_ids: dict[tuple[str, str], str] = {}
+        self._next_activity = 0
         self._completed: set[tuple[str, str]] = set()
         self._aborting: set[str] = set()
         self._state_lock = asyncio.Lock()
@@ -270,6 +281,58 @@ class OpenCodeBackend:
         self._role_directories.pop(session_id, None)
         self._active.pop(session_id, None)
         self._aborting.discard(session_id)
+        self._activity_ids = {
+            key: value for key, value in self._activity_ids.items() if key[0] != session_id
+        }
+
+    async def runtime_catalog(self, handle: RoleHandle) -> RuntimeCatalogue:
+        runtime = self._runtimes.get(handle.backend_id)
+        if runtime is None:
+            raise RuntimeError(f"unknown OpenCode role session: {handle.role}")
+        if runtime.provider is None or runtime.model == "inherit":
+            return RuntimeCatalogue(False, reason="OpenCode operator-default sessions have no fixed provider catalogue")
+        try:
+            value = await self._request("GET", f"/provider?directory={quote(str(self.project), safe='')}")
+        except RuntimeError as error:
+            return RuntimeCatalogue(False, reason=str(error))
+        providers = value.get("all", value) if isinstance(value, dict) else value
+        items = providers if isinstance(providers, list) else []
+        selected = next(
+            (item for item in items if isinstance(item, dict) and str(item.get("id")) == runtime.provider),
+            None,
+        )
+        if selected is None:
+            return RuntimeCatalogue(False, reason=f"OpenCode provider {runtime.provider!r} is absent from the live catalogue")
+        models = selected.get("models", {})
+        values = models.values() if isinstance(models, dict) else models if isinstance(models, list) else ()
+        choices: list[RuntimeChoice] = []
+        for model in values:
+            if not isinstance(model, dict):
+                continue
+            model_id = str(model.get("id") or "")
+            if not model_id:
+                continue
+            variants = model.get("variants", {})
+            efforts = tuple(
+                str(item) for item in (
+                    variants.keys() if isinstance(variants, dict)
+                    else variants if isinstance(variants, list) else ()
+                ) if item
+            )
+            choices.append(RuntimeChoice(model_id, efforts or (runtime.effort,)))
+        return RuntimeCatalogue(bool(choices), tuple(choices), "" if choices else "OpenCode provider has no selectable models")
+
+    async def update_runtime(self, handle: RoleHandle, runtime: BackendRuntime) -> None:
+        current = self._runtimes.get(handle.backend_id)
+        if current is None:
+            raise RuntimeError(f"unknown OpenCode role session: {handle.role}")
+        if runtime.backend != "opencode" or runtime.provider != current.provider:
+            raise ValueError("OpenCode runtime update cannot change backend or provider")
+        catalogue = await self.runtime_catalog(handle)
+        choice = next((item for item in catalogue.choices if item.model == runtime.model), None)
+        if not catalogue.supported or choice is None or runtime.effort not in choice.efforts:
+            raise ValueError("unsupported OpenCode model and reasoning selection")
+        self._runtimes[handle.backend_id] = runtime
 
     async def close(self) -> None:
         """Delete sessions and stop the server through a bounded escalation."""
@@ -319,6 +382,7 @@ class OpenCodeBackend:
         self._runtimes.clear()
         self._role_directories.clear()
         self._active.clear()
+        self._activity_ids.clear()
         self._aborting.clear()
         self.process = None
         self._event_task = None
@@ -397,6 +461,8 @@ class OpenCodeBackend:
                     if completed and session_id is not None:
                         async with self._state_lock:
                             self._publish_text_part(session_id, part)
+                    if session_id is not None and part.get("type") != "text":
+                        self._publish_activity_part(session_id, part)
             elif became_idle and session_id is not None:
                 async with self._state_lock:
                     await self._reconcile_idle(session_id)
@@ -431,6 +497,72 @@ class OpenCodeBackend:
         self.notifications.put_nowait(
             BackendEvent(kind="role_message", role=role, text=text)
         )
+
+    def _publish_activity_part(self, session_id: str, part: dict[str, Any]) -> None:
+        role = self._handles.get(session_id)
+        if role is None:
+            return
+        part_type = str(part.get("type") or "")
+        if part_type not in {"tool", "patch"}:
+            return
+        native_id = str(part.get("id") or part.get("callID") or part.get("callId") or "")
+        if not native_id:
+            return
+        state_value = part.get("state", {})
+        state = state_value if isinstance(state_value, dict) else {}
+        status = str(state.get("status") or part.get("status") or "running")
+        failed = status in {"error", "failed"}
+        completed = status in {"completed", "done", "success"}
+        portable_state = "failed" if failed else "completed" if completed or part_type == "patch" else "running"
+        name = str(part.get("tool") or part.get("name") or part_type)
+        input_value = state.get("input", part.get("input", {}))
+        input_data = input_value if isinstance(input_value, dict) else {}
+        path = str(
+            input_data.get("path") or input_data.get("filePath") or input_data.get("file")
+            or part.get("path") or ""
+        )
+        output = state.get("output", part.get("output", ""))
+        error = state.get("error", part.get("error", ""))
+        detail_parts = []
+        if input_value not in ({}, None, ""):
+            detail_parts.append(json.dumps(input_value, indent=2) if not isinstance(input_value, str) else input_value)
+        if output not in (None, ""):
+            detail_parts.append(str(output))
+        if error not in (None, ""):
+            detail_parts.append(str(error))
+        diff = str(state.get("diff") or part.get("diff") or part.get("patch") or "")
+        if part_type == "patch" and not path:
+            files = part.get("files", ())
+            if isinstance(files, list):
+                path = str(files[0]) if len(files) == 1 else ""
+        file_like = part_type == "patch" or bool(diff) or name.lower() in {
+            "edit", "write", "patch", "edit_file", "write_file", "apply_patch"
+        }
+        summary = str(state.get("title") or path or status or name)
+        self.notifications.put_nowait(BackendEvent(
+            kind="activity",
+            role=role,
+            activity=AgentActivity(
+                id=self._activity_id(session_id, native_id),
+                role=role,
+                category="file" if file_like else "tool",
+                state=portable_state,
+                name=name,
+                summary=summary,
+                detail="\n".join(detail_parts),
+                path=path,
+                diff=diff,
+            ),
+        ))
+
+    def _activity_id(self, session_id: str, native_id: str) -> str:
+        key = (session_id, native_id)
+        value = self._activity_ids.get(key)
+        if value is None:
+            self._next_activity += 1
+            value = f"activity-{self._next_activity}"
+            self._activity_ids[key] = value
+        return value
 
     async def _reconcile_idle(self, session_id: str) -> None:
         active = self._active.get(session_id)
