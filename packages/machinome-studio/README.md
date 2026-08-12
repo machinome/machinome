@@ -140,3 +140,7 @@ npm --prefix floor/frontend run test
 npm --prefix floor/frontend run build
 scripts/test-e2e
 ```
+
+`floor/static/` is generated output, not tracked: the frontend build empties
+and rewrites it. `scripts/setup` builds it in both tiers, so a fresh checkout
+has a browser surface; rerun the build above after changing `floor/frontend`.

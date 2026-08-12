@@ -7,6 +7,11 @@
 __pycache__/
 *.pyc
 node_modules/
+# Vite output for the shop floor browser surface. Generated from
+# floor/frontend by scripts/setup (and `npm --prefix floor/frontend run
+# build`); content-hashed and minified, so tracking it made every
+# frontend merge conflict. The wheel still ships it via package-data.
+floor/static/
 playwright-report/
 test-results/
 # No trailing slash: this must also ignore the framework sprint worktree
