@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from watchdog.observers import Observer
 
 from .backends.base import AgentActivity
+from .build_package import BuildPackageError, open_build_package, package_filename
 from .profiles import BackendRuntime, RuntimeProfile, load_profile, resolve_profile_runtime
 from .preparation import PreparationError, verified_project_root
 from .screenshots import is_safe_screenshot, screenshot_path
@@ -834,6 +835,30 @@ def create_app(working_folder: Path, *, registry: object) -> FastAPI:
     @app.get("/api/sessions/{session_id}")
     async def run(session_id: str) -> dict[str, object]:
         return session(session_id).broker.run()
+
+    @app.get("/api/sessions/{session_id}/build-package")
+    async def build_package_download(session_id: str) -> StreamingResponse:
+        current = session(session_id)
+        try:
+            package = await asyncio.to_thread(open_build_package, current.artifact_root)
+        except BuildPackageError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+
+        def content():
+            with package:
+                while chunk := package.read(64 * 1024):
+                    yield chunk
+
+        filename = package_filename(current.name)
+        return StreamingResponse(
+            content(),
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Cache-Control": "no-store",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
 
     @app.get("/api/sessions/{session_id}/agents/{role}/runtime")
     async def agent_runtime_catalog(session_id: str, role: str) -> JSONResponse:

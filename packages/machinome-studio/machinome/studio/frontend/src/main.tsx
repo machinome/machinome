@@ -1,10 +1,13 @@
-import { CSSProperties, FormEvent, KeyboardEvent, StrictMode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { CSSProperties, FormEvent, KeyboardEvent, lazy, StrictMode, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import type { Monaco, OnMount } from "@monaco-editor/react";
 import { createRoot } from "react-dom/client";
+import { artifactUrl, BUILD_VOLUME, canonicalModel, fitsBuildEnvelope, parsePieces, type PrintedPiece } from "./build-data";
 import "./monaco";
 import "./styles.css";
 import type { AssemblyNode, AssemblyPath, ViewerHandle, ViewerView } from "./solid-node-widget";
+
+const BuildPieceViewer = lazy(() => import("./build-viewer").then((module) => ({ default: module.BuildPieceViewer })));
 
 type AgentState = "waiting" | "active";
 
@@ -537,7 +540,7 @@ const railItems = [
   ["model", "◇", "Model", true],
   ["code", "{ }", "Code", true],
   ["agents", "●", "Agents", true],
-  ["sheets", "═", "Sheets", false],
+  ["build", "▦", "Build", true],
 ] as const;
 
 function navigate(path: string) {
@@ -1400,13 +1403,110 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
   </>;
 }
 
+function millimetres(size: PrintedPiece["size"]): string {
+  return `${size.map((value) => Number(value.toFixed(1))).join(" × ")} mm`;
+}
+
+function BuildWorkspace({ project, sessionId, revision, buildError, visible }: {
+  project: string;
+  sessionId: string | null;
+  revision: number;
+  buildError: string | null;
+  visible: boolean;
+}) {
+  const [pieces, setPieces] = useState<PrintedPiece[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [inventoryError, setInventoryError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activated, setActivated] = useState(false);
+
+  useEffect(() => {
+    if (visible) setActivated(true);
+  }, [visible]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    void fetch(`/projects/${encodeURIComponent(project)}/artifacts/viewer.json`, { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("No completed piece publication is available.")))
+      .then((document: unknown) => {
+        const next = parsePieces(document);
+        setPieces(next);
+        setSelectedId((current) => current && next.some((piece) => piece.id === current) ? current : next[0]?.id ?? null);
+        setInventoryError(next.length ? null : "This completed build contains no distinct pieces.");
+      })
+      .catch((reason: unknown) => {
+        if (controller.signal.aborted) return;
+        setInventoryError(reason instanceof Error ? reason.message : String(reason));
+      })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [project, revision]);
+
+  const selected = pieces.find((piece) => piece.id === selectedId) ?? null;
+  const fit = selected ? fitsBuildEnvelope(selected) : false;
+  const packageUrl = sessionId ? `/api/sessions/${encodeURIComponent(sessionId)}/build-package` : "";
+
+  return <>
+    <aside className={`build-context ${visible ? "" : "area-hidden"}`} aria-label="Pieces">
+      <header><h2>Pieces</h2><span>{pieces.length} distinct</span></header>
+      <div className="build-piece-list">
+        {pieces.map((piece) => <button
+          type="button"
+          className={piece.id === selectedId ? "selected" : ""}
+          aria-current={piece.id === selectedId ? "true" : undefined}
+          onClick={() => setSelectedId(piece.id)}
+          key={piece.id}
+        ><i className={piece.watertight ? "" : "warning"} /><span>{piece.name}</span><strong>×{piece.count}</strong></button>)}
+        {!pieces.length && !loading ? <p className="empty">{inventoryError ?? "This completed build contains no distinct pieces."}</p> : null}
+        {loading && !pieces.length ? <p className="empty">Loading pieces…</p> : null}
+      </div>
+      <div className="build-package-card">
+        <span>Inspection volume</span>
+        <strong>{BUILD_VOLUME.join(" × ")} mm</strong>
+        <small>fixed for this version · envelope check only</small>
+        {selected && packageUrl ? <a className="build-download" href={packageUrl} download>Download package</a> : <span className="build-download disabled">Download package</span>}
+        <small>one STL per distinct piece · README instructions</small>
+      </div>
+    </aside>
+    <section className={`build-area ${visible ? "" : "area-hidden"}`} aria-label="Build inspection">
+      <header className="build-header">
+        <h2>Build</h2>
+        <span>{selected?.name ?? "Piece inspection"}</span>
+        {selected ? <strong>{pieces.findIndex((piece) => piece.id === selected.id) + 1} / {pieces.length}</strong> : null}
+      </header>
+      <div className="build-main">
+        {visible && buildError ? <p className="model-build-error" role="status">Model rebuild failed: {buildError}</p> : null}
+        {visible && inventoryError && pieces.length ? <p className="model-build-error" role="status">Could not refresh pieces: {inventoryError}</p> : null}
+        {selected ? <>
+          <div className="build-quantity" aria-label={`Print ${selected.count} ${selected.count === 1 ? "copy" : "copies"}`}>
+            <span>Copies to print</span><strong>{selected.count}</strong><small>one representative shown</small>
+          </div>
+          {activated ? <Suspense fallback={<p className="empty build-empty">Loading 3D inspection…</p>}>
+            <BuildPieceViewer modelUrl={artifactUrl(project, canonicalModel(selected))} pieceName={selected.name} />
+          </Suspense> : null}
+        </> : <p className="empty build-empty">{loading ? "Loading piece inventory…" : inventoryError ?? "No distinct pieces are published."}</p>}
+      </div>
+      {selected ? <div className="build-facts">
+        <div><span>Quantity</span><strong>Print {selected.count} {selected.count === 1 ? "copy" : "copies"}</strong></div>
+        <div><span>Size</span><strong>{millimetres(selected.size)}</strong></div>
+        <div><span>Volume</span><strong>{Number((selected.volume / 1000).toFixed(2))} cm³</strong></div>
+        <div><span>Geometry</span><strong className={selected.watertight ? "ok" : "warning"}>{selected.watertight ? "watertight" : "not watertight"}</strong></div>
+        <div><span>Envelope fit</span><strong className={fit ? "ok" : "warning"}>{fit ? "fits" : "exceeds"} {BUILD_VOLUME.join(" × ")} mm</strong><small>orthogonal rotation allowed · not a printability guarantee</small></div>
+        <div className="build-provenance"><span>Sources</span><strong>{selected.sources.join(" · ")}</strong><small>{selected.models.join(" · ")}</small></div>
+      </div> : null}
+    </section>
+  </>;
+}
+
 function Workspace({ project }: { project: string }) {
-  const [activeArea, setActiveArea] = useState<"model" | "code" | "agents">("model");
+  const [activeArea, setActiveArea] = useState<"model" | "code" | "agents" | "build">("model");
   const [run, setRun] = useState<Run | null>(null);
   const [shopOpen, setShopOpen] = useState(false);
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
   const [modelArtifact, setModelArtifact] = useState<ModelArtifact | null>(null);
   const [modelReconnect, setModelReconnect] = useState(0);
+  const [buildRevision, setBuildRevision] = useState(0);
   const [modelBuildError, setModelBuildError] = useState<string | null>(null);
   const [sourceEvent, setSourceEvent] = useState<SourceEvent | null>(null);
   const [sourceReconnect, setSourceReconnect] = useState(0);
@@ -1438,6 +1538,7 @@ function Workspace({ project }: { project: string }) {
       setShopOpen(true);
       if (streamOpened.current) {
         setModelReconnect((current) => current + 1);
+        setBuildRevision((current) => current + 1);
         setSourceReconnect((current) => current + 1);
       }
       streamOpened.current = true;
@@ -1476,6 +1577,7 @@ function Workspace({ project }: { project: string }) {
         if (artifact === "viewer.json") {
           setModelBuildError(null);
           setModelArtifact({ path: artifact, sequence: event.event.sequence });
+          setBuildRevision((current) => current + 1);
         } else if (artifact === "errors.json") {
           void fetch(`/projects/${encodeURIComponent(project)}/artifacts/errors.json`)
             .then((response) => response.ok ? response.text() : Promise.reject(new Error("the model could not be rebuilt")))
@@ -1570,7 +1672,7 @@ function Workspace({ project }: { project: string }) {
               aria-current={activeArea === id ? "page" : undefined}
               data-workspace-area={id}
               disabled={!interactive}
-          onClick={() => { if (id === "model" || id === "code" || id === "agents") setActiveArea(id); }}
+          onClick={() => { if (id === "model" || id === "code" || id === "agents" || id === "build") setActiveArea(id); }}
             >
               <span className={`rail-icon rail-icon-${id}`} aria-hidden="true">{icon}</span>
               <span>{label}</span>
@@ -1604,6 +1706,13 @@ function Workspace({ project }: { project: string }) {
             setRequestedOpen({ path, nonce: Date.now() });
             setActiveArea("code");
           }}
+        />
+        <BuildWorkspace
+          project={project}
+          sessionId={sessionId}
+          revision={buildRevision}
+          buildError={modelBuildError}
+          visible={activeArea === "build"}
         />
         <section className="conversation" aria-label="Chat">
           <header className="conversation-header">

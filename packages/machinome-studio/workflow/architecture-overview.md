@@ -270,8 +270,8 @@ it does not encode a participant's role. The transcript is independently
 scrollable, reveals newly appended messages, sends a non-empty draft on Enter,
 and inserts a newline on Ctrl+Enter.
 
-Model, Code, and Agents are mounted workspace peers sharing that conversation
-and the session's single snapshot/SSE connection. Agents selects one roster
+Model, Code, Agents, and Build are mounted workspace peers sharing that
+conversation and the session's single snapshot/SSE connection. Agents selects one roster
 role, renders normalized messages, tools, results, failures, file diffs, and
 honest native token counts, and can open an activity path in the existing Code
 workspace. Its runtime controls are ordered backend, provider, model, and
@@ -285,6 +285,24 @@ The corresponding GET/PATCH runtime routes are role- and session-scoped and
 revision-check durable writes. They accept a complete
 backend/provider/model/reasoning replacement only while the role is pristine;
 no used session is migrated. No polling or second lifecycle connection is introduced.
+
+Build consumes the framework-published distinct-piece inventory from the last
+completed `viewer.json`. It selects pieces by their stable content id and uses
+the first sorted model reference as the representative STL. A dedicated
+Three.js scene renders that one mesh and a fixed 250 × 210 × 220 mm build
+volume in common millimetre units, preserving a truthful scale relationship
+while the maker orbits, zooms, and resets the view. Published quantity,
+dimensions, volume, watertightness, and provenance remain framework facts. The
+only derived result is an orthogonal bounding-box envelope comparison, labelled
+as such rather than as a printability guarantee. Build does not slice, arrange
+copies, choose orientation or supports, or estimate time, mass, or material.
+
+The session-scoped Build download reads that same verified publication and
+returns an ephemeral deterministic ZIP. It contains one canonical STL per
+piece and a `README.md` listing every filename and required copy count; stable
+entry names, order, timestamps, permissions, and compression make unchanged
+inputs byte-identical. The route rejects malformed, escaping, missing, or
+non-STL references and never writes a package into the project or `_build`.
 
 Floor serves published `_build/` artifacts beneath a project-scoped browser
 path and, separately, the exact regular non-symlink root `screenshot.png` for
@@ -326,8 +344,8 @@ updates the separate build-failure banner. A failed targeted request reports
 beside the retained model and the next publication retries normally; the browser
 does not remount the viewer or interpret artifact contents.
 
-The activity rail has interactive Model, Code, and Agents areas, in that order;
-Sheets remains deferred and there is no Files area. Code shows the
+The activity rail has interactive Model, Code, Agents, and Build areas, in that
+order; there is no Files or deferred Sheets area. Code shows the
 Git-visible project-root navigator with an always-open root and initially
 collapsed, independently operable directories. One monochrome inline-SVG icon
 family distinguishes folders, Markdown, PNG, Python, and generic files. The
@@ -338,9 +356,9 @@ maker text and expose the external document as an explicit reload conflict. A
 PNG instead opens a closable read-only image tab backed by the bounded preview
 operation and never creates a Monaco model. Source invalidations refresh the
 tree, so an agent-created non-ignored untracked file appears without
-instrumenting agent tools. Model, Code, Agents, and conversation components remain
+instrumenting agent tools. Model, Code, Agents, Build, and conversation components remain
 mounted while visibility changes, preserving viewer, editor, transcript,
-scroll, and draft state.
+scroll, selection, camera, and draft state.
 
 The hub holds one live-state connection to `/api/stream`. It opens with the
 complete project inventory, including each usable screenshot's content revision,
@@ -374,9 +392,11 @@ Connection state drives the displayed open/closed lifecycle; reconnecting an
 intact session also prompts the mounted viewer to re-read its model because
 artifact events are not recoverable broker state. Reconnect also re-lists the
 source tree and re-reads every open source path, using the same clean-update or
-dirty-conflict rule as a live invalidation. Bounded normalized activity is part
-of the snapshot and repopulates the Agents feed after reconnect; generic broker
-event history remains display metadata rather than a recovery log.
+dirty-conflict rule as a live invalidation. Build also re-reads `viewer.json`,
+retaining its selection when the content id remains. Bounded normalized
+activity is part of the snapshot and repopulates the Agents feed after
+reconnect; generic broker event history remains display metadata rather than a
+recovery log.
 
 ## Workspace boundaries
 

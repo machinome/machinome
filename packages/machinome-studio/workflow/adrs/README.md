@@ -36,6 +36,7 @@ the overview says *what is true now*.
 | `0021` | [Serve verified project source as inert editable text](./0021-serve-verified-project-source-as-inert-editable-text.md) | Accepted | 2026-08-11 |
 | `0022` | [Control idle agent runtimes in place and normalize native activity](./0022-control-idle-agent-runtimes-in-place.md) | Accepted (amended by 0023) | 2026-08-12 |
 | `0023` | [Replace a pristine agent's backend without migrating a session](./0023-replace-pristine-agent-backends.md) | Accepted | 2026-08-12 |
+| `0024` | [Inspect distinct pieces and package deterministic print instructions](./0024-inspect-distinct-pieces-and-package-print-instructions.md) | Accepted | 2026-08-13 |
 
 ## Conventions
 

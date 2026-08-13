@@ -117,9 +117,10 @@ top. Each carries a visible id badge.
   `sprint-014 · 1 week ago`). Last cell is a dashed `+ New project` tile,
   also with min-height 252px.
 
-### 1b / 2a / 2b — Workspace (chosen direction)
-Single layout; Model and Code swap the navigator/context and center content.
-The mounted model, editor state, and chat are preserved across the switch.
+### 1b / 2a / 2b / Build — Workspace (chosen direction)
+Single layout; Model, Code, Agents, and Build swap the navigator/context and
+center content. The mounted viewers, editor state, selections, and chat are
+preserved across the switch.
 
 - **Grid:** `74px 270px minmax(0,1fr) 400px` between a 38px title bar and a
   26px status bar. In 2b the panel column widens to `330px`. All columns
@@ -128,10 +129,9 @@ The mounted model, editor state, and chat are preserved across the switch.
   square mark, `Shop`, `/` in `#4a515c`, project name, mono 11px
   `fordesmac · claude`; right side mono 11px `run 2f9c41 · open` with a green
   dot.
-- **Activity rail** (`#121419`): four items — MODEL (diamond: 14px square
-  rotated 45°), CODE (mono `{ }`), AGENTS (circle), and SHEETS (two horizontal
-  rules). Model, Code, and Agents are interactive; Sheets is visibly deferred.
-  There is no Files area. Each item is a full-width column,
+- **Activity rail** (`#121419`): four interactive items — MODEL (diamond: 14px
+  square rotated 45°), CODE (mono `{ }`), AGENTS (circle), and BUILD (plate
+  grid). There is no Files or deferred Sheets area. Each item is a full-width column,
   padding 10px 0, gap 6, with a mono 9px uppercase label. Selected: `#1c2128`
   bg + 2px left border `#e0a350` + amber glyph and label; idle glyph/label
   `#8b929e`; hover `#171b21`. **Do not substitute an icon font — these are the
@@ -159,6 +159,10 @@ The mounted model, editor state, and chat are preserved across the switch.
     and a Steps list: mono 11.5px rows with a 7px dot — done `#5f9e6a` +
     `#8b929e` text, active `#4fb6b8` + `#e6e8ec` text on `#1c2128`, pending
     `#3d4450` + `#6b7280`.
+  - *BUILD:* distinct-piece rows from the completed `viewer.json`, with the
+    selected row marked by the amber inset rule and every required count shown
+    as `×N`. The footer names the fixed `250 × 210 × 220 mm` inspection volume
+    and offers the deterministic package download.
 - **Center — tab strip** (40px, bottom 1px `#1e232a`): in Code, mono 11px file
   tabs use `#171b21`, with the active tab at `#1c2128` + `#e6e8ec`. A dot marks
   unsaved text and `!` marks an external conflict or deletion. The right side
@@ -176,6 +180,13 @@ The mounted model, editor state, and chat are preserved across the switch.
   and mono `0.34 · 24 fps`. This replaces today's hidden-by-default
   `.animation-controls` bar; the toggle stays for users who want it out of the
   way.
+- **Center — Build viewport:** one selected representative STL in a direct
+  Three.js scene with a scale-accurate 250 × 210 mm gridded bed and
+  250 × 210 × 220 mm wireframe volume. Keep orbit, zoom, and reset controls;
+  show required quantity prominently outside the mesh. The facts strip is
+  limited to quantity, dimensions, volume, watertightness, provenance, and an
+  explicitly labelled bounding-box envelope fit. Do not add slicing, supports,
+  orientation, material, time, mass, or automatic layout claims.
 - **Center — Code editor (2a):** locally bundled Monaco, dark theme, mono
   12.5px, no minimap. Each project path owns a tab/model with independent undo
   and view state. Ctrl/Cmd+S saves. A clean external revision replaces the
@@ -219,9 +230,10 @@ Kept on the canvas for context only. 1c moved activity to a bottom drawer,
 
 ## Interactions & behaviour
 
-- **Rail selection** switches Model, Code, and Agents visibility without unmounting the
-  viewer, Monaco models, or chat. Viewer camera/timeline, file tabs, undo/view
-  state, dirty buffers, transcript scroll, and the chat draft survive.
+- **Rail selection** switches Model, Code, Agents, and Build visibility without
+  unmounting the viewers, Monaco models, or chat. Viewer cameras, model
+  selection, timeline, file tabs, undo/view state, dirty buffers, transcript
+  scroll, and the chat draft survive.
 - **Agent runtime selection** is ordered backend, provider, model, then
   reasoning. Codex shows its fixed `OpenAI` provider and Claude its fixed
   `Anthropic` provider. OpenCode shows only exact provider IDs in its live
@@ -267,8 +279,10 @@ New:
   `workingFolder === null` or no backend is enabled.
 - `workspace.projects` — list from the service: `{ name, branch, lastOpened,
   isOpen, profileId }`.
-- `workspace.activePanel` — `"model" | "code" | "agents"`; Sheets remains a
-  disabled rail affordance.
+- `workspace.activePanel` — `"model" | "code" | "agents" | "build"`.
+- `workspace.pieces` / `selectedPiece` — validated published piece inventory
+  and stable content-id selection, refreshed from existing publication and
+  reconnect signals.
 - `workspace.openTabs` / `activeTab` — opened source files only, keyed by
   project-relative path.
 - `workspace.sourceBuffers` — content, saved content, SHA-256 revision,
@@ -318,6 +332,15 @@ Present for Agents:
 - The existing session snapshot/SSE carries bounded normalized per-agent
   activity and runtime/idle updates; Agents does not open another lifecycle
   connection or poll.
+
+Present for Build:
+
+- `GET /projects/:name/artifacts/viewer.json` and its referenced STL paths —
+  the framework-published piece inventory and representative geometry.
+- `GET /api/sessions/:id/build-package` — deterministic ZIP containing one STL
+  per distinct piece and `README.md` with required copy counts.
+- The existing session snapshot/SSE publication signal refreshes Build; it
+  does not open another lifecycle connection or poll.
 
 ## Design tokens
 

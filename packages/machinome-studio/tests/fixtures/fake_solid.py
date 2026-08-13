@@ -64,6 +64,8 @@ elif command == "build":
     model = state.get("model") or os.environ.get("FAKE_SOLID_MODEL", "part.stl")
     content = state.get("model_content") or os.environ.get("FAKE_SOLID_MODEL_CONTENT", "solid part")
     publish(build / model, content)
+    for extra_model, extra_content in sorted(state.get("extra_models", {}).items()):
+        publish(build / extra_model, extra_content)
     viewer = state.get("viewer")
     if viewer is not None:
         viewer = json.dumps(viewer)

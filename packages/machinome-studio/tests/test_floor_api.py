@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import os
 import socket
@@ -8,6 +9,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+import zipfile
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -185,6 +187,38 @@ class FloorAPITest(unittest.TestCase):
         self.assertTrue(healthy_id)
         self.assertIn("part.stl", _raw(self.url("/projects/healthy/artifacts/viewer.json")))
         self.assertEqual(_status(self.url("/projects/broken-model/artifacts/../healthy/_build/viewer.json"), "GET"), 404)
+
+    def test_build_package_download_is_session_scoped_and_deterministic(self) -> None:
+        project = self._make_project("printable")
+        viewer = {
+            "version": 1,
+            "root": {"name": "part", "model": "part.stl", "piece": "0123456789ab"},
+            "pieces": [{
+                "id": "0123456789ab", "name": "Fixture Part", "count": 4,
+                "models": ["part.stl"], "sources": ["root/__init__.py"],
+                "size": [10, 20, 30], "volume": 6000, "watertight": True,
+            }],
+        }
+        (project / ".fake-solid-state.json").write_text(json.dumps({
+            "model_content": "solid fixture\nendsolid fixture\n",
+            "viewer": viewer,
+        }))
+        session_id = self._open("printable")
+        url = self.url(f"/api/sessions/{session_id}/build-package")
+        with urlopen(url, timeout=5) as response:  # nosec: local test service
+            first = response.read()
+            self.assertEqual(response.headers.get_content_type(), "application/zip")
+            self.assertEqual(response.headers["Cache-Control"], "no-store")
+            self.assertEqual(
+                response.headers["Content-Disposition"],
+                'attachment; filename="printable-print-package.zip"',
+            )
+        with urlopen(url, timeout=5) as response:  # nosec: local test service
+            self.assertEqual(response.read(), first)
+        with zipfile.ZipFile(io.BytesIO(first)) as archive:
+            self.assertEqual(archive.namelist(), ["README.md", "fixture-part-0123456789ab.stl"])
+            self.assertIn("| `fixture-part-0123456789ab.stl` | 4 |", archive.read("README.md").decode())
+        self.assertEqual(_status(self.url("/api/sessions/unknown/build-package"), "GET"), 404)
 
     def test_closed_project_screenshot_is_inventory_metadata_and_an_exact_safe_route(self) -> None:
         project = self._make_project("preview")

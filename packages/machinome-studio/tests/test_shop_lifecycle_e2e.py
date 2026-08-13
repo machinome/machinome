@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+import zipfile
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -160,6 +161,75 @@ class ShopLifecycleE2E(unittest.TestCase):
         history = self.page.evaluate("() => window.__solidNodeWidgetHistory")
         self.assertEqual(history["mounts"], 1)
         self.assertIn("/projects/viewer-project/artifacts/viewer.json", history["fetches"])
+
+    def test_build_inspects_one_piece_at_scale_and_downloads_explicit_quantities(self) -> None:
+        triangle = (
+            "solid part\nfacet normal 0 0 1\nouter loop\n"
+            "vertex 0 0 0\nvertex 24 0 0\nvertex 0 18 6\n"
+            "endloop\nendfacet\nendsolid part\n"
+        )
+        project = self._make_project("print-job")
+        viewer = {
+            "format": "solid-node-export", "version": 1,
+            "root": {"name": "assembly", "children": [
+                {"name": "gear", "model": "gear.stl", "piece": "111111111111"},
+                {"name": "pin", "model": "pin.stl", "piece": "222222222222"},
+            ]},
+            "pieces": [
+                {
+                    "id": "111111111111", "name": "Planet Gear", "count": 3,
+                    "models": ["gear.stl"], "sources": ["root/gear.py"],
+                    "size": [24, 18, 6], "volume": 1296, "watertight": True,
+                },
+                {
+                    "id": "222222222222", "name": "Pin", "count": 1,
+                    "models": ["pin.stl"], "sources": ["root/pin.py"],
+                    "size": [6, 6, 30], "volume": 500, "watertight": False,
+                },
+            ],
+        }
+        (project / ".fake-solid-state.json").write_text(json.dumps({
+            "model": "gear.stl", "model_content": triangle,
+            "extra_models": {"pin.stl": triangle}, "viewer": viewer,
+        }))
+        self._open("print-job")
+        self.page.goto(self.url("/projects/print-job"))
+        composer = self.page.get_by_role("textbox", name="Message", exact=True)
+        composer.fill("keep this Build draft")
+
+        self.page.get_by_role("button", name="Build", exact=True).click()
+        self.page.get_by_role("region", name="Build inspection").wait_for()
+        self.page.get_by_role("img", name="Planet Gear, one representative piece on a 250 by 210 millimetre build plate").wait_for(timeout=10_000)
+        self.assertEqual(self.page.locator(".build-piece-canvas").count(), 1)
+        self.page.get_by_text("Print 3 copies", exact=True).wait_for()
+        self.page.get_by_text("one representative shown", exact=True).wait_for()
+        self.page.get_by_text("fits 250 × 210 × 220 mm", exact=True).wait_for()
+        self.page.get_by_role("button", name="Pin", exact=False).click()
+        self.page.get_by_text("Print 1 copy", exact=True).wait_for()
+        self.page.get_by_text("not watertight", exact=True).wait_for()
+
+        self.page.get_by_role("button", name="Model", exact=True).click()
+        self.page.get_by_role("button", name="Build", exact=True).click()
+        self.assertEqual(self.page.get_by_role("button", name="Pin", exact=False).get_attribute("aria-current"), "true")
+        self.assertEqual(composer.input_value(), "keep this Build draft")
+
+        with self.page.expect_download() as pending:
+            self.page.get_by_role("link", name="Download package").click()
+        download = pending.value
+        self.assertEqual(download.suggested_filename, "print-job-print-package.zip")
+        archive_path = download.path()
+        assert archive_path is not None
+        with zipfile.ZipFile(archive_path) as archive:
+            self.assertEqual(
+                archive.namelist(),
+                ["README.md", "planet-gear-111111111111.stl", "pin-222222222222.stl"],
+            )
+            readme = archive.read("README.md").decode()
+            self.assertIn("| `planet-gear-111111111111.stl` | 3 |", readme)
+            self.assertIn("| `pin-222222222222.stl` | 1 |", readme)
+
+        self.page.set_viewport_size({"width": 760, "height": 900})
+        self.assertFalse(self.page.evaluate("() => document.documentElement.scrollWidth > window.innerWidth"))
 
     def test_code_workspace_saves_and_reconciles_agent_file_changes(self) -> None:
         project = self._make_project("code-project")
