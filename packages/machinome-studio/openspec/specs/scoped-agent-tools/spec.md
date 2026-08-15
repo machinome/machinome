@@ -24,8 +24,12 @@ falls outside that root.
 - **THEN** the tool call proceeds normally
 
 ### Requirement: Backend scope
-The scoped-agent-tools capability SHALL be available to the `claude` and
-`opencode` backends and SHALL NOT be offered on the `codex` backend.
+The scoped-agent-tools capability SHALL be available on every selectable
+backend. A backend SHALL be selectable only if it can open a session whose
+reachable tool set is exactly the profile-declared one; a backend that retains
+native file, shell, or network tools regardless of the declared policy SHALL NOT
+be selectable. The `claude` and `opencode` backends satisfy this; the retired
+`codex` backend did not.
 
 #### Scenario: Role selects claude or opencode with scoped tools
 - **WHEN** a role configured for scoped tools opens on the `claude` or
@@ -54,10 +58,11 @@ The scoped-agent-tools capability SHALL be available to the `claude` and
 - **THEN** that delivery fails with the relevant process, MCP, or timeout
   evidence and the failed role process is stopped
 
-#### Scenario: Role selects codex
-- **WHEN** a role opens on the `codex` backend
-- **THEN** the session runs with codex's existing full native tool access,
-  and scoped-agent-tools is not applied
+#### Scenario: A backend that cannot enforce tool policy is not selectable
+- **WHEN** a project or maker names a backend whose sessions keep native tools
+  the profile did not declare, such as `codex`
+- **THEN** the selection is rejected rather than opening a session outside the
+  declared tool policy
 
 ### Requirement: Runtime location independence
 The shop SHALL treat the caller-supplied `--projects-dir` as the exact and sole
@@ -274,4 +279,3 @@ generic network or HTTP request tool.
 - **WHEN** an agent inspects or invokes the floor-provided tool set
 - **THEN** no tool accepts a URL, HTTP method, route, headers, or arbitrary
   request body
-

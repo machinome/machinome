@@ -1,6 +1,6 @@
 # ADR 0011: Define shop runtime topology with declarative profiles
 
-**Status:** Accepted (amended by ADRs 0012, 0016, 0017, and 0019)
+**Status:** Accepted (amended by ADRs 0012, 0016, 0017, 0019, and 0025)
 
 **Date:** 2026-07-31
 

@@ -1,6 +1,6 @@
 # ADR 0018: Let one shop floor run several agent backends at once
 
-**Status:** Accepted
+**Status:** Accepted (amended by ADR 0025)
 
 **Date:** 2026-08-09
 

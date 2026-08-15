@@ -36,7 +36,7 @@ conversation, agents, watcher, and backend resources without stopping the hub
 or another project.
 
 Declare runtime choices in the project's `pyproject.toml`. Omitted agents use
-their profile's Codex model and effort. A final segment overrides reasoning;
+their profile's Claude model and effort. A final segment overrides reasoning;
 OpenCode additionally requires a provider:
 
 ```toml
@@ -44,7 +44,7 @@ OpenCode additionally requires a provider:
 profile = "fordesmac"
 
 [tool.solid-node-studio.agents]
-foreman = "codex:gpt-5.6-terra"
+foreman = "claude:opus"
 designer = "opencode:anthropic:claude-sonnet-4-5:high"
 machinist = "claude:sonnet:medium"
 ```
@@ -61,16 +61,19 @@ repository root. Runtime prompts belong to `profiles/<id>/`; their shared
 allowlisted skills are in `shop-skills/`. Repository operation and development
 skills stay under `skills/` and are not runtime capabilities.
 
-Three backends are selectable per agent: Codex, Claude, and OpenCode. Codex and
-Claude resolve project-selected model/reasoning values over explicit profile
-defaults; supported tools and Claude permission remain profile-owned.
+Two backends are selectable per agent: Claude and OpenCode. Claude resolves
+project-selected model/reasoning values over explicit profile defaults;
+supported tools and Claude permission remain profile-owned.
 
-Claude and OpenCode replace native file, shell, and network access with a
-floor-owned MCP surface for roles with explicit profile tools. It is rooted at
-the active project and provides bounded filesystem, Git, solid-node, image, and
-shop-broker lifecycle operations. Codex cannot enforce this restriction and
-retains its native tools. The librarian is provisionally unavailable on the
-scoped backends because bounded external-research tools are not yet present.
+Both replace native file, shell, and network access with a floor-owned MCP
+surface for roles with explicit profile tools. It is rooted at the active
+project and provides bounded filesystem, Git, solid-node, image, and
+shop-broker lifecycle operations. A backend that cannot enforce a
+profile-declared tool policy is not selectable: Codex was retired for that
+reason, because its sessions keep native command execution and file editing
+whatever the profile declares. The librarian is provisionally unavailable on
+the scoped backends because bounded external-research tools are not yet
+present.
 
 OpenCode currently uses a bounded compatibility exception. Existing profiles
 remain unchanged and valid and do not contain OpenCode tables. A project-selected

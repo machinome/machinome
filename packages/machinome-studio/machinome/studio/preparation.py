@@ -20,9 +20,7 @@ from .screenshots import refresh_project_screenshot, screenshot_revision
 LOWER_KEBAB_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 AGENT_ID = LOWER_KEBAB_ID
 REQUIRED_VIEWER_API = 4
-CODEX_MODELS = {"gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.3-codex-spark"}
 CLAUDE_MODELS = {"sonnet", "opus"}
-CODEX_EFFORTS = {"low", "medium", "high", "xhigh", "max", "ultra"}
 CLAUDE_EFFORTS = {"low", "medium", "high"}
 
 
@@ -298,9 +296,9 @@ def _parse_agent_runtime(agent_id: str, raw: str, source_path: Path) -> ProjectA
     if any(not part for part in parts):
         raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} contains an empty segment")
     backend = parts[0] if parts else ""
-    if backend not in {"codex", "claude", "opencode"}:
+    if backend not in {"claude", "opencode"}:
         raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} names an unknown backend")
-    expected = {2, 3} if backend in {"codex", "claude"} else {3, 4}
+    expected = {2, 3} if backend == "claude" else {3, 4}
     if len(parts) not in expected:
         raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} has the wrong segment count")
     if backend == "opencode":
@@ -309,11 +307,9 @@ def _parse_agent_runtime(agent_id: str, raw: str, source_path: Path) -> ProjectA
         _, model, *tail = parts
         provider = None
     effort = tail[0] if tail else None
-    if backend == "codex" and model not in CODEX_MODELS:
-        raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} names an unsupported Codex model")
     if backend == "claude" and model not in CLAUDE_MODELS:
         raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} names an unsupported Claude model")
-    supported_efforts = CODEX_EFFORTS if backend == "codex" else CLAUDE_EFFORTS if backend == "claude" else None
+    supported_efforts = CLAUDE_EFFORTS if backend == "claude" else None
     if effort is not None and supported_efforts is not None and effort not in supported_efforts:
         raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} names an unsupported reasoning level")
     return ProjectAgentRuntime(backend, provider, model, effort, raw)

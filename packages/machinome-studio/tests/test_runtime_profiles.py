@@ -21,9 +21,9 @@ class RuntimeProfileTest(unittest.TestCase):
         self.assertEqual(builder.user_agent.id, "builder")
         self.assertEqual(builder.work_mode, "direct")
         self.assertEqual([(agent.id, agent.label) for agent in builder.agents], [("builder", "Builder")])
-        self.assertEqual(builder.user_agent.backends["codex"].model, "gpt-5.3-codex-spark")
-        self.assertEqual(builder.user_agent.backends["codex"].effort, "high")
-        self.assertEqual(builder.user_agent.backends["codex"].tools, "inherit")
+        self.assertEqual(builder.user_agent.backends["claude"].model, "sonnet")
+        self.assertEqual(builder.user_agent.backends["claude"].effort, "medium")
+        self.assertEqual(builder.user_agent.backends["claude"].permission, "autonomous")
 
         fordesmac = load_profile("fordesmac", shop_root=ROOT)
         self.assertEqual(fordesmac.work_mode, "delegated")
@@ -76,20 +76,23 @@ class RuntimeProfileTest(unittest.TestCase):
             with (ROOT / "profiles" / profile_id / "profile.toml").open("rb") as source:
                 manifest = tomllib.load(source)
             for agent in manifest["agents"]:
-                self.assertEqual(set(agent["backends"]), {"codex", "claude"})
+                self.assertEqual(set(agent["backends"]), {"claude"})
 
-    def test_retired_hermes_backend_is_rejected(self) -> None:
+    def test_retired_backends_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             shop = Path(temporary)
             shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
             shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
             manifest = shop / "profiles" / "builder" / "profile.toml"
-            manifest.write_text(
-                manifest.read_text()
-                + '\n[agents.backends.hermes]\nmodel = "inherit"\neffort = "inherit"\ntools = "inherit"\n'
-            )
-            with self.assertRaisesRegex(ProfileError, "unknown key.*hermes"):
-                load_profile("builder", shop_root=shop)
+            original = manifest.read_text()
+            for retired in ("hermes", "codex"):
+                with self.subTest(backend=retired):
+                    manifest.write_text(
+                        original
+                        + f'\n[agents.backends.{retired}]\nmodel = "inherit"\neffort = "inherit"\ntools = "inherit"\n'
+                    )
+                    with self.assertRaisesRegex(ProfileError, f"unknown key.*{retired}"):
+                        load_profile("builder", shop_root=shop)
 
     def test_invalid_selection_and_unknown_schema_key_fail_with_actionable_errors(self) -> None:
         with self.assertRaisesRegex(ProfileError, "profile.*lowercase kebab-case"):
@@ -142,9 +145,6 @@ class RuntimeProfileTest(unittest.TestCase):
             with self.assertRaisesRegex(ProfileError, "claude.*must declare model, effort, tools, and permission"):
                 load_profile("builder", shop_root=shop)
 
-            manifest.write_text(value.replace('tools = "inherit"\n\n[agents.backends.claude]', 'tools = "inherit"\npermission = "autonomous"\n\n[agents.backends.claude]'))
-            with self.assertRaisesRegex(ProfileError, "codex.*unknown key.*permission"):
-                load_profile("builder", shop_root=shop)
 
 
 if __name__ == "__main__":

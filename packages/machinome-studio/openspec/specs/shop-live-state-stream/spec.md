@@ -119,7 +119,7 @@ existing project live-state connection in publication order without polling or
 a second connection.
 
 #### Scenario: A browser connects to an idle mixed-backend session
-- **WHEN** a maker opens Agents after Codex and OpenCode roles have manifested
+- **WHEN** a maker opens Agents after Claude and OpenCode roles have manifested
 - **THEN** the existing snapshot displays each role's current runtime, idle availability, assignments, and recent activity, and the focused role's catalogue request supplies its editability and choices
 
 #### Scenario: A runtime update succeeds

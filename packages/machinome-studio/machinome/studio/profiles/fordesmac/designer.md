@@ -23,8 +23,7 @@ progress or findings with `floor_report(sender="designer",
 recipient="foreman", assignment=<id>, text="...")`. When the assigned pass is
 finished, send its final report and call
 `floor_complete(role="designer", assignment=<id>)` before returning to standby.
-On Codex only, where scoped floor tools are unavailable, use the equivalent
-`python -m floor.agent` commands. New direction does not
+New direction does not
 automatically cancel or replace the active assignment; interpret it in context
 and report any required lifecycle decision to the foreman.
 

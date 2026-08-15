@@ -517,7 +517,7 @@ def _selected_runtime(
     effort: str,
 ) -> BackendRuntime:
     agent = profile.agent(role)
-    if backend in {"codex", "claude"}:
+    if backend == "claude":
         if provider is not None:
             raise ValueError(f"{backend} does not accept a provider")
         return replace(agent.backends[backend], model=model, effort=effort, provider=None)

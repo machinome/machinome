@@ -9,10 +9,6 @@ label = "Foreman"
 prompt = "foreman.md"
 assigns = ["designer", "machinist", "librarian"]
 
-[agents.backends.codex]
-model = "gpt-5.6-terra"
-effort = "medium"
-tools = "inherit"
 [agents.backends.claude]
 model = "sonnet"
 effort = "medium"
@@ -25,10 +21,6 @@ label = "Designer"
 prompt = "designer.md"
 assigns = []
 reports_to = "foreman"
-[agents.backends.codex]
-model = "gpt-5.6-sol"
-effort = "medium"
-tools = "inherit"
 [agents.backends.claude]
 model = "opus"
 effort = "medium"
@@ -41,10 +33,6 @@ label = "Machinist"
 prompt = "machinist.md"
 assigns = []
 reports_to = "foreman"
-[agents.backends.codex]
-model = "gpt-5.6-terra"
-effort = "medium"
-tools = "inherit"
 [agents.backends.claude]
 model = "sonnet"
 effort = "medium"
@@ -57,10 +45,6 @@ label = "Librarian"
 prompt = "librarian.md"
 assigns = []
 reports_to = "foreman"
-[agents.backends.codex]
-model = "gpt-5.6-terra"
-effort = "medium"
-tools = "inherit"
 [agents.backends.claude]
 model = "sonnet"
 effort = "medium"

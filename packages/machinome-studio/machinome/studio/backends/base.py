@@ -138,7 +138,7 @@ class AgentBackend(Protocol):
     """Protocol for a pluggable agent-runtime backend.
 
     A backend owns every external process it starts — one for all roles
-    (``codex app-server``, ``opencode serve``) or one per role (``claude``) —
+    (``opencode serve``) or one per role (``claude``) —
     and releases all of them on ``close()``. It translates between its native
     protocol and the portable operations and events defined here. Cardinality
     is a backend's own business; ownership is not (ADR 0008).

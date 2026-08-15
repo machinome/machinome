@@ -24,7 +24,9 @@ class RoleContractTest(unittest.TestCase):
     def test_fordesmac_foreman_owns_the_pipeline_and_librarian_edge(self) -> None:
         foreman = (ROOT / "profiles" / "fordesmac" / "foreman.md").read_text()
         self.assertIn("Only you dispatch the designer, machinist, and librarian", foreman)
-        self.assertIn("--sender foreman --recipient librarian", foreman)
+        self.assertIn("`floor_assign` tool", foreman)
+        self.assertIn("reports only to you", foreman)
+        self.assertNotIn("python -m floor.agent", foreman)
         self.assertIn("one next draft", foreman)
         self.assertNotIn("running-the-shop", foreman)
 

@@ -1,6 +1,6 @@
 # ADR 0023: Replace a pristine agent's backend without migrating a session
 
-**Status:** Accepted
+**Status:** Accepted (amended by ADR 0025)
 
 **Date:** 2026-08-12
 
