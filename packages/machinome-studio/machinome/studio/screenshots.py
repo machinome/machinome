@@ -69,7 +69,7 @@ def refresh_project_screenshot(
             existing = _existing_bytes(target)
             if existing is _UNSAFE:
                 return ScreenshotResult(warning="screenshot.png is not a regular non-symlink file")
-            with tempfile.TemporaryDirectory(prefix="solid-node-studio-screenshot-") as temporary:
+            with tempfile.TemporaryDirectory(prefix="libresolid-studio-screenshot-") as temporary:
                 output = Path(temporary) / SCREENSHOT_NAME
                 env = {**os.environ, **dict(extra_environment or {})}
                 result = subprocess.run(

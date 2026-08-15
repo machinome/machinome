@@ -132,7 +132,7 @@ class ClaudeBackend:
         self._closing = False
         if self._temporary is None:
             self._temporary = tempfile.TemporaryDirectory(
-                prefix="solid-node-studio-claude-"
+                prefix="libresolid-studio-claude-"
             )
 
     async def open_role(self, role: str, context: RoleContext) -> RoleHandle:

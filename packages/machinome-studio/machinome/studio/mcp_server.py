@@ -708,7 +708,7 @@ class ProjectTools:
         and is never commit evidence.
         """
         reference = self._reference(path)
-        with tempfile.TemporaryDirectory(prefix="solid-node-studio-snapshot-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="libresolid-studio-snapshot-") as temporary:
             output = Path(temporary) / "snapshot.png"
             command = [*self.solid_command, "snapshot"]
             if reference:
@@ -985,7 +985,7 @@ class StdioMcpServer:
                 {
                     "protocolVersion": PROTOCOL_VERSION,
                     "capabilities": {"tools": {"listChanged": False}},
-                    "serverInfo": {"name": "solid-node-studio-floor-tools", "version": "0.1.0"},
+                    "serverInfo": {"name": "libresolid-studio-floor-tools", "version": "0.1.0"},
                 },
             )
         if method == "ping":

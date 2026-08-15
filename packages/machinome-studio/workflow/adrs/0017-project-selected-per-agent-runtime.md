@@ -48,7 +48,7 @@ one. The parts SHALL NOT be declarable separately or in separate files, and a
 reasoning level SHALL NOT be declarable as a key of its own.
 
 Selections SHALL live in the project's `pyproject.toml` under
-`[tool.solid-node-studio.agents]`, keyed by profile agent ID. That table is
+`[tool.libresolid-studio.agents]`, keyed by profile agent ID. That table is
 shop-owned and distinct from the framework's `[tool.solid-node]`. The project
 file is the record: the shop SHALL NOT write a separate manifest, run log, or
 benchmark artifact.

@@ -120,7 +120,7 @@ class SourceWorkspaceTest(unittest.TestCase):
         self.assertEqual(source.read_text(), "# changed\n")
         self.assertEqual(saved.content, "# changed\n")
         self.assertEqual(stat.S_IMODE(source.stat().st_mode), 0o744)
-        self.assertFalse(any(item.name.startswith(".solid-node-studio-save-") for item in source.parent.iterdir()))
+        self.assertFalse(any(item.name.startswith(".libresolid-studio-save-") for item in source.parent.iterdir()))
 
         with self.assertRaises(SourceConflict):
             self.workspace.save("root/__init__.py", "# stale\n", opened.revision)

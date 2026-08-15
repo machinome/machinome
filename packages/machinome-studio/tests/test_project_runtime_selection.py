@@ -41,7 +41,7 @@ class ProjectRuntimeSelectionTest(unittest.TestCase):
     def test_backend_fixes_selection_arity_and_segment_meaning(self) -> None:
         selection = self._selection(
             """
-[tool.solid-node-studio.agents]
+[tool.libresolid-studio.agents]
 foreman = "claude:sonnet"
 designer = "claude:opus:high"
 machinist = "opencode:anthropic:claude-sonnet-4-5"
@@ -61,9 +61,9 @@ librarian = "opencode:openai:gpt-5.4:medium"
 
     def test_profile_is_read_beside_agents(self) -> None:
         selection = self._selection(
-            '[tool.solid-node-studio]\n'
+            '[tool.libresolid-studio]\n'
             'profile = "fordesmac"\n'
-            '[tool.solid-node-studio.agents]\n'
+            '[tool.libresolid-studio.agents]\n'
             'foreman = "claude:sonnet"\n'
         )
 
@@ -101,16 +101,16 @@ librarian = "opencode:openai:gpt-5.4:medium"
         for value in invalid:
             with self.subTest(value=value):
                 with self.assertRaisesRegex(ProjectRuntimeError, r"foreman.*" + value.replace("-", r"\-")):
-                    self._selection(f'[tool.solid-node-studio.agents]\nforeman = "{value}"\n')
+                    self._selection(f'[tool.libresolid-studio.agents]\nforeman = "{value}"\n')
 
     def test_reasoning_levels_are_backend_specific(self) -> None:
         for value in ("claude:opus:impossible", "claude:opus:ultra"):
             with self.subTest(value=value):
                 with self.assertRaisesRegex(ProjectRuntimeError, "foreman.*reasoning"):
-                    self._selection(f'[tool.solid-node-studio.agents]\nforeman = "{value}"\n')
+                    self._selection(f'[tool.libresolid-studio.agents]\nforeman = "{value}"\n')
 
         selection = self._selection(
-            '[tool.solid-node-studio.agents]\n'
+            '[tool.libresolid-studio.agents]\n'
             'foreman = "claude:sonnet:low"\n'
             'designer = "claude:opus:high"\n'
             'machinist = "opencode:anthropic:claude-sonnet-4-5:max"\n'
@@ -138,16 +138,16 @@ librarian = "opencode:openai:gpt-5.4:medium"
             self.assertEqual(selection.agents, {})
             self.assertIsNone(selection.profile)
 
-            (project / "pyproject.toml").write_text('[tool.solid-node-studio]\n')
+            (project / "pyproject.toml").write_text('[tool.libresolid-studio]\n')
             selection = read_project_runtime("existing-project", project_home=home)
             self.assertEqual(selection.agents, {})
             self.assertIsNone(selection.profile)
 
     def test_agent_ids_and_unknown_table_keys_are_rejected(self) -> None:
         with self.assertRaisesRegex(ProjectRuntimeError, "BadAgent.*lowercase kebab-case"):
-            self._selection('[tool.solid-node-studio.agents]\nBadAgent = "claude:sonnet"\n')
+            self._selection('[tool.libresolid-studio.agents]\nBadAgent = "claude:sonnet"\n')
         with self.assertRaisesRegex(ProjectRuntimeError, "unknown key.*effort"):
-            self._selection('[tool.solid-node-studio]\neffort = "high"\n')
+            self._selection('[tool.libresolid-studio]\neffort = "high"\n')
 
     def test_profile_must_be_a_lowercase_kebab_case_string(self) -> None:
         invalid = (42, "../builder", "builder/child", "Builder", "builder..next")
@@ -159,11 +159,11 @@ librarian = "opencode:openai:gpt-5.4:medium"
                     ProjectRuntimeError,
                     r"pyproject\.toml.*profile.*" + re.escape(rendered),
                 ):
-                    self._selection(f"[tool.solid-node-studio]\nprofile = {source_value}\n")
+                    self._selection(f"[tool.libresolid-studio]\nprofile = {source_value}\n")
 
     def test_resolution_ignores_and_reports_keys_outside_the_roster(self) -> None:
         selection = self._selection(
-            '[tool.solid-node-studio.agents]\n'
+            '[tool.libresolid-studio.agents]\n'
             'builder = "claude:opus"\n'
             'designer = "claude:sonnet"\n'
         )
@@ -172,13 +172,13 @@ librarian = "opencode:openai:gpt-5.4:medium"
         self.assertEqual(profile.ignored_agent_ids, ("designer",))
 
     def test_unnamed_agents_default_to_profile_claude_runtime(self) -> None:
-        selection = self._selection('[tool.solid-node-studio.agents]\ndesigner = "claude:opus"\n')
+        selection = self._selection('[tool.libresolid-studio.agents]\ndesigner = "claude:opus"\n')
         profile = resolve_profile_runtime(load_profile("fordesmac", shop_root=ROOT), selection)
         self.assertEqual(profile.agent("foreman").runtime, profile.agent("foreman").backends["claude"])
 
     def test_project_values_override_only_model_and_reasoning(self) -> None:
         selection = self._selection(
-            '[tool.solid-node-studio.agents]\n'
+            '[tool.libresolid-studio.agents]\n'
             'designer = "claude:sonnet:high"\n'
             'machinist = "claude:opus"\n'
         )
@@ -198,8 +198,8 @@ class RuntimeConfigWriterTest(unittest.TestCase):
             path = Path(temporary) / "pyproject.toml"
             path.write_text(
                 '# maker comment\n[tool.solid-node]\nmodel = "root:Assembly"\n\n'
-                '[tool.solid-node-studio]\nprofile = "fordesmac"\n\n'
-                '[tool.solid-node-studio.agents]\ndesigner = "claude:sonnet:medium" # keep\n'
+                '[tool.libresolid-studio]\nprofile = "fordesmac"\n\n'
+                '[tool.libresolid-studio.agents]\ndesigner = "claude:sonnet:medium" # keep\n'
             )
             revision = config_revision(path)
             runtime = BackendRuntime("opus", "high", "inherit")
@@ -217,16 +217,16 @@ class RuntimeConfigWriterTest(unittest.TestCase):
     def test_stale_revision_never_overwrites_project_configuration(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "pyproject.toml"
-            path.write_text('[tool.solid-node-studio]\nprofile = "builder"\n')
+            path.write_text('[tool.libresolid-studio]\nprofile = "builder"\n')
             stale = config_revision(path)
-            path.write_text('[tool.solid-node-studio]\nprofile = "fordesmac"\n')
+            path.write_text('[tool.libresolid-studio]\nprofile = "fordesmac"\n')
 
             with self.assertRaises(RuntimeConfigConflict):
                 prepare_runtime_edit(
                     path, "builder", BackendRuntime("gpt-5.6-sol", "high", "inherit"), stale
                 )
 
-            self.assertEqual(path.read_text(), '[tool.solid-node-studio]\nprofile = "fordesmac"\n')
+            self.assertEqual(path.read_text(), '[tool.libresolid-studio]\nprofile = "fordesmac"\n')
 
 
 class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
@@ -234,7 +234,7 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
             path = project / "pyproject.toml"
-            original = '[tool.solid-node-studio]\nprofile = "builder"\n'
+            original = '[tool.libresolid-studio]\nprofile = "builder"\n'
             path.write_text(original)
             selection = read_project_runtime(project.name, project_home=project.parent)
             profile = resolve_profile_runtime(load_profile("builder", shop_root=ROOT), selection)
@@ -294,7 +294,7 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
             path = project / "pyproject.toml"
-            path.write_text('[tool.solid-node-studio]\nprofile = "builder"\n')
+            path.write_text('[tool.libresolid-studio]\nprofile = "builder"\n')
             selection = read_project_runtime(project.name, project_home=project.parent)
             profile = resolve_profile_runtime(load_profile("builder", shop_root=ROOT), selection)
             broker = Broker(profile, session_id="runtime-switch")

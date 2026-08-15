@@ -213,7 +213,7 @@ Covers D5 and D6. A separate record because the framework files ADRs by
 subsystem, because `solid develop` consumes it independently of any shop
 concern, and because a shop record cannot decide a framework interface.
 
-**solid-node-studio — the floor's model event pipeline.**
+**libresolid-studio — the floor's model event pipeline.**
 Covers D3, D4 and D8. Amends ADR-0010, which settled that the shop watches and
 rebuilds rather than asking an agent to: that holds, but the *event source*
 moves from the floor's own build completion to observed build output, so a
@@ -228,8 +228,8 @@ Python.
 | F1 | `solid-node` | `build-mutual-exclusion` | none |
 | F2 | `solid-node` | `per-file-build-publication` | F1 |
 | F3 | `solid-node` | `viewer-targeted-update` | none |
-| S1 | `solid-node-studio` | `floor-artifact-event-pipeline` | F2 |
-| S2 | `solid-node-studio` | `floor-in-place-model-updates` | F3, S1 |
+| S1 | `libresolid-studio` | `floor-artifact-event-pipeline` | F2 |
+| S2 | `libresolid-studio` | `floor-in-place-model-updates` | F3, S1 |
 
 F1 before F2 is not a preference. Under set-atomic publication a race caused a
 lost update; under a single directory two builders write the same files and

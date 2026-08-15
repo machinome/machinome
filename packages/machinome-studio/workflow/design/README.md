@@ -1,8 +1,8 @@
-# Handoff: SolidNode Studio desktop shell (project hub, first run, redesigned workspace)
+# Handoff: LibreSolid Studio desktop shell (project hub, first run, redesigned workspace)
 
 ## Overview
 
-`solid-node-studio` opens a project hub and then a shop workspace. The project
+`libresolid-studio` opens a project hub and then a shop workspace. The project
 records its profile and per-agent runtime selection in `pyproject.toml`. The
 workspace has persistent Model and Code areas with the project conversation at
 the right.

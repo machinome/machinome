@@ -829,7 +829,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         (self.project / "root").mkdir(parents=True)
         (self.project / "root" / "__init__.py").write_text("# model\n")
         (self.project / ".gitignore").write_text("_build/\n.fake-solid-builds\n")
-        (self.project / "pyproject.toml").write_text('[tool.solid-node-studio]\nprofile = "builder"\n')
+        (self.project / "pyproject.toml").write_text('[tool.libresolid-studio]\nprofile = "builder"\n')
         subprocess.run(["git", "init", "-q", "-b", "main", str(self.project)], check=True)
         subprocess.run(["git", "-C", str(self.project), "add", "--all"], check=True)
         subprocess.run([
@@ -906,7 +906,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
             self.registry.unsubscribe_hub(subscriber)
 
     async def test_profile_failure_is_fatal_before_preparation_and_leaves_no_session(self) -> None:
-        (self.project / "pyproject.toml").write_text('[tool.solid-node-studio]\nprofile = "missing-profile"\n')
+        (self.project / "pyproject.toml").write_text('[tool.libresolid-studio]\nprofile = "missing-profile"\n')
         with patch("floor.sessions.prepare_project") as prepare:
             await self.registry.request_open("engine")
             self.assertIsNone(await self.registry.wait_until_settled("engine"))

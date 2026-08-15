@@ -385,7 +385,7 @@ class ScopedProjectToolsTest(unittest.TestCase):
             "initialize",
             {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}},
         )
-        self.assertEqual(initialized["result"]["serverInfo"]["name"], "solid-node-studio-floor-tools")
+        self.assertEqual(initialized["result"]["serverInfo"]["name"], "libresolid-studio-floor-tools")
         listed = rpc(2, "tools/list")
         self.assertEqual({tool["name"] for tool in listed["result"]["tools"]}, set(TOOL_NAMES))
         image = rpc(3, "tools/call", {"name": "read_file", "arguments": {"path": "image.png"}})

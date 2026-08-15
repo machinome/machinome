@@ -106,7 +106,7 @@ class SourceFileWatcher(FileSystemEventHandler):
             or first == "_build"
             or first.startswith("_build.")
             or first.startswith(".solid-node-build-")
-            or any(part.startswith(".solid-node-studio-save-") for part in parts)
+            or any(part.startswith(".libresolid-studio-save-") for part in parts)
         ):
             return None
         return relative

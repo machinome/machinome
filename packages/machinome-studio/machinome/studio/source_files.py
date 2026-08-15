@@ -125,7 +125,7 @@ class SourceWorkspace:
         try:
             mode = stat.S_IMODE(candidate.stat().st_mode)
             descriptor, temporary_name = tempfile.mkstemp(
-                prefix=".solid-node-studio-save-",
+                prefix=".libresolid-studio-save-",
                 dir=candidate.parent,
             )
             temporary = Path(temporary_name)

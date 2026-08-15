@@ -749,7 +749,7 @@ def create_app(working_folder: Path, *, registry: object) -> FastAPI:
         finally:
             await registry.close_all()  # type: ignore[attr-defined]
 
-    app = FastAPI(title="solid-node-studio", lifespan=lifespan)
+    app = FastAPI(title="libresolid-studio", lifespan=lifespan)
     app.state.working_folder = working_folder.resolve()
     app.state.registry = registry
     app.mount("/assets", StaticFiles(directory=STATIC_ROOT / "assets"), name="assets")

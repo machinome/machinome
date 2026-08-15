@@ -43,7 +43,7 @@ variants from its live catalogue. Backends not already used by the project are
 created lazily, joined to event routing, and included in session cleanup.
 
 Persistence continues to default on and writes the complete selection to the
-project's `[tool.solid-node-studio.agents]` table under revision checking.
+project's `[tool.libresolid-studio.agents]` table under revision checking.
 
 ## Alternatives considered
 

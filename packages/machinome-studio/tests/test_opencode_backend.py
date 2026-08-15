@@ -114,7 +114,7 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
         requests = [item for item in self.captured() if item["kind"] == "request"]
         posts = [item for item in requests if item["method"] == "POST"]
         self.assertEqual([(item["method"], item["path"]) for item in posts], [("POST", "/session")])
-        self.assertEqual(posts[0]["body"]["title"], "SolidNode Studio: builder")
+        self.assertEqual(posts[0]["body"]["title"], "LibreSolid Studio: builder")
 
         await self.backend.deliver_start(handle, "Begin")
         prompt = next(item["body"] for item in self.captured() if item.get("path", "").endswith("/prompt_async"))

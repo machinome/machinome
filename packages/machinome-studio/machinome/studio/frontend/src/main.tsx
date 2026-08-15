@@ -699,7 +699,7 @@ function Hub() {
 
   return <main className={`hub-shell ${sheetOpen ? "sheet-visible" : ""}`}>
     <header className="workspace-titlebar">
-      <div className="workspace-title"><span className="shop-mark" aria-hidden="true" /><span>SolidNode Studio</span></div>
+      <div className="workspace-title"><span className="shop-mark" aria-hidden="true" /><span>LibreSolid Studio</span></div>
       <p className="workspace-run">Shop is {shopOpen ? "open" : "closed"}</p>
     </header>
     <div className="hub-body">
@@ -1656,7 +1656,7 @@ function Workspace({ project }: { project: string }) {
       <header className="workspace-titlebar">
         <div className="workspace-title">
           <span className="shop-mark" aria-hidden="true" />
-          <span>SolidNode Studio / {project}</span>
+          <span>LibreSolid Studio / {project}</span>
         </div>
         <div className="title-actions"><p className="workspace-run" aria-live="polite">{shopOpen && run ? `${run.profile_id} · open` : `Shop is ${shopOpen ? "open" : "closed"}`}</p><button className="close-project" onClick={() => void closeProject()}>Close project</button></div>
       </header>

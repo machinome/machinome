@@ -118,7 +118,7 @@ class OpenCodeBackend:
         self._backend_failed = False
         self.port = self._unused_port()
         self.password = secrets.token_urlsafe(32)
-        self._temporary = tempfile.TemporaryDirectory(prefix="solid-node-studio-opencode-")
+        self._temporary = tempfile.TemporaryDirectory(prefix="libresolid-studio-opencode-")
         temporary = Path(self._temporary.name)
         config = temporary / "opencode.json"
         config_dir = temporary / "config"
@@ -205,7 +205,7 @@ class OpenCodeBackend:
         result = await self._request(
             "POST",
             f"/session?directory={query}",
-            {"title": f"SolidNode Studio: {role}"},
+            {"title": f"LibreSolid Studio: {role}"},
         )
         session_id = str(result["id"])
         if context.agent.runtime is None:

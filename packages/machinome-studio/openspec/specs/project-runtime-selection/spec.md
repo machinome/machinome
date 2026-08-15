@@ -6,21 +6,21 @@ TBD - created by archiving change project-selected-agent-runtime. Update Purpose
 ### Requirement: A project declares its own agent runtime
 The active project's `pyproject.toml` SHALL be the sole source of backend,
 provider, and model selection for a shop run. The shop SHALL read that
-selection from a `[tool.solid-node-studio]` table, which it owns exclusively;
+selection from a `[tool.libresolid-studio]` table, which it owns exclusively;
 it SHALL NOT read or write the framework's `[tool.solid-node]` table. Runtime
 selection SHALL NOT be available as a launcher option, an environment variable,
 or a profile declaration for a backend the profile does not default.
 
 #### Scenario: A project selects runtime for its agents
-- **WHEN** a project's `pyproject.toml` declares `[tool.solid-node-studio]` runtime selections and the shop opens for that project
+- **WHEN** a project's `pyproject.toml` declares `[tool.libresolid-studio]` runtime selections and the shop opens for that project
 - **THEN** each named agent opens on the backend, provider, and model that table names
 
 #### Scenario: The framework table is left alone
 - **WHEN** the shop reads a project's runtime selection
-- **THEN** it reads only `[tool.solid-node-studio]` and neither reads nor modifies `[tool.solid-node]`
+- **THEN** it reads only `[tool.libresolid-studio]` and neither reads nor modifies `[tool.solid-node]`
 
 ### Requirement: A project declares its default runtime profile
-The `[tool.solid-node-studio]` table SHALL admit a `profile` key whose value is a
+The `[tool.libresolid-studio]` table SHALL admit a `profile` key whose value is a
 string naming a runtime profile. That value SHALL select the profile for every
 session of that project.
 
@@ -32,7 +32,7 @@ session SHALL NOT fall back to the default profile. Every such rejection SHALL
 identify the project file and the offending value, and SHALL leave the shop and
 every other project available.
 
-A project that declares no `profile` key, no `[tool.solid-node-studio]` table, or
+A project that declares no `profile` key, no `[tool.libresolid-studio]` table, or
 no `pyproject.toml` at all SHALL be opened under the shop default.
 
 Creating a project SHALL write the `profile` key the maker chose for it, so a
@@ -70,7 +70,7 @@ how the remaining segments are read. The parts SHALL NOT be declarable
 separately, in separate tables, or in separate files.
 
 Selections SHALL be declared per agent under
-`[tool.solid-node-studio.agents]`, keyed by profile agent ID. Different agents
+`[tool.libresolid-studio.agents]`, keyed by profile agent ID. Different agents
 in one run MAY name different backends.
 
 A value SHALL be rejected when it names an unknown or retired backend, carries a
@@ -124,7 +124,7 @@ and value.
 An agent the project does not name SHALL open on the Claude backend with the
 model and effort its active profile declares for Claude. An agent whose
 selection omits the reasoning level SHALL keep its profile-declared effort. A
-project with no `[tool.solid-node-studio]` table, no `agents` table, or no
+project with no `[tool.libresolid-studio]` table, no `agents` table, or no
 `pyproject.toml` at all SHALL open every agent that way. A project that does not
 exist yet SHALL be treated as declaring nothing, and scaffolding a new project
 SHALL NOT write a runtime selection.
@@ -138,7 +138,7 @@ SHALL NOT write a runtime selection.
 - **THEN** that agent opens with the selected model and its profile-declared effort
 
 #### Scenario: A project declares nothing
-- **WHEN** a project has no `[tool.solid-node-studio]` table
+- **WHEN** a project has no `[tool.libresolid-studio]` table
 - **THEN** every agent opens on Claude with its profile-declared Claude model and effort
 
 #### Scenario: A project does not exist yet
@@ -171,7 +171,7 @@ kebab-case agent ID SHALL be rejected.
 - **THEN** the shop refuses to open that project before any project or backend side effect
 
 ### Requirement: Project configuration is trusted; project guidance text is not
-Pilot-authored project configuration in `[tool.solid-node-studio]` SHALL be
+Pilot-authored project configuration in `[tool.libresolid-studio]` SHALL be
 trusted to select backend, provider, and model. Project guidance text, including
 a project's root `AGENTS.md` carried as supplemental session instruction, SHALL
 NOT redefine runtime selection, role identity, topology, authority, skills,
@@ -193,7 +193,7 @@ continue to resolve from the active profile alone. Declaring a `profile` key
 SHALL select one repository-owned profile package in its entirety and SHALL NOT
 make any policy that package carries project-authored: a project SHALL NOT
 select, widen, narrow, or otherwise state tool or permission policy
-independently of the profile it names. A `[tool.solid-node-studio]` table SHALL
+independently of the profile it names. A `[tool.libresolid-studio]` table SHALL
 reject keys other than those this capability defines rather than ignoring them,
 so a reasoning level SHALL be selectable only as a segment of an agent's runtime
 value and never as a key of its own.
@@ -303,7 +303,7 @@ maker-selectable.
 
 ### Requirement: A live runtime update may be recorded in project configuration
 The runtime control SHALL default to writing an accepted change to the active
-project's `[tool.solid-node-studio.agents]` table and SHALL let the maker
+project's `[tool.libresolid-studio.agents]` table and SHALL let the maker
 explicitly uncheck that option for a session-only override. A persisted change
 SHALL write the complete selected backend/provider/model/reasoning value using
 the accepted grammar, preserve unrelated TOML content and comments, and
@@ -324,4 +324,4 @@ read or write `[tool.solid-node]`.
 
 #### Scenario: Project and framework tables coexist
 - **WHEN** persisted runtime is written beside an existing `[tool.solid-node]` table and other project configuration
-- **THEN** only the selected `[tool.solid-node-studio.agents]` key changes and all unrelated content remains semantically and textually preserved
+- **THEN** only the selected `[tool.libresolid-studio.agents]` key changes and all unrelated content remains semantically and textually preserved

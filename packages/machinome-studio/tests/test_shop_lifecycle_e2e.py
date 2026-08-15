@@ -95,7 +95,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_role("button", name="Create and open").click()
         self.page.get_by_text("creating · builder", exact=False).wait_for(timeout=2_000)
         self.page.wait_for_url("**/projects/new_bracket", timeout=10_000)
-        self.page.get_by_text("SolidNode Studio / new_bracket").wait_for()
+        self.page.get_by_text("LibreSolid Studio / new_bracket").wait_for()
         self.page.get_by_role("button", name="Close project").click()
         self.page.wait_for_url(self.url("/"), timeout=5_000)
         self.page.get_by_role("heading", name="Projects").wait_for()
@@ -617,7 +617,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         (project / "root").mkdir(parents=True)
         (project / "root" / "__init__.py").write_text("# model\n")
         (project / ".gitignore").write_text("_build/\n.fake-solid-builds\n.fake-solid-state.json\n")
-        (project / "pyproject.toml").write_text('[tool.solid-node-studio]\nprofile = "builder"\n')
+        (project / "pyproject.toml").write_text('[tool.libresolid-studio]\nprofile = "builder"\n')
         subprocess.run(["git", "init", "-q", "-b", "main", str(project)], check=True)
         subprocess.run(["git", "-C", str(project), "add", "--all"], check=True)
         subprocess.run([

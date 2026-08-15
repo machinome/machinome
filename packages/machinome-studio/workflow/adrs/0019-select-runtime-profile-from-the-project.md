@@ -29,7 +29,7 @@ the prior Builder fallback no longer represents the normal operating mode.
 ## Decision
 
 The shop SHALL accept a `profile` string in the project's
-`[tool.solid-node-studio]` table, beside the existing `agents` table. Both floor
+`[tool.libresolid-studio]` table, beside the existing `agents` table. Both floor
 entry points SHALL select exactly one profile using this precedence:
 
 1. `--profile <id>` when supplied;

@@ -80,7 +80,7 @@ class ProjectResolutionTest(unittest.TestCase):
     def test_listing_keeps_valid_and_unopenable_entries_independent(self) -> None:
         valid = self.home / "valid_project"
         _make_repository(valid)
-        (valid / "pyproject.toml").write_text('[tool.solid-node-studio]\nprofile = "builder"\n')
+        (valid / "pyproject.toml").write_text('[tool.libresolid-studio]\nprofile = "builder"\n')
         subprocess.run(["git", "-C", str(valid), "add", "pyproject.toml"], check=True)
         subprocess.run([
             "git", "-C", str(valid), "-c", "user.name=Shop Test", "-c", "user.email=shop@example.invalid",

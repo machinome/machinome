@@ -230,14 +230,14 @@ def read_project_runtime(name: str | None, *, project_home: Path) -> ProjectRunt
     tool = document.get("tool", {})
     if not isinstance(tool, dict):
         raise ProjectRuntimeError(source_path, "tool must be a table")
-    table = tool.get("solid-node-studio")
+    table = tool.get("libresolid-studio")
     if table is None:
         return ProjectRuntimeSelection(project_root, source_path, {})
     if not isinstance(table, dict):
-        raise ProjectRuntimeError(source_path, "tool.solid-node-studio must be a table")
+        raise ProjectRuntimeError(source_path, "tool.libresolid-studio must be a table")
     unknown = set(table) - {"agents", "profile"}
     if unknown:
-        raise ProjectRuntimeError(source_path, f"tool.solid-node-studio: unknown key {sorted(unknown)[0]!r}")
+        raise ProjectRuntimeError(source_path, f"tool.libresolid-studio: unknown key {sorted(unknown)[0]!r}")
     profile = table.get("profile")
     if profile is not None and (not isinstance(profile, str) or not LOWER_KEBAB_ID.fullmatch(profile)):
         raise ProjectRuntimeError(
@@ -246,7 +246,7 @@ def read_project_runtime(name: str | None, *, project_home: Path) -> ProjectRunt
         )
     raw_agents = table.get("agents", {})
     if not isinstance(raw_agents, dict):
-        raise ProjectRuntimeError(source_path, "tool.solid-node-studio.agents must be a table")
+        raise ProjectRuntimeError(source_path, "tool.libresolid-studio.agents must be a table")
     agents: dict[str, ProjectAgentRuntime] = {}
     for agent_id, raw in raw_agents.items():
         if not isinstance(agent_id, str) or not AGENT_ID.fullmatch(agent_id):
@@ -403,15 +403,15 @@ def _write_project_profile(project_root: Path, profile: str) -> None:
     path = project_root / "pyproject.toml"
     try:
         source = path.read_text() if path.exists() else ""
-        if "[tool.solid-node-studio]" in source:
-            marker = "[tool.solid-node-studio]"
+        if "[tool.libresolid-studio]" in source:
+            marker = "[tool.libresolid-studio]"
             before, after = source.split(marker, 1)
             if re.search(r"(?m)^profile\s*=", after.split("\n[", 1)[0]):
                 raise PreparationError("profile", project_root.name, project_root, "scaffold already declares a runtime profile")
             source = f'{before}{marker}\nprofile = "{profile}"{after}'
         else:
             separator = "" if not source else ("" if source.endswith("\n\n") else "\n" if source.endswith("\n") else "\n\n")
-            source = f'{source}{separator}[tool.solid-node-studio]\nprofile = "{profile}"\n'
+            source = f'{source}{separator}[tool.libresolid-studio]\nprofile = "{profile}"\n'
         path.write_text(source)
     except OSError as error:
         raise PreparationError("profile", project_root.name, project_root, str(error)) from error

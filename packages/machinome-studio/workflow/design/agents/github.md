@@ -1,4 +1,4 @@
-repo: LibreSolid/solid-node-studio
+repo: LibreSolid/libresolid-studio
 branch: main
 path: floor/
 

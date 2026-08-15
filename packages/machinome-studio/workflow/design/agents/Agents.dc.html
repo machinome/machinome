@@ -23,7 +23,7 @@
   <header style="display:flex;align-items:center;justify-content:space-between;min-width:0;background:#14171c;border-bottom:1px solid #262b33;color:#c3c8d1;padding:0 12px;">
     <div style="display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;">
       <span style="display:block;width:11px;height:11px;border-radius:3px;background:#e0a350;"></span>
-      <span>SolidNode Studio / bracket-assembly</span>
+      <span>LibreSolid Studio / bracket-assembly</span>
     </div>
     <div style="display:flex;align-items:center;gap:12px;">
       <p style="margin:0;color:#8b929e;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">fordesmac · open</p>
@@ -322,7 +322,7 @@ const SESSIONS = {
     state: "active", headerState: "active · awaiting two reports", tokens: "38k / 200k context",
     entries: [
       { t: "08:41:58", k: "message", label: "MAKER", text: "The bracket is 14 g over budget and the fixture plate slot is tight. Sort both before the print run." },
-      { t: "08:42:04", k: "tool", tool: "read_file", target: "pyproject.toml", status: "ok", detail: '{ "path": "pyproject.toml" }\n→ [tool.solid-node-studio] profile = "fordesmac"\n→ 3 agent selections declared' },
+      { t: "08:42:04", k: "tool", tool: "read_file", target: "pyproject.toml", status: "ok", detail: '{ "path": "pyproject.toml" }\n→ [tool.libresolid-studio] profile = "fordesmac"\n→ 3 agent selections declared' },
       { t: "08:42:09", k: "tool", tool: "floor_assign", target: "designer · DES-14", status: "accepted", detail: '{ "recipient": "designer", "assignment_id": "DES-14",\n  "body": "Reduce the bracket web to 4 mm and re-check M4 boss clearance." }\n→ acknowledged 08:42:12' },
       { t: "08:42:10", k: "tool", tool: "floor_assign", target: "machinist · MAC-7", status: "accepted", detail: '{ "recipient": "machinist", "assignment_id": "MAC-7",\n  "body": "Open the clamp slot to 8.6 mm and re-run the fixture tests." }\n→ acknowledged 08:42:15' },
       { t: "08:43:22", k: "message", label: "REPORT · MAC-7", meta: "machinist → foreman", text: "Clamp slot at 8.6 mm, fixture tests pass. Committed as 9c41f0e." },

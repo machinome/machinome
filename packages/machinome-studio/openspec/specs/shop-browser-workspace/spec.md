@@ -11,7 +11,7 @@ context, artifact inspection, and user-facing-agent conversation.
 The shop SHALL present the maker with one full-height browser workspace for each
 open project, at a browser location that identifies that project. The browser
 document title and visible workspace title bar SHALL identify the product as
-`SolidNode Studio` and SHALL identify which project the workspace shows. On a
+`LibreSolid Studio` and SHALL identify which project the workspace shows. On a
 desktop browser, the workspace SHALL provide a title bar and status bar
 surrounding an activity rail, an area-specific left context panel, a flexible
 central Model, Code, Agents, or Build area, and a right conversation area. The
@@ -25,7 +25,7 @@ SHALL return the maker to the hub when that project is no longer open.
 
 #### Scenario: A maker opens a project workspace
 - **WHEN** the maker opens a project from the hub
-- **THEN** the browser and visible title bar identify `SolidNode Studio` and that project, and the page shows Model, Code, Agents, Build, the area-specific context, central work area, and conversation within the desktop workspace shell
+- **THEN** the browser and visible title bar identify `LibreSolid Studio` and that project, and the page shows Model, Code, Agents, Build, the area-specific context, central work area, and conversation within the desktop workspace shell
 
 #### Scenario: A maker views the desktop workspace
 - **WHEN** the maker opens a project workspace in a desktop browser window

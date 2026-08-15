@@ -1,6 +1,6 @@
-# SolidNode Studio
+# LibreSolid Studio
 
-SolidNode Studio is an experimental local harness for building 3D-printable
+LibreSolid Studio is an experimental local harness for building 3D-printable
 mechanical CAD projects with solid-node. The project normally chooses a
 repository-owned runtime profile;
 the profile defines the standing team, authority, prompts, skills, tool policy,
@@ -40,10 +40,10 @@ their profile's Claude model and effort. A final segment overrides reasoning;
 OpenCode additionally requires a provider:
 
 ```toml
-[tool.solid-node-studio]
+[tool.libresolid-studio]
 profile = "fordesmac"
 
-[tool.solid-node-studio.agents]
+[tool.libresolid-studio.agents]
 foreman = "claude:opus"
 designer = "opencode:anthropic:claude-sonnet-4-5:high"
 machinist = "claude:sonnet:medium"
@@ -117,7 +117,7 @@ A sprint always integrates shop work on branch and worktree `sprint-NNN` and
 `WTs/sprint-NNN`. If its ratified scope includes framework work, the framework
 repository has its own same-named integration branch and worktree at
 `solid-node/WTs/sprint-NNN`. Framework commits remain in solid-node; shop
-commits remain in solid-node-studio.
+commits remain in libresolid-studio.
 
 The framework sprint worktree is linked into the shop sprint worktree at
 `WTs/sprint-NNN/solid-node`. Run combined validation from the shop sprint

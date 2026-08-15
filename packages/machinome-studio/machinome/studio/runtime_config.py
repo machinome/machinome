@@ -55,7 +55,7 @@ def prepare_runtime_edit(
 
         document = tomlkit.parse(source.decode() if source else "")
         tool = _table(document, "tool")
-        studio = _table(tool, "solid-node-studio")
+        studio = _table(tool, "libresolid-studio")
         agents = _table(studio, "agents")
         agents[role] = runtime_selection(runtime)
         rendered = document.as_string().encode()

@@ -1,6 +1,6 @@
-# SolidNode Studio architecture overview
+# LibreSolid Studio architecture overview
 
-SolidNode Studio is a local agent harness for mechanical CAD projects. A
+LibreSolid Studio is a local agent harness for mechanical CAD projects. A
 human pilot owns intent and consequential choices; the runtime opens a
 project hub over one working folder and can hold several isolated project
 sessions, each with a repository-owned validated team profile. `AGENTS.md`
@@ -44,14 +44,14 @@ When a project is opened, the registry makes one side-effect-free read of its
 `pyproject.toml`, then loads `profiles/<id>/profile.toml` from the running shop
 package resources. A source-worktree launch therefore exercises that worktree;
 an installed launch uses its installed resources and requires no Git checkout.
-The project's `[tool.solid-node-studio]` `profile` value selects it;
+The project's `[tool.libresolid-studio]` `profile` value selects it;
 otherwise the shop uses `fordesmac`. The launcher provides no override. A
 profile is strict trusted configuration: it declares the
 human label, one user-facing agent, standing roster, direct or delegated work
 mode, prompt paths, allowed skills, communication edges, and Claude
 runtime defaults. The option overrides a project declaration for one run
 without modifying it. The project may select backend, provider, model, and
-reasoning level per agent under `[tool.solid-node-studio.agents]`; profile tool
+reasoning level per agent under `[tool.libresolid-studio.agents]`; profile tool
 policy and Claude permission remain non-overridable. OpenCode has no profile
 table and is available only through an explicit project selection. Creating a
 project records the profile selected in the hub in that repository's initial

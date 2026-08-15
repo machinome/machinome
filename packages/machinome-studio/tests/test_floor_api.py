@@ -302,7 +302,7 @@ class FloorAPITest(unittest.TestCase):
         (project / "root").mkdir(parents=True)
         (project / "root" / "__init__.py").write_text("# model\n")
         (project / ".gitignore").write_text("_build/\n.fake-solid-builds\n.fake-solid-state.json\n")
-        (project / "pyproject.toml").write_text(f'[tool.solid-node-studio]\nprofile = "{profile}"\n')
+        (project / "pyproject.toml").write_text(f'[tool.libresolid-studio]\nprofile = "{profile}"\n')
         subprocess.run(["git", "init", "-q", "-b", "main", str(project)], check=True)
         subprocess.run(["git", "-C", str(project), "add", "--all"], check=True)
         subprocess.run([
