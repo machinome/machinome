@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-only
 """Small authenticated OpenCode HTTP/SSE fixture used by backend tests."""
 
 from __future__ import annotations

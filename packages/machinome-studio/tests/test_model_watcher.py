@@ -1,3 +1,5 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-only
 """Regression coverage for S1's source-build and publication-event pipeline."""
 
 from __future__ import annotations

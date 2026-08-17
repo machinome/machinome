@@ -1,3 +1,5 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-only
 """Spike: what does `hermes acp` actually do with a mid-turn correction?
 
 Design evidence only. Speaks raw ACP JSON-RPC to a `hermes acp` subprocess and

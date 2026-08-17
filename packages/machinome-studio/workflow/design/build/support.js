@@ -1,3 +1,5 @@
+// Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+// SPDX-License-Identifier: AGPL-3.0-only
 // GENERATED from dc-runtime/src/*.ts — do not edit. Rebuild with `cd dc-runtime && bun run build`.
 "use strict";
 (() => {

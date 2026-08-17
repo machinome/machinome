@@ -1,3 +1,5 @@
+// Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+// SPDX-License-Identifier: AGPL-3.0-only
 export const BUILD_VOLUME = [250, 210, 220] as const;
 
 export type PrintedPiece = {

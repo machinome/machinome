@@ -1,3 +1,5 @@
+// Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+// SPDX-License-Identifier: AGPL-3.0-only
 type ViewerView = unknown;
 export const SOLID_NODE_VIEWER_API_VERSION: 4;
 

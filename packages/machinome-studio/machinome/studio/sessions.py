@@ -1,3 +1,5 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-only
 """Per-project runtime sessions owned by one long-lived shop service."""
 
 from __future__ import annotations

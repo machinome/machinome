@@ -147,3 +147,10 @@ scripts/test-e2e
 `floor/static/` is generated output, not tracked: the frontend build empties
 and rewrites it. `scripts/setup` builds it in both tiers, so a fresh checkout
 has a browser surface; rerun the build above after changing `floor/frontend`.
+
+## License
+
+Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes.
+
+LibreSolid Studio is licensed under the GNU Affero General Public License,
+version 3 only. See [LICENSE](LICENSE).

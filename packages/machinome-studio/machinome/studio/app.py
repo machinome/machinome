@@ -1,3 +1,5 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-only
 """HTTP, SSE, and static browser surface for the local shop floor."""
 
 from __future__ import annotations

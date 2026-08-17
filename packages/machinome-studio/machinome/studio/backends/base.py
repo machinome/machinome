@@ -1,3 +1,5 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-only
 """Portable agent-backend protocol and shared types.
 
 Every agent backend implements ``AgentBackend``.  The orchestrator depends

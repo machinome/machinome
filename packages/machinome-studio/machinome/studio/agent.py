@@ -1,3 +1,5 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-only
 """Outgoing role-neutral shop broker commands for managed agents."""
 
 from __future__ import annotations

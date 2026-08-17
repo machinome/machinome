@@ -1,3 +1,5 @@
+// Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+// SPDX-License-Identifier: AGPL-3.0-only
 import { loader } from "@monaco-editor/react";
 import * as monaco from "../node_modules/monaco-editor/esm/vs/editor/editor.api.js";
 import "../node_modules/monaco-editor/esm/vs/languages/definitions/css/register.js";
