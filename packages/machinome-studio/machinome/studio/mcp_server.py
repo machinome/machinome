@@ -20,10 +20,11 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, NoReturn
 
 from .agent import FloorClient
 from .screenshots import is_safe_screenshot, refresh_project_screenshot
@@ -395,14 +396,17 @@ class ProjectTools:
         call can carry a whole coherent edit across implementation and tests.
 
         Every file is verified against its current content before anything is
-        written: if any hunk does not match, no file is modified at all.  So
-        re-read the affected lines before building the diff if anything has
-        changed since you last read them.
+        written: if any hunk does not match, no file is modified at all.
+
+        Hunk context must match exactly, but `@@` line numbers are only a hint:
+        each hunk is located by searching outward from the line it names, so a
+        diff still applies when earlier edits have shifted the file.  A hunk
+        whose context appears nowhere is an error naming the closest near miss;
+        re-read the file and rebuild that hunk rather than guessing an offset.
 
         Output from `git diff` applies unedited, including its `diff --git` and
         `index` preamble.  This tool is not Codex `apply_patch`; a
-        `*** Begin Patch` envelope is rejected.  Hunks must match exactly, with
-        no fuzz or offset search.
+        `*** Begin Patch` envelope is rejected.
         """
         lines = unified_diff.splitlines(keepends=True)
         if any(line.startswith("*** ") for line in lines):
@@ -484,6 +488,35 @@ class ProjectTools:
 
         output: list[str] = []
         cursor = 0
+        drift = 0
+        for header, old_start, old_lines, new_lines in self._patch_hunks(
+            lines, start, stop, relative
+        ):
+            # The header's line number is a hint, not an anchor: an earlier edit
+            # shifts every later hunk, so carry the drift and search from there.
+            hint = old_start - 1 + drift
+            position = self._locate_hunk(original, old_lines, hint, cursor)
+            if position is None:
+                self._raise_hunk_mismatch(
+                    original, old_lines, hint, cursor, header, relative
+                )
+            output.extend(original[cursor:position])
+            output.extend(new_lines)
+            drift = position - (old_start - 1)
+            cursor = position + len(old_lines)
+        output.extend(original[cursor:])
+        if destination is None:
+            if output:
+                raise ValueError(
+                    f"patch deletes {relative} to /dev/null but leaves content behind"
+                )
+            return target, relative, None
+        return target, relative, output
+
+    def _patch_hunks(
+        self, lines: list[str], start: int, stop: int, relative: str
+    ) -> Iterator[tuple[str, int, list[str], list[str]]]:
+        """Split one file's section of a diff into header, start, old and new lines."""
         index = start + 2
         while index < stop:
             match = self.HUNK_HEADER.match(lines[index].rstrip("\n"))
@@ -493,10 +526,10 @@ class ProjectTools:
                     f"{lines[index].rstrip()!r}; expected "
                     "'@@ -<old-start>,<old-count> +<new-start>,<new-count> @@'"
                 )
-            hunk_header = lines[index].rstrip("\n")
+            header = lines[index].rstrip("\n")
             old_start = max(int(match.group(1)), 1)
-            output.extend(original[cursor : old_start - 1])
-            cursor = old_start - 1
+            old_lines: list[str] = []
+            new_lines: list[str] = []
             index += 1
             while index < stop and not lines[index].startswith("@@ "):
                 line = lines[index]
@@ -510,30 +543,68 @@ class ProjectTools:
                     )
                 marker, value = line[0], line[1:]
                 if marker in " -":
-                    if cursor >= len(original) or original[cursor] != value:
-                        actual = (
-                            repr(original[cursor]) if cursor < len(original)
-                            else "end of file"
-                        )
-                        raise ValueError(
-                            f"patch context does not match target file at line "
-                            f"{cursor + 1} of {relative} (hunk {hunk_header!r}): "
-                            f"patch expected {value!r} but the file has {actual}. "
-                            "Re-read the file and rebuild the diff, or use edit_file "
-                            "for a narrow exact replacement. No file was modified."
-                        )
-                    cursor += 1
+                    old_lines.append(value)
                 if marker in " +":
-                    output.append(value)
+                    new_lines.append(value)
                 index += 1
-        output.extend(original[cursor:])
-        if destination is None:
-            if output:
-                raise ValueError(
-                    f"patch deletes {relative} to /dev/null but leaves content behind"
-                )
-            return target, relative, None
-        return target, relative, output
+            yield header, old_start, old_lines, new_lines
+
+    @staticmethod
+    def _candidate_positions(
+        original: list[str], old_lines: list[str], hint: int, floor: int
+    ) -> Iterator[int]:
+        """Yield each plausible start for a hunk, closest to the hint first."""
+        last = len(original) - len(old_lines)
+        if last < floor:
+            yield min(max(hint, floor), len(original))
+            return
+        hint = min(max(hint, floor), last)
+        yield hint
+        for distance in range(1, max(hint - floor, last - hint) + 1):
+            if hint + distance <= last:
+                yield hint + distance
+            if hint - distance >= floor:
+                yield hint - distance
+
+    def _locate_hunk(
+        self, original: list[str], old_lines: list[str], hint: int, floor: int
+    ) -> int | None:
+        """Find where a hunk's old-side lines sit, or None when they are absent."""
+        for position in self._candidate_positions(original, old_lines, hint, floor):
+            if original[position : position + len(old_lines)] == old_lines:
+                return position
+        return None
+
+    def _raise_hunk_mismatch(
+        self,
+        original: list[str],
+        old_lines: list[str],
+        hint: int,
+        floor: int,
+        header: str,
+        relative: str,
+    ) -> NoReturn:
+        """Report the mismatch at the place the hunk came closest to matching."""
+        position, matched = 0, -1
+        for candidate in self._candidate_positions(original, old_lines, hint, floor):
+            length = 0
+            while (
+                length < len(old_lines)
+                and candidate + length < len(original)
+                and original[candidate + length] == old_lines[length]
+            ):
+                length += 1
+            if length > matched:
+                position, matched = candidate, length
+        line = position + matched
+        actual = repr(original[line]) if line < len(original) else "end of file"
+        raise ValueError(
+            f"patch context does not match target file at line "
+            f"{line + 1} of {relative} (hunk {header!r}): "
+            f"patch expected {old_lines[matched]!r} but the file has {actual}. "
+            "Re-read the file and rebuild the diff, or use edit_file "
+            "for a narrow exact replacement. No file was modified."
+        )
 
     def _patch_target(self, source_header: str, destination_header: str) -> Path:
         """Resolve the project file one file header pair describes."""

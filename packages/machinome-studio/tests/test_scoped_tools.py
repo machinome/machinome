@@ -180,6 +180,62 @@ class ScopedProjectToolsTest(unittest.TestCase):
         self.assertEqual((self.project / "other.txt").read_text(), "ONE\ntwo\n")
         self.assertEqual((self.project / "fresh.txt").read_text(), "new\n")
 
+    def test_a_hunk_applies_where_its_context_matches_despite_drifted_line_numbers(self) -> None:
+        self.tools.write_file("drift.txt", "".join(f"line{n}\n" for n in range(1, 21)))
+
+        # The context is intact but the header points four lines too early,
+        # exactly what happens after an earlier edit shifts the file.
+        self.tools.apply_patch(
+            "--- a/drift.txt\n+++ b/drift.txt\n"
+            "@@ -5,3 +5,3 @@\n line9\n-line10\n+LINE10\n line11\n"
+        )
+        self.assertEqual(
+            (self.project / "drift.txt").read_text().splitlines()[9], "LINE10"
+        )
+
+        # A header pointing too late searches backwards just as well.
+        self.tools.apply_patch(
+            "--- a/drift.txt\n+++ b/drift.txt\n"
+            "@@ -17,3 +17,3 @@\n line2\n-line3\n+LINE3\n line4\n"
+        )
+        self.assertEqual(
+            (self.project / "drift.txt").read_text().splitlines()[2], "LINE3"
+        )
+
+    def test_drifted_hunks_apply_in_order_and_prefer_the_nearest_match(self) -> None:
+        self.tools.write_file(
+            "repeat.txt",
+            "head\nsame\ntail\nmiddle\nsame\nfoot\nlast\nsame\nend\n",
+        )
+
+        # Three identical 'same' lines: each hunk must land on the one nearest
+        # its own header rather than on the first match in the file.
+        self.tools.apply_patch(
+            "--- a/repeat.txt\n+++ b/repeat.txt\n"
+            "@@ -6,3 +6,3 @@\n middle\n-same\n+SECOND\n foot\n"
+            "@@ -20,3 +20,3 @@\n last\n-same\n+THIRD\n end\n"
+        )
+        self.assertEqual(
+            (self.project / "repeat.txt").read_text(),
+            "head\nsame\ntail\nmiddle\nSECOND\nfoot\nlast\nTHIRD\nend\n",
+        )
+
+    def test_a_hunk_whose_context_is_absent_still_fails_without_writing(self) -> None:
+        self.tools.write_file("drift.txt", "".join(f"line{n}\n" for n in range(1, 21)))
+        absent = self.assertRaises(ValueError)
+        with absent:
+            self.tools.apply_patch(
+                "--- a/drift.txt\n+++ b/drift.txt\n"
+                "@@ -5,3 +5,3 @@\n line9\n-nonexistent\n+LINE10\n line11\n"
+            )
+        message = str(absent.exception)
+        self.assertIn("drift.txt", message)
+        self.assertIn("'nonexistent\\n'", message)
+        self.assertEqual(
+            (self.project / "drift.txt").read_text(),
+            "".join(f"line{n}\n" for n in range(1, 21)),
+        )
+
     def test_a_multi_file_patch_changes_nothing_when_any_file_fails(self) -> None:
         (self.project / "other.txt").write_text("one\ntwo\n")
         failure = self.assertRaises(ValueError)
