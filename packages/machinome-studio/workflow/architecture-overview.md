@@ -10,8 +10,12 @@ system.
 ## Project hub and sessions
 
 The process starts without preparing a project, building a model, or starting
-an agent. Both entry points require `--projects-dir`, which names the exact
-external catalogue served by `floor/app.py`. The runtime neither appends a
+an agent. Both entry points first verify that the `openspec` CLI resolves and
+runs, and refuse to start when it does not, naming the prerequisite and how to
+install it; nothing is bound and no project is opened. There is no reduced mode
+in which projects open without their spec record (ADR 0027). Both entry points
+require `--projects-dir`, which names the exact external catalogue served by
+`floor/app.py`. The runtime neither appends a
 directory name nor derives a location from cwd or Git metadata. Its inventory
 is derived from the filesystem: every direct-child
 directory is listed, and exact independent Git repository roots also report
@@ -74,12 +78,23 @@ Fordesmac librarian is provisionally non-functional because this surface
 intentionally has no web or external documentation tools, pending a bounded
 research surface.
 
+`OpenSpec` is a capability of its own in that vocabulary, resolving to the
+floor's two OpenSpec tools. Only `builder` declares it; no other capability
+reaches those tools, so a session holding the shell or filesystem capabilities
+does not reach a project's spec record as a side effect.
+
 The initial profiles are:
 
 | Profile | Mode | Human-facing agent | Standing roster |
 | --- | --- | --- | --- |
 | `builder` | direct | Builder | Builder |
 | `fordesmac` | delegated | Foreman | Foreman, Designer, Machinist, Librarian |
+
+Builder keeps a durable design record inside its project: an OpenSpec root
+whose capabilities name interfaces between parts, planned in one commit and
+implemented, synced, and archived in a second. The discipline is stated in
+Builder's own prompt and nothing on the floor gates a commit on it. The Maker
+neither ratifies nor handles a spec artifact.
 
 Runtime prompts live beside their profile. A prompt names only skills exposed
 through its profile `skills/` allowlist. Shared runtime skills live under
@@ -220,6 +235,28 @@ report, and complete only through the backend-injected floor URL and opaque
 session; they expose no generic network operation. Push, reset, checkout,
 branch, rebase, arbitrary shell, web, and arbitrary HTTP are absent.
 
+Two tools reach the project's OpenSpec record. `openspec_setup` initializes it,
+seeds the project's house rules for writing mechanical specs, and commits, and
+reports and changes nothing when the record already exists. `openspec_run`
+passes an argument vector to the CLI in the project root and returns its status
+and output; it is deliberately a passthrough rather than a wrapper per
+subcommand, so the shop's spec does not freeze one CLI version's surface. The
+guardrails act on the vector instead. Before any process starts, the server
+resolves the root the CLI would use by the same nearest-ancestor walk and
+refuses when it is not the project root, naming the root it would have used —
+an unprepared project otherwise resolves to whatever repository contains it.
+Store, global-configuration, telemetry, and shell-completion subcommands, a
+`--store` argument, and any path-shaped argument escaping the project are
+rejected. Archiving is refused while the change's own task record shows
+unfinished work, with the incomplete tasks named and no overriding argument:
+the CLI cannot gate this, since it prompts without `--yes` and archives anyway
+with it.
+
+A floor-mediated commit whose staged content lies wholly inside the spec record
+carries no model content, so it skips the render, leaves `screenshot.png`
+untouched and unstaged, and reports that it did. Anything the server cannot
+prove inert still renders.
+
 `load_skill` is the one tool that reads outside the active project, and the
 only tool that reads a skill. It takes a skill name, never a path, and
 resolves it against a name-keyed registry the shop supplies when the server is
@@ -277,12 +314,16 @@ and optional effort, while the tool policy still comes from the profile. These c
 
 ## Floor and browser
 
-The service binds its listener before any project is selected. For each open
+The service binds its listener before any project is selected, and only after
+the startup preflight has resolved the `openspec` CLI. For each open
 request, profile validation and runtime resolution complete before preparation
 creates or verifies the named independent project repository. The initial build
 runs through the `solid` console script installed beside the Python interpreter
 running the shop, so an unrelated executable earlier on ambient `PATH` cannot
-select a different framework installation. The build
+select a different framework installation. `openspec` is the single exception:
+it is a Node program the shop cannot supply from its own environment, so it is
+resolved from ambient `PATH` and named as an installation prerequisite. No
+other shop or backend behavior depends on an ambient executable (ADR 0027). The build
 runs off the event loop and reports an error into that session instead of
 gating it; agent start remains all-or-nothing. The hub remains available during
 opening and after any one project's failure. The browser renders

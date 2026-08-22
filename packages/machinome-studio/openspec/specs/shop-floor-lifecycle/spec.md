@@ -4,9 +4,7 @@
 
 Define fail-closed startup of the shop service and the independent opening,
 operation, and shutdown of project sessions across supported agent backends.
-
 ## Requirements
-
 ### Requirement: The orchestrator opens the shop floor
 The system SHALL allow the user to start the shop without naming a project, a
 profile, or any other project choice, and SHALL then open a shop floor for any
@@ -164,3 +162,25 @@ project selects no runtime for it.
 #### Scenario: Fordesmac opens across two backends
 - **WHEN** a project declaring `fordesmac` selects OpenCode for Designer and names no runtime for the other three agents and is opened
 - **THEN** the shop opens one project-sandboxed OpenCode session for Designer and three Claude sessions, all on that project's broker with the same lifecycle outcomes
+
+### Requirement: The OpenSpec CLI is a startup prerequisite
+
+The shop SHALL verify that the `openspec` CLI is present and runnable before it
+binds a listener or opens any project, and SHALL refuse to start when it is
+not. The refusal SHALL name the missing prerequisite and how to install it.
+
+The shop SHALL NOT start in a reduced mode in which projects open but their
+spec record is unavailable.
+
+#### Scenario: The CLI is missing
+
+- **WHEN** the shop is started in an environment where `openspec` cannot be
+  resolved or run
+- **THEN** startup fails naming the missing prerequisite, no listener is bound,
+  and no project is opened
+
+#### Scenario: The CLI is present
+
+- **WHEN** the shop is started in an environment where `openspec` runs
+- **THEN** startup proceeds normally
+

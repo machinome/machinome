@@ -25,7 +25,7 @@ _AGENT = {"id", "label", "prompt", "assigns", "reports_to", "backends"}
 _RUNTIME = {"model", "effort", "tools"}
 # These profile-owned capability names are resolved to floor MCP tools. A
 # backend that cannot enforce a declared tool policy is not selectable.
-_PROFILE_TOOLS = {"Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch"}
+_PROFILE_TOOLS = {"Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch", "OpenSpec"}
 
 
 class ProfileError(ValueError):

@@ -157,7 +157,7 @@ class RuntimeProfileTest(unittest.TestCase):
             with self.assertRaisesRegex(ProfileError, "claude.*model.*unsupported"):
                 load_profile("builder", shop_root=shop)
 
-            manifest.write_text(value.replace('tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]', 'tools = ["ImaginaryTool"]'))
+            manifest.write_text(value.replace('tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "OpenSpec"]', 'tools = ["ImaginaryTool"]'))
             with self.assertRaisesRegex(ProfileError, "claude.*tools.*unsupported"):
                 load_profile("builder", shop_root=shop)
 
@@ -165,7 +165,7 @@ class RuntimeProfileTest(unittest.TestCase):
             with self.assertRaisesRegex(ProfileError, "claude.*effort.*unsupported"):
                 load_profile("builder", shop_root=shop)
 
-            manifest.write_text(value.replace('tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]', 'tools = "inherit"'))
+            manifest.write_text(value.replace('tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "OpenSpec"]', 'tools = "inherit"'))
             with self.assertRaisesRegex(ProfileError, "claude.*tools.*must be a list"):
                 load_profile("builder", shop_root=shop)
 

@@ -20,13 +20,22 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, NoReturn
 
 from .agent import FloorClient
+from .openspec import (
+    HOUSE_RULES,
+    OUTSIDE_PROJECT_SUBCOMMANDS,
+    RECORD_MARKER as OPENSPEC_RECORD_MARKER,
+    SETUP_COMMIT_MESSAGE,
+    openspec_environment,
+    resolve_openspec_command,
+    resolve_openspec_root,
+)
 from .screenshots import is_safe_screenshot, refresh_project_screenshot
 
 
@@ -44,6 +53,7 @@ GIT_TOOLS = (
     "git_merge_base_is_ancestor", "git_head", "git_add", "git_commit",
 )
 SOLID_TOOLS = ("solid_build", "solid_test", "solid_snapshot")
+OPENSPEC_TOOLS = ("openspec_setup", "openspec_run")
 FLOOR_TOOLS = (
     "floor_assign", "floor_direction", "floor_acknowledge", "floor_report",
     "floor_complete",
@@ -53,7 +63,7 @@ FLOOR_TOOLS = (
 SKILL_TOOL = "load_skill"
 TOOL_NAMES = (
     FILESYSTEM_READ_TOOLS + FILESYSTEM_WRITE_TOOLS + GIT_TOOLS + SOLID_TOOLS
-    + FLOOR_TOOLS + (SKILL_TOOL,)
+    + FLOOR_TOOLS + OPENSPEC_TOOLS + (SKILL_TOOL,)
 )
 
 # Existing profile declarations remain the profile-facing policy.  Their
@@ -65,6 +75,9 @@ PROFILE_TOOL_MAP: dict[str, tuple[str, ...]] = {
     "Write": ("write_file", "delete_file", "move_file", "make_dir"),
     "Edit": ("edit_file", "apply_patch"),
     "Bash": GIT_TOOLS + SOLID_TOOLS + FLOOR_TOOLS,
+    # Its own capability: a role reaches the project's spec record only by
+    # declaring it, never as a side effect of holding a shell or file surface.
+    "OpenSpec": OPENSPEC_TOOLS,
     # The ratified change intentionally supplies no replacement web surface.
     "WebSearch": (),
     "WebFetch": (),
@@ -168,6 +181,8 @@ class ProjectTools:
         self.solid_command = tuple(solid_command)
         if not self.solid_command:
             raise ValueError("solid command must not be empty")
+        # Resolved on first use: startup already proved the CLI runs.
+        self._openspec_command: tuple[str, ...] | None = None
         self.floor = (
             FloorClient(floor_url, floor_session)
             if floor_url is not None and floor_session is not None
@@ -226,13 +241,14 @@ class ProjectTools:
 
     # -- subprocesses ------------------------------------------------
 
-    def _run(self, command: list[str]) -> dict[str, Any]:
+    def _run(self, command: list[str], *, environment: dict[str, str] | None = None) -> dict[str, Any]:
         completed = subprocess.run(
             command,
             cwd=self.root,
             text=True,
             capture_output=True,
             check=False,
+            env=environment,
         )
         return {
             "ok": completed.returncode == 0,
@@ -734,15 +750,45 @@ class ProjectTools:
             raise ValueError("paths must not be empty")
         return self._git("add", "--", *(self._relative(path) for path in paths))
 
+    def _staged_paths(self) -> list[str] | None:
+        """Paths in the index, or None when git cannot report them."""
+        listed = self._git("diff", "--cached", "--name-only")
+        if not listed["ok"]:
+            return None
+        return [line for line in listed["stdout"].splitlines() if line.strip()]
+
+    def _carries_model_content(self) -> bool:
+        """Whether the staged content could change what a render would show.
+
+        Only the spec record is known to be inert. Anything the shop cannot
+        prove inert renders, because a silently stale screenshot is worse
+        than a redundant build.
+        """
+        staged = self._staged_paths()
+        if not staged:
+            return True
+        record = f"{OPENSPEC_RECORD_MARKER.parts[0]}/"
+        return not all(path.startswith(record) for path in staged)
+
     def git_commit(self, message: str) -> dict[str, Any]:
         """Commit the staged changes in the active project.
 
         The shop also best-effort refreshes and stages the managed root
         `screenshot.png` preview; a screenshot failure never blocks the
-        commit and is reported separately as a warning.
+        commit and is reported separately as a warning.  A commit carrying
+        no model content — a planning commit against the spec record — skips
+        the render, so a missing refresh is never mistaken for a failure.
         """
         if not isinstance(message, str) or not message:
             raise ValueError("message must be a non-empty string")
+        if not self._carries_model_content():
+            result = self._git("commit", "-m", message)
+            result["rendered"] = False
+            result["note"] = (
+                "no model content was staged, so the model was not rebuilt and "
+                "screenshot.png was left as it is"
+            )
+            return result
         screenshot = refresh_project_screenshot(self.root, self.solid_command)
         warning = screenshot.warning
         if is_safe_screenshot(self.root):
@@ -750,9 +796,141 @@ class ProjectTools:
             if not staged["ok"]:
                 warning = staged["stderr"] or "could not stage screenshot.png"
         result = self._git("commit", "-m", message)
+        result["rendered"] = True
         if warning:
             result["screenshot_warning"] = warning
         return result
+
+    # -- openspec ----------------------------------------------------
+
+    def _openspec(self) -> tuple[str, ...]:
+        if self._openspec_command is None:
+            self._openspec_command = resolve_openspec_command()
+        return self._openspec_command
+
+    def _run_openspec(self, arguments: Sequence[str]) -> dict[str, Any]:
+        return self._run(
+            [*self._openspec(), *arguments],
+            environment=openspec_environment(dict(os.environ)),
+        )
+
+    def _openspec_arguments(self, arguments: Any) -> list[str]:
+        """Accept an argument vector that cannot leave the active project."""
+        if not isinstance(arguments, (list, tuple)) or not arguments:
+            raise ValueError("arguments must be a non-empty list of strings")
+        vector = list(arguments)
+        for argument in vector:
+            if not isinstance(argument, str) or not argument or "\x00" in argument:
+                raise ValueError("each openspec argument must be a non-empty string")
+            if argument == "--store" or argument.startswith("--store="):
+                raise ValueError("a store is machine-level OpenSpec state: --store is not available")
+            # Any path-shaped argument is held to the same containment as
+            # every other tool's path.
+            if "/" in argument or argument.startswith(".") or Path(argument).is_absolute():
+                self._path(argument)
+        subcommand = next((argument for argument in vector if not argument.startswith("-")), None)
+        if subcommand is None:
+            raise ValueError("arguments must name an openspec subcommand")
+        if subcommand in OUTSIDE_PROJECT_SUBCOMMANDS:
+            raise ValueError(
+                f"`openspec {subcommand}` reads or writes OpenSpec state outside this project"
+            )
+        return vector
+
+    def _require_a_finished_change(self, vector: Sequence[str]) -> None:
+        """Refuse to close a change over work its own record says is open.
+
+        The CLI cannot gate this: without `--yes` it prompts, and a stdio
+        subprocess has no one to answer, while `--yes` archives regardless.
+        """
+        name = next(
+            (argument for argument in vector[1:] if not argument.startswith("-")), None
+        )
+        if name is None:
+            raise ValueError("archive requires the name of the change to close")
+        listed = self._run_openspec(["list", "--json"])
+        if not listed["ok"]:
+            raise RuntimeError(listed["stderr"] or listed["stdout"] or "openspec list failed")
+        try:
+            changes = json.loads(listed["stdout"])["changes"]
+        except (ValueError, KeyError, TypeError) as error:
+            raise RuntimeError(f"could not read the change list: {error}") from error
+        recorded = next((change for change in changes if change.get("name") == name), None)
+        if recorded is None:
+            raise ValueError(f"no active change named {name!r} to archive")
+        if recorded.get("completedTasks") == recorded.get("totalTasks"):
+            return
+        outstanding = self._outstanding_tasks(name)
+        listing = "".join(f"\n  - {task}" for task in outstanding)
+        raise ValueError(
+            f"change {name!r} still records unfinished work:{listing}\n"
+            "Finish it, or amend the change's own task record to say what "
+            "stopped being relevant. There is no override."
+        )
+
+    def _outstanding_tasks(self, name: str) -> list[str]:
+        tasks = self.root / "openspec" / "changes" / name / "tasks.md"
+        if not tasks.is_file():
+            return []
+        return [
+            match.group(1).strip()
+            for match in (
+                re.match(r"\s*[-*]\s*\[ \]\s*(.+)", line)
+                for line in tasks.read_text(encoding="utf-8", errors="replace").splitlines()
+            )
+            if match
+        ]
+
+    def openspec_setup(self) -> dict[str, Any]:
+        """Prepare this project's OpenSpec record: initialize, seed, commit.
+
+        One call, because preparation is ceremony rather than design work,
+        and because every project should start from the same house rules.
+        """
+        config = self.root / OPENSPEC_RECORD_MARKER
+        if config.is_file():
+            return {
+                "ok": True,
+                "created": False,
+                "root": str(self.root),
+                "message": "this project already owns an OpenSpec record; nothing was changed",
+            }
+        initialized = self._run_openspec(["init", "--tools", "none"])
+        if not initialized["ok"] or not config.is_file():
+            raise RuntimeError(
+                initialized["stderr"] or initialized["stdout"] or "openspec init failed"
+            )
+        # Seeded once. From here the project owns the file, and a later
+        # improvement to the seed does not reach into it.
+        config.write_text(HOUSE_RULES, encoding="utf-8")
+        staged = self._git("add", "--", "openspec")
+        if not staged["ok"]:
+            raise RuntimeError(staged["stderr"] or "could not stage the new spec record")
+        # Nothing here is model content, so no render and no screenshot.
+        committed = self._git("commit", "-m", SETUP_COMMIT_MESSAGE)
+        if not committed["ok"]:
+            raise RuntimeError(committed["stderr"] or committed["stdout"] or "could not commit the spec record")
+        return {
+            "ok": True,
+            "created": True,
+            "root": str(self.root),
+            "message": "spec record initialized, house rules seeded, and committed",
+            "stdout": committed["stdout"],
+        }
+
+    def openspec_run(self, arguments: list[str]) -> dict[str, Any]:
+        """Run the `openspec` CLI in this project with the given arguments."""
+        vector = self._openspec_arguments(arguments)
+        resolved = resolve_openspec_root(self.root)
+        if resolved != self.root:
+            where = f"{resolved}" if resolved is not None else "nowhere"
+            raise ValueError(
+                f"this project has no OpenSpec record of its own, so `openspec` would "
+                f"resolve its root at {where}. Call `openspec_setup` first; nothing was run."
+            )
+        if vector[0] == "archive":
+            self._require_a_finished_change(vector)
+        return self._run_openspec(vector)
 
     # -- solid-node --------------------------------------------------
 
@@ -1026,6 +1204,20 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "git_commit": _schema({
         "message": STR("Commit message for the already staged changes."),
     }, ["message"]),
+    "openspec_setup": _schema(),
+    "openspec_run": _schema(
+        {
+            "arguments": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": (
+                    "Argument vector for the 'openspec' CLI, run in this project. "
+                    "Example: ['new', 'change', 'lid-body-fit']."
+                ),
+            },
+        },
+        ["arguments"],
+    ),
     "solid_build": _schema({
         "path": STR("Node reference or file to build. Defaults to the project model."),
     }),

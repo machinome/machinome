@@ -6,11 +6,13 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from pathlib import Path
 
 import uvicorn
 
 from .app import create_app
+from .openspec import OpenSpecUnavailable, resolve_openspec_command
 from .preparation import default_solid_command, shop_resource_root
 from .sessions import SessionRegistry
 
@@ -31,6 +33,11 @@ def main() -> None:
     )
     parser.add_argument("--solid-command", help=argparse.SUPPRESS)
     arguments = parser.parse_args()
+    try:
+        resolve_openspec_command()
+    except OpenSpecUnavailable as error:
+        print(f"error: {error}", file=sys.stderr)
+        raise SystemExit(1) from error
     project_home = arguments.projects_dir
     shop_root = shop_resource_root()
     solid_command = arguments.solid_command or default_solid_command()

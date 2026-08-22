@@ -20,6 +20,7 @@ import uvicorn
 from .app import Broker, Envelope, SystemNotice, create_app
 from .backends.base import AgentActivity, AgentBackend, BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle, RuntimeCatalogue
 from .backends import create_backend, parse_backend_command_overrides
+from .openspec import OpenSpecUnavailable, resolve_openspec_command
 from .preparation import (
     PreparationError,
     ProjectRuntimeError,
@@ -695,6 +696,7 @@ async def _shutdown_runtime(
 
 
 async def _serve(arguments: argparse.Namespace) -> None:
+    resolve_openspec_command()
     shop_root = shop_resource_root()
     project_home = arguments.projects_dir
     solid_command = arguments.solid_command or default_solid_command()
@@ -747,7 +749,7 @@ def main() -> None:
     parser.add_argument("--backend-command", action="append", default=[], metavar="BACKEND=COMMAND", help=argparse.SUPPRESS)
     try:
         asyncio.run(_serve(parser.parse_args()))
-    except (PreparationError, ProfileError, ProjectRuntimeError, ValueError) as error:
+    except (OpenSpecUnavailable, PreparationError, ProfileError, ProjectRuntimeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(1) from error
 

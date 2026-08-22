@@ -12,4 +12,4 @@ assigns = []
 [agents.backends.claude]
 model = "sonnet"
 effort = "medium"
-tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
+tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "OpenSpec"]

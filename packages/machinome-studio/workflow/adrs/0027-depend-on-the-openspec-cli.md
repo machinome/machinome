@@ -1,6 +1,6 @@
 # ADR 0027: Depend on the OpenSpec CLI and refuse to start without it
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Date:** 2026-08-22
 
@@ -51,9 +51,12 @@ alongside the Python environment.
 
 ## Consequences
 
-- A machine that can run the shop today but has no Node will stop starting
-  until it installs one. That is a breaking change for such an installation,
-  and it is stated rather than discovered mid-session.
+- Node was already required to *set up* the shop, because the floor's browser
+  surface is built from source rather than committed. It is now required to
+  *run* it: a machine that starts the shop today against a prebuilt
+  `floor/static` and no Node will stop starting until it installs one. That is
+  a breaking change for such an installation, and it is stated rather than
+  discovered mid-session. `scripts/setup` installs the CLI in both tiers.
 - The failure is loud and early. A maker sees a named prerequisite at startup
   instead of an opaque tool error several turns into a design change.
 - The shop's tests exercise the real CLI. No stand-in is maintained, so a

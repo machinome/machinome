@@ -33,7 +33,9 @@ class FloorEntrypointTest(unittest.TestCase):
         ):
             with (
                 self.subTest(arguments=arguments),
-                patch.dict(os.environ, {}, clear=True),
+                # PATH stays: the shop resolves its one ambient prerequisite,
+                # the OpenSpec CLI, before it binds a listener.
+                patch.dict(os.environ, {"PATH": os.environ.get("PATH", "")}, clear=True),
                 patch.object(sys, "argv", arguments),
                 patch.object(__main__, "default_solid_command", return_value=("solid",)),
                 patch.object(__main__, "SessionRegistry", return_value=object()),

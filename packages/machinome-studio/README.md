@@ -20,12 +20,23 @@ derive it from process cwd. The directory may be unrelated to the shop
 installation. The Python environment used to launch the shop must contain the
 pilot-selected solid-node installation; the shop invokes that environment's
 `solid` command directly rather than resolving an unrelated command through
-ambient `PATH`. The orchestrator takes no project or profile. The pilot opens an
+ambient `PATH`.
+
+The OpenSpec CLI is a startup prerequisite and the one exception to that rule:
+it is a Node program, so the shop resolves `openspec` from ambient `PATH` and
+refuses to start when it is missing or will not run, naming what to install.
+There is no reduced mode — a shop that cannot record a project's design would
+lose that record silently. Install it with:
+
+```text
+npm install -g @fission-ai/openspec
+``` The orchestrator takes no project or profile. The pilot opens an
 existing project or creates one in the browser;
 several projects may be open at once. `fordesmac` is the default and opens
 standing Foreman, Designer, Machinist, and Librarian sessions; Foreman alone
 assigns and receives specialist reports. `builder` opens one direct Builder
-session. The broker-only command serves the same hub without opening a backend.
+session, which keeps the project's own OpenSpec record of the interfaces
+between its parts and plans each design change there before machining it. The broker-only command serves the same hub without opening a backend.
 
 Opening a project reads its runtime configuration without changing it, then
 validates the profile and resolved runtime before preparation or agents start.

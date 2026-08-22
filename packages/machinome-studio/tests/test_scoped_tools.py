@@ -60,6 +60,7 @@ class ScopedProjectToolsTest(unittest.TestCase):
                 "git_status", "git_diff", "git_log", "git_show", "git_rev_parse_toplevel",
                 "git_merge_base_is_ancestor", "git_head", "git_add", "git_commit",
                 "solid_build", "solid_test", "solid_snapshot",
+                "openspec_setup", "openspec_run",
                 "floor_assign", "floor_direction", "floor_acknowledge",
                 "floor_report", "floor_complete",
                 "load_skill",
