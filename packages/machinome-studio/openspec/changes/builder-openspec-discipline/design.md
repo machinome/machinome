@@ -37,7 +37,9 @@ shop's. Two CLI behaviors did not hold up and are designed around below.
   protocol; folding both disciplines together is a separate question.
 - Packaging the Node dependency. Node becomes a documented prerequisite; how
   the shop eventually ships or vendors it is deferred.
-- Machinery for the Maker to browse, approve, or edit specs.
+- The browser surface for reading the record, which is a separate change (see
+  Settled Direction), and any machinery for the Maker to approve or edit a
+  spec, which this change forbids outright.
 - Retrofitting existing projects. A project gains its record the first time
   Builder opens a change in it.
 
@@ -167,9 +169,18 @@ against a fiction while adding a second surface to maintain.
   discipline applies only to changes that establish or alter an interface;
   fixes and knob values stay direct.
 
+## Settled Direction
+
+The Maker will be able to read their project's spec record in the browser. The
+record is for them, not only for Builder: a discipline whose output the Maker
+cannot see is a discipline they cannot check. That surface is a separate change
+— it is a new browser screen owned by `shop-browser-workspace`, it must answer
+to the reference design under `docs/design/`, and there is nothing to display
+until this change gives projects a record. It is reading only; the Maker never
+authors or approves a spec artifact, as `builder-spec-discipline` requires.
+
+Fordesmac is out of scope and not under consideration.
+
 ## Open Questions
 
-- Whether Fordesmac should adopt the same record, and how it would relate to
-  the designer's `docs/design.md` and drawing-release protocol.
-- Whether the Maker should eventually be able to read the project's record in
-  the browser, and what that surface looks like.
+None outstanding.
