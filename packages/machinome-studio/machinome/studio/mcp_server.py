@@ -20,7 +20,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -48,9 +48,12 @@ FLOOR_TOOLS = (
     "floor_assign", "floor_direction", "floor_acknowledge", "floor_report",
     "floor_complete",
 )
+# Loading a skill follows the declared skills of the session's agent, not its
+# declared tool capabilities, so it belongs to no capability group below.
+SKILL_TOOL = "load_skill"
 TOOL_NAMES = (
     FILESYSTEM_READ_TOOLS + FILESYSTEM_WRITE_TOOLS + GIT_TOOLS + SOLID_TOOLS
-    + FLOOR_TOOLS
+    + FLOOR_TOOLS + (SKILL_TOOL,)
 )
 
 # Existing profile declarations remain the profile-facing policy.  Their
@@ -119,6 +122,7 @@ def mcp_command(
     python: str | None = None,
     floor_url: str | None = None,
     floor_session: str | None = None,
+    skills: Mapping[str, Path] | None = None,
 ) -> list[str]:
     """Build the portable local-server command used by both backends."""
     command = [
@@ -134,6 +138,11 @@ def mcp_command(
         command.extend(("--floor-url", floor_url))
     if floor_session is not None:
         command.extend(("--floor-session", floor_session))
+    if skills:
+        command.extend((
+            "--skills-json",
+            json.dumps({name: str(Path(path).resolve()) for name, path in skills.items()}, sort_keys=True),
+        ))
     return command
 
 
@@ -147,10 +156,15 @@ class ProjectTools:
         solid_command: tuple[str, ...] = ("solid",),
         floor_url: str | None = None,
         floor_session: str | None = None,
+        skills: Mapping[str, Path] | None = None,
     ) -> None:
         self.root = project.resolve(strict=True)
         if not self.root.is_dir():
             raise ValueError(f"active project is not a directory: {self.root}")
+        # Fixed at launch by the shop: an agent names a skill, never a location.
+        self.skills = {
+            name: Path(path).resolve(strict=True) for name, path in (skills or {}).items()
+        }
         self.solid_command = tuple(solid_command)
         if not self.solid_command:
             raise ValueError("solid command must not be empty")
@@ -846,6 +860,57 @@ class ProjectTools:
         """Mark an assignment finished after sending its final report."""
         return self._floor().complete(role, assignment)
 
+    # -- skills ------------------------------------------------------
+
+    def load_skill(self, name: str, resource: str | None = None) -> str:
+        """Load one of your announced skills and follow its instructions.
+
+        Call this before doing work a skill covers; the session contract lists
+        the skills you hold and what each is for.  The result is the skill's
+        full instructions, followed by the names of any files bundled with it.
+        Pass `resource` with one of those names to read that file.
+
+        Skills live outside the active project, so this is the only way to
+        reach them: the file tools cannot.
+        """
+        if not self.skills:
+            raise ValueError("this session has no skill to load")
+        root = self.skills.get(name)
+        if root is None:
+            raise ValueError(
+                f"unknown skill {name!r}; this session can load: "
+                f"{', '.join(sorted(self.skills))}"
+            )
+        if resource is not None:
+            return self._skill_resource(root, name, resource).read_text()
+        bundled = sorted(
+            item.relative_to(root).as_posix()
+            for item in root.rglob("*")
+            if item.is_file() and item.name != "SKILL.md" and not item.is_symlink()
+        )
+        instructions = (root / "SKILL.md").read_text()
+        if not bundled:
+            return instructions
+        listing = "\n".join(f"- {item}" for item in bundled)
+        return (
+            f"{instructions}\n\nFiles bundled with the {name!r} skill, readable by "
+            f"calling load_skill again with 'resource' set to one of these names:\n{listing}\n"
+        )
+
+    def _skill_resource(self, root: Path, name: str, resource: str) -> Path:
+        """Resolve one bundled file, contained by its own skill directory."""
+        if not isinstance(resource, str) or not resource or "\x00" in resource:
+            raise ValueError("resource must be a non-empty string")
+        try:
+            resolved = (root / resource).resolve(strict=True)
+        except OSError as error:
+            raise ValueError(f"skill {name!r} bundles no resource {resource!r}: {error}") from error
+        if root not in resolved.parents or not resolved.is_file():
+            raise ValueError(
+                f"resource {resource!r} resolves outside the {name!r} skill directory"
+            )
+        return resolved
+
 
 def _schema(properties: dict[str, Any] | None = None, required: list[str] | None = None) -> dict[str, Any]:
     return {
@@ -1023,6 +1088,16 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
         },
         ["role", "assignment"],
     ),
+    "load_skill": _schema(
+        {
+            "name": STR("Name of a skill announced in your session contract."),
+            "resource": STR(
+                "Optional. A file bundled with that skill, named exactly as the "
+                "skill's own listing gives it. Omit to load the skill itself."
+            ),
+        },
+        ["name"],
+    ),
 }
 
 
@@ -1031,6 +1106,11 @@ class StdioMcpServer:
 
     def __init__(self, tools: ProjectTools) -> None:
         self.tools = tools
+        # A session holding no skill is not offered a way to load one.
+        self.names = tuple(
+            name for name in TOOL_NAMES
+            if name != SKILL_TOOL or tools.skills
+        )
 
     def run(self) -> None:
         for line in sys.stdin:
@@ -1073,7 +1153,7 @@ class StdioMcpServer:
                             "description": getattr(self.tools, name).__doc__ or name.replace("_", " "),
                             "inputSchema": TOOL_SCHEMAS[name],
                         }
-                        for name in TOOL_NAMES
+                        for name in self.names
                     ]
                 },
             )
@@ -1081,7 +1161,7 @@ class StdioMcpServer:
             params = request.get("params", {})
             name = params.get("name")
             arguments = params.get("arguments", {})
-            if name not in TOOL_NAMES:
+            if name not in self.names:
                 return self._tool_error(request_id, f"unknown tool: {name}")
             if not isinstance(arguments, dict):
                 return self._tool_error(request_id, "tool arguments must be an object")
@@ -1130,16 +1210,24 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--solid-command-json", default='["solid"]')
     parser.add_argument("--floor-url")
     parser.add_argument("--floor-session")
+    parser.add_argument("--skills-json", default="{}")
     args = parser.parse_args(argv)
     raw_command = json.loads(args.solid_command_json)
     if not isinstance(raw_command, list) or not raw_command or not all(isinstance(item, str) for item in raw_command):
         parser.error("--solid-command-json must encode a non-empty string array")
+    raw_skills = json.loads(args.skills_json)
+    if not isinstance(raw_skills, dict) or not all(
+        isinstance(name, str) and name and isinstance(path, str) and path
+        for name, path in raw_skills.items()
+    ):
+        parser.error("--skills-json must encode a name-to-directory object")
     StdioMcpServer(
         ProjectTools(
             args.project,
             solid_command=tuple(raw_command),
             floor_url=args.floor_url,
             floor_session=args.floor_session,
+            skills={name: Path(path) for name, path in raw_skills.items()},
         )
     ).run()
 

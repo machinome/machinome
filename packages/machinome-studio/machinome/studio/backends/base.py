@@ -9,12 +9,54 @@ vendor-specific configuration.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Protocol
 
-from ..profiles import BackendRuntime, ProfileAgent
+from ..mcp_server import SKILL_TOOL, resolved_tool_names
+from ..profiles import BackendRuntime, ProfileAgent, ProfileSkill
+
+
+# ── skills ────────────────────────────────────────────────────────────────
+
+
+def skill_registry(skills: Sequence[ProfileSkill]) -> dict[str, Path]:
+    """Name-keyed skill directories to register with a session's tool server."""
+    return {skill.name: skill.path for skill in skills}
+
+
+def session_tool_names(
+    skills: Sequence[ProfileSkill], tools: str | tuple[str, ...]
+) -> tuple[str, ...]:
+    """Floor tools a session reaches: its capabilities, plus skill loading.
+
+    Loading a skill follows the agent's declared skills rather than its
+    declared capabilities, exactly as a native skill tool does — an agent
+    holding skills can always read them.
+    """
+    resolved = resolved_tool_names(tools)
+    if skills and SKILL_TOOL not in resolved:
+        resolved += (SKILL_TOOL,)
+    return resolved
+
+
+def skill_catalogue(skills: Sequence[ProfileSkill], tool: str) -> list[str]:
+    """Announce an agent's skills by name and purpose, without their text.
+
+    An agent loads one when it needs it, so the session carries the catalogue
+    rather than every skill's instructions.
+    """
+    if not skills:
+        return []
+    return [
+        "",
+        f"Skills available to you, loadable with the `{tool}` tool:",
+        *(f"- {skill.name}: {skill.description}" for skill in skills),
+        f"Call `{tool}` with a skill's name and follow its instructions before "
+        "doing work that skill covers. They are not available any other way.",
+        "",
+    ]
 
 
 # ── delivery races ────────────────────────────────────────────────────────

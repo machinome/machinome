@@ -864,6 +864,21 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotEqual(session.id, session.name)
         self.assertEqual(self.backends[0][0]["session_id"], session.id)
 
+    async def test_a_backend_is_built_with_every_skill_its_profile_allowlists(self) -> None:
+        await self.registry.request_open("engine")
+        session = await self.registry.wait_until_settled("engine")
+        assert session is not None
+        expected = {
+            skill.name: skill.path
+            for agent in session.profile.agents
+            for skill in agent.skills
+        }
+        self.assertTrue(expected, "the builder profile allowlists skills")
+        self.assertEqual(
+            {skill.name: skill.path for skill in self.backends[0][0]["skills"]},
+            expected,
+        )
+
     async def test_pristine_catalogue_lazily_registers_optional_backend_owners(self) -> None:
         await self.registry.request_open("engine")
         session = await self.registry.wait_until_settled("engine")
@@ -1220,6 +1235,17 @@ class BackendFlagAcceptanceTest(unittest.TestCase):
         self.assertEqual(opencode.command, ("/tmp/fake-opencode",))
         self.assertEqual(claude.command, ("/tmp/fake-claude",))
 
+    def test_a_shared_tool_server_is_built_with_the_profiles_skills(self) -> None:
+        from floor.backends import create_backend
+
+        skills = FORDESMAC.agent("machinist").skills
+        self.assertTrue(skills)
+        opencode = create_backend("opencode", shop_root=ROOT, skills=skills)
+        self.assertEqual(opencode.skills, {skill.name: skill.path for skill in skills})
+        # Claude configures a tool server per role, so it registers each
+        # agent's own skills from its role context instead.
+        create_backend("claude", shop_root=ROOT, skills=skills)
+
     def test_unknown_backend_rejected(self) -> None:
         from pathlib import Path
         from floor.backends import create_backend
@@ -1306,7 +1332,6 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         argv = next(i for i in captured if i["kind"] == "environment")["argv"]
         contract = argv[argv.index("--append-system-prompt") + 1]
         self.assertIn(str(ROOT / "profiles" / "fordesmac" / "machinist.md"), contract)
-        self.assertIn(str(ROOT / "profiles" / "fordesmac" / "skills" / "solid-node-api" / "SKILL.md"), contract)
         self.assertIn("trusted control plane", contract)
 
         user_messages = [
@@ -1336,6 +1361,41 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
             "opaque-session",
         )
         self.assertEqual(argv[argv.index("--permission-mode") + 1], "bypassPermissions")
+        await self.claude.close()
+
+    async def test_a_role_is_announced_its_own_skills_and_can_load_them(self) -> None:
+        await self.claude.start()
+        await self.claude.open_role("machinist", self.context("machinist"))
+        environment = next(i for i in self.captured() if i["kind"] == "environment")
+        argv = environment["argv"]
+        contract = argv[argv.index("--append-system-prompt") + 1]
+
+        machinist = FORDESMAC.agent("machinist")
+        for skill in machinist.skills:
+            self.assertIn(skill.name, contract)
+            self.assertIn(skill.description, contract)
+            self.assertNotIn(str(skill.path), contract)
+            self.assertNotIn((skill.path / "SKILL.md").read_text(), contract)
+        self.assertIn("load_skill", contract)
+
+        self.assertIn("mcp__floor__load_skill", argv[argv.index("--tools") + 1])
+        server = json.loads(Path(argv[argv.index("--mcp-config") + 1]).read_text())["mcpServers"]["floor"]
+        registry = json.loads(server["args"][server["args"].index("--skills-json") + 1])
+        self.assertEqual(
+            registry,
+            {skill.name: str(skill.path.resolve()) for skill in machinist.skills},
+        )
+        await self.claude.close()
+
+    async def test_a_role_holding_no_skill_is_offered_no_skill_loading(self) -> None:
+        await self.claude.start()
+        await self.claude.open_role("foreman", self.context("foreman"))
+        argv = next(i for i in self.captured() if i["kind"] == "environment")["argv"]
+        self.assertEqual(FORDESMAC.agent("foreman").skills, ())
+        self.assertNotIn("load_skill", argv[argv.index("--append-system-prompt") + 1])
+        self.assertNotIn("load_skill", argv[argv.index("--tools") + 1])
+        server = json.loads(Path(argv[argv.index("--mcp-config") + 1]).read_text())["mcpServers"]["floor"]
+        self.assertNotIn("--skills-json", server["args"])
         await self.claude.close()
 
     async def test_first_delivery_waits_through_pending_mcp_until_connected(self) -> None:

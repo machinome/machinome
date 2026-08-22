@@ -85,6 +85,11 @@ through its profile `skills/` allowlist. Shared runtime skills live under
 `skills/`. Each declared agent receives the exact verified project repository
 root, while prompts and skills remain shop-owned outside that project.
 
+Every allowlisted skill declares its own `name` and `description` in
+`SKILL.md` frontmatter, and profile loading resolves the two together with the
+skill's directory. A skill that cannot describe itself fails validation,
+because a session chooses a skill from its announcement alone.
+
 ## Runtime layers
 
 ```text
@@ -185,7 +190,8 @@ Claude launches one isolated CLI process per profile agent and translates the
 selected model, effort, permitted tools, and explicit permission policy into
 its supported command fields. For a scoped role it writes a strict MCP config,
 removes `--safe-mode` because that flag disables MCP and passes only the resolved
-`mcp__floor__*` names. Because Claude emits no init
+`mcp__floor__*` names, together with `mcp__floor__load_skill` when that agent
+declares a skill. Because Claude emits no init
 before its first user input, project opening manifests the process after the
 short exit grace without a warm-up turn. The first real broker envelope triggers
 initialization, and that delivery is accepted only after `system/init` reports
@@ -208,6 +214,21 @@ report, and complete only through the backend-injected floor URL and opaque
 session; they expose no generic network operation. Push, reset, checkout,
 branch, rebase, arbitrary shell, web, and arbitrary HTTP are absent.
 
+`load_skill` is the one tool that reads outside the active project, and the
+only tool that reads a skill. It takes a skill name, never a path, and
+resolves it against a name-keyed registry the shop supplies when the server is
+launched; an optional `resource` reads a file bundled beside that skill's
+`SKILL.md`, contained by its directory. A session reaches it whenever its agent
+declares a skill, whatever tool capabilities the profile declared — skill
+loading follows skills, not capabilities — and a server holding no registered
+skill does not advertise the tool at all.
+
+Each session is told which skills it holds by name and description, not by
+path or instruction text, and loads one when it needs it. Claude configures a
+tool server per role and registers exactly that agent's skills; OpenCode's
+server is shared by every role, so it registers the profile's whole
+allowlist while each role's contract still announces only its own.
+
 OpenCode owns one password-protected loopback HTTP/SSE server and one persistent
 session per role. Its adapter does not require or read OpenCode profile tables.
 When a project selects an OpenCode provider and model, each prompt carries that
@@ -222,8 +243,8 @@ adapter consumes OpenCode's server-global event stream and filters it to known
 role session IDs, preserving completion and failure delivery across those
 isolated directories, while the MCP server remains rooted at the verified
 project. Every role delivery
-carries the exact profile prompt and exact allowlisted skill instructions as
-that session's system contract. For a fresh role the adapter intersects the
+carries the exact profile prompt and that role's own skill catalogue as
+that session's system contract; no skill's instructions travel with a delivery. For a fresh role the adapter intersects the
 live endpoint's complete catalogue with its connected provider IDs and exposes
 only those provider/model/variant combinations. It never falls back to the
 known-provider catalogue when none are connected. For a provider-pinned used

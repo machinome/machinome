@@ -67,11 +67,39 @@ class RuntimeProfileTest(unittest.TestCase):
     def test_skills_are_profile_allowlisted(self) -> None:
         profile = load_profile("builder", shop_root=ROOT)
         agent = profile.user_agent
-        self.assertEqual({path.name for path in agent.skill_paths}, {"solid-node", "solid-node-api"})
-        for path in agent.skill_paths:
-            self.assertTrue((path / "SKILL.md").is_file())
-            self.assertTrue(path.is_symlink())
-            self.assertEqual(path.resolve().parent, ROOT / "shop-skills")
+        self.assertEqual({skill.path.name for skill in agent.skills}, {"solid-node", "solid-node-api"})
+        for skill in agent.skills:
+            self.assertTrue((skill.path / "SKILL.md").is_file())
+            self.assertTrue(skill.path.is_symlink())
+            self.assertEqual(skill.path.resolve().parent, ROOT / "shop-skills")
+
+    def test_allowlisted_skills_carry_the_announcement_their_skill_file_declares(self) -> None:
+        agent = load_profile("builder", shop_root=ROOT).user_agent
+        self.assertEqual(
+            {skill.name for skill in agent.skills}, {"solid-node", "solid-node-api"}
+        )
+        for skill in agent.skills:
+            self.assertEqual(skill.name, skill.path.name)
+            self.assertTrue(skill.description.strip())
+            self.assertNotIn("\n", skill.description)
+            self.assertIn(skill.description, (skill.path / "SKILL.md").read_text())
+
+    def test_a_skill_that_cannot_describe_itself_fails_validation(self) -> None:
+        cases = {
+            "frontmatter": "# solid-node\n\nBody without frontmatter.\n",
+            "name": "---\nname: something-else\ndescription: Real work.\n---\n\nBody.\n",
+            "description": "---\nname: solid-node\ndescription:   \n---\n\nBody.\n",
+            "missing description": "---\nname: solid-node\n---\n\nBody.\n",
+            "unterminated": "---\nname: solid-node\ndescription: Real work.\n\nBody.\n",
+        }
+        for label, content in cases.items():
+            with self.subTest(broken=label), tempfile.TemporaryDirectory() as temporary:
+                shop = Path(temporary)
+                shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
+                shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
+                (shop / "shop-skills" / "solid-node" / "SKILL.md").write_text(content)
+                with self.assertRaisesRegex(ProfileError, "builder.*skills.*solid-node"):
+                    load_profile("builder", shop_root=shop)
 
     def test_builtin_profiles_declare_only_profile_explicit_backends(self) -> None:
         for profile_id in ("builder", "fordesmac"):

@@ -18,8 +18,8 @@ class RoleContractTest(unittest.TestCase):
             for agent in profile.agents:
                 text = agent.prompt_path.read_text()
                 self.assertNotIn("repository `skills/`", text)
-                for skill in agent.skill_paths:
-                    self.assertTrue((skill / "SKILL.md").is_file())
+                for skill in agent.skills:
+                    self.assertTrue((skill.path / "SKILL.md").is_file())
         self.assertFalse((ROOT / "agents" / "foreman.md").exists())
         self.assertFalse((ROOT / ".codex" / "agents" / "foreman.toml").exists())
 

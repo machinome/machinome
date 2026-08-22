@@ -32,14 +32,17 @@ from .base import (
     RoleHandle,
     RuntimeCatalogue,
     RuntimeChoice,
+    session_tool_names,
+    skill_catalogue,
+    skill_registry,
 )
-from ..profiles import BackendRuntime
+from ..profiles import BackendRuntime, ProfileSkill
 from ..mcp_server import (
     NATIVE_OPENCODE_TOOLS,
     SERVER_NAME,
     TOOL_NAMES,
+    SKILL_TOOL,
     mcp_command,
-    resolved_tool_names,
 )
 
 
@@ -68,8 +71,12 @@ class OpenCodeBackend:
         readiness_timeout: float = 10,
         request_timeout: float = 30,
         stop_timeout: float = 5,
+        skills: Sequence[ProfileSkill] = (),
     ) -> None:
         self.shop_root = shop_root.resolve()
+        # One server serves every role here, so it registers the whole
+        # profile's skills; each role is announced only its own.
+        self.skills = skill_registry(skills)
         self.project = (project or shop_root).resolve()
         self.command = (command,) if isinstance(command, str) else tuple(command)
         self.broker_url = broker_url
@@ -90,6 +97,7 @@ class OpenCodeBackend:
         self._handles: dict[str, str] = {}
         self._contracts: dict[str, str] = {}
         self._runtimes: dict[str, BackendRuntime] = {}
+        self._session_skills: dict[str, tuple[ProfileSkill, ...]] = {}
         self._role_directories: dict[str, Path] = {}
         self._active: dict[str, _ActiveDelivery] = {}
         self._activity_ids: dict[tuple[str, str], str] = {}
@@ -138,6 +146,7 @@ class OpenCodeBackend:
                                 python=sys.executable,
                                 floor_url=self.broker_url,
                                 floor_session=self.session_id,
+                                skills=self.skills,
                             ),
                             "enabled": True,
                         }
@@ -215,6 +224,7 @@ class OpenCodeBackend:
         self._handles[session_id] = role
         self._contracts[session_id] = self._system_contract(role, context)
         self._runtimes[session_id] = context.agent.runtime
+        self._session_skills[session_id] = context.agent.skills
         self._role_directories[session_id] = directory
         return RoleHandle(backend_id=session_id, role=role)
 
@@ -280,6 +290,7 @@ class OpenCodeBackend:
         self._handles.pop(session_id, None)
         self._contracts.pop(session_id, None)
         self._runtimes.pop(session_id, None)
+        self._session_skills.pop(session_id, None)
         self._role_directories.pop(session_id, None)
         self._active.pop(session_id, None)
         self._aborting.discard(session_id)
@@ -427,6 +438,9 @@ class OpenCodeBackend:
         resume: bool = False,
     ) -> None:
         runtime = self._runtimes[session_id]
+        reachable = set(
+            session_tool_names(self._session_skills.get(session_id, ()), runtime.tools)
+        )
         payload: dict[str, Any] = {
             "messageID": message_id,
             "system": self._contracts[session_id],
@@ -434,8 +448,7 @@ class OpenCodeBackend:
             # loop without duplicating the already-persisted envelope.
             "parts": [] if resume else [{"type": "text", "text": message}],
             "tools": {
-                f"{SERVER_NAME}_{name}": name in set(resolved_tool_names(runtime.tools))
-                for name in TOOL_NAMES
+                f"{SERVER_NAME}_{name}": name in reachable for name in TOOL_NAMES
             },
         }
         if runtime.model != "inherit" or runtime.provider is not None:
@@ -796,9 +809,9 @@ class OpenCodeBackend:
             f"Role: {role}\nProfile: {context.profile_id}\nActive project: {context.active_project}\n",
             f"Resolved profile prompt ({agent.prompt_path}):\n{prompt}",
         ]
-        for skill in agent.skill_paths:
-            skill_file = skill / "SKILL.md"
-            sections.append(f"Resolved profile skill ({skill_file}):\n{skill_file.read_text()}")
+        catalogue = skill_catalogue(agent.skills, f"{SERVER_NAME}_{SKILL_TOOL}")
+        if catalogue:
+            sections.append("\n".join(catalogue).strip() + "\n")
         sections.append(
             "PRECEDENCE FOR SUPPLEMENTAL PROJECT GUIDANCE\n"
             "The trusted profile contract above remains authoritative. The model and reasoning level "

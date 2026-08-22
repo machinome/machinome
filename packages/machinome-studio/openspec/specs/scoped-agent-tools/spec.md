@@ -5,12 +5,16 @@
 Define the project-scoped tool surface and isolation boundaries for persistent
 Claude and OpenCode roles, including runtime provenance, backend event delivery,
 and the browser behavior needed to present those deliveries reliably.
-
 ## Requirements
 ### Requirement: Project sandboxing
 Every tool in the floor-provided MCP tool set SHALL resolve path arguments
 against the active project's root and SHALL reject any resolved path that
 falls outside that root.
+
+`load_skill` is the single exception and SHALL take no path argument. It
+resolves a skill name against the registry the shop supplied at launch and
+reads only within that skill's directory, as `runtime-skill-loading` requires.
+No other tool SHALL read a registered skill directory.
 
 #### Scenario: Path escapes project root
 - **WHEN** a tool is called with a path argument that resolves outside the
@@ -22,6 +26,11 @@ falls outside that root.
 - **WHEN** a tool is called with a path argument that resolves inside the
   active project's root
 - **THEN** the tool call proceeds normally
+
+#### Scenario: A registered skill directory is not a project path
+- **WHEN** a path-taking tool is called with a path inside a registered skill
+  directory
+- **THEN** the call is rejected as outside the active project
 
 ### Requirement: Backend scope
 The scoped-agent-tools capability SHALL be available on every selectable
@@ -279,3 +288,4 @@ generic network or HTTP request tool.
 - **WHEN** an agent inspects or invokes the floor-provided tool set
 - **THEN** no tool accepts a URL, HTTP method, route, headers, or arbitrary
   request body
+

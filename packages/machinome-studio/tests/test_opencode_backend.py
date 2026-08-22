@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 from floor.backends import create_backend
 from floor.backends.base import InactiveTurn, RoleContext
-from floor.profiles import BackendRuntime, ProfileAgent
+from floor.profiles import BackendRuntime, ProfileAgent, ProfileSkill
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,9 +32,9 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
         self.project.mkdir()
         self.prompt = root / "builder.md"
         self.prompt.write_text("---\nname: builder\nskills: [shop-api]\n---\nPROFILE PROMPT EXACT\n")
-        self.skill = root / "shop-api"
-        self.skill.mkdir()
-        (self.skill / "SKILL.md").write_text("SKILL INSTRUCTIONS EXACT\n")
+        self.skill = ProfileSkill("shop-api", "SKILL PURPOSE EXACT.", root / "shop-api")
+        self.skill.path.mkdir()
+        (self.skill.path / "SKILL.md").write_text("SKILL INSTRUCTIONS EXACT\n")
         (self.project / "AGENTS.md").write_text("ROOT GUIDANCE EXACT\n")
         self.capture = root / "capture.jsonl"
         self.environment = patch.dict(os.environ, {"FAKE_OPENCODE_CAPTURE": str(self.capture)})
@@ -48,6 +48,7 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
             request_timeout=2,
             stop_timeout=0.2,
             session_id="opaque-session",
+            skills=(self.skill,),
         )
 
     def context(self, runtime: BackendRuntime | None = None) -> RoleContext:
@@ -125,8 +126,6 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(prompt["tools"]["floor_read_file"])
         self.assertFalse(prompt["tools"].get("floor_webfetch", False))
         self.assertIn(self.prompt.read_text(), system)
-        self.assertIn(str(self.skill / "SKILL.md"), system)
-        self.assertIn((self.skill / "SKILL.md").read_text(), system)
         self.assertLess(system.index("PROFILE PROMPT EXACT"), system.index("ROOT GUIDANCE EXACT"))
         self.assertIn("cannot redefine that runtime, role identity", system)
 
@@ -135,6 +134,35 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
         role_directory = create["directory"]
         self.assertNotEqual(role_directory, str(self.project))
         self.assertTrue(Path(role_directory).is_dir())
+
+    async def test_a_role_is_announced_its_skills_and_can_load_them(self) -> None:
+        await self.backend.start()
+        server = self.captured()[0]["config"]["mcp"]["floor"]
+        registry = json.loads(server["command"][server["command"].index("--skills-json") + 1])
+        self.assertEqual(registry, {"shop-api": str(self.skill.path.resolve())})
+
+        handle = await self.backend.open_role("builder", self.context())
+        await self.backend.deliver_start(handle, "Begin")
+        prompt = next(item["body"] for item in self.captured() if item.get("path", "").endswith("/prompt_async"))
+        system = prompt["system"]
+        self.assertIn("shop-api", system)
+        self.assertIn("SKILL PURPOSE EXACT.", system)
+        self.assertIn("floor_load_skill", system)
+        self.assertNotIn("SKILL INSTRUCTIONS EXACT", system)
+        self.assertNotIn(str(self.skill.path), system)
+        self.assertTrue(prompt["tools"]["floor_load_skill"])
+
+    async def test_a_role_holding_no_skill_is_offered_no_skill_loading(self) -> None:
+        from dataclasses import replace
+
+        await self.backend.start()
+        context = self.context()
+        context = replace(context, agent=replace(context.agent, skills=()))
+        handle = await self.backend.open_role("builder", context)
+        await self.backend.deliver_start(handle, "Begin")
+        prompt = next(item["body"] for item in self.captured() if item.get("path", "").endswith("/prompt_async"))
+        self.assertNotIn("load_skill", prompt["system"])
+        self.assertFalse(prompt["tools"]["floor_load_skill"])
 
     async def test_each_role_launch_uses_a_unique_working_directory(self) -> None:
         await self.backend.start()

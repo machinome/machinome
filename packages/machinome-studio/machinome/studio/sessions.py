@@ -28,7 +28,14 @@ from .preparation import (
     resolve_project,
     validate_new_project,
 )
-from .profiles import BackendRuntime, ProfileError, RuntimeProfile, load_profile, resolve_profile_runtime
+from .profiles import (
+    BackendRuntime,
+    ProfileError,
+    ProfileSkill,
+    RuntimeProfile,
+    load_profile,
+    resolve_profile_runtime,
+)
 from .runtime_config import (
     RuntimeConfigConflict,
     config_revision,
@@ -42,6 +49,19 @@ from .watcher import ArtifactWatcher, ModelWatcher, SourceFileWatcher
 
 
 BackendFactory = Callable[..., AgentBackend]
+
+
+def _profile_skills(profile: RuntimeProfile) -> tuple[ProfileSkill, ...]:
+    """Every skill the profile allowlists, in a stable order, without repeats.
+
+    A backend whose tool server is shared by all its roles registers these
+    before any role opens; each role is still announced only its own.
+    """
+    resolved: dict[str, ProfileSkill] = {}
+    for agent in profile.agents:
+        for skill in agent.skills:
+            resolved.setdefault(skill.name, skill)
+    return tuple(resolved[name] for name in sorted(resolved))
 
 
 @dataclass
@@ -422,6 +442,7 @@ class SessionRegistry:
                     command_overrides=self.backend_commands,
                     solid_command=self.solid_command,
                     session_id=session.id,
+                    skills=_profile_skills(session.profile),
                 )
         by_agent = {
             agent.id: backend_instances[agent.runtime.backend]
@@ -442,6 +463,7 @@ class SessionRegistry:
                     command_overrides=self.backend_commands,
                     solid_command=self.solid_command,
                     session_id=session.id,
+                    skills=_profile_skills(session.profile),
                 )
                 try:
                     await backend.start()

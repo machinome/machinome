@@ -93,11 +93,12 @@ SHALL own translation of the resolved runtime it is given.
 - **THEN** it selects that agent's backend from resolved runtime data rather than testing which backend name it is
 
 ### Requirement: A role-contract bootstrap is not bounded by the control-plane timeout
-Opening a role loads that role's card and every skill it names, which is model
-work whose duration is unrelated to protocol liveness. The backend SHALL bound
-control-plane requests such as `initialize` and `session/new` separately from
-prompt work. A role-contract bootstrap that is still progressing SHALL NOT fail
-shop open because a control-plane timeout elapsed.
+Opening a role loads that role's card and the catalogue of the skills it names,
+which is model work whose duration is unrelated to protocol liveness. The
+backend SHALL bound control-plane requests such as `initialize` and
+`session/new` separately from prompt work. A role-contract bootstrap that is
+still progressing SHALL NOT fail shop open because a control-plane timeout
+elapsed.
 
 #### Scenario: A slow role bootstrap still opens the shop
 - **WHEN** a role's bootstrap prompt takes longer than the control-plane request timeout but completes successfully
@@ -125,15 +126,16 @@ The Claude backend SHALL launch one `claude` process per profile-declared agent
 in non-interactive streaming mode, exchange newline-delimited JSON frames over
 stdio, and use the active project as its working directory.
 
-It SHALL deliver the resolved profile prompt and skills as session-level
-instructions so the first user message remains a broker envelope. It SHALL use
-the profile's selected Claude model, effort, available tools, and permission
-policy rather than Markdown model/tool fields or a global adapter file. A
-profile policy of `autonomous` SHALL open the session with Claude Code's
-`bypassPermissions` permission mode; a policy of `manual` SHALL open it with
-Claude Code's `manual` permission mode. The permission mode SHALL only govern
-confirmation for available tools and SHALL NOT add tools to the profile's
-declared tool list.
+It SHALL deliver the resolved profile prompt and the agent's skill catalogue as
+session-level instructions so the first user message remains a broker envelope.
+It SHALL register that agent's skills with the session's tool server and SHALL
+NOT name a skill's filesystem path to the session. It SHALL use the profile's
+selected Claude model, effort, available tools, and permission policy rather
+than Markdown model/tool fields or a global adapter file. A profile policy of
+`autonomous` SHALL open the session with Claude Code's `bypassPermissions`
+permission mode; a policy of `manual` SHALL open it with Claude Code's `manual`
+permission mode. The permission mode SHALL only govern confirmation for
+available tools and SHALL NOT add tools to the profile's declared tool list.
 
 It SHALL open each session with both project-level and user-level assistant
 configuration, memory, hooks, plugins, and other operator-machine
@@ -147,13 +149,18 @@ operator has already configured.
 
 #### Scenario: The role contract does not consume a conversational turn
 - **WHEN** Claude opens a profile agent
-- **THEN** prompt and skill contracts are delivered as session-level instructions and the first user message is a broker envelope
+- **THEN** the prompt contract and skill catalogue are delivered as session-level instructions and the first user message is a broker envelope
 
 #### Scenario: Runtime capability comes from the selected profile
 - **WHEN** Claude opens Designer from `fordesmac`
 - **THEN** it uses the model, effort, available-tool, and permission policy
   that profile declares for Claude, only Designer's validated profile prompt
-  and skill paths, and no global role adapter
+  and Designer's own allowlisted skills, and no global role adapter
+
+#### Scenario: A scoped role can load its declared skills
+- **WHEN** Claude opens a scoped role whose profile agent declares skills
+- **THEN** that session's reachable tool set includes the floor skill-loading
+  tool alongside the tools its declared capabilities resolve to
 
 #### Scenario: An autonomous role does not pause for tool confirmation
 - **WHEN** Claude opens a role whose resolved policy is `autonomous`
@@ -274,12 +281,14 @@ permission handling SHALL remain adapter-owned in both cases.
 
 The adapter SHALL generate one primary OpenCode agent shared by its persistent
 role sessions and SHALL apply a deny-by-default permission policy. Every
-delivery SHALL carry the target role's exact profile prompt and the exact
-instructions of each profile-allowlisted skill as system context. The adapter
-SHALL explicitly admit required shop tool classes while denying native
-subagents, interactive questions, external directories, and native skill
-discovery. This bounded exception to profile-explicit runtime policy SHALL NOT
-be represented as equivalent control across backends.
+delivery SHALL carry the target role's exact profile prompt and the catalogue
+of that role's profile-allowlisted skills as system context, and SHALL NOT
+carry any skill's instructions. The adapter SHALL register the profile's skills
+with its tool server so a role can load its own on demand. The adapter SHALL
+explicitly admit required shop tool classes while denying native subagents,
+interactive questions, external directories, and native skill discovery. This
+bounded exception to profile-explicit runtime policy SHALL NOT be represented
+as equivalent control across backends.
 
 #### Scenario: A project selects an OpenCode provider and model
 - **WHEN** a project declares `opencode:<provider>:<model>` for an agent
@@ -291,7 +300,11 @@ be represented as equivalent control across backends.
 
 #### Scenario: A role agent is generated
 - **WHEN** OpenCode starts and later opens resolved profile roles
-- **THEN** one generated primary agent serves their persistent sessions and each role delivery carries that role's exact profile prompt and exact allowlisted skill instructions
+- **THEN** one generated primary agent serves their persistent sessions and each role delivery carries that role's exact profile prompt and that role's own skill catalogue
+
+#### Scenario: A skill's instructions are not repeated per delivery
+- **WHEN** an OpenCode role holding skills receives several deliveries
+- **THEN** no delivery's system context contains a skill's instructions, and the role obtains them by loading a skill through the floor tool set
 
 #### Scenario: OpenCode permissions are established
 - **WHEN** the adapter generates its OpenCode agent
@@ -460,6 +473,7 @@ If the retained handle rejects that recovery delivery synchronously, the orchest
 #### Scenario: The whole backend fails
 - **WHEN** the backend emits `backend_failed`
 - **THEN** the orchestrator ends the runtime and releases its resources
+
 ### Requirement: A backend exposes bounded runtime control for an existing role
 The portable backend contract SHALL report whether a role supports a
 context-preserving model-and-reasoning update, SHALL provide backend-owned model
@@ -497,3 +511,4 @@ turn, tool-use, or part identifiers to the broker or browser.
 #### Scenario: Native identifiers correlate a tool result
 - **WHEN** an adapter uses native identifiers to join a tool start and result
 - **THEN** it emits one stable portable activity identity and omits the native identifiers from browser state
+

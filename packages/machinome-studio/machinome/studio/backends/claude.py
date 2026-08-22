@@ -54,9 +54,12 @@ from .base import (
     RoleHandle,
     RuntimeCatalogue,
     RuntimeChoice,
+    session_tool_names,
+    skill_catalogue,
+    skill_registry,
 )
 from ..profiles import BackendRuntime
-from ..mcp_server import SERVER_NAME, mcp_command, resolved_tool_names
+from ..mcp_server import SERVER_NAME, SKILL_TOOL, mcp_command
 
 # Terminal reasons the CLI reports for a turn the shop itself interrupted.
 # They arrive as an errored result; treating them as a role failure would
@@ -171,7 +174,7 @@ class ClaudeBackend:
             self._ready[backend_id] = asyncio.Event()
             self._expected_tools[backend_id] = tuple(
                 f"mcp__{SERVER_NAME}__{name}"
-                for name in resolved_tool_names(runtime.tools)
+                for name in session_tool_names(context.agent.skills, runtime.tools)
             )
         self._readers[backend_id] = (
             asyncio.create_task(self._read_stdout(backend_id)),
@@ -373,6 +376,7 @@ class ClaudeBackend:
                                 python=sys.executable,
                                 floor_url=self.broker_url,
                                 floor_session=self.session_id,
+                                skills=skill_registry(context.agent.skills),
                             )[1:],
                         }
                     }
@@ -410,7 +414,7 @@ class ClaudeBackend:
         if runtime.tools != "inherit":
             if mcp_config is None:
                 raise RuntimeError("scoped Claude tools require an MCP config")
-            tools = resolved_tool_names(runtime.tools)
+            tools = session_tool_names(agent.skills, runtime.tools)
             if not tools:
                 raise RuntimeError(f"Claude role {role!r} resolves to no scoped tools")
             command += [
@@ -441,8 +445,7 @@ class ClaudeBackend:
             f"full and follow it as authoritative: {agent.prompt_path}",
             f"Profile: {context.profile_id}; human label: {context.user_label}",
         ]
-        for skill in agent.skill_paths:
-            lines.append(f"Required profile skill: {skill / 'SKILL.md'}")
+        lines.extend(skill_catalogue(agent.skills, f"mcp__{SERVER_NAME}__{SKILL_TOOL}"))
         lines.append(TRUST_FRAMING)
         return "\n".join(lines)
 

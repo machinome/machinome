@@ -10,9 +10,12 @@ turn identifiers and no provider configuration escape above this seam.
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
+
+from ..profiles import ProfileSkill
 
 
 def create_backend(
@@ -25,23 +28,32 @@ def create_backend(
     command_overrides: Mapping[str, str] | None = None,
     solid_command: str = "solid",
     session_id: str | None = None,
+    skills: Sequence[ProfileSkill] = (),
     **_kwargs: Any,
 ) -> "AgentBackend":
     """Return the AgentBackend for *name*.
+
+    ``skills`` are the profile's allowlisted skills, needed only by a backend
+    whose tool server is shared by every role and so must be registered before
+    any role opens.  A backend configuring a tool server per role takes each
+    agent's own skills from its role context instead.
 
     Raises ``ValueError`` for unknown names.
     """
     if name not in _BACKENDS:
         raise ValueError(f"unknown backend: {name!r} (choose from: {', '.join(sorted(_BACKENDS))})")
     backend_command = (command_overrides or {}).get(name) or command or name
-    return _BACKENDS[name](
-        shop_root=shop_root,
-        project=project,
-        broker_url=broker_url,
-        command=backend_command,
-        solid_command=solid_command,
-        session_id=session_id,
-    )
+    arguments: dict[str, Any] = {
+        "shop_root": shop_root,
+        "project": project,
+        "broker_url": broker_url,
+        "command": backend_command,
+        "solid_command": solid_command,
+        "session_id": session_id,
+    }
+    if "skills" in inspect.signature(_BACKENDS[name]).parameters:
+        arguments["skills"] = tuple(skills)
+    return _BACKENDS[name](**arguments)
 
 
 def parse_backend_command_overrides(values: Sequence[str] | None) -> dict[str, str]:

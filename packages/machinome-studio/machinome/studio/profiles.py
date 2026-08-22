@@ -44,11 +44,20 @@ class BackendRuntime:
 
 
 @dataclass(frozen=True)
+class ProfileSkill:
+    """One allowlisted skill, resolved with the announcement it declares."""
+
+    name: str
+    description: str
+    path: Path
+
+
+@dataclass(frozen=True)
 class ProfileAgent:
     id: str
     label: str
     prompt_path: Path
-    skill_paths: tuple[Path, ...]
+    skills: tuple[ProfileSkill, ...]
     assigns: tuple[str, ...]
     reports_to: str | None
     runtime: BackendRuntime | None
@@ -161,8 +170,8 @@ def _load_profile(selected: str, *, shop_root: Path) -> RuntimeProfile:
         assert isinstance(raw, dict)
         agent_id = str(raw["id"])
         prompt = _contained_file(resolved_root, _string(raw, "prompt", selected), f"profile {selected}.{agent_id}.prompt")
-        skills = _prompt_skills(prompt, selected, agent_id)
-        skill_paths = tuple(_skill_path(resolved_root, skill, selected) for skill in skills)
+        declared = _prompt_skills(prompt, selected, agent_id)
+        skills = tuple(_skill(resolved_root, skill, selected) for skill in declared)
         assigns = _ids(raw.get("assigns", []), f"profile {selected}.{agent_id}.assigns")
         reports_to_value = raw.get("reports_to")
         reports_to = None if reports_to_value is None else _id(reports_to_value, f"profile {selected}.{agent_id}.reports_to")
@@ -176,7 +185,7 @@ def _load_profile(selected: str, *, shop_root: Path) -> RuntimeProfile:
             runtime_backend: _runtime(runtime_value, selected, agent_id, runtime_backend)
             for runtime_backend, runtime_value in backend_settings.items()
         }
-        agents.append(ProfileAgent(agent_id, str(raw["label"]), prompt, skill_paths, assigns, reports_to, None, runtimes))
+        agents.append(ProfileAgent(agent_id, str(raw["label"]), prompt, skills, assigns, reports_to, None, runtimes))
     _topology(selected, work_mode, tuple(agents), ids, user_agent_id)
     return RuntimeProfile(selected, resolved_root, user_label, user_agent_id, work_mode, tuple(agents))
 
@@ -253,15 +262,20 @@ def _contained_file(root: Path, value: str, context: str) -> Path:
     return resolved
 
 
-def _prompt_skills(prompt: Path, profile: str, agent: str) -> tuple[str, ...]:
-    lines = prompt.read_text().splitlines()
+def _frontmatter(source: Path, context: str) -> dict[str, str]:
+    """Read a Markdown file's leading `---` block as flat single-line fields."""
+    lines = source.read_text().splitlines()
     if not lines or lines[0] != "---":
-        raise ProfileError(f"profile {profile}.{agent}.prompt must have YAML frontmatter")
+        raise ProfileError(f"{context} must have YAML frontmatter")
     try:
         end = lines.index("---", 1)
     except ValueError as error:
-        raise ProfileError(f"profile {profile}.{agent}.prompt has unterminated frontmatter") from error
-    fields = dict(line.split(":", 1) for line in lines[1:end] if ":" in line)
+        raise ProfileError(f"{context} has unterminated frontmatter") from error
+    return dict(line.split(":", 1) for line in lines[1:end] if ":" in line)
+
+
+def _prompt_skills(prompt: Path, profile: str, agent: str) -> tuple[str, ...]:
+    fields = _frontmatter(prompt, f"profile {profile}.{agent}.prompt")
     if fields.get("name", "").strip() != agent:
         raise ProfileError(f"profile {profile}.{agent}.prompt frontmatter name must equal {agent!r}")
     skills = fields.get("skills")
@@ -271,6 +285,10 @@ def _prompt_skills(prompt: Path, profile: str, agent: str) -> tuple[str, ...]:
     if any(not PROFILE_ID.fullmatch(name) for name in names) or len(names) != len(set(names)):
         raise ProfileError(f"profile {profile}.{agent}.prompt skills must be unique lowercase kebab-case names")
     return names
+
+
+def _skill(root: Path, skill: str, profile: str) -> ProfileSkill:
+    return _announcement(_skill_path(root, skill, profile), skill, profile)
 
 
 def _skill_path(root: Path, skill: str, profile: str) -> Path:
@@ -289,6 +307,22 @@ def _skill_path(root: Path, skill: str, profile: str) -> Path:
     if target.parent != expected_parent.resolve() or not target.is_dir() or not (target / "SKILL.md").is_file():
         raise ProfileError(f"profile {profile}.skills.{skill} must link directly to shop-skills/<skill>")
     return entry
+
+
+def _announcement(path: Path, skill: str, profile: str) -> ProfileSkill:
+    """Resolve the name and description a skill uses to announce itself.
+
+    A session is offered its skills by name and description alone, so a skill
+    that cannot describe itself cannot be chosen and must not reach a floor.
+    """
+    context = f"profile {profile}.skills.{skill}"
+    fields = _frontmatter(path / "SKILL.md", context)
+    if fields.get("name", "").strip() != skill:
+        raise ProfileError(f"{context} frontmatter name must equal {skill!r}")
+    description = fields.get("description", "").strip()
+    if not description:
+        raise ProfileError(f"{context} frontmatter must declare a non-empty description")
+    return ProfileSkill(skill, description, path)
 
 
 def _runtime(value: Any, profile: str, agent: str, backend: str) -> BackendRuntime:

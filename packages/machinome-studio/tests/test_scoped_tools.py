@@ -62,6 +62,7 @@ class ScopedProjectToolsTest(unittest.TestCase):
                 "solid_build", "solid_test", "solid_snapshot",
                 "floor_assign", "floor_direction", "floor_acknowledge",
                 "floor_report", "floor_complete",
+                "load_skill",
             },
         )
         for forbidden in ("push", "reset", "checkout", "branch", "rebase"):
@@ -360,6 +361,61 @@ class ScopedProjectToolsTest(unittest.TestCase):
         self.assertFalse((Path(self.temporary.name) / "outside-dir").exists())
         self.assertFalse(self.capture.exists(), "solid must not run after rejected paths")
 
+    def skill_registry(self) -> dict[str, Path]:
+        """Register one skill outside the project, as the shop does at launch."""
+        root = Path(self.temporary.name) / "shop-skills" / "solid-node"
+        (root / "reference").mkdir(parents=True)
+        (root / "SKILL.md").write_text("---\nname: solid-node\n---\n\nMACHINING INSTRUCTIONS\n")
+        (root / "reference" / "gears.md").write_text("GEAR TABLE\n")
+        return {"solid-node": root}
+
+    def test_load_skill_returns_instructions_and_names_its_bundled_resources(self) -> None:
+        registry = self.skill_registry()
+        tools = ProjectTools(
+            self.project,
+            solid_command=(sys.executable, str(FAKE_SOLID)),
+            skills=registry,
+        )
+        loaded = tools.load_skill("solid-node")
+        self.assertIn("MACHINING INSTRUCTIONS", loaded)
+        self.assertIn("reference/gears.md", loaded)
+        self.assertNotIn("GEAR TABLE", loaded)
+        self.assertEqual(tools.load_skill("solid-node", "reference/gears.md"), "GEAR TABLE\n")
+
+    def test_load_skill_rejects_unregistered_names_and_escaping_resources(self) -> None:
+        registry = self.skill_registry()
+        outside = Path(self.temporary.name) / "shop-skills" / "secret.md"
+        outside.write_text("SECRET\n")
+        tools = ProjectTools(
+            self.project,
+            solid_command=(sys.executable, str(FAKE_SOLID)),
+            skills=registry,
+        )
+        with self.assertRaisesRegex(ValueError, "solid-node"):
+            tools.load_skill("solid-node-api")
+        for escape in ("../secret.md", str(outside), "reference/../../secret.md"):
+            with self.subTest(resource=escape):
+                with self.assertRaisesRegex(ValueError, "outside"):
+                    tools.load_skill("solid-node", escape)
+
+    def test_a_session_without_registered_skills_cannot_load_one(self) -> None:
+        with self.assertRaisesRegex(ValueError, "no skill"):
+            self.tools.load_skill("solid-node")
+
+    def test_a_registered_skill_directory_is_not_reachable_as_a_project_path(self) -> None:
+        registry = self.skill_registry()
+        tools = ProjectTools(
+            self.project,
+            solid_command=(sys.executable, str(FAKE_SOLID)),
+            skills=registry,
+        )
+        for path in (str(registry["solid-node"] / "SKILL.md"), str(registry["solid-node"])):
+            with self.subTest(path=path):
+                with self.assertRaisesRegex(ValueError, "outside active project"):
+                    tools.read_file(path)
+                with self.assertRaisesRegex(ValueError, "outside active project"):
+                    tools.list_dir(path)
+
     def test_floor_tools_map_to_only_the_injected_session(self) -> None:
         tools = ProjectTools(
             self.project,
@@ -419,6 +475,7 @@ class ScopedProjectToolsTest(unittest.TestCase):
                 (sys.executable, str(FAKE_SOLID)),
                 floor_url="http://127.0.0.1:9123",
                 floor_session="opaque-session",
+                skills=self.skill_registry(),
             ),
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -450,7 +507,32 @@ class ScopedProjectToolsTest(unittest.TestCase):
         self.assertEqual(image["result"]["content"][0]["type"], "image")
         escaped = rpc(4, "tools/call", {"name": "read_file", "arguments": {"path": "../outside.txt"}})
         self.assertTrue(escaped["result"]["isError"])
+        skill = rpc(5, "tools/call", {"name": "load_skill", "arguments": {"name": "solid-node"}})
+        self.assertFalse(skill["result"]["isError"])
+        self.assertIn("MACHINING INSTRUCTIONS", skill["result"]["content"][0]["text"])
 
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=3), 0)
+
+    def test_stdio_mcp_protocol_omits_skill_loading_without_a_registry(self) -> None:
+        process = subprocess.Popen(
+            mcp_command(self.project, (sys.executable, str(FAKE_SOLID))),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env={**os.environ, "PYTHONPATH": str(ROOT)},
+        )
+        self.addCleanup(lambda: process.kill() if process.poll() is None else None)
+        assert process.stdin is not None
+        assert process.stdout is not None
+        process.stdin.write(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}) + "\n")
+        process.stdin.flush()
+        listed = json.loads(process.stdout.readline())
+        self.assertEqual(
+            {tool["name"] for tool in listed["result"]["tools"]},
+            set(TOOL_NAMES) - {"load_skill"},
+        )
         process.stdin.close()
         self.assertEqual(process.wait(timeout=3), 0)
 
