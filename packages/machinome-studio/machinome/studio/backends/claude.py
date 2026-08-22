@@ -59,7 +59,7 @@ from .base import (
     skill_registry,
 )
 from ..profiles import BackendRuntime
-from ..mcp_server import SERVER_NAME, SKILL_TOOL, mcp_command
+from ..mcp_server import SERVER_NAME, SKILL_TOOL, TOOL_NAMES, mcp_command
 
 # Terminal reasons the CLI reports for a turn the shop itself interrupted.
 # They arrive as an errored result; treating them as a role failure would
@@ -146,8 +146,12 @@ class ClaudeBackend:
         runtime = context.agent.runtime
         if runtime is None:
             raise RuntimeError(f"Claude role {role!r} has no resolved runtime")
-        scoped = runtime.tools != "inherit"
-        config = self._mcp_config(role, context) if scoped else None
+        if runtime.tools == "inherit":
+            raise RuntimeError(
+                f"Claude role {role!r} has no concrete tool list: a session "
+                "whose tool set the adapter cannot bound is not scoped"
+            )
+        config = self._mcp_config(role, context)
         command = self._role_command(role, context, config)
         process = await asyncio.create_subprocess_exec(
             *command,
@@ -170,12 +174,11 @@ class ClaudeBackend:
         self.processes[backend_id] = process
         self._roles[backend_id] = role
         self._stderr[backend_id] = []
-        if scoped:
-            self._ready[backend_id] = asyncio.Event()
-            self._expected_tools[backend_id] = tuple(
-                f"mcp__{SERVER_NAME}__{name}"
-                for name in session_tool_names(context.agent.skills, runtime.tools)
-            )
+        self._ready[backend_id] = asyncio.Event()
+        self._expected_tools[backend_id] = tuple(
+            f"mcp__{SERVER_NAME}__{name}"
+            for name in session_tool_names(context.agent.skills, runtime.tools)
+        )
         self._readers[backend_id] = (
             asyncio.create_task(self._read_stdout(backend_id)),
             asyncio.create_task(self._drain_stderr(backend_id)),
@@ -411,26 +414,31 @@ class ClaudeBackend:
             command += ["--model", runtime.model]
         if runtime.effort != "inherit":
             command += ["--effort", runtime.effort]
-        if runtime.tools != "inherit":
-            if mcp_config is None:
-                raise RuntimeError("scoped Claude tools require an MCP config")
-            tools = session_tool_names(agent.skills, runtime.tools)
-            if not tools:
-                raise RuntimeError(f"Claude role {role!r} resolves to no scoped tools")
-            command += [
-                "--mcp-config", str(mcp_config),
-                "--strict-mcp-config",
-                "--tools", ",".join(
-                    f"mcp__{SERVER_NAME}__{name}" for name in tools
-                ),
-            ]
-        else:
-            # Unscoped compatibility sessions retain the previous isolation
-            # from operator-machine customizations.
-            command += ["--safe-mode"]
-        if runtime.permission != "inherit":
-            permission_mode = "bypassPermissions" if runtime.permission == "autonomous" else "manual"
-            command += ["--permission-mode", permission_mode]
+        if mcp_config is None:
+            raise RuntimeError("scoped Claude tools require an MCP config")
+        tools = session_tool_names(agent.skills, runtime.tools)
+        if not tools:
+            raise RuntimeError(f"Claude role {role!r} resolves to no scoped tools")
+        # Three distinct controls, each measured against the CLI (ADR 0026):
+        # `--tools` governs only the built-in set, so it is emptied rather than
+        # asked to scope MCP tools; `--disallowedTools` is what actually removes
+        # a floor tool from the session; `--allowedTools` grants the rest, so a
+        # declared tool never waits for a confirmation nobody can give.  No
+        # permission mode is passed at all — the floor tool surface is the
+        # boundary, and the runtime's own deny-by-default checking stays on.
+        withheld = [
+            f"mcp__{SERVER_NAME}__{name}" for name in TOOL_NAMES if name not in tools
+        ]
+        command += [
+            "--mcp-config", str(mcp_config),
+            "--strict-mcp-config",
+            "--tools", "",
+            "--allowedTools", ",".join(
+                f"mcp__{SERVER_NAME}__{name}" for name in tools
+            ),
+        ]
+        if withheld:
+            command += ["--disallowedTools", ",".join(withheld)]
         return tuple(command)
 
     def _role_contract(self, role: str, context: RoleContext, agent=None) -> str:

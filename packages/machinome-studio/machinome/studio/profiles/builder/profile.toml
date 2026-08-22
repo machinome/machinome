@@ -13,4 +13,3 @@ assigns = []
 model = "sonnet"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
-permission = "autonomous"

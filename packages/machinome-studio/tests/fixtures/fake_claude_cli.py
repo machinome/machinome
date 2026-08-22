@@ -162,12 +162,32 @@ def main() -> None:
         }
     )
 
+    def flag(name: str) -> list[str]:
+        if name not in sys.argv:
+            return []
+        value = sys.argv[sys.argv.index(name) + 1]
+        return [item for item in value.split(",") if item]
+
+    # What the real CLI advertises, as measured against Claude Code 2.1.237:
+    # the built-ins `--tools` names, plus the MCP tools a connected server
+    # offers minus the ones `--disallowedTools` removes.  `--allowedTools`
+    # decides what may *run*, not what is advertised; together the two lists
+    # enumerate the floor catalogue, so the fixture reconstructs the advertised
+    # set without paying to import the server.  `FAKE_CLAUDE_EXTRA_TOOLS`
+    # simulates a session that reaches past its declared scope.
     mcp_server_names: list[str] = []
-    tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
+    tools = flag("--tools")
     if "--mcp-config" in sys.argv:
         config = json.loads(open(sys.argv[sys.argv.index("--mcp-config") + 1]).read())
         mcp_server_names = list(config.get("mcpServers", {}))
-        tools = sys.argv[sys.argv.index("--tools") + 1].split(",")
+        withheld = set(flag("--disallowedTools"))
+        offered = flag("--allowedTools") + flag("--disallowedTools")
+        tools += [name for name in offered if name not in withheld]
+    tools += [
+        name
+        for name in os.environ.get("FAKE_CLAUDE_EXTRA_TOOLS", "").split(",")
+        if name
+    ]
 
     def init(mcp_status: str) -> None:
         send({
@@ -177,7 +197,7 @@ def main() -> None:
             "session_id": SESSION_ID,
             "tools": tools,
             "model": "claude-sonnet-5",
-            "permissionMode": "bypassPermissions",
+            "permissionMode": "default",
             "mcp_servers": [
                 {"name": name, "status": mcp_status}
                 for name in mcp_server_names

@@ -1,6 +1,6 @@
 # ADR 0015: Make Claude autonomous permissions profile-owned
 
-**Status:** Accepted
+**Status:** Superseded by [ADR 0026](./0026-deny-by-default-claude-tool-permissions.md)
 
 **Date:** 2026-08-09
 

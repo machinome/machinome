@@ -23,7 +23,6 @@ PROFILE_BACKENDS = ("claude",)
 _TOP_LEVEL = {"schema_version", "user_label", "user_agent", "work_mode", "agents"}
 _AGENT = {"id", "label", "prompt", "assigns", "reports_to", "backends"}
 _RUNTIME = {"model", "effort", "tools"}
-_CLAUDE_RUNTIME = _RUNTIME | {"permission"}
 # These profile-owned capability names are resolved to floor MCP tools. A
 # backend that cannot enforce a declared tool policy is not selectable.
 _PROFILE_TOOLS = {"Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch"}
@@ -38,7 +37,6 @@ class BackendRuntime:
     model: str
     effort: str
     tools: str | tuple[str, ...]
-    permission: str = "inherit"
     backend: str = "claude"
     provider: str | None = None
 
@@ -328,13 +326,10 @@ def _announcement(path: Path, skill: str, profile: str) -> ProfileSkill:
 def _runtime(value: Any, profile: str, agent: str, backend: str) -> BackendRuntime:
     if not isinstance(value, dict):
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend} must be a table")
-    fields = _CLAUDE_RUNTIME if backend == "claude" else _RUNTIME
-    _only(value, fields, f"profile {profile}.{agent}.backends.{backend}")
-    if set(value) != fields:
-        suffix = ", effort, tools, and permission" if backend == "claude" else ", effort, and tools"
-        raise ProfileError(f"profile {profile}.{agent}.backends.{backend} must declare model{suffix}")
+    _only(value, _RUNTIME, f"profile {profile}.{agent}.backends.{backend}")
+    if set(value) != _RUNTIME:
+        raise ProfileError(f"profile {profile}.{agent}.backends.{backend} must declare model, effort, and tools")
     model, effort, tools = value["model"], value["effort"], value["tools"]
-    permission = value.get("permission", "inherit")
     if not isinstance(model, str) or not model:
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.model must be concrete or inherit")
     if backend == "claude" and model not in CLAUDE_MODELS | {"inherit"}:
@@ -344,19 +339,20 @@ def _runtime(value: Any, profile: str, agent: str, backend: str) -> BackendRunti
     supported_efforts = CLAUDE_EFFORTS
     if effort not in supported_efforts | {"inherit"}:
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.effort is unsupported")
+    # A Claude table declares the tools concretely: the declared list is the
+    # whole authority its sessions hold, so there is nothing to inherit from.
+    if backend == "claude" and not isinstance(tools, list):
+        raise ProfileError(f"profile {profile}.{agent}.backends.claude.tools must be a list")
     if not (tools == "inherit" or (isinstance(tools, list) and all(isinstance(item, str) and item for item in tools))):
         raise ProfileError(f"profile {profile}.{agent}.backends.{backend}.tools must be inherit or a list")
-    if backend == "claude" and isinstance(tools, list) and (
+    if backend == "claude" and (
         len(tools) != len(set(tools)) or any(tool not in _PROFILE_TOOLS for tool in tools)
     ):
         raise ProfileError(f"profile {profile}.{agent}.backends.claude.tools is unsupported")
-    if backend == "claude" and permission not in {"manual", "autonomous"}:
-        raise ProfileError(f"profile {profile}.{agent}.backends.claude.permission is unsupported")
     return BackendRuntime(
         model,
         effort,
         tools if isinstance(tools, str) else tuple(tools),
-        permission,
         backend=backend,
     )
 

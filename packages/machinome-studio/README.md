@@ -62,8 +62,9 @@ allowlisted skills are in `shop-skills/`. Repository operation and development
 skills stay under `skills/` and are not runtime capabilities.
 
 Two backends are selectable per agent: Claude and OpenCode. Claude resolves
-project-selected model/reasoning values over explicit profile defaults;
-supported tools and Claude permission remain profile-owned.
+project-selected model/reasoning values over explicit profile defaults; the
+supported tools remain profile-owned, and that declared list is the whole
+authority a session holds — no session runs with permission checking disabled.
 
 Both replace native file, shell, and network access with a floor-owned MCP
 surface for roles with explicit profile tools. It is rooted at the active

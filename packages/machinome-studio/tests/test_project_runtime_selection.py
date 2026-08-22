@@ -190,7 +190,6 @@ librarian = "opencode:openai:gpt-5.4:medium"
         self.assertEqual(designer.runtime.model, "sonnet")
         self.assertEqual(designer.runtime.effort, "high")
         self.assertEqual(designer.runtime.tools, default.tools)
-        self.assertEqual(designer.runtime.permission, default.permission)
         self.assertEqual(profile.agent("machinist").runtime.effort, profile.agent("machinist").backends["claude"].effort)
 
 

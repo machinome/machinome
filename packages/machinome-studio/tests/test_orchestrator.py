@@ -33,6 +33,7 @@ from floor.backends.base import (
     RoleHandle,
     RuntimeCatalogue,
     RuntimeChoice,
+    session_tool_names,
 )
 from floor.orchestrator import (
     LocalBrokerControl,
@@ -1346,10 +1347,11 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         await self.claude.open_role("machinist", self.context("machinist"))
         argv = next(i for i in self.captured() if i["kind"] == "environment")["argv"]
         self.assertEqual(argv[argv.index("--model") + 1], "sonnet")
-        tools = argv[argv.index("--tools") + 1]
-        self.assertIn("mcp__floor__read_file", tools)
-        self.assertIn("mcp__floor__solid_build", tools)
-        self.assertNotIn("Bash", tools)
+        granted = argv[argv.index("--allowedTools") + 1]
+        self.assertIn("mcp__floor__read_file", granted)
+        self.assertIn("mcp__floor__solid_build", granted)
+        self.assertNotIn("Bash", granted)
+        self.assertEqual(argv[argv.index("--tools") + 1], "")
         self.assertNotIn("--safe-mode", argv)
         self.assertIn("--strict-mcp-config", argv)
         config = json.loads(Path(argv[argv.index("--mcp-config") + 1]).read_text())
@@ -1360,8 +1362,66 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
             server["args"][server["args"].index("--floor-session") + 1],
             "opaque-session",
         )
-        self.assertEqual(argv[argv.index("--permission-mode") + 1], "bypassPermissions")
         await self.claude.close()
+
+    async def test_no_role_session_disables_permission_checking(self) -> None:
+        """The floor tool surface is the boundary; the runtime keeps checking.
+
+        A bypass would add nothing to a session that can only reach
+        project-contained floor tools, and would remove the backstop that
+        contains a scoping failure.
+        """
+        await self.claude.start()
+        for role in ("foreman", "designer", "machinist", "librarian"):
+            await self.claude.open_role(role, self.context(role))
+        for environment in (i for i in self.captured() if i["kind"] == "environment"):
+            self.assertNotIn("--permission-mode", environment["argv"])
+            self.assertNotIn("--dangerously-skip-permissions", environment["argv"])
+        await self.claude.close()
+
+    async def test_a_role_reaches_only_the_floor_tools_it_declares(self) -> None:
+        """Declared capabilities are the whole authority, for every role.
+
+        The librarian declares no `Edit`, so `edit_file` and `apply_patch` must
+        be unreachable rather than merely undeclared: `--tools` does not filter
+        MCP tools, so only a denylist removes them from the session.
+        """
+        from floor.mcp_server import TOOL_NAMES
+
+        librarian = FORDESMAC.agent("librarian")
+        declared = session_tool_names(librarian.skills, librarian.runtime.tools)
+        self.assertNotIn("edit_file", declared)
+
+        await self.claude.start()
+        handle = await self.claude.open_role("librarian", self.context("librarian"))
+        argv = next(i for i in self.captured() if i["kind"] == "environment")["argv"]
+        self.assertEqual(
+            sorted(argv[argv.index("--allowedTools") + 1].split(",")),
+            sorted(f"mcp__floor__{name}" for name in declared),
+        )
+        self.assertEqual(
+            sorted(argv[argv.index("--disallowedTools") + 1].split(",")),
+            sorted(
+                f"mcp__floor__{name}" for name in TOOL_NAMES if name not in declared
+            ),
+        )
+
+        # The session must actually come up: readiness compares the advertised
+        # tools against the declared ones, so a role declaring less than
+        # everything only opens once the denylist takes effect.
+        await self.claude.deliver_start(handle, "Begin")
+        await self.claude.close()
+
+    async def test_a_session_reaching_past_its_declared_scope_is_refused(self) -> None:
+        """Readiness is the live proof that scoping held, not a formality."""
+        with patch.dict(
+            os.environ, {"FAKE_CLAUDE_EXTRA_TOOLS": "mcp__floor__edit_file"}
+        ):
+            await self.claude.start()
+            handle = await self.claude.open_role("librarian", self.context("librarian"))
+            with self.assertRaisesRegex(RuntimeError, "tool list mismatch"):
+                await self.claude.deliver_start(handle, "Begin")
+        self.assertEqual(self.claude.processes, {})
 
     async def test_a_role_is_announced_its_own_skills_and_can_load_them(self) -> None:
         await self.claude.start()
@@ -1378,7 +1438,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn((skill.path / "SKILL.md").read_text(), contract)
         self.assertIn("load_skill", contract)
 
-        self.assertIn("mcp__floor__load_skill", argv[argv.index("--tools") + 1])
+        self.assertIn("mcp__floor__load_skill", argv[argv.index("--allowedTools") + 1])
         server = json.loads(Path(argv[argv.index("--mcp-config") + 1]).read_text())["mcpServers"]["floor"]
         registry = json.loads(server["args"][server["args"].index("--skills-json") + 1])
         self.assertEqual(
@@ -1393,7 +1453,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         argv = next(i for i in self.captured() if i["kind"] == "environment")["argv"]
         self.assertEqual(FORDESMAC.agent("foreman").skills, ())
         self.assertNotIn("load_skill", argv[argv.index("--append-system-prompt") + 1])
-        self.assertNotIn("load_skill", argv[argv.index("--tools") + 1])
+        self.assertIn("mcp__floor__load_skill", argv[argv.index("--disallowedTools") + 1])
         server = json.loads(Path(argv[argv.index("--mcp-config") + 1]).read_text())["mcpServers"]["floor"]
         self.assertNotIn("--skills-json", server["args"])
         await self.claude.close()
@@ -1453,19 +1513,19 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
                 await self.claude.deliver_start(handle, "Begin")
         self.assertEqual(self.claude.processes, {})
 
-    async def test_manual_permission_policy_retains_confirmation_mode(self) -> None:
+    async def test_a_role_without_a_concrete_tool_list_does_not_open(self) -> None:
+        """No path may open a Claude session holding native tools."""
         context = self.context("machinist")
         context = replace(
             context,
             agent=replace(
                 context.agent,
-                runtime=replace(context.agent.runtime, permission="manual"),
+                runtime=replace(context.agent.runtime, tools="inherit"),
             ),
         )
         await self.claude.start()
-        await self.claude.open_role("machinist", context)
-        argv = next(i for i in self.captured() if i["kind"] == "environment")["argv"]
-        self.assertEqual(argv[argv.index("--permission-mode") + 1], "manual")
+        with self.assertRaisesRegex(RuntimeError, "concrete tool list"):
+            await self.claude.open_role("machinist", context)
         await self.claude.close()
 
     async def test_delivery_is_completed_under_the_minted_identifier(self) -> None:

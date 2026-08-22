@@ -13,7 +13,6 @@ assigns = ["designer", "machinist", "librarian"]
 model = "sonnet"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
-permission = "autonomous"
 
 [[agents]]
 id = "designer"
@@ -25,7 +24,6 @@ reports_to = "foreman"
 model = "opus"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
-permission = "autonomous"
 
 [[agents]]
 id = "machinist"
@@ -37,7 +35,6 @@ reports_to = "foreman"
 model = "sonnet"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
-permission = "autonomous"
 
 [[agents]]
 id = "librarian"
@@ -49,4 +46,3 @@ reports_to = "foreman"
 model = "sonnet"
 effort = "medium"
 tools = ["Bash", "Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"]
-permission = "autonomous"

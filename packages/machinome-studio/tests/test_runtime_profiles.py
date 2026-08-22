@@ -25,7 +25,6 @@ class RuntimeProfileTest(unittest.TestCase):
         self.assertEqual([(agent.id, agent.label) for agent in builder.agents], [("builder", "Builder")])
         self.assertEqual(builder.user_agent.backends["claude"].model, "sonnet")
         self.assertEqual(builder.user_agent.backends["claude"].effort, "medium")
-        self.assertEqual(builder.user_agent.backends["claude"].permission, "autonomous")
 
         fordesmac = load_profile("fordesmac", shop_root=ROOT)
         self.assertEqual(fordesmac.work_mode, "delegated")
@@ -36,7 +35,6 @@ class RuntimeProfileTest(unittest.TestCase):
         )
         self.assertEqual(fordesmac.agent("designer").backends["claude"].model, "opus")
         self.assertEqual(fordesmac.agent("designer").backends["claude"].effort, "medium")
-        self.assertEqual(fordesmac.agent("designer").backends["claude"].permission, "autonomous")
         self.assertEqual(fordesmac.agent("designer").reports_to, "foreman")
         self.assertEqual(fordesmac.agent("foreman").assigns, ("designer", "machinist", "librarian"))
 
@@ -167,12 +165,18 @@ class RuntimeProfileTest(unittest.TestCase):
             with self.assertRaisesRegex(ProfileError, "claude.*effort.*unsupported"):
                 load_profile("builder", shop_root=shop)
 
-            manifest.write_text(value.replace('permission = "autonomous"', 'permission = "unattended"'))
-            with self.assertRaisesRegex(ProfileError, "claude.*permission.*unsupported"):
+            manifest.write_text(value.replace('tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]', 'tools = "inherit"'))
+            with self.assertRaisesRegex(ProfileError, "claude.*tools.*must be a list"):
                 load_profile("builder", shop_root=shop)
 
-            manifest.write_text(value.replace('permission = "autonomous"\n', ''))
-            with self.assertRaisesRegex(ProfileError, "claude.*must declare model, effort, tools, and permission"):
+            # A permission policy is no longer a thing a profile can declare:
+            # the tool list is the whole authority a role session holds.
+            manifest.write_text(value.replace('effort = "medium"', 'effort = "medium"\npermission = "autonomous"'))
+            with self.assertRaisesRegex(ProfileError, "claude.*unknown"):
+                load_profile("builder", shop_root=shop)
+
+            manifest.write_text(value.replace('effort = "medium"\n', ''))
+            with self.assertRaisesRegex(ProfileError, "claude.*must declare model, effort, and tools"):
                 load_profile("builder", shop_root=shop)
 
 

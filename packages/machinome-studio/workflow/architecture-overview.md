@@ -51,8 +51,10 @@ human label, one user-facing agent, standing roster, direct or delegated work
 mode, prompt paths, allowed skills, communication edges, and Claude
 runtime defaults. The option overrides a project declaration for one run
 without modifying it. The project may select backend, provider, model, and
-reasoning level per agent under `[tool.libresolid-studio.agents]`; profile tool
-policy and Claude permission remain non-overridable. OpenCode has no profile
+reasoning level per agent under `[tool.libresolid-studio.agents]`; the profile
+tool policy remains non-overridable and is the whole authority a Claude session
+holds, so no profile or project declaration can widen it or disable permission
+checking. OpenCode has no profile
 table and is available only through an explicit project selection. Creating a
 project records the profile selected in the hub in that repository's initial
 commit. Before a role's first message, assignment, accepted delivery, or
@@ -187,19 +189,23 @@ delivery is still active and returns false instead of starting a turn. The
 protocol has no generic compatibility delivery operation.
 
 Claude launches one isolated CLI process per profile agent and translates the
-selected model, effort, permitted tools, and explicit permission policy into
-its supported command fields. For a scoped role it writes a strict MCP config,
-removes `--safe-mode` because that flag disables MCP and passes only the resolved
-`mcp__floor__*` names, together with `mcp__floor__load_skill` when that agent
-declares a skill. Because Claude emits no init
+selected model, effort, and permitted tools into its supported command fields.
+It writes a strict MCP config, omits `--safe-mode` because that flag disables
+MCP, and empties the built-in tool set. It grants the resolved `mcp__floor__*`
+names — together with `mcp__floor__load_skill` when that agent declares a skill
+— by name, and withholds every remaining floor tool, because the built-in tool
+option does not filter MCP tools. A role without a concrete tool list does not
+open. Because Claude emits no init
 before its first user input, project opening manifests the process after the
 short exit grace without a warm-up turn. The first real broker envelope triggers
 initialization, and that delivery is accepted only after `system/init` reports
 the floor server connected with exactly that tool set, waiting through
-transitional `pending` frames within a separate bounded readiness deadline. An autonomous Claude policy
-bypasses confirmation prompts only for those tools; it does not grant extras or
-provide operating-system sandboxing. An unscoped compatibility role retains
-safe mode. Claude normalizes completed tool-use blocks but exposes no mutable
+transitional `pending` frames within a separate bounded readiness deadline. That
+comparison is the live proof that scoping held. No session disables the
+runtime's permission checking: the granted tools run without confirmation, a
+withheld tool is neither advertised nor callable, and containment remains the
+MCP server's project gate rather than operating-system sandboxing (ADR 0026).
+Claude normalizes completed tool-use blocks but exposes no mutable
 runtime catalogue after first use: model changes require a new process, for
 which context preservation has not been verified. Its fresh-session catalogue
 does permit replacement of a pristine process. These two adapters consume one resolved
@@ -267,8 +273,7 @@ fixtures.
 The profile defaults are Builder/Foreman/Machinist/Librarian on Claude
 `sonnet` and Designer on Claude `opus`, all at medium effort. An unnamed
 project agent uses that Claude default. A project selection replaces the model
-and optional effort, while tool and permission values still come from the
-profile. These choices are backend configuration, not broker semantics.
+and optional effort, while the tool policy still comes from the profile. These choices are backend configuration, not broker semantics.
 
 ## Floor and browser
 

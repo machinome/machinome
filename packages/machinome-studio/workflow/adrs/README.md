@@ -27,7 +27,7 @@ the overview says *what is true now*.
 | `0012` | [Use a bounded adapter-owned OpenCode compatibility policy](./0012-bounded-opencode-compatibility-policy.md) | Accepted (amended by 0017) | 2026-08-01 |
 | `0013` | [Observe atomic build publications separately from source-triggered builds](./0013-observe-atomic-build-publications.md) | Accepted | 2026-08-02 |
 | `0014` | [Use snapshot-first live state for the Floor browser](./0014-use-snapshot-first-live-state-for-the-floor-browser.md) | Accepted | 2026-08-09 |
-| `0015` | [Make Claude autonomous permissions profile-owned](./0015-profile-owned-claude-autonomous-permissions.md) | Accepted | 2026-08-09 |
+| `0015` | [Make Claude autonomous permissions profile-owned](./0015-profile-owned-claude-autonomous-permissions.md) | Superseded by 0026 | 2026-08-09 |
 | `0016` | [Retire Hermes as a shop agent backend](./0016-retire-hermes-agent-backend.md) | Accepted | 2026-08-09 |
 | `0017` | [Select backend, provider, model, and reasoning level per agent from the project](./0017-project-selected-per-agent-runtime.md) | Accepted (amended by 0019, 0023, and 0025) | 2026-08-09 |
 | `0018` | [Let one shop floor run several agent backends at once](./0018-multi-backend-orchestration.md) | Accepted (amended by 0023 and 0025) | 2026-08-09 |
@@ -38,6 +38,7 @@ the overview says *what is true now*.
 | `0023` | [Replace a pristine agent's backend without migrating a session](./0023-replace-pristine-agent-backends.md) | Accepted (amended by 0025) | 2026-08-12 |
 | `0024` | [Inspect distinct pieces and package deterministic print instructions](./0024-inspect-distinct-pieces-and-package-print-instructions.md) | Accepted | 2026-08-13 |
 | `0025` | [Retire Codex as a shop agent backend](./0025-retire-codex-agent-backend.md) | Accepted | 2026-08-12 |
+| `0026` | [Grant Claude roles their declared floor tools, deny everything else](./0026-deny-by-default-claude-tool-permissions.md) | Accepted | 2026-08-22 |
 
 ## Conventions
 

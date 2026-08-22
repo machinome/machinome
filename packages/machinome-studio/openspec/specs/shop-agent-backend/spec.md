@@ -130,12 +130,18 @@ It SHALL deliver the resolved profile prompt and the agent's skill catalogue as
 session-level instructions so the first user message remains a broker envelope.
 It SHALL register that agent's skills with the session's tool server and SHALL
 NOT name a skill's filesystem path to the session. It SHALL use the profile's
-selected Claude model, effort, available tools, and permission policy rather
-than Markdown model/tool fields or a global adapter file. A profile policy of
-`autonomous` SHALL open the session with Claude Code's `bypassPermissions`
-permission mode; a policy of `manual` SHALL open it with Claude Code's `manual`
-permission mode. The permission mode SHALL only govern confirmation for
-available tools and SHALL NOT add tools to the profile's declared tool list.
+selected Claude model, effort, and available tools rather than Markdown
+model/tool fields or a global adapter file.
+
+It SHALL open every role session with the runtime's permission checking active
+and SHALL NOT pass a permission mode that disables it. The role's declared
+floor tools SHALL be granted by name, so a declared tool never pauses for
+confirmation, and every floor tool the role did not declare SHALL be
+unreachable in that session rather than merely undeclared. No built-in runtime
+tool SHALL be available in a role session. The declared tool list is therefore
+the entire authority the session holds; the backend SHALL NOT accept a separate
+profile permission policy, and SHALL refuse to open a role whose tool policy is
+not a concrete list.
 
 It SHALL open each session with both project-level and user-level assistant
 configuration, memory, hooks, plugins, and other operator-machine
@@ -153,24 +159,34 @@ operator has already configured.
 
 #### Scenario: Runtime capability comes from the selected profile
 - **WHEN** Claude opens Designer from `fordesmac`
-- **THEN** it uses the model, effort, available-tool, and permission policy
-  that profile declares for Claude, only Designer's validated profile prompt
-  and Designer's own allowlisted skills, and no global role adapter
+- **THEN** it uses the model, effort, and available tools that profile declares
+  for Claude, only Designer's validated profile prompt and Designer's own
+  allowlisted skills, and no global role adapter
 
 #### Scenario: A scoped role can load its declared skills
 - **WHEN** Claude opens a scoped role whose profile agent declares skills
 - **THEN** that session's reachable tool set includes the floor skill-loading
   tool alongside the tools its declared capabilities resolve to
 
-#### Scenario: An autonomous role does not pause for tool confirmation
-- **WHEN** Claude opens a role whose resolved policy is `autonomous`
-- **THEN** the adapter invokes Claude Code with
-  `--permission-mode bypassPermissions` while passing only that role's
-  declared available tools
+#### Scenario: A declared tool runs without confirmation
+- **WHEN** a role calls a floor tool its profile declared
+- **THEN** the call executes without a confirmation prompt and without the
+  session running with permission checking disabled
 
-#### Scenario: A manual role retains confirmation behavior
-- **WHEN** Claude opens a role whose resolved policy is `manual`
-- **THEN** the adapter invokes Claude Code with `--permission-mode manual`
+#### Scenario: Permission checking is never disabled
+- **WHEN** Claude opens any role session
+- **THEN** the invocation carries no permission mode that bypasses, presumes,
+  or otherwise disables the runtime's permission checks
+
+#### Scenario: A floor tool the role did not declare is unreachable
+- **WHEN** a role's profile declares capabilities resolving to fewer than every
+  floor tool
+- **THEN** the session cannot see or call the remaining floor tools
+
+#### Scenario: A role without a concrete tool list does not open
+- **WHEN** a role's resolved Claude tool policy is not a concrete list
+- **THEN** opening that role fails instead of starting a session whose tool set
+  the backend cannot bound
 
 #### Scenario: Operator machine configuration does not reach an agent
 - **WHEN** the active project or the machine has project-level or user-level assistant configuration, memory, hooks, or plugins

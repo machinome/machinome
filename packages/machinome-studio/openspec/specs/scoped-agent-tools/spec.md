@@ -40,11 +40,28 @@ native file, shell, or network tools regardless of the declared policy SHALL NOT
 be selectable. The `claude` and `opencode` backends satisfy this; the retired
 `codex` backend did not.
 
+A scoped session SHALL run with its runtime's permission checking active. The
+floor tool surface is the boundary, so no backend SHALL open a session with
+permission checks disabled, and no profile declaration SHALL be able to disable
+them. A backend SHALL grant the session's declared tools by name so the role
+never waits for a confirmation nobody can give.
+
 #### Scenario: Role selects claude or opencode with scoped tools
 - **WHEN** a role configured for scoped tools opens on the `claude` or
   `opencode` backend
 - **THEN** the session has no native file, shell, or network tool reachable,
   only the floor-provided MCP tool set
+
+#### Scenario: A role declares fewer capabilities than the whole tool set
+- **WHEN** a role's declared capabilities resolve to a proper subset of the
+  floor tool set
+- **THEN** the session reaches exactly that subset, and the tools outside it are
+  neither advertised nor callable
+
+#### Scenario: A scoped session keeps permission checking on
+- **WHEN** any scoped role session opens
+- **THEN** it runs with its runtime's permission checks active while its
+  declared tools execute without confirmation
 
 #### Scenario: Claude reports the floor MCP server pending before connected
 - **WHEN** a scoped Claude role's first real broker envelope triggers init
