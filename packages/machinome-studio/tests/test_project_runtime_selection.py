@@ -105,6 +105,15 @@ librarian = "opencode:openai:gpt-5.4:medium"
                 with self.assertRaisesRegex(ProjectRuntimeError, r"foreman.*" + value.replace("-", r"\-")):
                     self._selection(f'[tool.libresolid-studio.agents]\nforeman = "{value}"\n')
 
+    def test_fable_is_a_supported_claude_model(self) -> None:
+        selection = self._selection(
+            '[tool.libresolid-studio.agents]\nforeman = "claude:fable:high"\n'
+        )
+        self.assertEqual(
+            (selection.agents["foreman"].model, selection.agents["foreman"].effort),
+            ("fable", "high"),
+        )
+
     def test_reasoning_levels_are_backend_specific(self) -> None:
         for value in ("claude:opus:impossible", "claude:opus:ultra"):
             with self.subTest(value=value):

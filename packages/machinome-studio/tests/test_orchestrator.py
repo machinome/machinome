@@ -1301,6 +1301,13 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
     def captured(self) -> list[dict]:
         return [json.loads(line) for line in self.capture.read_text().splitlines()]
 
+    async def test_catalogue_offers_every_supported_claude_model(self) -> None:
+        catalogue = await self.claude.runtime_catalog(None)
+        self.assertTrue(catalogue.supported)
+        self.assertEqual(
+            [choice.model for choice in catalogue.choices], ["fable", "opus", "sonnet"]
+        )
+
     async def test_runtime_control_is_read_only_because_context_cannot_be_preserved(self) -> None:
         catalogue = await self.claude.runtime_catalog(RoleHandle("not-opened", "designer"))
         self.assertFalse(catalogue.supported)

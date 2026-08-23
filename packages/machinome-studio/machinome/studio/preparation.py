@@ -22,7 +22,7 @@ from .screenshots import refresh_project_screenshot, screenshot_revision
 LOWER_KEBAB_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 AGENT_ID = LOWER_KEBAB_ID
 REQUIRED_VIEWER_API = 4
-CLAUDE_MODELS = {"sonnet", "opus"}
+CLAUDE_MODELS = {"sonnet", "opus", "fable"}
 CLAUDE_EFFORTS = {"low", "medium", "high"}
 
 
