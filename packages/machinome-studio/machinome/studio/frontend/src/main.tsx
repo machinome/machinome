@@ -795,6 +795,25 @@ function isPng(path: string) {
   return sourceIconKind(path) === "image";
 }
 
+/**
+ * Order source entries so each directory is immediately followed by its own
+ * subtree. Comparing whole paths would let a sibling such as `a.txt` fall
+ * between the directory `a` and its children, which reads as containment.
+ */
+function compareSourceEntries(left: SourceEntry, right: SourceEntry) {
+  const leftParts = left.path.split("/");
+  const rightParts = right.path.split("/");
+  const shared = Math.min(leftParts.length, rightParts.length);
+  for (let depth = 0; depth < shared; depth += 1) {
+    if (leftParts[depth] === rightParts[depth]) continue;
+    const leftIsDirectory = depth < leftParts.length - 1 || left.kind === "directory";
+    const rightIsDirectory = depth < rightParts.length - 1 || right.kind === "directory";
+    if (leftIsDirectory !== rightIsDirectory) return leftIsDirectory ? -1 : 1;
+    return leftParts[depth].localeCompare(rightParts[depth]);
+  }
+  return leftParts.length - rightParts.length;
+}
+
 function SourceIcon({ kind }: { kind: SourceIconKind }) {
   const common = {
     className: "source-icon",
@@ -850,7 +869,7 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible, requestedOp
       return;
     }
     const value = await response.json() as { entries: SourceEntry[] };
-    const nextEntries = value.entries.slice().sort((left, right) => left.path.localeCompare(right.path));
+    const nextEntries = value.entries.slice().sort(compareSourceEntries);
     const directories = new Set(nextEntries.filter((entry) => entry.kind === "directory").map((entry) => entry.path));
     setEntries(nextEntries);
     setExpandedDirectories((previous) => new Set([...previous].filter((path) => directories.has(path))));
