@@ -21,11 +21,16 @@ from .preparation import (
     PreparedProject,
     PreparationError,
     ProjectRuntimeError,
+    ViewerBundle,
+    build_project,
+    commit_new_project,
     default_solid_command,
+    has_complete_publication,
     list_projects,
     prepare_project,
     read_project_runtime,
     resolve_project,
+    resolve_viewer_bundle,
     validate_new_project,
 )
 from .profiles import (
@@ -76,6 +81,7 @@ class Session:
     orchestrator: ShopOrchestrator | None = None
     delivery_task: asyncio.Task[None] | None = None
     event_tasks: list[asyncio.Task[None]] = field(default_factory=list)
+    build_task: asyncio.Task[None] | None = None
     observer: Observer | None = None
     source_watcher: ModelWatcher | None = None
     source_file_watcher: SourceFileWatcher | None = None
@@ -95,6 +101,15 @@ class Session:
     @property
     def artifact_root(self) -> Path:
         return self.prepared.artifact_root
+
+    @property
+    def model_building(self) -> bool:
+        """Whether a build is still running behind the presented publication.
+
+        The broker holds it so that the one place a browser learns the session's
+        live state also answers whether its model has settled.
+        """
+        return self.broker.model_building
 
     @property
     def build_environment(self) -> Mapping[str, str] | None:
@@ -234,7 +249,11 @@ class Session:
     async def close(self) -> None:
         """Boundedly release every process, routing task and filesystem watch."""
         self.broker.shutdown()
-        tasks = tuple(task for task in (self.delivery_task, *self.event_tasks) if task is not None)
+        tasks = tuple(
+            task
+            for task in (self.delivery_task, self.build_task, *self.event_tasks)
+            if task is not None
+        )
         for task in tasks:
             task.cancel()
         if tasks:
@@ -284,6 +303,8 @@ class SessionRegistry:
         self._failures: dict[str, str] = {}
         self._hub_subscribers: set[asyncio.Queue[dict[str, object]]] = set()
         self._lock = asyncio.Lock()
+        self._viewer: ViewerBundle | None = None
+        self._viewer_lock = asyncio.Lock()
 
     def by_project(self, name: str) -> Session | None:
         return self._by_project.get(name)
@@ -310,6 +331,7 @@ class SessionRegistry:
             if provisional_profile is not None:
                 value.update({"openable": True, "reason": None, "profile": provisional_profile})
             value["failure"] = self._failures.get(listing.name)
+            value["model_building"] = session is not None and session.model_building
             values.append(value)
         for name, profile in self._provisional_profiles.items():
             if name in listed_names:
@@ -325,6 +347,7 @@ class SessionRegistry:
                 "session_id": None,
                 "failure": None,
                 "screenshot_revision": None,
+                "model_building": False,
             })
         values.sort(key=lambda value: str(value["name"]))
         return values
@@ -391,15 +414,27 @@ class SessionRegistry:
                 project_home=self.working_folder,
                 solid_command=self.solid_command,
                 profile=create_profile,
-                allow_build_failure=True,
+                viewer=await self._viewer_bundle(),
             )
+            # A project that already holds a complete, valid publication has
+            # something to show now; one being created or never built has not,
+            # so there is nothing to gain by opening ahead of its build.
+            present_early = not prepared.created and await asyncio.to_thread(
+                has_complete_publication, prepared
+            )
+            if not present_early:
+                outcome = await asyncio.to_thread(build_project, prepared, allow_failure=True)
+                prepared = replace(prepared, build_error=outcome.error)
+                await asyncio.to_thread(commit_new_project, prepared)
             session_id = secrets.token_urlsafe(24)
+            broker = Broker(profile=profile, session_id=session_id)
+            broker.model_building = present_early
             session = Session(
                 session_id,
                 name,
                 prepared,
                 profile,
-                Broker(profile=profile, session_id=session_id),
+                broker,
                 on_screenshot_changed=lambda revision: self.publish_hub(
                     "screenshot", name, screenshot_revision=revision
                 ),
@@ -410,7 +445,12 @@ class SessionRegistry:
             async with self._lock:
                 self._by_project[name] = session
                 self._by_id[session.id] = session
-            self.publish_hub("open", name, session_id=session.id)
+            self.publish_hub("open", name, session_id=session.id, model_building=session.model_building)
+            if present_early:
+                # The watchers are already running, so the publication this
+                # build produces cannot be missed, and the session owns the
+                # task so the build cannot outlive it.
+                session.build_task = asyncio.create_task(self._build_behind(session))
             return session
         except asyncio.CancelledError:
             if session is not None:
@@ -426,6 +466,43 @@ class SessionRegistry:
             async with self._lock:
                 self._opening.pop(name, None)
                 self._provisional_profiles.pop(name, None)
+
+    async def _viewer_bundle(self) -> ViewerBundle:
+        """Hold the framework's viewer bundle for the life of the running shop.
+
+        The bundle belongs to the shop's own installation, so a second open
+        would pay a subprocess for an answer already held. A failure is not
+        remembered: a shop whose framework installation is repaired must be
+        able to open the next project.
+        """
+        async with self._viewer_lock:
+            if self._viewer is None:
+                self._viewer = await asyncio.to_thread(resolve_viewer_bundle, self.solid_command)
+            return self._viewer
+
+    async def _build_behind(self, session: Session) -> None:
+        """Bring a presented publication up to date behind its open session.
+
+        The publication itself reaches the browser through the watchers. What
+        this has to say is that the build is over -- and, when it failed, why;
+        a failure leaves the previous publication in place rather than
+        replacing it with nothing.
+        """
+        try:
+            outcome = await asyncio.to_thread(
+                build_project, session.prepared, allow_failure=True, watched=True
+            )
+            if outcome.error:
+                session.broker.publish("model_build_unavailable", {"reason": outcome.error, "trigger": "open"})
+        finally:
+            # Whatever the build did -- published new work, published nothing
+            # because the document was already current, or failed -- the model
+            # is no longer being brought up to date. A build that publishes
+            # nothing moves no artifact, so this is the only thing that can say
+            # so, and the session must never be left claiming otherwise.
+            session.broker.publish("model_build_settled", {"trigger": "open"})
+        if self._by_id.get(session.id) is session:
+            self.publish_hub("open", session.name, session_id=session.id, model_building=False)
 
     async def _start_orchestrator(self, session: Session) -> None:
         backend_instances: dict[str, AgentBackend] = {}

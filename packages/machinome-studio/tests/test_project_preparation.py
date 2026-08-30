@@ -9,16 +9,20 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
 from floor.preparation import (
     REQUIRED_VIEWER_API,
     PreparationError,
+    build_project,
+    commit_new_project,
     default_solid_command,
     list_projects,
     prepare_project,
     resolve_project,
+    resolve_viewer_bundle,
     validate_new_project,
 )
 
@@ -123,9 +127,27 @@ class ProjectPreparationTest(unittest.TestCase):
             "SOLID_CALL_LOG": str(self.call_log),
         }
 
-    def prepare(self, name: str = "new-engine"):
+    def prepare(
+        self,
+        name: str = "new-engine",
+        *,
+        profile: str | None = None,
+        allow_build_failure: bool = False,
+        project_home: Path | None = None,
+    ):
+        """Open one project the way the registry does: verify, build, record."""
+        home = self.home if project_home is None else project_home
         with patch.dict(os.environ, self.git_environment):
-            return prepare_project(name, project_home=self.home, solid_command=self.command)
+            prepared = prepare_project(
+                name,
+                project_home=home,
+                solid_command=self.command,
+                profile=profile,
+            )
+            outcome = build_project(prepared, allow_failure=allow_build_failure)
+            prepared = replace(prepared, build_error=outcome.error)
+            commit_new_project(prepared)
+            return prepared
 
     def test_missing_project_is_scaffolded_committed_built_and_validated(self) -> None:
         prepared = self.prepare()
@@ -149,13 +171,7 @@ class ProjectPreparationTest(unittest.TestCase):
         )
 
     def test_creation_records_the_chosen_profile_in_the_initial_commit(self) -> None:
-        with patch.dict(os.environ, self.git_environment):
-            prepare_project(
-                "profiled-project",
-                project_home=self.home,
-                solid_command=self.command,
-                profile="builder",
-            )
+        self.prepare("profiled-project", profile="builder")
         project = self.home / "profiled-project"
         self.assertIn('profile = "builder"', (project / "pyproject.toml").read_text())
         committed = subprocess.run(
@@ -167,20 +183,13 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertIn('profile = "builder"', committed)
 
     def test_build_failure_can_be_reported_without_abandoning_preparation(self) -> None:
-        with patch.dict(os.environ, self.git_environment):
-            prepared = prepare_project(
-                "fail-build",
-                project_home=self.home,
-                solid_command=self.command,
-                allow_build_failure=True,
-            )
+        prepared = self.prepare("fail-build", allow_build_failure=True)
         self.assertIn("build exploded", prepared.build_error or "")
         self.assertTrue(prepared.project_root.is_dir())
 
     def test_missing_project_home_is_created_for_a_first_launch(self) -> None:
         home = self.home.parent / "fresh-projects"
-        with patch.dict(os.environ, self.git_environment):
-            prepared = prepare_project("new-engine", project_home=home, solid_command=self.command)
+        prepared = self.prepare("new-engine", project_home=home)
 
         self.assertEqual(prepared.project_root, home / "new-engine")
         self.assertTrue((home / "new-engine" / "root" / "__init__.py").is_file())
@@ -229,13 +238,22 @@ class ProjectPreparationTest(unittest.TestCase):
     def test_rejects_a_missing_or_incompatible_viewer_before_building(self) -> None:
         project = self.home / "existing"
         _make_repository(project)
-        for state, expected in (({"viewer_missing": True}, "build the solid-node viewer bundle"), ({"viewer_api_version": 3}, "viewer API 4 is required but installed viewer API is 3")):
-            with self.subTest(state=state):
-                (project / ".fake-solid-state.json").write_text(json.dumps(state))
+        cases = (
+            ({"FAKE_SOLID_VIEWER_MISSING": "1"}, "build the solid-node viewer bundle"),
+            ({"FAKE_SOLID_VIEWER_API": "3"}, "viewer API 4 is required but installed viewer API is 3"),
+        )
+        for environment, expected in cases:
+            with self.subTest(environment=environment), patch.dict(os.environ, {**self.git_environment, **environment}):
+                # The shop resolves the bundle for itself, so the refusal is
+                # the running shop's, not one project's.
                 with self.assertRaises(PreparationError) as raised:
-                    self.prepare("existing")
+                    resolve_viewer_bundle(self.command)
                 self.assertEqual(raised.exception.stage, "viewer")
                 self.assertIn(expected, str(raised.exception))
+                with self.assertRaises(PreparationError) as refused:
+                    self.prepare("existing")
+                self.assertEqual(refused.exception.stage, "viewer")
+        self.assertFalse((project / "_build").exists(), "no build may run without a usable viewer")
 
     def test_required_viewer_api_matches_the_declared_widget_interface(self) -> None:
         declaration = (ROOT / "floor" / "frontend" / "src" / "solid-node-widget.d.ts").read_text()
@@ -364,12 +382,12 @@ elif command == "snapshot":
     output = Path(sys.argv[sys.argv.index("-o") + 1])
     output.write_bytes(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8/+8dAwMDEwMDAwMDAwAjPwLvkz8BYAAAAABJRU5ErkJggg=="))
 elif command == "viewer":
-    state_file = cwd / ".fake-solid-state.json"
-    state = json.loads(state_file.read_text()) if state_file.is_file() else {}
-    if state.get("viewer_missing"):
+    # The shop asks this without a project, so the test steers it through the
+    # environment rather than through a file inside one.
+    if os.environ.get("FAKE_SOLID_VIEWER_MISSING"):
         print("build the solid-node viewer bundle", file=sys.stderr)
         raise SystemExit(18)
     bundle = Path(tempfile.gettempdir()) / f"fake-solid-widget-{os.getpid()}.js"
     bundle.write_text("globalThis.SolidNodeWidget={apiVersion:4,mount(){return Promise.resolve({apiVersion:4,artifactChanged(){return Promise.resolve()},manifestChanged(){return Promise.resolve()},reload(){return Promise.resolve()},assembly(){return{name:'root',path:[],color:null,model:false,children:[]}},setRoot(){},setVisible(){},view(){return{}},dispose(){}})}};")
-    print(json.dumps({"path": str(bundle), "apiVersion": state.get("viewer_api_version", 4)}))
+    print(json.dumps({"path": str(bundle), "apiVersion": int(os.environ.get("FAKE_SOLID_VIEWER_API", "4"))}))
 '''

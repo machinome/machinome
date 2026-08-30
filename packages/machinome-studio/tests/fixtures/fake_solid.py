@@ -17,6 +17,11 @@ from pathlib import Path
 command = sys.argv[1]
 argument = sys.argv[2] if len(sys.argv) > 2 else ""
 cwd = Path.cwd()
+# One shop runs this fixture for several projects, so a test that asks how
+# often the shop reached for the framework needs one log outside them all.
+if call_log := os.environ.get("SOLID_CALL_LOG"):
+    with Path(call_log).open("a") as calls:
+        calls.write(f"{command}:{argument}\n")
 if command == "new":
     if delay := os.environ.get("FAKE_SOLID_NEW_DELAY"):
         time.sleep(float(delay))
@@ -34,6 +39,15 @@ elif command == "build":
     state_file = cwd / ".fake-solid-state.json"
     if state_file.is_file():
         state = json.loads(state_file.read_text())
+    if build_delay := state.get("build_delay"):
+        time.sleep(float(build_delay))
+    # A test that watches what the shop shows *while* a build runs cannot bound
+    # that build with a sleep without racing it. A gate outside the project --
+    # so no watcher sees it -- lets the test hold the build open and release it.
+    if gate := state.get("build_gate"):
+        deadline = time.monotonic() + 60
+        while not Path(gate).exists() and time.monotonic() < deadline:
+            time.sleep(0.02)
 
     # A real build imports the project's sources, so it opens every one of
     # them.  The fixture reads them for the same reason a watcher must not

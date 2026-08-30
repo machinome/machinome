@@ -31,7 +31,15 @@ broker, orchestrator and backend processes, delivery/event tasks, source
 workspace, source/model/artifact watchers, and filesystem observer. Opening is asynchronous and
 reported on the hub stream. Profile resolution, preparation, and agent start
 are fatal and tear down partial resources; a failed initial model build is
-recorded in the session and does not prevent its workspace from opening.
+recorded in the session and does not prevent its workspace from opening. A
+session opened on an existing publication carries a build behind it: the broker
+holds the in-flight flag, so the hub listing and the session stream cannot
+disagree, and a `model_build_settled` event clears it on every outcome —
+including a build that publishes nothing, which moves no artifact and would
+otherwise signal nothing. Both the hub card and the workspace say the model is
+being brought up to date while that flag is set, so a publication that is not
+yet current is never presented as settled. Closing cancels and awaits that
+build, so it cannot outlive its session.
 
 Agents receive `FLOOR_SESSION` beside `FLOOR_URL`, and every agent-facing API
 route resolves that identifier through the registry. An unknown or expired
@@ -317,7 +325,16 @@ and optional effort, while the tool policy still comes from the profile. These c
 The service binds its listener before any project is selected, and only after
 the startup preflight has resolved the `openspec` CLI. For each open
 request, profile validation and runtime resolution complete before preparation
-creates or verifies the named independent project repository. The initial build
+creates or verifies the named independent project repository. When that project
+already holds a complete, valid publication, the session registers and its
+agents start on it and the build then runs behind the open session; a project
+with nothing published, or one being created, still waits for its build. Either
+way the repository boundary is verified before any agent starts. A screenshot is
+rendered only when the open changed what is published — decided from a digest of
+the published viewer document, not by rendering and comparing afterwards — or
+when the project has no valid screenshot yet, extending to opening the rule
+floor-mediated commits already follow. The framework viewer bundle is resolved
+once per running shop rather than per open (ADR 0028). The initial build
 runs through the `solid` console script installed beside the Python interpreter
 running the shop, so an unrelated executable earlier on ambient `PATH` cannot
 select a different framework installation. `openspec` is the single exception:

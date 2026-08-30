@@ -196,6 +196,11 @@ class Broker:
         self._next_notice_sequence = 0
         self.system_notices: dict[str, list[SystemNotice]] = {}
         self.model_build_error: str | None = None
+        # A session may open on a publication whose build is still running.
+        # It lives here so a browser arriving mid-build reads it from the same
+        # snapshot that registers it for live events, and cannot miss the
+        # event that ends it.
+        self.model_building = False
         self.activity: deque[dict[str, object]] = deque(maxlen=400)
         self._activity_sequence = 0
 
@@ -211,6 +216,7 @@ class Broker:
             "events": [event.browser_value() for event in self.events],
             "latest_event_sequence": self.latest_event_sequence,
             "model_build_error": self.model_build_error,
+            "model_building": self.model_building,
             "activity": list(self.activity),
         }
 
@@ -576,6 +582,8 @@ class Broker:
         value = payload if isinstance(payload, dict) else payload.browser_value()
         if kind == "model_build_unavailable":
             self.model_build_error = str(value.get("reason") or "the shop could not start a model build")
+        elif kind == "model_build_settled":
+            self.model_building = False
         elif kind == "model_artifact_changed" and value.get("artifact") == "viewer.json":
             self.model_build_error = None
         role = role or str(value.get("role", ""))
@@ -732,6 +740,8 @@ class Broker:
             return "Model artifact updated"
         if kind == "model_build_unavailable":
             return "Model build unavailable"
+        if kind == "model_build_settled":
+            return "Model build settled"
         return kind.replace("_", " ").title()
 
     def _envelope(self, sequence: int) -> Envelope:

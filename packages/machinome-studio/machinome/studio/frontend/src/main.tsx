@@ -70,6 +70,7 @@ type Run = {
   events: BrokerEvent[];
   latest_event_sequence: number;
   model_build_error: string | null;
+  model_building: boolean;
 };
 
 type LifecycleEvent = {
@@ -108,6 +109,7 @@ type Project = {
   session_id: string | null;
   failure: string | null;
   screenshot_revision: string | null;
+  model_building: boolean;
 };
 
 type BackendStatus = {
@@ -606,6 +608,7 @@ function Hub() {
         session_id?: string;
         reason?: string;
         screenshot_revision?: string | null;
+        model_building?: boolean;
       };
       setProjects((previous) => {
         if (event.kind === "screenshot") {
@@ -613,11 +616,15 @@ function Hub() {
             ? { ...project, screenshot_revision: event.screenshot_revision ?? null }
             : project);
         }
+        // A card is rebuilt from the previous one plus the fields named here,
+        // so anything the event carries has to be named or the card silently
+        // keeps whatever it held before.
         const update = (project: Project): Project => ({
           ...project,
           state: event.kind === "closed" ? "closed" : event.kind as Project["state"],
           session_id: event.kind === "open" ? event.session_id ?? null : null,
           failure: event.reason ?? null,
+          model_building: event.kind === "open" && (event.model_building ?? false),
         });
         if (previous.some((project) => project.name === event.project)) {
           return previous.map((project) => project.name === event.project ? update(project) : project);
@@ -634,6 +641,7 @@ function Hub() {
           session_id: null,
           failure: null,
           screenshot_revision: null,
+          model_building: false,
         })];
       });
       if (event.kind === "open" && pendingOpen.current === event.project) {
@@ -676,6 +684,7 @@ function Hub() {
     const optimistic: Project = {
       name, profile, openable: true, reason: null, branch: "main", last_commit: null,
       state: "creating", session_id: null, failure: null, screenshot_revision: null,
+      model_building: false,
     };
     setProjects((previous) => [...previous.filter((item) => item.name !== name), optimistic]);
     setSheetOpen(false);
@@ -743,6 +752,7 @@ function Hub() {
             <span className="project-card-body">
               <span className="project-name"><strong>{project.name}</strong><i data-state={project.state} /></span>
               <span className="project-meta">{project.state} · {project.profile} · {relativeTime(project.last_commit)}</span>
+              {project.model_building ? <span className="project-building">Bringing the model up to date…</span> : null}
               {project.reason || project.failure ? <span className="project-reason">{project.failure ?? project.reason}</span> : null}
             </span>
           </button>)}
@@ -1527,6 +1537,7 @@ function Workspace({ project }: { project: string }) {
   const [modelReconnect, setModelReconnect] = useState(0);
   const [buildRevision, setBuildRevision] = useState(0);
   const [modelBuildError, setModelBuildError] = useState<string | null>(null);
+  const [modelBuilding, setModelBuilding] = useState(false);
   const [sourceEvent, setSourceEvent] = useState<SourceEvent | null>(null);
   const [sourceReconnect, setSourceReconnect] = useState(0);
   const [requestedOpen, setRequestedOpen] = useState<{ path: string; nonce: number } | null>(null);
@@ -1577,6 +1588,10 @@ function Workspace({ project }: { project: string }) {
       setRun(snapshot.run);
       setConversation(snapshot.conversation);
       setModelBuildError(snapshot.run.model_build_error);
+      // The snapshot is serialised for this subscriber, so a session that
+      // opened on a publication whose build is still running says so here even
+      // when the browser arrives long after the open.
+      setModelBuilding(snapshot.run.model_building);
     });
     source.addEventListener("shop-floor", (message) => {
       const event = JSON.parse((message as MessageEvent<string>).data) as LifecycleEvent;
@@ -1605,6 +1620,10 @@ function Workspace({ project }: { project: string }) {
         } else if (artifact) {
           setModelArtifact({ path: artifact, sequence: event.event.sequence });
         }
+        return;
+      }
+      if (event.kind === "model_build_settled") {
+        setModelBuilding(false);
         return;
       }
       if (event.kind === "model_build_unavailable") {
@@ -1707,6 +1726,11 @@ function Workspace({ project }: { project: string }) {
             <h2 id="artifact-heading">Model</h2>
           </header>
           <div className="model-viewport">
+            {modelBuilding ? (
+              <p className="project-building model-building" role="status" aria-live="polite">
+                Bringing the model up to date…
+              </p>
+            ) : null}
             {viewerReady ? <FunctionalModel artifact={modelArtifact} reconnect={modelReconnect} buildError={modelBuildError} project={project} onAssemblyChange={setAssembly} onViewerChange={setViewerHandle} /> : <p className="empty">no completed build yet</p>}
           </div>
         </section>

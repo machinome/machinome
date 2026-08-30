@@ -7,6 +7,7 @@ import json
 import os
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -101,6 +102,56 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_role("button", name="Close project").click()
         self.page.wait_for_url(self.url("/"), timeout=5_000)
         self.page.get_by_role("heading", name="Projects").wait_for()
+
+    def test_the_hub_says_a_presented_model_is_being_brought_up_to_date(self) -> None:
+        project = self._make_project("kept-warm")
+        # A publication from an earlier run is what the session opens on. The
+        # build behind it is held open so the browser can be read while it runs.
+        subprocess.run(
+            [sys.executable, str(FAKE_SOLID), "build"],
+            cwd=project, check=True, capture_output=True,
+        )
+        gate = Path(self.temporary.name) / "release-build"
+        (project / ".fake-solid-state.json").write_text(json.dumps({"build_gate": str(gate)}))
+
+        self.page.goto(self.url("/"))
+        self.page.get_by_text("closed · builder", exact=False).wait_for()
+        rebuilding = self.page.get_by_text("Bringing the model up to date", exact=False)
+        self.assertEqual(rebuilding.count(), 0)
+
+        _request(self.url("/api/projects/kept-warm/session"), "POST")
+
+        # The live event has to carry the state through to the card,
+        rebuilding.wait_for(timeout=10_000)
+        # a browser arriving mid-build has to read it from the hub snapshot,
+        self.page.reload()
+        rebuilding.wait_for(timeout=10_000)
+        # and the maker has to be told when the model is current again.
+        gate.write_text("go\n")
+        rebuilding.wait_for(state="detached", timeout=20_000)
+        self.page.get_by_text("open · builder", exact=False).wait_for()
+
+    def test_the_workspace_says_a_presented_model_is_being_brought_up_to_date(self) -> None:
+        project = self._make_project("warm-workspace")
+        # As in the hub case: a publication from an earlier run, and a build
+        # held open behind the session that opens on it.
+        subprocess.run(
+            [sys.executable, str(FAKE_SOLID), "build"],
+            cwd=project, check=True, capture_output=True,
+        )
+        gate = Path(self.temporary.name) / "release-build"
+        (project / ".fake-solid-state.json").write_text(json.dumps({"build_gate": str(gate)}))
+        self._open("warm-workspace")
+
+        # The maker who clicks the card never sees it; they land here.
+        self.page.goto(self.url("/projects/warm-workspace"))
+        self.page.get_by_text("LibreSolid Studio / warm-workspace").wait_for()
+        rebuilding = self.page.get_by_text("Bringing the model up to date", exact=False)
+        rebuilding.wait_for(timeout=10_000)
+
+        # This build publishes nothing, so only the settled event can clear it.
+        gate.write_text("go\n")
+        rebuilding.wait_for(state="detached", timeout=20_000)
 
     def test_two_workspace_pages_show_only_their_own_conversation(self) -> None:
         self._make_project("alpha")

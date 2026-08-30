@@ -14,6 +14,7 @@ import tomllib
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from hashlib import sha256
 from pathlib import Path
 
 from .screenshots import refresh_project_screenshot, screenshot_revision
@@ -44,6 +45,30 @@ class ProjectRuntimeSelection:
 
 
 @dataclass(frozen=True)
+class ViewerBundle:
+    """The installed framework's viewer bundle and the API it implements.
+
+    This describes the framework installed beside the shop rather than any
+    project, so one running shop holds one of these for every session it opens.
+    """
+
+    path: Path
+    api_version: int
+
+
+@dataclass(frozen=True)
+class BuildOutcome:
+    """What one build did to a project's publication.
+
+    ``published`` is the answer to the only question the open path needs: did
+    this build put something in front of the maker that was not there before.
+    """
+
+    published: bool = False
+    error: str | None = None
+
+
+@dataclass(frozen=True)
 class PreparedProject:
     name: str
     project_root: Path
@@ -54,6 +79,7 @@ class PreparedProject:
     solid_command: tuple[str, ...] = ()
     build_environment: dict[str, str] | None = None
     build_error: str | None = None
+    created: bool = False
 
     def build_invocation(self) -> tuple[tuple[str, ...], dict[str, str] | None]:
         """The command and environment overlay that builds this project.
@@ -323,8 +349,16 @@ def prepare_project(
     project_home: Path,
     solid_command: str | Sequence[str],
     profile: str | None = None,
-    allow_build_failure: bool = False,
+    viewer: ViewerBundle | None = None,
 ) -> PreparedProject:
+    """Resolve, verify and — when it is new — scaffold one project repository.
+
+    This is everything that must hold before an agent may touch the project
+    and nothing that produces a model, so the repository boundary gate is
+    passed before a session exists whether or not its build is awaited.
+    ``build_project`` produces the model, and ``commit_new_project`` records a
+    newly created one.
+    """
     project_root = resolve_project(name, project_home)
     assert name is not None
     created = not project_root.exists()
@@ -355,48 +389,112 @@ def prepare_project(
     else:
         _require_exact_repository(project_root, name)
 
-    viewer_bundle, viewer_api_version = _viewer_info(
-        solid_command, name=name, project_root=project_root, extra_env=solid_env,
-    )
-    artifact_root = artifact_root_for(project_root)
-    snapshot = artifact_root / "viewer.json"
-    build_error: str | None = None
-    try:
-        _run(
-            build_command(solid_command),
-            cwd=project_root,
-            stage="build",
-            name=name,
-            project_root=project_root,
-            extra_env=solid_env,
-        )
-        _validate_snapshot(snapshot, artifact_root, name, project_root)
-        # A thumbnail is an optional presentation artifact.  The model build
-        # has already succeeded; do not fold a renderer problem into it.
-        refresh_project_screenshot(project_root, _command(solid_command), extra_environment=solid_env)
-    except PreparationError as error:
-        if not allow_build_failure:
-            raise
-        build_error = str(error)
-    if created:
-        _run(("git", "-C", str(project_root), "add", "--all"), stage="git-add", name=name, project_root=project_root)
-        _run(
-            ("git", "-C", str(project_root), "commit", "-q", "-m", "Initial solid-node scaffold"),
-            stage="git-commit",
-            name=name,
-            project_root=project_root,
-        )
+    bundle = viewer if viewer is not None else resolve_viewer_bundle(solid_command, extra_env=solid_env)
     return PreparedProject(
         name=name,
         project_root=project_root,
         model=Path("root"),
-        artifact_root=artifact_root,
-        viewer_bundle=viewer_bundle,
-        viewer_api_version=viewer_api_version,
+        artifact_root=artifact_root_for(project_root),
+        viewer_bundle=bundle.path,
+        viewer_api_version=bundle.api_version,
         solid_command=_command(solid_command),
         build_environment=solid_env,
-        build_error=build_error,
+        created=created,
     )
+
+
+def build_project(
+    prepared: PreparedProject,
+    *,
+    allow_failure: bool = False,
+    watched: bool = False,
+) -> BuildOutcome:
+    """Build the project and keep its preview in step with what it published.
+
+    Publication is decided from the content of the viewer document, not its
+    timestamp: the framework rewrites that document only when the model
+    differs, while an atomic write gives a fresh mtime whenever it writes.
+    Reading one small file is nothing beside the render it can save, and a
+    render that cannot produce different bytes is the largest avoidable cost
+    of opening a project.
+
+    ``watched`` says a live ``ArtifactWatcher`` is already refreshing the
+    preview for whatever this build publishes, so the only render left here is
+    the one owed to a project that has no valid preview at all.
+    """
+    command, environment = prepared.build_invocation()
+    snapshot = prepared.artifact_root / "viewer.json"
+    before = _publication_digest(snapshot)
+    try:
+        _run(
+            command,
+            cwd=prepared.project_root,
+            stage="build",
+            name=prepared.name,
+            project_root=prepared.project_root,
+            extra_env=environment,
+        )
+        _validate_snapshot(snapshot, prepared.artifact_root, prepared.name, prepared.project_root)
+    except PreparationError as error:
+        if not allow_failure:
+            raise
+        return BuildOutcome(error=str(error))
+    published = _publication_digest(snapshot) != before
+    if (published and not watched) or screenshot_revision(prepared.project_root) is None:
+        # A thumbnail is an optional presentation artifact.  The model build
+        # has already succeeded; do not fold a renderer problem into it.
+        refresh_project_screenshot(
+            prepared.project_root,
+            prepared.solid_command,
+            extra_environment=prepared.build_environment,
+        )
+    return BuildOutcome(published=published)
+
+
+def commit_new_project(prepared: PreparedProject) -> None:
+    """Record a created project's scaffold and the first model built from it.
+
+    Creation commits after its build so a new project's first commit holds it
+    as it was first published, preview included. An existing project's build
+    output is never staged by the shop.
+    """
+    if not prepared.created:
+        return
+    project_root = prepared.project_root
+    _run(
+        ("git", "-C", str(project_root), "add", "--all"),
+        stage="git-add",
+        name=prepared.name,
+        project_root=project_root,
+    )
+    _run(
+        ("git", "-C", str(project_root), "commit", "-q", "-m", "Initial solid-node scaffold"),
+        stage="git-commit",
+        name=prepared.name,
+        project_root=project_root,
+    )
+
+
+def has_complete_publication(prepared: PreparedProject) -> bool:
+    """Whether a complete, valid publication is already on disk to present."""
+    try:
+        _validate_snapshot(
+            prepared.artifact_root / "viewer.json",
+            prepared.artifact_root,
+            prepared.name,
+            prepared.project_root,
+        )
+    except PreparationError:
+        return False
+    return True
+
+
+def _publication_digest(snapshot: Path) -> str | None:
+    """Identify the published document; absent is an answer, not a failure."""
+    try:
+        return sha256(snapshot.read_bytes()).hexdigest()
+    except OSError:
+        return None
 
 
 def _write_project_profile(project_root: Path, profile: str) -> None:
@@ -419,19 +517,23 @@ def _write_project_profile(project_root: Path, profile: str) -> None:
         raise PreparationError("profile", project_root.name, project_root, str(error)) from error
 
 
-def _viewer_info(
+def resolve_viewer_bundle(
     solid_command: str | Sequence[str],
     *,
-    name: str,
-    project_root: Path,
-    extra_env: dict[str, str] | None,
-) -> tuple[Path, int]:
+    extra_env: dict[str, str] | None = None,
+) -> ViewerBundle:
+    """Ask the framework which viewer bundle it installed.
+
+    The framework reports its own installed bundle, so the question has no
+    project in it and its answer cannot differ between projects or between
+    opens. Asking it once per running shop changes when it is asked, never the
+    answer or its consequence: an unusable installation still fails the open.
+    """
     result = _run(
         (*_command(solid_command), "viewer"),
-        cwd=project_root,
         stage="viewer",
-        name=name,
-        project_root=project_root,
+        name=None,
+        project_root=None,
         extra_env=extra_env,
     )
     try:
@@ -439,17 +541,17 @@ def _viewer_info(
         path = Path(value["path"])
         api_version = value["apiVersion"]
     except (json.JSONDecodeError, KeyError, TypeError) as error:
-        raise PreparationError("viewer", name, project_root, "solid viewer returned malformed bundle metadata") from error
+        raise PreparationError("viewer", None, None, "solid viewer returned malformed bundle metadata") from error
     if not isinstance(api_version, int) or isinstance(api_version, bool):
-        raise PreparationError("viewer", name, project_root, "solid viewer returned a non-integer API version")
+        raise PreparationError("viewer", None, None, "solid viewer returned a non-integer API version")
     if api_version < REQUIRED_VIEWER_API:
         raise PreparationError(
-            "viewer", name, project_root,
+            "viewer", None, None,
             f"viewer API {REQUIRED_VIEWER_API} is required but installed viewer API is {api_version}",
         )
     if not path.is_file():
-        raise PreparationError("viewer", name, project_root, f"viewer bundle is unavailable: {path}")
-    return path, api_version
+        raise PreparationError("viewer", None, None, f"viewer bundle is unavailable: {path}")
+    return ViewerBundle(path, api_version)
 
 
 def _require_exact_repository(project_root: Path, name: str) -> None:
