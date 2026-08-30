@@ -23,6 +23,9 @@ test-results/
 /browser-engine
 /mcp-server
 /browser-plugin
+# Independent molejo library repository (analytic flexible parts),
+# born from the flexible-leaf finding; its own Git history.
+/molejo
 WTs/
 .env
 projects/*
