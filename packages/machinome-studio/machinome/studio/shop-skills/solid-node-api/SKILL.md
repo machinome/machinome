@@ -498,9 +498,11 @@ Consequences:
   that depends on something the import walk cannot see (a data file read
   at runtime, `importlib`, an environment variable) can look current when
   it is not. `StlNode` tracks its own `.stl` and declaring module.
-- Tracking is per file. Two node classes in one file share one stamp and
-  one digest, so editing either rebuilds both and every assembly above
-  them; that is a cost, not a rule.
+- The digest is scoped to the node. Two node classes in one file share
+  one stamp, but each node's digest covers the file minus the other node
+  classes' bodies (any the remaining text names stay in), so editing one
+  class rebuilds that node and the fusions above it and only restamps the
+  other. Editing module-level code they share rebuilds both.
 
 ## Printed solids
 

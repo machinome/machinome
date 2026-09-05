@@ -126,19 +126,20 @@ artifacts, which stay parameter-keyed.
 How a project is laid out is the project's choice, not the framework's.
 Know the costs and pick deliberately:
 
-- Rebuild tracking is per file. Two node classes in one file share one
-  stamp, so editing either rebuilds both plus every assembly above them,
-  at leaf-tessellation cost. A file holding one class rebuilds one node.
+- Rebuild tracking is per node. Two node classes in one file share one
+  stamp, but the content check beneath it is scoped to each class: editing
+  one rebuilds that node and the fusions above it and only restamps the
+  other. Editing what they share in the file — imports, constants, helper
+  functions, a class either of them names — rebuilds both.
 - A bare path to a file with several node classes is ambiguous: `solid
   build root/parts.py` and `solid snapshot root/parts.py` fail listing the
   candidates, so name the class (`root/parts.py:Gear`). `solid test`
   tolerates the bare path and runs every node in the file, and every
   `TestCase` in its companion must then declare `node = TheClass`.
 
-One class per file, named after it, is the cheap default and what `solid
-new` sets up. Do not reorganize an inherited layout for the cache's sake;
-name the class in references and in tests, and report the rebuild cost if it
-is biting.
+One class per file, named after it, is what `solid new` sets up; it buys
+unambiguous bare paths, not a cheaper build. Do not reorganize an inherited
+layout for the cache's sake; name the class in references and in tests.
 
 Shared values live where their kind says: design parameters are declared on
 the node that owns them and passed down (see the next section); constants —
