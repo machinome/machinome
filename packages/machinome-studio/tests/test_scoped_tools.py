@@ -304,6 +304,17 @@ class ScopedProjectToolsTest(unittest.TestCase):
         self.assertEqual(self.tools.git_show("HEAD", "new.txt")["stdout"], "new\n")
         self.assertEqual(self.tools.git_rev_parse_toplevel(), str(self.project))
 
+    def test_solid_test_passes_the_kernel_through_as_the_framework_flag(self) -> None:
+        self.assertTrue(self.tools.solid_test(kernel="faceted")["ok"])
+        self.assertTrue(self.tools.solid_test("part.txt", failfast=True, kernel="exact")["ok"])
+        self.assertTrue(self.tools.solid_test()["ok"])
+        calls = [json.loads(line)["argv"] for line in self.capture.read_text().splitlines()]
+        self.assertEqual(calls[0], ["test", "--faceted"])
+        self.assertEqual(calls[1], ["test", "--failfast", "--exact", "part.txt"])
+        self.assertEqual(calls[2], ["test"])
+        with self.assertRaises(ValueError):
+            self.tools.solid_test(kernel="fast")
+
     def test_solid_tools_preserve_exit_status_and_snapshot_stays_outside_project(self) -> None:
         self.assertTrue(self.tools.solid_build()["ok"])
         failed = self.tools.solid_test("fail", failfast=True)

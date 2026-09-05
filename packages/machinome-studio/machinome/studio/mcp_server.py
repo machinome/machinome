@@ -944,12 +944,27 @@ class ProjectTools:
                 result["screenshot_warning"] = screenshot.warning
         return result
 
-    def solid_test(self, path: str | None = None, failfast: bool = False) -> dict[str, Any]:
-        """Run `solid test`, returning its exit status and output."""
+    def solid_test(
+        self,
+        path: str | None = None,
+        failfast: bool = False,
+        kernel: str | None = None,
+    ) -> dict[str, Any]:
+        """Run `solid test`, returning its exit status and output.
+
+        `kernel` selects the comparison kernel for this run -- "faceted" for
+        the fast development loop on meshes, "exact" for the certified run --
+        and is passed through as the framework's own flag. Omitted, the run
+        takes the framework's default: the project's `.env`, else exact.
+        """
+        if kernel is not None and kernel not in ("exact", "faceted"):
+            raise ValueError(f"kernel must be 'exact' or 'faceted', not {kernel!r}")
         reference = self._reference(path)
         command = [*self.solid_command, "test"]
         if failfast:
             command.append("--failfast")
+        if kernel is not None:
+            command.append(f"--{kernel}")
         if reference:
             command.append(reference)
         return self._run(command)
@@ -1224,6 +1239,16 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "solid_test": _schema({
         "path": STR("Test file or node reference to run. Defaults to the whole suite."),
         "failfast": BOOL("Stop at the first failing test."),
+        "kernel": {
+            "type": "string",
+            "enum": ["exact", "faceted"],
+            "description": (
+                "Comparison kernel for this run: 'faceted' decides every "
+                "geometric assertion on meshes (fast, not commit evidence); "
+                "'exact' on the boundary-representation solids (the certified "
+                "run). Omitted: the project's .env decides, else exact."
+            ),
+        },
     }),
     "solid_snapshot": _schema({
         "path": STR("Node reference or file to render. Defaults to the project model."),

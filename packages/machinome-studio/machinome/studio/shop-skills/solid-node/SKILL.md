@@ -19,6 +19,11 @@ Commands (run from the project directory, with the project's venv):
     solid build                 # build once and publish the model
     solid test <pkg>/<node>.py  # run tests for one node (passing the
                                 # test_*.py path works too)
+    solid test --faceted        # the same run decided on meshes: the
+                                # fast loop, never commit evidence
+    solid test --exact          # the certified run (the default when
+                                # neither flag nor the project's .env
+                                # says otherwise)
     solid snapshot -o out.png --autocenter   # render an image
     solid build --set bore=32.0 # the same model at another parameter value
 
@@ -536,6 +541,13 @@ model is an assembly — do not report it as coverage before then.
 
 ## Definition of done — every component step
 
+0. Work on the faceted kernel. Every `solid test` you run while
+   building — the red run, the green run, the regression, the mutation
+   check — is `solid test --faceted` (on the floor, `solid_test` with
+   `kernel="faceted"`). It decides the same assertions on the parts'
+   meshes, about twenty times faster on exact parts and thirty on
+   springs and belts, and it labels its own output. Only the last step
+   below runs exact.
 1. Write the test file first; run it; watch it fail.
 2. Implement to green.
 3. Full regression: run `solid test` for EVERY node file in the project
@@ -598,7 +610,17 @@ model is an assembly — do not report it as coverage before then.
    connectivity and engagement contracts are for — they fail
    deterministically, at any scale, without a framing guess. Snapshots
    answer whether the component is wired and posed as intended.
-7. A broken save is not private. A failed build exits nonzero and
+7. The exact run, once, at the end. Repeat the full regression of step
+   3 on the exact kernel — `solid test --exact` (`kernel="exact"`) for
+   every node file including the root — and only that run certifies the
+   contracts and evidences the commit: a summary line that ends in
+   `(faceted kernel, ...)` is not evidence. When the two kernels
+   disagree the exact verdict stands. A faceted failure the exact run
+   clears is a clearance thinner than the 0.1 mm tessellation reading
+   as overlap on meshes; a faceted pass the exact run fails is a thin
+   real interference the meshes missed. Either way fix the model or the
+   contract, and never reach for a volume epsilon to make the two agree.
+8. A broken save is not private. A failed build exits nonzero and
    writes `errors.json` into the build directory; what it leaves beside
    it may be a partially updated model, not the last good one — never
    read a snapshot taken after a failed build as evidence for the edit
