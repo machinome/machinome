@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+.coverage
+.env
+
+# The frontends' installed dependencies and built output. Anchored (not
+# `node_modules/`) so a symlink at these paths is ignored too.
+/solid_node_viewer/widget/node_modules
+/solid_node_viewer/widget/dist
+/solid_node_viewer/app/node_modules
+/solid_node_viewer/app/build

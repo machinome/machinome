@@ -1,0 +1,141 @@
+{
+  "format": "solid-node-export",
+  "version": 2,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {},
+  "instructions": {},
+  "root": {
+    "name": "Spinner",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1784389226.431743,
+    "operations": [],
+    "children": [
+      {
+        "name": "Hub",
+        "type": "LeafNode",
+        "color": "#cc4444",
+        "mtime": 1784389226.431743,
+        "operations": [],
+        "model": "models/spinner_project/hub-Hub-d87c9ca31f37.stl",
+        "piece": "d42b35da2362"
+      },
+      {
+        "name": "b0",
+        "type": "LeafNode",
+        "color": "#4477cc",
+        "mtime": 1784389226.4307427,
+        "operations": [
+          [
+            "r",
+            "($t * 360)",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "model": "models/spinner_project/blade-Blade-b300137c3d8c.stl",
+        "piece": "34e02e4a2bd5"
+      },
+      {
+        "name": "b1",
+        "type": "LeafNode",
+        "color": "#4477cc",
+        "mtime": 1784389226.4307427,
+        "operations": [
+          [
+            "r",
+            "120",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "r",
+            "($t * 360)",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "model": "models/spinner_project/blade-Blade-b300137c3d8c.stl",
+        "piece": "34e02e4a2bd5"
+      },
+      {
+        "name": "b2",
+        "type": "LeafNode",
+        "color": "#4477cc",
+        "mtime": 1784389226.4307427,
+        "operations": [
+          [
+            "r",
+            "240",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "r",
+            "($t * 360)",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "model": "models/spinner_project/blade-Blade-b300137c3d8c.stl",
+        "piece": "34e02e4a2bd5"
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "d42b35da2362",
+      "name": "Hub",
+      "sources": [
+        "spinner_project/hub.py"
+      ],
+      "models": [
+        "models/spinner_project/hub-Hub-d87c9ca31f37.stl"
+      ],
+      "count": 1,
+      "size": [
+        16.0,
+        15.883341789245605,
+        6.0
+      ],
+      "volume": 1194.6637975630954,
+      "watertight": true
+    },
+    {
+      "id": "34e02e4a2bd5",
+      "name": "Blade",
+      "sources": [
+        "spinner_project/blade.py"
+      ],
+      "models": [
+        "models/spinner_project/blade-Blade-b300137c3d8c.stl"
+      ],
+      "count": 3,
+      "size": [
+        40.0,
+        4.0,
+        4.0
+      ],
+      "volume": 640.0,
+      "watertight": true
+    }
+  ]
+}

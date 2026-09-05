@@ -1,0 +1,104 @@
+# solid-node-viewer - the browser viewer for solid-node models
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-only
+
+import io
+import json
+from contextlib import redirect_stderr, redirect_stdout
+from unittest import TestCase
+from unittest.mock import patch
+
+from solid_node_viewer import cli
+from solid_node_viewer.bundle import BundleMissing
+
+
+class DescribeCommandTest(TestCase):
+
+    def test_prints_the_installed_viewer_as_one_json_object(self):
+        output = io.StringIO()
+        with patch.object(cli, 'describe', return_value={
+                 'path': '/tmp/solid-widget.js', 'index': '/tmp/index.html',
+                 'apiVersion': 5, 'version': '0.1.0'}), \
+             redirect_stdout(output):
+            status = cli.main(['describe'])
+        self.assertEqual(status, 0)
+        self.assertEqual(json.loads(output.getvalue()), {
+            'path': '/tmp/solid-widget.js', 'index': '/tmp/index.html',
+            'apiVersion': 5, 'version': '0.1.0',
+        })
+
+    def test_a_missing_bundle_exits_nonzero_with_the_remedy_and_no_stdout(self):
+        output, errors = io.StringIO(), io.StringIO()
+        with patch.object(cli, 'describe', side_effect=BundleMissing()), \
+             redirect_stdout(output), redirect_stderr(errors):
+            status = cli.main(['describe'])
+        self.assertEqual(status, 1)
+        self.assertEqual(output.getvalue(), '')
+        self.assertIn('npm', errors.getvalue())
+
+
+class CaptureCommandTest(TestCase):
+
+    def parse(self, *argv):
+        return cli.build_parser().parse_args(['capture', 'staged', '-o', 'out.png', *argv])
+
+    def test_camera_options_are_parsed_into_tuples(self):
+        args = self.parse('--view', '1,2,3,4,5,6', '--up', '0,0,1', '--fov', '22.5',
+                          '--imgsize', '320x240', '--time', '0.25')
+        self.assertEqual(args.view, ((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)))
+        self.assertEqual(args.up, (0.0, 0.0, 1.0))
+        self.assertEqual(args.fov, 22.5)
+        self.assertEqual(args.imgsize, (320, 240))
+        self.assertEqual(args.time, 0.25)
+
+    def test_a_malformed_view_is_refused(self):
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.parse('--view', '1,2,3')
+
+    def test_time_outside_the_cycle_is_refused_before_capturing(self):
+        errors = io.StringIO()
+        with patch('solid_node_viewer.capture.Capture') as capture, \
+             redirect_stderr(errors):
+            status = cli.main(['capture', 'staged', '-o', 'out.png', '--time', '1.5'])
+        self.assertEqual(status, 2)
+        self.assertIn('--time', errors.getvalue())
+        capture.assert_not_called()
+
+    def test_the_options_reach_the_capture_as_mount_options(self):
+        with patch('solid_node_viewer.capture.Capture') as capture:
+            status = cli.main([
+                'capture', 'staged', '-o', 'out.png', '--imgsize', '100x50',
+                '--time', '0.5', '--view', '1,2,3,0,0,0', '--up', '0,0,1',
+                '--fov', '22.5',
+            ])
+        self.assertEqual(status, 0)
+        capture.assert_called_once_with('staged')
+        capture.return_value.render.assert_called_once_with('out.png', (100, 50), {
+            'animation': 'external', 'time': 0.5,
+            'view': {'camera': [1.0, 2.0, 3.0], 'target': [0.0, 0.0, 0.0]},
+            'up': [0.0, 0.0, 1.0], 'fov': 22.5,
+        })
+
+    def test_a_capture_failure_is_reported_and_exits_nonzero(self):
+        from solid_node_viewer.capture import CaptureError
+        errors = io.StringIO()
+        with patch('solid_node_viewer.capture.Capture') as capture, \
+             redirect_stderr(errors):
+            capture.return_value.render.side_effect = CaptureError('no browser')
+            status = cli.main(['capture', 'staged', '-o', 'out.png'])
+        self.assertEqual(status, 1)
+        self.assertIn('no browser', errors.getvalue())
+
+
+class ServeCommandTest(TestCase):
+
+    def test_serve_requires_a_build_directory(self):
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            cli.build_parser().parse_args(['serve'])
+
+    def test_serve_starts_the_viewer_on_the_build_directory(self):
+        with patch('solid_node_viewer.server.WebViewer') as viewer:
+            status = cli.main(['serve', '--build-dir', '/some/_build', '--port', '8123'])
+        self.assertEqual(status, 0)
+        viewer.assert_called_once_with('/some/_build', dev=False, port=8123, frontend=None)
+        viewer.return_value.start.assert_called_once_with()

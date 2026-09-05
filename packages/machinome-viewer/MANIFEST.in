@@ -1,0 +1,14 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+
+# The frontends travel with their sources so a source distribution can
+# rebuild them, and with their built output so installing needs no npm.
+recursive-include solid_node_viewer/widget *
+prune solid_node_viewer/widget/node_modules
+recursive-include solid_node_viewer/app *
+prune solid_node_viewer/app/node_modules
+
+recursive-include tests *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]

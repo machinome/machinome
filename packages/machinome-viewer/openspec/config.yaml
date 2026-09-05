@@ -1,0 +1,35 @@
+schema: spec-driven
+
+# Project context shown to AI when creating artifacts.
+context: |
+  solid-node-viewer is the browser viewer for solid-node models: the
+  embeddable three.js widget (solid_node_viewer/widget, TypeScript, built
+  by esbuild to dist/solid-widget.js), the Create React App development
+  shell (solid_node_viewer/app), the FastAPI development server
+  (solid_node_viewer/server.py) and the Playwright capture
+  (solid_node_viewer/capture.py), packaged for pip as `solid-node-viewer`.
+
+  The framework reaches it through one Python entry point
+  (`solid_node.viewer` -> solid_node_viewer.bundle:describe) and the
+  `solid-node-viewer describe|serve|capture` console script, always as a
+  separate process. This package never imports solid_node; solid_node
+  never imports this package. That is the licensing boundary: the
+  framework is Apache-2.0, this viewer is AGPL-3.0-only.
+
+  Conventions:
+  - TDD: red-first, one commit per increment.
+  - The widget's tests run with vitest (npm test) and typecheck with tsc.
+    The Python suite (pytest) skips what its environment lacks -- a
+    headless Chromium, Playwright, Pillow -- and says so per test.
+  - Test fixtures are committed exports under tests/fixtures; the suite
+    depends on nothing of the framework.
+  - The viewer API version is declared once, in widget/package.json as
+    solidNodeViewerApi, and rises on incompatible interface changes or
+    when a capability a host may require is added. Document schema
+    versions belong to the producer.
+  - Published names are a compatibility contract: solid-widget.js,
+    data-solid-widget, SolidNodeWidget, the /_viewer and /build/ routes.
+
+rules:
+  specs:
+    - Describe observable behavior of the current system only; no aspirational requirements in main specs.
