@@ -102,3 +102,16 @@ class ServeCommandTest(TestCase):
         self.assertEqual(status, 0)
         viewer.assert_called_once_with('/some/_build', dev=False, port=8123, frontend=None)
         viewer.return_value.start.assert_called_once_with()
+
+
+class ModuleEntryTest(TestCase):
+
+    def test_the_package_runs_as_a_module_through_the_interpreter(self):
+        import subprocess
+        import sys
+        result = subprocess.run(
+            [sys.executable, '-m', 'solid_node_viewer', 'describe'],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('apiVersion', json.loads(result.stdout))

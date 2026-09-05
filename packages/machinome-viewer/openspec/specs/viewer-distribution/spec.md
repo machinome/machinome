@@ -85,9 +85,10 @@ remedy on standard error and exit non-zero when there is no bundle.
 ### Requirement: Everything else is a process
 
 Beyond the lookup, the framework SHALL use the viewer only through the
-`solid-node-viewer` console script — `serve` for the development server and
-`capture` for the snapshot — each run as a separate process on a directory
-the framework prepared. This package SHALL NOT import `solid_node`, and its
+`solid-node-viewer` console script, or the same program as
+`python -m solid_node_viewer` through the interpreter the framework runs
+under — `serve` for the development server and `capture` for the snapshot —
+each run as a separate process on a directory the framework prepared. This package SHALL NOT import `solid_node`, and its
 distribution SHALL NOT depend on solid-node.
 
 #### Scenario: The two packages install into one environment

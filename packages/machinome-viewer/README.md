@@ -46,8 +46,8 @@ playwright install chromium
 The framework never imports this package's code. It finds the installed
 viewer through one Python entry point, `solid_node.viewer`, which returns
 the bundle path, the export page and the declared viewer API version; and it
-runs three commands of the `solid-node-viewer` console script as separate
-processes:
+runs three commands of the `solid-node-viewer` console script (or, as the
+framework does it, `python -m solid_node_viewer`) as separate processes:
 
 | Command | Used by |
 | --- | --- |
