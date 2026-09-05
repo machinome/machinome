@@ -1,7 +1,7 @@
 /*
- * Solid Node - A framework for mechanical CAD projects
+ * solid-node-viewer - the browser viewer for solid-node models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 import * as THREE from 'three';
