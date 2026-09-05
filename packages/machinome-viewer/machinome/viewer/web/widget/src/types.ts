@@ -78,6 +78,11 @@ export interface Manifest {
   animation: {
     fps: number;
     frames: number;
+    // The seconds of machine time one turn of `$t` covers, published when
+    // the root declares a time base (solid-node `declared-time-base`).
+    // Additive: the expressions already carry `$t * loop`, so a document
+    // without it plays `frames / fps` exactly as it always did.
+    loop?: number;
   };
   // Every qualified driver id the document's expressions may reference.
   // A version 1 document has no table at all, and a version 2 document

@@ -31,6 +31,20 @@ describe('resolveOptions', () => {
     expect(resolved.driverControls).toBe('inline');
   });
 
+  it('plays at real time unless the host says otherwise', () => {
+    // A declared loop plays as long as it is; a document without one
+    // ignores the speed altogether (playback.ts decides that).
+    expect(resolveOptions().speed).toBe(1);
+    expect(resolveOptions({ speed: 720 }).speed).toBe(720);
+    expect(resolveOptions({ speed: 0.25 }).speed).toBe(0.25);
+  });
+
+  it('refuses a speed that is not a positive finite multiplier', () => {
+    for (const bad of [0, -1, NaN, Infinity]) {
+      expect(() => resolveOptions({ speed: bad })).toThrow(String(bad));
+    }
+  });
+
   it('lets a host building its own panel suppress the chrome', () => {
     expect(resolveOptions({ driverControls: 'none' }).driverControls)
       .toBe('none');

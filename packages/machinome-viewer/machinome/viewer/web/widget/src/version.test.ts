@@ -32,9 +32,11 @@ describe('API_VERSION', () => {
   // Raised whenever the mount interface or the handle changes
   // incompatibly, AND whenever a capability a host may require is added
   // to it. Rendering `version: 3` documents -- parts whose geometry
-  // follows the machine -- is such a capability: a host that needs a
-  // spring to move cannot tell from the interface alone.
-  it('declares the flexible-geometry API as version 5', () => {
-    expect(API_VERSION).toBe(5);
+  // follows the machine -- was such a capability (5); playing a declared
+  // loop at a chosen speed -- `speed` on the options and the handle --
+  // is the next (6): a host that needs a clock to run at real time
+  // cannot tell from the interface alone.
+  it('declares the real-time-playback API as version 6', () => {
+    expect(API_VERSION).toBe(6);
   });
 });

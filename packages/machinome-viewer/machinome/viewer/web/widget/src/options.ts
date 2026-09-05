@@ -9,12 +9,14 @@ import type {
   ViewerOptions, AnimationMode, DriverControlsMode, VectorInput,
 } from './viewer';
 import type { ViewerView } from './camera';
+import { assertSpeed } from './playback';
 
 export interface ResolvedViewerOptions {
   baseUrl: string | null;
   animation: AnimationMode;
   driverControls: DriverControlsMode;
   time: number;
+  speed: number;
   autoplay: boolean;
   view: ViewerView | null;
   up: THREE.Vector3;
@@ -43,6 +45,9 @@ export function resolveOptions(
     // export is opened by a maker with no host code behind it.
     driverControls: options.driverControls ?? 'inline',
     time: Math.min(Math.max(time, 0), 1),
+    // Real time by default: a declared loop plays as long as it is. A
+    // document without a loop ignores this and plays frames / fps.
+    speed: options.speed === undefined ? 1 : assertSpeed(options.speed),
     autoplay: options.autoplay ?? true,
     view: options.view ? {
       camera: resolveVector(options.view.camera),

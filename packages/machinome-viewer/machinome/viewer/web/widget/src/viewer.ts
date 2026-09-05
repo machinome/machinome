@@ -18,6 +18,10 @@ import {
 import {
   DriverListener, DriverStore, TriggerHandle, toNative,
 } from './drivers';
+import {
+  Animation, advance, assertSpeed, cycleSecondsFor, formatMachineTime,
+  ladderFor,
+} from './playback';
 import { EvalScope, freeVariables, TIME_ID } from './evaluator';
 import { evaluatesTech, knownTechnologies, specRefusal } from './flexible';
 import { AssemblyNode, AssemblyPath, WidgetTree } from './tree';
@@ -42,6 +46,9 @@ export interface ViewerOptions {
   animation?: AnimationMode;
   driverControls?: DriverControlsMode;
   time?: number;
+  /** Playback speed as a multiple of real time, for a document whose
+   * `animation.loop` says what a turn is; default 1. */
+  speed?: number;
   autoplay?: boolean;
   view?: ViewInput;
   up?: VectorInput;
@@ -61,6 +68,12 @@ export interface ViewerHandle {
   setRoot(path: AssemblyPath | null): void;
   setVisible(path: AssemblyPath, visible: boolean): void;
   setTime(time: number): void;
+  /** The playback speed, a multiple of real time (1 without a loop). */
+  speed(): number;
+  /** Set the playback speed; a non-positive or non-finite value is
+   * refused. Accepted for a loop-less document, where it has no effect
+   * on playback until a republish brings a loop. */
+  setSpeed(speed: number): void;
   // The driving API (ADR-056 stage 3b). Values are NATIVE driver units
   // and ids are verbatim from the document; `range` never clamps.
   drivers(): Record<string, ManifestDriver>;
@@ -112,6 +125,14 @@ export async function mount(
   let slider: HTMLInputElement | undefined;
   let controlElements: HTMLElement[] = [];
   let cycleSeconds = 1;
+  // Real-time playback (OpenSpec `real-time-playback`): the document's
+  // animation block as last loaded, the maker's or host's speed, and the
+  // bar's speed control and machine-time readout when the block carries
+  // a loop. `speed` survives a republish exactly as `time` does.
+  let animation: Animation = { fps: 30, frames: 360 };
+  let speed = resolved.speed;
+  let speedControl: HTMLSelectElement | undefined;
+  let readout: HTMLElement | undefined;
   let disposed = false;
   // The driver chrome, rebuilt whenever the focused layer or the
   // document changes and updated in place while values move.
@@ -144,8 +165,19 @@ export async function mount(
     if (slider) {
       slider.value = String(time);
     }
+    if (readout && animation.loop !== undefined) {
+      readout.textContent = formatMachineTime(time * animation.loop, animation.loop);
+    }
     tree?.update(scope(), { time: true, drivers: EMPTY });
     renderer.render(scene, camera);
+  };
+
+  const setSpeed = (next: number) => {
+    speed = assertSpeed(next);
+    cycleSeconds = cycleSecondsFor(animation, speed);
+    if (speedControl && speedControl.value !== String(speed)) {
+      fillSpeedControl(speedControl, speed);
+    }
   };
 
   const applyFrame = (view: View | null) => {
@@ -196,19 +228,29 @@ export async function mount(
     slider = undefined;
     const plan = controlPlan(resolved.animation, tree!.animated);
     playing = tree!.animated && !plan.hostDriven && resolved.autoplay;
-    cycleSeconds = document.animation.frames / document.animation.fps;
+    animation = document.animation;
+    cycleSeconds = cycleSecondsFor(animation, speed);
+    speedControl = undefined;
+    readout = undefined;
     if (plan.bar) {
       const built = buildControls(
         container,
-        document.animation.frames,
+        animation,
+        speed,
         plan,
         () => playing,
         (nextPlaying) => { playing = nextPlaying; },
         setTime,
+        setSpeed,
       );
       slider = built.slider;
+      speedControl = built.speedControl;
+      readout = built.readout;
       controlElements = built.elements;
       slider.value = String(time);
+      if (readout && animation.loop !== undefined) {
+        readout.textContent = formatMachineTime(time * animation.loop, animation.loop);
+      }
     }
     // After the store and the navigation have reconciled, so the chrome
     // reflects the values that survived the republish and a focus the
@@ -302,7 +344,7 @@ export async function mount(
     // animation, and determinism stays with the Python simulation).
     const movedDrivers = drivers.tick();
     if (playing) {
-      setTime((time + elapsed / cycleSeconds) % 1);
+      setTime(advance(time, elapsed, cycleSeconds));
     }
     tree?.update(scope(), { time: playing, drivers: movedDrivers });
     renderer.render(scene, camera);
@@ -370,6 +412,8 @@ export async function mount(
       renderer.render(scene, camera);
     },
     setTime,
+    speed: () => speed,
+    setSpeed,
     drivers: () => drivers.drivers(),
     driver: (id: string) => drivers.driver(id),
     setDriver(id: string, value: number) {
@@ -786,14 +830,33 @@ function buildDriverRow(
   return row;
 }
 
+function fillSpeedControl(select: HTMLSelectElement, speed: number): void {
+  select.replaceChildren();
+  for (const value of ladderFor(speed)) {
+    const option = document.createElement('option');
+    option.value = String(value);
+    option.textContent = `\u00d7${value}`;
+    select.append(option);
+  }
+  select.value = String(speed);
+}
+
 function buildControls(
   container: HTMLElement,
-  frames: number,
+  animation: Animation,
+  speed: number,
   plan: ReturnType<typeof controlPlan>,
   isPlaying: () => boolean,
   setPlaying: (playing: boolean) => void,
   setTime: (time: number) => void,
-): { slider: HTMLInputElement; elements: HTMLElement[] } {
+  setSpeed: (speed: number) => void,
+): {
+  slider: HTMLInputElement;
+  speedControl?: HTMLSelectElement;
+  readout?: HTMLElement;
+  elements: HTMLElement[];
+} {
+  const frames = animation.frames;
   const bar = document.createElement('div');
   bar.className = 'animation-controls';
   if (plan.styled) {
@@ -836,6 +899,34 @@ function buildControls(
   });
 
   bar.append(button, slider);
+  // A declared loop earns two more elements: the speed the maker
+  // watches at, and the machine time the slider stands at. Without a
+  // loop the bar is exactly the one it always was.
+  let speedControl: HTMLSelectElement | undefined;
+  let readout: HTMLElement | undefined;
+  if (animation.loop !== undefined) {
+    readout = document.createElement('span');
+    readout.className = 'machine-time';
+    readout.setAttribute('aria-live', 'off');
+    if (plan.styled) {
+      readout.style.cssText =
+        'font-variant-numeric:tabular-nums;min-width:6ch;text-align:right;';
+    }
+    speedControl = document.createElement('select');
+    speedControl.className = 'playback-speed';
+    speedControl.setAttribute('aria-label', 'Playback speed');
+    speedControl.title = 'Playback speed, as a multiple of real time';
+    if (plan.styled) {
+      speedControl.style.cssText =
+        'background:none;border:1px solid rgba(255,255,255,0.4);' +
+        'border-radius:3px;color:inherit;font:inherit;padding:1px 4px;';
+    }
+    fillSpeedControl(speedControl, speed);
+    speedControl.addEventListener('change', () => {
+      setSpeed(Number(speedControl!.value));
+    });
+    bar.append(readout, speedControl);
+  }
   const elements: HTMLElement[] = [bar];
   if (plan.toggle) {
     const toggle = document.createElement('button');
@@ -851,5 +942,5 @@ function buildControls(
     elements.unshift(toggle);
   }
   container.append(bar);
-  return { slider, elements };
+  return { slider, speedControl, readout, elements };
 }

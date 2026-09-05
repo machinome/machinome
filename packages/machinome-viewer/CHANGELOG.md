@@ -7,12 +7,28 @@ it carries release together and share one version.
 
 The viewer leaves the solid-node framework and becomes this package.
 
+- **Real-time playback.** A document whose `animation` object carries
+  `loop` — the seconds of machine time one turn of `$t` covers, which
+  solid-node publishes when a root declares `time = Time(loop=...)` —
+  plays that loop at real time by default: one turn takes `loop / speed`
+  wall-clock seconds, with `speed` defaulting to 1. The animation bar
+  gains a speed control over a fixed ladder (×0.1 to ×3600) and a readout
+  of the machine time at the slider position (`h:mm:ss` for long loops,
+  seconds for short ones). The host sets the initial speed through the
+  `speed` mount option and reads or changes it through `speed()` and
+  `setSpeed()` on the handle. A document without `loop` plays `frames /
+  fps` exactly as before, with the bar it always had. The viewer API rises
+  to 6, because a host may now require the speed capability. (OpenSpec
+  change `real-time-playback`, paired with solid-node's
+  `declared-time-base`.)
+
 - **Extracted.** The widget, the development app, the development server
   and the headless capture that shipped inside solid-node up to 0.6.0 move
   here with their history. Nothing a browser sees has changed: the bundle
   is still `solid-widget.js`, it still auto-mounts `data-solid-widget`
-  containers, still exposes `SolidNodeWidget.mount()`, and still declares
-  viewer API 5 reading document versions 1, 2 and 3.
+  containers, still exposes `SolidNodeWidget.mount()`, and still reads
+  document versions 1, 2 and 3 (viewer API 5 at extraction; see
+  real-time playback above for 6).
 - **Relicensed** under AGPL-3.0-only. The framework stays Apache-2.0 and
   installs this package as its optional `viewer` extra.
 - **A process boundary** toward the framework. solid-node locates the

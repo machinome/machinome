@@ -1,7 +1,7 @@
 {
   "name": "@solid-node/widget",
   "version": "0.1.0",
-  "solidNodeViewerApi": 5,
+  "solidNodeViewerApi": 6,
   "private": true,
   "license": "AGPL-3.0-only",
   "description": "Embeddable static viewer for `solid export` output",

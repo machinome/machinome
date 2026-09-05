@@ -9,9 +9,11 @@ files it names. This package is everything that turns such a document into
 something a person can look at in a browser:
 
 - **`solid-widget.js`**, the embeddable three.js widget: orbit controls,
-  client-side `$t` animation, one slider per declared driver and one button
-  per declared instruction, molejo flexible parts evaluated per frame, and
-  the `SolidNodeWidget.mount()` API a host page drives it through;
+  client-side `$t` animation — at real time, with a speed control and a
+  machine-time readout, when the document declares how long a turn of the
+  timeline is — one slider per declared driver and one button per declared
+  instruction, molejo flexible parts evaluated per frame, and the
+  `SolidNodeWidget.mount()` API a host page drives it through;
 - the **standalone export page** a `solid export` directory ships with;
 - the **development server** that `solid develop` launches beside its
   builder to serve a published build to the development app, with the
@@ -72,7 +74,7 @@ third number, owned by the producer.
 
 | solid-node-viewer | viewer API | reads document versions |
 | --- | --- | --- |
-| 0.1.0 | 5 | 1, 2, 3 |
+| 0.1.0 | 6 | 1, 2, 3 |
 
 ## Working on the viewer
 
