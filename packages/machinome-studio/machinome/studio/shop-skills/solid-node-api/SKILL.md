@@ -607,6 +607,23 @@ below the given volume as none; it applies only on the faceted path, is
 ignored with a warning when every comparison routed exact, and is a smell
 rather than a tool.
 
+A run compares on one **kernel**, a property of the run and never of the
+model: `exact` (the default; two exact nodes are decided on their solids)
+or `faceted` (every question decided on the parts' meshes at tessellation
+precision, about 30x cheaper on flexible parts). `solid test --faceted`
+or `--exact` selects it; without a flag `SOLID_TEST_KERNEL` in the
+project's ignored `.env` does; without that the run is exact. A faceted
+run prints `Comparing on the faceted kernel ...` before the first build
+and ends its summary line with `(faceted kernel, volume epsilon E mm³)`;
+an exact run's output is unchanged. `--volume-epsilon MM3` (else
+`SOLID_TEST_VOLUME_EPSILON`, else 0) makes a faceted run report every
+intersection of at most that volume as empty, before any assertion reads
+it; the exact kernel refuses it. `node.exact` and the build do not change
+with the kernel. A faceted verdict is at the precision of the 0.1 mm STL
+tessellation and is not commit evidence: a project's `.env` may select
+the faceted kernel for the loop, and the exact run is the one a verdict
+is certified on.
+
 Deprecated: `assertNoPairwiseIntersections(root, volume_epsilon=0.0)`
 walks leaf pairs quadratically and warns; `assertNoSolidInterference`
 replaces it. `assertOneBody`, `assertBodyCount` and
@@ -666,7 +683,8 @@ unmodified. `dt` is part of the scenario's meaning.
 ```text
 solid new <name>
 solid build   [ref] [--set NAME=VALUE ...]
-solid test    [ref] [--set ...] [--failfast]
+solid test    [ref] [--set ...] [--failfast] [--exact | --faceted]
+      [--volume-epsilon MM3]
 solid snapshot [ref] [--set ...] -o out.png [--time 0..1] [--autocenter]
       [--viewall] [--camera tx,ty,tz,rx,ry,rz,dist | ex,ey,ez,cx,cy,cz]
       [--imgsize 1920x1080] [--renderer openscad|web]
