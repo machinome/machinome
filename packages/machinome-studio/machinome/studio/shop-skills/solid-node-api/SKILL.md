@@ -275,13 +275,20 @@ solid export <path> [-o export] [--fps 30] [--frames 360] [--no-widget]
 ```
 
 `solid snapshot` also takes `--renderer openscad|web`. Leave it at the default
-`openscad`: it is fast and needs no browser. The `web` renderer exists so a
-host can obtain a transparent background through headless Chromium; it is an
-optional install and rejects `--projection`, `--colorscheme`, `--view`,
-`--preview`, and `--render`. It is not for inspecting your own work.
+`openscad`: it is fast and needs no browser, and it stays the default whether
+or not the browser viewer is installed. The `web` renderer exists so a host
+can obtain a transparent background through headless Chromium; it needs the
+separately installed `solid-node-viewer` package with its `snapshot` extra
+(`pip install "solid-node[web-snapshot]"` plus `playwright install chromium`),
+rejects `--projection`, `--colorscheme`, `--view`, `--preview`, and
+`--render`, and never falls back to OpenSCAD. It is not for inspecting your
+own work.
 
-`solid develop` serves a live viewer that rebuilds on save. The shop already
-watches the project and keeps the maker's view current, so you never run it.
+`solid develop` opens a live viewer that rebuilds on save: the browser viewer
+when the `solid-node-viewer` package is installed (`pip install
+"solid-node[viewer]"`), the OpenSCAD GUI otherwise; `--web` and `--openscad`
+choose explicitly. The shop already watches the project and keeps the maker's
+view current, so you never run it.
 
 `solid new <name>` scaffolds `<name>/<name>/<name>.py` with a starter node,
 `<name>/<name>/test_<name>.py` with the two default contracts, an empty
@@ -298,7 +305,9 @@ startup, with the real environment taking precedence:
 
 Snapshots self-wrap with `xvfb-run` when headless. Export writes
 `manifest.json`, deduplicated models, and—unless `--no-widget`—a
-self-contained viewer.
+self-contained viewer copied from the installed `solid-node-viewer` package;
+without that package, export with `--no-widget` or the command fails naming
+the `viewer` extra.
 
 ## Published build artifacts
 
@@ -325,21 +334,25 @@ Inside a publication:
   of a publication when a build fails, so the previous model keeps
   serving.
 
-`solid viewer` prints JSON naming the installed `solid-widget.js` bundle and
-its integer `apiVersion`. A consumer must reject a missing or too-old bundle
-before opening. The first build after a framework upgrade may add the additive
-`format` field and therefore produce one ordinary model-change refresh.
+`solid viewer` prints JSON naming the installed `solid-widget.js` bundle
+(`path`), the standalone export page (`index`), its integer `apiVersion` and
+the viewer package `version`; the bundle comes from the separately installed
+`solid-node-viewer` package, and when that package is absent the command
+exits 1 naming `pip install "solid-node[viewer]"`. A consumer must reject a
+missing or too-old bundle before opening. The first build after a framework
+upgrade may add the additive `format` field and therefore produce one
+ordinary model-change refresh.
 
 ## Viewer HTTP surface
 
-`solid develop` serves this; a build publication does not. With it running
-on `SOLID_NODE_PORT`:
+`solid develop` runs this as the viewer package's own server process on the
+project's build directory; a build publication does not serve anything. With
+it running on `SOLID_NODE_PORT`:
 
-- `GET /node/` — root JSON containing operations, type, name, color,
-  mtime, and child names.
-- `GET /node/<Child>/.../` — nested state. A rigid node exposes a
-  `model` instead of children.
-- `GET /node/<path>/<Name>.stl` — the STL; waits for its file to exist.
+- `GET /build/viewer.json` and `GET /build/<model path>` — the published
+  document and the STLs it names, straight from the build directory.
+- `GET /_viewer` — `{available, apiVersion, remedy}` for the bundle; `GET
+  /_viewer/bundle.js` — the bundle itself.
 - `GET /_build_error` — `{}` when clean, otherwise the active build error.
 - `WS /ws/reload` — viewer reload signal.
 

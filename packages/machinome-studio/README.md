@@ -114,7 +114,15 @@ No backend loads global shop role cards or `.codex/agents` runtime adapters.
 `<projects-dir>/<name>/` is an independent Git repository. The catalogue path
 comes only from the required launcher option and need not be inside a shop
 source tree or installation. In this development workspace, `solid-node/` and
-its `WTs/` are framework checkouts; top-level `WTs/` holds shop worktrees. The hub
+its `WTs/` are framework checkouts, `solid-node-viewer/` is the independent
+AGPL browser-viewer repository the framework installs as its `viewer` extra,
+and top-level `WTs/` holds shop worktrees. `scripts/setup` installs
+`solid-node[viewer]` (tier 1) or clones and installs both repositories
+editable and builds the viewer's frontends (tier 2, `scripts/setup dev`);
+`scripts/dev-env <name> setup|teardown` opens per-slot framework benches,
+which hold no frontend of their own. The floor serves the viewer bundle the
+framework reports through `solid viewer`, and refuses to open a project when
+no usable viewer is installed. The hub
 lists every entry under the selected projects directory, including unopenable
 entries with their reason. Each open project has one opaque session identifier,
 an isolated broker, profile roster, conversation, model build and watcher.

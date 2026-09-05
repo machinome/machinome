@@ -239,7 +239,7 @@ class ProjectPreparationTest(unittest.TestCase):
         project = self.home / "existing"
         _make_repository(project)
         cases = (
-            ({"FAKE_SOLID_VIEWER_MISSING": "1"}, "build the solid-node viewer bundle"),
+            ({"FAKE_SOLID_VIEWER_MISSING": "1"}, "pip install \"solid-node[viewer]\""),
             ({"FAKE_SOLID_VIEWER_API": "3"}, "viewer API 4 is required but installed viewer API is 3"),
         )
         for environment, expected in cases:
@@ -385,7 +385,7 @@ elif command == "viewer":
     # The shop asks this without a project, so the test steers it through the
     # environment rather than through a file inside one.
     if os.environ.get("FAKE_SOLID_VIEWER_MISSING"):
-        print("build the solid-node viewer bundle", file=sys.stderr)
+        print("pip install \"solid-node[viewer]\"", file=sys.stderr)
         raise SystemExit(18)
     bundle = Path(tempfile.gettempdir()) / f"fake-solid-widget-{os.getpid()}.js"
     bundle.write_text("globalThis.SolidNodeWidget={apiVersion:4,mount(){return Promise.resolve({apiVersion:4,artifactChanged(){return Promise.resolve()},manifestChanged(){return Promise.resolve()},reload(){return Promise.resolve()},assembly(){return{name:'root',path:[],color:null,model:false,children:[]}},setRoot(){},setVisible(){},view(){return{}},dispose(){}})}};")

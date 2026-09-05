@@ -334,7 +334,10 @@ rendered only when the open changed what is published — decided from a digest 
 the published viewer document, not by rendering and comparing afterwards — or
 when the project has no valid screenshot yet, extending to opening the rule
 floor-mediated commits already follow. The framework viewer bundle is resolved
-once per running shop rather than per open (ADR 0028). The initial build
+once per running shop rather than per open (ADR 0028); the framework reports
+it from the separately installed `solid-node-viewer` package, and an
+installation without that package fails the open with the framework's remedy,
+installing the `viewer` extra. The initial build
 runs through the `solid` console script installed beside the Python interpreter
 running the shop, so an unrelated executable earlier on ambient `PATH` cannot
 select a different framework installation. `openspec` is the single exception:
@@ -482,7 +485,10 @@ Each `<projects-dir>/<name>/` directory is an independent Git repository. The
 required catalogue directory is an external runtime input and may be unrelated
 to the shop installation. In this repository's development workspace, the
 framework checkout belongs under `solid-node/`; framework worktrees belong
-under `solid-node/WTs/`; shop worktrees belong under `WTs/`. Runtime agents use
+under `solid-node/WTs/`; the browser viewer's independent repository belongs
+under `solid-node-viewer/` (the framework's `viewer` extra, AGPL-3.0-only,
+with its own OpenSpec and decision records); shop worktrees belong under
+`WTs/`. Runtime agents use
 only their session's verified project root plus their selected profile contract.
 The session identifier is the routing boundary as well as the process
 environment supplied to the agent; runtime agents do not inspect sibling

@@ -13,7 +13,7 @@ use, the system SHALL treat preparation as failed, report the reason and its
 remedy, and SHALL NOT start Floor or its agents. The maker SHALL NOT be shown a
 shop that is open with a model pane that cannot render.
 
-#### Scenario: No viewer package is installed
+#### Scenario: The installed solid-node ships no viewer
 - **WHEN** the maker opens the shop and the installed solid-node has no viewer package installed beside it
 - **THEN** the shop does not open, and the maker is told that the viewer is unavailable together with the framework's remedy, installing the `viewer` extra
 

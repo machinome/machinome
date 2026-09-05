@@ -25,8 +25,10 @@ Commands take an optional node reference — `package.module:Class`,
 model from `[tool.solid-node]` in `pyproject.toml` is used. A directory is
 not a reference.
 
-`solid develop` also exists, and serves a live viewer that rebuilds on save.
-Do not run it here: the shop already watches the project, rebuilds it, and
+`solid develop` also exists, and opens a live viewer that rebuilds on save —
+the browser viewer from the separately installed `solid-node-viewer` package,
+or OpenSCAD when that package is absent. Do not run it here: the shop already
+watches the project, rebuilds it, and
 keeps the maker's view current. Your builds are verification of your own work,
 and they are finite.
 
@@ -482,7 +484,8 @@ model is an assembly — do not report it as coverage before then.
    Render at least an isometric view and one view along the axis that
    the new component's alignments live on, and inspect them before
    declaring done. Keep the default renderer; `--renderer web` is for a
-   host that needs a transparent background, not for your inspection. Do not try to see a defect a snapshot cannot
+   host that needs a transparent background (and needs the separately
+   installed viewer package), not for your inspection. Do not try to see a defect a snapshot cannot
    resolve: a gear pair that never touches, or a blade stopping 3mm
    short of its hub, is what the connectivity and engagement contracts
    are for — they fail deterministically, at any scale, without a

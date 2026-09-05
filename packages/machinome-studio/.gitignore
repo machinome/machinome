@@ -26,6 +26,9 @@ test-results/
 # Independent molejo library repository (analytic flexible parts),
 # born from the flexible-leaf finding; its own Git history.
 /molejo
+# Independent solid-node-viewer repository: the AGPL browser viewer the
+# framework installs as its [viewer] extra; its own Git history.
+/solid-node-viewer
 WTs/
 .env
 projects/*
