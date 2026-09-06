@@ -419,7 +419,10 @@ closed entry): the exact regular non-symlink `screenshot.png` at the root of a
 single-model project, or `screenshots/<model>.png` for one declared model of a
 project that has several. The screenshot is
 a fixed 640x360 preview of that entry's own model, rendered through the selected
-CLI after an observed successful build and before a floor-mediated commit. Rendering and
+CLI after an observed successful build and before a floor-mediated commit. It
+goes through `solid snapshot --renderer web`, so a workspace needs the viewer's
+`snapshot` extra and its Chromium; `scripts/setup` installs both, and a refusal
+is logged rather than swallowed. Rendering and
 staging are best-effort: they never turn a valid build or Git commit into a
 failure. Every session owns a filesystem observer with separate source and
 artifact handlers. Qualifying Python changes outside `_build` settle into one

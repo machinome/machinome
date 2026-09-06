@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import secrets
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field, replace
@@ -55,6 +56,8 @@ from .backends.base import AgentActivity
 from .screenshots import refresh_project_screenshot
 from .source_files import SourceDocument, SourceWorkspace
 from .watcher import ArtifactWatcher, ModelWatcher, SourceFileWatcher
+
+LOGGER = logging.getLogger(__name__)
 
 
 BackendFactory = Callable[..., AgentBackend]
@@ -248,6 +251,10 @@ class Session:
             model=self.prepared.project_model,
             extra_environment=self.prepared.build_environment,
         )
+        if result.warning:
+            LOGGER.warning(
+                "no model preview for %s: %s", self.prepared.name, result.warning,
+            )
         if result.updated and result.revision is not None and self.on_screenshot_changed is not None:
             self.on_screenshot_changed(result.revision)
 

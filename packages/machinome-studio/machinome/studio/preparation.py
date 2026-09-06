@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import subprocess
@@ -19,6 +20,8 @@ from pathlib import Path
 
 from .screenshots import refresh_project_screenshot, screenshot_revision
 
+
+LOGGER = logging.getLogger(__name__)
 
 LOWER_KEBAB_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 AGENT_ID = LOWER_KEBAB_ID
@@ -742,13 +745,19 @@ def build_project(
     published = _publication_digest(snapshot) != before
     if (published and not watched) or screenshot_revision(prepared.project_root, prepared.project_model) is None:
         # A thumbnail is an optional presentation artifact.  The model build
-        # has already succeeded; do not fold a renderer problem into it.
-        refresh_project_screenshot(
+        # has already succeeded; do not fold a renderer problem into it. Say
+        # what went wrong all the same: a renderer that cannot run is
+        # otherwise indistinguishable from a project nobody photographed.
+        result = refresh_project_screenshot(
             prepared.project_root,
             prepared.solid_command,
             model=prepared.project_model,
             extra_environment=prepared.build_environment,
         )
+        if result.warning:
+            LOGGER.warning(
+                "no model preview for %s: %s", prepared.name, result.warning,
+            )
     return BuildOutcome(published=published)
 
 

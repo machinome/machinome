@@ -334,6 +334,22 @@ class ProjectPreparationTest(unittest.TestCase):
         ).stdout
         self.assertIn('profile = "builder"', committed)
 
+    def test_a_refused_screenshot_render_is_reported_in_the_log(self) -> None:
+        project = self.home / "unphotographed"
+        _make_repository(project)
+
+        with self.assertLogs("floor.preparation", level="WARNING") as logged:
+            self.prepare("unphotographed")
+
+        self.assertFalse((project / "screenshot.png").exists())
+        # The renderer's own words, so a missing headless browser is nameable
+        # from the log rather than showing up only as a hub card with no
+        # picture.
+        self.assertTrue(
+            any("Install the browser renderer" in line for line in logged.output),
+            logged.output,
+        )
+
     def test_build_failure_can_be_reported_without_abandoning_preparation(self) -> None:
         prepared = self.prepare("fail-build", allow_build_failure=True)
         self.assertIn("build exploded", prepared.build_error or "")
@@ -598,6 +614,10 @@ elif command == "build":
         (build / "part.stl").write_text("solid part")
         (build / "viewer.json").write_text(json.dumps({"version": 1, "root": {"model": "part.stl"}}))
 elif command == "snapshot":
+    # A real renderer refuses when its headless browser is missing.
+    if cwd.name == "unphotographed":
+        print("Error: Install the browser renderer", file=sys.stderr)
+        raise SystemExit(1)
     output = Path(sys.argv[sys.argv.index("-o") + 1])
     output.write_bytes(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8/+8dAwMDEwMDAwMDAwAjPwLvkz8BYAAAAABJRU5ErkJggg=="))
 elif command == "viewer":
