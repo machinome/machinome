@@ -92,6 +92,9 @@ class RoleContext:
     user_label: str
     user_agent_label: str
 
+    active_model: str | None = None
+    """The declared model this session owns, when the project has several."""
+
 
 @dataclass(frozen=True)
 class RoleHandle:

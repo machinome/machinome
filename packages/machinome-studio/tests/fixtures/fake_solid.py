@@ -29,11 +29,22 @@ def project_state(project: Path) -> dict:
     return json.loads(state_file.read_text()) if state_file.is_file() else {}
 
 
-def model_build_dir(project: Path, state: dict) -> Path:
-    """Where the project's default model publishes. A project declaring a
-    named model builds it into `_build/<name>`, as the framework does for a
-    [tool.solid-node.models] table; an unnamed one owns `_build` itself."""
+def declared_models(state: dict) -> list[str]:
+    """The names a [tool.solid-node.models] table would declare, if any."""
+    names = state.get("models")
+    if isinstance(names, list) and names:
+        return [str(name) for name in names]
     name = state.get("model_name")
+    return [str(name)] if name else []
+
+
+def model_build_dir(project: Path, state: dict, name: str | None = None) -> Path:
+    """Where one model publishes. A project declaring named models builds each
+    into `_build/<name>`, as the framework does for a [tool.solid-node.models]
+    table; an unnamed one owns `_build` itself."""
+    if name is None:
+        declared = declared_models(state)
+        name = declared[0] if declared else None
     return project / "_build" / name if name else project / "_build"
 
 
@@ -74,7 +85,8 @@ elif command == "build":
     with (cwd / ".fake-solid-builds").open("a") as log:
         log.write("build\n")
 
-    build = model_build_dir(cwd, state)
+    selected = argument if argument and not argument.startswith("-") else None
+    build = model_build_dir(cwd, state, selected)
     build.mkdir(exist_ok=True, parents=True)
 
     def publish(path: Path, content: str) -> None:
@@ -110,18 +122,18 @@ elif command == "build":
     publish(build / "viewer.json", viewer)
 elif command == "models":
     state = project_state(cwd)
-    name = state.get("model_name")
+    names = declared_models(state) or [None]
     print(json.dumps({
         "root": str(cwd),
         "build_root": str(cwd / "_build"),
-        "default": name,
+        "default": names[0],
         "models": [{
             "name": name,
             "reference": "root:Root",
-            "default": True,
-            "build_dir": str(model_build_dir(cwd, state)),
+            "default": index == 0,
+            "build_dir": str(model_build_dir(cwd, state, name)),
             "state": "unbuilt",
-        }],
+        } for index, name in enumerate(names)],
     }))
 elif command == "viewer":
     state = {}

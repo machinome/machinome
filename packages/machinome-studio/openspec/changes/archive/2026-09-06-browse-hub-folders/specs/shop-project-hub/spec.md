@@ -33,7 +33,7 @@ opening it. An unopenable entry SHALL NOT prevent the hub from being presented,
 prevent other entries from being listed, or prevent any other project from being
 opened.
 
-#### Scenario: A directory is neither a repository nor a folder of repositories
+#### Scenario: A directory is not its own repository
 - **WHEN** the folder being listed holds a directory that is not the root of its own Git repository and holds no project repository anywhere below it
 - **THEN** the hub lists it as unopenable and states that it is not a project repository, and every other entry remains listable and openable
 

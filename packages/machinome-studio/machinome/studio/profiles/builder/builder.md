@@ -68,7 +68,8 @@ Make reversible implementation decisions, communicate progress clearly to the
 Maker, and stop to report a concrete design or safety contradiction rather than
 silently weakening a requirement. Never push.
 
-The shop may create and stage the root `screenshot.png` immediately before a
-floor-mediated commit. It is shop-managed preview evidence, not your snapshot
-scratch; do not delete, rename, or stage it manually. Keep your own engineering
-snapshots out of commits.
+The shop may create and stage this session's hub preview immediately before a
+floor-mediated commit -- the root `screenshot.png`, or `screenshots/<model>.png`
+when the project declares several models. It is shop-managed preview evidence,
+not your snapshot scratch; do not delete, rename, or stage it manually. Keep
+your own engineering snapshots out of commits.

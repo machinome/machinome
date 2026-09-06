@@ -67,7 +67,7 @@ export function fitsBuildEnvelope(piece: PrintedPiece): boolean {
   return permutations.some((candidate) => candidate.every((extent, index) => extent <= BUILD_VOLUME[index]));
 }
 
-export function artifactUrl(project: string, reference: string): string {
+export function artifactUrl(session: string, reference: string): string {
   const path = reference.split("/").map(encodeURIComponent).join("/");
-  return `/projects/${encodeURIComponent(project)}/artifacts/${path}`;
+  return `/api/sessions/${encodeURIComponent(session)}/artifacts/${path}`;
 }

@@ -16,6 +16,7 @@ from stat import S_ISREG
 
 
 SCREENSHOT_NAME = "screenshot.png"
+SCREENSHOT_DIRECTORY = "screenshots"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 _locks: dict[Path, threading.Lock] = {}
 _locks_guard = threading.Lock()
@@ -30,13 +31,23 @@ class ScreenshotResult:
     warning: str | None = None
 
 
-def screenshot_path(project_root: Path) -> Path:
-    return project_root / SCREENSHOT_NAME
+def screenshot_path(project_root: Path, model: str | None = None) -> Path:
+    """Where the canonical preview of one openable entry lives.
+
+    A project listed as one project keeps the root `screenshot.png` it has
+    always had. One declared model of a multi-model project gets its own
+    committed preview beside its siblings, because a folder of models needs a
+    picture per card and a fresh clone should have them before anything is
+    built.
+    """
+    if model is None:
+        return project_root / SCREENSHOT_NAME
+    return project_root / SCREENSHOT_DIRECTORY / f"{model}.png"
 
 
-def screenshot_revision(project_root: Path) -> str | None:
+def screenshot_revision(project_root: Path, model: str | None = None) -> str | None:
     """Return the content revision only for a regular, local PNG file."""
-    path = screenshot_path(project_root)
+    path = screenshot_path(project_root, model)
     try:
         status = path.lstat()
         if not S_ISREG(status.st_mode):
@@ -47,15 +58,16 @@ def screenshot_revision(project_root: Path) -> str | None:
     return sha256(data).hexdigest() if _is_png(data) else None
 
 
-def is_safe_screenshot(project_root: Path) -> bool:
+def is_safe_screenshot(project_root: Path, model: str | None = None) -> bool:
     """Whether the canonical path is a regular non-symlink PNG file."""
-    return screenshot_revision(project_root) is not None
+    return screenshot_revision(project_root, model) is not None
 
 
 def refresh_project_screenshot(
     project_root: Path,
     solid_command: Sequence[str],
     *,
+    model: str | None = None,
     extra_environment: Mapping[str, str] | None = None,
 ) -> ScreenshotResult:
     """Render and atomically publish the fixed 640x360 project thumbnail.
@@ -65,12 +77,13 @@ def refresh_project_screenshot(
     available, so ``os.replace`` never exposes a partial image to the hub.
     """
     root = project_root.resolve()
-    with _lock_for(root):
-        target = screenshot_path(root)
+    with _lock_for(screenshot_path(root, model)):
+        target = screenshot_path(root, model)
+        relative = target.relative_to(root)
         try:
             existing = _existing_bytes(target)
             if existing is _UNSAFE:
-                return ScreenshotResult(warning="screenshot.png is not a regular non-symlink file")
+                return ScreenshotResult(warning=f"{relative} is not a regular non-symlink file")
             with tempfile.TemporaryDirectory(prefix="libresolid-studio-screenshot-") as temporary:
                 output = Path(temporary) / SCREENSHOT_NAME
                 env = {**os.environ, **dict(extra_environment or {})}
@@ -78,6 +91,7 @@ def refresh_project_screenshot(
                     [
                         *solid_command,
                         "snapshot",
+                        *([model] if model else ()),
                         "--renderer",
                         "web",
                         "-o",
@@ -104,8 +118,9 @@ def refresh_project_screenshot(
                 return ScreenshotResult(revision=sha256(data).hexdigest())
             # Refuse a path that turned unsafe during rendering too.
             if _existing_bytes(target) is _UNSAFE:
-                return ScreenshotResult(warning="screenshot.png became an unsafe path")
-            descriptor, staged_name = tempfile.mkstemp(prefix=".screenshot-", suffix=".png", dir=root)
+                return ScreenshotResult(warning=f"{relative} became an unsafe path")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            descriptor, staged_name = tempfile.mkstemp(prefix=".screenshot-", suffix=".png", dir=target.parent)
             staged = Path(staged_name)
             try:
                 with os.fdopen(descriptor, "wb") as stream:
@@ -142,6 +157,7 @@ def _is_png(data: bytes) -> bool:
     return len(data) >= len(PNG_SIGNATURE) and data.startswith(PNG_SIGNATURE)
 
 
-def _lock_for(root: Path) -> threading.Lock:
+def _lock_for(target: Path) -> threading.Lock:
+    """One lock per published preview: two models never wait on each other."""
     with _locks_guard:
-        return _locks.setdefault(root, threading.Lock())
+        return _locks.setdefault(target, threading.Lock())

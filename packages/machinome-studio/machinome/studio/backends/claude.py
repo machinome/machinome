@@ -87,6 +87,7 @@ class ClaudeBackend:
         shop_root: Path,
         *,
         project: Path | None = None,
+        model: str | None = None,
         command: str | Sequence[str] = "claude",
         broker_url: str = "http://127.0.0.1:9000",
         solid_command: str | Sequence[str] = "solid",
@@ -97,6 +98,8 @@ class ClaudeBackend:
     ) -> None:
         self.shop_root = shop_root.resolve()
         self.project = (project or shop_root).resolve()
+        # The model this session owns, so the scoped tools default to it.
+        self.model = model
         self.command = (command,) if isinstance(command, str) else tuple(command)
         self.broker_url = broker_url
         self.session_id = session_id
@@ -376,6 +379,7 @@ class ClaudeBackend:
                             "args": mcp_command(
                                 Path(context.active_project),
                                 self.solid_command,
+                                model=self.model,
                                 python=sys.executable,
                                 floor_url=self.broker_url,
                                 floor_session=self.session_id,
@@ -448,6 +452,11 @@ class ClaudeBackend:
         lines = [
             f"Shop checkout: {shop}",
             f"Active project: {Path(context.active_project).resolve()}",
+            *([
+                f"Active model: {context.active_model}. This project declares "
+                "several models, each open in its own session; work on this "
+                "one, and leave its siblings to theirs.",
+            ] if context.active_model else []),
             f"Role: {role}",
             "Before taking any task action, read the following profile prompt in "
             f"full and follow it as authoritative: {agent.prompt_path}",

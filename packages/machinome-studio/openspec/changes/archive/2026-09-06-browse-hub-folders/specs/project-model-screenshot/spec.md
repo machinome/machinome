@@ -72,6 +72,12 @@ without a preview.
 - **WHEN** opening an entry runs a build that publishes a changed model
 - **THEN** a screenshot is rendered and published as it is today
 
+#### Scenario: A project that has never been rendered
+
+- **WHEN** the maker opens an entry whose build publishes nothing and which has
+  no valid screenshot of its own
+- **THEN** a screenshot is rendered so the entry gains its preview
+
 #### Scenario: A model that has never been rendered
 
 - **WHEN** the maker opens a declared model whose build publishes nothing and

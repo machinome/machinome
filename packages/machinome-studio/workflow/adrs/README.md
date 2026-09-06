@@ -41,6 +41,7 @@ the overview says *what is true now*.
 | `0026` | [Grant Claude roles their declared floor tools, deny everything else](./0026-deny-by-default-claude-tool-permissions.md) | Accepted | 2026-08-22 |
 | `0027` | [Depend on the OpenSpec CLI and refuse to start without it](./0027-depend-on-the-openspec-cli.md) | Accepted | 2026-08-22 |
 | `0028` | [Open on the published model, and build behind it](./0028-open-on-the-published-model.md) | Accepted | 2026-08-30 |
+| `0029` | [Hub entries are paths, and a session owns one model](./0029-hub-entries-are-paths-and-a-session-owns-one-model.md) | Accepted | 2026-09-06 |
 
 ## Conventions
 

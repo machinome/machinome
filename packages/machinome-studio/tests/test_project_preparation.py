@@ -15,13 +15,16 @@ from unittest.mock import patch
 
 from floor.preparation import (
     REQUIRED_VIEWER_API,
+    FolderListing,
+    HubEntry,
     PreparationError,
     build_project,
     commit_new_project,
     default_solid_command,
-    list_projects,
+    list_folder,
+    new_entry,
     prepare_project,
-    resolve_project,
+    resolve_entry,
     resolve_viewer_bundle,
     validate_new_project,
 )
@@ -36,42 +39,84 @@ class FrameworkCommandTest(unittest.TestCase):
             self.assertEqual(default_solid_command(), ("/opt/shop-env/bin/solid",))
 
 
-class ProjectResolutionTest(unittest.TestCase):
+class EntryResolutionTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.home = Path(self.temporary.name) / "projects"
         self.home.mkdir()
 
-    def test_accepts_lowercase_kebab_case(self) -> None:
-        self.assertEqual(resolve_project("v8-engine", self.home), self.home / "v8-engine")
+    def test_resolves_a_project_at_the_top_of_the_working_folder(self) -> None:
+        _make_repository(self.home / "v8-engine")
+        self.assertEqual(
+            resolve_entry("v8-engine", self.home),
+            HubEntry("v8-engine", (self.home / "v8-engine").resolve()),
+        )
+
+    def test_resolves_a_project_held_by_a_folder(self) -> None:
+        _make_repository(self.home / "sandbox" / "windmill")
+        entry = resolve_entry("sandbox/windmill", self.home)
+        self.assertEqual(entry.path, "sandbox/windmill")
+        self.assertEqual(entry.project_root, (self.home / "sandbox" / "windmill").resolve())
+        self.assertIsNone(entry.model)
+
+    def test_resolves_one_declared_model_of_a_project(self) -> None:
+        project = self.home / "clocks"
+        _make_repository(project)
+        _declare_models(project, ("wall_clock_01", "wall_clock_02"))
+        entry = resolve_entry("clocks/wall_clock_02", self.home)
+        self.assertEqual(entry.path, "clocks/wall_clock_02")
+        self.assertEqual(entry.project_root, project.resolve())
+        self.assertEqual(entry.model, "wall_clock_02")
+
+    def test_rejects_a_model_the_project_does_not_declare(self) -> None:
+        project = self.home / "clocks"
+        _make_repository(project)
+        _declare_models(project, ("wall_clock_01",))
+        with self.assertRaises(PreparationError) as raised:
+            resolve_entry("clocks/wall_clock_09", self.home)
+        self.assertEqual(raised.exception.stage, "entry-path")
+        self.assertIn("wall_clock_09", str(raised.exception))
+
+    def test_rejects_a_directory_that_is_not_a_project_repository(self) -> None:
+        (self.home / "sandbox").mkdir()
+        with self.assertRaises(PreparationError) as raised:
+            resolve_entry("sandbox", self.home)
+        self.assertIn("not a project repository", str(raised.exception))
 
     def test_accepts_project_names_without_enforcing_a_style_convention(self) -> None:
         for name in ("v8_engine", "V8 engine", ".prototype"):
             with self.subTest(name=name):
-                self.assertEqual(resolve_project(name, self.home), self.home / name)
+                _make_repository(self.home / name)
+                self.assertEqual(resolve_entry(name, self.home).project_root, (self.home / name).resolve())
 
-    def test_rejects_missing_and_unsafe_names(self) -> None:
-        for name in (None, "", "../v8", ".", "..", "v8/engine", "v8\\engine", "/tmp/v8", "bad\0name"):
-            with self.subTest(name=name), self.assertRaises(PreparationError) as raised:
-                resolve_project(name, self.home)
-            self.assertEqual(raised.exception.stage, "project-name")
+    def test_rejects_missing_and_unsafe_entry_paths(self) -> None:
+        for path in (None, "", "../v8", ".", "..", "sandbox/../..", "v8\\engine", "/tmp/v8", "bad\0name"):
+            with self.subTest(path=path), self.assertRaises(PreparationError) as raised:
+                resolve_entry(path, self.home)
+            self.assertEqual(raised.exception.stage, "entry-path")
 
     def test_rejects_a_symlink_escape(self) -> None:
         outside = Path(self.temporary.name) / "outside"
         outside.mkdir()
         (self.home / "escaped").symlink_to(outside, target_is_directory=True)
         with self.assertRaises(PreparationError) as raised:
-            resolve_project("escaped", self.home)
-        self.assertEqual(raised.exception.stage, "project-path")
+            resolve_entry("escaped", self.home)
+        self.assertEqual(raised.exception.stage, "entry-path")
 
     def test_rejects_an_in_home_symlink_alias(self) -> None:
         target = self.home / "target"
         target.mkdir()
         (self.home / "alias").symlink_to(target, target_is_directory=True)
         with self.assertRaises(PreparationError) as raised:
-            resolve_project("alias", self.home)
-        self.assertEqual(raised.exception.stage, "project-path")
+            resolve_entry("alias", self.home)
+        self.assertEqual(raised.exception.stage, "entry-path")
+
+    def test_creation_targets_the_folder_being_listed(self) -> None:
+        (self.home / "sandbox").mkdir()
+        entry = new_entry("sandbox", "windmill", self.home)
+        self.assertEqual(entry.path, "sandbox/windmill")
+        self.assertEqual(entry.project_root, (self.home / "sandbox" / "windmill").resolve())
 
     def test_creation_refuses_a_name_used_by_any_existing_entry_without_mutation(self) -> None:
         for name, directory in (("occupied-directory", True), ("occupied-file", False)):
@@ -79,9 +124,26 @@ class ProjectResolutionTest(unittest.TestCase):
             entry.mkdir() if directory else entry.write_text("keep me")
             before = entry.stat()
             with self.subTest(name=name), self.assertRaises(PreparationError) as raised:
-                validate_new_project(name, self.home)
+                validate_new_project("", name, self.home)
             self.assertEqual(raised.exception.stage, "project-name")
             self.assertEqual(entry.stat(), before)
+
+    def test_creation_refuses_a_project_inside_a_project(self) -> None:
+        _make_repository(self.home / "clocks")
+        with self.assertRaises(PreparationError) as raised:
+            validate_new_project("clocks", "another", self.home)
+        self.assertIn("inside a project", str(raised.exception))
+
+
+class FolderListingTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.home = Path(self.temporary.name) / "projects"
+        self.home.mkdir()
+
+    def listing(self, folder: str = "") -> dict[str, object]:
+        return {item.name: item for item in list_folder(self.home, folder)}
 
     def test_listing_keeps_valid_and_unopenable_entries_independent(self) -> None:
         valid = self.home / "valid_project"
@@ -96,10 +158,11 @@ class ProjectResolutionTest(unittest.TestCase):
         (self.home / "Bad Name").mkdir()
         (self.home / "README.md").write_text("working-folder notes")
 
-        values = {item.name: item for item in list_projects(self.home)}
+        values = self.listing()
 
         self.assertNotIn("README.md", values)
         self.assertTrue(values["valid_project"].openable)
+        self.assertEqual(values["valid_project"].path, "valid_project")
         self.assertEqual(values["valid_project"].profile, "builder")
         self.assertEqual(values["valid_project"].branch, "main")
         self.assertIsNotNone(values["valid_project"].last_commit)
@@ -107,6 +170,59 @@ class ProjectResolutionTest(unittest.TestCase):
         self.assertIn("repository", values["not-a-repository"].reason or "")
         self.assertFalse(values["Bad Name"].openable)
         self.assertIn("repository", values["Bad Name"].reason or "")
+
+    def test_a_directory_holding_projects_is_a_folder(self) -> None:
+        _make_repository(self.home / "sandbox" / "windmill")
+        _make_repository(self.home / "sandbox" / "deeper" / "guitar")
+
+        values = self.listing()
+
+        self.assertIsInstance(values["sandbox"], FolderListing)
+        self.assertEqual(values["sandbox"].projects, 2)
+        self.assertEqual(values["sandbox"].path, "sandbox")
+
+    def test_entering_a_folder_lists_only_its_own_entries(self) -> None:
+        _make_repository(self.home / "sandbox" / "windmill")
+        _make_repository(self.home / "sandbox" / "deeper" / "guitar")
+        _make_repository(self.home / "elsewhere")
+
+        values = self.listing("sandbox")
+
+        self.assertEqual(set(values), {"windmill", "deeper"})
+        self.assertEqual(values["windmill"].path, "sandbox/windmill")
+        self.assertIsInstance(values["deeper"], FolderListing)
+
+    def test_a_directory_holding_no_project_is_unopenable(self) -> None:
+        (self.home / "notes" / "deeper").mkdir(parents=True)
+
+        values = self.listing()
+
+        self.assertFalse(values["notes"].openable)
+        self.assertIn("repository", values["notes"].reason or "")
+
+    def test_a_project_declaring_several_models_is_a_folder_of_them(self) -> None:
+        project = self.home / "clocks"
+        _make_repository(project)
+        _declare_models(project, ("wall_clock_01", "wall_clock_02"))
+
+        top = self.listing()
+        self.assertIsInstance(top["clocks"], FolderListing)
+        self.assertEqual(top["clocks"].projects, 2)
+
+        inside = self.listing("clocks")
+        self.assertEqual(sorted(inside), ["wall_clock_01", "wall_clock_02"])
+        self.assertEqual(inside["wall_clock_01"].path, "clocks/wall_clock_01")
+        self.assertTrue(inside["wall_clock_01"].openable)
+
+    def test_a_project_declaring_one_model_stays_a_project(self) -> None:
+        project = self.home / "solo"
+        _make_repository(project)
+        _declare_models(project, ("only",))
+
+        values = self.listing()
+
+        self.assertTrue(values["solo"].openable)
+        self.assertEqual(values["solo"].path, "solo")
 
 
 class ProjectPreparationTest(unittest.TestCase):
@@ -138,9 +254,13 @@ class ProjectPreparationTest(unittest.TestCase):
         """Open one project the way the registry does: verify, build, record."""
         home = self.home if project_home is None else project_home
         with patch.dict(os.environ, self.git_environment):
+            entry = (
+                resolve_entry(name, home)
+                if (home / name.split("/")[0]).exists()
+                else new_entry("", name, home)
+            )
             prepared = prepare_project(
-                name,
-                project_home=home,
+                entry,
                 solid_command=self.command,
                 profile=profile,
             )
@@ -213,7 +333,7 @@ class ProjectPreparationTest(unittest.TestCase):
         nested = self.home / "nested"
         nested.mkdir()
         _make_repository(nested / "repo")
-        for name, stage in (("file", "project-path"), ("plain", "repository"), ("nested", "repository")):
+        for name, stage in (("file", "entry-path"), ("plain", "entry-path"), ("nested", "entry-path")):
             with self.subTest(name=name), self.assertRaises(PreparationError) as raised:
                 self.prepare(name)
             self.assertEqual(raised.exception.stage, stage)
@@ -322,6 +442,14 @@ class WorkspaceSolidAcceptanceTest(unittest.TestCase):
             self.assertNotEqual(invalid.returncode, 0)
         revision = subprocess.run(["git", "-C", str(framework), "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
         self.assertRegex(revision, r"[0-9a-f]{40}")
+
+
+def _declare_models(project: Path, names: tuple[str, ...]) -> None:
+    """Declare named models the way a project manifest does, and tell the
+    fixture CLI about them so its build directories match."""
+    table = "\n".join(f'{name} = "root:Root"' for name in names)
+    (project / "pyproject.toml").write_text(f"[tool.solid-node.models]\n{table}\n")
+    (project / ".fake-solid-state.json").write_text(json.dumps({"models": list(names)}))
 
 
 def _make_repository(project: Path) -> None:

@@ -15,7 +15,7 @@ from unittest.mock import patch
 from floor.app import Broker
 from floor.backends.base import RoleHandle, RuntimeCatalogue, RuntimeChoice
 from floor.orchestrator import LocalBrokerControl, ShopOrchestrator
-from floor.preparation import ProjectRuntimeError, prepare_project, read_project_runtime
+from floor.preparation import ProjectRuntimeError, new_entry, prepare_project, read_project_runtime
 from floor.profiles import BackendRuntime, ProfileError, load_profile, resolve_profile_runtime
 from floor.sessions import Session
 from tests.fixtures.fake_backend import FakeBackend
@@ -38,7 +38,7 @@ class ProjectRuntimeSelectionTest(unittest.TestCase):
         project = home / "sample-project"
         project.mkdir(parents=True)
         (project / "pyproject.toml").write_text(source)
-        return read_project_runtime("sample-project", project_home=home)
+        return read_project_runtime(project)
 
     def test_backend_fixes_selection_arity_and_segment_meaning(self) -> None:
         selection = self._selection(
@@ -83,12 +83,11 @@ librarian = "opencode:openai:gpt-5.4:medium"
             }
             with patch.dict(os.environ, environment):
                 prepare_project(
-                    "created-project",
-                    project_home=home,
+                    new_entry("", "created-project", home),
                     solid_command=(sys.executable, str(ROOT / "tests" / "fixtures" / "fake_solid.py")),
                     profile="builder",
                 )
-            self.assertEqual(read_project_runtime("created-project", project_home=home).profile, "builder")
+            self.assertEqual(read_project_runtime(home / "created-project").profile, "builder")
 
     def test_malformed_selections_are_rejected_with_agent_and_value(self) -> None:
         invalid = (
@@ -133,24 +132,24 @@ librarian = "opencode:openai:gpt-5.4:medium"
     def test_absent_configuration_and_project_are_side_effect_free(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             home = Path(temporary) / "projects"
-            selection = read_project_runtime("new-project", project_home=home)
+            selection = read_project_runtime(home / "new-project")
             self.assertEqual(selection.agents, {})
             self.assertIsNone(selection.profile)
             self.assertFalse(home.exists())
 
             project = home / "existing-project"
             project.mkdir(parents=True)
-            selection = read_project_runtime("existing-project", project_home=home)
+            selection = read_project_runtime(home / "existing-project")
             self.assertEqual(selection.agents, {})
             self.assertIsNone(selection.profile)
 
             (project / "pyproject.toml").write_text('[tool.solid-node]\nmodel = "part:Part"\n')
-            selection = read_project_runtime("existing-project", project_home=home)
+            selection = read_project_runtime(home / "existing-project")
             self.assertEqual(selection.agents, {})
             self.assertIsNone(selection.profile)
 
             (project / "pyproject.toml").write_text('[tool.libresolid-studio]\n')
-            selection = read_project_runtime("existing-project", project_home=home)
+            selection = read_project_runtime(home / "existing-project")
             self.assertEqual(selection.agents, {})
             self.assertIsNone(selection.profile)
 
@@ -246,7 +245,7 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
             path = project / "pyproject.toml"
             original = '[tool.libresolid-studio]\nprofile = "builder"\n'
             path.write_text(original)
-            selection = read_project_runtime(project.name, project_home=project.parent)
+            selection = read_project_runtime(project)
             profile = resolve_profile_runtime(load_profile("builder", shop_root=ROOT), selection)
             broker = Broker(profile, session_id="runtime-test")
             backend = FakeBackend()
@@ -305,7 +304,7 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
             project = Path(temporary)
             path = project / "pyproject.toml"
             path.write_text('[tool.libresolid-studio]\nprofile = "builder"\n')
-            selection = read_project_runtime(project.name, project_home=project.parent)
+            selection = read_project_runtime(project)
             profile = resolve_profile_runtime(load_profile("builder", shop_root=ROOT), selection)
             broker = Broker(profile, session_id="runtime-switch")
             original, opencode = FakeBackend(), OpenCodeBackend()

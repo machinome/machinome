@@ -273,16 +273,16 @@ class ArtifactRouteTest(WatcherTestCase):
     async def test_republished_artifacts_must_revalidate(self) -> None:
         app = _artifact_app(self.project, self.artifacts)
         with TestClient(app) as client:
-            response = client.get("/projects/project/artifacts/part.stl")
+            response = client.get("/api/sessions/session/artifacts/part.stl")
         self.assertEqual(response.headers["cache-control"], "no-cache")
 
     async def test_route_serves_a_stable_artifact_during_another_republication(self) -> None:
         app = _artifact_app(self.project, self.artifacts)
         with TestClient(app) as client:
-            self.assertEqual(client.get("/projects/project/artifacts/part.stl").status_code, 200)
+            self.assertEqual(client.get("/api/sessions/session/artifacts/part.stl").status_code, 200)
             atomic_publish(self.artifacts, "other.stl", "new sibling")
-            self.assertEqual(client.get("/projects/project/artifacts/part.stl").status_code, 200)
-            self.assertEqual(client.get("/projects/project/artifacts/%2e%2e/root/__init__.py").status_code, 404)
+            self.assertEqual(client.get("/api/sessions/session/artifacts/part.stl").status_code, 200)
+            self.assertEqual(client.get("/api/sessions/session/artifacts/%2e%2e/root/__init__.py").status_code, 404)
 
 
 class _WatcherHarness:
@@ -349,8 +349,8 @@ def _artifact_app(project: Path, artifacts: Path):
     class Registry:
         shop_root = ROOT
 
-        def by_project(self, name: str):
-            return session if name == "project" else None
+        def by_entry(self, path: str):
+            return session if path == "project" else None
 
         def require_id(self, session_id: str):
             if session_id != "session":
@@ -360,7 +360,10 @@ def _artifact_app(project: Path, artifacts: Path):
         async def close_all(self) -> None:
             return None
 
-        async def projects(self):
+        async def entries(self, folder: str = ""):
             return []
+
+        def lists_models(self, folder: str) -> bool:
+            return False
 
     return create_app(project.parent, registry=Registry())

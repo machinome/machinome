@@ -64,6 +64,7 @@ class OpenCodeBackend:
         shop_root: Path,
         *,
         project: Path | None = None,
+        model: str | None = None,
         command: str | Sequence[str] = "opencode",
         broker_url: str = "http://127.0.0.1:9000",
         solid_command: str | Sequence[str] = "solid",
@@ -78,6 +79,8 @@ class OpenCodeBackend:
         # profile's skills; each role is announced only its own.
         self.skills = skill_registry(skills)
         self.project = (project or shop_root).resolve()
+        # The model this session owns, so the scoped tools default to it.
+        self.model = model
         self.command = (command,) if isinstance(command, str) else tuple(command)
         self.broker_url = broker_url
         self.session_id = session_id
@@ -143,6 +146,7 @@ class OpenCodeBackend:
                             "command": mcp_command(
                                 self.project,
                                 self.solid_command,
+                                model=self.model,
                                 python=sys.executable,
                                 floor_url=self.broker_url,
                                 floor_session=self.session_id,
@@ -806,7 +810,13 @@ class OpenCodeBackend:
         prompt = agent.prompt_path.read_text()
         sections = [
             "TRUSTED SHOP PROFILE CONTRACT\n",
-            f"Role: {role}\nProfile: {context.profile_id}\nActive project: {context.active_project}\n",
+            f"Role: {role}\nProfile: {context.profile_id}\nActive project: {context.active_project}\n"
+            + (
+                f"Active model: {context.active_model}. This project declares several "
+                "models, each open in its own session; work on this one, and leave its "
+                "siblings to theirs.\n"
+                if context.active_model else ""
+            ),
             f"Resolved profile prompt ({agent.prompt_path}):\n{prompt}",
         ]
         catalogue = skill_catalogue(agent.skills, f"{SERVER_NAME}_{SKILL_TOOL}")

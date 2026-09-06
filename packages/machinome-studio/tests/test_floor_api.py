@@ -53,12 +53,12 @@ class FloorAPITest(unittest.TestCase):
         _wait_for(lambda: _request(self.url("/health"), "GET") == {"status": "open"})
 
     def test_shop_starts_on_an_empty_hub_without_preparing_a_project(self) -> None:
-        projects = _request(self.url("/api/projects"), "GET")
+        projects = _request(self.url("/api/entries"), "GET")
         self.assertEqual(projects["working_folder"], str(self.project_home))
-        self.assertEqual(projects["projects"], [])
+        self.assertEqual(projects["entries"], [])
         event, snapshot = _read_sse_event(self.url("/api/stream"))
         self.assertEqual(event, "snapshot")
-        self.assertEqual(snapshot["projects"], [])
+        self.assertEqual(snapshot["entries"], [])
         self.assertEqual(_status(self.url("/api/runs/shop-floor"), "GET"), 404)
 
     def test_two_projects_hold_independent_sessions_brokers_rosters_and_conversations(self) -> None:
@@ -118,7 +118,7 @@ class FloorAPITest(unittest.TestCase):
     def test_second_open_joins_the_existing_session(self) -> None:
         self._make_project("engine")
         first = self._open("engine")
-        response = _request(self.url("/api/projects/engine/session"), "POST")
+        response = _request(self.url("/api/sessions"), "POST", {"path": "engine"})
         self.assertEqual(response, {"state": "open", "session_id": first})
 
     def test_project_and_hub_streams_have_disjoint_scopes(self) -> None:
@@ -140,14 +140,14 @@ class FloorAPITest(unittest.TestCase):
         event, hub = _read_sse_event(self.url("/api/stream"))
         self.assertEqual(event, "snapshot")
         self.assertNotIn("conversation", hub)
-        self.assertEqual({item["name"] for item in hub["projects"]}, {"alpha", "bravo"})
+        self.assertEqual({item["path"] for item in hub["entries"]}, {"alpha", "bravo"})
 
     def test_inventory_lists_unopenable_entries_without_blocking_a_valid_project(self) -> None:
         self._make_project("valid_project")
         (self.project_home / "not-a-repository").mkdir()
         (self.project_home / "Bad Name").mkdir()
         (self.project_home / "README.md").write_text("working-folder notes")
-        projects = {item["name"]: item for item in _request(self.url("/api/projects"), "GET")["projects"]}
+        projects = {item["name"]: item for item in self._entries()}
         self.assertNotIn("README.md", projects)
         self.assertTrue(projects["valid_project"]["openable"])
         self.assertFalse(projects["not-a-repository"]["openable"])
@@ -182,13 +182,13 @@ class FloorAPITest(unittest.TestCase):
         session_id = self._open("broken-model")
         run = _request(self.url(f"/api/sessions/{session_id}"), "GET")
         self.assertTrue(any(event["kind"] == "model_build_unavailable" for event in run["events"]))
-        self.assertEqual(_status(self.url("/projects/broken-model/artifacts/viewer.json"), "GET"), 404)
+        self.assertEqual(_status(self.url(f"/api/sessions/{session_id}/artifacts/viewer.json"), "GET"), 404)
 
         healthy = self._make_project("healthy")
         healthy_id = self._open("healthy")
         self.assertTrue(healthy_id)
-        self.assertIn("part.stl", _raw(self.url("/projects/healthy/artifacts/viewer.json")))
-        self.assertEqual(_status(self.url("/projects/broken-model/artifacts/../healthy/_build/viewer.json"), "GET"), 404)
+        self.assertIn("part.stl", _raw(self.url(f"/api/sessions/{healthy_id}/artifacts/viewer.json")))
+        self.assertEqual(_status(self.url(f"/api/sessions/{session_id}/artifacts/../healthy/_build/viewer.json"), "GET"), 404)
 
     def test_build_package_download_is_session_scoped_and_deterministic(self) -> None:
         project = self._make_project("printable")
@@ -228,12 +228,71 @@ class FloorAPITest(unittest.TestCase):
         (project / "screenshot.png").write_bytes(image)
         listed = self._project("preview")
         self.assertIsInstance(listed["screenshot_revision"], str)
-        self.assertEqual(_status(self.url("/projects/preview/screenshot.png"), "GET"), 200)
-        self.assertEqual(_status(self.url("/projects/missing/screenshot.png"), "GET"), 404)
+        self.assertEqual(_status(self.url("/api/screenshot?path=preview"), "GET"), 200)
+        self.assertEqual(_status(self.url("/api/screenshot?path=missing"), "GET"), 404)
         (project / "screenshot.png").unlink()
         (project / "screenshot.png").symlink_to(project / "root" / "__init__.py")
         self.assertIsNone(self._project("preview")["screenshot_revision"])
-        self.assertEqual(_status(self.url("/projects/preview/screenshot.png"), "GET"), 404)
+        self.assertEqual(_status(self.url("/api/screenshot?path=preview"), "GET"), 404)
+
+    def test_a_folder_of_projects_is_entered_rather_than_listed_flat(self) -> None:
+        (self.project_home / "sandbox").mkdir()
+        self._make_project("sandbox/windmill")
+        self._make_project("top-level")
+
+        top = {item["name"]: item for item in self._entries()}
+        self.assertEqual(top["sandbox"]["kind"], "folder")
+        self.assertEqual(top["sandbox"]["projects"], 1)
+        self.assertNotIn("windmill", top)
+
+        inside = {item["name"]: item for item in self._entries("sandbox")}
+        self.assertEqual(inside["windmill"]["kind"], "project")
+        self.assertEqual(inside["windmill"]["path"], "sandbox/windmill")
+        self.assertTrue(self._open("sandbox/windmill"))
+
+    def test_two_models_of_one_repository_open_as_two_sessions(self) -> None:
+        self._make_project("clocks", models=("wall_clock_01", "wall_clock_02"))
+
+        listed = {item["name"]: item for item in self._entries()}
+        self.assertEqual(listed["clocks"]["kind"], "folder")
+        self.assertEqual(listed["clocks"]["projects"], 2)
+
+        models = {item["name"]: item for item in self._entries("clocks")}
+        self.assertEqual(sorted(models), ["wall_clock_01", "wall_clock_02"])
+
+        first = self._open("clocks/wall_clock_01")
+        second = self._open("clocks/wall_clock_02")
+        self.assertNotEqual(first, second)
+
+        # Each session builds and serves its own model's publication.
+        self.assertIn("part.stl", _raw(self.url(f"/api/sessions/{first}/artifacts/viewer.json")))
+        self.assertIn("part.stl", _raw(self.url(f"/api/sessions/{second}/artifacts/viewer.json")))
+        for model in ("wall_clock_01", "wall_clock_02"):
+            self.assertTrue((self.project_home / "clocks" / "_build" / model / "viewer.json").is_file())
+
+        for session_id in (first, second):
+            _request(
+                self.url(f"/api/sessions/{session_id}/agents"), "POST",
+                {"role": "builder", "label": "Builder"},
+            )
+        _request(self.url(f"/api/sessions/{first}/conversation"), "POST", {"text": "First clock only"})
+        self.assertEqual(
+            [entry["text"] for entry in _request(self.url(f"/api/sessions/{second}/conversation"), "GET")["entries"]],
+            [],
+        )
+
+    def test_a_model_preview_is_served_per_model(self) -> None:
+        project = self._make_project("clocks", models=("wall_clock_01", "wall_clock_02"))
+        image = b"\x89PNG\r\n\x1a\nfirst clock"
+        (project / "screenshots").mkdir()
+        (project / "screenshots" / "wall_clock_01.png").write_bytes(image)
+
+        models = {item["name"]: item for item in self._entries("clocks")}
+        self.assertIsInstance(models["wall_clock_01"]["screenshot_revision"], str)
+        self.assertIsNone(models["wall_clock_02"]["screenshot_revision"])
+        self.assertEqual(_status(self.url("/api/screenshot?path=clocks/wall_clock_01"), "GET"), 200)
+        self.assertEqual(_status(self.url("/api/screenshot?path=clocks/wall_clock_02"), "GET"), 404)
+        self.assertEqual(_status(self.url("/api/screenshot?path=clocks/wall_clock_09"), "GET"), 404)
 
     def test_backend_detection_is_read_only_and_repeatable(self) -> None:
         first = _request(self.url("/api/backends"), "GET")["backends"]
@@ -299,12 +358,18 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual(_status(self.url(f"/api/sessions/{session_id}/source-preview/malformed.png"), "GET"), 404)
         self.assertEqual(_status(self.url(f"/api/sessions/{session_id}/source-preview/root/__init__.py"), "GET"), 404)
 
-    def _make_project(self, name: str, profile: str = "builder") -> Path:
+    def _make_project(self, name: str, profile: str = "builder", models: tuple[str, ...] = ()) -> Path:
         project = self.project_home / name
         (project / "root").mkdir(parents=True)
         (project / "root" / "__init__.py").write_text("# model\n")
         (project / ".gitignore").write_text("_build/\n.fake-solid-builds\n.fake-solid-state.json\n")
-        (project / "pyproject.toml").write_text(f'[tool.libresolid-studio]\nprofile = "{profile}"\n')
+        declared = "".join(
+            f"\n[tool.solid-node.models]\n" + "".join(f'{model} = "root:Root"\n' for model in models)
+            for _ in (models,) if models
+        )
+        (project / "pyproject.toml").write_text(f'[tool.libresolid-studio]\nprofile = "{profile}"\n{declared}')
+        if models:
+            (project / ".fake-solid-state.json").write_text(json.dumps({"models": list(models)}))
         subprocess.run(["git", "init", "-q", "-b", "main", str(project)], check=True)
         subprocess.run(["git", "-C", str(project), "add", "--all"], check=True)
         subprocess.run([
@@ -313,17 +378,20 @@ class FloorAPITest(unittest.TestCase):
         ], check=True)
         return project
 
-    def _open(self, name: str) -> str:
-        response = _request(self.url(f"/api/projects/{name}/session"), "POST")
+    def _open(self, path: str) -> str:
+        response = _request(self.url("/api/sessions"), "POST", {"path": path})
         self.assertIn(response["state"], {"opening", "open"})
-        _wait_for(lambda: self._project(name)["state"] in {"open", "failed"})
-        project = self._project(name)
+        _wait_for(lambda: self._project(path)["state"] in {"open", "failed"})
+        project = self._project(path)
         self.assertEqual(project["state"], "open", project.get("failure"))
         return str(project["session_id"])
 
-    def _project(self, name: str) -> dict[str, object]:
-        projects = _request(self.url("/api/projects"), "GET")["projects"]
-        return next(item for item in projects if item["name"] == name)
+    def _entries(self, folder: str = "") -> list[dict[str, object]]:
+        return _request(self.url(f"/api/entries?folder={folder}"), "GET")["entries"]
+
+    def _project(self, path: str) -> dict[str, object]:
+        folder, _, _ = path.rpartition("/")
+        return next(item for item in self._entries(folder) if item["path"] == path)
 
     def url(self, path: str) -> str:
         return f"http://127.0.0.1:{self.port}{path}"

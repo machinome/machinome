@@ -74,6 +74,7 @@ class PreparedProject:
     project_root: Path
     model: Path
     artifact_root: Path
+    project_model: str | None = None
     viewer_bundle: Path | None = None
     viewer_api_version: int | None = None
     solid_command: tuple[str, ...] = ()
@@ -88,14 +89,39 @@ class PreparedProject:
         first built it; carrying the invocation on the prepared project
         keeps one definition rather than two that can drift apart.
         """
-        return build_command(self.solid_command), self.build_environment
+        return build_command(self.solid_command, self.project_model), self.build_environment
+
+
+@dataclass(frozen=True)
+class HubEntry:
+    """One openable thing in the hub: a project repository and one of its models.
+
+    ``path`` is the entry's identity everywhere the shop names it -- the
+    browser location, the open request, hub state, the session -- and is always
+    relative to the working folder. ``model`` names one model the project's
+    manifest declares; ``None`` means the project is listed as a single project
+    and builds the model it defaults to.
+    """
+
+    path: str
+    project_root: Path
+    model: str | None = None
+
+    @property
+    def name(self) -> str:
+        return self.path.rsplit("/", 1)[-1]
+
+    @property
+    def folder(self) -> str:
+        head, _, _ = self.path.rpartition("/")
+        return head
 
 
 @dataclass(frozen=True)
 class ProjectListing:
-    """One filesystem entry as presented by the project hub."""
+    """One openable or unopenable project as presented by the project hub."""
 
-    name: str
+    path: str
     openable: bool
     reason: str | None
     profile: str
@@ -103,8 +129,14 @@ class ProjectListing:
     last_commit: str | None = None
     screenshot_revision: str | None = None
 
+    @property
+    def name(self) -> str:
+        return self.path.rsplit("/", 1)[-1]
+
     def browser_value(self, *, state: str = "closed", session_id: str | None = None) -> dict[str, object]:
         return {
+            "kind": "project",
+            "path": self.path,
             "name": self.name,
             "openable": self.openable,
             "reason": self.reason,
@@ -117,20 +149,49 @@ class ProjectListing:
         }
 
 
+@dataclass(frozen=True)
+class FolderListing:
+    """One directory the maker can enter, and what it holds.
+
+    ``projects`` counts the project repositories anywhere below it, which is
+    what the maker is looking for when deciding whether to go in. A repository
+    declaring several models is one project here and a folder of models once
+    entered.
+    """
+
+    path: str
+    projects: int
+
+    @property
+    def name(self) -> str:
+        return self.path.rsplit("/", 1)[-1]
+
+    def browser_value(self) -> dict[str, object]:
+        return {
+            "kind": "folder",
+            "path": self.path,
+            "name": self.name,
+            "projects": self.projects,
+        }
+
+
 def resolve_artifact_root(
     solid_command: str | Sequence[str],
     project_root: Path,
     *,
     name: str | None = None,
+    model: str | None = None,
     extra_env: dict[str, str] | None = None,
 ) -> Path:
-    """Ask the framework where this project's default model publishes.
+    """Ask the framework where one of this project's models publishes.
 
     A project that declares named models gives each one its own directory
     under `_build`, and only the framework knows which. The shop asks and
     reads the answer rather than spelling a path of its own: the directory it
     is given is the one atomically updated publication it serves, watches and
-    packages, whatever layout the manifest chose.
+    packages, whatever layout the manifest chose. Without a named model the
+    answer is the project's default; with one it is that model's, so two
+    sessions on one repository never serve each other's publication.
     """
     result = _run(
         (*_command(solid_command), "models", "--json"),
@@ -142,13 +203,18 @@ def resolve_artifact_root(
     )
     try:
         report = json.loads(result.stdout)
+        wanted = (
+            (lambda declared: declared["name"] == model) if model
+            else (lambda declared: declared["default"])
+        )
         build_dir = Path(next(
-            model["build_dir"] for model in report["models"] if model["default"]
+            declared["build_dir"] for declared in report["models"] if wanted(declared)
         ))
     except (json.JSONDecodeError, KeyError, TypeError, StopIteration) as error:
+        described = f"model {model!r}" if model else "a default model"
         raise PreparationError(
             "models", name, project_root,
-            "solid models did not report a default model build directory",
+            f"solid models did not report a build directory for {described}",
         ) from error
     artifact_root = build_dir.resolve()
     if project_root.resolve() not in artifact_root.parents:
@@ -159,10 +225,11 @@ def resolve_artifact_root(
     return artifact_root
 
 
-def build_command(solid_command: str | Sequence[str]) -> tuple[str, ...]:
-    # No node reference: the framework resolves the project's model from
-    # [tool.solid-node] in the project's pyproject.toml.
-    return (*_command(solid_command), "build")
+def build_command(solid_command: str | Sequence[str], model: str | None = None) -> tuple[str, ...]:
+    # Without a model the framework resolves the project's default from
+    # [tool.solid-node] in the project's pyproject.toml. A session opened on
+    # one declared model names it, so it builds its own and not a sibling's.
+    return (*_command(solid_command), "build", *([model] if model else ()))
 
 
 class PreparationError(RuntimeError):
@@ -204,24 +271,205 @@ def default_solid_command() -> tuple[str, ...]:
     return (str(Path(sys.executable).with_name("solid")),)
 
 
-def list_projects(project_home: Path) -> list[ProjectListing]:
-    """Describe every project directory in the working folder without mutating it."""
+SKIPPED_DIRECTORIES = {".git", "_build", "node_modules", "__pycache__", ".venv"}
+
+
+def declared_models(project_root: Path) -> tuple[str, ...]:
+    """The model names the project's manifest declares, in declaration order.
+
+    Read straight from the manifest rather than through ``solid models`` so
+    that listing a folder of twenty projects costs no subprocess. The build
+    directory of a model still comes from the framework, once, when the entry
+    is prepared.
+    """
+    path = project_root / "pyproject.toml"
+    try:
+        with path.open("rb") as source:
+            document = tomllib.load(source)
+    except (OSError, tomllib.TOMLDecodeError):
+        return ()
+    tool = document.get("tool")
+    table = tool.get("solid-node") if isinstance(tool, dict) else None
+    models = table.get("models") if isinstance(table, dict) else None
+    if not isinstance(models, dict):
+        return ()
+    return tuple(name for name in models if isinstance(name, str) and name)
+
+
+def is_repository_root(path: Path) -> bool:
+    """Whether this exact directory is the root of its own Git repository."""
+    return (path / ".git").exists()
+
+
+def holds_project(path: Path) -> bool:
+    """Whether any project repository exists below this directory.
+
+    The walk stops descending as soon as a branch turns out to be a repository
+    root, because everything inside one belongs to that project rather than to
+    the catalogue, and stops entirely at the first one it finds.
+    """
+    for entry in _child_directories(path):
+        if is_repository_root(entry) or holds_project(entry):
+            return True
+    return False
+
+
+def count_projects(path: Path) -> int:
+    """How many project repositories live below this directory."""
+    found = 0
+    for entry in _child_directories(path):
+        found += 1 if is_repository_root(entry) else count_projects(entry)
+    return found
+
+
+def _child_directories(path: Path) -> Iterator[Path]:
+    try:
+        entries = sorted(path.iterdir(), key=lambda item: item.name)
+    except OSError:
+        return
+    for entry in entries:
+        if entry.name in SKIPPED_DIRECTORIES or entry.is_symlink() or not entry.is_dir():
+            continue
+        yield entry
+
+
+def resolve_folder(folder: str | None, project_home: Path) -> Path:
+    """Resolve the directory whose entries the hub is listing.
+
+    An empty path is the working folder itself. Every other path is walked one
+    safe segment at a time so nothing outside the working folder is ever
+    touched, whatever the caller sent.
+    """
+    home = project_home.resolve()
+    if not folder:
+        return home
+    path = home
+    for segment in _entry_segments(folder):
+        path = _child(path, segment, folder)
+        if not path.is_dir():
+            raise PreparationError("entry-path", folder, path, "folder is not a directory")
+    return path
+
+
+def resolve_entry(path: str | None, project_home: Path) -> HubEntry:
+    """Resolve one openable entry path to its project repository and model.
+
+    The walk stops at the first directory that is a repository root: everything
+    before it is catalogue, and the one segment that may follow it names a
+    model the project declares. That is what keeps a model name from ever
+    colliding with a directory inside the same repository.
+    """
+    segments = _entry_segments(path)
+    assert path is not None
+    home = project_home.resolve()
+    walked = home
+    for index, segment in enumerate(segments):
+        walked = _child(walked, segment, path)
+        if not walked.is_dir():
+            raise PreparationError("entry-path", path, walked, "project location is not a directory")
+        if not is_repository_root(walked):
+            continue
+        rest = segments[index + 1:]
+        entry_path = "/".join(segments[: index + 1])
+        if not rest:
+            return HubEntry(entry_path, walked)
+        if len(rest) > 1:
+            raise PreparationError("entry-path", path, walked, "an entry names one model of one project")
+        models = declared_models(walked)
+        if rest[0] not in models:
+            raise PreparationError(
+                "entry-path", path, walked,
+                f"{walked.name} declares no model named {rest[0]!r}",
+            )
+        return HubEntry(f"{entry_path}/{rest[0]}", walked, rest[0])
+    raise PreparationError("entry-path", path, walked, "location is not a project repository")
+
+
+def new_entry(folder: str | None, name: str | None, project_home: Path) -> HubEntry:
+    """The entry a project would have if it were created here, unverified."""
+    _validate_project_name(name)
+    assert name is not None
+    home = project_home.resolve()
+    if not folder:
+        # A first launch names a project before the working folder exists.
+        try:
+            home.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise PreparationError("project-home", name, home, str(error)) from error
+    parent = resolve_folder(folder, project_home)
+    if parent != home and is_repository_root(parent):
+        raise PreparationError("entry-path", name, parent, "a project cannot be created inside a project")
+    project_root = _child(parent, name, name)
+    return HubEntry(str(project_root.relative_to(home)).replace(os.sep, "/"), project_root)
+
+
+def _child(parent: Path, segment: str, requested: str | None) -> Path:
+    """One safe step deeper, never leaving the directory it starts from."""
+    candidate = parent / segment
+    if candidate.is_symlink():
+        raise PreparationError("entry-path", requested, candidate, "project location must not be a symbolic link")
+    resolved = candidate.resolve(strict=False)
+    if resolved.parent != parent.resolve():
+        raise PreparationError("entry-path", requested, candidate, "entry path escapes the workspace projects directory")
+    return resolved
+
+
+def _entry_segments(path: str | None) -> tuple[str, ...]:
+    if not isinstance(path, str) or not path:
+        raise PreparationError("entry-path", path, None, "an entry path names at least one directory")
+    segments = tuple(path.split("/"))
+    for segment in segments:
+        if not segment or segment in {".", ".."} or "\\" in segment or "\0" in segment:
+            raise PreparationError(
+                "entry-path", path, None,
+                "an entry path is safe directory names separated by /",
+            )
+    return segments
+
+
+def list_folder(project_home: Path, folder: str | None = "") -> list[ProjectListing | FolderListing]:
+    """Describe the entries of one folder without mutating anything.
+
+    A repository declaring several models is listed as a folder of its models;
+    a directory holding projects below it is listed as a folder of those; a
+    directory that is neither is listed with the reason it cannot be opened.
+    """
     home = project_home.resolve()
     if not home.exists():
         return []
     if not home.is_dir():
         raise PreparationError("project-home", None, home, "workspace projects directory is not a directory")
-    directories = (entry for entry in home.iterdir() if entry.is_dir() and not entry.is_symlink())
-    return [_project_listing(entry, home) for entry in sorted(directories, key=lambda item: item.name)]
+    parent = resolve_folder(folder, project_home)
+    prefix = f"{folder}/" if folder else ""
+    if parent != home and is_repository_root(parent):
+        return [
+            _project_listing(parent, f"{folder}/{model}", model=model)
+            for model in declared_models(parent)
+        ]
+    folders: list[FolderListing] = []
+    projects: list[ProjectListing] = []
+    for entry in _child_directories(parent):
+        path = f"{prefix}{entry.name}"
+        if is_repository_root(entry):
+            models = declared_models(entry)
+            if len(models) > 1:
+                folders.append(FolderListing(path, len(models)))
+            else:
+                projects.append(_project_listing(entry, path))
+        elif holds_project(entry):
+            folders.append(FolderListing(path, count_projects(entry)))
+        else:
+            projects.append(_project_listing(entry, path))
+    return [*folders, *projects]
 
 
-def _project_listing(entry: Path, home: Path) -> ProjectListing:
-    name = entry.name
+def _project_listing(entry: Path, path: str, *, model: str | None = None) -> ProjectListing:
     try:
-        selection = read_project_runtime(name, project_home=home)
+        selection = read_project_runtime(entry)
     except (PreparationError, ProjectRuntimeError) as error:
-        return ProjectListing(name, False, str(error), "fordesmac")
+        return ProjectListing(path, False, str(error), "fordesmac")
     profile = selection.profile or "fordesmac"
+    name = entry.name
     try:
         root = _run(
             ("git", "-C", str(entry), "rev-parse", "--show-toplevel"),
@@ -244,44 +492,33 @@ def _project_listing(entry: Path, home: Path) -> ProjectListing:
         ).stdout.strip()
         last_commit = datetime.fromisoformat(timestamp).astimezone(UTC).isoformat() if timestamp else None
     except (PreparationError, ValueError) as error:
-        return ProjectListing(name, False, str(error), profile)
-    return ProjectListing(name, True, None, profile, branch, last_commit, screenshot_revision(entry))
+        return ProjectListing(path, False, str(error), profile)
+    return ProjectListing(
+        path, True, None, profile, branch, last_commit,
+        screenshot_revision(entry, model),
+    )
 
 
-def resolve_project(name: str | None, project_home: Path) -> Path:
-    candidate = _project_path(name, project_home)
-    assert name is not None
-    home = project_home.resolve()
-    try:
-        home.mkdir(parents=True, exist_ok=True)
-    except OSError as error:
-        raise PreparationError("project-home", name, home, str(error)) from error
-    if not home.is_dir():
-        raise PreparationError("project-home", name, home, "workspace projects directory does not exist")
-    return candidate
+def verified_project_root(path: str | None, project_home: Path) -> Path:
+    """Resolve only an exact project repository, for serving one of its files."""
+    entry = resolve_entry(path, project_home)
+    _require_exact_repository(entry.project_root, entry.path)
+    return entry.project_root
 
 
-def verified_project_root(name: str | None, project_home: Path) -> Path:
-    """Resolve only an exact direct-child project repository for serving."""
-    root = resolve_project(name, project_home)
-    assert name is not None
-    _require_exact_repository(root, name)
-    return root
-
-
-def validate_new_project(name: str | None, project_home: Path) -> Path:
+def validate_new_project(folder: str | None, name: str | None, project_home: Path) -> HubEntry:
     """Validate a creation target before creating the working folder or project."""
-    _validate_project_name(name)
-    assert name is not None
-    candidate = project_home.resolve() / name
-    if candidate.exists() or candidate.is_symlink():
-        raise PreparationError("project-name", name, candidate, "an entry with this name already exists")
-    return _project_path(name, project_home)
+    entry = new_entry(folder, name, project_home)
+    if entry.project_root.exists() or entry.project_root.is_symlink():
+        raise PreparationError(
+            "project-name", name, entry.project_root,
+            "an entry with this name already exists",
+        )
+    return entry
 
 
-def read_project_runtime(name: str | None, *, project_home: Path) -> ProjectRuntimeSelection:
+def read_project_runtime(project_root: Path) -> ProjectRuntimeSelection:
     """Read project-owned agent runtime choices without creating anything."""
-    project_root = _project_path(name, project_home)
     source_path = project_root / "pyproject.toml"
     if not source_path.exists():
         return ProjectRuntimeSelection(project_root, source_path, {})
@@ -320,23 +557,6 @@ def read_project_runtime(name: str | None, *, project_home: Path) -> ProjectRunt
             raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} must be a string")
         agents[agent_id] = _parse_agent_runtime(agent_id, raw, source_path)
     return ProjectRuntimeSelection(project_root, source_path, agents, profile)
-
-
-def _project_path(name: str | None, project_home: Path) -> Path:
-    _validate_project_name(name)
-    assert name is not None
-    home = project_home.resolve()
-    if project_home.exists() and not project_home.is_dir():
-        raise PreparationError("project-home", name, home, "workspace projects directory is not a directory")
-    candidate = home / name
-    if candidate.is_symlink():
-        raise PreparationError("project-path", name, candidate, "project location must not be a symbolic link")
-    resolved = candidate.resolve(strict=False)
-    if resolved.parent != home:
-        raise PreparationError("project-path", name, candidate, "project path escapes the workspace projects directory")
-    if candidate.exists() and not candidate.is_dir():
-        raise PreparationError("project-path", name, candidate, "project location is not a directory")
-    return resolved
 
 
 def _validate_project_name(name: str | None) -> None:
@@ -381,28 +601,30 @@ def _parse_agent_runtime(agent_id: str, raw: str, source_path: Path) -> ProjectA
 
 
 def prepare_project(
-    name: str | None,
+    entry: HubEntry,
     *,
-    project_home: Path,
     solid_command: str | Sequence[str],
     profile: str | None = None,
     viewer: ViewerBundle | None = None,
 ) -> PreparedProject:
-    """Resolve, verify and — when it is new — scaffold one project repository.
+    """Verify and — when it is new — scaffold the entry's project repository.
 
     This is everything that must hold before an agent may touch the project
     and nothing that produces a model, so the repository boundary gate is
     passed before a session exists whether or not its build is awaited.
     ``build_project`` produces the model, and ``commit_new_project`` records a
     newly created one.
+
+    The entry carries the model this session owns, so the artifact root
+    resolved here is that model's own publication and never a sibling's.
     """
-    project_root = resolve_project(name, project_home)
-    assert name is not None
+    project_root = entry.project_root
+    name = entry.path
     created = not project_root.exists()
     solid_env = None
     if created:
-        package_name = name.replace("-", "_")
-        with tempfile.TemporaryDirectory(prefix=f".{name}-", dir=project_home.resolve()) as temporary:
+        package_name = project_root.name.replace("-", "_")
+        with tempfile.TemporaryDirectory(prefix=f".{project_root.name}-", dir=project_root.parent) as temporary:
             staging_home = Path(temporary)
             staged_project = staging_home / package_name
             _run(
@@ -422,16 +644,17 @@ def prepare_project(
         if profile is not None:
             _write_project_profile(project_root, profile)
         _run(("git", "init", "-q", "-b", "main", str(project_root)), stage="git-init", name=name, project_root=project_root)
-        _require_exact_repository(project_root, name)
-    else:
-        _require_exact_repository(project_root, name)
+    _require_exact_repository(project_root, name)
 
     bundle = viewer if viewer is not None else resolve_viewer_bundle(solid_command, extra_env=solid_env)
     return PreparedProject(
         name=name,
         project_root=project_root,
         model=Path("root"),
-        artifact_root=resolve_artifact_root(solid_command, project_root, name=name, extra_env=solid_env),
+        artifact_root=resolve_artifact_root(
+            solid_command, project_root, name=name, model=entry.model, extra_env=solid_env,
+        ),
+        project_model=entry.model,
         viewer_bundle=bundle.path,
         viewer_api_version=bundle.api_version,
         solid_command=_command(solid_command),
@@ -477,12 +700,13 @@ def build_project(
             raise
         return BuildOutcome(error=str(error))
     published = _publication_digest(snapshot) != before
-    if (published and not watched) or screenshot_revision(prepared.project_root) is None:
+    if (published and not watched) or screenshot_revision(prepared.project_root, prepared.project_model) is None:
         # A thumbnail is an optional presentation artifact.  The model build
         # has already succeeded; do not fold a renderer problem into it.
         refresh_project_screenshot(
             prepared.project_root,
             prepared.solid_command,
+            model=prepared.project_model,
             extra_environment=prepared.build_environment,
         )
     return BuildOutcome(published=published)

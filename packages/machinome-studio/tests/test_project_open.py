@@ -15,6 +15,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from floor.preparation import PreparationError
 from floor.sessions import Session, SessionRegistry
 
 
@@ -194,13 +195,13 @@ class ProjectOpenTest(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(session.build_task.done())
         self.assertTrue(session.model_building)
         self.assertEqual(list(session.broker.agents), ["builder"])
-        projects = {item["name"]: item for item in await self.registry.projects()}
+        projects = {item["path"]: item for item in await self.registry.entries()}
         self.assertTrue(projects["engine"]["model_building"])
 
         await self._settled_build(session)
 
         self.assertFalse(session.model_building)
-        projects = {item["name"]: item for item in await self.registry.projects()}
+        projects = {item["path"]: item for item in await self.registry.entries()}
         self.assertFalse(projects["engine"]["model_building"])
 
     async def test_an_unbuilt_project_waits_for_its_build_before_opening(self) -> None:
@@ -215,7 +216,7 @@ class ProjectOpenTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue((project / "screenshot.png").is_file())
 
     async def test_a_created_project_waits_for_its_build_before_opening(self) -> None:
-        await self.registry.create("new_engine", "builder")
+        await self.registry.create("", "new_engine", "builder")
         session = await self.registry.wait_until_settled("new_engine")
         self.assertIsNotNone(session, self.registry._failures.get("new_engine"))
         assert session is not None
@@ -335,11 +336,11 @@ class ProjectOpenTest(unittest.IsolatedAsyncioTestCase):
         (project / "root" / "__init__.py").write_text("# model\n")
         self.build_once(project)
 
-        await self.registry.request_open("loose")
+        with self.assertRaises(PreparationError) as raised:
+            await self.registry.request_open("loose")
 
-        self.assertIsNone(await self.registry.wait_until_settled("loose"))
-        self.assertIsNone(self.registry.by_project("loose"))
-        self.assertIn("repository", self.registry._failures["loose"])
+        self.assertIn("not a project repository", str(raised.exception))
+        self.assertIsNone(self.registry.by_entry("loose"))
         self.assertEqual(self.backends, [])
 
     async def _settled_build(self, session: Session) -> None:

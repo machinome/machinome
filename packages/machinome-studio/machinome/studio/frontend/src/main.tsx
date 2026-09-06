@@ -99,6 +99,8 @@ type ConversationEntry = {
 type ModelArtifact = { path: string; sequence: number };
 
 type Project = {
+  kind: "project";
+  path: string;
   name: string;
   openable: boolean;
   reason: string | null;
@@ -111,6 +113,15 @@ type Project = {
   screenshot_revision: string | null;
   model_building: boolean;
 };
+
+type Folder = {
+  kind: "folder";
+  path: string;
+  name: string;
+  projects: number;
+};
+
+type Entry = Project | Folder;
 
 type BackendStatus = {
   id: string;
@@ -134,11 +145,11 @@ type FileBuffer = SourceDocument & {
   missing: boolean;
 };
 
-function FunctionalModel({ artifact, reconnect, buildError, project, onAssemblyChange, onViewerChange }: {
+function FunctionalModel({ artifact, reconnect, buildError, session, onAssemblyChange, onViewerChange }: {
   artifact: ModelArtifact | null;
   reconnect: number;
   buildError: string | null;
-  project: string;
+  session: string;
   onAssemblyChange: (assembly: AssemblyNode | null) => void;
   onViewerChange: (viewer: ViewerHandle | null) => void;
 }) {
@@ -185,7 +196,7 @@ function FunctionalModel({ artifact, reconnect, buildError, project, onAssemblyC
         if (disposed || handle.current) return;
         try {
           if (!window.SolidNodeWidget) throw new Error("the framework viewer is unavailable");
-          const prefix = `/projects/${encodeURIComponent(project)}/artifacts/`;
+          const prefix = `/api/sessions/${encodeURIComponent(session)}/artifacts/`;
           const mountedHandle = await window.SolidNodeWidget.mount(target, `${prefix}viewer.json`, {
             baseUrl: prefix,
             animation: "toggle",
@@ -218,7 +229,7 @@ function FunctionalModel({ artifact, reconnect, buildError, project, onAssemblyC
         onAssemblyChange(null);
       });
     };
-  }, [project]);
+  }, [session]);
 
   useEffect(() => {
     if (artifact === null || artifact.sequence === applied.current) return;
@@ -561,7 +572,7 @@ function relativeTime(value: string | null) {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-function loadViewer(project: string) {
+function loadViewer(session: string) {
   if (window.SolidNodeWidget) return Promise.resolve();
   return new Promise<void>((resolve, reject) => {
     const existing = document.querySelector<HTMLScriptElement>("script[data-solid-node-viewer]");
@@ -572,15 +583,48 @@ function loadViewer(project: string) {
     }
     const script = document.createElement("script");
     script.dataset.solidNodeViewer = "true";
-    script.src = `/projects/${encodeURIComponent(project)}/viewer/solid-widget.js`;
+    script.src = `/api/sessions/${encodeURIComponent(session)}/viewer/solid-widget.js`;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error("the framework viewer is unavailable"));
     document.head.append(script);
   });
 }
 
-function Hub() {
-  const [projects, setProjects] = useState<Project[]>([]);
+function folderOf(path: string) {
+  const cut = path.lastIndexOf("/");
+  return cut < 0 ? "" : path.slice(0, cut);
+}
+
+function folderUrl(path: string) {
+  return path ? `/folders/${path.split("/").map(encodeURIComponent).join("/")}` : "/";
+}
+
+function projectUrl(path: string) {
+  return `/projects/${path.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+function Breadcrumb({ workingFolder, folder }: { workingFolder: string; folder: string }) {
+  const segments = folder ? folder.split("/") : [];
+  const root = workingFolder ? workingFolder.split("/").filter(Boolean).pop() ?? "projects" : "projects";
+  return <nav className="hub-breadcrumb" aria-label="Folder trail">
+    {segments.length === 0
+      ? <span aria-current="page">{root}</span>
+      : <button onClick={() => navigate("/")}>{root}</button>}
+    {segments.map((segment, index) => {
+      const path = segments.slice(0, index + 1).join("/");
+      const last = index === segments.length - 1;
+      return <span key={path}>
+        <span className="hub-breadcrumb-separator" aria-hidden="true">/</span>
+        {last
+          ? <span aria-current="page">{segment}</span>
+          : <button onClick={() => navigate(folderUrl(path))}>{segment}</button>}
+      </span>;
+    })}
+  </nav>;
+}
+
+function Hub({ folder }: { folder: string }) {
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [workingFolder, setWorkingFolder] = useState("");
   const [backends, setBackends] = useState<BackendStatus[]>([]);
   const [shopOpen, setShopOpen] = useState(false);
@@ -589,32 +633,47 @@ function Hub() {
   const [profile, setProfile] = useState<"builder" | "fordesmac" | "">("");
   const [formError, setFormError] = useState("");
   const pendingOpen = useRef<string | null>(null);
+  // A folder of declared models is a project repository, so it holds no
+  // directory to create a project in; the models are its entries.
+  const [inModelFolder, setInModelFolder] = useState(false);
 
   useEffect(() => {
+    setEntries([]);
+    setSheetOpen(false);
     void fetch("/api/backends").then((response) => response.json()).then((value: { backends: BackendStatus[] }) => setBackends(value.backends));
-    const source = new EventSource("/api/stream");
+    const source = new EventSource(`/api/stream?folder=${encodeURIComponent(folder)}`);
     source.onopen = () => setShopOpen(true);
     source.onerror = () => setShopOpen(false);
     source.addEventListener("snapshot", (message) => {
-      const snapshot = JSON.parse((message as MessageEvent<string>).data) as { working_folder: string; projects: Project[] };
+      const snapshot = JSON.parse((message as MessageEvent<string>).data) as {
+        working_folder: string;
+        folder: string;
+        models: boolean;
+        entries: Entry[];
+      };
       setWorkingFolder(snapshot.working_folder);
-      setProjects(snapshot.projects);
+      setInModelFolder(snapshot.models);
+      setEntries(snapshot.entries);
     });
     source.addEventListener("project", (message) => {
       const event = JSON.parse((message as MessageEvent<string>).data) as {
         kind: Project["state"] | "closed" | "screenshot";
         project: string;
+        folder: string;
         profile?: string;
         session_id?: string;
         reason?: string;
         screenshot_revision?: string | null;
         model_building?: boolean;
       };
-      setProjects((previous) => {
+      // A browser lists one folder; a change to an entry of another folder is
+      // none of its business.
+      if (event.folder !== folder) return;
+      setEntries((previous) => {
         if (event.kind === "screenshot") {
-          return previous.map((project) => project.name === event.project
-            ? { ...project, screenshot_revision: event.screenshot_revision ?? null }
-            : project);
+          return previous.map((entry) => entry.kind === "project" && entry.path === event.project
+            ? { ...entry, screenshot_revision: event.screenshot_revision ?? null }
+            : entry);
         }
         // A card is rebuilt from the previous one plus the fields named here,
         // so anything the event carries has to be named or the card silently
@@ -626,12 +685,14 @@ function Hub() {
           failure: event.reason ?? null,
           model_building: event.kind === "open" && (event.model_building ?? false),
         });
-        if (previous.some((project) => project.name === event.project)) {
-          return previous.map((project) => project.name === event.project ? update(project) : project);
+        if (previous.some((entry) => entry.kind === "project" && entry.path === event.project)) {
+          return previous.map((entry) => entry.kind === "project" && entry.path === event.project ? update(entry) : entry);
         }
         if (event.kind !== "creating") return previous;
         return [...previous, update({
-          name: event.project,
+          kind: "project",
+          path: event.project,
+          name: event.project.split("/").pop() ?? event.project,
           profile: event.profile ?? "fordesmac",
           openable: true,
           reason: null,
@@ -646,26 +707,32 @@ function Hub() {
       });
       if (event.kind === "open" && pendingOpen.current === event.project) {
         pendingOpen.current = null;
-        navigate(`/projects/${encodeURIComponent(event.project)}`);
+        navigate(projectUrl(event.project));
       } else if (event.kind === "failed" && pendingOpen.current === event.project) {
         pendingOpen.current = null;
       }
     });
     return () => source.close();
-  }, []);
+  }, [folder]);
 
   const openProject = async (project: Project) => {
     if (!project.openable || project.state === "creating" || project.state === "opening") return;
     if (project.state === "open") {
-      navigate(`/projects/${encodeURIComponent(project.name)}`);
+      navigate(projectUrl(project.path));
       return;
     }
-    pendingOpen.current = project.name;
-    setProjects((previous) => previous.map((item) => item.name === project.name ? { ...item, state: "opening", failure: null } : item));
-    const response = await fetch(`/api/projects/${encodeURIComponent(project.name)}/session`, { method: "POST" });
+    pendingOpen.current = project.path;
+    setEntries((previous) => previous.map((entry) => entry.kind === "project" && entry.path === project.path ? { ...entry, state: "opening", failure: null } : entry));
+    const response = await fetch("/api/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: project.path }),
+    });
     if (!response.ok) {
       const value = await response.json() as { detail?: string };
-      setProjects((previous) => previous.map((item) => item.name === project.name ? { ...item, state: "failed", failure: value.detail ?? "opening failed" } : item));
+      setEntries((previous) => previous.map((entry) => entry.kind === "project" && entry.path === project.path
+        ? { ...entry, state: "failed", failure: value.detail ?? "opening failed" }
+        : entry));
     }
   };
 
@@ -680,33 +747,37 @@ function Hub() {
       setFormError("Choose a runtime profile.");
       return;
     }
-    pendingOpen.current = name;
+    const path = folder ? `${folder}/${name}` : name;
+    pendingOpen.current = path;
     const optimistic: Project = {
-      name, profile, openable: true, reason: null, branch: "main", last_commit: null,
-      state: "creating", session_id: null, failure: null, screenshot_revision: null,
-      model_building: false,
+      kind: "project", path, name, profile, openable: true, reason: null, branch: "main",
+      last_commit: null, state: "creating", session_id: null, failure: null,
+      screenshot_revision: null, model_building: false,
     };
-    setProjects((previous) => [...previous.filter((item) => item.name !== name), optimistic]);
+    setEntries((previous) => [...previous.filter((entry) => entry.path !== path), optimistic]);
     setSheetOpen(false);
     const response = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, profile }),
+      body: JSON.stringify({ folder, name, profile }),
     });
     if (!response.ok) {
       const value = await response.json() as { detail?: string };
       setFormError(value.detail ?? "The project could not be created.");
       pendingOpen.current = null;
-      setProjects((previous) => previous.filter((item) => item.name !== name));
+      setEntries((previous) => previous.filter((entry) => entry.path !== path));
       setSheetOpen(true);
       return;
     }
     const accepted = await response.json() as { state: "opening" | "open"; session_id?: string };
     if (accepted.state === "open") {
       pendingOpen.current = null;
-      navigate(`/projects/${encodeURIComponent(name)}`);
+      navigate(projectUrl(path));
     }
   };
+
+  const projects = entries.filter((entry): entry is Project => entry.kind === "project");
+  const creatable = !inModelFolder;
 
   return <main className={`hub-shell ${sheetOpen ? "sheet-visible" : ""}`}>
     <header className="workspace-titlebar">
@@ -717,7 +788,7 @@ function Hub() {
       <aside className="hub-sidebar">
         <section className="folder-card">
           <span>Working folder</span>
-          <strong>{workingFolder || "Loading…"}</strong>
+          <strong>{workingFolder || "Loading…"}{folder ? `/${folder}` : ""}</strong>
           <small>{projects.length} {projects.length === 1 ? "project" : "projects"}</small>
         </section>
         <section className="backend-group">
@@ -729,34 +800,45 @@ function Hub() {
         </section>
       </aside>
       <section className="project-area">
+        <Breadcrumb workingFolder={workingFolder} folder={folder} />
         <header className="project-heading">
-          <div><h1>Projects</h1><p>Open a project or start something new.</p></div>
-          <button className="primary-button" onClick={() => setSheetOpen(true)}>New project</button>
+          <div><h1>{folder ? folder.split("/").pop() : "Projects"}</h1><p>{inModelFolder ? "Open one of this project's models." : "Open a project or start something new."}</p></div>
+          {creatable ? <button className="primary-button" onClick={() => setSheetOpen(true)}>New project</button> : null}
         </header>
-        {projects.length === 0 ? <p className="hub-empty">No projects yet. Create one to begin.</p> : null}
+        {entries.length === 0 ? <p className="hub-empty">{folder ? "This folder is empty." : "No projects yet. Create one to begin."}</p> : null}
         <div className="project-grid">
-          {projects.map((project) => <button
-            className={`project-card ${project.openable ? "" : "unopenable"}`}
-            key={project.name}
-            disabled={!project.openable}
-            onClick={() => void openProject(project)}
-          >
-            <span className="project-preview">
-              <span className="project-preview-placeholder">model preview</span>
-              {project.screenshot_revision === null ? null : <img
-                alt={`${project.name} model preview`}
-                src={`/projects/${encodeURIComponent(project.name)}/screenshot.png?revision=${encodeURIComponent(project.screenshot_revision)}`}
-                onError={(event) => { event.currentTarget.hidden = true; }}
-              />}
-            </span>
-            <span className="project-card-body">
-              <span className="project-name"><strong>{project.name}</strong><i data-state={project.state} /></span>
-              <span className="project-meta">{project.state} · {project.profile} · {relativeTime(project.last_commit)}</span>
-              {project.model_building ? <span className="project-building">Bringing the model up to date…</span> : null}
-              {project.reason || project.failure ? <span className="project-reason">{project.failure ?? project.reason}</span> : null}
-            </span>
-          </button>)}
-          <button className="new-project-tile" onClick={() => setSheetOpen(true)}>＋<span>New project</span></button>
+          {entries.map((entry) => entry.kind === "folder"
+            ? <button className="project-card folder" key={entry.path} onClick={() => navigate(folderUrl(entry.path))}>
+                <span className="project-preview">
+                  <span className="project-preview-placeholder" aria-hidden="true">folder</span>
+                </span>
+                <span className="project-card-body">
+                  <span className="project-name"><strong>{entry.name}</strong></span>
+                  <span className="project-meta">{entry.projects} {entry.projects === 1 ? "project" : "projects"}</span>
+                </span>
+              </button>
+            : <button
+              className={`project-card ${entry.openable ? "" : "unopenable"}`}
+              key={entry.path}
+              disabled={!entry.openable}
+              onClick={() => void openProject(entry)}
+            >
+              <span className="project-preview">
+                <span className="project-preview-placeholder">model preview</span>
+                {entry.screenshot_revision === null ? null : <img
+                  alt={`${entry.name} model preview`}
+                  src={`/api/screenshot?path=${encodeURIComponent(entry.path)}&revision=${encodeURIComponent(entry.screenshot_revision)}`}
+                  onError={(event) => { event.currentTarget.hidden = true; }}
+                />}
+              </span>
+              <span className="project-card-body">
+                <span className="project-name"><strong>{entry.name}</strong><i data-state={entry.state} /></span>
+                <span className="project-meta">{entry.state} · {entry.profile} · {relativeTime(entry.last_commit)}</span>
+                {entry.model_building ? <span className="project-building">Bringing the model up to date…</span> : null}
+                {entry.reason || entry.failure ? <span className="project-reason">{entry.failure ?? entry.reason}</span> : null}
+              </span>
+            </button>)}
+          {creatable ? <button className="new-project-tile" onClick={() => setSheetOpen(true)}>＋<span>New project</span></button> : null}
         </div>
       </section>
     </div>
@@ -772,7 +854,7 @@ function Hub() {
         </div></fieldset>
         <p className="runtime-note">Agents use project-declared runtime selections or the profile's Claude defaults.</p>
         {formError ? <p className="form-error" role="alert">{formError}</p> : null}
-        <footer><span>stored in the working folder</span><div><button type="button" className="outline-button" onClick={() => setSheetOpen(false)}>Cancel</button><button className="primary-button">Create and open</button></div></footer>
+        <footer><span>stored in {folder || "the working folder"}</span><div><button type="button" className="outline-button" onClick={() => setSheetOpen(false)}>Cancel</button><button className="primary-button">Create and open</button></div></footer>
       </form>
     </div> : null}
   </main>;
@@ -1436,8 +1518,7 @@ function millimetres(size: PrintedPiece["size"]): string {
   return `${size.map((value) => Number(value.toFixed(1))).join(" × ")} mm`;
 }
 
-function BuildWorkspace({ project, sessionId, revision, buildError, visible }: {
-  project: string;
+function BuildWorkspace({ sessionId, revision, buildError, visible }: {
   sessionId: string | null;
   revision: number;
   buildError: string | null;
@@ -1454,9 +1535,10 @@ function BuildWorkspace({ project, sessionId, revision, buildError, visible }: {
   }, [visible]);
 
   useEffect(() => {
+    if (!sessionId) return;
     const controller = new AbortController();
     setLoading(true);
-    void fetch(`/projects/${encodeURIComponent(project)}/artifacts/viewer.json`, { signal: controller.signal })
+    void fetch(`/api/sessions/${encodeURIComponent(sessionId)}/artifacts/viewer.json`, { signal: controller.signal })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("No completed piece publication is available.")))
       .then((document: unknown) => {
         const next = parsePieces(document);
@@ -1470,7 +1552,7 @@ function BuildWorkspace({ project, sessionId, revision, buildError, visible }: {
       })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [project, revision]);
+  }, [sessionId, revision]);
 
   const selected = pieces.find((piece) => piece.id === selectedId) ?? null;
   const fit = selected ? fitsBuildEnvelope(selected) : false;
@@ -1512,7 +1594,7 @@ function BuildWorkspace({ project, sessionId, revision, buildError, visible }: {
             <span>Copies to print</span><strong>{selected.count}</strong><small>one representative shown</small>
           </div>
           {activated ? <Suspense fallback={<p className="empty build-empty">Loading 3D inspection…</p>}>
-            <BuildPieceViewer modelUrl={artifactUrl(project, canonicalModel(selected))} pieceName={selected.name} />
+            <BuildPieceViewer modelUrl={artifactUrl(sessionId ?? "", canonicalModel(selected))} pieceName={selected.name} />
           </Suspense> : null}
         </> : <p className="empty build-empty">{loading ? "Loading piece inventory…" : inventoryError ?? "No distinct pieces are published."}</p>}
       </div>
@@ -1528,7 +1610,7 @@ function BuildWorkspace({ project, sessionId, revision, buildError, visible }: {
   </>;
 }
 
-function Workspace({ project }: { project: string }) {
+function Workspace({ path: entryPath }: { path: string }) {
   const [activeArea, setActiveArea] = useState<"model" | "code" | "agents" | "build">("model");
   const [run, setRun] = useState<Run | null>(null);
   const [shopOpen, setShopOpen] = useState(false);
@@ -1543,6 +1625,9 @@ function Workspace({ project }: { project: string }) {
   const [requestedOpen, setRequestedOpen] = useState<{ path: string; nonce: number } | null>(null);
   const streamOpened = useRef(false);
   const latestEvent = useRef(0);
+  // The live-stream handlers are built once per open, before the session id
+  // reaches state, so they read it from here.
+  const session = useRef<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [viewerReady, setViewerReady] = useState(false);
   const [viewerHandle, setViewerHandle] = useState<ViewerHandle | null>(null);
@@ -1551,16 +1636,22 @@ function Workspace({ project }: { project: string }) {
   useEffect(() => {
     let source: EventSource | null = null;
     let cancelled = false;
-    void Promise.all([
-      fetch("/api/projects").then((response) => response.json()) as Promise<{ projects: Project[] }>,
-      loadViewer(project).then(() => true).catch(() => false),
-    ]).then(([inventory, viewer]) => {
+    void fetch(`/api/entries?folder=${encodeURIComponent(folderOf(entryPath))}`)
+      .then((response) => response.json() as Promise<{ entries: Entry[] }>)
+      .then(async (inventory) => {
       if (cancelled) return;
-      const selected = inventory.projects.find((item) => item.name === project);
+      const selected = inventory.entries.find(
+        (item): item is Project => item.kind === "project" && item.path === entryPath,
+      );
       if (!selected?.session_id || selected.state !== "open") {
-        navigate("/");
+        navigate(folderUrl(folderOf(entryPath)));
         return;
       }
+      // The viewer bundle is served through the session, so it can only be
+      // asked for once the session is known.
+      const viewer = await loadViewer(selected.session_id).then(() => true).catch(() => false);
+      if (cancelled) return;
+      session.current = selected.session_id;
       setSessionId(selected.session_id);
       setViewerReady(viewer);
       source = new EventSource(`/api/sessions/${encodeURIComponent(selected.session_id)}/stream`);
@@ -1575,9 +1666,13 @@ function Workspace({ project }: { project: string }) {
     };
       source.onerror = () => {
         setShopOpen(false);
-        void fetch("/api/projects").then((response) => response.json()).then((value: { projects: Project[] }) => {
-          if (!value.projects.some((item) => item.name === project && item.state === "open")) navigate("/");
-        });
+        void fetch(`/api/entries?folder=${encodeURIComponent(folderOf(entryPath))}`)
+          .then((response) => response.json())
+          .then((value: { entries: Entry[] }) => {
+            if (!value.entries.some((item) => item.kind === "project" && item.path === entryPath && item.state === "open")) {
+              navigate(folderUrl(folderOf(entryPath)));
+            }
+          });
       };
     source.addEventListener("snapshot", (message) => {
       const snapshot = JSON.parse((message as MessageEvent<string>).data) as {
@@ -1613,7 +1708,7 @@ function Workspace({ project }: { project: string }) {
           setModelArtifact({ path: artifact, sequence: event.event.sequence });
           setBuildRevision((current) => current + 1);
         } else if (artifact === "errors.json") {
-          void fetch(`/projects/${encodeURIComponent(project)}/artifacts/errors.json`)
+          void fetch(`/api/sessions/${encodeURIComponent(session.current ?? "")}/artifacts/errors.json`)
             .then((response) => response.ok ? response.text() : Promise.reject(new Error("the model could not be rebuilt")))
             .then((error) => setModelBuildError(error || "the model could not be rebuilt"))
             .catch(() => setModelBuildError("the model could not be rebuilt"));
@@ -1669,7 +1764,7 @@ function Workspace({ project }: { project: string }) {
       cancelled = true;
       source?.close();
     };
-  }, [project]);
+  }, [entryPath]);
 
   const submitUserMessage = async (text: string) => {
     if (!sessionId) return;
@@ -1696,7 +1791,7 @@ function Workspace({ project }: { project: string }) {
       <header className="workspace-titlebar">
         <div className="workspace-title">
           <span className="shop-mark" aria-hidden="true" />
-          <span>LibreSolid Studio / {project}</span>
+          <span>LibreSolid Studio / {entryPath}</span>
         </div>
         <div className="title-actions"><p className="workspace-run" aria-live="polite">{shopOpen && run ? `${run.profile_id} · open` : `Shop is ${shopOpen ? "open" : "closed"}`}</p><button className="close-project" onClick={() => void closeProject()}>Close project</button></div>
       </header>
@@ -1731,7 +1826,7 @@ function Workspace({ project }: { project: string }) {
                 Bringing the model up to date…
               </p>
             ) : null}
-            {viewerReady ? <FunctionalModel artifact={modelArtifact} reconnect={modelReconnect} buildError={modelBuildError} project={project} onAssemblyChange={setAssembly} onViewerChange={setViewerHandle} /> : <p className="empty">no completed build yet</p>}
+            {viewerReady ? <FunctionalModel artifact={modelArtifact} reconnect={modelReconnect} buildError={modelBuildError} session={sessionId ?? ""} onAssemblyChange={setAssembly} onViewerChange={setViewerHandle} /> : <p className="empty">no completed build yet</p>}
           </div>
         </section>
         <CodeWorkspace
@@ -1751,7 +1846,6 @@ function Workspace({ project }: { project: string }) {
           }}
         />
         <BuildWorkspace
-          project={project}
           sessionId={sessionId}
           revision={buildRevision}
           buildError={modelBuildError}
@@ -1783,8 +1877,12 @@ function App() {
     window.addEventListener("popstate", update);
     return () => window.removeEventListener("popstate", update);
   }, []);
-  const match = /^\/projects\/([^/]+)$/.exec(path);
-  return match ? <Workspace project={decodeURIComponent(match[1])} /> : <Hub />;
+  const project = /^\/projects\/(.+)$/.exec(path);
+  if (project) {
+    return <Workspace path={project[1].split("/").map(decodeURIComponent).join("/")} />;
+  }
+  const folder = /^\/folders\/(.+)$/.exec(path);
+  return <Hub folder={folder ? folder[1].split("/").map(decodeURIComponent).join("/") : ""} />;
 }
 
 createRoot(document.getElementById("root")!).render(

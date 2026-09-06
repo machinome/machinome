@@ -906,13 +906,13 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         subscriber, _snapshot = await self.registry.subscribe_hub()
         try:
             with patch("floor.sessions.prepare_project", side_effect=slow_prepare):
-                response = await self.registry.create("new_project", "builder")
+                response = await self.registry.create("", "new_project", "builder")
                 self.assertEqual(response, {"state": "opening"})
                 self.assertTrue(await asyncio.to_thread(started.wait, 2))
 
                 event = await asyncio.wait_for(subscriber.get(), timeout=2)
-                self.assertEqual(event, {"kind": "creating", "project": "new_project", "profile": "builder"})
-                projects = {item["name"]: item for item in await self.registry.projects()}
+                self.assertEqual(event, {"kind": "creating", "project": "new_project", "folder": "", "profile": "builder"})
+                projects = {item["path"]: item for item in await self.registry.entries()}
                 self.assertEqual(projects["new_project"]["state"], "creating")
                 self.assertEqual(projects["new_project"]["profile"], "builder")
                 self.assertFalse((self.home / "new_project").exists())
@@ -929,7 +929,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
             await self.registry.request_open("engine")
             self.assertIsNone(await self.registry.wait_until_settled("engine"))
         prepare.assert_not_called()
-        self.assertIsNone(self.registry.by_project("engine"))
+        self.assertIsNone(self.registry.by_entry("engine"))
         self.assertIn("cannot be loaded", self.registry._failures["engine"])
 
     async def test_preparation_and_agent_start_failures_leave_no_partial_session(self) -> None:
@@ -937,7 +937,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         with patch("floor.sessions.prepare_project", side_effect=failure):
             await self.registry.request_open("engine")
             self.assertIsNone(await self.registry.wait_until_settled("engine"))
-        self.assertIsNone(self.registry.by_project("engine"))
+        self.assertIsNone(self.registry.by_entry("engine"))
 
         class BrokenBackend:
             events = _empty_events()
@@ -951,7 +951,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         self.registry.backend_factory = lambda *_args, **_kwargs: BrokenBackend()
         await self.registry.request_open("engine")
         self.assertIsNone(await self.registry.wait_until_settled("engine"))
-        self.assertIsNone(self.registry.by_project("engine"))
+        self.assertIsNone(self.registry.by_entry("engine"))
         self.assertIn("backend start failed", self.registry._failures["engine"])
 
 

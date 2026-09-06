@@ -126,6 +126,7 @@ class ShopOrchestrator:
         profile: RuntimeProfile,
         shop_root: Path,
         active_project: Path,
+        active_model: str | None = None,
         backend_resolver: Callable[[str], Awaitable[AgentBackend]] | None = None,
     ) -> None:
         self.broker = broker
@@ -150,6 +151,7 @@ class ShopOrchestrator:
         self.backend_resolver = backend_resolver
         self.shop_root = shop_root.resolve()
         self.active_project = active_project.resolve()
+        self.active_model = active_model
         self.roles: dict[str, RoleRuntime] = {}
         self._runtimes = {
             agent.id: agent.runtime for agent in self.profile.agents
@@ -399,6 +401,7 @@ class ShopOrchestrator:
         return RoleContext(
             shop_root=str(self.shop_root),
             active_project=str(self.active_project),
+            active_model=self.active_model,
             agent=agent,
             profile_id=self.profile.id,
             user_label=self.profile.user_label,

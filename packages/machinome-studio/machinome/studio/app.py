@@ -23,7 +23,7 @@ from watchdog.observers import Observer
 from .backends.base import AgentActivity
 from .build_package import BuildPackageError, open_build_package, package_filename
 from .profiles import BackendRuntime, RuntimeProfile, load_profile, resolve_profile_runtime
-from .preparation import PreparationError, verified_project_root
+from .preparation import PreparationError, resolve_entry, verified_project_root
 from .screenshots import is_safe_screenshot, screenshot_path
 from .source_files import SourceConflict, SourceUnavailable
 from .watcher import ArtifactWatcher, ModelWatcher
@@ -157,6 +157,11 @@ class EnvelopeInput(BaseModel):
 class ProjectInput(BaseModel):
     name: str
     profile: str | None = None
+    folder: str = ""
+
+
+class OpenInput(BaseModel):
+    path: str
 
 
 class SourceSaveInput(BaseModel):
@@ -772,32 +777,38 @@ def create_app(working_folder: Path, *, registry: object) -> FastAPI:
         except KeyError as error:
             raise HTTPException(status_code=404, detail="unknown session") from error
 
-    def project_session(name: str):
-        value = registry.by_project(name)  # type: ignore[attr-defined]
-        if value is None:
-            raise HTTPException(status_code=404, detail="project is not open")
-        return value
 
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "open"}
 
-    @app.get("/api/projects")
-    async def projects() -> dict[str, object]:
-        return {"working_folder": str(working_folder.resolve()), "projects": await registry.projects()}  # type: ignore[attr-defined]
+    @app.get("/api/entries")
+    async def entries(folder: str = "") -> dict[str, object]:
+        """Everything one folder of the working folder holds."""
+        try:
+            values = await registry.entries(folder)  # type: ignore[attr-defined]
+        except (PreparationError, ValueError) as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        return {
+            "working_folder": str(working_folder.resolve()),
+            "folder": folder,
+            "models": registry.lists_models(folder),  # type: ignore[attr-defined]
+            "entries": values,
+        }
 
     @app.post("/api/projects")
     async def create_project(input: ProjectInput) -> JSONResponse:
         try:
-            value = await registry.create(input.name, input.profile)  # type: ignore[attr-defined]
+            value = await registry.create(input.folder, input.name, input.profile)  # type: ignore[attr-defined]
         except (ValueError, RuntimeError) as error:
             raise HTTPException(status_code=409, detail=str(error)) from error
         return JSONResponse(value, status_code=202)
 
-    @app.post("/api/projects/{name}/session")
-    async def open_project(name: str) -> JSONResponse:
+    @app.post("/api/sessions")
+    async def open_project(input: OpenInput) -> JSONResponse:
+        """Open one entry -- a project, or one model a project declares."""
         try:
-            value = await registry.request_open(name)  # type: ignore[attr-defined]
+            value = await registry.request_open(input.path)  # type: ignore[attr-defined]
         except (ValueError, RuntimeError) as error:
             raise HTTPException(status_code=409, detail=str(error)) from error
         return JSONResponse(value, status_code=200 if value.get("state") == "open" else 202)
@@ -817,26 +828,36 @@ def create_app(working_folder: Path, *, registry: object) -> FastAPI:
     async def detect_backends() -> dict[str, object]:
         return await backends()
 
-    @app.get("/projects/{name}/viewer/solid-widget.js")
-    async def viewer(name: str) -> FileResponse:
-        bundle = project_session(name).prepared.viewer_bundle
+    @app.get("/api/sessions/{session_id}/viewer/solid-widget.js")
+    async def viewer(session_id: str) -> FileResponse:
+        bundle = session(session_id).prepared.viewer_bundle
         if bundle is None or not bundle.is_file():
             raise HTTPException(status_code=404, detail="no framework viewer is available")
         return FileResponse(bundle, media_type="text/javascript")
 
-    @app.get("/projects/{name}/screenshot.png")
-    async def project_screenshot(name: str) -> FileResponse:
+    @app.get("/api/screenshot")
+    async def project_screenshot(path: str) -> FileResponse:
+        """One entry's committed preview, open or closed.
+
+        The entry path may name a model, so the preview served is that
+        model's own and never a sibling's.
+        """
         try:
-            root = await asyncio.to_thread(verified_project_root, name, working_folder)
+            entry = await asyncio.to_thread(resolve_entry, path, working_folder)
+            await asyncio.to_thread(verified_project_root, path, working_folder)
         except (PreparationError, ValueError) as error:
             raise HTTPException(status_code=404, detail="unknown project screenshot") from error
-        if not is_safe_screenshot(root):
+        if not is_safe_screenshot(entry.project_root, entry.model):
             raise HTTPException(status_code=404, detail="unknown project screenshot")
-        return FileResponse(screenshot_path(root), media_type="image/png", headers={"Cache-Control": "no-cache"})
+        return FileResponse(
+            screenshot_path(entry.project_root, entry.model),
+            media_type="image/png",
+            headers={"Cache-Control": "no-cache"},
+        )
 
-    @app.get("/projects/{name}/artifacts/{artifact_path:path}")
-    async def artifact(name: str, artifact_path: str) -> FileResponse:
-        build_root = project_session(name).artifact_root.resolve()
+    @app.get("/api/sessions/{session_id}/artifacts/{artifact_path:path}")
+    async def artifact(session_id: str, artifact_path: str) -> FileResponse:
+        build_root = session(session_id).artifact_root.resolve()
         candidate = (build_root / artifact_path).resolve()
         if build_root not in candidate.parents and candidate != build_root:
             raise HTTPException(status_code=404, detail="unknown artifact")
@@ -1056,9 +1077,9 @@ def create_app(working_folder: Path, *, registry: object) -> FastAPI:
         return live_state_stream(request, session(session_id).broker)
 
     @app.get("/api/stream")
-    async def hub_stream(request: Request) -> StreamingResponse:
+    async def hub_stream(request: Request, folder: str = "") -> StreamingResponse:
         async def events() -> AsyncIterator[str]:
-            subscriber, snapshot = await registry.subscribe_hub()  # type: ignore[attr-defined]
+            subscriber, snapshot = await registry.subscribe_hub(folder)  # type: ignore[attr-defined]
             try:
                 yield f"event: snapshot\ndata: {json.dumps(snapshot)}\n\n"
                 while not await request.is_disconnected():

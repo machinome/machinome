@@ -18,6 +18,8 @@ from .backends import create_backend
 from .backends.base import AgentBackend
 from .orchestrator import LocalBrokerControl, ShopOrchestrator, _route_backend_events
 from .preparation import (
+    FolderListing,
+    HubEntry,
     PreparedProject,
     PreparationError,
     ProjectRuntimeError,
@@ -26,10 +28,12 @@ from .preparation import (
     commit_new_project,
     default_solid_command,
     has_complete_publication,
-    list_projects,
+    list_folder,
     prepare_project,
+    is_repository_root,
     read_project_runtime,
-    resolve_project,
+    resolve_entry,
+    resolve_folder,
     resolve_viewer_bundle,
     validate_new_project,
 )
@@ -241,6 +245,7 @@ class Session:
             refresh_project_screenshot,
             self.project_root,
             self.prepared.solid_command,
+            model=self.prepared.project_model,
             extra_environment=self.prepared.build_environment,
         )
         if result.updated and result.revision is not None and self.on_screenshot_changed is not None:
@@ -296,7 +301,7 @@ class SessionRegistry:
         self.backend_factory = backend_factory
         self.start_agents = start_agents
         self.settle_delay = settle_delay
-        self._by_project: dict[str, Session] = {}
+        self._by_entry: dict[str, Session] = {}
         self._by_id: dict[str, Session] = {}
         self._opening: dict[str, asyncio.Task[Session | None]] = {}
         self._provisional_profiles: dict[str, str] = {}
@@ -306,8 +311,8 @@ class SessionRegistry:
         self._viewer: ViewerBundle | None = None
         self._viewer_lock = asyncio.Lock()
 
-    def by_project(self, name: str) -> Session | None:
-        return self._by_project.get(name)
+    def by_entry(self, path: str) -> Session | None:
+        return self._by_entry.get(path)
 
     def by_id(self, session_id: str) -> Session | None:
         return self._by_id.get(session_id)
@@ -318,26 +323,33 @@ class SessionRegistry:
             raise KeyError(session_id)
         return session
 
-    async def projects(self) -> list[dict[str, object]]:
-        listings = await asyncio.to_thread(list_projects, self.working_folder)
+    async def entries(self, folder: str = "") -> list[dict[str, object]]:
+        """Everything the hub shows for one folder, with live state folded in."""
+        listings = await asyncio.to_thread(list_folder, self.working_folder, folder)
         values: list[dict[str, object]] = []
-        listed_names: set[str] = set()
+        listed_paths: set[str] = set()
         for listing in listings:
-            listed_names.add(listing.name)
-            session = self._by_project.get(listing.name)
-            provisional_profile = self._provisional_profiles.get(listing.name)
-            state = "open" if session is not None else "creating" if provisional_profile is not None else "opening" if listing.name in self._opening else "failed" if listing.name in self._failures else "closed"
+            if isinstance(listing, FolderListing):
+                values.append(listing.browser_value())
+                continue
+            path = listing.path
+            listed_paths.add(path)
+            session = self._by_entry.get(path)
+            provisional_profile = self._provisional_profiles.get(path)
+            state = "open" if session is not None else "creating" if provisional_profile is not None else "opening" if path in self._opening else "failed" if path in self._failures else "closed"
             value = listing.browser_value(state=state, session_id=session.id if session else None)
             if provisional_profile is not None:
                 value.update({"openable": True, "reason": None, "profile": provisional_profile})
-            value["failure"] = self._failures.get(listing.name)
+            value["failure"] = self._failures.get(path)
             value["model_building"] = session is not None and session.model_building
             values.append(value)
-        for name, profile in self._provisional_profiles.items():
-            if name in listed_names:
+        for path, profile in self._provisional_profiles.items():
+            if path in listed_paths or _folder_of(path) != folder:
                 continue
             values.append({
-                "name": name,
+                "kind": "project",
+                "path": path,
+                "name": path.rsplit("/", 1)[-1],
                 "openable": True,
                 "reason": None,
                 "profile": profile,
@@ -349,60 +361,93 @@ class SessionRegistry:
                 "screenshot_revision": None,
                 "model_building": False,
             })
-        values.sort(key=lambda value: str(value["name"]))
+        values.sort(key=lambda value: (value["kind"] != "folder", str(value["path"])))
         return values
 
-    async def hub_snapshot(self) -> dict[str, object]:
-        return {"working_folder": str(self.working_folder), "projects": await self.projects()}
+    async def hub_snapshot(self, folder: str = "") -> dict[str, object]:
+        return {
+            "working_folder": str(self.working_folder),
+            "folder": folder,
+            "models": await asyncio.to_thread(self.lists_models, folder),
+            "entries": await self.entries(folder),
+        }
 
-    async def subscribe_hub(self) -> tuple[asyncio.Queue[dict[str, object]], dict[str, object]]:
+    def lists_models(self, folder: str) -> bool:
+        """Whether this folder is a project, so its entries are its models.
+
+        A project holds no directory the maker may create a project in, so the
+        hub needs to know which kind of folder it is showing rather than
+        guessing from the cards.
+        """
+        if not folder:
+            return False
+        try:
+            return is_repository_root(resolve_folder(folder, self.working_folder))
+        except PreparationError:
+            return False
+
+    async def subscribe_hub(self, folder: str = "") -> tuple[asyncio.Queue[dict[str, object]], dict[str, object]]:
         subscriber: asyncio.Queue[dict[str, object]] = asyncio.Queue()
         self._hub_subscribers.add(subscriber)
-        return subscriber, await self.hub_snapshot()
+        return subscriber, await self.hub_snapshot(folder)
 
     def unsubscribe_hub(self, subscriber: asyncio.Queue[dict[str, object]]) -> None:
         self._hub_subscribers.discard(subscriber)
 
-    def publish_hub(self, kind: str, name: str, **details: object) -> None:
-        event = {"kind": kind, "project": name, **details}
+    def publish_hub(self, kind: str, path: str, **details: object) -> None:
+        """Tell every hub browser about one entry, naming the folder it is in.
+
+        A browser is listing one folder, so it needs the folder to decide
+        whether the change is its business at all.
+        """
+        event = {"kind": kind, "project": path, "folder": _folder_of(path), **details}
         for subscriber in tuple(self._hub_subscribers):
             subscriber.put_nowait(event)
 
-    async def request_open(self, name: str, *, create_profile: str | None = None) -> dict[str, object]:
-        resolve_project(name, self.working_folder)
+    async def request_open(
+        self,
+        path: str,
+        *,
+        entry: HubEntry | None = None,
+        create_profile: str | None = None,
+    ) -> dict[str, object]:
+        if entry is None:
+            entry = await asyncio.to_thread(resolve_entry, path, self.working_folder)
+        path = entry.path
         async with self._lock:
-            session = self._by_project.get(name)
+            session = self._by_entry.get(path)
             if session is not None:
                 return {"state": "open", "session_id": session.id}
-            if name in self._opening:
+            if path in self._opening:
                 return {"state": "opening"}
-            self._failures.pop(name, None)
-            task = asyncio.create_task(self._open(name, create_profile=create_profile))
-            self._opening[name] = task
+            self._failures.pop(path, None)
+            task = asyncio.create_task(self._open(entry, create_profile=create_profile))
+            self._opening[path] = task
             if create_profile is not None:
-                self._provisional_profiles[name] = create_profile
-                self.publish_hub("creating", name, profile=create_profile)
+                self._provisional_profiles[path] = create_profile
+                self.publish_hub("creating", path, profile=create_profile)
             else:
-                self.publish_hub("opening", name)
+                self.publish_hub("opening", path)
             return {"state": "opening"}
 
-    async def create(self, name: str, profile: str | None) -> dict[str, object]:
+    async def create(self, folder: str, name: str, profile: str | None) -> dict[str, object]:
         if profile is None:
             raise ProfileError("profile is required")
         load_profile(profile, shop_root=self.shop_root)
-        validate_new_project(name, self.working_folder)
-        return await self.request_open(name, create_profile=profile)
+        entry = validate_new_project(folder, name, self.working_folder)
+        return await self.request_open(entry.path, entry=entry, create_profile=profile)
 
-    async def wait_until_settled(self, name: str) -> Session | None:
-        task = self._opening.get(name)
+    async def wait_until_settled(self, path: str) -> Session | None:
+        task = self._opening.get(path)
         if task is not None:
             return await task
-        return self._by_project.get(name)
+        return self._by_entry.get(path)
 
-    async def _open(self, name: str, *, create_profile: str | None) -> Session | None:
+    async def _open(self, entry: HubEntry, *, create_profile: str | None) -> Session | None:
         session: Session | None = None
+        name = entry.path
         try:
-            selection = await asyncio.to_thread(read_project_runtime, name, project_home=self.working_folder)
+            selection = await asyncio.to_thread(read_project_runtime, entry.project_root)
             profile = await asyncio.to_thread(
                 lambda: resolve_profile_runtime(
                     load_profile(create_profile, shop_root=self.shop_root, selection=selection), selection
@@ -410,8 +455,7 @@ class SessionRegistry:
             )
             prepared = await asyncio.to_thread(
                 prepare_project,
-                name,
-                project_home=self.working_folder,
+                entry,
                 solid_command=self.solid_command,
                 profile=create_profile,
                 viewer=await self._viewer_bundle(),
@@ -443,7 +487,7 @@ class SessionRegistry:
                 await self._start_orchestrator(session)
             await session.start_watchers(settle_delay=self.settle_delay)
             async with self._lock:
-                self._by_project[name] = session
+                self._by_entry[name] = session
                 self._by_id[session.id] = session
             self.publish_hub("open", name, session_id=session.id, model_building=session.model_building)
             if present_early:
@@ -515,6 +559,7 @@ class SessionRegistry:
                     backend_name,
                     shop_root=self.shop_root,
                     project=session.project_root,
+                    model=session.prepared.project_model,
                     broker_url=self.broker_url,
                     command_overrides=self.backend_commands,
                     solid_command=self.solid_command,
@@ -560,6 +605,7 @@ class SessionRegistry:
             profile=session.profile,
             shop_root=self.shop_root,
             active_project=session.project_root,
+            active_model=session.prepared.project_model,
             backend_resolver=resolve_backend,
         )
         session.orchestrator = orchestrator
@@ -581,7 +627,7 @@ class SessionRegistry:
             if session is None:
                 return
             self._by_id.pop(session.id, None)
-            self._by_project.pop(session.name, None)
+            self._by_entry.pop(session.name, None)
         await session.close()
         self.publish_hub("closed", session.name)
 
@@ -591,8 +637,8 @@ class SessionRegistry:
             task.cancel()
         if opening:
             await asyncio.gather(*opening, return_exceptions=True)
-        sessions = tuple(self._by_project.values())
-        self._by_project.clear()
+        sessions = tuple(self._by_entry.values())
+        self._by_entry.clear()
         self._by_id.clear()
         self._provisional_profiles.clear()
         for session in sessions:
@@ -633,3 +679,9 @@ def _selected_runtime(
             provider=provider,
         )
     raise ValueError(f"unknown backend: {backend}")
+
+
+def _folder_of(path: str) -> str:
+    """The folder one entry path belongs to; empty for the working folder."""
+    head, _, _ = path.rpartition("/")
+    return head

@@ -23,6 +23,7 @@ def create_backend(
     *,
     shop_root: Path,
     project: Path | None = None,
+    model: str | None = None,
     broker_url: str = "http://127.0.0.1:9000",
     command: str | None = None,
     command_overrides: Mapping[str, str] | None = None,
@@ -46,6 +47,7 @@ def create_backend(
     arguments: dict[str, Any] = {
         "shop_root": shop_root,
         "project": project,
+        "model": model,
         "broker_url": broker_url,
         "command": backend_command,
         "solid_command": solid_command,

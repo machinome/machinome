@@ -9,24 +9,25 @@ and closed independently within one running shop.
 Opening a project SHALL start a session for it: a prepared project repository,
 a model build, a watch on that project's sources, a conversation, and the
 standing agents its profile declares. A session SHALL belong to exactly one
-project and SHALL be the only thing through which work on that project happens.
+openable hub entry — a project repository together with the one model that entry
+names — and SHALL be the only thing through which work on that entry happens.
 
 The maker SHALL be told that opening is under way while it is, and SHALL be told
 the outcome when it finishes.
 
-When the project already holds a complete, valid publication, the session SHALL
-become available on that publication without waiting for its build to finish:
-the agents start, the conversation is available, and the model is shown from
-what is already published. The build SHALL still run, and the maker SHALL be
+When the entry's model already holds a complete, valid publication, the session
+SHALL become available on that publication without waiting for its build to
+finish: the agents start, the conversation is available, and the model is shown
+from what is already published. The build SHALL still run, and the maker SHALL be
 told that the model is being brought up to date until it completes, so a
 publication that is not yet current is never presented as settled. Its result
 SHALL reach the maker through the same live model channel a rebuild uses, and a
 build failure SHALL be reported rather than swallowed because the session
 opened first.
 
-When the project holds no complete, valid publication — it is being created, or
-has never been built — opening SHALL wait for the build, because there is
-nothing to present.
+When the entry's model holds no complete, valid publication — it is being
+created, or has never been built — opening SHALL wait for the build, because
+there is nothing to present.
 
 The repository boundary SHALL be verified before any agent starts, whether or
 not the build is awaited.
@@ -34,6 +35,10 @@ not the build is awaited.
 #### Scenario: The maker opens a project
 - **WHEN** the maker opens a listed openable project
 - **THEN** the shop reports that the project is opening, prepares it, and reports it as open with its profile's agents present and its conversation available
+
+#### Scenario: The maker opens one model of a multi-model project
+- **WHEN** the maker opens a model listed inside a multi-model project
+- **THEN** the session prepares that repository, builds and watches that model, and presents that model's publication
 
 #### Scenario: The maker watches a project open
 - **WHEN** a project is opening and the maker is looking at the hub
@@ -60,11 +65,13 @@ not the build is awaited.
 - **THEN** opening waits for the build, because there is no publication to present
 
 ### Requirement: A project has at most one session
-The shop SHALL hold at most one session per project. A request to open a project
-that is already open SHALL join that existing session rather than start a second
-one, however many browsers ask and whatever they were doing before.
+The shop SHALL hold at most one session per openable hub entry. A request to
+open an entry that is already open SHALL join that existing session rather than
+start a second one, however many browsers ask and whatever they were doing
+before.
 
-The shop SHALL NOT limit how many different projects are open at once.
+The shop SHALL NOT limit how many different entries are open at once, including
+two models of one project repository.
 
 #### Scenario: A second browser opens an open project
 - **WHEN** a maker opens a project that already has a session
@@ -73,6 +80,10 @@ The shop SHALL NOT limit how many different projects are open at once.
 #### Scenario: Several projects are open at once
 - **WHEN** the maker opens several different projects
 - **THEN** each has its own session with its own agents, conversation, model, and build, all running at the same time
+
+#### Scenario: Two models of one repository are open at once
+- **WHEN** the maker opens two models declared by the same project repository
+- **THEN** each model has its own session, agents, conversation, build, and watch, and neither joins nor closes the other
 
 ### Requirement: An agent reaches only its own session
 Every session SHALL have an identity distinct from every other session, past or
@@ -133,4 +144,21 @@ present an earlier session's conversation or work as belonging to a new one.
 #### Scenario: The shop stops with projects open
 - **WHEN** the shop stops while projects are open
 - **THEN** every session ends, and after the shop starts again the hub lists those projects as not open
+
+### Requirement: A session tells its agents which model it owns
+
+When a session belongs to one model of a multi-model project, the shop SHALL
+give that session's agents the name of that model without their having to
+determine it, and every model build, model test, and published artifact the
+session performs or serves SHALL be that model's. Two sessions on one repository
+SHALL share only what the repository itself holds; neither SHALL build, publish,
+or present the other's model.
+
+#### Scenario: An agent works on its own model
+- **WHEN** an agent of a session opened on one model of a multi-model project builds the model
+- **THEN** the build is of that session's model, and the sibling model's publication is untouched
+
+#### Scenario: Two model sessions build at the same time
+- **WHEN** both models of one repository are open and each is building
+- **THEN** each build publishes into its own model's build directory and neither waits on the other's publication
 

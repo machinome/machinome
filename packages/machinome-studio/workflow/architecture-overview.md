@@ -16,17 +16,36 @@ install it; nothing is bound and no project is opened. There is no reduced mode
 in which projects open without their spec record (ADR 0027). Both entry points
 require `--projects-dir`, which names the exact external catalogue served by
 `floor/app.py`. The runtime neither appends a
-directory name nor derives a location from cwd or Git metadata. Its inventory
-is derived from the filesystem: every direct-child
-directory is listed, and exact independent Git repository roots also report
-their declared profile, branch, and last commit time. Regular files are omitted;
-malformed project configuration and non-repository directories remain visible
-with an unopenable reason. Project directory names have no stylistic constraint.
+directory name nor derives a location from cwd or Git metadata.
 
-`floor/sessions.py` owns a `SessionRegistry` keyed by project name and also
-indexed by an opaque generated session identifier. A project has at most one
-session; different projects have no cardinality limit. Each `Session` owns the
-verified project and artifact roots, build environment, resolved profile,
+Its inventory is derived from the filesystem, one folder at a time, and every
+entry is identified by its path under the working folder — `sandbox/windmill`
+for a nested project, `3DPrintedClocks/wall_clock_01` for one declared model
+(ADR 0029). An entry is a folder, an openable project, or an unopenable
+directory. A directory that is not a repository but holds one anywhere below it
+is a folder of those projects; a repository whose manifest declares more than
+one model is a folder of those models, read straight from `pyproject.toml`
+rather than through `solid models`; a repository declaring one model or none is
+a single project. Exact independent Git repository roots also report their
+declared profile, branch, and last commit time. Regular files are omitted;
+malformed project configuration and directories that hold no project remain
+visible with an unopenable reason. Project directory names have no stylistic
+constraint.
+
+`resolve_entry` is the single gate between a requested path and the filesystem.
+It refuses empty, dot and absolute segments, walks only inside the working
+folder, and stops at the first directory that is a repository root; anything
+after that names a model the manifest declares. Because the walk stops there,
+the hub never lists a directory inside a project, and a model name cannot
+collide with one.
+
+`floor/sessions.py` owns a `SessionRegistry` keyed by entry path and also
+indexed by an opaque generated session identifier. An entry has at most one
+session; different entries have no cardinality limit, including two models of
+one repository, which run as two sessions with their own agents, conversation,
+build, watch and preview over one shared checkout. Each `Session` owns the
+verified project root, the model it was opened for and that model's artifact
+root, build environment, resolved profile,
 broker, orchestrator and backend processes, delivery/event tasks, source
 workspace, source/model/artifact watchers, and filesystem observer. Opening is asynchronous and
 reported on the hub stream. Profile resolution, preparation, and agent start
@@ -118,7 +137,7 @@ because a session chooses a skill from its announcement alone.
 ## Runtime layers
 
 ```text
-browser hub <--> SessionRegistry <--> Session (one per open project)
+browser hub <--> SessionRegistry <--> Session (one per open entry)
                                          |
 project browser <--> source service      +--> filesystem/build watchers
         |               |
@@ -261,7 +280,7 @@ the CLI cannot gate this, since it prompts without `--yes` and archives anyway
 with it.
 
 A floor-mediated commit whose staged content lies wholly inside the spec record
-carries no model content, so it skips the render, leaves `screenshot.png`
+carries no model content, so it skips the render, leaves the session's preview
 untouched and unstaged, and reports that it did. Anything the server cannot
 prove inert still renders.
 
@@ -390,11 +409,13 @@ entry names, order, timestamps, permissions, and compression make unchanged
 inputs byte-identical. The route rejects malformed, escaping, missing, or
 non-STL references and never writes a package into the project or `_build`.
 
-Floor serves that publication directory's artifacts beneath a project-scoped
-browser path and, separately, the exact regular non-symlink root `screenshot.png` for
-each verified project repository (including closed projects). The screenshot is
-a fixed 640x360 preview rendered through the selected CLI after an
-observed successful build and before a floor-mediated commit. Rendering and
+Floor serves that publication directory's artifacts beneath the session that
+owns them and, separately, one entry's preview by entry path (including for a
+closed entry): the exact regular non-symlink `screenshot.png` at the root of a
+single-model project, or `screenshots/<model>.png` for one declared model of a
+project that has several. The screenshot is
+a fixed 640x360 preview of that entry's own model, rendered through the selected
+CLI after an observed successful build and before a floor-mediated commit. Rendering and
 staging are best-effort: they never turn a valid build or Git commit into a
 failure. Every session owns a filesystem observer with separate source and
 artifact handlers. Qualifying Python changes outside `_build` settle into one
@@ -446,10 +467,12 @@ instrumenting agent tools. Model, Code, Agents, Build, and conversation componen
 mounted while visibility changes, preserving viewer, editor, transcript,
 scroll, selection, camera, and draft state.
 
-The hub holds one live-state connection to `/api/stream`. It opens with the
-complete project inventory, including each usable screenshot's content revision,
-and then carries project opening, open, failed, closed, and screenshot-revision
-changes. A workspace holds one connection to its session stream. It
+The hub holds one live-state connection to `/api/stream`, scoped by the folder
+it is listing. It opens with that folder's complete inventory — its folders, its
+projects, and each usable screenshot's content revision — and then carries
+opening, open, failed, closed, and screenshot-revision changes, each naming the
+entry's path and the folder it belongs to so a browser can ignore a change to a
+folder it is not showing. A workspace holds one connection to its session stream. It
 opens with that broker's complete run state and full ordered conversation, then
 carries only that project's subsequent changes, including source invalidations,
 runtime/idle state, and normalized agent activity.

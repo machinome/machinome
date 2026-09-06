@@ -315,6 +315,28 @@ class ScopedProjectToolsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.tools.solid_test(kernel="fast")
 
+    def test_a_model_session_defaults_every_solid_tool_to_its_own_model(self) -> None:
+        """Two models of one repository share a checkout, so a tool called
+        without a reference must work on the model this session owns."""
+        tools = ProjectTools(
+            self.project,
+            model="wall_clock_02",
+            solid_command=(sys.executable, str(FAKE_SOLID)),
+        )
+
+        tools.solid_build()
+        tools.solid_test()
+        tools.solid_build("part.txt")
+
+        calls = [json.loads(line)["argv"] for line in self.capture.read_text().splitlines()]
+        self.assertEqual(
+            [call for call in calls if call[0] in {"build", "test"}],
+            [["build", "wall_clock_02"], ["test", "wall_clock_02"], ["build", "part.txt"]],
+        )
+        # The preview a build refreshes is that model's own.
+        snapshot = next(call for call in calls if call[0] == "snapshot")
+        self.assertEqual(snapshot[1], "wall_clock_02")
+
     def test_solid_tools_preserve_exit_status_and_snapshot_stays_outside_project(self) -> None:
         self.assertTrue(self.tools.solid_build()["ok"])
         failed = self.tools.solid_test("fail", failfast=True)

@@ -36,7 +36,7 @@ from .openspec import (
     resolve_openspec_command,
     resolve_openspec_root,
 )
-from .screenshots import is_safe_screenshot, refresh_project_screenshot
+from .screenshots import is_safe_screenshot, refresh_project_screenshot, screenshot_path
 
 
 SERVER_NAME = "floor"
@@ -132,6 +132,7 @@ def mcp_command(
     project: Path,
     solid_command: tuple[str, ...],
     *,
+    model: str | None = None,
     python: str | None = None,
     floor_url: str | None = None,
     floor_session: str | None = None,
@@ -147,6 +148,8 @@ def mcp_command(
         "--solid-command-json",
         json.dumps(solid_command),
     ]
+    if model is not None:
+        command.extend(("--model", model))
     if floor_url is not None:
         command.extend(("--floor-url", floor_url))
     if floor_session is not None:
@@ -166,6 +169,7 @@ class ProjectTools:
         self,
         project: Path,
         *,
+        model: str | None = None,
         solid_command: tuple[str, ...] = ("solid",),
         floor_url: str | None = None,
         floor_session: str | None = None,
@@ -174,6 +178,11 @@ class ProjectTools:
         self.root = project.resolve(strict=True)
         if not self.root.is_dir():
             raise ValueError(f"active project is not a directory: {self.root}")
+        # The model this session owns.  A repository may hold several, each
+        # open in its own session, so a tool that takes no reference works on
+        # this session's model rather than on whichever one the project
+        # defaults to.
+        self.model = model
         # Fixed at launch by the shop: an agent names a skill, never a location.
         self.skills = {
             name: Path(path).resolve(strict=True) for name, path in (skills or {}).items()
@@ -215,7 +224,7 @@ class ProjectTools:
 
     def _reference(self, value: str | None) -> str | None:
         if value is None:
-            return None
+            return self.model
         if not isinstance(value, str) or not value or "\x00" in value:
             raise ValueError("reference must be a non-empty string")
         source, separator, target = value.partition(":")
@@ -789,12 +798,13 @@ class ProjectTools:
                 "screenshot.png was left as it is"
             )
             return result
-        screenshot = refresh_project_screenshot(self.root, self.solid_command)
+        screenshot = refresh_project_screenshot(self.root, self.solid_command, model=self.model)
         warning = screenshot.warning
-        if is_safe_screenshot(self.root):
-            staged = self._git("add", "--", "screenshot.png")
+        preview = str(screenshot_path(self.root, self.model).relative_to(self.root))
+        if is_safe_screenshot(self.root, self.model):
+            staged = self._git("add", "--", preview)
             if not staged["ok"]:
-                warning = staged["stderr"] or "could not stage screenshot.png"
+                warning = staged["stderr"] or f"could not stage {preview}"
         result = self._git("commit", "-m", message)
         result["rendered"] = True
         if warning:
@@ -939,7 +949,7 @@ class ProjectTools:
         reference = self._reference(path)
         result = self._run([*self.solid_command, "build", *([reference] if reference else [])])
         if result["ok"]:
-            screenshot = refresh_project_screenshot(self.root, self.solid_command)
+            screenshot = refresh_project_screenshot(self.root, self.solid_command, model=self.model)
             if screenshot.warning:
                 result["screenshot_warning"] = screenshot.warning
         return result
@@ -1424,6 +1434,7 @@ class StdioMcpServer:
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", type=Path, required=True)
+    parser.add_argument("--model")
     parser.add_argument("--solid-command-json", default='["solid"]')
     parser.add_argument("--floor-url")
     parser.add_argument("--floor-session")
@@ -1441,6 +1452,7 @@ def main(argv: list[str] | None = None) -> None:
     StdioMcpServer(
         ProjectTools(
             args.project,
+            model=args.model,
             solid_command=tuple(raw_command),
             floor_url=args.floor_url,
             floor_session=args.floor_session,
