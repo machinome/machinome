@@ -21,7 +21,7 @@ Each module answers one question, and an import line says which:
 from solid_node.node import (                  # what the machine is made of
     AssemblyNode, FusionNode,
     CadQueryNode, Build123dNode, Solid2Node, OpenScadNode, JScadNode,
-    Build123dSheetNode, StlNode, MolejoNode,
+    Build123dSheetNode, StlNode, StepNode, MolejoNode,
     Port, RotationalPort, TranslationalPort, SignalPort,
     declared_children, declared_ports, property_as_number,
 )
@@ -57,6 +57,7 @@ Leaves make one part each; internal nodes combine parts.
 | `Build123dNode` | `render()` | a build123d `Part`/`Solid`/`Compound`, or a `BuildPart` builder | yes | nothing |
 | `Build123dSheetNode` | `profile()` + `thickness` | one planar build123d face (`Sketch`, `Face`, or `BuildSketch`) | yes | nothing |
 | `StlNode` | `stl_source` (+ `body`, `adjust()`, `require_watertight`) | — | no | nothing |
+| `StepNode` | `step_source` (+ `part`, `adjust()`) | — | yes | nothing |
 | `MolejoNode` | `render()` + one port per shape parameter | a molejo `Shape` | yes | nothing |
 | `AssemblyNode` | `render()`, `simulate()` | child nodes | if all children are | — |
 | `FusionNode` | `render()` | child nodes, fused into one rigid solid | if all children are | OpenSCAD when any child is faceted |
@@ -78,7 +79,7 @@ Leaves make one part each; internal nodes combine parts.
   kerf-free `.dxf` (arcs kept as arcs) beside the `.stl` and `.brep`;
   `dxf_file` is its path. No kerf compensation, SVG/DXF import, engraving
   or nesting.
-- `StlNode`: `stl_source` is a committed `.stl` beside the module. The
+- `StlNode`: `stl_source` is an `.stl` beside the module. The
   artifact is materialized from it; nothing is repaired. A non-watertight
   body fails the build naming the defect unless `require_watertight =
   False` admits it knowingly (admission only, never geometry). A multi-body
@@ -88,6 +89,31 @@ Leaves make one part each; internal nodes combine parts.
   body as a trimesh mesh and returns the corrected one; what it returns is
   the artifact. The declaring module is tracked as a source. An `StlNode`
   makes any fusion holding it faceted and slow. It is never exact.
+- `StepNode`: `step_source` is a STEP file, relative to the module (an
+  absolute path resolves to itself); the file need not be committed.
+  `part` names the product as the file carries it. A file with exactly
+  one candidate product (one part alone, or one part wrapped in an
+  assembly root) needs no `part`; a multi-component root is never
+  selected by omission. A missing or wrong name fails with the document's
+  inventory (name, kind, occurrences, solids, bounds, volume per
+  product); two products of one name fail naming the ambiguity. The
+  geometry is the product's own frame, never an occurrence's placement.
+  `adjust(self, shape)` receives a cadquery `Shape` and returns the
+  corrected one; a result holding no solid fails naming what it holds,
+  and nothing is sewn silently: call
+  `solid_node.node.adapters.step.solids_from_faces(shape, tolerance)`
+  from `adjust` knowingly. A subclass declaring no `color` takes the
+  product's colour from the file (sRGB `#RRGGBB`). One document is read
+  per file per process, however many nodes select from it. It is exact:
+  `shape()`, `.brep`, exact fusion and the spatial contracts work as for
+  `CadQueryNode`. `StepAssembly(path)` in the same module reads the
+  document's structure without building it: `products` and
+  `occurrences`, each occurrence with its placement and world matrices
+  and the exact `angle_deg`/`axis`/`translation` that reproduces it as
+  `rotate` then `translate`; a mirrored or scaled placement is reported
+  improper, not decomposed. Vendor STEP is fillets and threads: declare
+  `angular_deflection = 0.5` (one measured part: 19.9 MB at the default,
+  1.76 MB at 0.5).
 - `MolejoNode`: `render()` returns a molejo shape whose moving dimensions
   are molejo parameters (`P.height`); the node declares one port per
   parameter under the same name, and both name sets must match exactly or
@@ -457,7 +483,17 @@ shows no controls.
 Class attributes: `color = '#RRGGBB'` (anything else raises); `fn = N`
 sets OpenSCAD's `$fn` and affects only `Solid2Node` and `OpenScadNode`;
 `optimize` defaults true and false keeps unflattened SCAD for the
-OpenSCAD viewer.
+OpenSCAD viewer. On an exact leaf (`CadQueryNode`, `Build123dNode`,
+`Build123dSheetNode`, `StepNode`) and on `FusionNode`,
+`linear_deflection` (mm, default 0.1) and `angular_deflection` (rad,
+default 0.1) set the STL tessellation of that node's own artifact: not
+a constructor parameter, not artifact identity (editing it rebuilds the
+same artifact through the declaring module's currency), shaping only the
+mesh, never `shape()` or the `.brep`. A fusion declares its own and does
+not inherit a child's. A coarser mesh moves faceted-kernel verdicts and
+changes the printed-piece id; the exact kernel is unaffected. A value
+that is not a positive finite number fails at export naming the node
+and attribute.
 
 There is no `bodies` declaration. Connectivity is not a build check: the
 build never opens an STL to count components. It is a project test
@@ -499,7 +535,7 @@ Consequences:
   zero times. Nothing may depend on a render side effect, and geometry
   that depends on something the import walk cannot see (a data file read
   at runtime, `importlib`, an environment variable) can look current when
-  it is not. `StlNode` tracks its own `.stl` and declaring module.
+  it is not. `StlNode` and `StepNode` track their own file and declaring module.
 - The digest is scoped to the node. Two node classes in one file share
   one stamp, but each node's digest covers the file minus the other node
   classes' bodies (any the remaining text names stay in), so editing one
@@ -697,6 +733,7 @@ solid export  [ref] [--set ...] [-o export] [--fps 30] [--frames 360] [--no-widg
 solid develop [ref] [--set ...] [--web | --openscad | --web-dev | --no-web]
       [--callback URL] [--debug-builder]
 solid viewer
+solid import-step FILE [--into PACKAGE_DIR] [--model NAME]
 ```
 
 `ref` is a node reference as above; omitted, the manifest's model is used.
@@ -734,6 +771,17 @@ never run it.
 contracts, an empty `__init__.py`, a `.gitignore` covering the build
 path, and a `pyproject.toml` declaring the model. It refuses an existing
 directory.
+
+`solid import-step FILE` scaffolds project-owned source from a STEP
+document's assembly structure: `parts.py` with one `StepNode` subclass
+per part product (exact `part` name, `angular_deflection = 0.5`) and
+`assembly.py` with one `AssemblyNode` per assembly product, one declared
+child per occurrence and a `render()` placing each by the document's own
+`rotate`/`translate` pair, at rest, with no driver. It loads no node,
+never overwrites (either file present stops it), refuses a document with
+a mirrored or scaled placement, and prints the manifest line to add
+instead of editing `pyproject.toml`. Edit the generated files as your
+own; regenerate only by removing them.
 
 `solid export` writes `manifest.json`, deduplicated `models/`, and unless
 `--no-widget` a self-contained viewer copied from the installed
