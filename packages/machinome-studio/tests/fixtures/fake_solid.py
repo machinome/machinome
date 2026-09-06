@@ -22,6 +22,21 @@ cwd = Path.cwd()
 if call_log := os.environ.get("SOLID_CALL_LOG"):
     with Path(call_log).open("a") as calls:
         calls.write(f"{command}:{argument}\n")
+
+
+def project_state(project: Path) -> dict:
+    state_file = project / ".fake-solid-state.json"
+    return json.loads(state_file.read_text()) if state_file.is_file() else {}
+
+
+def model_build_dir(project: Path, state: dict) -> Path:
+    """Where the project's default model publishes. A project declaring a
+    named model builds it into `_build/<name>`, as the framework does for a
+    [tool.solid-node.models] table; an unnamed one owns `_build` itself."""
+    name = state.get("model_name")
+    return project / "_build" / name if name else project / "_build"
+
+
 if command == "new":
     if delay := os.environ.get("FAKE_SOLID_NEW_DELAY"):
         time.sleep(float(delay))
@@ -59,8 +74,8 @@ elif command == "build":
     with (cwd / ".fake-solid-builds").open("a") as log:
         log.write("build\n")
 
-    build = cwd / "_build"
-    build.mkdir(exist_ok=True)
+    build = model_build_dir(cwd, state)
+    build.mkdir(exist_ok=True, parents=True)
 
     def publish(path: Path, content: str) -> None:
         if path.is_file() and path.read_text() == content:
@@ -93,6 +108,21 @@ elif command == "build":
     if errors.exists():
         errors.unlink()
     publish(build / "viewer.json", viewer)
+elif command == "models":
+    state = project_state(cwd)
+    name = state.get("model_name")
+    print(json.dumps({
+        "root": str(cwd),
+        "build_root": str(cwd / "_build"),
+        "default": name,
+        "models": [{
+            "name": name,
+            "reference": "root:Root",
+            "default": True,
+            "build_dir": str(model_build_dir(cwd, state)),
+            "state": "unbuilt",
+        }],
+    }))
 elif command == "viewer":
     state = {}
     state_file = cwd / ".fake-solid-state.json"

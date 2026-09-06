@@ -202,7 +202,10 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertEqual(prepared.project_root, project.resolve())
         self.assertEqual(_git_state(project)[0], before[0])
         self.assertEqual(_git_state(project)[1], "?? screenshot.png\n")
-        self.assertEqual(self.call_log.read_text().splitlines(), ["viewer:", "build:", "snapshot:--renderer"])
+        self.assertEqual(
+            self.call_log.read_text().splitlines(),
+            ["viewer:", "models:--json", "build:", "snapshot:--renderer"],
+        )
 
     def test_rejects_existing_file_plain_directory_and_nested_repository(self) -> None:
         (self.home / "file").write_text("not a project")
@@ -234,6 +237,25 @@ class ProjectPreparationTest(unittest.TestCase):
         """F2 need not rewrite a manifest when the model is already current."""
         prepared = self.prepare("stale")
         self.assertTrue((prepared.artifact_root / "viewer.json").is_file())
+
+    def test_named_model_publishes_into_its_own_build_directory(self) -> None:
+        """A project declaring named models builds each into `_build/<name>`,
+        so the shop must take the model's directory from the framework rather
+        than assume the project's whole `_build` is one publication."""
+        prepared = self.prepare("named-robot")
+        project = self.home / "named-robot"
+
+        self.assertEqual(prepared.artifact_root, (project / "_build" / "alpha").resolve())
+        self.assertTrue((prepared.artifact_root / "viewer.json").is_file())
+        self.assertIsNone(prepared.build_error)
+
+    def test_refuses_a_build_directory_the_framework_places_outside_the_project(self) -> None:
+        """The reported directory is served, watched and packaged, so one that
+        is not inside the project fails the open instead of opening it."""
+        for name in ("escaped-build", "no-default"):
+            with self.subTest(name=name), self.assertRaises(PreparationError) as raised:
+                self.prepare(name)
+            self.assertEqual(raised.exception.stage, "models")
 
     def test_rejects_a_missing_or_incompatible_viewer_before_building(self) -> None:
         project = self.home / "existing"
@@ -350,6 +372,19 @@ argument = sys.argv[2] if len(sys.argv) > 2 else ""
 cwd = Path.cwd()
 with Path(os.environ["SOLID_CALL_LOG"]).open("a") as calls:
     calls.write(f"{command}:{argument}\n")
+
+
+def model_name(project):
+    """A project named `named-*` declares one named model, as a project with
+    a [tool.solid-node.models] table does; every other one is unnamed."""
+    return "alpha" if project.name.startswith("named-") else None
+
+
+def build_dir(project):
+    name = model_name(project)
+    return project / "_build" / name if name else project / "_build"
+
+
 if command == "new":
     if argument == "fail_new":
         print("scaffold exploded", file=sys.stderr)
@@ -363,12 +398,29 @@ if command == "new":
         (project / "_build").mkdir()
         (project / "_build" / "part.stl").write_text("solid old")
         (project / "_build" / "viewer.json").write_text(json.dumps({"version": 1, "root": {"model": "part.stl"}}))
+elif command == "models":
+    name = model_name(cwd)
+    reported = build_dir(cwd)
+    if cwd.name == "escaped-build":
+        reported = cwd.parent / "_build"
+    print(json.dumps({
+        "root": str(cwd),
+        "build_root": str(cwd / "_build"),
+        "default": name,
+        "models": [{
+            "name": name,
+            "reference": "root.part:Part",
+            "default": cwd.name != "no-default",
+            "build_dir": str(reported),
+            "state": "unbuilt",
+        }],
+    }))
 elif command == "build":
     if cwd.name == "fail-build":
         print("build exploded", file=sys.stderr)
         raise SystemExit(10)
-    build = cwd / "_build"
-    build.mkdir(exist_ok=True)
+    build = build_dir(cwd)
+    build.mkdir(exist_ok=True, parents=True)
     if cwd.name == "bad-json":
         (build / "viewer.json").write_text("{")
     elif cwd.name == "missing-model":

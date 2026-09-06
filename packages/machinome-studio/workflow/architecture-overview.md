@@ -337,7 +337,12 @@ floor-mediated commits already follow. The framework viewer bundle is resolved
 once per running shop rather than per open (ADR 0028); the framework reports
 it from the separately installed `solid-node-viewer` package, and an
 installation without that package fails the open with the framework's remedy,
-installing the `viewer` extra. The initial build
+installing the `viewer` extra. Where the project publishes is the
+framework's answer too: preparation asks it for the build directory of the
+project's default model, so a project that declares named models is prepared
+on `_build/<model>/` and one that declares none on `_build/` itself. That one
+directory is the session's artifact root — what it serves, watches, and
+packages — and a directory outside the project fails the open. The initial build
 runs through the `solid` console script installed beside the Python interpreter
 running the shop, so an unrelated executable earlier on ambient `PATH` cannot
 select a different framework installation. `openspec` is the single exception:
@@ -385,8 +390,8 @@ entry names, order, timestamps, permissions, and compression make unchanged
 inputs byte-identical. The route rejects malformed, escaping, missing, or
 non-STL references and never writes a package into the project or `_build`.
 
-Floor serves published `_build/` artifacts beneath a project-scoped browser
-path and, separately, the exact regular non-symlink root `screenshot.png` for
+Floor serves that publication directory's artifacts beneath a project-scoped
+browser path and, separately, the exact regular non-symlink root `screenshot.png` for
 each verified project repository (including closed projects). The screenshot is
 a fixed 640x360 preview rendered through the selected CLI after an
 observed successful build and before a floor-mediated commit. Rendering and

@@ -117,9 +117,46 @@ class ProjectListing:
         }
 
 
-def artifact_root_for(project_root: Path) -> Path:
-    """The project's single, atomically updated published build directory."""
-    return project_root / "_build"
+def resolve_artifact_root(
+    solid_command: str | Sequence[str],
+    project_root: Path,
+    *,
+    name: str | None = None,
+    extra_env: dict[str, str] | None = None,
+) -> Path:
+    """Ask the framework where this project's default model publishes.
+
+    A project that declares named models gives each one its own directory
+    under `_build`, and only the framework knows which. The shop asks and
+    reads the answer rather than spelling a path of its own: the directory it
+    is given is the one atomically updated publication it serves, watches and
+    packages, whatever layout the manifest chose.
+    """
+    result = _run(
+        (*_command(solid_command), "models", "--json"),
+        cwd=project_root,
+        stage="models",
+        name=name,
+        project_root=project_root,
+        extra_env=extra_env,
+    )
+    try:
+        report = json.loads(result.stdout)
+        build_dir = Path(next(
+            model["build_dir"] for model in report["models"] if model["default"]
+        ))
+    except (json.JSONDecodeError, KeyError, TypeError, StopIteration) as error:
+        raise PreparationError(
+            "models", name, project_root,
+            "solid models did not report a default model build directory",
+        ) from error
+    artifact_root = build_dir.resolve()
+    if project_root.resolve() not in artifact_root.parents:
+        raise PreparationError(
+            "models", name, project_root,
+            f"model build directory is outside the project: {build_dir}",
+        )
+    return artifact_root
 
 
 def build_command(solid_command: str | Sequence[str]) -> tuple[str, ...]:
@@ -394,7 +431,7 @@ def prepare_project(
         name=name,
         project_root=project_root,
         model=Path("root"),
-        artifact_root=artifact_root_for(project_root),
+        artifact_root=resolve_artifact_root(solid_command, project_root, name=name, extra_env=solid_env),
         viewer_bundle=bundle.path,
         viewer_api_version=bundle.api_version,
         solid_command=_command(solid_command),
