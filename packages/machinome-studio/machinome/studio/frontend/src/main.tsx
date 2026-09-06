@@ -964,6 +964,7 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible, requestedOp
   const deferred = useRef(new Set<string>());
   const applying = useRef(new Set<string>());
   const monacoRef = useRef<Monaco | null>(null);
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const saveCurrent = useRef<() => void>(() => undefined);
   filesRef.current = files;
 
@@ -1172,8 +1173,23 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible, requestedOp
 
   const handleMount: OnMount = (editor, monaco) => {
     monacoRef.current = monaco;
+    editorRef.current = editor;
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => saveCurrent.current());
+    // Monaco colours the lines already on screen only when its embedder says
+    // the viewport is settled; left alone it waits for idle time that the model
+    // this floor keeps rendering never leaves, so a file stays grey until a
+    // scroll and one short enough to fit stays grey for good.  Only a scroll or
+    // an edit tells the editor its viewport moved, so say so ourselves once the
+    // editor is measured, whenever it is measured again, and on every file it
+    // shows.
+    editor.onDidLayoutChange(() => editor.handleInitialized?.());
+    editor.handleInitialized?.();
   };
+
+  useEffect(() => {
+    editorRef.current?.handleInitialized?.();
+  }, [activePath, visible]);
+
   saveCurrent.current = () => { if (activePath) void save(activePath); };
   const active = activePath ? files[activePath] : null;
   const activeImage = activePath && isPng(activePath) ? activePath : null;

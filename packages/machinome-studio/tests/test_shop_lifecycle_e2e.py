@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -381,6 +382,23 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.locator(".monaco-editor").wait_for()
         self.page.get_by_text("model = True", exact=False).wait_for()
 
+    def test_code_editor_colours_a_short_file_while_the_model_keeps_rendering(self) -> None:
+        project = self._make_project("code-colour")
+        (project / "short.py").write_text("import os\n\n\ndef bead(count):\n    # one heaven bead\n    return count\n")
+        self._open("code-colour")
+        # A model rendering every frame leaves the browser no idle time, and
+        # idle time is the only time Monaco colours lines on its own.
+        self.page.add_init_script("window.requestIdleCallback = () => 0;")
+        self.page.goto(self.url("/projects/code-colour"))
+
+        self.page.get_by_role("button", name="Code", exact=True).click()
+        self.page.get_by_title("short.py").click()
+        self.page.locator(".monaco-editor").wait_for(timeout=10_000)
+        self.page.get_by_text("one heaven bead", exact=False).wait_for(timeout=10_000)
+
+        # The file is short enough to fit, so no scroll can rescue the colours.
+        _wait_for(lambda: len(self._token_classes()) > 1)
+
     def test_agents_workspace_is_interactive_mounted_and_reachable_at_narrow_width(self) -> None:
         self._make_project("agents-workspace")
         session_id = self._open("agents-workspace")
@@ -725,6 +743,10 @@ class ShopLifecycleE2E(unittest.TestCase):
         project = self._project(path)
         self.assertEqual(project["state"], "open", project.get("failure"))
         return str(project["session_id"])
+
+    def _token_classes(self) -> set[str]:
+        markup = self.page.inner_html(".view-lines")
+        return set(re.findall(r"mtk\d+", markup))
 
     def _project(self, path: str) -> dict[str, object]:
         folder, _, _ = path.rpartition("/")
