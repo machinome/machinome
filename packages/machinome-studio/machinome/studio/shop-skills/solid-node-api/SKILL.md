@@ -474,7 +474,9 @@ or `path/to/file.py:Class`; a directory is not a reference. A bare path
 resolves only when the file defines exactly one node class; otherwise it
 raises `AmbiguousNodeError` listing the candidates, and `solid build`,
 `solid snapshot` and `solid develop` need the class named. `solid test`
-on a bare path to such a file runs every node it defines.
+on a bare path to such a file runs the node classes its companion test
+cases declare (each `TestCase` there must declare `node = TheClass`) and
+builds no other; with no companion, every node it defines.
 
 An artifact rebuilds when its stamp no longer equals the node's source
 mtime, compared as exact integer nanoseconds. The **source set** is the
@@ -598,11 +600,12 @@ reactions, single-solid toppling and dynamics are out of scope.
 
 Perturbation assertions rotate about the node's own axis by default
 (`axis`, `(0, 0, 1)` when omitted); `along=(x, y, z)` selects linear
-displacement in mm instead, and giving both raises. Directions are local
-and carried by placement rotations. `directions='forward'` checks only the
-positive sense. `assertFreeWithin` accepts a list of amounts. The
-perturbation is inserted before the node's first placement translation
-and always removed afterwards. `volume_epsilon` counts an intersection
+displacement in mm instead, and giving both raises. Directions are the
+node's own: the perturbation is inserted before every operation of the
+node, so all of its rotations, a leading one included, carry them.
+`directions='forward'` checks only the positive sense. `assertFreeWithin`
+accepts a list of amounts. The perturbation is always removed
+afterwards. `volume_epsilon` counts an intersection
 below the given volume as none; it applies only on the faceted path, is
 ignored with a warning when every comparison routed exact, and is a smell
 rather than a tool.

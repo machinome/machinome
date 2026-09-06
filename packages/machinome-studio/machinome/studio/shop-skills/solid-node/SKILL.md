@@ -139,8 +139,10 @@ Know the costs and pick deliberately:
 - A bare path to a file with several node classes is ambiguous: `solid
   build root/parts.py` and `solid snapshot root/parts.py` fail listing the
   candidates, so name the class (`root/parts.py:Gear`). `solid test`
-  tolerates the bare path and runs every node in the file, and every
-  `TestCase` in its companion must then declare `node = TheClass`.
+  tolerates the bare path and runs the nodes its companion's `TestCase`s
+  declare (`node = TheClass`, mandatory beside such a file); a
+  sub-assembly no test declares is not built, so a file holding a machine
+  and the sub-assemblies only it can bind is tested by its bare path.
 
 One class per file, named after it, is what `solid new` sets up; it buys
 unambiguous bare paths, not a cheaper build. Do not reorganize an inherited
