@@ -214,6 +214,38 @@ class FolderListingTest(unittest.TestCase):
         self.assertEqual(inside["wall_clock_01"].path, "clocks/wall_clock_01")
         self.assertTrue(inside["wall_clock_01"].openable)
 
+    def test_a_multi_model_folder_carries_its_first_three_model_previews(self) -> None:
+        project = self.home / "clocks"
+        _make_repository(project)
+        _declare_models(project, ("wall_clock_01", "wall_clock_02", "wall_clock_03", "wall_clock_04"))
+        _publish_screenshot(project, "wall_clock_01")
+        _publish_screenshot(project, "wall_clock_03")
+
+        card = self.listing()["clocks"]
+
+        self.assertEqual(
+            [preview.path for preview in card.previews],
+            ["clocks/wall_clock_01", "clocks/wall_clock_02", "clocks/wall_clock_03"],
+        )
+        self.assertIsNotNone(card.previews[0].revision)
+        self.assertIsNone(card.previews[1].revision)
+        self.assertIsNotNone(card.previews[2].revision)
+        self.assertEqual(
+            card.browser_value()["previews"],
+            [
+                {"path": preview.path, "revision": preview.revision}
+                for preview in card.previews
+            ],
+        )
+
+    def test_a_folder_of_projects_carries_no_model_previews(self) -> None:
+        _make_repository(self.home / "sandbox" / "windmill")
+
+        card = self.listing()["sandbox"]
+
+        self.assertEqual(card.previews, ())
+        self.assertEqual(card.browser_value()["previews"], [])
+
     def test_a_project_declaring_one_model_stays_a_project(self) -> None:
         project = self.home / "solo"
         _make_repository(project)
@@ -450,6 +482,13 @@ def _declare_models(project: Path, names: tuple[str, ...]) -> None:
     table = "\n".join(f'{name} = "root:Root"' for name in names)
     (project / "pyproject.toml").write_text(f"[tool.solid-node.models]\n{table}\n")
     (project / ".fake-solid-state.json").write_text(json.dumps({"models": list(names)}))
+
+
+def _publish_screenshot(project: Path, model: str) -> None:
+    """Put a valid preview where a declared model's screenshot lives."""
+    target = project / "screenshots" / f"{model}.png"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(b"\x89PNG\r\n\x1a\n" + model.encode())
 
 
 def _make_repository(project: Path) -> None:

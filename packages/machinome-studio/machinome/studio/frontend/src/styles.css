@@ -46,8 +46,8 @@ button, input { font: inherit; }
 .project-card:disabled { cursor: not-allowed; opacity: .78; }
 .project-card.unopenable { border-style: dashed; }
 .project-card.folder .project-preview { background: repeating-linear-gradient(45deg,#1d222a 0 9px,#191e25 9px 18px); }
-.project-card.folder .project-preview-placeholder::before { content: ""; border: 1px solid #4b535f; border-radius: 3px; display: block; height: 46px; margin: 0 auto 8px; position: relative; width: 64px; }
-.project-card.folder .project-preview-placeholder::after { background: #4b535f; content: ""; height: 6px; left: 50%; position: absolute; top: -1px; transform: translateX(-32px); width: 24px; }
+.project-card.folder .project-preview:not(.models) .project-preview-placeholder::before { content: ""; border: 1px solid #4b535f; border-radius: 3px; display: block; height: 46px; margin: 0 auto 8px; position: relative; width: 64px; }
+.project-card.folder .project-preview:not(.models) .project-preview-placeholder::after { background: #4b535f; content: ""; height: 6px; left: 50%; position: absolute; top: -1px; transform: translateX(-32px); width: 24px; }
 .hub-breadcrumb { align-items: center; color: #8b929e; display: flex; flex-wrap: wrap; font-size: 12px; gap: 4px; margin-bottom: 14px; }
 .hub-breadcrumb button { background: none; border: 0; color: #8b929e; cursor: pointer; font: inherit; padding: 0; }
 .hub-breadcrumb button:hover { color: #d6dae0; text-decoration: underline; }
@@ -56,6 +56,12 @@ button, input { font: inherit; }
 .project-preview { align-items: flex-end; background: repeating-linear-gradient(45deg,#1b2027 0 9px,#171b21 9px 18px); border-bottom: 1px solid #262b33; color: #6b7280; display: flex; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; justify-content: center; overflow: hidden; padding: 10px; position: relative; }
 .project-preview img { height: 100%; inset: 0; object-fit: contain; position: absolute; width: 100%; }
 .project-preview-placeholder { position: relative; }
+/* A multi-model project's card stands on its models: each declared model gets
+   a third of the preview area, so the card shows the machine rather than the
+   folder glyph a grouping directory keeps. */
+.project-preview.models { align-items: stretch; gap: 6px; padding: 8px; }
+.project-preview .model-tile { align-items: center; background: rgba(9,11,14,.35); border: 1px solid #262b33; border-radius: 3px; display: flex; flex: 1 1 0; justify-content: center; min-width: 0; overflow: hidden; position: relative; }
+.project-preview .model-tile img { height: 100%; inset: auto; object-fit: contain; position: relative; width: 100%; }
 .project-card-body { display: grid; gap: 7px; padding: 14px 15px; }
 .project-name { align-items: center; display: flex; font-size: 14px; justify-content: space-between; }
 .project-name strong { font-weight: 500; }

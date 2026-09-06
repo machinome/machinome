@@ -150,6 +150,22 @@ class ProjectListing:
 
 
 @dataclass(frozen=True)
+class EntryPreview:
+    """The picture of one hub entry, named by the entry that owns it.
+
+    A folder card standing for a multi-model project shows these, and the
+    browser fetches each one from the same screenshot route that serves the
+    model's own project card, so the two never disagree.
+    """
+
+    path: str
+    revision: str | None
+
+    def browser_value(self) -> dict[str, object]:
+        return {"path": self.path, "revision": self.revision}
+
+
+@dataclass(frozen=True)
 class FolderListing:
     """One directory the maker can enter, and what it holds.
 
@@ -157,10 +173,16 @@ class FolderListing:
     what the maker is looking for when deciding whether to go in. A repository
     declaring several models is one project here and a folder of models once
     entered.
+
+    ``previews`` is what tells the two kinds of folder apart on the hub. A
+    multi-model project is one machine and carries the pictures of the first
+    few models it declares; a directory grouping unrelated repositories owns no
+    model and carries none.
     """
 
     path: str
     projects: int
+    previews: tuple[EntryPreview, ...] = ()
 
     @property
     def name(self) -> str:
@@ -172,6 +194,7 @@ class FolderListing:
             "path": self.path,
             "name": self.name,
             "projects": self.projects,
+            "previews": [preview.browser_value() for preview in self.previews],
         }
 
 
@@ -453,7 +476,7 @@ def list_folder(project_home: Path, folder: str | None = "") -> list[ProjectList
         if is_repository_root(entry):
             models = declared_models(entry)
             if len(models) > 1:
-                folders.append(FolderListing(path, len(models)))
+                folders.append(FolderListing(path, len(models), _model_previews(entry, path, models)))
             else:
                 projects.append(_project_listing(entry, path))
         elif holds_project(entry):
@@ -461,6 +484,23 @@ def list_folder(project_home: Path, folder: str | None = "") -> list[ProjectList
         else:
             projects.append(_project_listing(entry, path))
     return [*folders, *projects]
+
+
+PREVIEWED_MODELS = 3
+
+
+def _model_previews(entry: Path, path: str, models: Sequence[str]) -> tuple[EntryPreview, ...]:
+    """The pictures a multi-model project's folder card stands on.
+
+    Only the first few declared models are previewed, in declaration order, so
+    a card is the same shape whatever the project declares. A model with no
+    picture yet still gets an entry, because the card says how many models it
+    stands for.
+    """
+    return tuple(
+        EntryPreview(f"{path}/{model}", screenshot_revision(entry, model))
+        for model in models[:PREVIEWED_MODELS]
+    )
 
 
 def _project_listing(entry: Path, path: str, *, model: str | None = None) -> ProjectListing:

@@ -119,7 +119,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         rebuilding = self.page.get_by_text("Bringing the model up to date", exact=False)
         self.assertEqual(rebuilding.count(), 0)
 
-        _request(self.url("/api/projects/kept-warm/session"), "POST")
+        _request(self.url("/api/sessions"), "POST", {"path": "kept-warm"})
 
         # The live event has to carry the state through to the card,
         rebuilding.wait_for(timeout=10_000)
@@ -208,12 +208,12 @@ class ShopLifecycleE2E(unittest.TestCase):
 
     def test_workspace_mounts_the_project_scoped_viewer(self) -> None:
         self._make_project("viewer-project")
-        self._open("viewer-project")
+        session_id = self._open("viewer-project")
         self.page.goto(self.url("/projects/viewer-project"))
         self.page.get_by_role("img", name="Functional model").wait_for(timeout=10_000)
         history = self.page.evaluate("() => window.__solidNodeWidgetHistory")
         self.assertEqual(history["mounts"], 1)
-        self.assertIn("/projects/viewer-project/artifacts/viewer.json", history["fetches"])
+        self.assertIn(f"/api/sessions/{session_id}/artifacts/viewer.json", history["fetches"])
 
     def test_build_inspects_one_piece_at_scale_and_downloads_explicit_quantities(self) -> None:
         triangle = (
@@ -665,12 +665,41 @@ class ShopLifecycleE2E(unittest.TestCase):
         pin_row.get_by_role("button", name="Focus pin").click()
         self.page.get_by_role("button", name="Show full assembly").click()
 
-    def _make_project(self, name: str) -> Path:
+    def test_a_multi_model_card_shows_its_models_side_by_side(self) -> None:
+        project = self._make_project("clocks", models=("wall_clock_01", "wall_clock_02", "wall_clock_03", "wall_clock_04"))
+        (project / "screenshots").mkdir()
+        for model in ("wall_clock_01", "wall_clock_03"):
+            (project / "screenshots" / f"{model}.png").write_bytes(PNG_1X1)
+        self._make_project("sandbox/windmill")
+
+        self.page.goto(self.url("/"))
+        card = self.page.get_by_role("button").filter(has_text="clocks").first
+        card.wait_for(timeout=10_000)
+
+        # The first three declared models, in manifest order, and the one
+        # without a picture still holding its place.
+        previews = card.get_by_role("img")
+        self.assertEqual(previews.count(), 2)
+        self.assertEqual(previews.nth(0).get_attribute("alt"), "wall_clock_01 model preview")
+        self.assertEqual(previews.nth(1).get_attribute("alt"), "wall_clock_03 model preview")
+        self.assertEqual(card.locator(".model-tile").count(), 3)
+
+        # A directory of unrelated projects keeps the folder glyph.
+        grouping = self.page.get_by_role("button").filter(has_text="sandbox").first
+        self.assertEqual(grouping.locator(".model-tile").count(), 0)
+
+    def _make_project(self, name: str, models: tuple[str, ...] = ()) -> Path:
         project = self.project_home / name
         (project / "root").mkdir(parents=True)
         (project / "root" / "__init__.py").write_text("# model\n")
         (project / ".gitignore").write_text("_build/\n.fake-solid-builds\n.fake-solid-state.json\n")
-        (project / "pyproject.toml").write_text('[tool.libresolid-studio]\nprofile = "builder"\n')
+        declared = "".join(f'{model} = "root:Root"\n' for model in models)
+        (project / "pyproject.toml").write_text(
+            '[tool.libresolid-studio]\nprofile = "builder"\n'
+            + (f"\n[tool.solid-node.models]\n{declared}" if models else "")
+        )
+        if models:
+            (project / ".fake-solid-state.json").write_text(json.dumps({"models": list(models)}))
         subprocess.run(["git", "init", "-q", "-b", "main", str(project)], check=True)
         subprocess.run(["git", "-C", str(project), "add", "--all"], check=True)
         subprocess.run([
@@ -679,15 +708,16 @@ class ShopLifecycleE2E(unittest.TestCase):
         ], check=True)
         return project
 
-    def _open(self, name: str) -> str:
-        _request(self.url(f"/api/projects/{name}/session"), "POST")
-        _wait_for(lambda: self._project(name)["state"] in {"open", "failed"})
-        project = self._project(name)
+    def _open(self, path: str) -> str:
+        _request(self.url("/api/sessions"), "POST", {"path": path})
+        _wait_for(lambda: self._project(path)["state"] in {"open", "failed"})
+        project = self._project(path)
         self.assertEqual(project["state"], "open", project.get("failure"))
         return str(project["session_id"])
 
-    def _project(self, name: str) -> dict[str, object]:
-        return next(item for item in _request(self.url("/api/projects"), "GET")["projects"] if item["name"] == name)
+    def _project(self, path: str) -> dict[str, object]:
+        entries = _request(self.url("/api/entries"), "GET")["entries"]
+        return next(item for item in entries if item["path"] == path)
 
     def url(self, path: str) -> str:
         return f"http://127.0.0.1:{self.port}{path}"

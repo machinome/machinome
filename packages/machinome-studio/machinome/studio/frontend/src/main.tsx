@@ -114,11 +114,19 @@ type Project = {
   model_building: boolean;
 };
 
+type ModelPreview = {
+  path: string;
+  revision: string | null;
+};
+
 type Folder = {
   kind: "folder";
   path: string;
   name: string;
   projects: number;
+  // Empty for a directory of unrelated projects; the first few declared models
+  // of a project repository that holds several.
+  previews: ModelPreview[];
 };
 
 type Entry = Project | Folder;
@@ -809,9 +817,21 @@ function Hub({ folder }: { folder: string }) {
         <div className="project-grid">
           {entries.map((entry) => entry.kind === "folder"
             ? <button className="project-card folder" key={entry.path} onClick={() => navigate(folderUrl(entry.path))}>
-                <span className="project-preview">
-                  <span className="project-preview-placeholder" aria-hidden="true">folder</span>
-                </span>
+                {entry.previews.length === 0
+                  ? <span className="project-preview">
+                      <span className="project-preview-placeholder" aria-hidden="true">folder</span>
+                    </span>
+                  : <span className="project-preview models">
+                      {entry.previews.map((preview) => <span className="model-tile" key={preview.path}>
+                        {preview.revision === null
+                          ? <span className="project-preview-placeholder" aria-hidden="true">no preview</span>
+                          : <img
+                              alt={`${preview.path.split("/").pop()} model preview`}
+                              src={`/api/screenshot?path=${encodeURIComponent(preview.path)}&revision=${encodeURIComponent(preview.revision)}`}
+                              onError={(event) => { event.currentTarget.hidden = true; }}
+                            />}
+                      </span>)}
+                    </span>}
                 <span className="project-card-body">
                   <span className="project-name"><strong>{entry.name}</strong></span>
                   <span className="project-meta">{entry.projects} {entry.projects === 1 ? "project" : "projects"}</span>

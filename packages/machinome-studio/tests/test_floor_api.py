@@ -294,6 +294,27 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual(_status(self.url("/api/screenshot?path=clocks/wall_clock_02"), "GET"), 404)
         self.assertEqual(_status(self.url("/api/screenshot?path=clocks/wall_clock_09"), "GET"), 404)
 
+    def test_a_multi_model_card_previews_its_models_from_the_hub_listing(self) -> None:
+        project = self._make_project("clocks", models=("wall_clock_01", "wall_clock_02"))
+        image = b"\x89PNG\r\n\x1a\nfirst clock"
+        (project / "screenshots").mkdir()
+        (project / "screenshots" / "wall_clock_01.png").write_bytes(image)
+        self._make_project("sandbox/windmill")
+
+        listed = {item["name"]: item for item in self._entries()}
+
+        self.assertEqual(listed["sandbox"]["previews"], [])
+        previews = listed["clocks"]["previews"]
+        self.assertEqual(
+            [preview["path"] for preview in previews],
+            ["clocks/wall_clock_01", "clocks/wall_clock_02"],
+        )
+        self.assertIsInstance(previews[0]["revision"], str)
+        self.assertIsNone(previews[1]["revision"])
+        self.assertEqual(
+            _status(self.url(f"/api/screenshot?path={previews[0]['path']}"), "GET"), 200,
+        )
+
     def test_backend_detection_is_read_only_and_repeatable(self) -> None:
         first = _request(self.url("/api/backends"), "GET")["backends"]
         second = _request(self.url("/api/backends/detect"), "POST")["backends"]
