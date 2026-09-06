@@ -1,6 +1,6 @@
 {
-  "generated_by": "solid_node/viewers/widget/tools/generate_parity_fixture.py",
-  "corpus": "spike/expressions/machine_model.py",
+  "generated_by": "tools/generate_parity_fixture.py",
+  "corpus": "spike/expressions/machine_model.py, tests/expression_project/vocabulary.py",
   "drivers": {
     "x_axis.motor": {
       "default": 8000,
@@ -21,6 +21,16 @@
       "unit": "ustep",
       "dtype": "int",
       "scale": 0.0125
+    },
+    "drive": {
+      "default": 0,
+      "range": [
+        0,
+        100
+      ],
+      "unit": "step",
+      "dtype": "int",
+      "scale": 0.01
     }
   },
   "cases": [
@@ -4279,6 +4289,1711 @@
         }
       },
       "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/builtins#0.0",
+      "expression": "abs(((drive * 0.01) - 0.5))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.5
+    },
+    {
+      "key": "vocabulary0|Vocabulary/builtins#0.1",
+      "expression": "floor((4.0 * (drive * 0.01)))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/builtins#0.2",
+      "expression": "ceil((3.0 * (drive * 0.01)))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/builtins#1.0",
+      "expression": "(sign(((drive * 0.01) - 0.5)) * 90.0)",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": -90.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/builtins#2.0",
+      "expression": "min((drive * 0.01), 0.5)",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/builtins#2.1",
+      "expression": "max((drive * 0.01), 0.25)",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.25
+    },
+    {
+      "key": "vocabulary0|Vocabulary/builtins#2.2",
+      "expression": "sqrt(abs((drive * 0.01)))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/compositions#0.0",
+      "expression": "min(max((drive * 0.01), 0.1), 0.9)",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.1
+    },
+    {
+      "key": "vocabulary0|Vocabulary/compositions#0.1",
+      "expression": "min(max(((2.0 * (drive * 0.01)) - 0.5), 0.0), 1.0)",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/compositions#0.2",
+      "expression": "min(max((((drive * 0.01) - 0.2) / 0.6000000000000001), 0.0), 1.0)",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/compositions#1.0",
+      "expression": "((720.0 * $t) - (360.0 * ceil((((720.0 * $t) - 180.0) / 360.0))))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/compositions#2.0",
+      "expression": "(2.0 + (6.0 * min(max((drive * 0.01), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 2.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/compositions#2.1",
+      "expression": "((((16 * min(max((drive * 0.01), 0.0), 1.0)) * min(max((drive * 0.01), 0.0), 1.0)) * (1 - min(max((drive * 0.01), 0.0), 1.0))) * (1 - min(max((drive * 0.01), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/compositions#2.2",
+      "expression": "(((0.0 + (4.0 * min(max((((drive * 0.01) - 0.0) / 0.25), 0.0), 1.0))) + (2.0 * min(max((((drive * 0.01) - 0.25) / 0.25), 0.0), 1.0))) + (-5.0 * min(max((((drive * 0.01) - 0.5) / 0.5), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#0.0",
+      "expression": "(10.0 * cos((360.0 * (drive * 0.01))))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 10.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#0.1",
+      "expression": "(10.0 * sin((360.0 * (drive * 0.01))))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#0.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#1.0",
+      "expression": "((1.0 + (9.0 * cos((360.0 * $t)))) - (2.0 * sin((360.0 * $t))))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 10.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#1.1",
+      "expression": "((2.0 + (9.0 * sin((360.0 * $t)))) + (2.0 * cos((360.0 * $t))))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 4.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#1.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#2.0",
+      "expression": "1.0",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#2.1",
+      "expression": "((2.0 * cos((180.0 * (drive * 0.01)))) - (3.0 * sin((180.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 2.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#2.2",
+      "expression": "((2.0 * sin((180.0 * (drive * 0.01)))) + (3.0 * cos((180.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 3.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#3.0",
+      "expression": "((1.0 * cos((180.0 * $t))) + (3.0 * sin((180.0 * $t))))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#3.1",
+      "expression": "2.0",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 2.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#3.2",
+      "expression": "((3.0 * cos((180.0 * $t))) - (1.0 * sin((180.0 * $t))))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 3.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#4.0",
+      "expression": "((1.0 * cos((90.0 + (180.0 * (drive * 0.01))))) - (2.0 * sin((90.0 + (180.0 * (drive * 0.01))))))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": -2.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#4.1",
+      "expression": "((1.0 * sin((90.0 + (180.0 * (drive * 0.01))))) + (2.0 * cos((90.0 + (180.0 * (drive * 0.01))))))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 1.0000000000000002
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#4.2",
+      "expression": "3.0",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 3.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#5.0",
+      "expression": "atan2(sin((360.0 * $t)), (2.0 + cos((360.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary0|Vocabulary/vectors#6.0",
+      "expression": "(((asin((0.25 * sin((720.0 * $t)))) + acos(min(max((drive * 0.01), -1.0), 1.0))) + atan((drive * 0.01))) + tan((30.0 * min(max((drive * 0.01), 0.0), 1.0))))",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "drive": 0
+        }
+      },
+      "expected": 90.0
+    },
+    {
+      "key": "vocabulary1|Vocabulary/builtins#0.0",
+      "expression": "abs(((drive * 0.01) - 0.5))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 0.25
+    },
+    {
+      "key": "vocabulary1|Vocabulary/builtins#0.1",
+      "expression": "floor((4.0 * (drive * 0.01)))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary1|Vocabulary/builtins#0.2",
+      "expression": "ceil((3.0 * (drive * 0.01)))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary1|Vocabulary/builtins#1.0",
+      "expression": "(sign(((drive * 0.01) - 0.5)) * 90.0)",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": -90.0
+    },
+    {
+      "key": "vocabulary1|Vocabulary/builtins#2.0",
+      "expression": "min((drive * 0.01), 0.5)",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 0.25
+    },
+    {
+      "key": "vocabulary1|Vocabulary/builtins#2.1",
+      "expression": "max((drive * 0.01), 0.25)",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 0.25
+    },
+    {
+      "key": "vocabulary1|Vocabulary/builtins#2.2",
+      "expression": "sqrt(abs((drive * 0.01)))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 0.5
+    },
+    {
+      "key": "vocabulary1|Vocabulary/compositions#0.0",
+      "expression": "min(max((drive * 0.01), 0.1), 0.9)",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 0.25
+    },
+    {
+      "key": "vocabulary1|Vocabulary/compositions#0.1",
+      "expression": "min(max(((2.0 * (drive * 0.01)) - 0.5), 0.0), 1.0)",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary1|Vocabulary/compositions#0.2",
+      "expression": "min(max((((drive * 0.01) - 0.2) / 0.6000000000000001), 0.0), 1.0)",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 0.0833333333333333
+    },
+    {
+      "key": "vocabulary1|Vocabulary/compositions#1.0",
+      "expression": "((720.0 * $t) - (360.0 * ceil((((720.0 * $t) - 180.0) / 360.0))))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 90.0
+    },
+    {
+      "key": "vocabulary1|Vocabulary/compositions#2.0",
+      "expression": "(2.0 + (6.0 * min(max((drive * 0.01), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 3.5
+    },
+    {
+      "key": "vocabulary1|Vocabulary/compositions#2.1",
+      "expression": "((((16 * min(max((drive * 0.01), 0.0), 1.0)) * min(max((drive * 0.01), 0.0), 1.0)) * (1 - min(max((drive * 0.01), 0.0), 1.0))) * (1 - min(max((drive * 0.01), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 0.5625
+    },
+    {
+      "key": "vocabulary1|Vocabulary/compositions#2.2",
+      "expression": "(((0.0 + (4.0 * min(max((((drive * 0.01) - 0.0) / 0.25), 0.0), 1.0))) + (2.0 * min(max((((drive * 0.01) - 0.25) / 0.25), 0.0), 1.0))) + (-5.0 * min(max((((drive * 0.01) - 0.5) / 0.5), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 4.0
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#0.0",
+      "expression": "(10.0 * cos((360.0 * (drive * 0.01))))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 6.123233995736766e-16
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#0.1",
+      "expression": "(10.0 * sin((360.0 * (drive * 0.01))))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 10.0
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#0.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#1.0",
+      "expression": "((1.0 + (9.0 * cos((360.0 * $t)))) - (2.0 * sin((360.0 * $t))))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 5.949747468305834
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#1.1",
+      "expression": "((2.0 + (9.0 * sin((360.0 * $t)))) + (2.0 * cos((360.0 * $t))))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 9.778174593052023
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#1.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#2.0",
+      "expression": "1.0",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#2.1",
+      "expression": "((2.0 * cos((180.0 * (drive * 0.01)))) - (3.0 * sin((180.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": -0.7071067811865472
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#2.2",
+      "expression": "((2.0 * sin((180.0 * (drive * 0.01)))) + (3.0 * cos((180.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 3.5355339059327378
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#3.0",
+      "expression": "((1.0 * cos((180.0 * $t))) + (3.0 * sin((180.0 * $t))))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 2.071929829606556
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#3.1",
+      "expression": "2.0",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 2.0
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#3.2",
+      "expression": "((3.0 * cos((180.0 * $t))) - (1.0 * sin((180.0 * $t))))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 2.3889551651687704
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#4.0",
+      "expression": "((1.0 * cos((90.0 + (180.0 * (drive * 0.01))))) - (2.0 * sin((90.0 + (180.0 * (drive * 0.01))))))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": -2.121320343559643
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#4.1",
+      "expression": "((1.0 * sin((90.0 + (180.0 * (drive * 0.01))))) + (2.0 * cos((90.0 + (180.0 * (drive * 0.01))))))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": -0.7071067811865474
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#4.2",
+      "expression": "3.0",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 3.0
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#5.0",
+      "expression": "atan2(sin((360.0 * $t)), (2.0 + cos((360.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 19.47122063449069
+    },
+    {
+      "key": "vocabulary1|Vocabulary/vectors#6.0",
+      "expression": "(((asin((0.25 * sin((720.0 * $t)))) + acos(min(max((drive * 0.01), -1.0), 1.0))) + atan((drive * 0.01))) + tan((30.0 * min(max((drive * 0.01), 0.0), 1.0))))",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "drive": 25
+        }
+      },
+      "expected": 104.16789596551388
+    },
+    {
+      "key": "vocabulary2|Vocabulary/builtins#0.0",
+      "expression": "abs(((drive * 0.01) - 0.5))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/builtins#0.1",
+      "expression": "floor((4.0 * (drive * 0.01)))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 2.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/builtins#0.2",
+      "expression": "ceil((3.0 * (drive * 0.01)))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 2.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/builtins#1.0",
+      "expression": "(sign(((drive * 0.01) - 0.5)) * 90.0)",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/builtins#2.0",
+      "expression": "min((drive * 0.01), 0.5)",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 0.5
+    },
+    {
+      "key": "vocabulary2|Vocabulary/builtins#2.1",
+      "expression": "max((drive * 0.01), 0.25)",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 0.5
+    },
+    {
+      "key": "vocabulary2|Vocabulary/builtins#2.2",
+      "expression": "sqrt(abs((drive * 0.01)))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 0.7071067811865476
+    },
+    {
+      "key": "vocabulary2|Vocabulary/compositions#0.0",
+      "expression": "min(max((drive * 0.01), 0.1), 0.9)",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 0.5
+    },
+    {
+      "key": "vocabulary2|Vocabulary/compositions#0.1",
+      "expression": "min(max(((2.0 * (drive * 0.01)) - 0.5), 0.0), 1.0)",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 0.5
+    },
+    {
+      "key": "vocabulary2|Vocabulary/compositions#0.2",
+      "expression": "min(max((((drive * 0.01) - 0.2) / 0.6000000000000001), 0.0), 1.0)",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 0.4999999999999999
+    },
+    {
+      "key": "vocabulary2|Vocabulary/compositions#1.0",
+      "expression": "((720.0 * $t) - (360.0 * ceil((((720.0 * $t) - 180.0) / 360.0))))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": -93.60000000000002
+    },
+    {
+      "key": "vocabulary2|Vocabulary/compositions#2.0",
+      "expression": "(2.0 + (6.0 * min(max((drive * 0.01), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 5.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/compositions#2.1",
+      "expression": "((((16 * min(max((drive * 0.01), 0.0), 1.0)) * min(max((drive * 0.01), 0.0), 1.0)) * (1 - min(max((drive * 0.01), 0.0), 1.0))) * (1 - min(max((drive * 0.01), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/compositions#2.2",
+      "expression": "(((0.0 + (4.0 * min(max((((drive * 0.01) - 0.0) / 0.25), 0.0), 1.0))) + (2.0 * min(max((((drive * 0.01) - 0.25) / 0.25), 0.0), 1.0))) + (-5.0 * min(max((((drive * 0.01) - 0.5) / 0.5), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 6.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#0.0",
+      "expression": "(10.0 * cos((360.0 * (drive * 0.01))))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": -10.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#0.1",
+      "expression": "(10.0 * sin((360.0 * (drive * 0.01))))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 1.2246467991473533e-15
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#0.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#1.0",
+      "expression": "((1.0 + (9.0 * cos((360.0 * $t)))) - (2.0 * sin((360.0 * $t))))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": -6.618861208201019
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#1.1",
+      "expression": "((2.0 + (9.0 * sin((360.0 * $t)))) + (2.0 * cos((360.0 * $t))))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 7.19162343493533
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#1.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#2.0",
+      "expression": "1.0",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#2.1",
+      "expression": "((2.0 * cos((180.0 * (drive * 0.01)))) - (3.0 * sin((180.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": -3.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#2.2",
+      "expression": "((2.0 * sin((180.0 * (drive * 0.01)))) + (3.0 * cos((180.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 2.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#3.0",
+      "expression": "((1.0 * cos((180.0 * $t))) + (3.0 * sin((180.0 * $t))))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 3.150411767686724
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#3.1",
+      "expression": "2.0",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 2.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#3.2",
+      "expression": "((3.0 * cos((180.0 * $t))) - (1.0 * sin((180.0 * $t))))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 0.2736890462203614
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#4.0",
+      "expression": "((1.0 * cos((90.0 + (180.0 * (drive * 0.01))))) - (2.0 * sin((90.0 + (180.0 * (drive * 0.01))))))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": -1.0000000000000002
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#4.1",
+      "expression": "((1.0 * sin((90.0 + (180.0 * (drive * 0.01))))) + (2.0 * cos((90.0 + (180.0 * (drive * 0.01))))))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": -1.9999999999999998
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#4.2",
+      "expression": "3.0",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 3.0
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#5.0",
+      "expression": "atan2(sin((360.0 * $t)), (2.0 + cos((360.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 36.090875204912884
+    },
+    {
+      "key": "vocabulary2|Vocabulary/vectors#6.0",
+      "expression": "(((asin((0.25 * sin((720.0 * $t)))) + acos(min(max((drive * 0.01), -1.0), 1.0))) + atan((drive * 0.01))) + tan((30.0 * min(max((drive * 0.01), 0.0), 1.0))))",
+      "scope": {
+        "time": 0.37,
+        "drivers": {
+          "drive": 50
+        }
+      },
+      "expected": 72.38467826575719
+    },
+    {
+      "key": "vocabulary3|Vocabulary/builtins#0.0",
+      "expression": "abs(((drive * 0.01) - 0.5))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 0.5
+    },
+    {
+      "key": "vocabulary3|Vocabulary/builtins#0.1",
+      "expression": "floor((4.0 * (drive * 0.01)))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 4.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/builtins#0.2",
+      "expression": "ceil((3.0 * (drive * 0.01)))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 3.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/builtins#1.0",
+      "expression": "(sign(((drive * 0.01) - 0.5)) * 90.0)",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 90.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/builtins#2.0",
+      "expression": "min((drive * 0.01), 0.5)",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 0.5
+    },
+    {
+      "key": "vocabulary3|Vocabulary/builtins#2.1",
+      "expression": "max((drive * 0.01), 0.25)",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/builtins#2.2",
+      "expression": "sqrt(abs((drive * 0.01)))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/compositions#0.0",
+      "expression": "min(max((drive * 0.01), 0.1), 0.9)",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 0.9
+    },
+    {
+      "key": "vocabulary3|Vocabulary/compositions#0.1",
+      "expression": "min(max(((2.0 * (drive * 0.01)) - 0.5), 0.0), 1.0)",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/compositions#0.2",
+      "expression": "min(max((((drive * 0.01) - 0.2) / 0.6000000000000001), 0.0), 1.0)",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/compositions#1.0",
+      "expression": "((720.0 * $t) - (360.0 * ceil((((720.0 * $t) - 180.0) / 360.0))))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 180.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/compositions#2.0",
+      "expression": "(2.0 + (6.0 * min(max((drive * 0.01), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 8.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/compositions#2.1",
+      "expression": "((((16 * min(max((drive * 0.01), 0.0), 1.0)) * min(max((drive * 0.01), 0.0), 1.0)) * (1 - min(max((drive * 0.01), 0.0), 1.0))) * (1 - min(max((drive * 0.01), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/compositions#2.2",
+      "expression": "(((0.0 + (4.0 * min(max((((drive * 0.01) - 0.0) / 0.25), 0.0), 1.0))) + (2.0 * min(max((((drive * 0.01) - 0.25) / 0.25), 0.0), 1.0))) + (-5.0 * min(max((((drive * 0.01) - 0.5) / 0.5), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#0.0",
+      "expression": "(10.0 * cos((360.0 * (drive * 0.01))))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 10.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#0.1",
+      "expression": "(10.0 * sin((360.0 * (drive * 0.01))))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": -2.4492935982947065e-15
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#0.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#1.0",
+      "expression": "((1.0 + (9.0 * cos((360.0 * $t)))) - (2.0 * sin((360.0 * $t))))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 2.9999999999999982
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#1.1",
+      "expression": "((2.0 + (9.0 * sin((360.0 * $t)))) + (2.0 * cos((360.0 * $t))))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": -7.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#1.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#2.0",
+      "expression": "1.0",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#2.1",
+      "expression": "((2.0 * cos((180.0 * (drive * 0.01)))) - (3.0 * sin((180.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": -2.0000000000000004
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#2.2",
+      "expression": "((2.0 * sin((180.0 * (drive * 0.01)))) + (3.0 * cos((180.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": -2.9999999999999996
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#3.0",
+      "expression": "((1.0 * cos((180.0 * $t))) + (3.0 * sin((180.0 * $t))))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 1.4142135623730954
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#3.1",
+      "expression": "2.0",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 2.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#3.2",
+      "expression": "((3.0 * cos((180.0 * $t))) - (1.0 * sin((180.0 * $t))))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": -2.82842712474619
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#4.0",
+      "expression": "((1.0 * cos((90.0 + (180.0 * (drive * 0.01))))) - (2.0 * sin((90.0 + (180.0 * (drive * 0.01))))))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 1.9999999999999998
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#4.1",
+      "expression": "((1.0 * sin((90.0 + (180.0 * (drive * 0.01))))) + (2.0 * cos((90.0 + (180.0 * (drive * 0.01))))))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": -1.0000000000000004
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#4.2",
+      "expression": "3.0",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 3.0
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#5.0",
+      "expression": "atan2(sin((360.0 * $t)), (2.0 + cos((360.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": -18.43494882292201
+    },
+    {
+      "key": "vocabulary3|Vocabulary/vectors#6.0",
+      "expression": "(((asin((0.25 * sin((720.0 * $t)))) + acos(min(max((drive * 0.01), -1.0), 1.0))) + atan((drive * 0.01))) + tan((30.0 * min(max((drive * 0.01), 0.0), 1.0))))",
+      "scope": {
+        "time": 0.75,
+        "drivers": {
+          "drive": 100
+        }
+      },
+      "expected": 45.57735026918963
+    },
+    {
+      "key": "vocabulary4|Vocabulary/builtins#0.0",
+      "expression": "abs(((drive * 0.01) - 0.5))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 0.7
+    },
+    {
+      "key": "vocabulary4|Vocabulary/builtins#0.1",
+      "expression": "floor((4.0 * (drive * 0.01)))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": -1.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/builtins#0.2",
+      "expression": "ceil((3.0 * (drive * 0.01)))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/builtins#1.0",
+      "expression": "(sign(((drive * 0.01) - 0.5)) * 90.0)",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": -90.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/builtins#2.0",
+      "expression": "min((drive * 0.01), 0.5)",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": -0.2
+    },
+    {
+      "key": "vocabulary4|Vocabulary/builtins#2.1",
+      "expression": "max((drive * 0.01), 0.25)",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 0.25
+    },
+    {
+      "key": "vocabulary4|Vocabulary/builtins#2.2",
+      "expression": "sqrt(abs((drive * 0.01)))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 0.4472135954999579
+    },
+    {
+      "key": "vocabulary4|Vocabulary/compositions#0.0",
+      "expression": "min(max((drive * 0.01), 0.1), 0.9)",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 0.1
+    },
+    {
+      "key": "vocabulary4|Vocabulary/compositions#0.1",
+      "expression": "min(max(((2.0 * (drive * 0.01)) - 0.5), 0.0), 1.0)",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/compositions#0.2",
+      "expression": "min(max((((drive * 0.01) - 0.2) / 0.6000000000000001), 0.0), 1.0)",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/compositions#1.0",
+      "expression": "((720.0 * $t) - (360.0 * ceil((((720.0 * $t) - 180.0) / 360.0))))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/compositions#2.0",
+      "expression": "(2.0 + (6.0 * min(max((drive * 0.01), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 2.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/compositions#2.1",
+      "expression": "((((16 * min(max((drive * 0.01), 0.0), 1.0)) * min(max((drive * 0.01), 0.0), 1.0)) * (1 - min(max((drive * 0.01), 0.0), 1.0))) * (1 - min(max((drive * 0.01), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/compositions#2.2",
+      "expression": "(((0.0 + (4.0 * min(max((((drive * 0.01) - 0.0) / 0.25), 0.0), 1.0))) + (2.0 * min(max((((drive * 0.01) - 0.25) / 0.25), 0.0), 1.0))) + (-5.0 * min(max((((drive * 0.01) - 0.5) / 0.5), 0.0), 1.0)))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#0.0",
+      "expression": "(10.0 * cos((360.0 * (drive * 0.01))))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 3.0901699437494745
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#0.1",
+      "expression": "(10.0 * sin((360.0 * (drive * 0.01))))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": -9.510565162951535
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#0.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#1.0",
+      "expression": "((1.0 + (9.0 * cos((360.0 * $t)))) - (2.0 * sin((360.0 * $t))))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": -8.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#1.1",
+      "expression": "((2.0 + (9.0 * sin((360.0 * $t)))) + (2.0 * cos((360.0 * $t))))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 8.881784197001252e-16
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#1.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#2.0",
+      "expression": "1.0",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#2.1",
+      "expression": "((2.0 * cos((180.0 * (drive * 0.01)))) - (3.0 * sin((180.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 3.381389745627314
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#2.2",
+      "expression": "((2.0 * sin((180.0 * (drive * 0.01)))) + (3.0 * cos((180.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 1.251480478539896
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#3.0",
+      "expression": "((1.0 * cos((180.0 * $t))) + (3.0 * sin((180.0 * $t))))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 3.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#3.1",
+      "expression": "2.0",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 2.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#3.2",
+      "expression": "((3.0 * cos((180.0 * $t))) - (1.0 * sin((180.0 * $t))))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": -0.9999999999999998
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#4.0",
+      "expression": "((1.0 * cos((90.0 + (180.0 * (drive * 0.01))))) - (2.0 * sin((90.0 + (180.0 * (drive * 0.01))))))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": -1.0302487364574218
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#4.1",
+      "expression": "((1.0 * sin((90.0 + (180.0 * (drive * 0.01))))) + (2.0 * cos((90.0 + (180.0 * (drive * 0.01))))))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 1.9845874989598937
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#4.2",
+      "expression": "3.0",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 3.0
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#5.0",
+      "expression": "atan2(sin((360.0 * $t)), (2.0 + cos((360.0 * (drive * 0.01)))))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 3.0388296472604803e-15
+    },
+    {
+      "key": "vocabulary4|Vocabulary/vectors#6.0",
+      "expression": "(((asin((0.25 * sin((720.0 * $t)))) + acos(min(max((drive * 0.01), -1.0), 1.0))) + atan((drive * 0.01))) + tan((30.0 * min(max((drive * 0.01), 0.0), 1.0))))",
+      "scope": {
+        "time": 0.5,
+        "drivers": {
+          "drive": -20
+        }
+      },
+      "expected": 90.22702655879527
     }
   ],
   "conversions": [
