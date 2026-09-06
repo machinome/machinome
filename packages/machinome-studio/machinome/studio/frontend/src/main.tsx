@@ -1803,7 +1803,9 @@ function Workspace({ path: entryPath }: { path: string }) {
     const active = run?.agents.some((agent) => agent.state === "active") ?? false;
     if (active && !window.confirm("An agent is working. Close this project and discard work in progress?")) return;
     await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
-    navigate("/");
+    // Back to the folder that lists this project, not to the working folder:
+    // a maker closing one model of a machine is still working on that machine.
+    navigate(folderUrl(folderOf(entryPath)));
   };
 
   return (

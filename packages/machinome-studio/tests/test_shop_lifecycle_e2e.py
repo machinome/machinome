@@ -684,9 +684,20 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual(previews.nth(1).get_attribute("alt"), "wall_clock_03 model preview")
         self.assertEqual(card.locator(".model-tile").count(), 3)
 
-        # A directory of unrelated projects keeps the folder glyph.
+        # A directory of unrelated projects stands on the projects it holds.
         grouping = self.page.get_by_role("button").filter(has_text="sandbox").first
-        self.assertEqual(grouping.locator(".model-tile").count(), 0)
+        self.assertEqual(grouping.locator(".model-tile").count(), 1)
+
+    def test_closing_a_project_returns_to_the_folder_that_lists_it(self) -> None:
+        self._make_project("sandbox/windmill")
+        self._open("sandbox/windmill")
+
+        self.page.goto(self.url("/projects/sandbox/windmill"))
+        self.page.get_by_text("LibreSolid Studio / sandbox/windmill").wait_for(timeout=10_000)
+        self.page.get_by_role("button", name="Close project").click()
+
+        self.page.wait_for_url(self.url("/folders/sandbox"), timeout=5_000)
+        self.page.get_by_role("heading", name="sandbox").wait_for()
 
     def _make_project(self, name: str, models: tuple[str, ...] = ()) -> Path:
         project = self.project_home / name
@@ -716,7 +727,8 @@ class ShopLifecycleE2E(unittest.TestCase):
         return str(project["session_id"])
 
     def _project(self, path: str) -> dict[str, object]:
-        entries = _request(self.url("/api/entries"), "GET")["entries"]
+        folder, _, _ = path.rpartition("/")
+        entries = _request(self.url(f"/api/entries?folder={folder}"), "GET")["entries"]
         return next(item for item in entries if item["path"] == path)
 
     def url(self, path: str) -> str:

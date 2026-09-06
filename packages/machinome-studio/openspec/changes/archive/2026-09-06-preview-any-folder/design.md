@@ -42,19 +42,21 @@ Non-Goals:
 
 ### Decision: Previews come from the manifest when there is one, and from the folder's own entries otherwise
 
-`_folder_previews(directory, path)` answers both kinds of folder:
+`list_folder` already knows which kind of folder it is emitting, because that
+is what decides whether the folder holds models or projects at all:
 
-- If the directory's manifest declares models, the previews are its first
-  three declared models, `<path>/<model>`, in declaration order — today's
-  behaviour, unchanged.
-- Otherwise the previews are the first three openable entries found by
-  descending the folder in listing order, each named by its own hub entry
-  path.
+- A repository whose manifest declares several models keeps `_model_previews`:
+  its first three declared models, `<path>/<model>`, in declaration order —
+  today's behaviour, unchanged.
+- Every other folder gets `_folder_previews(directory, path)`: the first three
+  openable entries found by descending it in listing order, each named by its
+  own hub entry path.
 
 The manifest is consulted with the existing `declared_models`, which reads
-`pyproject.toml` directly and costs no subprocess. A directory that is not a
-repository but carries a manifest declaring models is treated the same way as
-one that is: the rule is about the manifest, not about Git.
+`pyproject.toml` directly and costs no subprocess. It decides the previews of a
+folder that is a repository, which is the only folder whose declared models are
+openable entries; a manifest in a directory that is not a repository declares
+nothing the hub can open, so it does not choose that folder's previews.
 
 ### Decision: The walk yields entries lazily and stops at three
 

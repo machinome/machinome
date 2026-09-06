@@ -294,7 +294,7 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual(_status(self.url("/api/screenshot?path=clocks/wall_clock_02"), "GET"), 404)
         self.assertEqual(_status(self.url("/api/screenshot?path=clocks/wall_clock_09"), "GET"), 404)
 
-    def test_a_multi_model_card_previews_its_models_from_the_hub_listing(self) -> None:
+    def test_a_folder_card_previews_the_entries_it_holds(self) -> None:
         project = self._make_project("clocks", models=("wall_clock_01", "wall_clock_02"))
         image = b"\x89PNG\r\n\x1a\nfirst clock"
         (project / "screenshots").mkdir()
@@ -303,7 +303,8 @@ class FloorAPITest(unittest.TestCase):
 
         listed = {item["name"]: item for item in self._entries()}
 
-        self.assertEqual(listed["sandbox"]["previews"], [])
+        windmill_preview = listed["sandbox"]["previews"]
+        self.assertEqual([item["path"] for item in windmill_preview], ["sandbox/windmill"])
         previews = listed["clocks"]["previews"]
         self.assertEqual(
             [preview["path"] for preview in previews],

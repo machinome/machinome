@@ -26,11 +26,12 @@ directory. A directory that is not a repository but holds one anywhere below it
 is a folder of those projects; a repository whose manifest declares more than
 one model is a folder of those models, read straight from `pyproject.toml`
 rather than through `solid models`; a repository declaring one model or none is
-a single project. A multi-model project's folder also reports the entry path
-and preview revision of the first three models it declares, so its card can
-stand on those pictures rather than the folder glyph a grouping directory
-keeps; a grouping directory reports none, because it declares no model of its
-own. Exact independent Git repository roots also report their declared profile,
+a single project. Every folder also reports the entry path and preview revision
+of up to three entries, so its card can stand on those pictures rather than a
+folder glyph: a multi-model project reports the first three models it declares,
+and a grouping directory reports the first three openable entries it holds,
+found by descending it in listing order and abandoning the walk once the card
+is full. Exact independent Git repository roots also report their declared profile,
 branch, and last commit time. Regular files are omitted;
 malformed project configuration and directories that hold no project remain
 visible with an unopenable reason. Project directory names have no stylistic

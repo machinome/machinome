@@ -16,6 +16,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
+from itertools import islice
 from pathlib import Path
 
 from .screenshots import refresh_project_screenshot, screenshot_revision
@@ -483,13 +484,13 @@ def list_folder(project_home: Path, folder: str | None = "") -> list[ProjectList
             else:
                 projects.append(_project_listing(entry, path))
         elif holds_project(entry):
-            folders.append(FolderListing(path, count_projects(entry)))
+            folders.append(FolderListing(path, count_projects(entry), _folder_previews(entry, path)))
         else:
             projects.append(_project_listing(entry, path))
     return [*folders, *projects]
 
 
-PREVIEWED_MODELS = 3
+PREVIEWED_ENTRIES = 3
 
 
 def _model_previews(entry: Path, path: str, models: Sequence[str]) -> tuple[EntryPreview, ...]:
@@ -502,8 +503,45 @@ def _model_previews(entry: Path, path: str, models: Sequence[str]) -> tuple[Entr
     """
     return tuple(
         EntryPreview(f"{path}/{model}", screenshot_revision(entry, model))
-        for model in models[:PREVIEWED_MODELS]
+        for model in models[:PREVIEWED_ENTRIES]
     )
+
+
+def _folder_previews(directory: Path, path: str) -> tuple[EntryPreview, ...]:
+    """The pictures a grouping folder's card stands on.
+
+    Such a folder declares no model of its own, so it stands on the first
+    entries it holds instead. The walk stops as soon as the card is full,
+    which is what keeps listing a folder of two hundred projects as cheap as
+    listing a folder of three.
+    """
+    return tuple(islice(_previewable_entries(directory, path), PREVIEWED_ENTRIES))
+
+
+def _previewable_entries(directory: Path, path: str) -> Iterator[EntryPreview]:
+    """Every openable entry below this directory, one at a time.
+
+    The order is the order the hub itself lists them in: folders first, in
+    name order, each descended into as it is reached, then the projects the
+    directory holds directly. Yielding lazily is what lets the caller stop
+    after the few it shows.
+    """
+    prefix = f"{path}/" if path else ""
+    projects: list[EntryPreview] = []
+    for entry in _child_directories(directory):
+        child = f"{prefix}{entry.name}"
+        if is_repository_root(entry):
+            models = declared_models(entry)
+            if len(models) > 1:
+                yield from (
+                    EntryPreview(f"{child}/{model}", screenshot_revision(entry, model))
+                    for model in models
+                )
+            else:
+                projects.append(EntryPreview(child, screenshot_revision(entry)))
+        else:
+            yield from _previewable_entries(entry, child)
+    yield from projects
 
 
 def _project_listing(entry: Path, path: str, *, model: str | None = None) -> ProjectListing:

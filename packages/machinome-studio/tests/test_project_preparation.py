@@ -18,6 +18,7 @@ from floor.preparation import (
     FolderListing,
     HubEntry,
     PreparationError,
+    _folder_previews,
     build_project,
     commit_new_project,
     default_solid_command,
@@ -238,13 +239,51 @@ class FolderListingTest(unittest.TestCase):
             ],
         )
 
-    def test_a_folder_of_projects_carries_no_model_previews(self) -> None:
-        _make_repository(self.home / "sandbox" / "windmill")
+    def test_a_folder_of_projects_previews_the_projects_it_holds(self) -> None:
+        for name in ("windmill", "guitar", "harp", "kite"):
+            _make_repository(self.home / "sandbox" / name)
+        _publish_project_screenshot(self.home / "sandbox" / "guitar")
 
         card = self.listing()["sandbox"]
 
-        self.assertEqual(card.previews, ())
-        self.assertEqual(card.browser_value()["previews"], [])
+        self.assertEqual(
+            [preview.path for preview in card.previews],
+            ["sandbox/guitar", "sandbox/harp", "sandbox/kite"],
+        )
+        self.assertIsNotNone(card.previews[0].revision)
+        self.assertIsNone(card.previews[1].revision)
+        self.assertEqual(
+            card.browser_value()["previews"],
+            [
+                {"path": preview.path, "revision": preview.revision}
+                for preview in card.previews
+            ],
+        )
+
+    def test_a_folder_previews_the_entries_its_own_folders_hold(self) -> None:
+        _make_repository(self.home / "sandbox" / "windmill")
+        _make_repository(self.home / "sandbox" / "deeper" / "guitar")
+        clocks = self.home / "sandbox" / "clocks"
+        _make_repository(clocks)
+        _declare_models(clocks, ("wall_clock_01", "wall_clock_02"))
+
+        card = self.listing()["sandbox"]
+
+        self.assertEqual(
+            [preview.path for preview in card.previews],
+            [
+                "sandbox/clocks/wall_clock_01",
+                "sandbox/clocks/wall_clock_02",
+                "sandbox/deeper/guitar",
+            ],
+        )
+
+    def test_a_directory_holding_nothing_openable_previews_nothing(self) -> None:
+        empty = self.home / "notes"
+        (empty / "deeper").mkdir(parents=True)
+        (empty / "readme.txt").write_text("nothing here")
+
+        self.assertEqual(_folder_previews(empty, "notes"), ())
 
     def test_a_project_declaring_one_model_stays_a_project(self) -> None:
         project = self.home / "solo"
@@ -505,6 +544,11 @@ def _publish_screenshot(project: Path, model: str) -> None:
     target = project / "screenshots" / f"{model}.png"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(b"\x89PNG\r\n\x1a\n" + model.encode())
+
+
+def _publish_project_screenshot(project: Path) -> None:
+    """Put a valid preview where a single project's screenshot lives."""
+    (project / "screenshot.png").write_bytes(b"\x89PNG\r\n\x1a\n" + project.name.encode())
 
 
 def _make_repository(project: Path) -> None:
