@@ -144,9 +144,19 @@ SolidNodeWidget.mount('#host', '{DOCUMENT}', {payload}).then(() => {{
                     raise CaptureError(f"Browser viewer failed to mount: {error}")
                 output_dir = os.path.dirname(os.path.abspath(output))
                 os.makedirs(output_dir, exist_ok=True)
-                page.locator("canvas").screenshot(
+                # Clip a page screenshot to the canvas rather than
+                # photographing the element: a large model keeps its canvas
+                # moving after the mount resolves -- the viewer is still
+                # framing it -- and Playwright's element screenshot waits for
+                # the box to stop moving until it times out.
+                canvas = page.locator("canvas").bounding_box()
+                if canvas is None:
+                    raise CaptureError("Browser viewer produced no canvas to photograph")
+                page.screenshot(
                     path=output,
                     omit_background=True,
+                    clip=canvas,
+                    timeout=300_000,
                 )
                 context.close()
             finally:

@@ -22,6 +22,14 @@ The viewer leaves the solid-node framework and becomes this package.
   change `real-time-playback`, paired with solid-node's
   `declared-time-base`.)
 
+- **A large model is photographed at last.** `solid-node-viewer capture`
+  clips a page screenshot to the canvas instead of photographing the canvas
+  element. Playwright caps an element screenshot's wait for a stable box at
+  thirty seconds however long a timeout it is given, so a model that takes
+  longer than that to settle — a vendor assembly of dozens of pieces on
+  software rendering — never produced a picture at all. The clipped page
+  screenshot honours its own, generous timeout.
+
 - **Extracted.** The widget, the development app, the development server
   and the headless capture that shipped inside solid-node up to 0.6.0 move
   here with their history. Nothing a browser sees has changed: the bundle

@@ -73,6 +73,51 @@ class CaptureFailureTest(TestCase):
         browser.assert_not_called()
 
 
+class CanvasPhotographTest(TestCase):
+    """How the photograph is taken, which a large model made load-bearing.
+
+    Playwright caps an element screenshot's wait for a stable box at thirty
+    seconds whatever timeout it is given, and a model big enough to take
+    longer than that to settle never gets photographed. The page screenshot
+    clipped to the canvas honours its timeout instead.
+    """
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        self.capture = Capture(self.tempdir.name)
+        self.box = {'x': 0, 'y': 0, 'width': 320, 'height': 240}
+        self.page = Mock()
+        self.page.locator.return_value.get_attribute.return_value = None
+        self.page.locator.return_value.bounding_box.return_value = self.box
+        browser = Mock()
+        browser.new_context.return_value.new_page.return_value = self.page
+        self.capture.launch = Mock(return_value=browser)
+        runtime = Mock()
+        runtime.__enter__ = Mock(return_value=runtime)
+        runtime.__exit__ = Mock(return_value=False)
+        self.capture.playwright = Mock(return_value=Mock(return_value=runtime))
+
+    def test_the_canvas_is_photographed_through_a_clipped_page_screenshot(self):
+        output = os.path.join(self.tempdir.name, 'shot.png')
+
+        self.capture.capture(output, (320, 240))
+
+        self.page.locator.return_value.screenshot.assert_not_called()
+        self.page.screenshot.assert_called_once()
+        arguments = self.page.screenshot.call_args.kwargs
+        self.assertEqual(arguments['clip'], self.box)
+        self.assertTrue(arguments['omit_background'])
+        # Beyond the thirty seconds Playwright waits for a stable element.
+        self.assertGreater(arguments['timeout'], 30_000)
+
+    def test_a_page_without_a_canvas_is_named_rather_than_photographed(self):
+        self.page.locator.return_value.bounding_box.return_value = None
+
+        with self.assertRaisesRegex(CaptureError, 'canvas'):
+            self.capture.capture(os.path.join(self.tempdir.name, 'shot.png'), (320, 240))
+
+
 @needs_bundle
 class StagedDocumentTest(TestCase):
     def setUp(self):
