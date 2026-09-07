@@ -1,6 +1,6 @@
 ## 1. The shared node table
 
-- [ ] 1.1 Red: `src/expressions.test.ts` — `prepare(expression)` returns a
+- [x] 1.1 Red: `src/expressions.test.ts` — `prepare(expression)` returns a
       node id; two structurally identical subtrees intern to ONE id and two
       different ones do not; a constant is keyed by value and type (`1` and
       `"1"` differ, `0` and `-0` differ); a `Member` chain rooted in a name
@@ -11,7 +11,7 @@
       form and the expression; `expressionMetrics().nodes` after preparing
       an expression pasted into itself twelve times is a few dozen, not
       thousands.
-- [ ] 1.2 Implement `src/expressions.ts`: the exponent-literal rewrite
+- [x] 1.2 Implement `src/expressions.ts`: the exponent-literal rewrite
       (moved here from `evaluator.ts`, where it belongs to parsing),
       `tokenize`, and the recursive builder that interns bottom-up into the
       table of D2, folding `^` and the dotted-name chain as it goes. No
