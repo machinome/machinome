@@ -69,12 +69,12 @@ The API version is the integer a host checks before mounting — the widget
 declares it once in `package.json` as `solidNodeViewerApi`, and every mount
 handle and the `SolidNodeWidget` global report it. It rises when the mount
 interface changes incompatibly or gains a capability a host may require.
-The document schema versions the widget reads (`1`, `2` and `3`) are a
-third number, owned by the producer.
+The document schema versions the widget reads (`1`, `2`, `3` and `4`) are
+a third number, owned by the producer.
 
 | solid-node-viewer | viewer API | reads document versions |
 | --- | --- | --- |
-| 0.1.0 | 6 | 1, 2, 3 |
+| 0.1.0 | 7 | 1, 2, 3, 4 |
 
 ## Working on the viewer
 

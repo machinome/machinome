@@ -321,7 +321,7 @@
 
 ## 6. Package, records and evidence
 
-- [ ] 6.1 API version: raise `solidNodeViewerApi` to **7** in
+- [x] 6.1 API version: raise `solidNodeViewerApi` to **7** in
       `widget/package.json` and follow it in `version.test.ts`. Record the
       reasoning here and in the ADR (D9): reading a version-4 document is a
       capability a host may require — `solid develop`, the shop floor's
@@ -337,12 +337,43 @@
       framework's `viewer` extra floor (`solid-node-viewer >= x.y.z`), which
       is a package-version pin and can only be written after this package is
       released (framework `design.md` D11). Report it to the pilot.
-- [ ] 6.2 Validation: `npm test`, `npm run typecheck`, `npm run build` in
+
+      Red confirmed: `version.test.ts` bumped to assert 7 first, against
+      the unbumped `package.json` (still 6) — `expected 6 to be 7`. Then
+      `package.json`'s `solidNodeViewerApi` raised to 7. Green confirmed:
+      `npm test` 14 files, 295 tests, all passing (unchanged file/case
+      count; `version.test.ts` itself stays 3 tests, its third case's
+      wording and number both changed). `npx tsc --noEmit` clean. `npm
+      run build` — `dist/solid-widget.js`, 532.1kb.
+
+      Reasoning recorded (D9, tasks.md's own text above): reading a
+      version-4 document is a capability a host may require, the same
+      kind the version rose to 5 for when version-3 flexible documents
+      arrived. The follow-up for the pilot: the framework's `viewer`
+      extra floor (`solid-node-viewer >= x.y.z`) is not writable until
+      this package is released, and is not made by this change.
+- [x] 6.2 Validation: `npm test`, `npm run typecheck`, `npm run build` in
       `solid_node_viewer/widget`; `.venv/bin/python -m pytest` for the
       Python package — the capture and server contracts must be untouched,
       which is the check that D12's "what does not change" is true. Record
       the counts and the bundle size here.
-- [ ] 6.3 `CHANGELOG.md` — a 0.1.0 (unreleased) entry in the house style:
+
+      `npm test`: **14 files, 295 tests, all passing**. `npx tsc --noEmit`:
+      clean. `npm run build`: `dist/solid-widget.js`, 532.1kb.
+
+      `.venv/bin/python -m pytest` from the repository root: **57 passed**,
+      no failures — but one adjustment was needed first: `tests/test_bundle.py`'s
+      `test_declares_api_version_six` reads the REAL `package.json` (no
+      mocking, unlike its neighbour `test_api_version_is_read_from_the_package_declaration`,
+      which does), so it broke the moment `solidNodeViewerApi` became 7 —
+      exactly parallel to `version.test.ts`'s own hardcoded-version case.
+      Renamed to `test_declares_api_version_seven` and updated to assert 7;
+      `bundle.py` itself is untouched (D12 holds: this is a version-number
+      DATA test tracking the same declaration `version.test.ts` tracks, not
+      a change to `bundle.py`'s behavior). Confirmed red first (`1 failed,
+      56 passed` before the edit, `assertEqual(bundle.api_version(), 6)`
+      failing against the real 7), then green (57 passed).
+- [x] 6.3 `CHANGELOG.md` — a 0.1.0 (unreleased) entry in the house style:
       what the maker sees (the machine whose document shrank by 981× opens,
       poses and plays), the version-4 table and what a binding name means,
       that dependence follows a binding so a document animated only through
@@ -352,13 +383,23 @@
       row/column for document version 4 at API 7, and the sentence naming
       the document schema versions the widget reads (`1`, `2` and `3`)
       becomes `1`, `2`, `3` and `4`.
+
+      Done: new top entry added to `CHANGELOG.md`'s 0.1.0 (unreleased)
+      section, above `share-expression-subtrees`'s entry, in the house
+      style. `README.md`'s version table row updated to `0.1.0 | 7 |
+      1, 2, 3, 4` and its prose sentence to match; no other `1, 2, 3` or
+      version-6 reference found in `README.md`.
+
+      **Stopping here per this session's explicit instruction**: 6.4
+      (promoting the ADR, syncing the spec delta, and archiving the
+      change) is left for the coordinator, who reviews this work first.
 - [ ] 6.4 Promote
       `adrs/EXPORT/ADR-044-a-binding-name-resolves-into-the-shared-dag.md`
       to `docs/adrs/EXPORT/`, set its status to Accepted, and add its row to
       `docs/adrs/README.md` under EXPORT, keeping the table's order. Sync
       the delta into `openspec/specs/viewer-package/spec.md` — including the
       API-version correction of D9 — and archive the change.
-- [ ] 6.5 Caller check on the model that started this: the grasshopper
+- [x] 6.5 Caller check on the model that started this: the grasshopper
       clock, both ways.
 
       **Numeric, against the flat document.** A scratch script (not
@@ -382,12 +423,38 @@
       largest expression — give the scratch run room, and do not commit
       either document.
 
-      **In the browser.** Rebuild the bundle (`npm run build`; the
-      workspace venv installs this package editable, so the rebuilt file
-      is what `solid develop` and the shop floor serve), then open the
-      version-4 document and confirm: it mounts rather than being refused,
-      the animation bar is present, and the escapement moves when the
-      timeline is scrubbed. The bar's presence is the whole point of the
-      transitive closure — no operation of that document mentions `$t` —
-      so its absence is a failure even if the model stands correctly.
-      Record what was observed.
+      **Run, and measured** (`src/caller-check.scratch.test.ts`, written,
+      run through `npx vitest run`, and deleted immediately after —
+      confirmed absent from `git status`):
+
+      - operation expressions: **116** (flat and bound documents agree on
+        the count, confirming the two are the same machine differently
+        written)
+      - time-dependent (closure reaches `$t`): **22**
+      - checks (116 expressions × 3 values of `$t`): **348**
+      - mismatches: **0**
+      - shared table size (interned nodes) for the version-4 document,
+        after evaluating every one of its 116 expressions once: **510**
+      - resolutions in one evaluation pass (`$t` = 0.5): **323** (fewer
+        than 116 × however many subexpressions each holds, because a
+        shared subexpression resolves once however many of the 116
+        operations reach it)
+      - resolutions in a second pass at a new `$t` (0.51): **323** —
+        identical, confirming the same shared shape is walked every pass
+        rather than growing or shrinking
+      - wall time of 60 passes (one full re-evaluation of all 116
+        expressions per pass, a fresh `$t` each time so none is skipped
+        as a repeated pass): **1.549 ms** total, on this machine
+
+      All numbers match design.md's own measured expectations exactly
+      (116 expressions, 22 time-dependent, 0 mismatches) and proposal.md's
+      "348 checks, 0 mismatches" line.
+
+      **In the browser.** Not run — **pending: coordinator**, per this
+      session's explicit instruction. Rebuilding the bundle and mounting
+      the version-4 document in an actual browser (confirming it mounts,
+      the animation bar is present, and the escapement moves when
+      scrubbed) needs a browser environment this session did not use; the
+      numeric half above proves the same arithmetic through the shipped
+      `evalExpr`, but the timeline-bar's actual presence on screen is
+      unverified here.

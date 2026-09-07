@@ -34,9 +34,13 @@ describe('API_VERSION', () => {
   // to it. Rendering `version: 3` documents -- parts whose geometry
   // follows the machine -- was such a capability (5); playing a declared
   // loop at a chosen speed -- `speed` on the options and the handle --
-  // is the next (6): a host that needs a clock to run at real time
-  // cannot tell from the interface alone.
-  it('declares the real-time-playback API as version 6', () => {
-    expect(API_VERSION).toBe(6);
+  // was the next (6). Reading a `version: 4` document's `bindings` table
+  // (OpenSpec `read-expression-bindings`, design D9) is the one after
+  // that (7): a host that mounts a document the framework now publishes
+  // at version 4 -- `solid develop`, the shop floor's live viewer, the
+  // standalone export page -- needs a number it can check before
+  // mounting, and there is no other number to check it by.
+  it('declares the read-expression-bindings API as version 7', () => {
+    expect(API_VERSION).toBe(7);
   });
 });

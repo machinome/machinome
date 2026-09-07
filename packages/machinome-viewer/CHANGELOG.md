@@ -7,6 +7,52 @@ it carries release together and share one version.
 
 The viewer leaves the solid-node framework and becomes this package.
 
+- **A machine whose document shrank by 981× still opens, poses and
+  plays.** `share-expression-subtrees` resolved a repeated subexpression
+  once per frame, wherever it occurred — but the redundancy was still in
+  the *document*: 3DPrintedClocks' grasshopper escapement published 116
+  operation expressions built from 30 distinct strings, about seven
+  million written subexpressions over 263 distinct ones, 31.6 MB in all.
+  The producer now writes each subexpression that repeats exactly once,
+  as a named entry in an ordered `bindings` table, and references it by
+  bare name everywhere it occurred — the same grasshopper document falls
+  from 31,638,555 bytes to 32,227, and this viewer now reads it
+  (document version 4). A binding name resolves wherever it is used —
+  an operation's expression, a flexible leaf's `params`, or another
+  binding — to that entry's value under the same `$t` and driver values,
+  and resolves as a binding *before* it is ever judged a driver id: a
+  document may name every one of its bindings with an empty `drivers`
+  table, and it still loads. Dependence flows *through* a binding
+  transitively: an operation whose whole expression is a binding name
+  resolving through the table to `$t` is time-dependent exactly as if
+  it had been written out in full, gets re-evaluated on time change, and
+  makes its document animated — the grasshopper document's own shape,
+  where not one of its 116 expressions contains `$t` as text, yet 22 of
+  them move the clock. A binding a driver reaches is re-evaluated when
+  that driver moves and not otherwise, through as many entries as the
+  chain runs, and a republish that changes only what a binding reads —
+  an operation whose text stays exactly `_b3` while `_b3`'s own
+  expression changes from `$t` to a driver, or back — is followed: the
+  document's timeline appears or disappears with it. A table this viewer
+  cannot resolve is refused when the document is loaded, naming the
+  entry: a malformed array or entry, a duplicate name, an entry naming
+  itself or a later entry, a name colliding with a declared driver id,
+  or a name reached from anywhere in the document that is neither `$t`,
+  nor an entry, nor a declared driver id. No number moves: reading a
+  document's expressions through its table resolves to exactly what the
+  same expressions resolve to with every reference written out, proven
+  bit-identical (`Object.is`) against the flat 31.6 MB document at three
+  points in its cycle — the two are the same arithmetic, differently
+  written. The committed cross-runtime parity fixture is replaced by the
+  framework's regenerated one (451 cases, the 421 already pinned
+  unmoved, plus 30 new naming its own 4-entry table), so the corpus now
+  pins the table's semantics and not only the evaluator's. The viewer
+  API rises to 7: reading a version-4 document is a capability a host
+  may require, and there is no other number a host can check before
+  mounting one. (OpenSpec change `read-expression-bindings`; ADR-044,
+  extending `share-expression-subtrees`'s ADR-043; consumes solid-node's
+  `expression-bindings`, ADR-080.)
+
 - **A document that repeats itself now animates.** A producer that builds
   an expression by string concatenation — solid2's `OpenSCADConstant` —
   pastes a reused value's full text again on every reuse, and a machine

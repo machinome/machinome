@@ -25,8 +25,8 @@ class BundleLookupTest(TestCase):
         self.assertTrue(froms <= {'pathlib', 'importlib.metadata', 'solid_node_viewer'},
                         froms)
 
-    def test_declares_api_version_six(self):
-        self.assertEqual(bundle.api_version(), 6)
+    def test_declares_api_version_seven(self):
+        self.assertEqual(bundle.api_version(), 7)
 
     def test_paths_and_remedy_share_one_source(self):
         self.assertTrue(str(bundle.bundle_path()).endswith('widget/dist/solid-widget.js'))
