@@ -52,7 +52,16 @@ export interface ManifestNode {
 // LOWEST version its content needs -- a document holding no flexible
 // node is byte-identical to the version 2 it always was -- so accepting
 // the whole union is accepting exactly what the producer can emit.
-export type ManifestVersion = 1 | 2 | 3;
+export type ManifestVersion = 1 | 2 | 3 | 4;
+
+// One entry of a version-4 document's shared-subexpression table
+// (OpenSpec `read-expression-bindings`, ADR-044). `expression` names
+// only `$t`, declared driver ids and entries earlier in the array --
+// the ordering guarantee `bindings.ts` validates and relies on.
+export interface ManifestBinding {
+  name: string;
+  expression: string;
+}
 
 // One declared driver, as the producer publishes it. Presentation
 // metadata only: `range` is never a clamp.
@@ -94,5 +103,10 @@ export interface Manifest {
   // too, and a consumer without driver evaluation already refuses that
   // loudly -- nobody can misread the added key.
   instructions?: Record<string, ManifestInstruction>;
+  // Every subexpression that occurs more than once among this document's
+  // expressions, published once and referenced by name (version 4).
+  // Absent from a document with nothing shared, so a version 1-3
+  // document is typed exactly as it is without this change.
+  bindings?: ManifestBinding[];
   root: ManifestNode;
 }

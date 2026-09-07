@@ -1,6 +1,6 @@
 ## 0. Before anything else
 
-- [ ] 0.1 Locate the evidence this change is measured against. **It is
+- [x] 0.1 Locate the evidence this change is measured against. **It is
       already on disk — do not run a build to produce it.** Rebuilding
       `wall_clock_53_grasshopper` against a framework carrying
       `expression-bindings` would overwrite the flat document with a
@@ -28,9 +28,14 @@
       `solid_node_viewer/widget` is **13 files, 244 tests, all passing** at
       HEAD `96e7398`.
 
+      Confirmed at the start of implementation (repository HEAD `c1ce6bc`,
+      the planning commit, code unchanged since `96e7398`): `npm test`
+      reports **13 files, 244 tests, all passing**. Evidence files
+      confirmed on disk in the scratchpad exactly as listed above.
+
 ## 1. The document's binding table
 
-- [ ] 1.1 Red: `src/bindings.test.ts` — `bindingTable(document, sourceUrl)`
+- [x] 1.1 Red: `src/bindings.test.ts` — `bindingTable(document, sourceUrl)`
       over hand-written manifests.
 
       **Shape and validation** (D7), each refusal naming the entry or the
@@ -56,7 +61,10 @@
       **Roots**: `roots()` maps each name to a node id, and two entries with
       the same expression text map to the same id (the interning already
       there).
-- [ ] 1.2 Implement `src/bindings.ts`: `BindingTable`, `EMPTY_BINDINGS`,
+
+      Red confirmed: `Cannot find module './bindings'` — `src/bindings.ts`
+      did not exist. 15 new cases, all failing.
+- [x] 1.2 Implement `src/bindings.ts`: `BindingTable`, `EMPTY_BINDINGS`,
       `bindingTable(document, sourceUrl)`. Validation in array order so the
       first offending entry is the one named; the closure computed once at
       construction in table order (forward-only makes one pass enough), from
@@ -65,6 +73,10 @@
       expression strings. `types.ts` gains `ManifestBinding` and
       `Manifest.bindings`. No consumer yet. Green.
       Commit: `feat(widget): read a document's bindings table`.
+
+      Green confirmed: `npm test` — **14 files, 259 tests, all passing**
+      (244 pre-existing + 15 new in `bindings.test.ts`). `npx tsc --noEmit`
+      clean.
 
 ## 2. A binding name resolves through the shared DAG
 
