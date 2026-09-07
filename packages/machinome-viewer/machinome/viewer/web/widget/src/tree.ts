@@ -15,6 +15,8 @@ import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { ManifestNode, RawOperation } from './types';
 import { EvalScope, evalExpr, freeVariables, TIME_ID } from './evaluator';
+import { bindingRootsEqual } from './expressions';
+import { BindingTable, EMPTY_BINDINGS } from './bindings';
 import { FlexibleShape } from './flexible';
 
 /** What changed since the last update, when not everything did.
@@ -71,24 +73,35 @@ export class WidgetTree {
   // refetch bytes already on screen. Consumed by the next reconcile either way,
   // so a later genuine change is still detected.
   private freshFromArtifact = false;
-  // The union of this node's operations' free variables, computed once
-  // and dropped whenever a reconcile replaces the operations.
+  // The union of this node's operations' free variables, CLOSED OVER the
+  // document's bindings table (OpenSpec `read-expression-bindings`,
+  // design D5, D6): the inputs the operations actually read, not merely
+  // the names they mention. Computed once and dropped whenever a
+  // reconcile replaces the operations or installs a different table.
   private freeVars: ReadonlySet<string> | undefined;
   // A flexible leaf's geometry: no model to fetch, no children below it,
   // and its own dependency set beside the operations' one.
   private flexible: FlexibleShape | undefined;
+  // The document's bindings table, document-scoped (design D2):
+  // `EMPTY_BINDINGS` for a document with nothing shared, so a version
+  // 1-3 document -- or any construction site that omits this parameter,
+  // tree.test.ts's and flexible.test.ts's own included -- follows the
+  // path it followed before this change.
+  private bindings: BindingTable;
 
   // Resolves when this node's mesh (if any) and all descendants
   // finished loading, so the camera can be fit to the actual bounds.
   loaded: Promise<void>;
 
   constructor(data: ManifestNode, baseUrl: string,
-              inheritedColor: string | null = null) {
+              inheritedColor: string | null = null,
+              bindings: BindingTable = EMPTY_BINDINGS) {
     this.group = new THREE.Group();
     this.group.matrixAutoUpdate = false;
     this.name = data.name;
     this.operations = data.operations;
     this.children = [];
+    this.bindings = bindings;
 
     const color = data.color ?? inheritedColor;
     this.color = color;
@@ -105,12 +118,12 @@ export class WidgetTree {
     // before the camera frames anything), so a flexible node is on
     // screen at the driver defaults exactly as a rigid one is.
     if (data.flexible) {
-      this.flexible = new FlexibleShape(data.name, data.flexible, color);
+      this.flexible = new FlexibleShape(data.name, data.flexible, color, bindings);
       this.group.add(this.flexible.mesh);
     }
 
     for (const childData of data.children ?? []) {
-      const child = new WidgetTree(childData, baseUrl, color);
+      const child = new WidgetTree(childData, baseUrl, color, bindings);
       this.children.push(child);
       this.group.add(child.group);
       pending.push(child.loaded);
@@ -146,13 +159,15 @@ export class WidgetTree {
   /** Fetch every stale mesh before changing the live tree.  This makes a
    * rejected document update leave the previously rendered scene intact. */
   async reconcile(data: ManifestNode, baseUrl: string,
-                  inheritedColor: string | null = null): Promise<void> {
-    const apply = await this.prepareReconcile(data, baseUrl, inheritedColor);
+                  inheritedColor: string | null = null,
+                  bindings: BindingTable = EMPTY_BINDINGS): Promise<void> {
+    const apply = await this.prepareReconcile(data, baseUrl, inheritedColor, bindings);
     apply();
   }
 
   private async prepareReconcile(data: ManifestNode, baseUrl: string,
-                                 inheritedColor: string | null): Promise<() => void> {
+                                 inheritedColor: string | null,
+                                 bindings: BindingTable): Promise<() => void> {
     const nextColor = data.color ?? inheritedColor;
     const skipMtimeCheck = this.freshFromArtifact;
     const modelChanged = this.model !== data.model || (this.mtime !== data.mtime && !skipMtimeCheck);
@@ -167,22 +182,32 @@ export class WidgetTree {
     // buffers behind them survive the republish.
     const nextFlexible = data.flexible
       && !this.flexible?.describes(data.flexible)
-      ? new FlexibleShape(data.name, data.flexible, nextColor) : undefined;
+      ? new FlexibleShape(data.name, data.flexible, nextColor, bindings) : undefined;
 
     const existing = uniqueByName(this.children);
     const incoming = uniqueDataByName(data.children ?? []);
     const nextChildren = await Promise.all((data.children ?? []).map(async (childData) => {
       const child = existing.get(childData.name);
       if (!child || !incoming.has(childData.name)) {
-        const created = new WidgetTree(childData, baseUrl, nextColor);
+        const created = new WidgetTree(childData, baseUrl, nextColor, bindings);
         await created.loaded;
         return { tree: created, apply: () => undefined };
       }
       return {
         tree: child,
-        apply: await child.prepareReconcile(childData, baseUrl, nextColor),
+        apply: await child.prepareReconcile(childData, baseUrl, nextColor, bindings),
       };
     }));
+
+    // OpenSpec `read-expression-bindings`, design D6: what an expression
+    // READS follows the table it is read through, so a republish whose
+    // table differs from the one this node holds -- the D3 map
+    // comparison, reused here -- invalidates the free set EVEN WHEN the
+    // operations' own text did not change (an operation naming "_b3"
+    // stays exactly "_b3" while what "_b3" reads changes underneath it).
+    // A republish that changed neither invalidates nothing.
+    const operationsChanged = !operationsEqual(this.operations, data.operations);
+    const bindingsChanged = !bindingRootsEqual(this.bindings.roots(), bindings.roots());
 
     return () => {
       // All nested fetches succeeded.  Only now is it safe to mutate the
@@ -198,7 +223,10 @@ export class WidgetTree {
       this.mtime = data.mtime;
       this.freshFromArtifact = false;
       this.operations = data.operations;
-      this.freeVars = undefined;
+      this.bindings = bindings;
+      if (operationsChanged || bindingsChanged) {
+        this.freeVars = undefined;
+      }
       this.setColor(nextColor);
 
       if (nextFlexible) {
@@ -206,7 +234,7 @@ export class WidgetTree {
         this.flexible = nextFlexible;
         this.group.add(nextFlexible.mesh);
       } else if (data.flexible) {
-        this.flexible!.rebind(data.flexible);
+        this.flexible!.rebind(data.flexible, bindings);
       } else {
         this.removeFlexible();
       }
@@ -274,7 +302,10 @@ export class WidgetTree {
     );
   }
 
-  /** Every input this node's own operations read, `$t` included. */
+  /** Every input this node's own operations read, `$t` included -- a
+   * binding name closed over the document's table (design D5, D6), so
+   * an operation that is only a binding name resolving through to `$t`
+   * counts as reading `$t`, though the text never mentions it. */
   private get free(): ReadonlySet<string> {
     if (this.freeVars === undefined) {
       const found = new Set<string>();
@@ -287,7 +318,7 @@ export class WidgetTree {
           }
         }
       }
-      this.freeVars = found;
+      this.freeVars = this.bindings.closure(found);
     }
     return this.freeVars;
   }
@@ -390,6 +421,17 @@ function touchedBy(free: ReadonlySet<string>, changed: Changed): boolean {
     if (free.has(id)) return true;
   }
   return false;
+}
+
+/** Value equality for one node's own operations (design D6): a republish
+ * always hands `reconcile` a FRESH array parsed from JSON, so a
+ * reference comparison would report "changed" every time even when the
+ * text is byte-identical -- exactly the case (an operation naming "_b3"
+ * that stays "_b3") this equality exists to tell apart from a genuine
+ * edit. `RawOperation` is plain JSON-safe data, so structural equality
+ * is exactly `JSON.stringify` equality. */
+function operationsEqual(a: readonly RawOperation[], b: readonly RawOperation[]): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 function isPathPrefix(prefix: AssemblyPath, path: AssemblyPath): boolean {

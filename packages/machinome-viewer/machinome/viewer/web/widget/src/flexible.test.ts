@@ -31,8 +31,9 @@ vi.mock('molejo', async (importOriginal) => {
 });
 
 import { evaluate, validate } from 'molejo';
+import { bindingTable } from './bindings';
 import { WidgetTree } from './tree';
-import { ManifestFlexible, ManifestNode } from './types';
+import { Manifest, ManifestFlexible, ManifestNode } from './types';
 
 const evaluations = () =>
   (evaluate as unknown as ReturnType<typeof vi.fn>).mock.calls.length;
@@ -95,6 +96,15 @@ const mounted = async (data: ManifestNode = engine([spring()]),
   tree.update(scope(lift));
   return tree;
 };
+
+// OpenSpec `read-expression-bindings` (design D5, D6). A table built the
+// same way `assertRenderable` builds one, over a hand-written {name,
+// expression} array -- `bindingTable` reads only `.bindings` and
+// `.drivers`, so a minimal object stands in for a full `Manifest`.
+const bindings = (
+  entries: { name: string; expression: string }[],
+  drivers: Record<string, unknown> = {},
+) => bindingTable({ bindings: entries, drivers } as unknown as Manifest, '/m.json');
 
 describe('a flexible node mounts geometry from its spec', () => {
   it('renders the spring at the driver defaults', async () => {
@@ -264,5 +274,95 @@ describe('flexible geometry is gated the way pose is', () => {
     // which inputs the node now watches.
     expect(evaluations()).toBe(1);
     expect(positionsOf(meshOf(tree.children[0])).array).toBe(array);
+  });
+});
+
+// OpenSpec `read-expression-bindings` (design D5, D6; ADR-044). Exactly
+// parallel to `WidgetTree`'s own dependence: a flexible leaf's `params`
+// expression is held to the SAME table, so a binding a `params`
+// expression names is followed transitively -- what geometry recomputes
+// on is what the binding reads, not the bare name in the document text.
+describe('flexible bindings: driver dependence follows the table (D6)', () => {
+  it('re-evaluates when the driver reached through a binding changes, and not another', async () => {
+    const table = bindings(
+      [{ name: '_b0', expression: '(46.8 - valvetrain.lift)' }],
+      { 'valvetrain.lift': {} },
+    );
+    const tree = new WidgetTree(
+      engine([spring({ params: { height: '_b0' } })]), '/build/', null, table,
+    );
+    await tree.loaded;
+    const scoped = (lift: number) =>
+      ({ time: 0, drivers: { valvetrain: { lift } }, bindings: table.roots() });
+    tree.update(scoped(0));
+    (evaluate as unknown as ReturnType<typeof vi.fn>).mockClear();
+
+    tree.update(scoped(6), { time: false, drivers: new Set(['valvetrain.lift']) });
+    expect(evaluations()).toBe(1);
+
+    (evaluate as unknown as ReturnType<typeof vi.fn>).mockClear();
+    tree.update(scoped(6), { time: false, drivers: new Set(['spindle.speed']) });
+    expect(evaluations()).toBe(0);
+  });
+
+  it('carries dependence through a chain of two entries', async () => {
+    const table = bindings([
+      { name: '_b0', expression: 'valvetrain.lift' },
+      { name: '_b1', expression: '(46.8 - _b0)' },
+    ], { 'valvetrain.lift': {} });
+    const tree = new WidgetTree(
+      engine([spring({ params: { height: '_b1' } })]), '/build/', null, table,
+    );
+    await tree.loaded;
+    const scoped = (lift: number) =>
+      ({ time: 0, drivers: { valvetrain: { lift } }, bindings: table.roots() });
+    tree.update(scoped(0));
+    (evaluate as unknown as ReturnType<typeof vi.fn>).mockClear();
+
+    tree.update(scoped(6), { time: false, drivers: new Set(['valvetrain.lift']) });
+    expect(evaluations()).toBe(1);
+  });
+});
+
+// D6, the mirror of `tree.test.ts`'s own republish suite: a `params`
+// expression that stays exactly "_b3" across a republish while what
+// "_b3" reads changes underneath it. `describes()` sees the same spec,
+// so this takes the `rebind()` path -- unconditional by design, and
+// exercised here with a table that actually differs.
+describe('flexible bindings: a republish that changes only the table (D6)', () => {
+  it('follows the table from one driver to another, though the params text never changed', async () => {
+    const overLift = bindings(
+      [{ name: '_b3', expression: '(46.8 - valvetrain.lift)' }],
+      { 'valvetrain.lift': {}, 'spindle.speed': {} },
+    );
+    const overSpeed = bindings(
+      [{ name: '_b3', expression: '(46.8 - spindle.speed)' }],
+      { 'valvetrain.lift': {}, 'spindle.speed': {} },
+    );
+    const document = () => engine([spring({ params: { height: '_b3' } })]);
+
+    const tree = new WidgetTree(document(), '/build/', null, overLift);
+    await tree.loaded;
+    tree.update({
+      time: 0, drivers: { valvetrain: { lift: 0 }, spindle: { speed: 0 } },
+      bindings: overLift.roots(),
+    });
+    (evaluate as unknown as ReturnType<typeof vi.fn>).mockClear();
+
+    await tree.reconcile(document(), '/build/', null, overSpeed);
+
+    // The driver the OLD entry read no longer moves it.
+    tree.update({
+      time: 0, drivers: { valvetrain: { lift: 12 }, spindle: { speed: 0 } },
+      bindings: overSpeed.roots(),
+    }, { time: false, drivers: new Set(['valvetrain.lift']) });
+    expect(evaluations()).toBe(0);
+
+    // The driver the NEW entry reads does.
+    tree.update({
+      time: 0, drivers: { valvetrain: { lift: 12 }, spindle: { speed: 6.8 } },
+      bindings: overSpeed.roots(),
+    }, { time: false, drivers: new Set(['spindle.speed']) });
+    expect(evaluations()).toBe(1);
   });
 });

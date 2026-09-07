@@ -24,7 +24,7 @@ import {
 } from './playback';
 import { EvalScope, freeVariables, TIME_ID } from './evaluator';
 import { releaseExpressions, retainExpressions } from './expressions';
-import { BindingTable, bindingTable } from './bindings';
+import { BindingTable, bindingTable, EMPTY_BINDINGS } from './bindings';
 import { evaluatesTech, knownTechnologies, specRefusal } from './flexible';
 import { AssemblyNode, AssemblyPath, WidgetTree } from './tree';
 import { Manifest, ManifestDriver, ManifestInstruction, ManifestNode } from './types';
@@ -145,6 +145,13 @@ export async function mount(
   controls.rotateSpeed = 0.5;
 
   let tree: WidgetTree | undefined;
+  // The loaded document's bindings table (OpenSpec `read-expression-bindings`,
+  // design D6): `EMPTY_BINDINGS` until the first successful load, and
+  // installed into this field before the `tree.update(scope())` that
+  // follows a (re)load -- the same place and order `drivers.reconcile(...)`
+  // already runs before that update -- so no node can read a value
+  // memoized against a table it no longer carries.
+  let bindingsTable: BindingTable = EMPTY_BINDINGS;
   let time = resolved.time;
   let playing = false;
   let slider: HTMLInputElement | undefined;
@@ -171,7 +178,8 @@ export async function mount(
   // survive a live rebuild.
   const drivers = new DriverStore();
 
-  const scope = (): EvalScope => ({ time, drivers: drivers.scope() });
+  const scope = (): EvalScope =>
+    ({ time, drivers: drivers.scope(), bindings: bindingsTable.roots() });
 
   // One door for a driver value, whether the maker moved a slider or
   // the host called setDriver: identical store semantics, identical
@@ -226,13 +234,12 @@ export async function mount(
   });
 
   const replaceTree = async (view: View | null) => {
-    // `table` is threaded into the tree and the scope in increment 4
-    // (OpenSpec `read-expression-bindings`, design D6); loaded here
-    // already so a malformed table is refused before anything else
-    // changes.
     const { document, table } = await loadDocument(sourceUrl);
     drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
-    const next = new WidgetTree(document.root, baseUrl);
+    // Installed before the update that follows (design D6), in the same
+    // place and order `drivers.reconcile(...)` already runs before it.
+    bindingsTable = table;
+    const next = new WidgetTree(document.root, baseUrl, null, bindingsTable);
     next.update(scope());
     await next.loaded;
     if (disposed) {
@@ -421,10 +428,14 @@ export async function mount(
       renderer.render(scene, camera);
     },
     async manifestChanged() {
-      // `table` is threaded into the tree and the scope in increment 4.
       const { document, table } = await loadDocument(sourceUrl);
       drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
-      await tree?.reconcile(document.root, baseUrl);
+      // Installed before the update that follows (design D6): a
+      // republish carrying a different table invalidates the free set
+      // of every node that reads it differently, whether or not that
+      // node's own operations changed.
+      bindingsTable = table;
+      await tree?.reconcile(document.root, baseUrl, null, bindingsTable);
       if (tree) {
         const rootChanged = assemblyNavigation.reconcile(tree);
         tree.update(scope());

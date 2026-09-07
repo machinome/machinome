@@ -26,6 +26,7 @@
 import * as THREE from 'three';
 import { evaluate, validate, MolejoBuffers } from 'molejo';
 import { EvalScope, evalExpr, freeVariables } from './evaluator';
+import { BindingTable, EMPTY_BINDINGS } from './bindings';
 import { ManifestFlexible } from './types';
 
 /** Every `tech` this package can evaluate. A document naming another one
@@ -76,12 +77,16 @@ export class FlexibleShape {
   private readonly geometry: THREE.BufferGeometry;
   private params: [string, string][];
   private freeVars: ReadonlySet<string> | undefined;
+  // The document's bindings table (design D2, D6), document-scoped like
+  // `WidgetTree`'s own field: `EMPTY_BINDINGS` for a document with
+  // nothing shared.
+  private bindings: BindingTable;
   // Undefined until the first evaluation: molejo derives the counts from
   // the spec, so the first call is what allocates and writes the index.
   private buffers: MolejoBuffers | undefined;
 
   constructor(name: string, flexible: ManifestFlexible,
-              color: string | null) {
+              color: string | null, bindings: BindingTable = EMPTY_BINDINGS) {
     if (!evaluatesTech(flexible.tech)) {
       throw new Error(
         `The node "${name}" is a flexible part evaluated by ` +
@@ -106,6 +111,7 @@ export class FlexibleShape {
     this.tech = flexible.tech;
     this.spec = flexible.spec;
     this.params = parameterList(flexible);
+    this.bindings = bindings;
     this.geometry = new THREE.BufferGeometry();
     // Flat shading, because that is the look every other part already
     // has: an STL arrives non-indexed, so the vertex normals computed
@@ -118,7 +124,9 @@ export class FlexibleShape {
                                materialForFlexible(color));
   }
 
-  /** Every input this node's parameter expressions read, `$t` included.
+  /** Every input this node's parameter expressions read, `$t` included --
+   * a binding name closed over the document's table (design D5, D6),
+   * exactly parallel to `WidgetTree`'s own `free`.
    *
    * The union is the node's geometry dependency set. Computed once off
    * the evaluator's cached parse and dropped whenever a reconcile
@@ -131,7 +139,7 @@ export class FlexibleShape {
           found.add(name);
         }
       }
-      this.freeVars = found;
+      this.freeVars = this.bindings.closure(found);
     }
     return this.freeVars;
   }
@@ -147,9 +155,14 @@ export class FlexibleShape {
   }
 
   /** Point the same buffers at new expressions, and forget which inputs
-   * the old ones read. */
-  rebind(flexible: ManifestFlexible): void {
+   * the old ones read. Unconditional (design D6): unlike `WidgetTree`'s
+   * own reconcile, this is already called only when the spec is
+   * unchanged (`describes`), so there is no cheaper case to distinguish
+   * -- it always needs the freshly-installed table regardless of
+   * whether the expressions or the table actually differ. */
+  rebind(flexible: ManifestFlexible, bindings: BindingTable = EMPTY_BINDINGS): void {
     this.params = parameterList(flexible);
+    this.bindings = bindings;
     this.freeVars = undefined;
   }
 

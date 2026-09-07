@@ -24,8 +24,9 @@ vi.mock('./evaluator', async (importOriginal) => {
 });
 
 import { evalExpr } from './evaluator';
+import { bindingTable } from './bindings';
 import { assemblyPathKey, materialForColor, WidgetTree } from './tree';
-import { ManifestNode } from './types';
+import { Manifest, ManifestNode } from './types';
 
 const evaluations = () =>
   (evalExpr as unknown as ReturnType<typeof vi.fn>).mock.calls
@@ -39,6 +40,15 @@ const leaf = (overrides: Partial<ManifestNode> = {}): ManifestNode => ({
 const root = (children: ManifestNode[]): ManifestNode => ({
   name: 'root', type: 'assembly', color: null, operations: [], children,
 });
+
+// OpenSpec `read-expression-bindings`: a table built the same way
+// `assertRenderable` builds one, over a hand-written {name, expression}
+// array. `bindingTable` reads only `.bindings` and `.drivers`, so a
+// minimal object stands in for a full `Manifest`.
+const bindings = (
+  entries: { name: string; expression: string }[],
+  drivers: Record<string, unknown> = {},
+) => bindingTable({ bindings: entries, drivers } as unknown as Manifest, '/m.json');
 
 describe('materialForColor', () => {
   it('uses the development viewer normal material when no color is supplied', () => {
@@ -325,5 +335,213 @@ describe('WidgetTree driver-aware updates', () => {
                 { time: false, drivers: new Set(['x_axis.motor']) });
 
     expect(evaluations()).toContain(X_TERM);
+  });
+});
+
+// OpenSpec `read-expression-bindings` (design D5, D6; ADR-044). The free
+// set each node already computes is closed over the document's table, so
+// `animated` and the re-evaluation bounding both follow what a binding
+// TRANSITIVELY reads rather than what its own text mentions -- the exact
+// failure the grasshopper clock's document showed: not one of its
+// operation expressions contains `$t` as text, yet the machine moves.
+describe('WidgetTree bindings: the timeline follows a binding (D6)', () => {
+  const timeChain = bindings([
+    { name: '_b0', expression: '($t * 43200.0)' },
+    { name: '_b1', expression: 'floor(_b0)' },
+  ]);
+
+  it('is animated through a binding, though no operation text contains $t', async () => {
+    const tree = new WidgetTree(root([
+      leaf({ name: 'escapement', operations: [['r', '_b1', [0, 0, 1]] as const] }),
+    ]), '/build/', null, timeChain);
+    await tree.loaded;
+
+    expect(tree.animated).toBe(true);
+  });
+
+  it('moves the operation when time changes, through the binding', async () => {
+    const tree = new WidgetTree(root([
+      leaf({ name: 'escapement', operations: [['r', '_b1', [0, 0, 1]] as const] }),
+    ]), '/build/', null, timeChain);
+    await tree.loaded;
+    const scope = (time: number) => ({ time, bindings: timeChain.roots() });
+    tree.update(scope(0));
+    const before = tree.children[0].group.matrix.elements.slice();
+
+    tree.update(scope(0.5), { time: true, drivers: new Set() });
+
+    expect(tree.children[0].group.matrix.elements).not.toEqual(before);
+  });
+
+  it('without a table, an operation that is only a binding name is neither animated nor moved', async () => {
+    // The negative case: `bindings` defaulting to `EMPTY_BINDINGS`
+    // resolves nothing, so a document that NAMES bindings but is
+    // mounted without its table stands still rather than crashing --
+    // it does not read `$t` at all under the empty closure.
+    const tree = new WidgetTree(root([
+      leaf({ name: 'escapement', operations: [['r', '_b1', [0, 0, 1]] as const] }),
+    ]), '/build/');
+    await tree.loaded;
+
+    expect(tree.animated).toBe(false);
+  });
+});
+
+describe('WidgetTree bindings: driver dependence follows the table (D6)', () => {
+  const scaled = (x: number, y: number) => ({
+    time: 0, drivers: { x_axis: { motor: x }, y_axis: { motor: y } },
+  });
+
+  it('re-evaluates when the driver reached through a binding changes, and not another', async () => {
+    const single = bindings(
+      [{ name: '_b0', expression: '(x_axis.motor * 0.1)' }],
+      { 'x_axis.motor': {} },
+    );
+    const tree = new WidgetTree(root([
+      leaf({ name: 'moved', operations: [['t', ['_b0', '0', '0']] as const] }),
+    ]), '/build/', null, single);
+    await tree.loaded;
+    const scope = (x: number, y: number) => ({ ...scaled(x, y), bindings: single.roots() });
+    tree.update(scope(8000, 2000));
+    (evalExpr as unknown as ReturnType<typeof vi.fn>).mockClear();
+
+    tree.update(scope(1600, 2000), { time: false, drivers: new Set(['x_axis.motor']) });
+    expect(evaluations()).toContain('_b0');
+
+    (evalExpr as unknown as ReturnType<typeof vi.fn>).mockClear();
+    tree.update(scope(1600, 500), { time: false, drivers: new Set(['y_axis.motor']) });
+    expect(evaluations()).not.toContain('_b0');
+  });
+
+  it('carries dependence through a chain of two entries', async () => {
+    const chain = bindings([
+      { name: '_b0', expression: '(x_axis.motor * 2.0)' },
+      { name: '_b1', expression: '(_b0 + 1.0)' },
+    ], { 'x_axis.motor': {} });
+    const tree = new WidgetTree(root([
+      leaf({ name: 'moved', operations: [['t', ['_b1', '0', '0']] as const] }),
+    ]), '/build/', null, chain);
+    await tree.loaded;
+    const scope = (x: number) => ({ time: 0, drivers: { x_axis: { motor: x } }, bindings: chain.roots() });
+    tree.update(scope(0));
+    (evalExpr as unknown as ReturnType<typeof vi.fn>).mockClear();
+
+    tree.update(scope(3), { time: false, drivers: new Set(['x_axis.motor']) });
+
+    expect(evaluations()).toContain('_b1');
+    expect(tree.children[0].group.matrix.elements[12]).toBeCloseTo(7);
+  });
+});
+
+// D11's proof, at the tree level: a document whose operations reference
+// a bindings table poses exactly as the same machine with every
+// reference written out in full.
+describe('WidgetTree bindings: a bound document poses as the flat one it names (D11)', () => {
+  it('matches a flat document element for element', async () => {
+    const chain = bindings([
+      { name: '_b0', expression: '($t * 43200.0)' },
+      { name: '_b1', expression: '(_b0 + x_axis.motor)' },
+    ], { 'x_axis.motor': {} });
+
+    const bound = new WidgetTree(root([
+      leaf({ name: 'spin', operations: [['r', '_b1', [0, 0, 1]] as const] }),
+    ]), '/build/', null, chain);
+    const flat = new WidgetTree(root([
+      leaf({
+        name: 'spin',
+        operations: [['r', '(($t * 43200.0) + x_axis.motor)', [0, 0, 1]] as const],
+      }),
+    ]), '/build/');
+    await Promise.all([bound.loaded, flat.loaded]);
+
+    const time = 0.3333;
+    const motor = 8000;
+    bound.update({ time, drivers: { x_axis: { motor } }, bindings: chain.roots() });
+    flat.update({ time, drivers: { x_axis: { motor } } });
+
+    expect(bound.children[0].group.matrix.elements)
+      .toEqual(flat.children[0].group.matrix.elements);
+  });
+});
+
+// D6: "a reconcile carrying a table that differs from the one the node
+// holds invalidates that node's free set ... whether or not its
+// operations changed." An operation whose whole expression stays `_b3`
+// across a republish is exactly the case a reconcile driven by CHANGED
+// OPERATIONS would miss.
+describe('WidgetTree bindings: a republish that changes only the table (D6)', () => {
+  const machine = () => root([
+    leaf({ name: 'moved', operations: [['t', ['_b3', '0', '0']] as const] }),
+  ]);
+  const overTime = () => bindings([{ name: '_b3', expression: '($t * 2.0)' }]);
+  const overDriver = () => bindings(
+    [{ name: '_b3', expression: '(x_axis.motor * 2.0)' }], { 'x_axis.motor': {} },
+  );
+
+  it('follows the table from $t to a driver, though "_b3" never changed', async () => {
+    const timeTable = overTime();
+    const tree = new WidgetTree(machine(), '/build/', null, timeTable);
+    await tree.loaded;
+    tree.update({ time: 0, drivers: { x_axis: { motor: 0 } }, bindings: timeTable.roots() });
+    expect(tree.animated).toBe(true);
+
+    const driverTable = overDriver();
+    await tree.reconcile(machine(), '/build/', null, driverTable);
+
+    expect(tree.animated).toBe(false);
+
+    // A setTime-equivalent update no longer moves it.
+    const before = tree.children[0].group.matrix.elements.slice();
+    tree.update(
+      { time: 0.9, drivers: { x_axis: { motor: 0 } }, bindings: driverTable.roots() },
+      { time: true, drivers: new Set() },
+    );
+    expect(tree.children[0].group.matrix.elements).toEqual(before);
+
+    // A driveTo-equivalent update on the driver it now reads does.
+    tree.update(
+      { time: 0.9, drivers: { x_axis: { motor: 5 } }, bindings: driverTable.roots() },
+      { time: false, drivers: new Set(['x_axis.motor']) },
+    );
+    expect(tree.children[0].group.matrix.elements[12]).toBeCloseTo(10);
+  });
+
+  it('the mirror: follows the table from a driver to $t', async () => {
+    const driverTable = overDriver();
+    const tree = new WidgetTree(machine(), '/build/', null, driverTable);
+    await tree.loaded;
+    tree.update({ time: 0, drivers: { x_axis: { motor: 0 } }, bindings: driverTable.roots() });
+    expect(tree.animated).toBe(false);
+
+    const timeTable = overTime();
+    await tree.reconcile(machine(), '/build/', null, timeTable);
+
+    expect(tree.animated).toBe(true);
+    tree.update(
+      { time: 0.25, drivers: {}, bindings: timeTable.roots() },
+      { time: true, drivers: new Set() },
+    );
+    expect(tree.children[0].group.matrix.elements[12]).toBeCloseTo(0.5);
+  });
+
+  it('a republish carrying an equal table invalidates nothing', async () => {
+    const first = overTime();
+    const tree = new WidgetTree(machine(), '/build/', null, first);
+    await tree.loaded;
+    tree.update({ time: 0, drivers: {}, bindings: first.roots() });
+    expect(tree.animated).toBe(true);
+
+    // A SEPARATE BindingTable instance, but the same name naming the
+    // same expression text -- interning gives it the same node id, so
+    // `bindingRootsEqual` reports no difference.
+    const same = overTime();
+    await tree.reconcile(machine(), '/build/', null, same);
+
+    expect(tree.animated).toBe(true);
+    tree.update(
+      { time: 0.4, drivers: {}, bindings: same.roots() },
+      { time: true, drivers: new Set() },
+    );
+    expect(tree.children[0].group.matrix.elements[12]).toBeCloseTo(0.8);
   });
 });

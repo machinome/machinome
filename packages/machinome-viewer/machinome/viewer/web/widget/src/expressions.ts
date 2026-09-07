@@ -676,8 +676,14 @@ function mapsEqual(a: Record<string, unknown>, b: Record<string, unknown>): bool
 // NOT `mapsEqual` -- that compares nested VALUES for the driver map;
 // here two node ids are equal by `!==`, and a `Map` rather than a plain
 // object is what `bindings.ts` and every call site already build.
-function bindingsEqual(a?: ReadonlyMap<string, NodeId>,
-                        b?: ReadonlyMap<string, NodeId>): boolean {
+//
+// Exported: `tree.ts`'s reconcile (D6) needs the SAME comparison to
+// decide whether a republished document's table differs from the one a
+// node already holds -- reusing it here is what makes "difference" mean
+// one thing on both sides of the pass boundary, rather than two
+// independently-maintained notions that could drift apart.
+export function bindingRootsEqual(a?: ReadonlyMap<string, NodeId>,
+                                   b?: ReadonlyMap<string, NodeId>): boolean {
   if (a === b) return true;
   const aSize = a?.size ?? 0;
   const bSize = b?.size ?? 0;
@@ -692,7 +698,7 @@ function bindingsEqual(a?: ReadonlyMap<string, NodeId>,
 function scopesEqual(a: EvalScope, b: EvalScope): boolean {
   return Object.is(a.time, b.time)
     && mapsEqual(a.drivers ?? {}, b.drivers ?? {})
-    && bindingsEqual(a.bindings, b.bindings);
+    && bindingRootsEqual(a.bindings, b.bindings);
 }
 
 let passCounter = 0;

@@ -176,7 +176,7 @@
 
 ## 4. Dependence flows through the table
 
-- [ ] 4.1 Red: `src/tree.test.ts` and `src/flexible.test.ts`.
+- [x] 4.1 Red: `src/tree.test.ts` and `src/flexible.test.ts`.
 
       **The timeline** (the failure the grasshopper document actually
       shows): a document in which no operation's expression contains `$t`
@@ -214,7 +214,30 @@
       **Unchanged**: every existing `tree.test.ts`, `flexible.test.ts` and
       `assembly.test.ts` case stays unedited and green — they construct
       without a table and must keep behaving exactly as they do.
-- [ ] 4.2 Implement: `WidgetTree` and `FlexibleShape` take the table as an
+
+      Interpretation note: "mount both through the loader" (Bound equals
+      flat) is exercised as `bindingTable(document, url)` + direct
+      `WidgetTree` construction, not `viewer.ts`'s `mount()` itself —
+      `mount()` needs a DOM/WebGL environment this suite does not set up,
+      the same substitution `document.test.ts`'s own `mountRetained` tests
+      already make (see that file's comment). `bindingTable` is exactly
+      what `assertRenderable` calls to build the table `loadDocument`
+      hands back, so this exercises the same validated-table path without
+      needing the browser.
+
+      Red confirmed: with the closure application reverted to `this.freeVars
+      = found` (no `.closure()` call) in both `tree.ts` and `flexible.ts`,
+      10 cases failed — the 7 new `tree.test.ts` cases under "the timeline"/
+      "driver dependence"/"a republish that changes only the table", and 3
+      of the 5 new `flexible.test.ts` cases (the "driver dependence" pair
+      and the republish mirror; the two new "driver dependence" cases and
+      the bound-vs-flat case in `tree.test.ts` already passed at this point,
+      since increment 2's scope-level binding resolution already resolves
+      values correctly under `update(scope, 'all')` — only the SELECTIVE
+      re-evaluation bounding, gated by the closure, needed the fix). Fix
+      re-applied and reconfirmed green before proceeding to 4.2's viewer.ts
+      wiring.
+- [x] 4.2 Implement: `WidgetTree` and `FlexibleShape` take the table as an
       optional trailing parameter defaulting to `EMPTY_BINDINGS` (also on
       `WidgetTree.reconcile` and `FlexibleShape.rebind`), and close their
       free set over it where it is built — `needsUpdate`, `animated` and
@@ -229,6 +252,16 @@
       `drivers.reconcile(...)` already runs), and adds
       `bindings: table.roots()` to `scope()`. Green.
       Commit: `feat(widget): follow time and drivers through a binding`.
+
+      Implementation note: the D3 map comparison used by `reconcile` is
+      the SAME function `scopesEqual` uses for the pass, exported from
+      `expressions.ts` as `bindingRootsEqual` (rather than reimplemented in
+      `tree.ts`) so "difference" means one thing on both sides.
+
+      Green confirmed: `npm test` — **14 files, 292 tests, all passing**
+      (280 pre-existing + 12 net new: 7 in `tree.test.ts` making 27, 5 in
+      `flexible.test.ts` making 17). `npx tsc --noEmit` clean. `npm run
+      build` — `dist/solid-widget.js`, 532.1kb.
 
 ## 5. The parity fixture
 
