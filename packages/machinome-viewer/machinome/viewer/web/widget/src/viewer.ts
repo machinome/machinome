@@ -86,14 +86,34 @@ export interface ViewerHandle {
   apiVersion: number;
 }
 
+/** Runs `action`, then retains the shared expression table (D8) --
+ * ONLY once `action` has already succeeded, never before. `action` is
+ * `mount()`'s initial document load (`loadDocument` -> `assertRenderable`,
+ * the D10 refusal surface: an unreadable document version, an
+ * unevaluable flexible technology, an undeclared driver id, or an
+ * unsupported expression form). Retaining first and releasing only in
+ * `dispose()` would hold the table forever for a refused document --
+ * no handle, so no dispose() ever runs to release it, and a `solid
+ * develop` session that republishes a broken document and then a good
+ * one leaks a hold the good document's own eventual dispose() cannot
+ * clear either, since it is one mount, one retain. Retaining only
+ * after success keeps the pairing obvious: every retain call sees the
+ * handle it belongs to actually get built.
+ *
+ * Exported (rather than inlined in `mount()`) for its own test:
+ * `mount()` needs a DOM/WebGL environment this package's suite does
+ * not set up. */
+export async function mountRetained<T>(action: () => Promise<T>): Promise<T> {
+  const result = await action();
+  retainExpressions();
+  return result;
+}
+
 export async function mount(
   target: HTMLElement | string,
   sourceUrl: string,
   options: ViewerOptions = {},
 ): Promise<ViewerHandle> {
-  // One more mount holding the shared expression table (D8), released
-  // in dispose() below.
-  retainExpressions();
   const container = resolveContainer(target);
   const resolved = resolveOptions(options);
   const baseUrl = resolveBaseUrl(sourceUrl, resolved.baseUrl ?? undefined);
@@ -314,7 +334,14 @@ export async function mount(
     });
   }
 
-  await replaceTree(resolved.view);
+  // The initial load: retains the shared expression table (D8)
+  // ONLY once it has succeeded (mountRetained above), so a refused
+  // document -- an unreadable version, an unevaluable tech, an
+  // undeclared driver id, or D10's unsupported-form refusal, all
+  // raised inside replaceTree's loadDocument/assertRenderable --
+  // never leaves a hold behind: no handle is ever produced for such
+  // a mount, so no dispose() would ever exist to release it.
+  await mountRetained(() => replaceTree(resolved.view));
 
   // The public channel, subscribed once per mount: a ramp moving a
   // driver reaches its slider exactly the way it reaches a host's

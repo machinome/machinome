@@ -99,6 +99,31 @@
       them from `viewer.ts` at mount and in `dispose()`. Nothing else in
       `viewer.ts` changes. Green.
       Commit: `feat(widget): keep the shared table only while a viewer is mounted`.
+- [x] 4.3 Fix (coordinator's adversarial review, after 5.3): `mount()`
+      called `retainExpressions()` as its very first statement, so a
+      mount that never produces a handle -- a refused document version,
+      an unevaluable flexible tech, an undeclared driver id, or D10's
+      unsupported-form refusal, all raised inside `loadDocument`/
+      `assertRenderable` -- held the shared table forever: no handle,
+      no `dispose()`, `mountCount` never returns to zero, and the
+      spec's "disposing of the last viewer on the page leaves none of
+      it" was false for a page whose viewer refused a document. Fixed
+      by retaining only once the mount has produced its handle, via an
+      extracted, directly-testable `mountRetained(action)` (`viewer.ts`)
+      that retains ONLY after `action` -- the initial `loadDocument` /
+      `assertRenderable` load -- has already succeeded; `mount()` calls
+      `await mountRetained(() => replaceTree(resolved.view))` in place
+      of the bare call, and the top-of-function `retainExpressions()`
+      is gone. `reload()`/`manifestChanged()`'s own `replaceTree` calls
+      are unchanged (no re-retain on a later republish). Red test in
+      `document.test.ts` (`mount()` itself needs a DOM/WebGL
+      environment this suite does not set up, so the test exercises
+      `mountRetained` directly, the real code the fix lives in):
+      a refused action never retains, so ONE later successful
+      `mountRetained`/`releaseExpressions()` cycle alone returns
+      `expressionMetrics().nodes` to zero. Green: 13 files / 244 tests
+      (242 + 2 new), `tsc --noEmit` clean, `npm run build` 529.4kb.
+      Commit: `fix(widget): hold the shared table only for a mount that succeeded`.
 
 ## 5. Package, records and evidence
 

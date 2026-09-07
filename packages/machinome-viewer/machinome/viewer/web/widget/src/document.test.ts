@@ -22,7 +22,8 @@
 // broken producer loud instead of silent.
 
 import { describe, expect, it } from 'vitest';
-import { assertRenderable } from './viewer';
+import { assertRenderable, mountRetained } from './viewer';
+import { expressionMetrics, prepare, releaseExpressions } from './expressions';
 import {
   Manifest, ManifestFlexible, ManifestNode, RawOperation,
 } from './types';
@@ -272,5 +273,49 @@ describe('assertRenderable refuses an inline function (D10)', () => {
       message = error instanceof Error ? error.message : String(error);
     }
     expect(message.length).toBeLessThan(expression.length);
+  });
+});
+
+// A refused mount must leave no hold on the shared table (D8): the
+// spec's "disposing of the last viewer on the page leaves none of it"
+// has to hold for a page whose viewer refused a document too, or a
+// `solid develop` session that republishes a broken document and then
+// a good one leaks a hold forever -- no handle, no dispose(), and
+// nothing ever brings the mount count back to zero. `mountRetained`
+// (viewer.ts) is the fix: it retains the shared table ONLY once its
+// `action` -- `mount()`'s initial document load, `loadDocument` ->
+// `assertRenderable`, exactly the D10 refusal surface -- has already
+// succeeded. `mount()` itself needs a DOM/WebGL environment this
+// package's suite does not set up, so this exercises the extracted,
+// directly-testable piece that carries the actual fix.
+describe('mountRetained holds the shared table only for a mount that succeeded (D8)', () => {
+  it('a refused action never retains, so one later successful mount/dispose cycle alone empties the table', async () => {
+    const refusal = new Error('refused: undeclared driver');
+
+    await expect(mountRetained(async () => {
+      throw refusal;
+    })).rejects.toThrow(refusal);
+
+    // If the refused attempt above HAD retained (the bug), this single
+    // balanced retain/release from a genuinely successful mount would
+    // leave the earlier, dangling hold still standing, and the table
+    // would NOT come back to empty.
+    await mountRetained(async () => {
+      prepare('(9100001 + 1)');
+    });
+    releaseExpressions();
+
+    expect(expressionMetrics().nodes).toBe(0);
+  });
+
+  it('retains once the action succeeds, so its own dispose (a matching release) does empty the table', async () => {
+    await mountRetained(async () => {
+      prepare('(9200002 + 2)');
+    });
+    expect(expressionMetrics().nodes).toBeGreaterThan(0);
+
+    releaseExpressions(); // the handle's dispose(), in the real mount()
+
+    expect(expressionMetrics().nodes).toBe(0);
   });
 });
