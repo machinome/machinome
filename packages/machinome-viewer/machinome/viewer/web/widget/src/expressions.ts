@@ -406,6 +406,17 @@ export function prepare(expression: string): NodeId {
   const cached = expressionRoots.get(expression);
   if (cached !== undefined) return cached;
 
+  // The node ceiling (D8), checked here -- at the START of a NEW
+  // preparation, never mid-build -- so a table that has grown past it
+  // (a long `solid develop` session republishing hundreds of document
+  // versions) is dropped whole before the next expression is built,
+  // rather than risking a partially-built DAG whose ids a caller
+  // already holds. One document never reaches the ceiling on its own
+  // (D8): the whole grasshopper clock interns 267 nodes.
+  if (nodes.length >= EXPRESSION_LIMITS.nodes) {
+    resetStore();
+  }
+
   const parsed = tokenize(plainLiterals(expression));
   if (parsed === null) {
     throw new Error('Cannot evaluate an empty expression');
@@ -413,6 +424,53 @@ export function prepare(expression: string): NodeId {
   const rootId = build(parsed, expression);
   expressionRoots.set(expression, rootId);
   return rootId;
+}
+
+// ---------------------------------------------------------------------
+// Lifetime (D8). The store is a pure cache -- emptying it costs a
+// re-parse and can never cost a wrong number -- retained by a mount
+// count rather than by any one viewer's identity, so one widget's
+// dispose can never stall another's animation. `EXPRESSION_LIMITS` is a
+// mutable exported object so a test can lower the ceiling without
+// building fifty thousand nodes to reach it.
+// ---------------------------------------------------------------------
+
+export const EXPRESSION_LIMITS = { nodes: 50_000 };
+
+let mountCount = 0;
+
+function resetStore(): void {
+  // Everything keyed by node id (D8): the intern table, the expression
+  // string map, the free-variable sets, the memo's value/stamp arrays,
+  // the pass counter and the remembered last scope. Node ids are handed
+  // out again from zero, so a surviving stamp array would let a new
+  // node inherit an old node's value; fresh arrays and a forgotten last
+  // scope make the first pass after a reset an ordinary cold one.
+  // `resolutions` is a separate, explicitly-reset counter (D9) and is
+  // left alone here.
+  table = new Map();
+  nodes = [];
+  expressionRoots = new Map();
+  freeMemo = [];
+  nodeValue = [];
+  nodeStamp = [];
+  passCounter = 0;
+  lastScope = undefined;
+}
+
+/** One more mount is holding the shared table. */
+export function retainExpressions(): void {
+  mountCount += 1;
+}
+
+/** One mount is done with the shared table. Empties it once the last
+ * holder releases; harmless if called without a matching retain. */
+export function releaseExpressions(): void {
+  if (mountCount === 0) return;
+  mountCount -= 1;
+  if (mountCount === 0) {
+    resetStore();
+  }
 }
 
 // ---------------------------------------------------------------------

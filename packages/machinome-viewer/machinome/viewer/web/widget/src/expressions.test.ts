@@ -13,7 +13,8 @@
 import { evaluate as jokEvaluate, tokenize as jokTokenize } from 'jokenizer';
 import { describe, expect, it } from 'vitest';
 import {
-  expressionMetrics, prepare, resetExpressionMetrics, valueOf,
+  EXPRESSION_LIMITS, expressionMetrics, prepare, releaseExpressions,
+  resetExpressionMetrics, retainExpressions, valueOf,
 } from './expressions';
 // The comparison baseline for increment 2's semantics tests: at this
 // point in the cycle `evaluator.ts` is UNCHANGED, so `evalExpr` still
@@ -416,5 +417,57 @@ describe('valueOf: pass detection over a nested driver map (D6)', () => {
     expect(first).toBeGreaterThan(0);
     valueOf(id, scope2);
     expect(expressionMetrics().resolutions).toBe(first);
+  });
+});
+
+describe('retainExpressions / releaseExpressions (D8)', () => {
+  it('a release without a retain is harmless', () => {
+    expect(() => releaseExpressions()).not.toThrow();
+    expect(() => releaseExpressions()).not.toThrow();
+  });
+
+  it('the table survives a release while another holder remains', () => {
+    retainExpressions(); // holder A
+    retainExpressions(); // holder B
+    const id = prepare('(5100001 + 1)');
+    const before = expressionMetrics().nodes;
+
+    releaseExpressions(); // A releases; B still holds it
+    expect(expressionMetrics().nodes).toBe(before);
+    expect(prepare('(5100001 + 1)')).toBe(id); // not rebuilt: same id
+
+    releaseExpressions(); // B releases too, balancing this test
+  });
+
+  it('is emptied when the last release lands, and preparing afterwards works at a fresh id', () => {
+    retainExpressions();
+    prepare('(5200002 + 2)');
+    expect(expressionMetrics().nodes).toBeGreaterThan(0);
+
+    releaseExpressions(); // the only holder: the table empties
+
+    expect(expressionMetrics().nodes).toBe(0);
+
+    const rebuilt = prepare('(5200002 + 2)');
+    expect(valueOf(rebuilt, { time: 0 } as never)).toBe(5200004);
+  });
+
+  it('drops and rebuilds the table when the node ceiling is passed', () => {
+    const original = EXPRESSION_LIMITS.nodes;
+    // '(5300001 + 1)' interns exactly 3 nodes: two constants, one binary.
+    EXPRESSION_LIMITS.nodes = 3;
+    try {
+      const first = prepare('(5300001 + 1)');
+      expect(expressionMetrics().nodes).toBe(3);
+      expect(valueOf(first, { time: 0 } as never)).toBe(5300002);
+
+      // The ceiling is checked at the start of the NEXT preparation
+      // (D8): passing it drops the whole store before this one is built.
+      const second = prepare('(5300002 + 2)');
+      expect(expressionMetrics().nodes).toBe(3); // only the second expression's
+      expect(valueOf(second, { time: 0 } as never)).toBe(5300004);
+    } finally {
+      EXPRESSION_LIMITS.nodes = original;
+    }
   });
 });

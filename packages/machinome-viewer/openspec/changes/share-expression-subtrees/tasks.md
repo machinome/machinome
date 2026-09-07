@@ -88,14 +88,14 @@
 
 ## 4. Lifetime
 
-- [ ] 4.1 Red: `src/expressions.test.ts` — `retainExpressions()` /
+- [x] 4.1 Red: `src/expressions.test.ts` — `retainExpressions()` /
       `releaseExpressions()` count mounts: the table survives a release
       while another holder remains, is emptied when the last releases (and
       an expression prepared afterwards works, at a fresh id), and a release
       without a retain is harmless; with `EXPRESSION_LIMITS.nodes` lowered
       for the test, passing the ceiling empties the table and the next
       preparation rebuilds correct values.
-- [ ] 4.2 Implement retain/release, the ceiling check on interning, and call
+- [x] 4.2 Implement retain/release, the ceiling check on interning, and call
       them from `viewer.ts` at mount and in `dispose()`. Nothing else in
       `viewer.ts` changes. Green.
       Commit: `feat(widget): keep the shared table only while a viewer is mounted`.

@@ -23,6 +23,7 @@ import {
   ladderFor,
 } from './playback';
 import { EvalScope, freeVariables, TIME_ID } from './evaluator';
+import { releaseExpressions, retainExpressions } from './expressions';
 import { evaluatesTech, knownTechnologies, specRefusal } from './flexible';
 import { AssemblyNode, AssemblyPath, WidgetTree } from './tree';
 import { Manifest, ManifestDriver, ManifestInstruction, ManifestNode } from './types';
@@ -90,6 +91,9 @@ export async function mount(
   sourceUrl: string,
   options: ViewerOptions = {},
 ): Promise<ViewerHandle> {
+  // One more mount holding the shared expression table (D8), released
+  // in dispose() below.
+  retainExpressions();
   const container = resolveContainer(target);
   const resolved = resolveOptions(options);
   const baseUrl = resolveBaseUrl(sourceUrl, resolved.baseUrl ?? undefined);
@@ -369,6 +373,9 @@ export async function mount(
       tree?.dispose();
       renderer.dispose();
       container.replaceChildren();
+      // Releases this mount's hold on the shared expression table
+      // (D8): emptied once the last mounted viewer on the page is gone.
+      releaseExpressions();
     },
     view: captureView,
     async reload() {
