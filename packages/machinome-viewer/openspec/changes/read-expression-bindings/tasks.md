@@ -265,12 +265,31 @@
 
 ## 5. The parity fixture
 
-- [ ] 5.1 Red, in two steps so the red is real: replace
+- [x] 5.1 Red, in two steps so the red is real: replace
       `src/parity-fixture.json` with the regenerated fixture from the
       scratchpad and run `npm test` — the 30 new cases fail, because a case
       whose expression is `_b3` resolves to `undefined` and `Number(undefined)`
       is `NaN`. Record the failure count here.
-- [ ] 5.2 Teach `src/parity-fixture.test.ts` to build one table from
+
+      Red confirmed: **21 of the 30 new cases failed** with `delta: NaN`
+      (`sharing0`/`sharing1`/`sharing2` × `combo_a#0.0`, `combo_a#0.1`,
+      `combo_b#0.0`, `driver_nested#0.0`, `driver_only#0.0`,
+      `time_nested#0.0`, `time_only#0.0`) — the cases whose expression
+      names a binding directly. The other 9 new cases evaluate correctly
+      without the table (their expressions don't reach a binding name),
+      so only 21 fail; `wrong.length` is 21 in the assertion diff. 12 of
+      13 test files' worth of cases passed (only `matches every producer
+      value within float rounding` failed).
+
+      Diffed against the fixture this replaces (git `96e7398`'s
+      `parity-fixture.json`, before this commit): 421→451 cases, **0
+      missing, 0 changed** (every one of the 421 previously-pinned cases
+      present under the same key with the same `expression` and the same
+      `expected`), 30 new, `conversions` unchanged at 22 (byte-identical),
+      `flexible` byte-identical, and a fourth driver `share` added
+      alongside the 4-entry `bindings` table — exactly proposal.md's and
+      D10's own numbers.
+- [x] 5.2 Teach `src/parity-fixture.test.ts` to build one table from
       `fixture.bindings` and add its map to each case's scope, and add the
       assertions the corpus now supports (D10): at least one case whose
       whole expression is an entry name; at least one entry naming an
@@ -281,6 +300,24 @@
       `expected`, `conversions` unchanged at 22, and the `flexible` fixture
       byte-identical. Green.
       Commit: `test(widget): pin the bindings table with the producer's fixture`.
+
+      Interpretation note: the "421 unmoved" claim is inherently a diff
+      against the file this commit REPLACES, which no longer exists on
+      disk once replaced — recorded above as a one-time diff at 5.1 (the
+      same posture design.md's own D10 table takes for the identical
+      claim), rather than as a runtime assertion against a historical
+      snapshot embedded in the test. What the test asserts permanently,
+      from the current fixture alone, is `cases.length === 451`,
+      `conversions.length === 22`, the `share` driver's presence, the
+      4-entry table, and the table's own shape (a chain, a driver-scoped
+      entry, a bare-name case, an entry read by more than one case) —
+      plus a case demonstrating `NaN` without the table installed, the
+      exact failure 5.1 measured.
+
+      Green confirmed: `npm test` — **14 files, 295 tests, all passing**
+      (292 pre-existing + 3 net new in `parity-fixture.test.ts`, 16
+      total there). `npx tsc --noEmit` clean. `npm run build` —
+      `dist/solid-widget.js`, 532.1kb.
 
 ## 6. Package, records and evidence
 

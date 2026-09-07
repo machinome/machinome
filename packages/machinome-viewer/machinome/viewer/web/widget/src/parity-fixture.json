@@ -1,6 +1,6 @@
 {
   "generated_by": "tools/generate_parity_fixture.py",
-  "corpus": "spike/expressions/machine_model.py, tests/expression_project/vocabulary.py",
+  "corpus": "spike/expressions/machine_model.py, tests/expression_project/vocabulary.py, tests/expression_project/sharing.py",
   "drivers": {
     "x_axis.motor": {
       "default": 8000,
@@ -31,8 +31,36 @@
       "unit": "step",
       "dtype": "int",
       "scale": 0.01
+    },
+    "share": {
+      "default": 0,
+      "range": [
+        0,
+        100
+      ],
+      "unit": "step",
+      "dtype": "int",
+      "scale": null
     }
   },
+  "bindings": [
+    {
+      "name": "_b0",
+      "expression": "(360.0 * $t)"
+    },
+    {
+      "name": "_b1",
+      "expression": "floor(_b0)"
+    },
+    {
+      "name": "_b2",
+      "expression": "(share * 2.0)"
+    },
+    {
+      "name": "_b3",
+      "expression": "(_b1 + _b2)"
+    }
+  ],
   "cases": [
     {
       "key": "0|Machine/x_axis/carriage#0.0",
@@ -5994,6 +6022,336 @@
         }
       },
       "expected": 90.22702655879527
+    },
+    {
+      "key": "sharing0|SharedValueTree/combo_a#0.0",
+      "expression": "_b3",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "share": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing0|SharedValueTree/combo_a#0.1",
+      "expression": "_b3",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "share": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing0|SharedValueTree/combo_a#0.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "share": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing0|SharedValueTree/combo_b#0.0",
+      "expression": "_b3",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "share": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing0|SharedValueTree/driver_nested#0.0",
+      "expression": "_b2",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "share": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing0|SharedValueTree/driver_nested#0.1",
+      "expression": "0",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "share": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing0|SharedValueTree/driver_nested#0.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "share": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing0|SharedValueTree/driver_only#0.0",
+      "expression": "_b2",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "share": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing0|SharedValueTree/time_nested#0.0",
+      "expression": "(_b1 + 1.0)",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "share": 0
+        }
+      },
+      "expected": 1.0
+    },
+    {
+      "key": "sharing0|SharedValueTree/time_only#0.0",
+      "expression": "_b1",
+      "scope": {
+        "time": 0.0,
+        "drivers": {
+          "share": 0
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing1|SharedValueTree/combo_a#0.0",
+      "expression": "_b3",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "share": 30
+        }
+      },
+      "expected": 105.0
+    },
+    {
+      "key": "sharing1|SharedValueTree/combo_a#0.1",
+      "expression": "_b3",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "share": 30
+        }
+      },
+      "expected": 105.0
+    },
+    {
+      "key": "sharing1|SharedValueTree/combo_a#0.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "share": 30
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing1|SharedValueTree/combo_b#0.0",
+      "expression": "_b3",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "share": 30
+        }
+      },
+      "expected": 105.0
+    },
+    {
+      "key": "sharing1|SharedValueTree/driver_nested#0.0",
+      "expression": "_b2",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "share": 30
+        }
+      },
+      "expected": 60.0
+    },
+    {
+      "key": "sharing1|SharedValueTree/driver_nested#0.1",
+      "expression": "0",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "share": 30
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing1|SharedValueTree/driver_nested#0.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "share": 30
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing1|SharedValueTree/driver_only#0.0",
+      "expression": "_b2",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "share": 30
+        }
+      },
+      "expected": 60.0
+    },
+    {
+      "key": "sharing1|SharedValueTree/time_nested#0.0",
+      "expression": "(_b1 + 1.0)",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "share": 30
+        }
+      },
+      "expected": 46.0
+    },
+    {
+      "key": "sharing1|SharedValueTree/time_only#0.0",
+      "expression": "_b1",
+      "scope": {
+        "time": 0.125,
+        "drivers": {
+          "share": 30
+        }
+      },
+      "expected": 45.0
+    },
+    {
+      "key": "sharing2|SharedValueTree/combo_a#0.0",
+      "expression": "_b3",
+      "scope": {
+        "time": 0.6,
+        "drivers": {
+          "share": 70
+        }
+      },
+      "expected": 356.0
+    },
+    {
+      "key": "sharing2|SharedValueTree/combo_a#0.1",
+      "expression": "_b3",
+      "scope": {
+        "time": 0.6,
+        "drivers": {
+          "share": 70
+        }
+      },
+      "expected": 356.0
+    },
+    {
+      "key": "sharing2|SharedValueTree/combo_a#0.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.6,
+        "drivers": {
+          "share": 70
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing2|SharedValueTree/combo_b#0.0",
+      "expression": "_b3",
+      "scope": {
+        "time": 0.6,
+        "drivers": {
+          "share": 70
+        }
+      },
+      "expected": 356.0
+    },
+    {
+      "key": "sharing2|SharedValueTree/driver_nested#0.0",
+      "expression": "_b2",
+      "scope": {
+        "time": 0.6,
+        "drivers": {
+          "share": 70
+        }
+      },
+      "expected": 140.0
+    },
+    {
+      "key": "sharing2|SharedValueTree/driver_nested#0.1",
+      "expression": "0",
+      "scope": {
+        "time": 0.6,
+        "drivers": {
+          "share": 70
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing2|SharedValueTree/driver_nested#0.2",
+      "expression": "0",
+      "scope": {
+        "time": 0.6,
+        "drivers": {
+          "share": 70
+        }
+      },
+      "expected": 0.0
+    },
+    {
+      "key": "sharing2|SharedValueTree/driver_only#0.0",
+      "expression": "_b2",
+      "scope": {
+        "time": 0.6,
+        "drivers": {
+          "share": 70
+        }
+      },
+      "expected": 140.0
+    },
+    {
+      "key": "sharing2|SharedValueTree/time_nested#0.0",
+      "expression": "(_b1 + 1.0)",
+      "scope": {
+        "time": 0.6,
+        "drivers": {
+          "share": 70
+        }
+      },
+      "expected": 217.0
+    },
+    {
+      "key": "sharing2|SharedValueTree/time_only#0.0",
+      "expression": "_b1",
+      "scope": {
+        "time": 0.6,
+        "drivers": {
+          "share": 70
+        }
+      },
+      "expected": 216.0
     }
   ],
   "conversions": [

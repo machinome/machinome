@@ -26,7 +26,8 @@ import { describe, expect, it } from 'vitest';
 import { evalExpr, EvalScope } from './evaluator';
 import { toNative } from './drivers';
 import { FlexibleShape } from './flexible';
-import { ManifestDriver } from './types';
+import { bindingTable } from './bindings';
+import { Manifest, ManifestBinding, ManifestDriver } from './types';
 import fixture from './parity-fixture.json';
 
 interface ParityCase {
@@ -68,6 +69,23 @@ const cases = fixture.cases as unknown as ParityCase[];
 const conversions = fixture.conversions as unknown as ConversionCase[];
 const flexible = fixture.flexible as unknown as FlexibleFixture;
 
+// OpenSpec `read-expression-bindings`, D10: the fixture now carries a
+// `bindings` table -- an entry naming an earlier entry, an entry over a
+// driver id rather than `$t`, and entries referenced from more than one
+// case -- built here exactly as `assertRenderable` builds one, and
+// installed into every case's scope so the corpus pins the TABLE's
+// semantics and not only the functions'. A case whose expression is a
+// bare entry name (`"_b3"`) would resolve to `undefined`, and
+// `Number(undefined)` is `NaN`, without it.
+const fixtureBindings = (fixture.bindings ?? []) as unknown as ManifestBinding[];
+const fixtureTable = bindingTable(
+  { bindings: fixtureBindings, drivers: fixture.drivers } as unknown as Manifest,
+  'parity-fixture.json',
+);
+
+const scopeOf = (parity: ParityCase): EvalScope =>
+  ({ ...parity.scope, bindings: fixtureTable.roots() });
+
 // ADR-022's discipline is identical SEMANTICS with only float rounding
 // between runtimes. The spike measured the worst deviation over this
 // corpus at 2.5e-14; this bound is far above that and far below every
@@ -76,7 +94,7 @@ const flexible = fixture.flexible as unknown as FlexibleFixture;
 const TOLERANCE = 1e-9;
 
 const deviation = (parity: ParityCase): number =>
-  Math.abs(evalExpr(parity.expression, parity.scope) - parity.expected);
+  Math.abs(evalExpr(parity.expression, scopeOf(parity)) - parity.expected);
 
 describe('evaluator parity with the producer', () => {
   it('carries the spike corpus, `^` terms included', () => {
@@ -89,6 +107,51 @@ describe('evaluator parity with the producer', () => {
       .toBeGreaterThan(0);
     expect(cases.filter((one) => one.expression.includes('.motor')).length)
       .toBeGreaterThan(0);
+  });
+
+  // D10: the regenerated fixture is a strictly bigger, differently-shaped
+  // corpus over the SAME pinned functions -- diffed against the fixture
+  // this replaces at the framework's `expression-bindings` cycle: 421
+  // cases carried over unmoved (same key, same `expression`, same
+  // `expected`), 30 new, `conversions` unchanged at 22, `flexible`
+  // byte-identical, and a fourth driver (`share`) alongside the table.
+  it('carries the framework\'s regenerated corpus: 451 cases, the fixture\'s own bindings table', () => {
+    expect(cases.length).toBe(451);
+    expect(conversions.length).toBe(22);
+    expect(Object.keys(fixture.drivers)).toContain('share');
+    expect(fixtureBindings.length).toBe(4);
+  });
+
+  it('pins the table\'s own shape: a chain, a driver-scoped entry, and shared reads', () => {
+    // An entry naming an earlier entry (D5's forward-only chain).
+    const chained = fixtureBindings.filter(
+      (entry) => fixtureBindings.some((earlier) => entry.expression.includes(earlier.name)),
+    );
+    expect(chained.length).toBeGreaterThan(0);
+
+    // An entry over a driver id rather than `$t` -- the framework's
+    // own D10 table names it `share`.
+    expect(fixtureBindings.some((entry) => entry.expression.includes('share'))).toBe(true);
+
+    // At least one case whose whole expression is a bare entry name --
+    // the shape that resolves to `undefined`, and `NaN` through
+    // `evalExpr`, without the table installed.
+    const bareNames = new Set(fixtureBindings.map((entry) => entry.name));
+    expect(cases.some((one) => bareNames.has(one.expression))).toBe(true);
+
+    // An entry reached from more than one case.
+    const named = fixtureBindings.find((entry) => cases.filter(
+      (one) => one.expression.includes(entry.name),
+    ).length > 1);
+    expect(named).not.toBeUndefined();
+  });
+
+  it('resolves to NaN without the table -- the failure this fixture pins', () => {
+    const bound = cases.find((one) => fixtureBindings.some(
+      (entry) => entry.name === one.expression,
+    ));
+    expect(bound).not.toBeUndefined();
+    expect(evalExpr(bound!.expression, bound!.scope)).toBeNaN();
   });
 
   it('matches every producer value within float rounding', () => {
