@@ -133,7 +133,7 @@
 
 ## 3. The loader accepts version 4, and refuses a table it cannot resolve
 
-- [ ] 3.1 Red: `src/document.test.ts`.
+- [x] 3.1 Red: `src/document.test.ts`.
 
       **Versions**: a version 4 document carrying a table is accepted; the
       existing "refuses a version it does not render" case moves from 4 to
@@ -154,7 +154,13 @@
       **Unchanged**: every existing `assertRenderable` case stays as it is
       and stays green — a document with no table is refused and accepted
       exactly as before.
-- [ ] 3.2 Implement in `src/viewer.ts`: `RENDERED_VERSIONS` becomes
+
+      Red confirmed: 8 new/changed cases failed, all with `declares
+      document version 4, which this viewer does not render; it renders
+      versions 1, 2, 3` — version 4 was not yet in `RENDERED_VERSIONS`, so
+      every bindings-carrying document was refused before its table was
+      ever consulted. 17 of 25 cases in the file passed.
+- [x] 3.2 Implement in `src/viewer.ts`: `RENDERED_VERSIONS` becomes
       `[1, 2, 3, 4]`; `assertRenderable` builds the table first (so a
       malformed one is refused before any expression is walked), notes each
       expression's names through `table.closure(...)`, and validates each
@@ -162,6 +168,11 @@
       document and its table. `types.ts`'s `ManifestVersion` gains `4`.
       Green.
       Commit: `feat(widget): accept a document that names its shared subexpressions`.
+
+      Green confirmed: `npm test` — **14 files, 280 tests, all passing**
+      (273 pre-existing + 7 net new in `document.test.ts`, 25 total there).
+      `npx tsc --noEmit` clean. `npm run build` — `dist/solid-widget.js`,
+      531.8kb.
 
 ## 4. Dependence flows through the table
 

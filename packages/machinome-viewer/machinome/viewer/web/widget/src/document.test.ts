@@ -192,13 +192,17 @@ describe('assertRenderable on a flexible document', () => {
   });
 
   it('refuses a version it does not render, naming it and the ones it does', () => {
+    // OpenSpec `read-expression-bindings`: version 4 is now RENDERED (see
+    // the `assertRenderable on a document carrying bindings` suite
+    // below), so the version this test names moves to 5, the next one
+    // still refused.
     const manifest = document({
-      version: 4 as unknown as Manifest['version'],
+      version: 5 as unknown as Manifest['version'],
       root: node('root', []),
     });
 
-    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b4\b/);
-    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/1, 2, 3/);
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b5\b/);
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/1, 2, 3, 4/);
     expect(() => assertRenderable(manifest, '/m.json')).toThrow(/m\.json/);
   });
 
@@ -224,6 +228,105 @@ describe('assertRenderable on a flexible document', () => {
       root: node('engine', [], [
         spring({ params: { height: '(46.8 - (12.0 * $t))' } }),
       ]),
+    });
+
+    expect(() => assertRenderable(manifest, '/m.json')).not.toThrow();
+  });
+});
+
+// OpenSpec `read-expression-bindings` (design D7). Version 4's `bindings`
+// table is validated at load, beside every refusal already here: a
+// malformed table is refused naming the entry, a dangling reference is
+// refused naming it (whether reached from an operation, a flexible
+// `params` entry, or another binding's own expression), and a name that
+// IS a binding is never reported as an undeclared driver -- the
+// grasshopper document's exact shape, an empty `drivers` table whose
+// every operation names an entry.
+describe('assertRenderable on a document carrying bindings', () => {
+  it('accepts a version 4 document carrying a table', () => {
+    const manifest = document({
+      version: 4 as unknown as Manifest['version'],
+      bindings: [{ name: '_b0', expression: '(360.0 * $t)' }],
+      root: node('root', [['r', '_b0', [0, 0, 1]]]),
+    });
+
+    expect(() => assertRenderable(manifest, '/m.json')).not.toThrow();
+  });
+
+  it('is a binding name, not an undeclared driver -- the grasshopper document\'s own shape', () => {
+    const manifest = document({
+      version: 4 as unknown as Manifest['version'],
+      drivers: {},
+      bindings: [
+        { name: '_b0', expression: '($t * 43200.0)' },
+        { name: '_b1', expression: 'floor(_b0)' },
+      ],
+      root: node('escapement', [['r', '_b1', [0, 0, 1]]]),
+    });
+
+    expect(() => assertRenderable(manifest, '/m.json')).not.toThrow();
+  });
+
+  it('refuses an operation naming an entry the table does not carry', () => {
+    const manifest = document({
+      version: 4 as unknown as Manifest['version'],
+      bindings: [{ name: '_b0', expression: '$t' }],
+      root: node('root', [['r', '_b99', [0, 0, 1]]]),
+    });
+
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/_b99/);
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/m\.json/);
+  });
+
+  it('reaches assertRenderable, rather than raising bare, for a malformed table', () => {
+    // The 1.1 shape-and-validation cases, reached through the loader
+    // this time: `bindingTable` throws, and `assertRenderable` -- which
+    // calls it before walking a single expression -- does not catch or
+    // reword it.
+    const manifest = document({
+      version: 4 as unknown as Manifest['version'],
+      bindings: [
+        { name: '_b0', expression: '$t' },
+        { name: '_b0', expression: '(2.0 * $t)' },
+      ],
+      root: node('root', []),
+    });
+
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/_b0/);
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/m\.json/);
+  });
+
+  it('refuses an undeclared driver id named from an ENTRY\'s own expression', () => {
+    const manifest = document({
+      version: 4 as unknown as Manifest['version'],
+      drivers: { 'x_axis.motor': motor },
+      bindings: [{ name: '_b0', expression: '(y_axis.motor * 2.0)' }],
+      root: node('root', [['r', '_b0', [0, 0, 1]]]),
+    });
+
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/y_axis\.motor/);
+  });
+
+  it('refuses a flexible leaf\'s `params` naming a dangling entry', () => {
+    const manifest = document({
+      version: 4 as unknown as Manifest['version'],
+      drivers: {},
+      bindings: [{ name: '_b0', expression: '$t' }],
+      root: node('engine', [], [spring({ params: { height: '_b99' } })]),
+    });
+
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/_b99/);
+  });
+
+  it('resolves a chain of entries reached from an operation', () => {
+    const manifest = document({
+      version: 4 as unknown as Manifest['version'],
+      drivers: { 'x_axis.motor': motor },
+      bindings: [
+        { name: '_b0', expression: '($t * 2.0)' },
+        { name: '_b1', expression: '(_b0 + x_axis.motor)' },
+      ],
+      root: node('root', [['r', '_b1', [0, 0, 1]]]),
     });
 
     expect(() => assertRenderable(manifest, '/m.json')).not.toThrow();

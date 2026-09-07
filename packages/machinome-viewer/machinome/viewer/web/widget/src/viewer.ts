@@ -24,6 +24,7 @@ import {
 } from './playback';
 import { EvalScope, freeVariables, TIME_ID } from './evaluator';
 import { releaseExpressions, retainExpressions } from './expressions';
+import { BindingTable, bindingTable } from './bindings';
 import { evaluatesTech, knownTechnologies, specRefusal } from './flexible';
 import { AssemblyNode, AssemblyPath, WidgetTree } from './tree';
 import { Manifest, ManifestDriver, ManifestInstruction, ManifestNode } from './types';
@@ -225,7 +226,11 @@ export async function mount(
   });
 
   const replaceTree = async (view: View | null) => {
-    const document = await loadDocument(sourceUrl);
+    // `table` is threaded into the tree and the scope in increment 4
+    // (OpenSpec `read-expression-bindings`, design D6); loaded here
+    // already so a malformed table is refused before anything else
+    // changes.
+    const { document, table } = await loadDocument(sourceUrl);
     drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
     const next = new WidgetTree(document.root, baseUrl);
     next.update(scope());
@@ -416,7 +421,8 @@ export async function mount(
       renderer.render(scene, camera);
     },
     async manifestChanged() {
-      const document = await loadDocument(sourceUrl);
+      // `table` is threaded into the tree and the scope in increment 4.
+      const { document, table } = await loadDocument(sourceUrl);
       drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
       await tree?.reconcile(document.root, baseUrl);
       if (tree) {
@@ -487,25 +493,34 @@ function visibleBounds(root: THREE.Object3D): THREE.Box3 {
 // LOWEST version its content needs -- a document holding no flexible
 // node is byte-identical to the version 2 it always was -- so this set
 // is exactly what the producer can emit and this build can read.
-const RENDERED_VERSIONS: readonly number[] = [1, 2, 3];
+// OpenSpec `read-expression-bindings`: version 4 (a document carrying a
+// shared-subexpression `bindings` table) joins it.
+const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4];
 
 // The document schema this viewer evaluates. Version 2 added the
 // `drivers` table, and since ADR-056 stage 3b this viewer EVALUATES
 // driver-referencing expressions rather than refusing them: a non-empty
 // table is now a document to render at its declared defaults and drive,
 // not one to turn away. Version 3 added the `flexible` node shape, whose
-// geometry this viewer evaluates from the embedded spec.
+// geometry this viewer evaluates from the embedded spec. Version 4 added
+// the `bindings` table (`bindings.ts`, ADR-044): a name a document's
+// expressions resolve through it before it is ever judged a driver id
+// (design D1, D7).
 //
 // What is still refused is a document that contradicts itself: an
-// expression naming a qualified id its own table does not declare has
-// no value to bind, and rendering it anyway would show a wrong machine
-// instead of an error. The producer guarantees every referenced id
-// appears in the table; this is what makes a broken producer loud. A
-// `params` expression is an expression like any other and is held to the
-// same table -- what it would get wrong is the SHAPE rather than the
-// pose. Beside it stand two refusals of the same kind: a schema version
-// this build cannot read, and a flexible technology it cannot evaluate.
-export function assertRenderable(document: Manifest, sourceUrl: string): void {
+// expression naming a qualified id neither its own drivers table nor its
+// bindings table declares has no value to bind, and rendering it anyway
+// would show a wrong machine instead of an error. The producer
+// guarantees every referenced id appears in one of the two; this is what
+// makes a broken producer loud. A `params` expression, and an entry's own
+// expression, are expressions like any other and are held to the same
+// tables -- what a `params` expression would get wrong is the SHAPE
+// rather than the pose. Beside it stand two refusals of the same kind: a
+// schema version this build cannot read, and a flexible technology it
+// cannot evaluate; the table itself is validated first, by `bindingTable`
+// (D7), so a table this viewer cannot resolve is refused before a single
+// expression is walked.
+export function assertRenderable(document: Manifest, sourceUrl: string): BindingTable {
   if (!RENDERED_VERSIONS.includes(document.version)) {
     throw new Error(
       `${sourceUrl} declares document version ${document.version}, which ` +
@@ -516,11 +531,25 @@ export function assertRenderable(document: Manifest, sourceUrl: string): void {
     );
   }
 
+  // Built and validated FIRST (D7): a malformed table -- a bad shape, a
+  // duplicate name, a forward-only violation, a name colliding with a
+  // declared driver id, or an entry whose own expression this evaluation
+  // cannot support -- is refused here, before any operation or `params`
+  // expression is walked. `bindingTable` throws bare; nothing here
+  // catches or rewords it.
+  const table = bindingTable(document, sourceUrl);
+
   const declared = new Set(Object.keys(document.drivers ?? {}));
   const missing = new Set<string>();
 
+  // A name a document's expressions read, closed over the table (D5): a
+  // binding name resolves away to what it transitively reads -- $t, a
+  // declared driver id, or (a dangling reference) itself, unchanged --
+  // BEFORE it is judged against the declared drivers. That is what makes
+  // a binding name never reported as an undeclared driver, and what
+  // still catches a name that is genuinely neither.
   const note = (expression: string) => {
-    for (const name of freeVariables(expression)) {
+    for (const name of table.closure(freeVariables(expression))) {
       if (name !== TIME_ID && !declared.has(name)) {
         missing.add(name);
       }
@@ -559,6 +588,14 @@ export function assertRenderable(document: Manifest, sourceUrl: string): void {
   };
   visit(document.root);
 
+  // Entries the document never references are validated too (D7): an
+  // entry naming an undeclared driver is a malformed table by the
+  // producer's own rule, and checking it costs one closure lookup per
+  // entry. `note` here is the SAME check an operation's expression gets,
+  // so an entry naming an earlier entry that is itself dangling is
+  // caught through the earlier entry's own closure.
+  (document.bindings ?? []).forEach((entry) => note(entry.expression));
+
   if (missing.size > 0) {
     const known = [...declared].sort().join(', ') || 'none';
     throw new Error(
@@ -568,9 +605,13 @@ export function assertRenderable(document: Manifest, sourceUrl: string): void {
       'rendering a wrong pose.',
     );
   }
+
+  return table;
 }
 
-async function loadDocument(sourceUrl: string): Promise<Manifest> {
+async function loadDocument(
+  sourceUrl: string,
+): Promise<{ document: Manifest; table: BindingTable }> {
   let response: Response;
   try {
     response = await fetch(sourceUrl);
@@ -586,8 +627,8 @@ async function loadDocument(sourceUrl: string): Promise<Manifest> {
   } catch (error) {
     throw new Error(`Failed to parse ${sourceUrl}: ${String(error)}`);
   }
-  assertRenderable(document, sourceUrl);
-  return document;
+  const table = assertRenderable(document, sourceUrl);
+  return { document, table };
 }
 
 function resolveContainer(target: HTMLElement | string): HTMLElement {
