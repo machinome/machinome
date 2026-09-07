@@ -10,10 +10,19 @@
 // becomes one shared node. This increment tests the BUILDER alone
 // (`prepare`); evaluation (`valueOf`) is increment 2.
 
+import { evaluate as jokEvaluate, tokenize as jokTokenize } from 'jokenizer';
 import { describe, expect, it } from 'vitest';
 import {
-  expressionMetrics, prepare, resetExpressionMetrics,
+  expressionMetrics, prepare, resetExpressionMetrics, valueOf,
 } from './expressions';
+// The comparison baseline for increment 2's semantics tests: at this
+// point in the cycle `evaluator.ts` is UNCHANGED, so `evalExpr` still
+// runs jokenizer's own `tokenize` + the established `^`/exponent
+// rewrites + jokenizer's own `evaluate` (D1's "jokenizer's own
+// evaluate" comparison, transitively -- the two numeric
+// implementations this cycle briefly runs side by side, design.md
+// "Risks / Trade-offs").
+import { evalExpr } from './evaluator';
 
 describe('prepare', () => {
   it('returns a node id', () => {
@@ -124,5 +133,288 @@ describe('prepare', () => {
 
     expect(grown).toBeLessThan(100);
     expect(grown).toBeGreaterThan(0);
+  });
+});
+
+function pastedExpression(): string {
+  let e = 'x_axis.motor';
+  for (let round = 0; round < 12; round += 1) {
+    e = `(sin(${e}) + cos(${e}))`;
+  }
+  return e;
+}
+
+// The pass/memo state (D6) is module-level, spanning the whole file's
+// tests as it spans a whole page's viewers. A test that wants to
+// observe a GENUINE first resolution -- not a memo hit left standing by
+// an earlier test that happened to use an equal-valued scope -- needs a
+// scope value no earlier test could have used. This hands out such
+// values, so every "first touch" below is real.
+let sentinelMotor = 1_000_000;
+function freshMotor(): number {
+  sentinelMotor += 1;
+  return sentinelMotor;
+}
+
+describe('valueOf: semantics agree with the shipped evaluator', () => {
+  const agrees = (expression: string,
+                   scope: { time: number; drivers?: Record<string, unknown> }) => {
+    const viaDag = valueOf(prepare(expression), scope as never);
+    const viaShipped = evalExpr(expression, scope as never);
+    expect(viaDag).toBeCloseTo(viaShipped, 9);
+  };
+
+  it('agrees on degree trig through the OpenSCAD context', () => {
+    agrees('sin(90)', { time: 0 });
+    agrees('cos(180)', { time: 0 });
+    agrees('asin(0.5)', { time: 0 });
+    agrees('atan2(1, 1)', { time: 0 });
+  });
+
+  it('agrees on mod, ln and log(base, value)', () => {
+    agrees('mod(7, 3)', { time: 0 });
+    agrees('ln(2.5)', { time: 0 });
+    agrees('log(2, 8)', { time: 0 });
+  });
+
+  it('agrees on ^ under a leading minus', () => {
+    agrees('(-2 ^ 2)', { time: 0 });
+    agrees('(5 ^ 2)', { time: 0 });
+  });
+
+  it('agrees on a dotted driver term', () => {
+    agrees('(x_axis.motor * 0.0125)', { time: 0, drivers: { x_axis: { motor: 8000 } } });
+  });
+
+  it('agrees when a driver shadows a context name', () => {
+    agrees('(sin * 2)', { time: 0, drivers: { sin: 5 } });
+  });
+
+  it('agrees when a driver value is 0', () => {
+    agrees('(x_axis.motor * 2)', { time: 0, drivers: { x_axis: { motor: 0 } } });
+  });
+
+  it('agrees on a ternary', () => {
+    agrees('(x_axis.motor ? 1 : -1)', { time: 0, drivers: { x_axis: { motor: 8000 } } });
+    agrees('(x_axis.motor ? 1 : -1)', { time: 0, drivers: { x_axis: { motor: 0 } } });
+  });
+
+  it('short-circuits && without forcing an undefined right side', () => {
+    // `nope` names nothing: forcing it would read `undefined` into the
+    // arithmetic below and the two implementations would disagree.
+    expect(valueOf(prepare('(0 && (1 / nope))'), { time: 0 } as never)).toBe(0);
+    expect(evalExpr('(0 && (1 / nope))', { time: 0 })).toBe(0);
+  });
+});
+
+describe('valueOf: missing and odd owners (D5)', () => {
+  it('resolves an undeclared bare name as undefined, so arithmetic on it is NaN', () => {
+    expect(valueOf(prepare('nope'), { time: 0 } as never)).toBeUndefined();
+    expect(evalExpr('(nope * 2)', { time: 0 })).toBeNaN();
+  });
+
+  it('resolves a dotted id whose owner is undeclared as undefined', () => {
+    expect(valueOf(prepare('x_axis.motor'), { time: 0 } as never)).toBeUndefined();
+  });
+
+  it('resolves a dotted id whose owner is a falsy primitive as undefined', () => {
+    expect(valueOf(prepare('x_axis.motor'),
+                   { time: 0, drivers: { x_axis: null } } as never)).toBeUndefined();
+  });
+
+  it('throws the native TypeError jokenizer throws when the owner is a truthy primitive', () => {
+    const expression = 'x_axis.motor';
+
+    let expected: unknown;
+    try {
+      jokEvaluate(jokTokenize(expression), { x_axis: 5, $t: 0 });
+    } catch (error) {
+      expected = error;
+    }
+    expect(expected).toBeInstanceOf(TypeError);
+
+    expect(() => valueOf(prepare(expression),
+                          { time: 0, drivers: { x_axis: 5 } } as never))
+      .toThrow((expected as TypeError).message);
+  });
+
+  it('resolves a dotted id whose owner object lacks the key as undefined', () => {
+    expect(valueOf(prepare('x_axis.motor'),
+                   { time: 0, drivers: { x_axis: { other: 1 } } } as never)).toBeUndefined();
+  });
+
+  it('resolves a dotted id whose owner object holds the key', () => {
+    expect(valueOf(prepare('x_axis.motor'),
+                   { time: 0, drivers: { x_axis: { motor: 8000 } } } as never)).toBe(8000);
+  });
+});
+
+describe('valueOf: counts (D6, D9)', () => {
+  it('one pass resolves fewer than 100 nodes for the pasted expression', () => {
+    const id = prepare(pastedExpression());
+    resetExpressionMetrics();
+    valueOf(id, { time: 0, drivers: { x_axis: { motor: freshMotor() } } } as never);
+    expect(expressionMetrics().resolutions).toBeLessThan(100);
+    expect(expressionMetrics().resolutions).toBeGreaterThan(0);
+  });
+
+  it('a second expression sharing every subtree resolves zero further nodes in the pass', () => {
+    const expr = pastedExpression();
+    const id = prepare(expr);
+    const secondId = prepare(`(${expr} + 1)`);
+    const scope = { time: 0, drivers: { x_axis: { motor: freshMotor() } } } as never;
+
+    resetExpressionMetrics();
+    valueOf(id, scope);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(secondId, scope);
+    // Only the new outer "+ 1" node (and the constant 1) are new work.
+    expect(expressionMetrics().resolutions).toBeLessThanOrEqual(first + 2);
+  });
+
+  it('a pass at a new $t resolves the distinct subexpressions again', () => {
+    const id = prepare(pastedExpression());
+    const motor = freshMotor();
+    const scope1 = { time: 0.4111, drivers: { x_axis: { motor } } } as never;
+    const scope2 = { time: 0.4222, drivers: { x_axis: { motor } } } as never;
+
+    resetExpressionMetrics();
+    valueOf(id, scope1);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(id, scope2);
+    expect(expressionMetrics().resolutions).toBe(first * 2);
+  });
+});
+
+describe('valueOf: pass detection over a nested driver map (D6)', () => {
+  const expr = '(x_axis.motor + y_axis.motor)';
+
+  it('does not resolve again for the SAME scope object (identity fast path)', () => {
+    const id = prepare(expr);
+    const scope = {
+      time: 0, drivers: { x_axis: { motor: freshMotor() }, y_axis: { motor: 0 } },
+    } as never;
+    resetExpressionMetrics();
+    valueOf(id, scope);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(id, scope);
+    expect(expressionMetrics().resolutions).toBe(first);
+  });
+
+  it('does not resolve again for a NEW object carrying equal nested values', () => {
+    // Exactly DriverStore.scope()'s shape (D6): a fresh nested map every
+    // call, equal in value to the last one.
+    const id = prepare(expr);
+    const motor = freshMotor();
+    const scope1 = { time: 0, drivers: { x_axis: { motor }, y_axis: { motor: 0 } } } as never;
+    const scope2 = { time: 0, drivers: { x_axis: { motor }, y_axis: { motor: 0 } } } as never;
+    resetExpressionMetrics();
+    valueOf(id, scope1);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(id, scope2);
+    expect(expressionMetrics().resolutions).toBe(first);
+  });
+
+  it('resolves again when a nested number changes', () => {
+    const id = prepare(expr);
+    const motor = freshMotor();
+    const scope1 = { time: 0, drivers: { x_axis: { motor }, y_axis: { motor: 0 } } } as never;
+    const scope2 = { time: 0, drivers: { x_axis: { motor: motor + 1 }, y_axis: { motor: 0 } } } as never;
+    resetExpressionMetrics();
+    valueOf(id, scope1);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(id, scope2);
+    expect(expressionMetrics().resolutions).toBeGreaterThan(first);
+  });
+
+  it('treats 0 and -0 as different, by Object.is', () => {
+    // A dedicated expression: 0 and freshMotor()'s huge sentinel would
+    // never collide anyway, so this one genuinely needs the literal
+    // zero pair, and no other test in this file uses it.
+    const zeroId = prepare('(x_axis.zero_sentinel + y_axis.motor)');
+    const motor = freshMotor();
+    const scope1 = {
+      time: 0, drivers: { x_axis: { zero_sentinel: 0 }, y_axis: { motor } },
+    } as never;
+    const scope2 = {
+      time: 0, drivers: { x_axis: { zero_sentinel: -0 }, y_axis: { motor } },
+    } as never;
+    resetExpressionMetrics();
+    valueOf(zeroId, scope1);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(zeroId, scope2);
+    expect(expressionMetrics().resolutions).toBeGreaterThan(first);
+  });
+
+  it('treats NaN as equal to NaN, by Object.is', () => {
+    const id = prepare(expr);
+    const motor = freshMotor();
+    const scope1 = { time: 0, drivers: { x_axis: { motor: NaN }, y_axis: { motor } } } as never;
+    const scope2 = { time: 0, drivers: { x_axis: { motor: NaN }, y_axis: { motor } } } as never;
+    resetExpressionMetrics();
+    valueOf(id, scope1);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(id, scope2);
+    expect(expressionMetrics().resolutions).toBe(first);
+  });
+
+  it('resolves again when a driver key is added or removed', () => {
+    const id = prepare(expr);
+    const motor = freshMotor();
+    const scope1 = { time: 0, drivers: { x_axis: { motor } } } as never;
+    const scope2 = { time: 0, drivers: { x_axis: { motor }, y_axis: { motor: 0 } } } as never;
+    resetExpressionMetrics();
+    valueOf(id, scope1);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(id, scope2);
+    expect(expressionMetrics().resolutions).toBeGreaterThan(first);
+  });
+
+  it('resolves again when a nested owner key is added or removed', () => {
+    const id = prepare(expr);
+    const motor = freshMotor();
+    const scope1 = { time: 0, drivers: { x_axis: { motor }, y_axis: {} } } as never;
+    const scope2 = { time: 0, drivers: { x_axis: { motor }, y_axis: { motor: 0 } } } as never;
+    resetExpressionMetrics();
+    valueOf(id, scope1);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(id, scope2);
+    expect(expressionMetrics().resolutions).toBeGreaterThan(first);
+  });
+
+  it('resolves again, rather than skipping, when a driver value is not a number or a plain object', () => {
+    // `expr` never dereferences x_axis here -- this is a SCOPE-level
+    // comparison, not a member-access evaluation.
+    const id = prepare('y_axis.motor');
+    const motor = freshMotor();
+    const scope1 = { time: 0, drivers: { x_axis: { motor }, y_axis: { motor } } } as never;
+    const scope2 = { time: 0, drivers: { x_axis: 'nope', y_axis: { motor } } } as never;
+    resetExpressionMetrics();
+    valueOf(id, scope1);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(id, scope2);
+    expect(expressionMetrics().resolutions).toBeGreaterThan(first);
+  });
+
+  it('treats an absent drivers map the same as an empty one', () => {
+    const id = prepare('(1 + 1)');
+    const scope1 = { time: 0.9991, drivers: {} } as never;
+    const scope2 = { time: 0.9991 } as never;
+    resetExpressionMetrics();
+    valueOf(id, scope1);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(id, scope2);
+    expect(expressionMetrics().resolutions).toBe(first);
   });
 });

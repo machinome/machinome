@@ -418,8 +418,10 @@ export function prepare(expression: string): NodeId {
 // ---------------------------------------------------------------------
 // Metrics (D9): a test-visible count of subexpression resolutions and
 // of the shared table's size, so the win this change makes is asserted
-// as work performed rather than as elapsed time. `resolutions` is wired
-// up in the next increment; the table size is real from the first one.
+// as work performed rather than as elapsed time. Not a host capability
+// (D9, tasks.md 5.1): it is a widget-source export for the widget's own
+// tests, never on the mount handle, so the viewer API version does not
+// move for it.
 // ---------------------------------------------------------------------
 
 let resolutions = 0;
@@ -430,4 +432,237 @@ export function expressionMetrics(): { nodes: number; resolutions: number } {
 
 export function resetExpressionMetrics(): void {
   resolutions = 0;
+}
+
+// ---------------------------------------------------------------------
+// The OpenSCAD math context (moved here from evaluator.ts, which keeps
+// re-exporting `TIME_ID`/`EvalScope`/`DriverScope` and its own
+// `evalExpr`/`freeVariables` -- this is where those names are actually
+// consumed now, in name resolution (D5) below).
+// ---------------------------------------------------------------------
+
+// Math's built-in properties are non-enumerable, so a plain
+// Object.assign({}, Math) would copy nothing -- walk them explicitly.
+const context: Record<string, unknown> = {};
+for (const name of Object.getOwnPropertyNames(Math)) {
+  context[name] = (Math as unknown as Record<string, unknown>)[name];
+}
+
+// OpenSCAD names and semantics that differ from JS Math.
+context.ln = Math.log;
+context.log = (base: number, value: number) => Math.log(value) / Math.log(base);
+context.mod = (a: number, b: number) => a % b;
+context.sin = (degrees: number) => Math.sin((degrees * Math.PI) / 180);
+context.cos = (degrees: number) => Math.cos((degrees * Math.PI) / 180);
+context.tan = (degrees: number) => Math.tan((degrees * Math.PI) / 180);
+context.asin = (value: number) => (Math.asin(value) * 180) / Math.PI;
+context.acos = (value: number) => (Math.acos(value) * 180) / Math.PI;
+context.atan = (value: number) => (Math.atan(value) * 180) / Math.PI;
+context.atan2 = (y: number, x: number) => (Math.atan2(y, x) * 180) / Math.PI;
+
+// ---------------------------------------------------------------------
+// Name resolution (D5): the first part of a dotted (or bare) name is
+// resolved in the order the old spread scope established -- `$t`, then
+// the driver map (`in`-checked, so a driver whose value is `0` is
+// found), then the OpenSCAD context, else `undefined`. Every further
+// part reproduces jokenizer's `readVar` in the shape it has: a falsy
+// owner (including an absent one) yields `undefined`, a truthy
+// primitive owner throws the identical native `TypeError`, an object
+// without the key yields `undefined`, and one with it yields the value.
+// ---------------------------------------------------------------------
+
+/** One further step of a dotted chain, or of a generic Member access:
+ * jokenizer's `readVar` for a single candidate scope, verbatim. */
+function readMember(owner: unknown, part: string): unknown {
+  if (!owner) return undefined;
+  // The `in` operator throws its own native TypeError for a truthy
+  // primitive owner (a number, a string, a boolean) -- deliberately
+  // not caught or reworded here (D5).
+  return part in (owner as object)
+    ? (owner as Record<string, unknown>)[part] : undefined;
+}
+
+function resolveName(parts: readonly string[], scope: EvalScope): unknown {
+  const [first, ...rest] = parts;
+  let value: unknown;
+  if (first === TIME_ID) {
+    value = scope.time;
+  } else if (scope.drivers !== undefined && first in scope.drivers) {
+    value = (scope.drivers as Record<string, unknown>)[first];
+  } else if (first in context) {
+    value = context[first];
+  } else {
+    value = undefined;
+  }
+  for (const part of rest) {
+    value = readMember(value, part);
+  }
+  return value;
+}
+
+function applyUnary(op: string, value: unknown): unknown {
+  switch (op) {
+    case '!': return !value;
+    case '+': return +(value as number);
+    // -1 * v, not -v (D1): jokenizer's own unary rule, verbatim.
+    case '-': return -1 * (value as number);
+    case '~': return ~(value as number);
+    default: throw new Error(`Unknown unary operator ${op}`);
+  }
+}
+
+function applyBinary(op: string, left: unknown, right: unknown): unknown {
+  /* eslint-disable eqeqeq */
+  switch (op) {
+    case '|': return (left as number) | (right as number);
+    case '^': return (left as number) ^ (right as number);
+    case '&': return (left as number) & (right as number);
+    case '===': return left === right;
+    case '!==': return left !== right;
+    case '==': return left == right;
+    case '!=': return left != right;
+    case '<<': return (left as number) << (right as number);
+    case '>>>': return (left as number) >>> (right as number);
+    case '>>': return (left as number) >> (right as number);
+    case '<=': return (left as number) <= (right as number);
+    case '>=': return (left as number) >= (right as number);
+    case '<': return (left as number) < (right as number);
+    case '>': return (left as number) > (right as number);
+    case '+': return (left as number) + (right as number);
+    case '-': return (left as number) - (right as number);
+    case '*': return (left as number) * (right as number);
+    case '/': return (left as number) / (right as number);
+    case '%': return (left as number) % (right as number);
+    default: throw new Error(`Unknown binary operator ${op}`);
+  }
+  /* eslint-enable eqeqeq */
+}
+
+// ---------------------------------------------------------------------
+// The evaluation pass (D6). A pass is a set of scope VALUES, not a
+// syntactic event: `valueOf` is handed one scope object per
+// `tree.update` walk (`viewer.ts`'s `scope()`), so the identity fast
+// path is the common case within one walk, and the value comparison
+// behind it is what makes the SECOND walk of a playing frame -- today's
+// `setTime` update and the animation loop's update, two different scope
+// OBJECTS carrying the same numbers -- free.
+//
+// The driver maps are compared RECURSIVELY, because
+// `DriverStore.scope()` builds a fresh nested object for every
+// qualified owner on every call: two scopes carrying identical values
+// share no nested object, so a comparison that stopped at the owner
+// would call every qualified-driver document changed on every call.
+// ---------------------------------------------------------------------
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function mapsEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  const aKeys = Object.keys(a);
+  if (aKeys.length !== Object.keys(b).length) return false;
+  for (const key of aKeys) {
+    if (!(key in b)) return false;
+    const av = a[key];
+    const bv = b[key];
+    if (typeof av === 'number' && typeof bv === 'number') {
+      if (!Object.is(av, bv)) return false;
+    } else if (isPlainObject(av) && isPlainObject(bv)) {
+      if (!mapsEqual(av, bv)) return false;
+    } else {
+      // Anything else -- a function, a string, null, undefined, an
+      // array, or a type mismatch between the two -- counts as
+      // changed, so an unexpected shape costs a recomputation and
+      // never a stale number.
+      return false;
+    }
+  }
+  return true;
+}
+
+function scopesEqual(a: EvalScope, b: EvalScope): boolean {
+  return Object.is(a.time, b.time)
+    && mapsEqual(a.drivers ?? {}, b.drivers ?? {});
+}
+
+let passCounter = 0;
+let lastScope: EvalScope | undefined;
+let nodeValue: unknown[] = [];
+let nodeStamp: number[] = [];
+
+function ensurePass(scope: EvalScope): void {
+  // The identity fast path, checked on EVERY valueOf call (D6): true
+  // for every evalExpr call of one tree.update walk.
+  if (scope === lastScope) return;
+  if (lastScope !== undefined && scopesEqual(scope, lastScope)) {
+    lastScope = scope;
+    return;
+  }
+  passCounter += 1;
+  lastScope = scope;
+}
+
+function compute(id: NodeId, scope: EvalScope): unknown {
+  const node = nodes[id];
+  switch (node.kind) {
+    case 'const':
+      return node.value;
+    case 'name':
+      return resolveName(node.parts, scope);
+    case 'unary':
+      return applyUnary(node.op, valueOf(node.target, scope));
+    case 'binary': {
+      // && and || short-circuit their right side (D1): the right node
+      // is not even visited, let alone resolved and stamped, unless it
+      // is needed.
+      if (node.op === '&&') {
+        const left = valueOf(node.left, scope);
+        return left ? valueOf(node.right, scope) : left;
+      }
+      if (node.op === '||') {
+        const left = valueOf(node.left, scope);
+        return left || valueOf(node.right, scope);
+      }
+      return applyBinary(node.op, valueOf(node.left, scope), valueOf(node.right, scope));
+    }
+    case 'call': {
+      const callee = valueOf(node.callee, scope) as (...args: unknown[]) => unknown;
+      const args = node.args.map((arg) => valueOf(arg, scope));
+      return callee(...args);
+    }
+    case 'member':
+      return readMember(valueOf(node.owner, scope), node.name);
+    case 'index': {
+      const owner = valueOf(node.owner, scope);
+      const key = valueOf(node.key, scope) as PropertyKey;
+      return owner != null ? (owner as Record<PropertyKey, unknown>)[key] : null;
+    }
+    case 'ternary':
+      return valueOf(node.predicate, scope)
+        ? valueOf(node.whenTrue, scope) : valueOf(node.whenFalse, scope);
+    case 'array':
+      return node.items.map((item) => valueOf(item, scope));
+    case 'object': {
+      const result: Record<string, unknown> = {};
+      node.names.forEach((name, i) => {
+        result[name] = valueOf(node.values[i], scope);
+      });
+      return result;
+    }
+    default:
+      throw new Error(`Unsupported node kind ${(node as Node).kind}`);
+  }
+}
+
+/** The memoized DAG walk (D6). A node is computed when its STAMP is not
+ * the current pass's -- never the value, so a node whose value is
+ * `undefined` or `NaN` memoizes correctly. */
+export function valueOf(id: NodeId, scope: EvalScope): unknown {
+  ensurePass(scope);
+  if (nodeStamp[id] === passCounter) return nodeValue[id];
+  const result = compute(id, scope);
+  nodeValue[id] = result;
+  nodeStamp[id] = passCounter;
+  resolutions += 1;
+  return result;
 }

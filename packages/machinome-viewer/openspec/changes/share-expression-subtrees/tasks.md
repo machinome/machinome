@@ -20,7 +20,7 @@
 
 ## 2. Evaluation with a per-pass memo
 
-- [ ] 2.1 Red: `src/expressions.test.ts`, three groups.
+- [x] 2.1 Red: `src/expressions.test.ts`, three groups.
 
       **Semantics** — `valueOf(id, scope)` agrees with `jokenizer`'s own
       `evaluate` over the same parsed tree, case by case, for: degree trig
@@ -50,7 +50,7 @@
       resolves again; a driver map holding something that is not a number or
       a plain object resolves again rather than being skipped; an absent
       `drivers` and an empty one are the same pass.
-- [ ] 2.2 Implement the recursive DAG evaluator, the stamped memo, the pass
+- [x] 2.2 Implement the recursive DAG evaluator, the stamped memo, the pass
       detection of D6 — the identity fast path checked on **every**
       `valueOf` call, then the recursive value comparison, the previous
       scope held by reference — the name resolution of D5 (jokenizer's
