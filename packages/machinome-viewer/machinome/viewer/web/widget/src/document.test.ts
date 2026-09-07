@@ -228,3 +228,49 @@ describe('assertRenderable on a flexible document', () => {
     expect(() => assertRenderable(manifest, '/m.json')).not.toThrow();
   });
 });
+
+// D10: an expression form the shared evaluation cannot support -- an
+// inline function, which nothing the producer emits carries -- is
+// refused when the document is LOADED, beside the refusals above.
+// `assertRenderable` already walks every operation's and every
+// flexible node's `params` expression through `freeVariables` before
+// anything is rendered, so once that walk reads the shared DAG this
+// refusal happens here, with no change to viewer.ts.
+describe('assertRenderable refuses an inline function (D10)', () => {
+  it('names the form and quotes the expression, for an operation', () => {
+    const expression = '(x => x + 1)';
+    const manifest = document({
+      root: node('root', [['r', expression, [0, 0, 1]]]),
+    });
+
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/Func/);
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/x => x \+ 1/);
+  });
+
+  it('names the form and quotes the expression, for a flexible `params` entry', () => {
+    const manifest = document({
+      version: 3,
+      drivers: {},
+      root: node('engine', [], [
+        spring({ params: { height: '(x => x + 1)' } }),
+      ]),
+    });
+
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/Func/);
+  });
+
+  it('truncates a very long refused expression rather than quoting it whole', () => {
+    const expression = `(x => ${'1 + '.repeat(100)}1)`;
+    const manifest = document({
+      root: node('root', [['r', expression, [0, 0, 1]]]),
+    });
+
+    let message = '';
+    try {
+      assertRenderable(manifest, '/m.json');
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message.length).toBeLessThan(expression.length);
+  });
+});

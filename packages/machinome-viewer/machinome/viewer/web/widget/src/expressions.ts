@@ -666,3 +666,67 @@ export function valueOf(id: NodeId, scope: EvalScope): unknown {
   resolutions += 1;
   return result;
 }
+
+// ---------------------------------------------------------------------
+// Free variables (D11): computed once per NODE and memoized beside it,
+// the same three rules `freeVariables` always had -- a name node
+// contributes its dotted id, a call node the union of its ARGS only
+// (never its callee), a generic member node its owner's set -- now read
+// off the DAG instead of a fresh walk of the whole parse tree. Every
+// other node kind's set is the union of its children's, which is
+// exactly what the old walk's generic fallback did for them too.
+// ---------------------------------------------------------------------
+
+const EMPTY_NAMES: ReadonlySet<string> = new Set();
+let freeMemo: (ReadonlySet<string> | undefined)[] = [];
+
+function union(sets: readonly ReadonlySet<string>[]): ReadonlySet<string> {
+  if (sets.length === 0) return EMPTY_NAMES;
+  if (sets.length === 1) return sets[0];
+  const found = new Set<string>();
+  for (const set of sets) {
+    for (const name of set) found.add(name);
+  }
+  return found;
+}
+
+function computeFree(id: NodeId): ReadonlySet<string> {
+  const node = nodes[id];
+  switch (node.kind) {
+    case 'const':
+      return EMPTY_NAMES;
+    case 'name':
+      return new Set([node.name]);
+    case 'unary':
+      return freeNames(node.target);
+    case 'binary':
+      return union([freeNames(node.left), freeNames(node.right)]);
+    case 'call':
+      // The callee is never a variable (D11): only the arguments.
+      return union(node.args.map((arg) => freeNames(arg)));
+    case 'member':
+      return freeNames(node.owner);
+    case 'index':
+      return union([freeNames(node.owner), freeNames(node.key)]);
+    case 'ternary':
+      return union([
+        freeNames(node.predicate), freeNames(node.whenTrue), freeNames(node.whenFalse),
+      ]);
+    case 'array':
+      return union(node.items.map((item) => freeNames(item)));
+    case 'object':
+      return union(node.values.map((item) => freeNames(item)));
+    default:
+      throw new Error(`Unsupported node kind ${(node as Node).kind}`);
+  }
+}
+
+/** `expression`'s free-variable set, off the DAG (D11): computed once
+ * per node and memoized beside it. */
+export function freeNames(id: NodeId): ReadonlySet<string> {
+  const cached = freeMemo[id];
+  if (cached !== undefined) return cached;
+  const result = computeFree(id);
+  freeMemo[id] = result;
+  return result;
+}

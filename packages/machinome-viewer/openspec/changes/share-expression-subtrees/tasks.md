@@ -63,7 +63,7 @@
 
 ## 3. The evaluator reads through the table
 
-- [ ] 3.1 Red: `src/evaluator.test.ts` — two operations carrying the same
+- [x] 3.1 Red: `src/evaluator.test.ts` — two operations carrying the same
       expression, evaluated in one pass through `evalExpr`, resolve one set
       of subexpressions (fails while `evalExpr` calls jokenizer's
       `evaluate`); `freeVariables` of the pasted expression is read without
@@ -78,7 +78,7 @@
       `evaluator.test.ts`, `tree.test.ts`, `flexible.test.ts` and
       `parity-fixture.test.ts` stays as it is and stays green — they are the
       parity gate for this increment.
-- [ ] 3.2 Implement: `evalExpr` prepares and evaluates through
+- [x] 3.2 Implement: `evalExpr` prepares and evaluates through
       `expressions.ts`; `freeVariables` reads the memoized per-node set
       (name node contributes its dotted id, a call node its ARGS only, a
       generic member its owner). Delete `jokEvaluate`'s import, `powify`,

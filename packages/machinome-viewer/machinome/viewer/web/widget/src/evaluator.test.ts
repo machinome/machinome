@@ -13,6 +13,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { evalExpr, freeVariables, TIME_ID } from './evaluator';
+import { expressionMetrics, prepare, resetExpressionMetrics } from './expressions';
 
 const at = (time: number) => ({ time });
 
@@ -217,5 +218,55 @@ describe('freeVariables', () => {
     expect(other.has('total')).toBe(false);
 
     expect([...freeVariables('(total * 2)')]).toEqual(['total']);
+  });
+});
+
+// `evalExpr` and `freeVariables` read through the shared table
+// (share-expression-subtrees, tasks.md 3.1-3.2): both are three-line
+// delegations over `expressions.ts`'s `prepare`/`valueOf`/`freeNames`,
+// so a document that pastes one expression under many operations pays
+// for its distinct subexpressions once, and the free-variable walk of
+// a document's expressions is a walk of distinct DAG nodes rather than
+// of a fresh parse tree per call.
+describe('evalExpr reads through the shared table', () => {
+  it('resolves one set of subexpressions for two operations carrying the same expression in one pass', () => {
+    // Unique to this test, so no other test's leftover pass state can
+    // make the first call a memo hit.
+    let expr = 'x_axis.motor';
+    for (let round = 0; round < 6; round += 1) {
+      expr = `(sin(${expr}) + cos(${expr}))`;
+    }
+    const scope = { time: 0.31415, drivers: { x_axis: { motor: 424242 } } };
+
+    resetExpressionMetrics();
+    evalExpr(expr, scope);
+    const first = expressionMetrics().resolutions;
+    // Fails while evalExpr calls jokenizer's own evaluate: that path
+    // never touches expressions.ts's resolution counter at all, so
+    // `first` stays 0.
+    expect(first).toBeGreaterThan(0);
+
+    // A second operation carrying the identical expression, in the
+    // SAME pass (the same scope object, as one tree.update walk hands
+    // down): no further resolutions.
+    evalExpr(expr, scope);
+    expect(expressionMetrics().resolutions).toBe(first);
+  });
+
+  it('reads freeVariables of a pasted expression without preparing a second copy of it', () => {
+    // Unique to this test too.
+    let expr = 'y_axis.motor';
+    for (let round = 0; round < 6; round += 1) {
+      expr = `(asin(${expr}) - acos(${expr}))`;
+    }
+
+    expect([...freeVariables(expr)]).toEqual(['y_axis.motor']);
+    const afterFreeVariables = expressionMetrics().nodes;
+
+    // Preparing the SAME text directly, through expressions.ts, must
+    // not grow the table: freeVariables already prepared it, through
+    // the one shared table, not a second copy of its own.
+    prepare(expr);
+    expect(expressionMetrics().nodes).toBe(afterFreeVariables);
   });
 });
