@@ -450,11 +450,22 @@
       (116 expressions, 22 time-dependent, 0 mismatches) and proposal.md's
       "348 checks, 0 mismatches" line.
 
-      **In the browser.** Not run — **pending: coordinator**, per this
-      session's explicit instruction. Rebuilding the bundle and mounting
-      the version-4 document in an actual browser (confirming it mounts,
-      the animation bar is present, and the escapement moves when
-      scrubbed) needs a browser environment this session did not use; the
-      numeric half above proves the same arithmetic through the shipped
-      `evalExpr`, but the timeline-bar's actual presence on screen is
-      unverified here.
+      **In the browser (coordinator, 2026-09-07).** Headless Chromium
+      (Playwright, SwiftShader GL) mounting the version-4 grasshopper
+      document beside its STL models through a capture-style page, with
+      the bundle built at a88ec57:
+
+      | | flat document, ADR-043 bundle | version-4 document, this bundle |
+      |---|---|---|
+      | mount, `goto` to ready | 7.3 s | 0.5 s |
+      | `performance.memory.usedJSHeapSize` after mount | 69 MB | 47 MB |
+      | one `setTime` step (evaluate + render call) | 0.36 ms | 0.63 ms |
+
+      The animation bar is present on the bound document (one range
+      slider, machine-time readout `0:00:00` at rest) although no
+      operation's own text mentions `$t`. Pixels: both documents mounted
+      with `autoplay: false`, `setTime(1/3)`, two frames, 800x600
+      screenshots -- **0 differing pixels** between the flat and the bound
+      clock. (With autoplay on, the first attempt differed by 1,328 pixels
+      in the pendulum's column: the two frames were captured at different
+      instants, not at different poses.)
