@@ -259,7 +259,7 @@
       `tree.ts`) so "difference" means one thing on both sides.
 
       Green confirmed: `npm test` — **14 files, 292 tests, all passing**
-      (280 pre-existing + 12 net new: 7 in `tree.test.ts` making 27, 5 in
+      (280 pre-existing + 12 net new: 9 in `tree.test.ts` making 27, 3 in
       `flexible.test.ts` making 17). `npx tsc --noEmit` clean. `npm run
       build` — `dist/solid-widget.js`, 532.1kb.
 
