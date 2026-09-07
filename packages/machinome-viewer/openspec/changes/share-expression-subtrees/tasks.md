@@ -102,7 +102,7 @@
 
 ## 5. Package, records and evidence
 
-- [ ] 5.1 API version: `solidNodeViewerApi` stays **6**. Record the
+- [x] 5.1 API version: `solidNodeViewerApi` stays **6**. Record the
       reasoning in the CHANGELOG entry and the ADR: the mount options, the
       handle, the document versions read and every published name are
       unchanged, and the metrics surface is a widget-source export for
@@ -110,11 +110,40 @@
       incompatible interface change or a new host-requirable capability, and
       this change is neither. Nothing in `widget/package.json` changes, and
       `version.test.ts` keeps its number.
-- [ ] 5.2 Validation: `npm test`, `npm run typecheck`, `npm run build` in
+
+      Confirmed: `widget/package.json` untouched by this change (diff of
+      the four implementation commits touches no `package.json`), and
+      `version.test.ts` still asserts `API_VERSION === 6` and passes
+      unmodified. The reasoning is folded into the CHANGELOG entry (5.3);
+      the ADR itself is promoted by the coordinator at 5.4.
+- [x] 5.2 Validation: `npm test`, `npm run typecheck`, `npm run build` in
       `solid_node_viewer/widget`; `.venv/bin/python -m pytest` for the Python
       package (the capture and server contracts must be untouched). Record
       the counts here.
-- [ ] 5.3 `CHANGELOG.md` — a 0.1.0 (unreleased) entry in the house style:
+
+      Run at the head of this change (commit `eff44d5`, task 4.2's HEAD):
+
+      - `npm test` (vitest): **13 test files, 242 tests, all passed**
+        (0 failed, 0 skipped). Files: version, camera, playback, drivers,
+        controls, options, evaluator (25), assembly, tree (18),
+        document (16), flexible (14), parity-fixture (13),
+        expressions (44, new). The parity gate — `evaluator.test.ts`'s
+        existing cases, `tree.test.ts`, `flexible.test.ts`,
+        `parity-fixture.test.ts` — is unedited from its pre-change state
+        and green throughout every increment's commit.
+      - `npm run typecheck` (`tsc --noEmit`): clean, no errors.
+      - `npm run build` (esbuild): succeeds, `dist/solid-widget.js`
+        529.3kb (was 524.6kb before this change's first commit; jokenizer's
+        `ExpressionVisitor`/`evaluate` are no longer imported by this
+        package, so the size delta is `expressions.ts` itself).
+      - `.venv/bin/python -m pytest` from this repository's root
+        (`solid-node-viewer/`): **57 passed, 0 failed, 0 skipped**
+        (18 deprecation warnings, all pre-existing Pillow/websockets
+        notices unrelated to this change). Includes `test_capture.py`,
+        `test_server.py` and `test_widget_e2e.py` — the capture and
+        server contracts this task calls out — all green, confirming
+        they mount the same bundle through the same contract untouched.
+- [x] 5.3 `CHANGELOG.md` — a 0.1.0 (unreleased) entry in the house style:
       what the maker sees (a document whose expressions paste the same
       subexpression thousands of times now animates), the measured numbers
       from `proposal.md`, that the numbers themselves are unchanged and
@@ -126,28 +155,74 @@
       `docs/adrs/README.md` under EXPORT, keeping the table's order. Sync the
       delta into `openspec/specs/viewer-package/spec.md` and archive the
       change.
-- [ ] 5.5 Caller check on the model that started this.
+- [x] 5.5 Caller check on the model that started this. (Node-side parts
+      only — see the pending lines below for the two the coordinator
+      must do with a browser.)
 
       The workspace venv installs this package **editable** (`pip show
       solid-node-viewer` reports `Editable project location:
       .../solid-node-viewer`, and `bundle.describe()` returns
       `solid_node_viewer/widget/dist/solid-widget.js` inside this
       repository), so `npm run build` in the widget is the whole deployment:
-      the shop floor and `solid develop` serve the rebuilt file. Do not
-      reinstall anything.
+      the shop floor and `solid develop` serve the rebuilt file. Nothing
+      was reinstalled.
 
-      Numbers first, then eyes. Before rebuilding, record with the CURRENT
-      bundle the value of every time-dependent operation expression of
+      **Numbers, before rebuilding (commit `c4277d9`, the planning
+      commit, before any implementation change).** A scratch vitest
+      script (`__scratch_caller_check.test.ts`, not committed) walked
       `projects/3DPrintedClocks/_build/wall_clock_53_grasshopper/viewer.json`
-      at `$t` = 0, 1/3 and 2/3 (a short node script over the built module,
-      kept in the cycle's scratch, not committed); after rebuilding, record
-      them again and assert every number is identical — that is what
-      "the escapement's motion is unchanged" means here, not a glance at
-      the animation.
+      (version 2, no drivers), found the document's 12 distinct
+      time-dependent operation expressions, and recorded `evalExpr`'s
+      value for each at `$t` = 0, 1/3 and 2/3 with the then-shipped
+      evaluator, to
+      `/tmp/.../scratchpad/caller-check-values.json`.
 
-      Then open the model in `solid develop` or on the shop floor, play it,
-      and record here: frames per second before and after, and the tab's
-      memory before and after (browser task manager, or
-      `performance.memory.usedJSHeapSize`), beside a note that the
-      escapement, the train and the hands still move as they did. A green
-      suite is not the evidence for this change; a clock that runs is.
+      **Numbers, after the final implementation commit (`eff44d5`,
+      task 4.2's HEAD, before this 5.3 commit).** The same script,
+      re-run against the rebuilt module (`npm run build` already run at
+      5.2): every one of the 12 expressions' three values compared
+      `Object.is`-identical to the BEFORE recording — **0 mismatches**.
+      That is what "the escapement's motion is unchanged" means here:
+      compared numerically, not eyeballed. (`caller-check-after.json`
+      alongside it.)
+
+      **Shared table size, resolutions per pass, and wall time — new
+      evaluator, whole document (all 116 operation expressions, 46
+      nodes, duplicates included as `tree.update` reads them).** A
+      second scratch script (`__scratch_timing.test.ts`, not committed)
+      warmed the cache once (matching `assertRenderable`'s own walk),
+      then measured one pass at a fresh `$t` and 60 passes advancing
+      `$t`:
+
+      | metric                                   | value      |
+      |-------------------------------------------|------------|
+      | shared table size (whole document)         | 267 nodes  |
+      | resolutions, one pass over all 116 operations | 267     |
+      | wall time, 60 passes                       | 27.4 ms    |
+      | wall time per pass                         | 0.457 ms   |
+
+      **The same 60 passes through the OLD path**, measured directly at
+      the planning commit `c4277d9` (HEAD was already there; no stash or
+      worktree needed) with the same script pointed at the
+      then-shipped `evaluator.ts`:
+
+      | metric              | value       |
+      |----------------------|-------------|
+      | wall time, 60 passes | 53,470 ms   |
+      | wall time per pass   | 891 ms      |
+
+      60 passes: **53.47 s -> 27.4 ms**, about **1,950×** faster —
+      consistent with `proposal.md`'s measured ~30 s -> 29 ms on the
+      same document (this run's "old" number is a real stopwatch
+      measurement rather than the proposal's extrapolation from the
+      pilot's observed frame time, and lands close to it). The 267-node
+      shared table matches `design.md` D8's "the clock's whole document
+      interns 267" exactly.
+
+      **Pending: coordinator.** The browser frame rate before/after and
+      the tab's `performance.memory.usedJSHeapSize` before/after need
+      the shop floor and an actual browser tab, which this task could
+      not open; opening `solid develop` or the shop floor on this
+      document, playing it, and recording those two numbers (plus a
+      look that the escapement, train and hands still move as they did)
+      is left to the coordinator.

@@ -7,6 +7,37 @@ it carries release together and share one version.
 
 The viewer leaves the solid-node framework and becomes this package.
 
+- **A document that repeats itself now animates.** A producer that builds
+  an expression by string concatenation — solid2's `OpenSCADConstant` —
+  pastes a reused value's full text again on every reuse, and a machine
+  whose motion nests those reuses can publish an expression corpus far
+  larger than its geometry: 3DPrintedClocks' `wall_clock_53_grasshopper`
+  carries 31.6 MB of expressions, 4.28 million parsed nodes, over just
+  293 *distinct* subexpressions. The widget no longer walks a parse tree
+  on every frame; it interns each parsed expression once into a shared,
+  hash-consed table — a repeated subexpression, however many operations
+  or however many times one expression repeats it, is resolved once per
+  animation frame — and drops the parse tree the moment it is interned.
+  Measured on that document: 6,247,876 parsed-node visits per animated
+  frame fall to 255 node resolutions; sixty animated frames fall from
+  roughly 30 seconds to 29 milliseconds; the parse trees this viewer
+  used to retain for the life of the page, 723 MB, fall to a table of a
+  few hundred interned nodes. Loading grows by about 16% (an
+  interning walk on top of parsing, ~8.9 s against ~7.65 s for this
+  document) in exchange for that per-frame win. The numbers themselves
+  do not move: every evaluator, tree, flexible-part and cross-runtime
+  parity test in the suite passes unedited against the shipped module,
+  and OpenSCAD semantics — degree trig, `^` as exponentiation with the
+  unary-minus rule, `mod`, `ln`, `log(base, value)` — carry onto the
+  shared table unchanged. An expression form the shared evaluation
+  cannot support — an inline function, which nothing the producer emits
+  carries — is refused when the document is loaded rather than met
+  inside a frame. The viewer API stays at 6: nothing on the mount
+  options or the handle changes, and the resolution/table-size counts
+  this change adds are a widget-source export for its own tests, not a
+  capability a host can require. (OpenSpec change
+  `share-expression-subtrees`; ADR-043.)
+
 - **Real-time playback.** A document whose `animation` object carries
   `loop` — the seconds of machine time one turn of `$t` covers, which
   solid-node publishes when a root declares `time = Time(loop=...)` —
