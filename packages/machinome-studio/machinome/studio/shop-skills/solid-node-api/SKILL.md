@@ -804,8 +804,17 @@ and are never held while watching or testing.
 Inside a publication:
 
 - `viewer.json` — `{format: "solid-node-export", version, animation:
-  {fps, frames}, drivers, instructions, root, pieces}`. `version` is 2, or
-  3 when the tree holds a flexible part. `drivers` and `instructions` are
+  {fps, frames}, drivers, instructions, bindings?, root, pieces}`.
+  `version` is 2; 3 when the tree holds a flexible part; 4 when the
+  document carries a `bindings` table, which the serializer publishes
+  whenever a subexpression repeats across the document (a shared value
+  reaching two nodes is enough, so nearly every animated model is version
+  4). `bindings` is an ordered array of `{name, expression}` entries,
+  names `_b0`, `_b1`, ..., each expression naming only `$t`, declared
+  driver ids and earlier entries; an operation or flexible `params`
+  expression references an entry by its bare name, and an expression the
+  serializer cannot read is published verbatim with a warning. A viewer
+  older than API 7 refuses version 4. `drivers` and `instructions` are
   tables keyed by qualified id (empty for a driverless model). Each tree
   node carries `name`, `type`, `color`, `mtime`, `operations`, and either
   `children`, a rigid node's `model` path relative to the build directory
