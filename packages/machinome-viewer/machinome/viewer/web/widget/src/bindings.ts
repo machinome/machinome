@@ -37,7 +37,7 @@
 //     entry's own free names, keyed by name and holding no node id, so
 //     it survives a store reset untouched.
 
-import { NodeId, prepare } from './expressions';
+import { expressionGeneration, NodeId, prepare } from './expressions';
 import { freeVariables } from './evaluator';
 import { Manifest, ManifestBinding } from './types';
 
@@ -158,18 +158,25 @@ export function bindingTable(document: Manifest, sourceUrl: string): BindingTabl
     inputsOf.set(entry.name, inputs);
   });
 
-  // Prepared once, here, and remembered (D1): an entry's expression is
+  // Prepared here and remembered (D1): an entry's expression is
   // `prepare`d exactly as an operation's is, giving the root node id
-  // `EvalScope.bindings` names it by. Increment 2 (D4) adds the guard
-  // against a store reset invalidating a held id; nothing here yet
-  // depends on the store surviving between calls.
+  // `EvalScope.bindings` names it by. The guard against a store reset
+  // (D4): this table holds ids OUTSIDE the shared store, so a reset
+  // between one call and the next -- the node ceiling tripping during a
+  // long `solid develop` session, or the last mount releasing -- would
+  // leave `cachedRoots` naming reallocated nodes. `expressionGeneration()`
+  // is one integer comparison per call and a real re-prepare only after
+  // a genuine reset; the entries' expression STRINGS cost nothing to
+  // keep, since they are the document's own.
+  let cachedGeneration = -1;
   let cachedRoots: Map<string, NodeId> | undefined;
 
   const roots = (): ReadonlyMap<string, NodeId> => {
-    if (cachedRoots === undefined) {
+    if (cachedRoots === undefined || cachedGeneration !== expressionGeneration()) {
       const map = new Map<string, NodeId>();
       entries.forEach((entry) => map.set(entry.name, prepare(entry.expression)));
       cachedRoots = map;
+      cachedGeneration = expressionGeneration();
     }
     return cachedRoots;
   };

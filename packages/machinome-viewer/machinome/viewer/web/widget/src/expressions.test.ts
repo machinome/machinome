@@ -13,9 +13,11 @@
 import { evaluate as jokEvaluate, tokenize as jokTokenize } from 'jokenizer';
 import { describe, expect, it } from 'vitest';
 import {
-  EXPRESSION_LIMITS, expressionMetrics, prepare, releaseExpressions,
-  resetExpressionMetrics, retainExpressions, valueOf,
+  EXPRESSION_LIMITS, expressionGeneration, expressionMetrics, prepare,
+  releaseExpressions, resetExpressionMetrics, retainExpressions, valueOf,
 } from './expressions';
+import { bindingTable } from './bindings';
+import { Manifest } from './types';
 // The comparison baseline for increment 2's semantics tests: at this
 // point in the cycle `evaluator.ts` is UNCHANGED, so `evalExpr` still
 // runs jokenizer's own `tokenize` + the established `^`/exponent
@@ -466,6 +468,232 @@ describe('retainExpressions / releaseExpressions (D8)', () => {
       const second = prepare('(5300002 + 2)');
       expect(expressionMetrics().nodes).toBe(3); // only the second expression's
       expect(valueOf(second, { time: 0 } as never)).toBe(5300004);
+    } finally {
+      EXPRESSION_LIMITS.nodes = original;
+    }
+  });
+});
+
+// OpenSpec `read-expression-bindings`, increment 2 (design D1, D3, D4).
+// A binding name is an ordinary name that resolves into the shared DAG:
+// `scope.bindings` maps a name to the root of that entry's expression,
+// and name resolution consults it between `$t` and the driver map.
+describe('valueOf: binding resolution (D1)', () => {
+  it('resolves a binding name to the value of the expression it names', () => {
+    const bindingRoot = prepare('($t * 43200.0)');
+    const scope = {
+      time: 0.25, bindings: new Map([['_b0', bindingRoot]]),
+    } as never;
+
+    expect(valueOf(prepare('(_b0 / 2.0)'), scope))
+      .toBe(valueOf(prepare('(($t * 43200.0) / 2.0)'), scope));
+  });
+
+  it('resolves a name that is both a binding and a driver as the binding', () => {
+    // The loader refuses such a document (3.1); this is the resolution
+    // ORDER underneath that refusal, and it must favour the binding even
+    // though nothing here enforces the refusal itself.
+    const bindingRoot = prepare('(9500001 + 1)');
+    const scope = {
+      time: 0, drivers: { shadowed: -1 },
+      bindings: new Map([['shadowed', bindingRoot]]),
+    } as never;
+
+    expect(valueOf(prepare('shadowed'), scope)).toBe(9500002);
+  });
+
+  it('$t still wins over everything, including a binding named $t', () => {
+    const scope = { time: 7, bindings: new Map() } as never;
+    expect(valueOf(prepare('$t'), scope)).toBe(7);
+  });
+
+  it('a name in neither is still undefined, and still NaN through evalExpr', () => {
+    const scope = { time: 0, bindings: new Map() } as never;
+    expect(valueOf(prepare('nope'), scope)).toBeUndefined();
+    expect(evalExpr('(nope * 2)', scope)).toBeNaN();
+  });
+
+  it('resolves a chain of bindings, one naming the next', () => {
+    // Exactly the DAG shape a table naming an entry produces (D1): the
+    // root of "_b1" IS the name node for "_b0", not a copy of it.
+    const b0 = prepare('($t * 2.0)');
+    const b1 = prepare('_b0');
+    const b2 = prepare('_b1');
+    const scope = {
+      time: 0.5,
+      bindings: new Map([['_b0', b0], ['_b1', b1], ['_b2', b2]]),
+    } as never;
+
+    expect(valueOf(prepare('_b2'), scope)).toBe(1.0);
+  });
+});
+
+describe('valueOf: work performed through a binding (D1, D6, D9)', () => {
+  it('one pass over two expressions naming the same entry resolves its chain once', () => {
+    const chain = pastedExpression();
+    const bindingRoot = prepare(chain);
+    const scope = {
+      time: 0, bindings: new Map([['_b0', bindingRoot]]),
+      drivers: { x_axis: { motor: freshMotor() } },
+    } as never;
+
+    resetExpressionMetrics();
+    valueOf(prepare('_b0'), scope);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+
+    valueOf(prepare('(_b0 + 1.0)'), scope);
+    // Only the new outer "+ 1" node (and the constant) are new work; the
+    // chain behind "_b0" is not walked again.
+    expect(expressionMetrics().resolutions).toBeLessThanOrEqual(first + 2);
+  });
+
+  it('a pass at a new $t resolves the chain behind the binding again', () => {
+    const bindingRoot = prepare('($t * 3.0)');
+    const scope1 = { time: 0.111, bindings: new Map([['_b0', bindingRoot]]) } as never;
+    const scope2 = { time: 0.222, bindings: new Map([['_b0', bindingRoot]]) } as never;
+
+    resetExpressionMetrics();
+    valueOf(prepare('_b0'), scope1);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(prepare('_b0'), scope2);
+    expect(expressionMetrics().resolutions).toBe(first * 2);
+  });
+
+  it('an entry no expression names is never resolved', () => {
+    const readEntry = prepare('(9600001 + 1)');
+    const unreadEntry = prepare('(9600002 + 2)');
+    const scope = {
+      time: 0, bindings: new Map([['_read', readEntry], ['_unread', unreadEntry]]),
+    } as never;
+
+    resetExpressionMetrics();
+    valueOf(prepare('_read'), scope);
+    const afterRead = expressionMetrics().resolutions;
+    expect(afterRead).toBeGreaterThan(0);
+
+    // Within the SAME pass (same scope object), resolving "_unread" now
+    // costs its own work -- proof it was not already touched as a side
+    // effect of resolving "_read".
+    valueOf(prepare('_unread'), scope);
+    expect(expressionMetrics().resolutions).toBeGreaterThan(afterRead);
+  });
+});
+
+// D3: the correctness hazard the shared DAG introduces. The name node
+// for "_b3" is ONE node id for the whole page, so the pass comparison
+// must include the binding map -- otherwise two documents at equal time
+// and drivers would share one memoized value for two different tables.
+describe('valueOf: the binding map is part of the pass (D3)', () => {
+  it('two maps binding one name to different roots give each its own value', () => {
+    const name = '_shared_pass_name_d3';
+    const aRoot = prepare('(9700001 + 1)');
+    const bRoot = prepare('(9700002 + 2)');
+    const time = 0.5;
+    const scopeA = { time, bindings: new Map([[name, aRoot]]) } as never;
+    const scopeB = { time, bindings: new Map([[name, bRoot]]) } as never;
+
+    const nameNode = prepare(name);
+    expect(valueOf(nameNode, scopeA)).toBe(9700002);
+    expect(valueOf(nameNode, scopeB)).toBe(9700004);
+  });
+
+  it('two distinct map objects with equal contents share one pass', () => {
+    const name = '_equal_maps_d3';
+    const root = prepare('(9800001 + 1)');
+    const time = 0.75;
+    const scope1 = { time, bindings: new Map([[name, root]]) } as never;
+    const scope2 = { time, bindings: new Map([[name, root]]) } as never;
+    const nameNode = prepare(name);
+
+    resetExpressionMetrics();
+    valueOf(nameNode, scope1);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(nameNode, scope2);
+    expect(expressionMetrics().resolutions).toBe(first);
+  });
+
+  it('an absent bindings map and an empty one are the same pass', () => {
+    const id = prepare('(1 + 1)');
+    const time = 0.8181;
+    const scope1 = { time, bindings: new Map() } as never;
+    const scope2 = { time } as never;
+
+    resetExpressionMetrics();
+    valueOf(id, scope1);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(id, scope2);
+    expect(expressionMetrics().resolutions).toBe(first);
+  });
+
+  it('a version 1-3 scope with no bindings compares exactly as it does today', () => {
+    // Every existing pass-detection case (above) constructs a scope with
+    // no `bindings` key at all and stays green unedited by this
+    // increment -- this is the same claim, named for the D3 change.
+    const id = prepare('(x_axis.motor + 1)');
+    const motor = freshMotor();
+    const scope1 = { time: 0, drivers: { x_axis: { motor } } } as never;
+    const scope2 = { time: 0, drivers: { x_axis: { motor } } } as never;
+
+    resetExpressionMetrics();
+    valueOf(id, scope1);
+    const first = expressionMetrics().resolutions;
+    expect(first).toBeGreaterThan(0);
+    valueOf(id, scope2);
+    expect(expressionMetrics().resolutions).toBe(first);
+  });
+});
+
+// D4: a `BindingTable` holds node ids OUTSIDE the shared store. A store
+// reset (the node ceiling, or the last mount releasing) hands ids out
+// again from zero, so a table built before such a reset must re-prepare
+// its roots rather than naming a reallocated node.
+describe('expressionGeneration and the reset guard (D4)', () => {
+  it('rises on a reset and not otherwise', () => {
+    const before = expressionGeneration();
+    prepare('(9900001 + 1)'); // an ordinary preparation: no reset
+    expect(expressionGeneration()).toBe(before);
+
+    retainExpressions();
+    prepare('(9900002 + 2)');
+    releaseExpressions(); // the only holder releasing: the store resets
+
+    expect(expressionGeneration()).toBe(before + 1);
+  });
+
+  it('a held BindingTable re-prepares its roots after a reset, and evaluates correctly', () => {
+    const original = EXPRESSION_LIMITS.nodes;
+    const manifest: Manifest = {
+      format: 'solid-node-export', version: 4, animation: { fps: 30, frames: 360 },
+      bindings: [{ name: '_b0', expression: '(9900101 + 1)' }],
+      root: { name: 'root', type: 'AssemblyNode', color: null, operations: [] },
+    };
+
+    const table = bindingTable(manifest, '/m.json');
+    const beforeReset = table.roots()!.get('_b0')!;
+    expect(valueOf(beforeReset, { time: 0 } as never)).toBe(9900102);
+
+    // '(9900101 + 1)' interns exactly 3 nodes: two constants, one
+    // binary. Lower the ceiling to force a reset on the NEXT
+    // preparation, between building the table above and reading it
+    // again below.
+    EXPRESSION_LIMITS.nodes = 3;
+    try {
+      prepare('(9900201 + 1)'); // trips the ceiling; resetStore() runs
+
+      // The exact hazard D4 exists to prevent: the id from before the
+      // reset now names whatever the store handed that id out to next,
+      // which is no longer "_b0"'s expression.
+      expect(expressionGeneration()).toBeGreaterThan(0);
+      expect(valueOf(beforeReset, { time: 0 } as never)).not.toBe(9900102);
+
+      // `roots()` notices the generation moved and re-prepares: the
+      // value is still the right one.
+      const afterReset = table.roots()!.get('_b0')!;
+      expect(valueOf(afterReset, { time: 0 } as never)).toBe(9900102);
     } finally {
       EXPRESSION_LIMITS.nodes = original;
     }

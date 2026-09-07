@@ -113,6 +113,15 @@ export interface EvalScope {
   time: number;
   /** The document's drivers, in NATIVE driver units. */
   drivers?: DriverScope;
+  /** OpenSpec `read-expression-bindings`, design D1-D3: a version-4
+   * document's shared-subexpression table, name -> the interned root of
+   * that entry's expression. Document-scoped (`bindings.ts` builds it,
+   * never a module-level map here), so it travels in the scope exactly
+   * as driver values do. Resolved between `$t` and the driver map (D1),
+   * and part of the pass comparison (D3): the name node for one binding
+   * name is one node id for the whole page, so two documents' tables
+   * must never be allowed to share its memoized value. */
+  bindings?: ReadonlyMap<string, NodeId>;
 }
 
 // ---------------------------------------------------------------------
@@ -439,6 +448,21 @@ export const EXPRESSION_LIMITS = { nodes: 50_000 };
 
 let mountCount = 0;
 
+// D4: a `BindingTable` (bindings.ts) holds node ids OUTSIDE this store,
+// prepared once at load. A reset hands ids out again from zero, so a
+// held map built before one would name a reallocated node -- or worse,
+// nothing at all. `storeGeneration` is what lets a holder notice: it
+// rises on every reset and on nothing else, so re-preparing is a single
+// integer comparison per pass and a real re-parse only after a genuine
+// reset.
+let storeGeneration = 0;
+
+/** The current store generation. Rises by exactly one on every
+ * `resetStore()` and is unchanged otherwise (D4). */
+export function expressionGeneration(): number {
+  return storeGeneration;
+}
+
 function resetStore(): void {
   // Everything keyed by node id (D8): the intern table, the expression
   // string map, the free-variable sets, the memo's value/stamp arrays,
@@ -456,6 +480,7 @@ function resetStore(): void {
   nodeStamp = [];
   passCounter = 0;
   lastScope = undefined;
+  storeGeneration += 1;
 }
 
 /** One more mount is holding the shared table. */
@@ -545,6 +570,13 @@ function resolveName(parts: readonly string[], scope: EvalScope): unknown {
   let value: unknown;
   if (first === TIME_ID) {
     value = scope.time;
+  } else if (scope.bindings !== undefined && scope.bindings.has(first)) {
+    // A binding resolves BEFORE a driver id (D1, the framework's own
+    // rule): a name that is both is a binding, never reported as an
+    // undeclared driver. Its root is a node like any other -- this
+    // recurses into the SAME memoized walk, so a binding read by many
+    // operations costs one resolution per pass however many reach it.
+    value = valueOf(scope.bindings.get(first)!, scope);
   } else if (scope.drivers !== undefined && first in scope.drivers) {
     value = (scope.drivers as Record<string, unknown>)[first];
   } else if (first in context) {
@@ -638,9 +670,29 @@ function mapsEqual(a: Record<string, unknown>, b: Record<string, unknown>): bool
   return true;
 }
 
+// The binding map (D3): compared identity-first, then by size and every
+// name's node id. An absent map counts as an empty one, so a version 1-3
+// scope with no `bindings` compares exactly as it does today. This is
+// NOT `mapsEqual` -- that compares nested VALUES for the driver map;
+// here two node ids are equal by `!==`, and a `Map` rather than a plain
+// object is what `bindings.ts` and every call site already build.
+function bindingsEqual(a?: ReadonlyMap<string, NodeId>,
+                        b?: ReadonlyMap<string, NodeId>): boolean {
+  if (a === b) return true;
+  const aSize = a?.size ?? 0;
+  const bSize = b?.size ?? 0;
+  if (aSize !== bSize) return false;
+  if (a === undefined) return true; // both empty (b is undefined too, or size 0)
+  for (const [name, id] of a) {
+    if (b!.get(name) !== id) return false;
+  }
+  return true;
+}
+
 function scopesEqual(a: EvalScope, b: EvalScope): boolean {
   return Object.is(a.time, b.time)
-    && mapsEqual(a.drivers ?? {}, b.drivers ?? {});
+    && mapsEqual(a.drivers ?? {}, b.drivers ?? {})
+    && bindingsEqual(a.bindings, b.bindings);
 }
 
 let passCounter = 0;

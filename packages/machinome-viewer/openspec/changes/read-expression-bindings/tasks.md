@@ -80,7 +80,7 @@
 
 ## 2. A binding name resolves through the shared DAG
 
-- [ ] 2.1 Red: `src/expressions.test.ts`, four groups.
+- [x] 2.1 Red: `src/expressions.test.ts`, four groups.
 
       **Resolution** (D1): with `scope.bindings` mapping `_b0` to the root
       of `($t * 43200.0)`, `valueOf(prepare("(_b0 / 2)"), scope)` is the
@@ -110,7 +110,15 @@
       a table and evaluating through it, the value is still the right one —
       `roots()` re-prepares because the generation moved. Directly:
       `expressionGeneration()` rises on a reset and not otherwise.
-- [ ] 2.2 Implement in `src/expressions.ts`: `EvalScope.bindings?:
+
+      Red confirmed: 6 new cases failed — `expressionGeneration is not a
+      function`, and the resolution/pass-detection/reset-guard cases all
+      failed on an unresolved (`undefined`/`NaN`) binding name, since
+      `resolveName` did not yet consult `scope.bindings` and `scopesEqual`
+      did not yet compare it. 52 of 58 cases in the file passed (the
+      pre-existing 44 plus 8 new cases that only exercise plumbing not yet
+      under test).
+- [x] 2.2 Implement in `src/expressions.ts`: `EvalScope.bindings?:
       ReadonlyMap<string, NodeId>`; the binding step in `resolveName`,
       between `$t` and the driver map; `scopesEqual` comparing the maps
       (identity, then size and every name's node id, an absent map counting
@@ -118,6 +126,10 @@
       exported as `expressionGeneration()`. In `src/bindings.ts`, `roots()`
       re-prepares when the generation moved. Green.
       Commit: `feat(widget): resolve a binding name through the shared table`.
+
+      Green confirmed: `npm test` — **14 files, 273 tests, all passing**
+      (259 pre-existing + 14 new in `expressions.test.ts`; `bindings.test.ts`
+      unchanged at 15). `npx tsc --noEmit` clean.
 
 ## 3. The loader accepts version 4, and refuses a table it cannot resolve
 
