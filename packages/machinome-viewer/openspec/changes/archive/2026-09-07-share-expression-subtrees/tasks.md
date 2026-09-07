@@ -244,10 +244,22 @@
       shared table matches `design.md` D8's "the clock's whole document
       interns 267" exactly.
 
-      **Pending: coordinator.** The browser frame rate before/after and
-      the tab's `performance.memory.usedJSHeapSize` before/after need
-      the shop floor and an actual browser tab, which this task could
-      not open; opening `solid develop` or the shop floor on this
-      document, playing it, and recording those two numbers (plus a
-      look that the escapement, train and hands still move as they did)
-      is left to the coordinator.
+      **Browser measurement (coordinator, 2026-09-07).** Headless
+      Chromium (Playwright, SwiftShader GL, 1024x768) mounting the real
+      `wall_clock_53_grasshopper/viewer.json` through a capture-style
+      page, the bundle built at the planning commit c4277d9 against the
+      bundle at fdc7ad0:
+
+      | | old bundle | new bundle |
+      |---|---|---|
+      | one `setTime` step (evaluate + render call), mean of 30 | 633 ms | 0.36 ms |
+      | `performance.memory.usedJSHeapSize` after mount | 569 MB | 69 MB |
+      | mount, `goto` to ready | 15.9 s | 7.3 s |
+      | `requestAnimationFrame` per second while playing | 0.8 | 5.4 |
+
+      The last row is the software rasterizer's ceiling, not the
+      viewer's: `wall_clock_01` (38 MB of STL, trivial expressions)
+      plays at the same 5.4 on the same setup, so on a GPU the new
+      bundle is display-rate bound. Motion unchanged: the 5.5 numeric
+      check above (every time-dependent operation at three `$t` values,
+      `Object.is`-identical) is the evidence, not a glance.

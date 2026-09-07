@@ -49,3 +49,4 @@ both repositories. Consequences:
 - [ADR-020](EXPORT/ADR-020-static-export-and-embeddable-viewer-widget.md) — Static export and embeddable widget — **Accepted**
 - [ADR-035](EXPORT/ADR-035-reusable-viewer-core-and-declared-api.md) — Reusable viewer core and declared API version — **Accepted**
 - [ADR-042](EXPORT/ADR-042-host-controlled-viewer-assembly-navigation.md) — Host-controlled viewer assembly navigation — **Accepted**
+- [ADR-043](EXPORT/ADR-043-hash-consed-expression-evaluation.md) — Hash-consed expression evaluation — **Accepted**
