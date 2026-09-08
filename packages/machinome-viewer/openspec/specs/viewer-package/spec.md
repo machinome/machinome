@@ -599,17 +599,22 @@ expression is first met while a frame is being rendered.
 For a document that declares drivers, the mounted viewer SHALL present
 an on-screen control for each driver and each instruction declared at
 the focused assembly layer: a button per instruction and a bounded
-slider with a directly editable numeric readout per driver. Control labels
-SHALL be the declared identifiers relative to the focused layer. Sliders and
-editable readouts SHALL present values in design units with the declared unit,
-and SHALL move live while a ramp plays except while the maker is actively
-editing that readout. A committed finite numeric entry SHALL produce the same
-driver state as dragging the slider to that design-unit value, including an
-entry outside the slider's declared range. A driver's readout SHALL show a
-fixed number of decimal places when it is not being edited, and SHALL hold the
-position of its digits, its sign, and everything laid out beside it steady as
-the value changes: reading a value while dragging SHALL not require following
-a moving target.
+slider with a passive numeric readout per driver. Clicking or
+keyboard-activating that readout SHALL replace it temporarily with a text
+editor that carries no native numeric spinner arrows. Control labels SHALL be
+the declared identifiers relative to the focused layer. Sliders, passive
+readouts, and active editors SHALL present values in design units with the
+declared unit, and SHALL move live while a ramp plays except while the maker is
+actively editing that readout. Enter or focus loss SHALL commit a non-empty
+finite numeric entry; Escape or an invalid entry SHALL leave the driver
+unchanged and restore the passive readout. A committed finite numeric entry
+SHALL produce the same driver state as dragging the slider to that design-unit
+value, including an entry outside the slider's declared range. A driver's
+passive readout SHALL show a fixed number of decimal places and SHALL retain
+the viewer's prior fixed-width, right-aligned, tabular-number appearance. It
+SHALL hold the position of its digits, its sign, and everything laid out beside
+it steady as the value changes: reading a value while dragging SHALL not
+require following a moving target.
 Interacting with a control SHALL produce the
 same observable state as the corresponding host driving call, so a
 value or trigger set on screen and one set through the handle are
@@ -639,17 +644,18 @@ SHALL present none of this chrome.
 
 #### Scenario: A maker enters an exact calibration value
 
-- **WHEN** the maker clicks a bounded driver's numeric readout, enters a
-  finite design-unit number and commits the edit
+- **WHEN** the maker activates a bounded driver's passive numeric readout,
+  enters a finite design-unit number and commits the edit
 - **THEN** the model uses that exact value through the same conversion as its
-  slider, the slider follows or pins at its nearest endpoint, and the unit
-  remains visible beside the editable number
+  slider, the slider follows or pins at its nearest endpoint, the unit remains
+  visible, and the passive readout returns without persistent field chrome or
+  spinner arrows
 
 #### Scenario: A readout holds still through a drag
 
 - **WHEN** the maker drags a driver's slider through values of
   differing digit counts and across zero into negative travel
-- **THEN** every value is written with the same number of decimal
+- **THEN** every passive value is written with the same number of decimal
   places, and neither the change of digit count nor the appearance of
   the minus sign moves the readout's digits or the unit beside them
 
@@ -664,7 +670,7 @@ SHALL present none of this chrome.
 
 - **WHEN** a host or maker binds a driver past its declared range and the
   maker looks at that driver's control
-- **THEN** the slider sits pinned at its nearest end, the readout
+- **THEN** the slider sits pinned at its nearest end, the passive readout
   shows the actual out-of-range value, and the bound value is
   unchanged by the chrome
 

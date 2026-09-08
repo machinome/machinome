@@ -861,28 +861,33 @@ function buildDriverRow(
   // a constant digit count would shift -- and that is also what makes
   // the `ch` reservation exact, since `ch` is the width of `0`. Ten:
   // sign, four integer digits, point, four decimals. The passive form uses
-  // a minimum; the editable field uses a stable box and scrolls long input.
+  // a minimum; the temporary editor occupies the same stable box.
   const readout = document.createElement('span');
   readout.className = 'driver-readout';
 
-  // A bounded driver keeps its range input and turns the number already
-  // beside it into the exact-entry door. The range remains a presentation
-  // bound only: deliberately do not copy min/max onto this field, because a
-  // crash or calibration may need an honestly out-of-range state.
+  // A bounded driver keeps the old passive number beside its range input.
+  // Activating that number temporarily opens an exact-entry text field. It
+  // is deliberately not type=number: native spinner arrows are visual noise
+  // here, and range remains a presentation bound only, so there are no
+  // min/max attributes to copy to the editor.
   const exact = control.slider === null
     ? null : document.createElement('input');
-  const figure = exact ?? document.createElement('span');
-  figure.style.cssText = exact === null
-    ? 'display:inline-block;min-width:10ch;text-align:right;'
-      + 'font-variant-numeric:tabular-nums;'
-    : 'box-sizing:content-box;width:10ch;text-align:right;'
-      + 'font:inherit;font-variant-numeric:tabular-nums;'
-      + 'background:rgba(255,255,255,0.08);color:inherit;'
-      + 'border:1px solid rgba(255,255,255,0.25);border-radius:3px;';
+  const figure = document.createElement('span');
+  figure.className = 'driver-readout-value';
+  figure.style.cssText = 'display:inline-block;min-width:10ch;text-align:right;'
+    + 'font-variant-numeric:tabular-nums;';
   if (exact !== null) {
-    exact.type = 'number';
-    exact.step = control.slider!.step === null
-      ? 'any' : String(control.slider!.step);
+    figure.tabIndex = 0;
+    figure.setAttribute('role', 'button');
+    figure.setAttribute('aria-label', control.unit === null
+      ? `Edit ${control.label} exact value`
+      : `Edit ${control.label} exact value (${control.unit})`);
+    exact.className = 'driver-readout-editor';
+    exact.type = 'text';
+    exact.inputMode = 'decimal';
+    exact.style.cssText = 'display:none;box-sizing:border-box;width:10ch;'
+      + 'text-align:right;font:inherit;font-variant-numeric:tabular-nums;'
+      + 'background:transparent;color:inherit;border:0;padding:0;';
     exact.setAttribute('aria-label', control.unit === null
       ? `${control.label} exact value`
       : `${control.label} exact value (${control.unit})`);
@@ -894,14 +899,17 @@ function buildDriverRow(
   // costs the alignment nothing.
   const unit = document.createElement('span');
 
-  readout.append(figure, unit);
+  readout.append(figure);
+  if (exact !== null) {
+    readout.append(exact);
+  }
+  readout.append(unit);
 
   let current = control;
   const show = (state: DriverControl) => {
     current = state;
-    if (exact === null) {
-      figure.textContent = formatReadout(state.display);
-    } else if (document.activeElement !== exact) {
+    figure.textContent = formatReadout(state.display);
+    if (exact !== null && document.activeElement !== exact) {
       exact.value = formatReadout(state.display);
     }
     unit.textContent = state.unit === null ? '' : ` ${state.unit}`;
@@ -926,12 +934,49 @@ function buildDriverRow(
   input.addEventListener('input', () => write(input));
   input.addEventListener('change', () => write(input));
   if (exact !== null) {
-    exact.addEventListener('input', () => write(exact));
-    exact.addEventListener('change', () => write(exact));
-    exact.addEventListener('blur', () => {
-      // An invalid or empty edit never reached the driver. Once the maker
-      // leaves, restore the truthful fixed-width representation of state.
+    let cancelEdit = false;
+    const beginEdit = () => {
       exact.value = formatReadout(current.display);
+      figure.style.display = 'none';
+      exact.style.display = 'inline-block';
+      exact.focus();
+      exact.select();
+    };
+    const commitEdit = () => {
+      const text = exact.value.trim();
+      const design = text === '' ? Number.NaN : Number(text);
+      if (Number.isFinite(design)) {
+        actions.setDriver(control.id, toNative(design, control.driver));
+      }
+    };
+    const finishEdit = () => {
+      exact.style.display = 'none';
+      figure.style.display = 'inline-block';
+      exact.value = formatReadout(current.display);
+    };
+    figure.addEventListener('click', beginEdit);
+    figure.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        beginEdit();
+      }
+    });
+    exact.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        exact.blur();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        cancelEdit = true;
+        exact.blur();
+      }
+    });
+    exact.addEventListener('blur', () => {
+      if (!cancelEdit) {
+        commitEdit();
+      }
+      cancelEdit = false;
+      finishEdit();
     });
   }
 

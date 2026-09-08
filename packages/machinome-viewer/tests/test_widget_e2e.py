@@ -263,27 +263,55 @@ class ViewerMountApiTest(TestCase):
                                                      { autoplay: false });
           const row = host.querySelector('.driver-control');
           const slider = row.querySelector('input[type=range]');
-          const exact = row.querySelector('input[type=number]');
-          if (exact === null) return { present: false };
-          exact.focus();
+          const passive = row.querySelector('.driver-readout-value');
+          const before = {
+            shown: passive.textContent,
+            numberInputs: row.querySelectorAll('input[type=number]').length,
+          };
+          passive.click();
+          const exact = row.querySelector('.driver-readout-editor');
+          if (exact === null) return { present: false, before };
+          const editing = {
+            type: exact.type,
+            visible: exact.offsetParent !== null,
+            selected: exact.selectionStart === 0
+              && exact.selectionEnd === exact.value.length,
+          };
           exact.value = '25.82';
-          exact.dispatchEvent(new Event('input'));
+          exact.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
           const inside = { driver: viewer.driver('turns'),
                            slider: slider.value, unit: row.textContent };
+          passive.click();
           exact.value = '400';
-          exact.dispatchEvent(new Event('input'));
           exact.blur();
+          passive.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+          exact.value = '';
+          exact.blur();
+          const afterInvalid = viewer.driver('turns');
+          passive.click();
+          exact.value = '12';
+          exact.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
           return { present: true, inside, outside: viewer.driver('turns'),
-                   pinned: slider.value, shown: exact.value,
+                   pinned: slider.value, shown: passive.textContent,
+                   passiveVisible: passive.offsetParent !== null,
+                   afterInvalid,
+                   before, editing,
                    label: exact.getAttribute('aria-label') };
         }""")
         self.assertTrue(result['present'])
+        self.assertEqual(result['before']['shown'], '0.0000')
+        self.assertEqual(result['before']['numberInputs'], 0)
+        self.assertEqual(result['editing']['type'], 'text')
+        self.assertTrue(result['editing']['visible'])
+        self.assertTrue(result['editing']['selected'])
         self.assertEqual(result['inside']['driver'], 25.82)
         self.assertEqual(result['inside']['slider'], '25.82')
         self.assertIn('turn', result['inside']['unit'])
         self.assertEqual(result['outside'], 400)
+        self.assertEqual(result['afterInvalid'], 400)
         self.assertEqual(result['pinned'], '306')
         self.assertEqual(result['shown'], '400.0000')
+        self.assertTrue(result['passiveVisible'])
         self.assertIn('exact value', result['label'])
 
     def test_the_toggle_presentation_starts_collapsed(self):
