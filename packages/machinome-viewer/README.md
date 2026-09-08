@@ -11,8 +11,9 @@ something a person can look at in a browser:
 - **`solid-widget.js`**, the embeddable three.js widget: orbit controls,
   client-side `$t` animation — at real time, with a speed control and a
   machine-time readout, when the document declares how long a turn of the
-  timeline is — one slider per declared driver and one button per declared
-  instruction, molejo flexible parts evaluated per frame, and the
+  timeline is — one slider with direct numeric entry per declared driver and
+  one button per declared instruction, molejo flexible parts evaluated per
+  frame, and the
   `SolidNodeWidget.mount()` API a host page drives it through;
 - the **standalone export page** a `solid export` directory ships with;
 - the **development server** that `solid develop` launches beside its

@@ -7,6 +7,16 @@ it carries release together and share one version.
 
 The viewer leaves the solid-node framework and becomes this package.
 
+- **Calibration controls accept exact values and complete timelines.** A
+  bounded driver keeps its slider but its numeric readout is now directly
+  editable in design units, including values outside the slider's declared
+  travel; the slider pins honestly while the entered machine state survives.
+  Animation sliders now count both `0` and `1` among the document's declared
+  frame positions, so a twelve-hour loop can be scrubbed all the way to its
+  `12:00:00` readout instead of stopping one sample short. This corrects the
+  existing on-screen controls without changing the host API. (OpenSpec change
+  `include-timeline-endpoint`.)
+
 - **A machine whose document shrank by 981× still opens, poses and
   plays.** `share-expression-subtrees` resolved a repeated subexpression
   once per frame, wherever it occurred — but the redundancy was still in

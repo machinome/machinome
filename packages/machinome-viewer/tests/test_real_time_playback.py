@@ -118,6 +118,21 @@ class RealTimePlaybackTest(TestCase):
         self.assertIn('0', result['refused'])
         self.assertEqual(result['kept'], 3600)
 
+    def test_the_timeline_reaches_the_complete_loop(self):
+        result = self.in_page("""async () => {
+          const host = document.getElementById('host');
+          const viewer = await SolidNodeWidget.mount(host, 'clock.json',
+                                                     { autoplay: false });
+          const slider = host.querySelector('.animation-controls input[type=range]');
+          slider.value = slider.max;
+          slider.dispatchEvent(new Event('input'));
+          return { value: slider.value, step: Number(slider.step),
+                   readout: host.querySelector('.machine-time').textContent };
+        }""")
+        self.assertEqual(result['value'], '359')
+        self.assertEqual(result['step'], 1)
+        self.assertEqual(result['readout'], '12:00:00')
+
     def test_a_document_without_a_loop_keeps_the_bar_it_had(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');

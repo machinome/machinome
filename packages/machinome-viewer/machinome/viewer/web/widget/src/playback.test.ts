@@ -12,8 +12,27 @@
 import { describe, expect, it } from 'vitest';
 import {
   SPEED_LADDER, advance, assertSpeed, cycleSecondsFor, formatMachineTime,
-  ladderFor,
+  ladderFor, timelinePosition, timelineStep, timelineTime,
 } from './playback';
+
+describe('timelineStep', () => {
+  it('counts both endpoints among the declared frames', () => {
+    expect(timelineStep(360)).toBe(1 / 359);
+    expect(Math.round(1 / timelineStep(360)) + 1).toBe(360);
+  });
+
+  it('guards a single-frame timeline', () => {
+    expect(timelineStep(1)).toBe(1);
+  });
+
+  it('maps exact integer frame indices onto normalized time', () => {
+    expect(timelinePosition(0, 360)).toBe(0);
+    expect(timelinePosition(1, 360)).toBe(359);
+    expect(timelineTime(359, 360)).toBe(1);
+    expect(timelinePosition(1, 1)).toBe(0);
+    expect(timelineTime(0, 1)).toBe(0);
+  });
+});
 
 describe('cycleSecondsFor', () => {
   it('plays frames / fps when the document declares no loop', () => {

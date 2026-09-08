@@ -20,7 +20,7 @@ import {
 } from './drivers';
 import {
   Animation, advance, assertSpeed, cycleSecondsFor, formatMachineTime,
-  ladderFor,
+  ladderFor, timelinePosition, timelineTime,
 } from './playback';
 import { EvalScope, freeVariables, TIME_ID } from './evaluator';
 import { releaseExpressions, retainExpressions } from './expressions';
@@ -196,7 +196,7 @@ export async function mount(
   const setTime = (next: number) => {
     time = Math.min(Math.max(next, 0), 1);
     if (slider) {
-      slider.value = String(time);
+      slider.value = String(timelinePosition(time, animation.frames));
     }
     if (readout && animation.loop !== undefined) {
       readout.textContent = formatMachineTime(time * animation.loop, animation.loop);
@@ -283,7 +283,7 @@ export async function mount(
       speedControl = built.speedControl;
       readout = built.readout;
       controlElements = built.elements;
-      slider.value = String(time);
+      slider.value = String(timelinePosition(time, animation.frames));
       if (readout && animation.loop !== undefined) {
         readout.textContent = formatMachineTime(time * animation.loop, animation.loop);
       }
@@ -860,13 +860,33 @@ function buildDriverRow(
   // width -- the panel's system font is otherwise proportional, so even
   // a constant digit count would shift -- and that is also what makes
   // the `ch` reservation exact, since `ch` is the width of `0`. Ten:
-  // sign, four integer digits, point, four decimals. `min-width`, not
-  // `width`, so a value past that grows its own row instead of lying.
-  const readout = document.createElement('output');
+  // sign, four integer digits, point, four decimals. The passive form uses
+  // a minimum; the editable field uses a stable box and scrolls long input.
+  const readout = document.createElement('span');
+  readout.className = 'driver-readout';
 
-  const figure = document.createElement('span');
-  figure.style.cssText = 'display:inline-block;min-width:10ch;'
-    + 'text-align:right;font-variant-numeric:tabular-nums;';
+  // A bounded driver keeps its range input and turns the number already
+  // beside it into the exact-entry door. The range remains a presentation
+  // bound only: deliberately do not copy min/max onto this field, because a
+  // crash or calibration may need an honestly out-of-range state.
+  const exact = control.slider === null
+    ? null : document.createElement('input');
+  const figure = exact ?? document.createElement('span');
+  figure.style.cssText = exact === null
+    ? 'display:inline-block;min-width:10ch;text-align:right;'
+      + 'font-variant-numeric:tabular-nums;'
+    : 'box-sizing:content-box;width:10ch;text-align:right;'
+      + 'font:inherit;font-variant-numeric:tabular-nums;'
+      + 'background:rgba(255,255,255,0.08);color:inherit;'
+      + 'border:1px solid rgba(255,255,255,0.25);border-radius:3px;';
+  if (exact !== null) {
+    exact.type = 'number';
+    exact.step = control.slider!.step === null
+      ? 'any' : String(control.slider!.step);
+    exact.setAttribute('aria-label', control.unit === null
+      ? `${control.label} exact value`
+      : `${control.label} exact value (${control.unit})`);
+  }
 
   // The separating space lives in the text, not in a flex gap, so the
   // readout still READS as "12.3457 mm" to a screen reader and to
@@ -876,8 +896,14 @@ function buildDriverRow(
 
   readout.append(figure, unit);
 
+  let current = control;
   const show = (state: DriverControl) => {
-    figure.textContent = formatReadout(state.display);
+    current = state;
+    if (exact === null) {
+      figure.textContent = formatReadout(state.display);
+    } else if (document.activeElement !== exact) {
+      exact.value = formatReadout(state.display);
+    }
     unit.textContent = state.unit === null ? '' : ` ${state.unit}`;
     // Pinned thumb, truthful readout: the value is outside the declared
     // travel and the chrome says so instead of hiding it.
@@ -887,8 +913,8 @@ function buildDriverRow(
   };
   show(control);
 
-  const write = () => {
-    const design = Number(input.value);
+  const write = (source: HTMLInputElement) => {
+    const design = source.valueAsNumber;
     if (!Number.isFinite(design)) {
       return;
     }
@@ -897,19 +923,25 @@ function buildDriverRow(
     // set on screen and one set programmatically are the same event.
     actions.setDriver(control.id, toNative(design, control.driver));
   };
-  input.addEventListener('input', write);
-  input.addEventListener('change', write);
+  input.addEventListener('input', () => write(input));
+  input.addEventListener('change', () => write(input));
+  if (exact !== null) {
+    exact.addEventListener('input', () => write(exact));
+    exact.addEventListener('change', () => write(exact));
+    exact.addEventListener('blur', () => {
+      // An invalid or empty edit never reached the driver. Once the maker
+      // leaves, restore the truthful fixed-width representation of state.
+      exact.value = formatReadout(current.display);
+    });
+  }
 
   updates.set(control.id, (value: number, fromChrome: boolean) => {
     const state = driverControl(control.id, control.driver, value);
     show(state);
-    if (fromChrome) {
-      // The maker is holding this control; writing its own value back
-      // would fight the drag.
-      return;
+    if (!(fromChrome && document.activeElement === input)) {
+      input.value = state.slider === null
+        ? formatDisplay(state.display) : String(state.slider.position);
     }
-    input.value = state.slider === null
-      ? formatDisplay(state.display) : String(state.slider.position);
   });
 
   row.append(name, input, readout);
@@ -972,8 +1004,8 @@ function buildControls(
   const slider = document.createElement('input');
   slider.type = 'range';
   slider.min = '0';
-  slider.max = '1';
-  slider.step = String(1 / frames);
+  slider.max = String(Math.max(frames - 1, 0));
+  slider.step = '1';
   slider.value = '0';
   if (plan.styled) {
     slider.style.cssText = 'flex:1;margin:0;';
@@ -981,7 +1013,7 @@ function buildControls(
   slider.addEventListener('input', () => {
     setPlaying(false);
     updateButton();
-    setTime(Number(slider.value));
+    setTime(timelineTime(Number(slider.value), frames));
   });
 
   bar.append(button, slider);

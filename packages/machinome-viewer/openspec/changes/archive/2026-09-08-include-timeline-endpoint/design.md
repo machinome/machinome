@@ -25,10 +25,14 @@ scrubbed reliably to its `12:00:00` endpoint.
 
 ### D1. Frames count positions, including both ends
 
-Use `1 / (frames - 1)` when `frames > 1`, and `1` for the degenerate
-single-frame case. This gives a 360-frame document 360 scrub positions from
-zero through one. Using `step="any"` was rejected because it would discard the
-document's declared sampling precision.
+Represent the HTML range in integer frame indices, `0..frames - 1` with step
+one, and convert to normalized time with `index / (frames - 1)`. This gives a
+360-frame document 360 scrub positions from zero through one without asking a
+browser to represent the repeating decimal `1 / 359` as an exact range step.
+The initially proposed fractional HTML step was rejected by browser evidence:
+Chrome snapped an assigned maximum of `1` back to `358 / 359`. Using
+`step="any"` was rejected because it would discard the document's declared
+sampling precision.
 
 ### D2. Keep playback's half-open wrapping behavior
 
@@ -51,8 +55,9 @@ one-click access.
 - [Start and endpoint render the same pose for a periodic machine] → Keep both:
   their mechanical pose is intentionally equal, but their elapsed-time readout
   communicates different points in the course.
-- [Floating-point step strings vary] → Derive one deterministic number in a
-  unit-tested helper and retain the explicit range maximum of `1`.
+- [The DOM slider no longer exposes normalized values directly] → Keep the
+  scale private, convert through unit-tested helpers at every boundary, and
+  leave the public `setTime` contract normalized to `0..1`.
 - [Live ramp updates could fight a maker typing] → Treat focus in the numeric
   field as maker authority and do not rewrite its text until editing commits
   or focus leaves; direct entry uses the same driver update path as dragging.

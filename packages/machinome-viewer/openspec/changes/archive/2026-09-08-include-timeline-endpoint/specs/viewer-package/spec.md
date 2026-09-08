@@ -5,9 +5,10 @@
 For a model with `$t` operations, the viewer SHALL present animation as an
 always-visible inline play/pause and `0..1` timeline with `frames` inclusive
 scrub positions, the same bar behind an initially collapsed accessible toggle,
-no controls, or externally driven time with no controls. Both zero and one
-SHALL be reachable timeline values; when `frames > 1`, adjacent positions SHALL
-be separated by `1 / (frames - 1)`. The host SHALL set initial time and
+no controls, or externally driven time with no controls. When `frames > 1`,
+both zero and one SHALL be reachable timeline values and adjacent positions
+SHALL be separated by `1 / (frames - 1)`; a single frame SHALL expose only
+zero. The host SHALL set initial time and
 autoplay. Scrubbing pauses playback. Static models SHALL present no controls.
 
 For a document whose `animation` object carries no `loop`, playback SHALL

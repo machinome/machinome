@@ -24,6 +24,25 @@ export type Animation = Manifest['animation'];
 export const SPEED_LADDER: readonly number[] =
   [0.1, 0.25, 0.5, 1, 2, 5, 10, 60, 360, 3600];
 
+/** Distance between adjacent scrub positions when `frames` counts the
+ * positions, including both 0 and 1. A single static frame still needs a
+ * valid positive HTML range step. */
+export function timelineStep(frames: number): number {
+  return frames > 1 ? 1 / (frames - 1) : 1;
+}
+
+/** Integer slider position for a normalized timeline value. HTML range
+ * validation can represent this exactly even when the normalized step is a
+ * repeating decimal such as 1/359. */
+export function timelinePosition(time: number, frames: number): number {
+  return time * Math.max(frames - 1, 0);
+}
+
+/** Normalized timeline value for an integer slider position. */
+export function timelineTime(position: number, frames: number): number {
+  return frames > 1 ? position / (frames - 1) : 0;
+}
+
 /** Wall-clock seconds one turn of `$t` takes. Without a declared loop
  * this is `frames / fps`, exactly as it always was, and speed is
  * meaningless; with one it is the loop divided by the speed. */

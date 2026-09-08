@@ -10,6 +10,7 @@ The mount-interface tests drive a real page with playwright instead,
 because a screenshot cannot click a control or read an attribute.
 """
 
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -114,6 +115,14 @@ class ViewerMountApiTest(TestCase):
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         self.out_dir = export_with_widget(Path(self.tempdir.name) / 'export')
+        manifest = json.loads((self.out_dir / 'manifest.json').read_text())
+        manifest['drivers'] = {
+            'turns': {
+                'default': 0.0, 'range': [-55.0, 306.0], 'unit': 'turn',
+                'dtype': None, 'scale': None,
+            },
+        }
+        (self.out_dir / 'driven.json').write_text(json.dumps(manifest))
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(self.out_dir)
         base = server.__enter__()
@@ -246,6 +255,36 @@ class ViewerMountApiTest(TestCase):
         self.assertEqual(result['className'], 'functional-model')
         self.assertEqual(result['role'], 'img')
         self.assertEqual(result['label'], 'Functional model')
+
+    def test_a_slider_readout_accepts_an_exact_number(self):
+        result = self.in_page("""async () => {
+          const host = document.getElementById('host');
+          const viewer = await SolidNodeWidget.mount(host, 'driven.json',
+                                                     { autoplay: false });
+          const row = host.querySelector('.driver-control');
+          const slider = row.querySelector('input[type=range]');
+          const exact = row.querySelector('input[type=number]');
+          if (exact === null) return { present: false };
+          exact.focus();
+          exact.value = '25.82';
+          exact.dispatchEvent(new Event('input'));
+          const inside = { driver: viewer.driver('turns'),
+                           slider: slider.value, unit: row.textContent };
+          exact.value = '400';
+          exact.dispatchEvent(new Event('input'));
+          exact.blur();
+          return { present: true, inside, outside: viewer.driver('turns'),
+                   pinned: slider.value, shown: exact.value,
+                   label: exact.getAttribute('aria-label') };
+        }""")
+        self.assertTrue(result['present'])
+        self.assertEqual(result['inside']['driver'], 25.82)
+        self.assertEqual(result['inside']['slider'], '25.82')
+        self.assertIn('turn', result['inside']['unit'])
+        self.assertEqual(result['outside'], 400)
+        self.assertEqual(result['pinned'], '306')
+        self.assertEqual(result['shown'], '400.0000')
+        self.assertIn('exact value', result['label'])
 
     def test_the_toggle_presentation_starts_collapsed(self):
         result = self.in_page("""async () => {

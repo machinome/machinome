@@ -190,10 +190,13 @@ document and the reason.
 ### Requirement: The host chooses how animation is presented
 
 For a model with `$t` operations, the viewer SHALL present animation as an
-always-visible inline play/pause and `0..1` timeline (`1/frames` step), the same
-bar behind an initially collapsed accessible toggle, no controls, or externally
-driven time with no controls. The host SHALL set initial time and autoplay.
-Scrubbing pauses playback. Static models SHALL present no controls.
+always-visible inline play/pause and `0..1` timeline with `frames` inclusive
+scrub positions, the same bar behind an initially collapsed accessible toggle,
+no controls, or externally driven time with no controls. When `frames > 1`,
+both zero and one SHALL be reachable timeline values and adjacent positions
+SHALL be separated by `1 / (frames - 1)`; a single frame SHALL expose only
+zero. The host SHALL set initial time and
+autoplay. Scrubbing pauses playback. Static models SHALL present no controls.
 
 For a document whose `animation` object carries no `loop`, playback SHALL
 cycle every `frames / fps` seconds, exactly as before, and the bar SHALL
@@ -250,6 +253,12 @@ no effect on playback.
 - **THEN** one turn of `$t` takes 43200 wall-clock seconds, the readout
   reads `0:00:00` at the start and `6:00:00` at the slider's midpoint, and
   the speed control shows ×1
+
+#### Scenario: The complete loop is reachable
+
+- **WHEN** that twelve-hour document has 360 frames and the maker scrubs the
+  timeline to its final position
+- **THEN** the slider value is exactly one and the readout says `12:00:00`
 
 #### Scenario: The maker speeds the clock up
 
@@ -590,20 +599,24 @@ expression is first met while a frame is being rendered.
 For a document that declares drivers, the mounted viewer SHALL present
 an on-screen control for each driver and each instruction declared at
 the focused assembly layer: a button per instruction and a bounded
-slider with a numeric readout per driver. Control labels SHALL be the
-declared identifiers relative to the focused layer. Sliders SHALL
-present values in design units with the declared unit, and SHALL move
-live while a ramp plays. A driver's readout SHALL show a fixed number
-of decimal places, and SHALL hold the position of its digits, its sign,
-and everything laid out beside it steady as the value changes: reading
-a value while dragging SHALL not require following a moving target.
+slider with a directly editable numeric readout per driver. Control labels
+SHALL be the declared identifiers relative to the focused layer. Sliders and
+editable readouts SHALL present values in design units with the declared unit,
+and SHALL move live while a ramp plays except while the maker is actively
+editing that readout. A committed finite numeric entry SHALL produce the same
+driver state as dragging the slider to that design-unit value, including an
+entry outside the slider's declared range. A driver's readout SHALL show a
+fixed number of decimal places when it is not being edited, and SHALL hold the
+position of its digits, its sign, and everything laid out beside it steady as
+the value changes: reading a value while dragging SHALL not require following
+a moving target.
 Interacting with a control SHALL produce the
 same observable state as the corresponding host driving call, so a
 value or trigger set on screen and one set through the handle are
 indistinguishable to expressions, listeners, and readbacks. The
 declared `range` SHALL bound only the slider's travel, never the
-underlying value: a value bound past the range through the host API
-SHALL survive intact, with the slider pinned at its end and the
+underlying value: a value bound past the range through the host API or numeric
+entry SHALL survive intact, with the slider pinned at its end and the
 numeric readout showing the true value. Every control SHALL carry an
 accessible name for assistive tools. A document declaring no drivers
 SHALL present none of this chrome.
@@ -624,6 +637,14 @@ SHALL present none of this chrome.
   design-unit value with its unit, and `driver()` on the handle
   reports the corresponding native value
 
+#### Scenario: A maker enters an exact calibration value
+
+- **WHEN** the maker clicks a bounded driver's numeric readout, enters a
+  finite design-unit number and commits the edit
+- **THEN** the model uses that exact value through the same conversion as its
+  slider, the slider follows or pins at its nearest endpoint, and the unit
+  remains visible beside the editable number
+
 #### Scenario: A readout holds still through a drag
 
 - **WHEN** the maker drags a driver's slider through values of
@@ -641,8 +662,8 @@ SHALL present none of this chrome.
 
 #### Scenario: An out-of-range value is shown honestly
 
-- **WHEN** a host binds a driver past its declared range and the maker
-  looks at that driver's control
+- **WHEN** a host or maker binds a driver past its declared range and the
+  maker looks at that driver's control
 - **THEN** the slider sits pinned at its nearest end, the readout
   shows the actual out-of-range value, and the bound value is
   unchanged by the chrome
@@ -1049,4 +1070,3 @@ it does not use.
   of its `drivers` table
 - **THEN** loading fails naming that id, as it does for a document with no
   table at all
-
