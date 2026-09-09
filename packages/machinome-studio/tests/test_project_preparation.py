@@ -260,6 +260,34 @@ class FolderListingTest(unittest.TestCase):
             ],
         )
 
+    def test_a_folder_card_skips_entries_that_have_no_picture_yet(self) -> None:
+        for name in ("arm", "biped", "crane", "dolly", "elbow"):
+            _make_repository(self.home / "sandbox" / name)
+        for name in ("arm", "dolly", "elbow"):
+            _publish_project_screenshot(self.home / "sandbox" / name)
+
+        card = self.listing()["sandbox"]
+
+        self.assertEqual(
+            [preview.path for preview in card.previews],
+            ["sandbox/arm", "sandbox/dolly", "sandbox/elbow"],
+        )
+        self.assertTrue(all(preview.revision for preview in card.previews))
+
+    def test_a_multi_model_folder_prefers_the_models_that_have_a_picture(self) -> None:
+        project = self.home / "clocks"
+        _make_repository(project)
+        _declare_models(project, ("wall_01", "wall_02", "wall_03", "wall_04", "wall_05"))
+        for model in ("wall_01", "wall_04", "wall_05"):
+            _publish_screenshot(project, model)
+
+        card = self.listing()["clocks"]
+
+        self.assertEqual(
+            [preview.path for preview in card.previews],
+            ["clocks/wall_01", "clocks/wall_04", "clocks/wall_05"],
+        )
+
     def test_a_folder_previews_the_entries_its_own_folders_hold(self) -> None:
         _make_repository(self.home / "sandbox" / "windmill")
         _make_repository(self.home / "sandbox" / "deeper" / "guitar")

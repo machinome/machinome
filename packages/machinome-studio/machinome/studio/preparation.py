@@ -12,11 +12,10 @@ import subprocess
 import sys
 import tempfile
 import tomllib
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
-from itertools import islice
 from pathlib import Path
 
 from .screenshots import refresh_project_screenshot, screenshot_revision
@@ -535,26 +534,49 @@ PREVIEWED_ENTRIES = 3
 def _model_previews(entry: Path, path: str, models: Sequence[str]) -> tuple[EntryPreview, ...]:
     """The pictures a multi-model project's folder card stands on.
 
-    Only the first few declared models are previewed, in declaration order, so
+    Only a few of the declared models are previewed, in declaration order, so
     a card is the same shape whatever the project declares. A model with no
     picture yet still gets an entry, because the card says how many models it
     stands for.
     """
-    return tuple(
+    return _pictured_first(
         EntryPreview(f"{path}/{model}", screenshot_revision(entry, model))
-        for model in models[:PREVIEWED_ENTRIES]
+        for model in models
     )
 
 
 def _folder_previews(directory: Path, path: str) -> tuple[EntryPreview, ...]:
     """The pictures a grouping folder's card stands on.
 
-    Such a folder declares no model of its own, so it stands on the first
-    entries it holds instead. The walk stops as soon as the card is full,
-    which is what keeps listing a folder of two hundred projects as cheap as
-    listing a folder of three.
+    Such a folder declares no model of its own, so it stands on the entries it
+    holds instead. The walk stops as soon as the card is full of pictures,
+    which is what keeps listing a folder of two hundred simulated projects as
+    cheap as listing a folder of three.
     """
-    return tuple(islice(_previewable_entries(directory, path), PREVIEWED_ENTRIES))
+    return _pictured_first(_previewable_entries(directory, path))
+
+
+def _pictured_first(entries: Iterable[EntryPreview]) -> tuple[EntryPreview, ...]:
+    """The few entries a card stands on, preferring the ones with a picture.
+
+    A folder often begins with entries nobody has simulated yet, and a card
+    made of their placeholders says nothing about what the folder holds. So
+    the entries that do have a picture are taken first, however far down the
+    listing they are, and the ones without fill whatever slots are left. What
+    a card shows is the listing order all the same: the preference chooses the
+    entries, never the order they appear in.
+    """
+    pictured: list[tuple[int, EntryPreview]] = []
+    plain: list[tuple[int, EntryPreview]] = []
+    for position, entry in enumerate(entries):
+        if entry.revision is not None:
+            pictured.append((position, entry))
+            if len(pictured) == PREVIEWED_ENTRIES:
+                break
+        elif len(plain) < PREVIEWED_ENTRIES:
+            plain.append((position, entry))
+    chosen = sorted([*pictured, *plain][:PREVIEWED_ENTRIES])
+    return tuple(entry for _, entry in chosen)
 
 
 def _previewable_entries(directory: Path, path: str) -> Iterator[EntryPreview]:
