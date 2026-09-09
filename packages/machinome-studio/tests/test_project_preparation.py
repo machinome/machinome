@@ -347,6 +347,7 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertFalse((self.home / "new_engine").exists())
         self.assertEqual(prepared.model, Path("root"))
         self.assertEqual(prepared.artifact_root, (project / "_build").resolve())
+        self.assertEqual(prepared.model_source, "root/__init__.py")
         self.assertTrue(prepared.viewer_bundle.is_file())
         self.assertEqual(prepared.viewer_api_version, 4)
         self.assertEqual(self.call_log.read_text().splitlines()[0], "new:new_engine")
@@ -455,6 +456,28 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertEqual(prepared.artifact_root, (project / "_build" / "alpha").resolve())
         self.assertTrue((prepared.artifact_root / "viewer.json").is_file())
         self.assertIsNone(prepared.build_error)
+
+    def test_the_model_reference_names_the_file_its_root_assembly_lives_in(self) -> None:
+        """The Code area opens on the model being shown, so preparation reads
+        the file the framework says that model is declared in -- not a path of
+        the shop's own invention."""
+        project = self.home / "referenced"
+        _make_repository(project)
+        (project / "parts").mkdir()
+        (project / "parts" / "__init__.py").write_text("")
+        (project / "parts" / "frame.py").write_text("# the frame\n")
+        (project / ".fake-reference").write_text("parts.frame:Frame\n")
+
+        self.assertEqual(self.prepare("referenced").model_source, "parts/frame.py")
+
+    def test_a_model_reference_that_names_no_file_leaves_the_code_area_empty(self) -> None:
+        """A reference the shop cannot follow to a file is not a failure: the
+        project still opens, and Code simply starts on nothing."""
+        project = self.home / "unfollowable"
+        _make_repository(project)
+        (project / ".fake-reference").write_text("absent.module:Thing\n")
+
+        self.assertIsNone(self.prepare("unfollowable").model_source)
 
     def test_refuses_a_build_directory_the_framework_places_outside_the_project(self) -> None:
         """The reported directory is served, watched and packaged, so one that
@@ -630,13 +653,15 @@ elif command == "models":
     reported = build_dir(cwd)
     if cwd.name == "escaped-build":
         reported = cwd.parent / "_build"
+    marker = cwd / ".fake-reference"
+    reference = marker.read_text().strip() if marker.is_file() else "root:Root"
     print(json.dumps({
         "root": str(cwd),
         "build_root": str(cwd / "_build"),
         "default": name,
         "models": [{
             "name": name,
-            "reference": "root.part:Part",
+            "reference": reference,
             "default": cwd.name != "no-default",
             "build_dir": str(reported),
             "state": "unbuilt",

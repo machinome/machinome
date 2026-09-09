@@ -297,8 +297,8 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_role("button", name="Code", exact=True).click()
         self.assertEqual(self.page.get_by_text("Files", exact=True).count(), 0)
         self.assertEqual(self.page.get_by_title("ignored.py").count(), 0)
-        self.page.get_by_role("button", name="Expand root").click()
-        self.page.get_by_title("root/__init__.py").click()
+        # The model's own file is open already; nothing had to be found first.
+        self.page.locator(".source-tree").get_by_title("root/__init__.py").wait_for()
         editor = self.page.locator(".monaco-editor").first
         editor.wait_for(timeout=10_000)
         editor_box = editor.bounding_box()
@@ -354,10 +354,11 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.goto(self.url("/projects/code-browser"))
 
         self.page.get_by_role("button", name="Code", exact=True).click()
-        folder = self.page.get_by_role("button", name="Expand root")
+        # The model's file is open, so the folder holding it stands open too.
+        tree = self.page.locator(".source-tree")
+        folder = self.page.get_by_role("button", name="Collapse root")
         folder.wait_for()
-        self.assertEqual(self.page.get_by_title("root/__init__.py").count(), 0)
-        self.assertEqual(self.page.locator(".source-chip").count(), 0)
+        tree.get_by_title("root/__init__.py").wait_for()
         for kind in ("folder", "markdown", "image", "python", "file"):
             with self.subTest(kind=kind):
                 self.assertGreaterEqual(self.page.locator(f'[data-source-icon="{kind}"]').count(), 1)
@@ -367,10 +368,9 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual(len(icon_colors), 1)
 
         folder.click()
-        self.page.get_by_title("root/__init__.py").wait_for()
-        self.assertIsNotNone(self.page.get_by_role("button", name="Collapse root"))
-        self.page.get_by_role("button", name="Collapse root").click()
-        self.assertEqual(self.page.get_by_title("root/__init__.py").count(), 0)
+        self.assertEqual(tree.get_by_title("root/__init__.py").count(), 0)
+        self.page.get_by_role("button", name="Expand root").click()
+        tree.get_by_title("root/__init__.py").wait_for()
 
         self.page.get_by_title("preview.png").click()
         preview = self.page.get_by_role("img", name="Preview preview.png")
@@ -381,6 +381,26 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_title("model.py").click()
         self.page.locator(".monaco-editor").wait_for()
         self.page.get_by_text("model = True", exact=False).wait_for()
+
+    def test_code_opens_on_the_file_the_presented_assembly_is_written_in(self) -> None:
+        project = self._make_project("already-open")
+        (project / "root" / "__init__.py").write_text("# the root assembly\n")
+        self._open("already-open")
+        self.page.goto(self.url("/projects/already-open"))
+
+        # First visit to Code: the model on show is already the file in hand.
+        self.page.get_by_role("button", name="Code", exact=True).click()
+        self.page.get_by_text("the root assembly", exact=False).wait_for(timeout=10_000)
+        tab = self.page.locator(".code-tabs button.active")
+        self.assertEqual(tab.get_attribute("title"), "root/__init__.py")
+
+        # Closed on purpose, it stays closed -- reopening Code is not a reason
+        # to hand a maker back the file they just put away.
+        self.page.get_by_label("Close root/__init__.py").click()
+        self.page.get_by_text("Open a file from the project root").wait_for()
+        self.page.get_by_role("button", name="Model", exact=True).click()
+        self.page.get_by_role("button", name="Code", exact=True).click()
+        self.page.get_by_text("Open a file from the project root").wait_for()
 
     def test_code_editor_colours_a_short_file_while_the_model_keeps_rendering(self) -> None:
         project = self._make_project("code-colour")
@@ -691,7 +711,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self._make_project("sandbox/windmill")
 
         self.page.goto(self.url("/"))
-        card = self.page.get_by_role("button").filter(has_text="clocks").first
+        card = self.page.get_by_role("link").filter(has_text="clocks").first
         card.wait_for(timeout=10_000)
 
         # The first three declared models, in manifest order, and the one
@@ -703,8 +723,51 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual(card.locator(".model-tile").count(), 3)
 
         # A directory of unrelated projects stands on the projects it holds.
-        grouping = self.page.get_by_role("button").filter(has_text="sandbox").first
+        grouping = self.page.get_by_role("link").filter(has_text="sandbox").first
         self.assertEqual(grouping.locator(".model-tile").count(), 1)
+
+    def test_hub_cards_are_links_a_maker_can_open_in_another_tab(self) -> None:
+        self._make_project("sandbox/windmill")
+
+        self.page.goto(self.url("/"))
+        folder = self.page.get_by_role("link").filter(has_text="sandbox").first
+        folder.wait_for(timeout=10_000)
+        self.assertEqual(folder.get_attribute("href"), "/folders/sandbox")
+
+        folder.click()
+        self.page.wait_for_url(self.url("/folders/sandbox"), timeout=5_000)
+        project = self.page.get_by_role("link").filter(has_text="windmill").first
+        self.assertEqual(project.get_attribute("href"), "/projects/sandbox/windmill")
+
+    def test_a_project_url_opened_in_a_new_tab_opens_the_project(self) -> None:
+        self._make_project("sandbox/windmill")
+
+        # What a middle click or "Open link in a new tab" on the card does:
+        # a fresh page that lands on a closed project opens it here.
+        page = self.context.new_page()
+        self.addCleanup(page.close)
+        page.goto(self.url("/projects/sandbox/windmill"))
+        page.get_by_text("builder · open", exact=True).wait_for(timeout=30_000)
+        self.assertEqual(page.url, self.url("/projects/sandbox/windmill"))
+        self.assertEqual(self._project("sandbox/windmill")["state"], "open")
+
+    def test_the_studio_title_returns_to_the_projects_home(self) -> None:
+        self._make_project("sandbox/windmill")
+        self._open("sandbox/windmill")
+
+        self.page.goto(self.url("/projects/sandbox/windmill"))
+        home = self.page.get_by_role("link", name="LibreSolid Studio")
+        home.wait_for(timeout=10_000)
+        self.assertEqual(home.get_attribute("href"), "/")
+        home.click()
+        self.page.wait_for_url(self.url("/"), timeout=5_000)
+        self.page.get_by_role("heading", name="Projects").wait_for()
+
+        # And from a folder, without closing anything.
+        self.page.goto(self.url("/folders/sandbox"))
+        self.page.get_by_role("link", name="LibreSolid Studio").click()
+        self.page.wait_for_url(self.url("/"), timeout=5_000)
+        self.page.get_by_role("heading", name="Projects").wait_for()
 
     def test_closing_a_project_returns_to_the_folder_that_lists_it(self) -> None:
         self._make_project("sandbox/windmill")

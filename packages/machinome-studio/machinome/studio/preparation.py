@@ -79,6 +79,8 @@ class PreparedProject:
     model: Path
     artifact_root: Path
     project_model: str | None = None
+    #: The project-relative file that declares this model's root assembly.
+    model_source: str | None = None
     viewer_bundle: Path | None = None
     viewer_api_version: int | None = None
     solid_command: tuple[str, ...] = ()
@@ -202,14 +204,24 @@ class FolderListing:
         }
 
 
-def resolve_artifact_root(
+@dataclass(frozen=True)
+class ResolvedModel:
+    """What the framework says about the one model a session opens on."""
+
+    artifact_root: Path
+    #: The project-relative file declaring the model's root class, when the
+    #: declared reference resolves to a file inside the project.
+    source: str | None
+
+
+def resolve_model(
     solid_command: str | Sequence[str],
     project_root: Path,
     *,
     name: str | None = None,
     model: str | None = None,
     extra_env: dict[str, str] | None = None,
-) -> Path:
+) -> ResolvedModel:
     """Ask the framework where one of this project's models publishes.
 
     A project that declares named models gives each one its own directory
@@ -219,6 +231,10 @@ def resolve_artifact_root(
     packages, whatever layout the manifest chose. Without a named model the
     answer is the project's default; with one it is that model's, so two
     sessions on one repository never serve each other's publication.
+
+    The same answer carries the model's declared reference, from which the
+    file holding its root assembly is read: the maker who opens Code is
+    looking at that model, so that is the file already open.
     """
     result = _run(
         (*_command(solid_command), "models", "--json"),
@@ -234,9 +250,8 @@ def resolve_artifact_root(
             (lambda declared: declared["name"] == model) if model
             else (lambda declared: declared["default"])
         )
-        build_dir = Path(next(
-            declared["build_dir"] for declared in report["models"] if wanted(declared)
-        ))
+        declared = next(item for item in report["models"] if wanted(item))
+        build_dir = Path(declared["build_dir"])
     except (json.JSONDecodeError, KeyError, TypeError, StopIteration) as error:
         described = f"model {model!r}" if model else "a default model"
         raise PreparationError(
@@ -249,7 +264,31 @@ def resolve_artifact_root(
             "models", name, project_root,
             f"model build directory is outside the project: {build_dir}",
         )
-    return artifact_root
+    return ResolvedModel(artifact_root, _model_source(project_root, declared.get("reference")))
+
+
+def _model_source(project_root: Path, reference: object) -> str | None:
+    """The file a `package.module:Class` reference is written in, if it exists.
+
+    A reference the framework accepts may still be spelled in ways this shop
+    cannot follow -- a namespace package, a class the manifest names through
+    an alias -- so a reference that resolves to nothing is not an error; the
+    Code area simply opens on no file.
+    """
+    if not isinstance(reference, str) or ":" not in reference:
+        return None
+    module = reference.partition(":")[0].strip()
+    if not module or module.startswith(".") or "/" in module or "\\" in module:
+        return None
+    parts = module.split(".")
+    if not all(part.isidentifier() for part in parts):
+        return None
+    root = project_root.resolve()
+    for candidate in (f"{'/'.join(parts)}.py", f"{'/'.join(parts)}/__init__.py"):
+        target = root / candidate
+        if target.is_file() and root in target.parents:
+            return candidate
+    return None
 
 
 def build_command(solid_command: str | Sequence[str], model: str | None = None) -> tuple[str, ...]:
@@ -728,13 +767,15 @@ def prepare_project(
     _require_exact_repository(project_root, name)
 
     bundle = viewer if viewer is not None else resolve_viewer_bundle(solid_command, extra_env=solid_env)
+    resolved = resolve_model(
+        solid_command, project_root, name=name, model=entry.model, extra_env=solid_env,
+    )
     return PreparedProject(
         name=name,
         project_root=project_root,
         model=Path("root"),
-        artifact_root=resolve_artifact_root(
-            solid_command, project_root, name=name, model=entry.model, extra_env=solid_env,
-        ),
+        artifact_root=resolved.artifact_root,
+        model_source=resolved.source,
         project_model=entry.model,
         viewer_bundle=bundle.path,
         viewer_api_version=bundle.api_version,

@@ -441,7 +441,11 @@ Agent sessions do not run a callback process.
 Each session has a project-rooted source service for the browser Code area. Git
 defines the working set as tracked plus non-ignored untracked files; `.git`,
 `_build`, and build-staging families are always excluded. Directory rows are
-synthesized from those paths. Read and save revalidate Git visibility, reject
+synthesized from those paths. The listing also names the project-relative file
+the session's model is declared in, read at preparation from the reference
+`solid models --json` reports and resolved to a file inside the project; the
+browser opens that file once per session so the Code area starts on the
+assembly being shown. A reference that resolves to no file is not an error. Read and save revalidate Git visibility, reject
 escapes, symlinks, and non-regular files, and accept at most one MiB of UTF-8
 text. A read returns the SHA-256 byte revision. A save runs under the session's
 source lock, compares the expected revision, preserves the file mode, flushes a

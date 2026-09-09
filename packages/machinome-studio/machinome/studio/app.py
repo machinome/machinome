@@ -934,12 +934,18 @@ def create_app(working_folder: Path, *, registry: object) -> FastAPI:
 
     @app.get("/api/sessions/{session_id}/source")
     async def source_entries(session_id: str) -> dict[str, object]:
-        workspace = session(session_id).source_workspace
+        project = session(session_id)
+        workspace = project.source_workspace
         try:
             entries = await asyncio.to_thread(workspace.entries)
         except SourceUnavailable as error:
             raise HTTPException(status_code=503, detail=str(error)) from error
-        return {"entries": [entry.browser_value() for entry in entries]}
+        # The tree arrives with the file the presented model is written in, so
+        # the Code area opens on the assembly the maker is already looking at.
+        return {
+            "entries": [entry.browser_value() for entry in entries],
+            "model_source": project.prepared.model_source,
+        }
 
     @app.get("/api/sessions/{session_id}/source/{source_path:path}")
     async def source_file(session_id: str, source_path: str) -> dict[str, str]:

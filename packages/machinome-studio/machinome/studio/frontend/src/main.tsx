@@ -1,6 +1,6 @@
 // Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 // SPDX-License-Identifier: AGPL-3.0-only
-import { CSSProperties, FormEvent, KeyboardEvent, lazy, StrictMode, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { CSSProperties, FormEvent, KeyboardEvent, lazy, MouseEvent, StrictMode, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import type { Monaco, OnMount } from "@monaco-editor/react";
 import { createRoot } from "react-dom/client";
@@ -571,6 +571,21 @@ function navigate(path: string) {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
+// Anything that moves between hub pages is a real link, so the browser offers
+// "Open link in a new tab" on right-click and a modified or middle click keeps
+// its usual meaning. A plain click stays inside this single page.
+function linkProps(href: string, act?: () => void) {
+  return {
+    href,
+    onClick(event: MouseEvent<HTMLAnchorElement>) {
+      if (event.defaultPrevented) return;
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      if (act) act(); else navigate(href);
+    },
+  };
+}
+
 function relativeTime(value: string | null) {
   if (!value) return "no commits";
   const seconds = Math.max(0, (Date.now() - Date.parse(value)) / 1000);
@@ -617,7 +632,7 @@ function Breadcrumb({ workingFolder, folder }: { workingFolder: string; folder: 
   return <nav className="hub-breadcrumb" aria-label="Folder trail">
     {segments.length === 0
       ? <span aria-current="page">{root}</span>
-      : <button onClick={() => navigate("/")}>{root}</button>}
+      : <a {...linkProps("/")}>{root}</a>}
     {segments.map((segment, index) => {
       const path = segments.slice(0, index + 1).join("/");
       const last = index === segments.length - 1;
@@ -625,7 +640,7 @@ function Breadcrumb({ workingFolder, folder }: { workingFolder: string; folder: 
         <span className="hub-breadcrumb-separator" aria-hidden="true">/</span>
         {last
           ? <span aria-current="page">{segment}</span>
-          : <button onClick={() => navigate(folderUrl(path))}>{segment}</button>}
+          : <a {...linkProps(folderUrl(path))}>{segment}</a>}
       </span>;
     })}
   </nav>;
@@ -789,7 +804,7 @@ function Hub({ folder }: { folder: string }) {
 
   return <main className={`hub-shell ${sheetOpen ? "sheet-visible" : ""}`}>
     <header className="workspace-titlebar">
-      <div className="workspace-title"><span className="shop-mark" aria-hidden="true" /><span>LibreSolid Studio</span></div>
+      <a className="workspace-title" {...linkProps("/")} title="All projects"><span className="shop-mark" aria-hidden="true" /><span>LibreSolid Studio</span></a>
       <p className="workspace-run">Shop is {shopOpen ? "open" : "closed"}</p>
     </header>
     <div className="hub-body">
@@ -816,7 +831,7 @@ function Hub({ folder }: { folder: string }) {
         {entries.length === 0 ? <p className="hub-empty">{folder ? "This folder is empty." : "No projects yet. Create one to begin."}</p> : null}
         <div className="project-grid">
           {entries.map((entry) => entry.kind === "folder"
-            ? <button className="project-card folder" key={entry.path} onClick={() => navigate(folderUrl(entry.path))}>
+            ? <a className="project-card folder" key={entry.path} {...linkProps(folderUrl(entry.path))}>
                 {entry.previews.length === 0
                   ? <span className="project-preview">
                       <span className="project-preview-placeholder" aria-hidden="true">folder</span>
@@ -836,12 +851,14 @@ function Hub({ folder }: { folder: string }) {
                   <span className="project-name"><strong>{entry.name}</strong></span>
                   <span className="project-meta">{entry.projects} {entry.projects === 1 ? "project" : "projects"}</span>
                 </span>
-              </button>
-            : <button
+              </a>
+            : <a
               className={`project-card ${entry.openable ? "" : "unopenable"}`}
               key={entry.path}
-              disabled={!entry.openable}
-              onClick={() => void openProject(entry)}
+              // An unopenable project has nowhere to go, in this tab or another.
+              {...(entry.openable
+                ? linkProps(projectUrl(entry.path), () => void openProject(entry))
+                : { "aria-disabled": true as const })}
             >
               <span className="project-preview">
                 <span className="project-preview-placeholder">model preview</span>
@@ -857,7 +874,7 @@ function Hub({ folder }: { folder: string }) {
                 {entry.model_building ? <span className="project-building">Bringing the model up to date…</span> : null}
                 {entry.reason || entry.failure ? <span className="project-reason">{entry.failure ?? entry.reason}</span> : null}
               </span>
-            </button>)}
+            </a>)}
           {creatable ? <button className="new-project-tile" onClick={() => setSheetOpen(true)}>＋<span>New project</span></button> : null}
         </div>
       </section>
@@ -960,6 +977,9 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible, requestedOp
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const filesRef = useRef(files);
+  // The model's own file is opened once per session, so a maker who closes it
+  // is not given it back.
+  const seeded = useRef<string | null>(null);
   const saving = useRef(new Set<string>());
   const deferred = useRef(new Set<string>());
   const applying = useRef(new Set<string>());
@@ -981,11 +1001,18 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible, requestedOp
       setError("The project source tree is unavailable.");
       return;
     }
-    const value = await response.json() as { entries: SourceEntry[] };
+    const value = await response.json() as { entries: SourceEntry[]; model_source?: string | null };
     const nextEntries = value.entries.slice().sort(compareSourceEntries);
     const directories = new Set(nextEntries.filter((entry) => entry.kind === "directory").map((entry) => entry.path));
     setEntries(nextEntries);
     setExpandedDirectories((previous) => new Set([...previous].filter((path) => directories.has(path))));
+    // The file the presented assembly is written in is the one a maker opening
+    // Code came to read, so it is already open when they first get there.
+    const model = value.model_source;
+    if (model && seeded.current !== sessionId && nextEntries.some((entry) => entry.kind === "file" && entry.path === model)) {
+      seeded.current = sessionId;
+      await openFile(model);
+    }
   };
 
   const applyExternal = (path: string, content: string) => {
@@ -1003,6 +1030,17 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible, requestedOp
     } finally {
       applying.current.delete(path);
     }
+  };
+
+  // A file cannot be opened from a tree that hides it: expand what holds it.
+  const reveal = (path: string) => {
+    const parts = path.split("/");
+    if (parts.length < 2) return;
+    setExpandedDirectories((previous) => {
+      const next = new Set(previous);
+      for (let depth = 1; depth < parts.length; depth += 1) next.add(parts.slice(0, depth).join("/"));
+      return next;
+    });
   };
 
   const closePath = (path: string) => {
@@ -1054,6 +1092,7 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible, requestedOp
   };
 
   const openFile = async (path: string) => {
+    reveal(path);
     if (isPng(path)) {
       setLoading(false);
       setError(null);
@@ -1145,6 +1184,7 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible, requestedOp
 
   useEffect(() => {
     if (!sessionId) return;
+    seeded.current = null;
     setEntries([]);
     setExpandedDirectories(new Set());
     setFiles({});
@@ -1668,29 +1708,28 @@ function Workspace({ path: entryPath }: { path: string }) {
   const [viewerReady, setViewerReady] = useState(false);
   const [viewerHandle, setViewerHandle] = useState<ViewerHandle | null>(null);
   const [assembly, setAssembly] = useState<AssemblyNode | null>(null);
+  const [opening, setOpening] = useState(false);
 
   useEffect(() => {
     let source: EventSource | null = null;
+    let waiting: EventSource | null = null;
     let cancelled = false;
-    void fetch(`/api/entries?folder=${encodeURIComponent(folderOf(entryPath))}`)
+    const home = folderUrl(folderOf(entryPath));
+    const inventory = () => fetch(`/api/entries?folder=${encodeURIComponent(folderOf(entryPath))}`)
       .then((response) => response.json() as Promise<{ entries: Entry[] }>)
-      .then(async (inventory) => {
-      if (cancelled) return;
-      const selected = inventory.entries.find(
+      .then((value) => value.entries.find(
         (item): item is Project => item.kind === "project" && item.path === entryPath,
-      );
-      if (!selected?.session_id || selected.state !== "open") {
-        navigate(folderUrl(folderOf(entryPath)));
-        return;
-      }
+      ));
+
+    const enter = async (key: string) => {
       // The viewer bundle is served through the session, so it can only be
       // asked for once the session is known.
-      const viewer = await loadViewer(selected.session_id).then(() => true).catch(() => false);
+      const viewer = await loadViewer(key).then(() => true).catch(() => false);
       if (cancelled) return;
-      session.current = selected.session_id;
-      setSessionId(selected.session_id);
+      session.current = key;
+      setSessionId(key);
       setViewerReady(viewer);
-      source = new EventSource(`/api/sessions/${encodeURIComponent(selected.session_id)}/stream`);
+      source = new EventSource(`/api/sessions/${encodeURIComponent(key)}/stream`);
     source.onopen = () => {
       setShopOpen(true);
       if (streamOpened.current) {
@@ -1795,10 +1834,75 @@ function Workspace({ path: entryPath }: { path: string }) {
         return { ...previous, agents: agents.sort((left, right) => left.role.localeCompare(right.role)) };
       });
       });
+    };
+
+    // A tab that lands straight on a project -- opened in a new tab from a hub
+    // card, or reached from a bookmark -- opens the project itself instead of
+    // bouncing the maker back to the folder that lists it.
+    const openHere = (already: boolean) => {
+      setOpening(true);
+      waiting = new EventSource(`/api/stream?folder=${encodeURIComponent(folderOf(entryPath))}`);
+      const opened = (key: string) => {
+        waiting?.close();
+        waiting = null;
+        setOpening(false);
+        void enter(key);
+      };
+      // The project can reach its open state between the inventory read and
+      // this subscription, so the stream's own inventory is read too.
+      waiting.addEventListener("snapshot", (message) => {
+        const snapshot = JSON.parse((message as MessageEvent<string>).data) as { entries: Entry[] };
+        const project = snapshot.entries.find(
+          (item): item is Project => item.kind === "project" && item.path === entryPath,
+        );
+        if (project?.session_id && project.state === "open") opened(project.session_id);
+      });
+      waiting.addEventListener("project", (message) => {
+        const event = JSON.parse((message as MessageEvent<string>).data) as {
+          kind: Project["state"] | "closed" | "screenshot";
+          project: string;
+          session_id?: string;
+        };
+        if (event.project !== entryPath) return;
+        if (event.kind === "open" && event.session_id) {
+          opened(event.session_id);
+        } else if (event.kind === "failed" || event.kind === "closed") {
+          waiting?.close();
+          waiting = null;
+          navigate(home);
+        }
+      });
+      // Another tab may already be opening it; then there is only waiting.
+      if (already) return Promise.resolve();
+      return fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: entryPath }),
+      }).then((response) => {
+        if (response.ok || cancelled) return;
+        waiting?.close();
+        waiting = null;
+        navigate(home);
+      });
+    };
+
+    void inventory().then(async (selected) => {
+      if (cancelled) return;
+      if (selected?.session_id && selected.state === "open") {
+        await enter(selected.session_id);
+        return;
+      }
+      if (!selected || !selected.openable) {
+        navigate(home);
+        return;
+      }
+      await openHere(selected.state === "opening" || selected.state === "creating");
     });
+
     return () => {
       cancelled = true;
       source?.close();
+      waiting?.close();
     };
   }, [entryPath]);
 
@@ -1829,9 +1933,9 @@ function Workspace({ path: entryPath }: { path: string }) {
       <header className="workspace-titlebar">
         <div className="workspace-title">
           <span className="shop-mark" aria-hidden="true" />
-          <span>LibreSolid Studio / {entryPath}</span>
+          <span><a className="workspace-home" {...linkProps("/")} title="All projects">LibreSolid Studio</a> / {entryPath}</span>
         </div>
-        <div className="title-actions"><p className="workspace-run" aria-live="polite">{shopOpen && run ? `${run.profile_id} · open` : `Shop is ${shopOpen ? "open" : "closed"}`}</p><button className="close-project" onClick={() => void closeProject()}>Close project</button></div>
+        <div className="title-actions"><p className="workspace-run" aria-live="polite">{opening ? "Opening…" : shopOpen && run ? `${run.profile_id} · open` : `Shop is ${shopOpen ? "open" : "closed"}`}</p><button className="close-project" onClick={() => void closeProject()}>Close project</button></div>
       </header>
       <div className="workspace-body">
         <nav className="activity-rail" aria-label="Workspace areas">
