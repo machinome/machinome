@@ -94,7 +94,8 @@ Rules:
   repeated (`CylinderUnit().repeat(count)`); different units are individual
   attributes or a literal list. Per-unit variation never lives in the
   declaration: placement variation is `enumerate` plus constants in
-  `render()`, drive variation is a port fed in `simulate()`.
+  `render()`, drive variation is a joint driven by a broadcast relation
+  (or a port fed in `simulate()` for a non-motion value).
 - **Siblings do not reach into each other.** A value two children share is
   declared on their parent and passed to both. The framework refuses
   `ConRod(pin_bore=piston.pin_bore)` in a class body; declare `pin_bore` on
@@ -219,10 +220,80 @@ Two methods, two kinds of statement:
   assembly is needed to separate the two frames any more; no cleanup
   bookkeeping either.
 
+**The craft is: place at rest in `render()`, declare the joint on the
+body that moves, drive it from the parent by a relation.** Hand-written
+`rotate`/`translate` in `simulate()` is the exception now, for a motion no
+joint can state (a molejo flexible's own routing, a mesh deform) — not the
+default way to turn a part:
+
 ```python
+class Forearm(AssemblyNode):
+    elbow = Revolute(axis=(0, 1, 0), at=(0, 0, 81.5), range=(-135, 135),
+                     unit='deg')
+
+class Arm(AssemblyNode):
+    forearm = Forearm()
+
+    def render(self):
+        self.forearm.rotate(90, [1, 0, 0])
+        self.forearm.translate([0, 241.5, 68])   # rest placement, unaffected
+
+    def simulate(self):
+        self.forearm.elbow = self.angle           # drives the joint
+```
+
+`axis`/`at` on a class-body joint are read in the DECLARING BODY'S OWN
+rest frame — never the parent's — with `at` defaulting to that body's own
+origin; the framework applies exactly the operations the declaration
+states, composed innermost, before the rest placement `render()` gives it.
+That is the frame arithmetic every hand-written robot arm carries to bring
+a parent-frame pivot into a part's own coordinates, and a joint stated in
+the body's own frame has none of it left to carry. Traps the catalogue hit
+migrating onto this rule:
+
+- **An anchor that restates the parent's placement is now a bug, not a
+  requirement.** `at=(0, 0, 81.5)` written because the parent's `render()`
+  translates the part `81.5` mm is a DOUBLE offset under the frame rule;
+  state only the anchor the body's OWN geometry has, and let `render()`
+  carry the rest placement as it always did.
+- **A body its parent rotates does not need its axis "corrected" for
+  that rotation.** `axis=(0, 0, 1)` on a part the parent turns 90° about
+  X still means that part's own Z — the published motion is `[0, 0, 1]`
+  exactly, whatever attitude the parent gave it — so do not try to
+  pre-rotate an axis by hand to land it where the parent's placement will
+  carry it; the framework already reads it in the body's own frame.
+- **An `Orbit` whose carried point lies ON its own axis refuses by
+  name** at the first binding, radius zero: usually the sign the body
+  was not placed where the class assumed, or that `carries` needed
+  naming because the point that travels is not the body's own origin
+  (a connecting rod's big end, a parallelogram leg's knee).
+- **A `.repeat()` copy's `index` does not exist yet when that copy's own
+  joint arguments resolve** (assigned after `__init__` returns), so
+  `at=lambda node: (... node.index ...)` on a JOINT fails naming a
+  missing attribute — the same-looking read works inside a relation's
+  `law=`, which runs later. Derive the per-copy value from the parent's
+  own placement in `render()` instead, or move the per-copy difference
+  into a broadcast relation's `law=`.
+- **A joint an author binds by hand keeps its VALUE but loses its
+  MOTION between runs.** `if self.pin.value is None: self.pin = REST` as
+  a one-time default looks right once and then never re-applies: the
+  joint's operations are swept at the start of every run like any other
+  simulate-phase motion, but the coordinate's bound value is not, so the
+  guard skips the rebind on every later run and the part silently stops
+  moving with it. Bind the joint unconditionally in `simulate()`, or
+  drive it by a relation, which re-solves every run.
+
+```python
+class CylinderUnit(AssemblyNode):
+    crank = Revolute(axis=(1, 0, 0), unit='deg')   # this unit's own throw
+    ...
+
 class Cylinders(AssemblyNode):
 
     units = CylinderUnit().repeat(len(CYLINDER_LAYOUT))
+    crank = Driver(default=0.0, range=(0.0, 720.0), unit='deg')
+
+    crank.drives(units.crank, law=per_unit_phase)   # one relation, all units
 
     def render(self):
         for index, unit in enumerate(self.units):
@@ -230,18 +301,27 @@ class Cylinders(AssemblyNode):
             unit.rotate(bank, [1, 0, 0])
             unit.translate([station_x, 0, 0])
 
-    def simulate(self):
-        for index, unit in enumerate(self.units):
-            unit.crank = crank_angle(self.time) + THROW_PHASES[index // 2]
+
+def per_unit_phase(cylinders, unit):
+    phase = THROW_PHASES[unit.index // 2]      # the copy's own 0-based index
+    return lambda angle: angle + phase
 ```
 
-- **Repeated units are driven through ports.** A unit declares `crank =
-  RotationalPort(unit='deg')`, the parent feeds it in `simulate()` by
-  assignment or `connect()`, and the unit reads `self.crank.value` in its
-  own `simulate()` (the parent's runs first). A driver declared on a
-  repeated or list-held child cannot be qualified; ports are the way.
-  A port's `.value` is `None` until bound: treat that as a wiring fault to
-  surface, not a zero to default.
+- **A repeated unit's own freedom is a joint, driven by a broadcast
+  relation**, as above: the parent's relation reaches through the repeat,
+  resolves to one relation per realized copy, and `law=` is called once
+  per copy with the copy itself, so it reads the copy's own `index` — a
+  class-body JOINT argument cannot: it resolves before `index` exists (see
+  the traps above). This replaces the per-unit hand-written loop of an
+  older project; a driver declared on a repeated or list-held child still
+  cannot be qualified, so the source of a per-copy law stays a coordinate
+  the parent owns.
+- **A repeated unit's non-motion value is still a port.** A unit declares
+  `torque_limit = SignalPort(unit='N*mm')`, the parent feeds it in
+  `simulate()` by assignment or `connect()`, and the unit reads
+  `self.torque_limit.value` in its own `simulate()` (the parent's runs
+  first). A port's `.value` is `None` until bound: treat that as a wiring
+  fault to surface, not a zero to default.
 - **Machine inputs are drivers**, declared on the assembly that owns the
   move: `angle = Driver(default=0.0, range=(0.0, 720.0), unit='deg')`,
   read as `self.angle` in `simulate()`. The viewer turns them into

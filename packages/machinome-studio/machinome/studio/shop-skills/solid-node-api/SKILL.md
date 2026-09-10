@@ -1,6 +1,6 @@
 ---
 name: solid-node-api
-description: Complete public API reference for solid-node 0.6. Use when designing a mechanical project against solid-node capabilities, specifying nodes, parameters, drivers, ports and kinematics without inspecting framework implementation, or implementing nodes, tests, scenarios, snapshots, and exports through supported public interfaces.
+description: Complete public API reference for solid-node 0.6. Use when designing a mechanical project against solid-node capabilities, specifying nodes, parameters, drivers, ports, joints and relations without inspecting framework implementation, or implementing nodes, tests, scenarios, snapshots, and exports through supported public interfaces.
 ---
 
 # solid-node public API
@@ -10,8 +10,9 @@ project may rely on: framework source is not available to you, so a behavior
 this document does not describe is a gap to report, not a thing to discover.
 Never guess an interface from a symbol name.
 
-This describes solid-node 0.6 plus the declarative node API that followed
-it on the framework's main branch.
+This describes solid-node 0.6 plus what followed it on the framework's
+main branch: the declarative node API and the motion layer (joints,
+relations, `solid_node.motion`).
 
 ## Imports
 
@@ -22,12 +23,18 @@ from solid_node.node import (                  # what the machine is made of
     AssemblyNode, FusionNode,
     CadQueryNode, Build123dNode, Solid2Node, OpenScadNode, JScadNode,
     Build123dSheetNode, StlNode, StepNode, MolejoNode,
-    Port, RotationalPort, TranslationalPort, SignalPort,
-    declared_children, declared_ports, property_as_number,
+    declared_children, property_as_number,
 )
 from solid_node.parameters import (            # what is built
     Length, Angle, Count, Ratio, Scalar, Flag, Quantity,
     declared_parameters, DimensionError, ParameterError)
+from solid_node.motion.ports import (          # a value between nodes
+    Port, RotationalPort, TranslationalPort, SignalPort,
+    declared_ports, get_coordinate, set_coordinate)
+from solid_node.motion.joints import (         # where a body may move
+    Revolute, Prismatic, Orbit, Free, JointRangeError, declared_joints)
+from solid_node.motion.couplings import (      # a law between two coordinates
+    Affine, UnreachedCoordinate, DoublyBound, NotInvertible)
 from solid_node.simulation import (            # how it runs
     Driver, Instruction, Sim, ScenarioTest, RampProgram,
     qualified_drivers, qualified_instructions)
@@ -43,6 +50,14 @@ there fails.
 `SheetLeafNode` and `FlexibleNode` are also exported from `solid_node.node`
 as the abstract bases of the sheet and flexible kinds; a project subclasses
 their concrete adapters.
+
+Ports, joints and couplings live in `solid_node.motion` — three submodules,
+each answering one question, and nothing importable from the package itself:
+`from solid_node.motion import RotationalPort` fails; only `from
+solid_node.motion.ports import RotationalPort` works. `solid_node.node` no
+longer exports `Port`, `RotationalPort`, `TranslationalPort`, `SignalPort` or
+`declared_ports`; importing them from there raises `ImportError` naming
+`solid_node.motion.ports`.
 
 ## Node kinds
 
@@ -375,7 +390,7 @@ per process naming the read and `simulate()`. The decision is made on the
 instance's first `render()`. Placement applied in `__init__` still works
 and composes after motion; it is no longer recommended.
 
-## Drivers, time, ports, instructions
+## Drivers, time, ports, joints, relations, instructions
 
 **Drivers** are the machine's named inputs, declared on an assembly:
 
@@ -439,6 +454,171 @@ number or a symbolic expression. The framework runs a parent's
 `simulate()` what its parent bound. Bindings are re-evaluated absolutely
 every `simulate()` and never enter build identity. Ports are kinematic
 only (no torque or force). `declared_ports(cls)` enumerates them.
+`get_coordinate(node, name)` / `set_coordinate(node, name, value)` read and
+bind any coordinate — a port, a joint's, or one of a multi-coordinate
+joint's — by the exact name the port enumerator reports it under, plain or
+dotted (`pose.roll`); a name that enumerator does not report is refused
+rather than answered with `None`.
+
+**Joints** say where a body MAY move, next to the body, once: a class
+attribute of the node it moves, from `solid_node.motion.joints`.
+`Revolute(axis, at=(0,0,0), range=None, unit='deg')` turns a body about a
+line; `Prismatic(axis, at=(0,0,0), range=None, unit='mm')` slides it along
+one (`at` does not affect a `Prismatic`'s placement — a translation along a
+line is the same wherever the line is taken to pass — it is carried only
+as the declared position of the slide, for a reader or an exporter);
+`Orbit(axis, at=(0,0,0), carries=(0,0,0), range=None, unit='deg')`
+carries a point of the body round a line while the body's own attitude
+stays fixed; `Free(at=(0,0,0), angle_unit='deg', length_unit='mm')` floats
+a body on all six, `at` being the point the three rotations pass through
+(no `axis`, no `range` — a free body turns about its own frame's three
+directions and has no travel to bound). A joint owning ONE coordinate
+names it after the joint (a
+`Revolute` called `turn` gives a coordinate `turn`); reading the joint on
+an instance yields that coordinate's port slot, assigning to it binds
+through the same path `connect()` uses, and `declared_ports` reports it
+under the joint's name. `Free` owns SIX — `pose.roll`, `pose.pitch`,
+`pose.yaw` in `angle_unit`, `pose.x`, `pose.y`, `pose.z` in `length_unit` —
+each a dotted name and NOT a Python identifier: bound by assignment or by
+a relation, never by a wiring keyword; an unbound one places nothing (a
+plain zero) while still reading `.value is None`, and binding any one
+re-places the whole joint, so the order the six are bound in never shows.
+Assigning to a `Free` AS A WHOLE (`self.chassis.pose = 12.0`) is refused
+naming the joint and its six coordinates. Its composition is FIXED, not
+choosable by declaration order: `R(roll, x̂)·R(pitch, ŷ)·R(yaw, ẑ)·T(x, y,
+z)`, about `at`, in the body's own frame's three fixed directions — the
+translation is the OUTERMOST operation, so it displaces along those fixed
+directions rather than along whatever the three rotations have just
+turned the body to. `declared_joints(cls)` enumerates a class's joints by
+name with no instance constructed, in DECLARATION order (base before
+subclass, written order within a body, a redeclared joint keeping the
+position its base gave it); a name cannot be both a joint and a port on
+one class.
+
+**The frame rule (ADR-097): a joint is stated in the frame of whoever
+declares it.** Written in a class body, `axis`, `at` and (`Orbit`'s)
+`carries` are read in THAT BODY'S OWN rest frame — the frame its own
+`render()` states its geometry in — never the parent's, and the framework
+transforms nothing. `at` defaults to `(0, 0, 0)`, the body's own origin, so
+a wheel turning on its own bearing needs no anchor at all; **an `at` that
+restates the parent's placement is a bug (a double offset)** under this
+rule, never a requirement. Because a joint's operations are placed
+innermost, before the rest placement, **a body its parent rotates carries
+its joint line WITH it** — one shared or catalogue class placed at several
+sites, or several attitudes, states one declaration and gets the right
+line everywhere; a body its parent only translates is unaffected either
+way. A joint's arguments never depend on the node's rest placement, so a
+joint is placeable even when that placement carries a value the framework
+cannot evaluate numerically.
+
+Each of `axis`, `at`, `range` and `Orbit`'s `carries` may be a number, a
+declared-parameter token, a formula over them, or — for the whole
+argument — a callable of the realized node, called once at realization;
+none enters the node's build identity, so two instances differing only in
+a resolved joint argument share one artifact. An unresolvable argument (an
+undeclared token, a two-component or zero-length `axis`, a reversed
+`range`) fails at realization naming the class, the joint and the
+argument. **A `.repeat()` copy's `index` does not exist yet when that
+copy's own joint arguments resolve** (it is assigned after the copy's
+`__init__` returns): a callable reading `node.index` on a JOINT argument
+fails by naming a missing attribute, even though the identical-looking
+read works inside a relation's `law=`, which runs after the copy exists.
+Derive a per-copy joint argument from the parent's own placement instead,
+or drive the per-copy difference through a broadcast relation's `law=`.
+
+**Composition (ADR-093): the joints of one class compose in DECLARATION
+order, innermost first**, whatever order their coordinates happen to be
+bound in — the first declared is applied closest to the body, the last
+outermost; base-class joints come before a subclass's own, and a subclass
+redeclaring an inherited joint keeps the base's position. There is no
+ordering keyword: reorder the declarations to restack. Hand-written
+`rotate()`/`translate()` in `simulate()` composes OUTSIDE the whole joint
+block, keeping its own call order among itself.
+
+`Orbit`'s eccentric radius and starting phase are never declared: they
+derive from `carries` (the point of the body that travels, defaulting to
+the body's own origin) and the line `axis`/`at` state. A `carries` that
+lies ON that line derives a radius of zero and is refused by name at the
+first binding — usually the sign that the body was not placed where the
+class assumed it would be.
+
+A numeric binding outside a declared `range` raises `JointRangeError`
+naming the node's path, the joint, the value, the range and the unit; a
+symbolic binding is not checked at bind time, because its value is not yet
+known; a joint with no declared `range` accepts any binding.
+
+**Relations** say that one coordinate's motion IS another's, stated with
+`drives` in a class body — no import needed for the verb itself, imported
+names come only from `solid_node.motion.couplings`:
+
+```python
+power.drives(centre, law=going_train)
+anchor.turn.drives(pendulum.swing)
+elbow_pulley.turn.drives(elbow_belt.travel, ratio=PITCH_ARC)
+tilt.drives(chassis.pose.pitch)                    # one coordinate of a Free
+earth.drives(earth_beads.travel, law=earth_lift)   # broadcasts over a .repeat()
+```
+
+Either end may be a port, a joint, a child declaration (standing for its
+class's ONE joint; refused by name if that class declares none or
+several), a path through declared children, a derived coordinate, or — as
+the SOURCE only — a `Driver`. A path through a `.repeat()`ed child is a
+**broadcast**: it resolves to one relation per realized copy, permitted as
+the DRIVEN end only and refused by name as a source; a path through a
+list-held child, or through two repeated declarations, stays refused. A
+path that stops on a multi-coordinate joint, or names a coordinate such a
+joint does not own, is refused listing what it does own. Direction is
+MECHANICAL (`a.drives(b)` says what turns what); which way it is SOLVED is
+decided per run from whichever end is actually bound — forward through the
+law, backward through its inverse — with nothing reordered by hand.
+
+`ratio=`/`offset=` are shorthand for `Affine(ratio, offset=0)` (`driven =
+ratio * driver + offset`), self-inverting unless `ratio` is numerically
+zero; under a broadcast they resolve ONCE against the declaring instance
+and every copy shares that one `Affine`. `law=` is a callable of two
+arguments — driver first, driven second — called exactly ONCE per relation
+(once per COPY under a broadcast) at realization, with the two realized
+nodes that OWN the coordinates, so it may read a built library object, a
+resolved parameter, or a broadcast copy's own `index`; it must return an
+object with `forward(x)` and, if the relation is ever solved backwards,
+`inverse(y)` — a plain function or lambda is taken forward-only. `ratio=`
+or `offset=` given together with `law=` is refused at class definition.
+
+Three refusals keep a wrong drive network from becoming a pose, each its
+own error kind from `solid_node.motion.couplings`, each naming the node
+paths and the relation as written: `UnreachedCoordinate` (nothing bound
+either end); `DoublyBound` (something else — the author's `simulate()`, a
+wiring, or another relation, even one that would give the same value —
+already bound it); `NotInvertible` (the driven end is the bound one and
+the law has no inverse, or the relation is one copy of a broadcast, which
+is NEVER read backwards whatever its law offers). A **derived coordinate**
+(`relative_elbow = art3.elbow - shoulder`, `left = wrist + 2 * tool`) is a
+linear formula over coordinates — `+`, `-`, unary `-`, and scaling by a
+number or a declared parameter, nothing else — itself a coordinate of the
+class, reported by `declared_ports` under its own name; a product of two
+coordinates, or any nonlinear function of one, is refused where it is
+written. It solves from its terms when all are bound, and for its one
+remaining term when it is bound itself.
+
+**Passing a coordinate down** hands a child a port or joint the parent
+already owns, by naming it as a keyword the child class declares:
+`wheel = Arbor(turn=turn)`. This is a WIRING, not a parameter: absent from
+the child's parameters and its identity, rebound from the parent's end
+after every parent `simulate()`, refused at class definition when the
+child cannot receive it, and a wired coordinate has exactly one binder —
+binding the child's end by hand in the declaring parent is refused. A
+joint owning several coordinates cannot be wired whole, and none of its
+dotted coordinate names is a wiring keyword.
+
+**Not yet on this branch — report rather than assume, and do not rely on
+either sketched syntax below:** a joint stated at the site a parent
+declares a child (`Child(turn=Revolute(...))`), so a shared class can be
+given its joint where it is placed; whole-tree relation resolution, so an
+ancestor's relation cannot yet source from a coordinate a descendant's own
+relations solve; and a relation with more than one source, whose ratified spelling
+is `(a & b).drives(target, law=...)` — `&` groups the sources, the driven
+side may be a tuple of coordinates, and the law is handed a node or a
+tuple of nodes per side — proposed and accepted but not yet implemented.
 
 **Instructions** are declared moves, in an `instructions` dict on the
 assembly that owns the move, with targets in design units:
