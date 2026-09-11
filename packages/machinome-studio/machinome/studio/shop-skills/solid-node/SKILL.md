@@ -268,20 +268,33 @@ migrating onto this rule:
   naming because the point that travels is not the body's own origin
   (a connecting rod's big end, a parallelogram leg's knee).
 - **A `.repeat()` copy's `index` does not exist yet when that copy's own
-  joint arguments resolve** (assigned after `__init__` returns), so
-  `at=lambda node: (... node.index ...)` on a JOINT fails naming a
-  missing attribute — the same-looking read works inside a relation's
-  `law=`, which runs later. Derive the per-copy value from the parent's
-  own placement in `render()` instead, or move the per-copy difference
-  into a broadcast relation's `law=`.
-- **A joint an author binds by hand keeps its VALUE but loses its
-  MOTION between runs.** `if self.pin.value is None: self.pin = REST` as
-  a one-time default looks right once and then never re-applies: the
-  joint's operations are swept at the start of every run like any other
-  simulate-phase motion, but the coordinate's bound value is not, so the
-  guard skips the rebind on every later run and the part silently stops
-  moving with it. Bind the joint unconditionally in `simulate()`, or
-  drive it by a relation, which re-solves every run.
+  joint arguments resolve** — true of a class-body joint (assigned after
+  `__init__` returns) and equally true of a joint declared where a
+  `.repeat()` is placed (resolved in `realize`, on the line right after
+  `__init__` returns, before `index` is assigned): `at=lambda node: (...
+  node.index ...)` on either fails naming a missing attribute — the
+  same-looking read works inside a relation's `law=`, which runs later,
+  once the copy exists. Two ways out, and reach for the first: **when the
+  per-copy difference is only a sign or an attitude the copies already
+  stand at**, state ONE declaration-site joint with the PARENT-FRAME axis
+  and no anchor at all, on the whole `.repeat()` — each copy's own carry
+  through its own rest placement produces the opposite local axis for
+  free (a mirrored roller pair, a mirrored belt-guide pair), with no
+  index, no sign and no `law=` anywhere. Only when the difference is not
+  a placement at all (a phase, a ratio, a per-copy selection) does it
+  belong in a broadcast relation's `law=`, or in `render()` off the
+  parent's own placement loop.
+- **A joint an author binds by hand keeps both its VALUE and its MOTION
+  across runs, as of ADR-099.** `if self.pin.value is None: self.pin =
+  REST` as a one-time default now rebinds and re-places the body on
+  EVERY run: at the start of an assembly's phase the framework clears
+  the value and binder of every coordinate that assembly bound during
+  its PREVIOUS phase, the author's own binding included, in the same
+  moment it sweeps the operations that motion applied — so the guard
+  finds the coordinate unbound again on the second run and every run
+  after it, exactly as it did on the first. Nothing needs to be bound
+  unconditionally to keep moving; a relation still re-solves every run
+  the same way it always did.
 
 ```python
 class CylinderUnit(AssemblyNode):

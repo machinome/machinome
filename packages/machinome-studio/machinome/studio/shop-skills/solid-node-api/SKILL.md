@@ -34,7 +34,7 @@ from solid_node.motion.ports import (          # a value between nodes
 from solid_node.motion.joints import (         # where a body may move
     Revolute, Prismatic, Orbit, Free, JointRangeError, declared_joints)
 from solid_node.motion.couplings import (      # a law between two coordinates
-    Affine, UnreachedCoordinate, DoublyBound, NotInvertible)
+    Affine, UnreachedCoordinate, DoublyBound, NotInvertible, PrematureRead)
 from solid_node.simulation import (            # how it runs
     Driver, Instruction, Sim, ScenarioTest, RampProgram,
     qualified_drivers, qualified_instructions)
@@ -547,6 +547,80 @@ naming the node's path, the joint, the value, the range and the unit; a
 symbolic binding is not checked at bind time, because its value is not yet
 known; a joint with no declared `range` accepts any binding.
 
+**A joint may be declared where a child is placed (ADR-098):** a shared
+catalogue class that carries no joint of its own — a bought bearing, a
+fastener, `GearLockScrew` — is given one by the site that places it,
+passed as a KEYWORD:
+
+```python
+screw = ZScrew(turn=Revolute(axis=(0, 0, 1), unit='deg'))
+gear_screws = GearLockScrew(orbit=Revolute(axis=(0, 0, 1), unit='deg')).repeat(2)
+```
+
+`axis`, `at` and every further point are read in the DECLARING PARENT'S
+OWN frame this time, never the child's, and `at` defaults to `(0, 0, 0)`,
+the **parent's** own origin — the opposite of a class-declared joint's
+default and the same sentence: the declarer's own origin. A child the
+parent TRANSLATES therefore SWINGS about the parent's origin, not its
+own, unless `at` names the child's own placement; that is the whole
+point, not a hazard — it lets a class that knows nothing about where it
+will be placed carry no anchor at all wherever the parent's own origin
+already is the line (a motor shaft, a fork pivot, a drive axis). An
+`Orbit`'s `carries` keeps its asymmetry here too: WRITTEN at a site it is
+a point of the parent's frame, like `at`; DEFAULTED it is still the
+CHILD's own origin, never the parent's, so the two defaults never
+collapse onto the line and the derived radius is never forced to zero.
+
+A joint passed this way is told apart from a wiring by the VALUE, never
+by the keyword or by where the code sits: a coordinate the DECLARING
+class already owns is a wiring, exactly as always (see "Passing a
+coordinate down" below); a fresh `Revolute(...)`/`Orbit(...)`/`Free(...)`,
+built right there in the argument list and belonging to no class yet, is
+a site declaration; one declared on some THIRD class is refused. It is
+NOT a parameter and NOT identity: the keyword never reaches the child's
+constructor and never enters its build identity, so two children of one
+class differing only in the joints their sites passed still key one
+artifact. A site joint of a name the child's class already declares
+REPLACES that declaration WHOLE — axis, anchor, unit, range together —
+and keeps that name's slot in the composition order; a site joint of a
+new name is appended after every class-declared joint, in keyword order.
+The realized child is an instance of a SPECIALIZATION of the declared
+class, built once per declaration site and shared by every child (and
+every `.repeat()` copy) that site realizes: `isinstance` against the
+written class holds, `type(x) is C` does not, and every enumerator that
+reads a class — `declared_joints`, `declared_ports`, a relation's path —
+sees the site's joint exactly as it would a class-declared one, under the
+written class's own name, module and file.
+
+A site joint MAY be passed to a `.repeat()` or a list-held declaration:
+ONE declaration serves every copy, resolving the SAME arguments once
+against the declaring parent, and each copy's own operations are carried
+through ITS OWN rest placement — so one parent-frame axis, no anchor, no
+sign, no index, produces opposite local axes at two opposed placements
+(a mirrored roller pair, a mirrored belt-guide pair) with nothing written
+per copy. A relation may still name the coordinate through the repeat
+exactly as a class-declared one: `eccentric_shaft.spin.drives(
+eccentric_bearings.orbit)`. A callable given for a site joint's argument
+is handed the realized DECLARING PARENT (never the child, and never a
+`.repeat()` copy's `index`, which does not exist yet when a site's
+arguments resolve). **A site value is the line in the parent's frame
+where the child FINALLY rests, after every rest operation the parent
+applies to it** — so when one of those operations is conditional (a wrist
+that may be pre-presented, a lid that may be flipped), a plain literal is
+silently wrong for the branch it did not anticipate and the argument
+needs a callable of the parent instead, reading the same condition the
+parent's own `render()` does.
+
+Refused by name at class definition: a site keyword naming a port, a
+parameter, or any other attribute the child already answers to; a joint
+declared on some third class; two site joints of one name; a site joint
+and a wiring naming the same coordinate. The one thing a site joint costs
+that a class-declared one does not: its operations are carried through
+the inverse of the child's own rest placement before they are applied, so
+a body whose rest placement carries a value the framework cannot evaluate
+numerically refuses a SITE-declared joint by name — where a class-declared
+one on the same body would not.
+
 **Relations** say that one coordinate's motion IS another's, stated with
 `drives` in a class body — no import needed for the verb itself, imported
 names come only from `solid_node.motion.couplings`:
@@ -587,11 +661,13 @@ or `offset=` given together with `law=` is refused at class definition.
 Three refusals keep a wrong drive network from becoming a pose, each its
 own error kind from `solid_node.motion.couplings`, each naming the node
 paths and the relation as written: `UnreachedCoordinate` (nothing bound
-either end); `DoublyBound` (something else — the author's `simulate()`, a
-wiring, or another relation, even one that would give the same value —
+either end, or for a relation of several sources, exactly the sources
+still unbound); `DoublyBound` (something else — the author's `simulate()`,
+a wiring, or another relation, even one that would give the same value —
 already bound it); `NotInvertible` (the driven end is the bound one and
-the law has no inverse, or the relation is one copy of a broadcast, which
-is NEVER read backwards whatever its law offers). A **derived coordinate**
+the law has no inverse, or the relation is one copy of a broadcast or
+names several coordinates at an end, either of which is NEVER read
+backwards whatever its law offers). A **derived coordinate**
 (`relative_elbow = art3.elbow - shoulder`, `left = wrist + 2 * tool`) is a
 linear formula over coordinates — `+`, `-`, unary `-`, and scaling by a
 number or a declared parameter, nothing else — itself a coordinate of the
@@ -599,6 +675,74 @@ class, reported by `declared_ports` under its own name; a product of two
 coordinates, or any nonlinear function of one, is refused where it is
 written. It solves from its terms when all are bound, and for its one
 remaining term when it is bound itself.
+
+**Resolution is a whole-tree fixpoint (ADR-099).** Every assembly's
+relations are still ATTEMPTED at the end of that instance's own simulate
+phase, parents before children, so a parent's relation reaching a
+coordinate by path still binds before the reached descendant's own
+relations run. What one instance's own attempt cannot yet reach is
+DEFERRED rather than refused, and resolved once every assembly in the
+tree has had its phase — which is what lets a relation be stated inside
+the class that actually owns it (a going train chained inside `Train`,
+only the escapement bound two levels up in `Movement`) instead of
+hoisted, duplicated, or re-sourced from a driver to route around a
+per-instance-only solve. An ANCESTOR may source from a coordinate a
+DESCENDANT's own relations solve, and it reads fresh on every re-pose, not
+the previous enumeration's stale value. `DoublyBound` is never deferred: a
+contradiction is not a question of timing and is raised the instant it is
+found. A subclass may REPLACE a base's NAMED relation
+(`drive = free_run.drives(Actuator.rotor.spin, ratio=1.0)` on a subclass
+that assigns the name `Actuator.drive` used), keeping the base's position
+in the solve, by the same rule a redeclared joint already follows; a bare
+relation, or one whose name no base used, stays additive.
+
+**A read of a coordinate its own relation, a derived formula or a wiring
+is going to bind is refused by name — `PrematureRead`, from
+`solid_node.motion.couplings` — never a silent empty slot**, because
+`simulate()` runs before that class's own relations are solved and a
+descendant's after that. The message names the coordinate, the reading
+class and the binder. The ordinary rest-default guard is NOT refused by
+this rule: `if self.coordinate.value is None: self.coordinate = default`
+reads a slot the AUTHOR itself then binds, and that is a rest default, not
+a mistake — the same case as always, for a joint's own coordinate or a
+class's own derived coordinate alike. And it is now genuinely safe to
+write on every run: a coordinate a relation, a wiring, or the AUTHOR'S OWN
+`simulate()` bound is cleared, value and motion together, at the start of
+that assembly's NEXT phase, so the guard finds the coordinate unbound and
+rebinds and re-places the body on every enumeration rather than standing,
+from the second run on, at a stale number with no operation left to show
+for it.
+
+**A relation may name several coordinates at each end (ADR-100).** A
+source group is written with `&`, free on every declaration that carries
+`drives` and chaining flat (`x & y & z` is one group of three, never
+nested); a driven group is written as a tuple, exactly as it already
+reached the framework, or with `&` as well:
+
+```python
+(count & next_count).drives(sautoir.pawl.swing, law=pawl_deflection)
+(x & y & z).drives((rod.spin, rod.lean, rod.swing, rod.rise), law=delta_rod)
+(x & y).drives(towers.height, law=delta_carriage_law)   # several sources, one driven end
+```
+
+The law's two arguments are SHAPED by the sentence, never spread one per
+end: a side naming one coordinate hands that coordinate's realized OWNER,
+exactly as a one-to-one relation always has; a side naming several hands
+the TUPLE of their owners, in the order written — a six-source law still
+takes two arguments, never eight. `forward` is called with one positional
+argument per SOURCE, in written order, and returns the driven value
+itself for one driven end, or a SEQUENCE of exactly as many values, in
+written order, for several; a return with no length, that is text, or of
+the wrong length is refused by name at the moment it is applied, naming
+the relation, the law, the driven ends as written and what came back. A
+relation naming several coordinates at either end is read FORWARD ONLY,
+whatever its law offers — the same reason a broadcast is: recovering
+several sources from several driven values means comparing or solving
+values, which the framework does not do — so `ratio=`/`offset=` and the
+bare default law are refused with a group on either side; such a relation
+always carries a `law=`. Guidance: write a DERIVED coordinate when the
+combination is linear and keep both directions; write a multi-source
+`law=` only when it is not, and accept losing the reverse.
 
 **Passing a coordinate down** hands a child a port or joint the parent
 already owns, by naming it as a keyword the child class declares:
@@ -609,16 +753,6 @@ child cannot receive it, and a wired coordinate has exactly one binder —
 binding the child's end by hand in the declaring parent is refused. A
 joint owning several coordinates cannot be wired whole, and none of its
 dotted coordinate names is a wiring keyword.
-
-**Not yet on this branch — report rather than assume, and do not rely on
-either sketched syntax below:** a joint stated at the site a parent
-declares a child (`Child(turn=Revolute(...))`), so a shared class can be
-given its joint where it is placed; whole-tree relation resolution, so an
-ancestor's relation cannot yet source from a coordinate a descendant's own
-relations solve; and a relation with more than one source, whose ratified spelling
-is `(a & b).drives(target, law=...)` — `&` groups the sources, the driven
-side may be a tuple of coordinates, and the law is handed a node or a
-tuple of nodes per side — proposed and accepted but not yet implemented.
 
 **Instructions** are declared moves, in an `instructions` dict on the
 assembly that owns the move, with targets in design units:
