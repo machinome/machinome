@@ -19,13 +19,8 @@ Edit `myproject/myproject.py` to rotate the pointer of the
 
     class SimpleClock(AssemblyNode):
 
-        def __init__(self):
-            self.base = ClockBase()
-            self.pointer = Pointer()
-            super().__init__()
-
-        def render(self):
-            return [self.base, self.pointer]
+        base = ClockBase()
+        pointer = Pointer()
 
         def simulate(self):
             angle = -360 * self.time
@@ -46,7 +41,10 @@ Rendered with ``solid export`` — press play to see the pointer rotate:
 .. solid-node:: _exports/simple_clock
    :height: 360px
 
-At this point you should see a rotating pointer in the viewer.
+At this point you should see a rotating pointer in the viewer. Pause
+and scrub to 0.25: the pointer should have turned clockwise by 90 degrees.
+Change ``-360`` to ``-720`` and it makes two turns per loop.
+Restore ``-360`` before continuing.
 If you are using the Openscad viewer, you need to enable animation
 (View -> Animate) and set fps and number of frames.
 Reload is not automatic in Openscad while animating.
@@ -233,7 +231,9 @@ drives what:
 `loop` is the span of machine time, in seconds, that one turn of the
 timeline covers. From then on `self.time` reads **seconds** everywhere:
 here in `simulate()`, in every assembly below the root, in tests, under a
-:doc:`stepped simulation <scenarios>`, and in `solid snapshot`. On the
+:doc:`stepped simulation <scenarios>`, and when rendering a snapshot.
+The CLI's ``solid snapshot --time`` still takes a **timeline fraction**:
+``--time 0.25`` selects three hours into this twelve-hour loop. On the
 build and viewer path the value is the symbolic product ``$t * loop``, so
 the slider is still ``$t`` from 0 to 1 and the multiplication travels
 inside the published expressions; nothing about the viewer's evaluation
@@ -298,3 +298,6 @@ animation. It leaves the node released afterwards; call `set_keyframe`
 again if you still want a pose. To *show* one instant of an exported
 model, use the widget's ``?t=`` and ``?autoplay=0`` options rather than
 publishing a frozen document.
+
+Next, add a pin and :doc:`test its fit <testing>`. After that,
+:doc:`motion` gives the same pointer a named joint coordinate.

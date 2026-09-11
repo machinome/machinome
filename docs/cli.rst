@@ -125,7 +125,7 @@ solid test
               [--placement-quantum MM]
     solid test --all [--failfast]
 
-Builds the node at ``<path>`` and runs its tests — the ``test_*``
+Builds the node selected by ``reference`` and runs its tests — the ``test_*``
 methods of the node itself (via ``TestCaseMixin``) and of its companion
 test file, if one exists. A companion ``ScenarioTest`` runs here like
 any other test class, and the same class runs under plain ``pytest``
@@ -177,7 +177,7 @@ in headless Chromium and preserves a real alpha channel for compositing.
 .. code-block:: bash
 
     $ solid snapshot -o front.png --viewall --autocenter
-    $ solid snapshot windmill.windmill:Sail --time 0.25 --imgsize 800x600 --projection ortho
+    $ solid snapshot myproject.myproject:SimpleClock --time 0.25 --imgsize 800x600 --projection ortho
     $ solid snapshot --renderer web -o transparent.png
 
 ``--renderer``
@@ -192,7 +192,8 @@ in headless Chromium and preserves a real alpha channel for compositing.
     Output file path. Default: derived from the resolved node.
 
 ``--time``
-    Animation time to render, between 0.0 and 1.0. Default: 0.0. This
+    Timeline fraction to render, between 0.0 and 1.0. Default: 0.0.
+    For a declared twelve-hour loop, 0.25 means three hours. This
     poses the model through ``$t`` only; a driven machine renders at
     its declared driver defaults.
 
@@ -261,8 +262,10 @@ and how to use it.
     Animation frames per second in the manifest. Default: 30.
 
 ``--frames``
-    Frames per animation cycle. Together with ``--fps`` this sets the
-    cycle duration (default: 360 frames at 30 fps = 12 seconds). Both
+    Frames per animation cycle. For a root without ``Time``, together
+    with ``--fps`` this sets the playback duration (default: 360 frames
+    at 30 fps = 12 seconds). A declared ``Time(loop=...)`` sets the
+    machine-time duration instead; the viewer supplies playback speed. Both
     govern the ``$t`` timeline only — drivers have no frame grid, and
     a simulation's ``dt`` is unrelated.
 

@@ -9,7 +9,7 @@ produced, and the Sphinx extension fails the build if it is not there.
 Those directories arrive two different ways:
 
 * the small tutorial models are committed under ``docs/_exports/``;
-* the two example machines are built during the documentation build,
+* the external example machines are built during the documentation build,
   into the example submodules, by a step written twice -- once in
   ``.readthedocs.yaml`` and once in the GitHub Actions ``docs`` job.
 
@@ -184,11 +184,48 @@ class DocumentationExportsTest(unittest.TestCase):
             'produce the same directories.',
         )
 
+    def test_three_external_examples_are_siblings(self):
+        index = (DOCS / 'examples.rst').read_text()
+        expected = {
+            'example-v8-engine.rst':
+                'docs/examples/v8-engine/docs/_exports/v8-engine',
+            'example-metamaquina2.rst':
+                'docs/examples/metamaquina2/docs/_exports/metamaquina2',
+            'example-clock-01.rst':
+                'docs/examples/3dprintedclocks/docs/_exports/clock01',
+        }
+        for page, export in expected.items():
+            with self.subTest(page=page):
+                self.assertIn('   ' + page.removesuffix('.rst'), index)
+                self.assertIn((page, export), self.embedded)
+        self.assertNotIn('Earlier examples', index)
+
+    def test_tutorial_uses_framework_owned_steps_not_external_clock_code(self):
+        for chapter in ('quickstart', 'assemblies', 'declaring', 'animation',
+                        'motion', 'driving', 'testing', 'scenarios'):
+            source = (DOCS / (chapter + '.rst')).read_text()
+            with self.subTest(chapter=chapter):
+                self.assertNotIn('tutorial/clock01.py', source)
+                self.assertNotIn('tutorial/test_clock01.py', source)
+                self.assertNotIn('literalinclude:: examples/3dprintedclocks',
+                                 source)
+        self.assertFalse((DOCS / 'tutorial' / 'clock01.py').exists())
+        self.assertFalse((DOCS / 'tutorial' / 'geometry.py').exists())
+        self.assertFalse((DOCS / 'tutorial' / 'LICENSE').exists())
+        # The original teaching sequence retains its separate visual steps.
+        self.assertIn(('assemblies.rst', 'docs/_exports/clock_base'),
+                      self.embedded)
+        self.assertIn(('assemblies.rst', 'docs/_exports/simple_clock_static'),
+                      self.embedded)
+        self.assertIn(('animation.rst', 'docs/_exports/simple_clock'),
+                      self.embedded)
+        self.assertIn(('testing.rst', 'docs/_exports/pin_thin'), self.embedded)
+
 
     def test_generated_exports_get_a_page_each(self):
         """A machine built for the docs is the whole point of its page.
 
-        Every directive is an <iframe> running a viewer, and the two
+        Every directive is an <iframe> running a viewer, and the three
         example machines are the largest models published here. Two of
         them on one page start two viewers and animate both at once,
         which is how the examples page used to open.

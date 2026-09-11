@@ -6,3 +6,6 @@
 	path = docs/examples/metamaquina2
 	url = https://github.com/LibreSolid/Metamaquina2.git
 	branch = main
+[submodule "docs/examples/3dprintedclocks"]
+	path = docs/examples/3dprintedclocks
+	url = https://github.com/LibreSolid/3DPrintedClocks.git

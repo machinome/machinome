@@ -95,11 +95,11 @@ The JavaScript API
 Hosts that load ``solid-widget.js`` directly may call
 ``SolidNodeWidget.mount(target, manifestUrl, options)``. The package's
 ``solidNodeViewerApi`` declaration, browser global, and each mount
-handle all report API version 5, and the viewer accepts document
-schema versions 1, 2 and 3 — 4 once a released viewer version adds
-``bindings`` evaluation; until then a version-4 document (any model
-whose operations repeat a subexpression) is refused, loudly, naming the
-version, in the same phase that already refuses an unknown one.
+handle report API version 7 in the matching viewer source. It accepts
+document schema versions 1–4, including shared expression ``bindings``.
+This viewer is still a release preview; check ``solid viewer`` for
+the installed version rather than assuming an older bundle can read a
+new document.
 
 Camera options: ``view`` (camera and target), ``up`` and ``fov``; each
 vector may be a three-number tuple, and ``fov`` is in degrees. When
@@ -115,6 +115,15 @@ buttons and breadcrumb, for a host that builds its own control UI:
       fov: 22.5,
       driverControls: 'none',
     });
+
+Playback time
+-------------
+
+``setTime(fraction)`` seeks within the normalized 0–1 timeline.
+For a document with ``animation.loop``, ``speed()`` and
+``setSpeed(value)`` read and set a positive, finite playback multiplier
+relative to machine seconds. A document without a declared loop keeps
+its ``frames / fps`` playback duration; its speed remains 1.
 
 Driving from the host
 ---------------------

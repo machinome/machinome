@@ -39,24 +39,29 @@ packages you install separately.
 Installation
 ============
 
+This manual targets 0.7, in preparation. The latest published framework
+is 0.6.0. For a preview, install matching framework and viewer source
+checkouts; the separate viewer is not yet published. See :doc:`upgrading`.
+The package commands below are for use after those releases are available.
+
 Start by creating a virtual environment for your project
 
 .. code-block:: bash
 
-    $ virtualenv --python=python3 myproject-env
+    $ python -m venv myproject-env
     $ source myproject-env/bin/activate
 
 And install solid-node in your environment, with the browser viewer
 
 .. code-block:: bash
 
-    $ pip install "solid-node[viewer]"
+    $ pip install "solid-node[viewer]>=0.7,<0.8"
 
 or without it, keeping OpenSCAD as your only viewer
 
 .. code-block:: bash
 
-    $ pip install solid-node
+    $ pip install "solid-node>=0.7,<0.8"
 
 For the default project template, make sure you have openscad
 installed. On Debian-based systems:
@@ -108,7 +113,7 @@ see your model update in the viewer as you modify the code.
 Drive it
 ========
 
-A model becomes a machine the moment it declares an input. Replace the
+Once you have seen the static part, try adding one input. Replace the
 scaffolded class with an assembly that lifts it:
 
 .. code-block:: python
@@ -128,13 +133,14 @@ scaffolded class with an assembly that lifts it:
 
         lift = Driver(default=0.0, range=(0.0, 80.0), unit='mm')
 
-        def __init__(self):
-            self.block = Block()
-            super().__init__()
+        block = Block()
 
-        def render(self):
+        def simulate(self):
             self.block.translate([0, 0, self.lift])
-            return [self.block]
+
+Here ``block = Block()`` declares a child; every assembly instance
+gets its own block. ``lift`` is a runtime input, so it is read in
+``simulate()``, not in the method that makes the geometry.
 
 Save, and the viewer grows a ``lift`` slider: drag it and the block
 follows. That slider travels with the model into every export and

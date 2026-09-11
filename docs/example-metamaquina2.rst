@@ -6,10 +6,9 @@ Metamaquina 2
 
 The `Metamaquina 2 <https://github.com/LibreSolid/Metamaquina2>`_ is a
 real product: a Brazilian open-hardware RepRap 3D printer, originally
-authored in OpenSCAD. Its solid-node model is a machine in the full
-0.6 sense — and a reuse story: the original ``.scad`` sources are not
-replaced but read in place, each leaf reaching one OpenSCAD module of
-the historical design through solid2.
+authored in OpenSCAD. Its Solid Node model reads the original ``.scad``
+sources in place, each leaf reaching one OpenSCAD module through solid2.
+The simulation adds controls and motion to that existing design.
 
 The machine declares ``x``, ``y`` and ``z`` drivers and machine-level
 instructions (``Rest``, ``CenterX``, ``PresentBed``, ``HomeZ``), so
@@ -20,3 +19,20 @@ state.
 
 .. solid-node:: examples/metamaquina2/docs/_exports/metamaquina2
    :height: 620px
+
+Open the external example
+=========================
+
+From a framework source checkout with the matching preview installed:
+
+.. code-block:: bash
+
+   git submodule update --init docs/examples/metamaquina2
+   cd docs/examples/metamaquina2
+   solid develop
+
+This example needs OpenSCAD because its parts read the original
+``.scad`` sources. Those sources and the simulation stay in the
+printer's own repository.
+
+See also :doc:`example-v8-engine` and :doc:`example-clock-01`.

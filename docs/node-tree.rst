@@ -19,16 +19,13 @@ holds it under:
 .. code-block:: python
 
     class SimpleClock(AssemblyNode):
+        base = ClockBase()
+        pointer = Pointer()
 
-        def __init__(self):
-            self.base = ClockBase()
-            self.pointer = Pointer()
-            super().__init__()
-
-Here the children appear in the tree as ``base`` and ``pointer``, not
-``ClockBase`` and ``Pointer``. This is what keeps two same-class
-siblings apart — `self.hours = Pointer()` and `self.minutes =
-Pointer()` are distinct nodes named ``hours`` and ``minutes``.
+Here the children appear as ``base`` and ``pointer``, not
+``ClockBase`` and ``Pointer``. Each clock instance owns its
+own children. Two ``Pointer()`` declarations under different
+names would similarly be distinct occurrences of the same part.
 
 Children held in a list or tuple attribute get indexed names:
 
@@ -95,19 +92,19 @@ line reference <cli>`): the SCAD and STL of OpenSCAD-family parts, a
 and a `.dxf` cut profile beside each sheet part — and rebuilds a part
 only when its source or its parameters change.
 
-"Changed" is decided by stamps, exactly. Source modification times are
-read as integer nanoseconds and artifacts are stamped with the very
-value that was read, so freshness is decided by **exact equality**, no
-tolerance window: an artifact is current when its stamp matches its
-sources, stale otherwise. (When a copy or checkout disturbs mtimes,
-a content check rescues the artifact rather than rebuilding the
-world.) One part tracks more than its parameters: an
+Freshness combines source stamps with content-verified artifact identity.
+Source modification times retain nanosecond precision; touching unchanged
+source need not rebuild its geometry, while changed content cannot reuse
+an artifact merely because a timestamp was preserved. A part tracks its
+contributing source closure, not only the file that declares its class.
+For example, an
 :ref:`imported STL <stl-import>` leaf also counts its declaring Python
 module among its sources, because its ``adjust()`` hook can change the
 geometry without any constructor argument moving.
 
-The cache key of a node instance is derived from its **constructor
-arguments**: a node built as `Gear(teeth=20)` and one built as
+A declarative node's cache key includes its class and all resolved
+parameter values. Legacy nodes use their forwarded constructor
+arguments. In either form, a node built as `Gear(teeth=20)` and one built as
 `Gear(teeth=21)` are two different artifacts, while two `Gear(teeth=20)`
 instances share one — the geometry is the same, so it is built once,
 no matter how many times the part appears in the assembly, or under

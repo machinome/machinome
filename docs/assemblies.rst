@@ -6,10 +6,11 @@ Combining parts
 ===============
 
 Parts become a project when they are combined by **internal nodes**.
-An internal node's `render()` does not return a solid — it returns a
-list of child node instances, after saying where each one sits at
-rest. What moves, and the values wired between parts in a driven
-machine, belong to the assembly's `simulate()`; see :doc:`Animating
+An internal node declares child nodes instead of returning a CAD solid.
+Its `render()` can place those children at rest; if no extra placement
+is needed, the declarations are enough. What moves, and the values wired
+between parts in a driven machine, belong to the assembly's `simulate()`;
+see :doc:`Animating
 with time <animation>`.
 
 There are two types of internal nodes:
@@ -23,11 +24,9 @@ There are two types of internal nodes:
 Both take part in the node tree the same way: an assembly can contain
 leaf nodes, fusions and other assemblies.
 
-An internal node whose children are *declared* in its class body may
-let `render()` return nothing: the children are then the declared ones,
-and `render()` only positions them. That form, with parameters that
-flow from the root and units that repeat, is :doc:`Declaring a machine
-<declaring>`. This page shows the constructor form it builds on.
+We will add one part at a time, then combine them using the 0.7 declarative
+API. Later, :doc:`declaring` explains how to pass parameters between
+those parts and repeat a unit.
 
 The simple clock
 ================
@@ -49,9 +48,6 @@ Create a new file `myproject/clock_base.py` and create a `CadQueryNode`:
         def render(self):
             wp = cq.Workplane("XY")
             return wp.circle(100).extrude(2)
-
-    if __name__ == '__cq_main__':
-        show_object(ClockBase().render())
 
 Rendered — the clock base:
 
@@ -87,44 +83,51 @@ And at `myproject/myproject.py`, an `AssemblyNode`:
 
     class SimpleClock(AssemblyNode):
 
-        def __init__(self):
-            self.base = ClockBase()
-            self.pointer = Pointer()
-            super().__init__()
-
-        def render(self):
-            return [self.base, self.pointer]
+        base = ClockBase()
+        pointer = Pointer()
 
 Rendered — base and pointer assembled (still, for now):
 
 .. solid-node:: _exports/simple_clock_static
    :height: 360px
 
-Now in the viewer you should see a round clock base with a pointer.
+Update ``pyproject.toml`` to select the new assembly class:
 
-Children are instance attributes
-================================
+.. code-block:: toml
 
-Children are created in ``__init__``, as instance attributes — this is
-the rule to follow in every assembly, for two reasons:
+    [tool.solid-node]
+    model = "myproject.myproject:SimpleClock"
 
-* Children must keep their identity across renders, and each instance
-  of the assembly must own its own children. Class attributes would be
-  shared by every instance of the assembly, so two instances placed in
-  different positions would be applying placement operations to the
-  same objects.
-* A child is named after the instance attribute that holds it: in the
-  clock above, `self.base` and `self.pointer` show up in the viewer
-  tree as ``base`` and ``pointer``. This is what keeps two children of
-  the same class apart — two `Pointer()` instances held as
-  `self.hours` and `self.minutes` are two distinct nodes, named
-  ``hours`` and ``minutes``.
+If the starter's ``test_myproject.py`` still imports ``Myproject``,
+update that import and its ``node`` declaration to ``SimpleClock``
+too. We will replace the starter's tests in :doc:`testing`.
 
-You can always override the derived name by passing ``name=`` to the
-constructor, and children held in a list get indexed names
-(``planets-0``, ``planets-1``, ...). The full naming rules — and how
-node identity relates to build caching — are in
-:doc:`Names, the node tree and caching <node-tree>`.
+Run ``solid develop`` again. You should see a round clock base with
+a pointer. The base occupies Z=0..2; the pointer starts at Z=3, leaving
+a 1 mm gap. The pointer points along +Y and its pivot is at the origin.
+Those coordinates will matter when we make it turn.
+
+Declarations become instance children
+======================================
+
+``base = ClockBase()`` in the class body is a child declaration,
+not one shared Python object. Constructing a ``SimpleClock``
+creates its own ``self.base`` and ``self.pointer``.
+The framework also derives their tree names from those attributes.
+
+Open the tree in the viewer and select ``pointer``. That name
+identifies this occurrence of the part; it is separate from the
+geometry's build identity. Two pointers can share cached geometry
+while occupying different positions.
+
+To place a child without changing its geometry, add a ``render()``
+to the assembly and call that child's ``translate()`` or
+``rotate()`` there. It may return nothing because the child list
+is already declared. Keep time-dependent motion out of this method.
+
+Existing projects may instead create children in ``__init__``
+and return them from ``render()``; that form remains supported.
+See :doc:`node-tree` for naming and cache rules.
 
 Assemblies declare the machine's inputs
 =======================================
@@ -138,11 +141,11 @@ is a class attribute, read back as an ordinary attribute in
     from solid_node.simulation import Driver
 
     class Axis(AssemblyNode):
+        # Rail and Carriage are parts supplied by the project.
+        rail = Rail()
+        carriage = Carriage()
 
         position = Driver(default=20.0, range=(0.0, 160.0), unit='mm')
-
-        def render(self):
-            return [self.rail, self.carriage]
 
         def simulate(self):
             self.carriage.translate([self.position, 0, 0])
@@ -165,3 +168,5 @@ parts do not interfere, that they form the connections the design
 intends — and, with ``assertAssemblySupported``, that the assembly
 actually rests on the ground and balances under gravity instead of
 floating where the code put it.
+
+Next, :doc:`animate the pointer <animation>`.

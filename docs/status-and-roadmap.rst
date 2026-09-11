@@ -1,62 +1,46 @@
-
 .. _status-and-roadmap:
 
-==========================
-Project status and roadmap
-==========================
+Project status and direction
+=============================
 
-This project has been developed and maintained by a single person so far, and as it is, it's pretty usable. It can already solve real bottlenecks in mechanical project development. It's still a bit far from 1.0 version, and until there a release may still change how a project is declared, how an assertion answers, or what a published document contains — 0.5 and 0.6 both did — so read the release notes before upgrading. The geometry you write inside a node is the stable part, and you're invited to use it in your next Open Source machine.
+Solid Node is a working framework for modelling and simulating mechanical
+assemblies. The latest published release is 0.6.0; this manual describes
+the upcoming 0.7 release.
 
-Version 0.6 makes a model a *machine*. An assembly declares named
-inputs — drivers — read back as ordinary attributes, addressed by
-instance-qualified ids, turned into sliders and instruction buttons by
-the viewer, and stepped deterministically by a new simulation layer
-(``Sim``, ``Instruction``, ``ScenarioTest``). Ports carry values
-between parts with declared units. Three part kinds joined the tree:
-laser-cut sheets that derive their DXF from the same profile as their
-solid, imported STL meshes a new part can be designed to fit, and
-**flexible** parts — a spring, a belt, a cable — whose shape follows
-the machine's state, re-evaluated in the browser as you drive it. That
-closes the FlexibleNode this page had long carried on its roadmap,
-though not in the shape it was written down: a flexible part reads no
-time of its own, it takes its values through connected ports, so
-keyframes never entered it. ``assertAssemblySupported`` proves an
-assembly rests on the ground and balances under gravity. build123d
-became a fifth modelling backend. See :doc:`Driving a machine
-<driving>`, :doc:`Simulating and testing scenarios <scenarios>` and
-:doc:`Modeling parts <leaf-nodes>`.
+0.7's declarative and motion APIs have been shaped by a broader range of
+mechanical projects: clocks, printers, robot arms and hands, walking
+mechanisms, actuators and laboratory equipment. The tutorial teaches the
+underlying ideas
+with a small framework-owned demonstration. The V8 engine, Metamaquina 2
+and Clock 01 are three external examples for exploring complete machines.
 
-The browser viewer has since become its own package, `solid-node-viewer
-<https://github.com/LibreSolid/solid-node-viewer>`_, licensed AGPL-3.0-only
-and installed through ``pip install "solid-node[viewer]"``; the framework
-stays Apache-2.0 and complete without it. See :doc:`the viewer <viewer>`.
+What it does today
+------------------
 
-**Upgrading to 0.6 requires reinstalling the environment** (the shared
-OCCT binding moves and its versions cannot coexist), and a host that
-pins its own copy of the viewer bundle must upgrade it with the
-framework: a 0.5.x viewer has no version gate, so pointed at a 0.6
-document it silently renders only the part of the machine it can
-evaluate. See :doc:`changelog` for the full list, including the
-breaking changes.
+It combines CAD and imported parts into named assemblies, describes
+prescribed motion and interactive inputs, builds incrementally, exports
+operable browser models, and tests geometric and kinematic contracts.
+See :doc:`why-solid-node` and :doc:`changelog`.
 
-Version 0.5 answers geometric questions exactly wherever the CAD kernel can,
-so assertions stop being mediated by tessellation; makes a project declare
-itself in ``pyproject.toml`` and lets any command address any node; proves a
-part is one connected solid and an assembly does not interfere with itself;
-and replaces the three copies of the web viewer with a single package that
-static exports, the Sphinx directive and ``solid develop`` all share.
+Limits to keep in mind
+----------------------
 
-Version 0.4 added ``solid export`` and the embedding pipeline — models
-render in any static web page or Sphinx documentation, animations
-included (see :doc:`embedding`) — along with a more robust builder
-that recovers from broken edits.
+* Linux is the validated development platform. Cross-platform packaging
+  and the experimental studio harness are not a portability promise.
+* This is not a general dynamics solver. Prescribed motion does not prove
+  that forces, friction, material strength or tolerances will make a
+  physical mechanism work.
+* Tests prove the contracts and sampled states you write, not every
+  possible state or manufacturing outcome.
+* The project is pre-1.0. Read migration notes before upgrading; examples
+  and experimental interfaces can change.
+* The separate viewer's 0.1.0 is founded but not yet published. Preview
+  users need matching source installations.
 
-Roadmap
-=======
+Direction
+---------
 
-  * A new declarative API for describing a model
-  * Semantics for production, so a model carries how a part is to be made
-    and not only what shape it is
-  * Friction, adhesion and dynamics in the assembly-support assertion,
-    which today proves reachability and static equilibrium only
-  * Improve the web viewer with workplanes, rulers, camera angles, a test runner
+Future work includes richer manufacturing information, better inspection
+tools, and further mechanical contracts driven by real projects.
+These are directions, not release commitments. Declarative models and
+flexible parts are already implemented and are no longer roadmap items.

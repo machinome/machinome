@@ -24,6 +24,9 @@ viewer — it builds, tests, exports (``--no-widget``) and snapshots through
 OpenSCAD — and reaches the viewer only as a separate process when it is
 installed.
 
+For the 0.7 preview, use matching source installations as described in
+:doc:`quickstart`; the independent viewer is not yet published.
+
 The web viewer
 ==============
 
@@ -43,7 +46,14 @@ same viewer: one slider per driver and one button per instruction
 declared at the focused assembly layer, with a breadcrumb to walk the
 focus down into subassemblies and back up. Sliders show a numeric
 readout in the driver's design units, and dragging one re-evaluates
-only the expressions that read it. The full description of the control
+only the expressions that read it. Click a readout to type a value;
+the slider range is presentation metadata, not a mechanical limit.
+
+A declared ``Time(loop=...)`` displays machine time and plays
+at real time. Use the speed selector to accelerate Clock 01's twelve-hour
+loop. Moving time does not reset independent driver values.
+
+The full description of the control
 surface — scoping rules included — is in :doc:`Driving a machine
 <driving>`; it applies unchanged to static exports and embedded
 widgets (:doc:`Embedding models <embedding>`).

@@ -12,55 +12,57 @@ Solid Node
         :alt: Documentation Status
 
 
-**The Open Source framework for designing and simulating machines**
+**Describe a machine, not just its parts.**
 
-A machine is a tree of Python nodes: leaf parts modelled with the CAD
-backend that suits them (OpenSCAD/SolidPython, CadQuery, build123d,
-JSCAD), plus laser-cut sheets, imported STL meshes, and flexible parts
-whose shape follows machine state (via `molejo
-<https://molejo.readthedocs.io>`_, a required dependency). The machine
-declares named driver inputs the browser viewer turns into sliders and
-buttons, a deterministic simulation steps them in Python, and
-mechanical assertions — interference, connectivity, support against
-gravity — run as ordinary tests.
+Solid Node is a Python framework for designing and simulating machines.
+Declare the parts, the dimensions they share, the joints that let them
+move, and the relationships that make them work together. Inspect the
+assembly, operate its controls, and test mechanical requirements in the
+same project.
 
-* Open Source: Apache License 2.0
-* Documentation: https://solid-node.readthedocs.io
+Keep the CAD tools that suit your design: CadQuery, build123d,
+OpenSCAD/SolidPython and JSCAD, alongside imported STEP and STL parts,
+sheet profiles, and flexible springs, belts and cables through
+`molejo <https://molejo.readthedocs.io>`_. Solid Node supplies the
+machine structure, motion, incremental builds, tests and export.
 
-Quickstart
-==========
+A gear ratio should connect the gears you see to the movement you test.
+A parameter change should reach the parts that depend on it. A design
+shared on a website should be something a reader can inspect and operate.
+Those are the relationships Solid Node is built around.
 
-.. code-block:: bash
+Learn it one step at a time
+===========================
 
-    $ pip install "solid-node[viewer]"
-    $ solid new myproject
+The `tutorial <https://solid-node.readthedocs.io/en/latest/quickstart.html>`_
+starts with a part, combines a base and pointer into a simple assembly,
+animates it, and adds a pin with tests for its fit. From there, learn
+parameters, joints, drivers and scenarios.
 
-The ``viewer`` extra installs the browser viewer, `solid-node-viewer
-<https://github.com/LibreSolid/solid-node-viewer>`_. It is a separate
-package because it is licensed differently: solid-node is **Apache-2.0**,
-the viewer is **AGPL-3.0-only**. Install ``solid-node`` without the extra and
-the framework is complete with OpenSCAD as its viewer — ``solid develop``
-opens the OpenSCAD GUI, ``solid export --no-widget`` and the default snapshot
-renderer work as before — and the commands that need the browser viewer name
-the extra. To discover the installed bundle, the framework imports and calls
-only the viewer's lightweight entry-point provider. It launches the viewer's
-serving and browser-capture code in separate processes and does not import
-those modules.
+For complete machines, explore the three external examples:
+`V8 engine <https://solid-node.readthedocs.io/en/latest/example-v8-engine.html>`_,
+`Metamaquina 2 <https://solid-node.readthedocs.io/en/latest/example-metamaquina2.html>`_,
+and `Clock 01 <https://solid-node.readthedocs.io/en/latest/example-clock-01.html>`_.
+Each keeps its design source in its own repository.
 
-Upgrading from 0.5.x requires **reinstalling the environment** rather
-than upgrading in place: the shared OCCT binding moves and its versions
-cannot coexist. See the changelog.
+* `User manual <https://solid-node.readthedocs.io/en/latest/>`_
+* `Migrating from 0.6 <https://solid-node.readthedocs.io/en/latest/upgrading.html>`_
 
-Transparent browser-rendered snapshots are optional because they require the
-viewer and a separate Chromium download:
+This checkout documents **0.7, in preparation**. The latest published
+framework is 0.6.0; the quickstart distinguishes preview installation
+from the installation command to use after release.
 
-.. code-block:: bash
+Solid Node is Apache-2.0. The optional browser viewer is the independent
+AGPL-3.0-only `solid-node-viewer
+<https://github.com/LibreSolid/solid-node-viewer>`_ package, installed
+through the ``viewer`` extra once published. Without it, the
+framework uses OpenSCAD as its viewer. Designs retain their own
+licences in their external repositories. The framework's tutorial is
+Apache-2.0 and contains no source adapted from those projects.
 
-    $ pip install "solid-node[web-snapshot]"
-    $ playwright install chromium
-    $ solid snapshot --renderer web -o transparent.png
-
-See `the docs <https://solid-node.readthedocs.io>`_.
+Motion is prescribed kinematics, not a general dynamics simulation.
+Geometric tests help establish specific fits, clearances and support
+conditions; they do not replace manufacturing review or physical tests.
 
 Working on solid-node itself
 ============================
@@ -92,8 +94,8 @@ assertions are decided by the OCCT kernel and run without it — useful on a
 platform with no compiled wheel, such as WebAssembly. A path that needs it
 and cannot import it says so by name.
 
-Clone with submodules (the docs embed the example V8-engine and
-Metamaquina2 projects):
+Clone with submodules (the docs embed three separately maintained
+example machines):
 
 .. code-block:: bash
 
@@ -129,11 +131,12 @@ Notes:
 * Rendering tests invoke the real ``openscad`` binary. On a headless machine,
   snapshot-related tests may need ``xvfb-run -a pytest ...``.
 * Browser-snapshot tests are mandatory for changes to that renderer. Install
-  the ``web-snapshot`` extra and Chromium as shown above, then run the real
-  capture explicitly:
+  a matching viewer with its ``snapshot`` extra (from source while it is
+  unpublished), then install Chromium and run the real capture explicitly:
 
   .. code-block:: bash
 
+      $ playwright install chromium
       $ SOLID_NODE_WEB_SNAPSHOT_E2E=1 pytest tests/test_browser_renderer.py::BrowserSnapshotEndToEndTest
 
   The ordinary suite leaves this environment variable unset and skips the
@@ -201,9 +204,9 @@ reviewed, implemented, and archived through the OpenSpec workflow
 4. **Archive** — when the change lands, its spec deltas are merged into
    ``openspec/specs/`` and the change moves to ``openspec/changes/archive/``.
 
-The ``.claude/commands/opsx/`` and ``.claude/skills/openspec-*/`` directories
-encode this workflow for agents (``propose``, ``apply``, ``archive``, etc.);
-humans can drive the same lifecycle with the ``openspec`` CLI directly.
+The proposal and completed record belong in this repository's
+``openspec/`` directory. See `CONTRIBUTING.rst <CONTRIBUTING.rst>`_
+for the contribution workflow.
 
 Architecture Decision Records
 -----------------------------

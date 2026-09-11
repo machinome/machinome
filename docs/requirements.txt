@@ -1,6 +1,4 @@
 sphinx
 sphinx_rtd_theme
-# The example exports run at docs-build time on Read the Docs, and both
-# examples evaluate MolejoNode leaves at export: the V8 engine's valve
-# springs and Metamaquina2's spring, belt and filament.
+# External example exports include flexible parts evaluated through molejo.
 molejo[brep]

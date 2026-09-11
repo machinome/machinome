@@ -66,17 +66,18 @@ And the fusion, at `myproject/knob.py`:
 
     class Knob(FusionNode):
 
-        def render(self):
-            return [KnobShaft(), KnobGrip()]
+        shaft = KnobShaft()
+        grip = KnobGrip()
 
 The shaft and grip are fused into one rigid solid:
 
 .. solid-node:: _exports/knob
    :height: 360px
 
-Unlike an assembly, a fusion consumes its children into a single solid —
-they don't need to keep their identity across renders, so creating them
-directly in `render()` is fine.
+Unlike an assembly, a fusion consumes its children into a single solid.
+Declare them as above, or return a child list from `render()`.
+An empty assembly is allowed; an empty fusion is refused because it
+cannot fulfill its promise of a physical piece.
 
 Since the result of a fusion is rigid, a FusionNode cannot use
 `self.time` (it raises an exception) — animate it from the AssemblyNode

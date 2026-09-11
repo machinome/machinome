@@ -1,12 +1,12 @@
 
 .. _api-reference:
 
-=============
+=================
 API Reference
-=============
+=================
 
 Nodes
-=====
+=========
 
 All node classes are importable from ``solid_node.node``; the parameters
 they declare come from ``solid_node.parameters``. A project is a
@@ -14,13 +14,14 @@ tree of nodes: leaf nodes generate solids with an underlying modelling
 library, internal nodes combine their children.
 
 Common node API
----------------
+-------------------
 
 .. autoclass:: solid_node.node.base.AbstractBaseNode
 
    .. method:: render()
 
-      Every node must implement ``render()``: it builds the node at rest.
+      ``render()`` builds the node at rest. A purely declarative
+      composition may omit it when no additional placement is needed.
       Leaf nodes return an object of the underlying modelling library;
       internal nodes return a list of child node instances (or, on a
       declarative class, nothing), after placing the parts that do not
@@ -72,7 +73,7 @@ Common node API
    .. autoproperty:: mtime
 
 Leaf nodes
-----------
+--------------
 
 .. autoclass:: solid_node.node.leaf.LeafNode
    :members: time
@@ -166,13 +167,18 @@ Leaf nodes
       file. A multi-body file with no ``body`` fails with a per-body
       inventory of centroid, bounds and volume.
 
+.. autoclass:: solid_node.node.StepNode
+
+   An exact part selected from a STEP document. See :doc:`leaf-nodes`
+   for source paths, product selection and `adjust()`.
+
 .. autoclass:: solid_node.node.FlexibleNode
 
 .. autoclass:: solid_node.node.MolejoNode
    :members: shape_tolerance
 
 Internal nodes
---------------
+------------------
 
 .. autoclass:: solid_node.node.internal.InternalNode
    :members: connect
@@ -196,7 +202,7 @@ Internal nodes
       As above.
 
 Parameters
-==========
+==============
 
 The knobs that decide what machine gets built, importable from
 ``solid_node.parameters`` and from nowhere else. A parameter is declared
@@ -225,7 +231,7 @@ runtime input and changes every instant. See :doc:`Declaring a machine
 .. autofunction:: solid_node.node.declared_children
 
 Ports
-=====
+=========
 
 Domain-typed connection points between nodes, importable from
 ``solid_node.motion.ports``. A port is declared as a class attribute; the
@@ -245,13 +251,16 @@ parent assembly binds it every ``simulate()`` with
 
 .. autofunction:: solid_node.motion.ports.get_coordinate
 
+.. autofunction:: solid_node.motion.ports.set_coordinate
+
 Joints
-======
+==========
 
 The joint declarations, importable from
 ``solid_node.motion.joints``. A joint is declared as a class attribute of
-the node it moves and states where that node may move, in the frame its
-parent places it in; reading it gives its coordinate, which is a port,
+the node it moves and states where that node may move in its own frame.
+A joint supplied at a child's declaration site instead uses the declaring
+parent's frame. Reading a one-coordinate joint gives a port,
 and binding that coordinate places the body. Two of the three
 one-coordinate pairs turn or
 slide the body; the third, ``Orbit``, CARRIES it round a line without
@@ -278,7 +287,7 @@ occupies one position in that order like any other. See
 .. autofunction:: solid_node.motion.joints.declared_joints
 
 Couplings
-=========
+=============
 
 The relation between two coordinates, importable from
 ``solid_node.motion.couplings``. ``drives`` itself needs no import — it
@@ -308,7 +317,7 @@ needing no import, and free on every declaration that carries
 .. autofunction:: solid_node.motion.couplings.declared_relations
 
 Simulation
-==========
+==============
 
 The stepped simulation layer lives in ``solid_node.simulation``. See
 :doc:`Driving a machine <driving>` for drivers and instructions, and
@@ -338,7 +347,7 @@ scenario tests.
 .. autofunction:: solid_node.simulation.qualified_instructions
 
 Expression math
-========
+===================
 
 ``solid_node.math`` is the one expression semantics: OpenSCAD's degree
 conventions, computed on plain numbers, deferred as an OpenSCAD
@@ -350,7 +359,7 @@ Every function here has all three faces, so one formula serves the
 tests, the build and the browser.
 
 Primitives
-----------
+--------------
 
 The functions the module emits as an OpenSCAD call. Every name it can
 emit is listed in ``solid_node.math.SYMBOLIC_BUILTINS``, and each is a
@@ -378,7 +387,7 @@ modulo as the ``%`` operator rather than a function. ``floor(x + 0.5)``
 is the half-up every runtime agrees on.
 
 Compositions
-------------
+----------------
 
 Built out of the primitives and ordinary arithmetic, so what they do to
 dimensions follows from the primitives' rules rather than from a rule of
@@ -393,7 +402,7 @@ their own.
 .. autofunction:: solid_node.math.bump
 
 Vector helpers
---------------
+------------------
 
 Composition over the scalar functions, so a symbolic component or a
 declared formula rides through. Angles are degrees, positive
@@ -404,9 +413,9 @@ counter-clockwise, as everywhere else.
 .. autofunction:: solid_node.math.rotate_x
 .. autofunction:: solid_node.math.rotate_y
 .. autofunction:: solid_node.math.rotate_z
-=======
+
 Mechanisms
-==========
+==============
 
 The textbook mechanism laws, importable from
 ``solid_node.mechanisms``. Each is a composition over
@@ -423,8 +432,11 @@ There is **no declared (class-body) face**. The laws carry degree
 literals — the mesh adds ``180``, the screw divides by ``360`` — and the
 dimension algebra has no way to type a plain number as an angle, so a
 declared token reaching a law raises ``DimensionError`` at class
-definition. A class body that needs a static mesh phase computes it over
-``.value`` operands, the algebra's stated escape hatch::
+definition. A class body may compute a fixed mesh phase over
+``.value`` operands, the algebra's escape hatch, but this freezes
+the defaults: it does not recompute for parameter overrides. Prefer a
+relation law factory over resolved owners for configurable gears, as
+in :doc:`driving`. For deliberately fixed values::
 
     class Train(AssemblyNode):
         wheel = Count(60)
@@ -433,7 +445,7 @@ definition. A class body that needs a static mesh phase computes it over
         pinion_phase = meshed_angle(phase.value, wheel.value, pinion.value)
 
 Gears
------
+---------
 
 The external spur-gear mesh. A pair is meshed when a tooth of the driven
 points into a gap of the driver along the line of centres; where a tooth
@@ -451,7 +463,7 @@ part and zero for a lantern pinion.
 .. autofunction:: solid_node.mechanisms.driving_angle
 
 Screws
-------
+----------
 
 The lead screw, right-hand and sign-neutral: a positive turn by the
 right-hand rule about the screw's own axis advances it along that axis
@@ -465,7 +477,7 @@ pitch times starts, never bare pitch.
 .. autofunction:: solid_node.mechanisms.screw_angle
 
 Cranks
-------
+----------
 
 The planar slider-crank, in the crank's own plane: the crank axis is the
 plane normal, the cylinder axis is *along*, the other coordinate is
@@ -480,7 +492,7 @@ frame rotation.
 .. autofunction:: solid_node.mechanisms.piston_height
 
 Deltas
-------
+----------
 
 Linear delta kinematics: towers on a circle about Z, carriages riding
 vertically, a diagonal rod to the effector. ``radius`` is the horizontal
@@ -495,7 +507,7 @@ along Z by ``-tilt`` about Y, then ``azimuth`` about Z.
 .. autofunction:: solid_node.mechanisms.delta_rod
 
 Linkages
---------
+------------
 
 Circle geometry. ``side = 1`` picks the intersection to the left of the
 direction from the first centre to the second. None of the three guards
@@ -511,7 +523,7 @@ have to invent a pose that does not exist.
 .. autofunction:: solid_node.mechanisms.link_rise
 
 Testing
-=======
+===========
 
 The testing API lives in ``solid_node.test``. See
 :doc:`Test-driven CAD <testing>` for a walkthrough of both ways of
@@ -545,6 +557,6 @@ writing tests: mixing ``TestCaseMixin`` into a node class, or writing a
 .. autofunction:: solid_node.test.testing_instant
 
 Decorators
-==========
+==============
 
 .. autofunction:: solid_node.node.decorators.property_as_number

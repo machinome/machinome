@@ -90,14 +90,9 @@ And at `myproject/myproject.py`, assemble the pin together:
 
     class SimpleClock(AssemblyNode):
 
-        def __init__(self):
-            self.base = ClockBase()
-            self.pointer = Pointer()
-            self.pin = Pin()
-            super().__init__()
-
-        def render(self):
-            return [self.base, self.pointer, self.pin]
+        base = ClockBase()
+        pointer = Pointer()
+        pin = Pin()
 
         def simulate(self):
             angle = -360 * self.time
@@ -108,14 +103,19 @@ Rendered — the full clock with the pin fitted (press play):
 .. solid-node:: _exports/simple_clock_pin
    :height: 360px
 
-You should see the pin rendered in viewer, with a tight fit.
-We want to test if this is functional: if in reality, this
-arrangement will work. So, let's write a test.
+The pin has the same nominal radius as the holes. Contact at one
+instant is not evidence that it can rotate freely, and zero design
+clearance is not a manufacturing tolerance. We will first test overlap
+at rest, then test the fit through a turn.
 
 TestCaseMixin
 =============
 
-For that, we'll use `solid_node.test.TestCaseMixin`. Our SimpleClock
+For this exercise, set aside the generated ``test_myproject.py``
+starter tests; the checks below live on the model itself. We will add
+a companion test file again at the end of this chapter.
+
+We'll use `solid_node.test.TestCaseMixin`. Our SimpleClock
 class will extend it, and we'll add two tests to `myproject/myproject.py`:
 
 .. code-block:: python
@@ -128,14 +128,9 @@ class will extend it, and we'll add two tests to `myproject/myproject.py`:
 
     class SimpleClock(AssemblyNode, TestCaseMixin):
 
-        def __init__(self):
-            self.base = ClockBase()
-            self.pointer = Pointer()
-            self.pin = Pin()
-            super().__init__()
-
-        def render(self):
-            return [self.base, self.pointer, self.pin]
+        base = ClockBase()
+        pointer = Pointer()
+        pin = Pin()
 
         def simulate(self):
             angle = -360 * self.time
@@ -147,13 +142,16 @@ class will extend it, and we'll add two tests to `myproject/myproject.py`:
         def test_pin_runs_free_in_pointer(self):
             self.assertNotIntersecting(self.pointer, self.pin)
 
-On the command line, stop the `solid develop` command, and
-run `solid test`.
+First prove that these tests catch a bad fit. Temporarily make the pin
+too large: change ``r=3`` to ``r=3.1`` in
+``myproject/pin.py``. Stop ``solid develop`` and run
+``solid test``. Both tests should fail because the pin occupies
+material around each hole.
 
-You should see two tests failing, as in practice there is a very
-small intersection between rendered meshes even though mathematically
-they should not. Let's reduce the radius of our pin to 2.99, at
-`myproject/pin.py`:
+Now reduce the radius to 2.99 in ``myproject/pin.py``:
+this leaves a nominal 0.01 mm radial clearance. The original
+``r=3`` boundary-contact case is not used as the intentional failure:
+its result can depend on the faceted representations.
 
 .. code-block:: python
 
@@ -167,7 +165,8 @@ Rendered — the slimmer pin:
 .. solid-node:: _exports/pin_thin
    :height: 360px
 
-Run the tests again. This time, the two tests will pass.
+Run the tests again. At the initial pose the two tests should pass.
+That is our first contract; it is not yet a test of free rotation.
 
 .. _testing-steps:
 
@@ -175,7 +174,7 @@ Run the tests again. This time, the two tests will pass.
 ==============
 
 Even though the test has passed, if you look closely, the hole in pointer
-and the pin are not really round, they are approximated by hexagons —
+and the pin are not really round, they are approximated by coarse polygons —
 the :ref:`resolution problem <fn-property>` from Modeling parts. We
 have tested that in the initial setup the pieces do not overlap, but
 our test can't tell yet if the parts can freely move.
@@ -202,7 +201,7 @@ pieces in several moments of the animation:
 The tests above will each run 16 times, at 16 different instants.
 Run the tests again, and you'll see that the tests will pass and fail
 in a pattern: the base passes, because CadQuery renders it very
-roundly, but the hexagonal hole in the pointer catches the pin at some
+roundly, but the polygonal hole in the pointer catches the pin at some
 angles.
 
 The fix is the `fn` property from
@@ -213,7 +212,9 @@ error on holes whenever OpenScad-derived nodes, like `Solid2Node` and
 `OpenScadNode`, take part in a fit.
 
 Running tests on the full animation cycle can be very time consuming.
-We can keep test performance by applying the test to a slice of time
+For repeated geometry, test a justified slice of time instead of an
+arbitrarily sparse full cycle. Here one eighth of a turn crosses the
+faceted hole's changing alignment:
 
 .. code-block:: python
 

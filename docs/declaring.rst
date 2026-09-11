@@ -5,15 +5,49 @@
 Declaring a machine
 ===================
 
-Everything in :doc:`Modeling parts <leaf-nodes>` and :doc:`Combining
-parts <assemblies>` builds a node the constructor way: an ``__init__``
-that takes the part's parameters, stores them on ``self`` and forwards
-them to ``super().__init__()``. That works, and every project written
-that way keeps working. This page is the other way: the class body
-*declares* the part, and the framework derives the rest.
+The :doc:`assembly tutorial <assemblies>` declared its children.
+Now make a dimension configurable. In ``myproject/clock_base.py``,
+replace the literal radius with a typed parameter:
 
 .. code-block:: python
 
+    import cadquery as cq
+    from solid_node.node import CadQueryNode
+    from solid_node.parameters import Length
+
+    class ClockBase(CadQueryNode):
+        radius = Length(100, min=10)
+
+        def render(self):
+            return (cq.Workplane("XY").circle(self.radius).extrude(2)
+                    .faces(">Z").workplane().hole(6))
+
+If you have not reached the pin exercise yet, leave off the hole.
+Open this part on its own:
+
+.. code-block:: bash
+
+    solid develop myproject.clock_base:ClockBase --set radius=120
+
+The larger disc should appear; the hole stays 6 mm. We changed a build
+parameter, so the geometry changes. That differs from a driver, which
+moves the existing parts.
+
+To expose that setting on the whole clock, declare a root
+``radius = Length(100, min=10)`` and change the child to
+``base = ClockBase(radius=radius)``. Then
+``solid develop --set radius=120`` passes the value down.
+
+The rest of this page develops the same idea: parameter types, formulas,
+child propagation, repeated units and guards. It uses small independent
+parts to keep those examples focused. Existing constructor-based nodes
+remain supported; declarations remove their parameter bookkeeping.
+
+For example, a parameterized cylindrical part:
+
+.. code-block:: python
+
+    import cadquery as cq
     from solid_node.node import CadQueryNode
     from solid_node.parameters import Length
 

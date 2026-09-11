@@ -4,35 +4,45 @@
 Examples
 ========
 
-Two example machines are maintained alongside the framework, each on
-its own page and embedded there live — one page, one running model.
-The smaller models used throughout the tutorial pages are committed
-with the documentation itself and indexed at the bottom.
+Three machines show Solid Node applied to larger projects. Each has its
+own page and live model, and each design lives in an independent source
+repository. They are examples to explore after the step-by-step tutorial,
+not code that you need to copy into your first project.
 
 .. toctree::
    :maxdepth: 1
 
    example-v8-engine
    example-metamaquina2
+   example-clock-01
 
 :doc:`example-v8-engine`
-   A vibe-coded V8, built to demonstrate solid-node and strengthen the
-   framework: nested rotations and translations enough to test
-   rendering parity across every backend, with valve springs that
-   compress as the engine turns.
+   An engine with nested rotating and reciprocating assemblies, a timing
+   drive, and flexible valve springs. Follow how motion reaches the
+   pistons and valves through the assembled mechanism.
 
 :doc:`example-metamaquina2`
-   A real product — a Brazilian open-hardware RepRap 3D printer,
-   originally authored in OpenSCAD and read in place, leaf by leaf. It
-   is a machine in the full 0.6 sense: declared drivers, machine-level
-   instructions, and flexible belts, springs and filament.
+   An open-hardware 3D printer built around its original OpenSCAD design,
+   with axis controls, machine instructions, belts, springs and filament.
 
-Models used in this documentation
-=================================
+:doc:`example-clock-01`
+   A pendulum clock from Luke Wallin's 3DPrintedClocks, with a gear train,
+   escapement, motion works and pendulum. Its Solid Node model is read
+   from an external repository, not reimplemented in these docs.
 
-The tutorial pages embed small committed exports under
-``docs/_exports/``: the simple clock and its parts
-(:doc:`assemblies`, :doc:`testing`), the knob fusion (:doc:`fusion`),
-the per-backend demo boxes and the sheet demo (:doc:`leaf-nodes`), and
-the two-axis plotter (:doc:`driving`). Each is built from the code
-shown on its page.
+The example repositories retain their own licences. The framework tracks
+them as external Git submodules and builds their viewer exports; it does
+not copy their design source into the tutorial. Release-preview checkouts
+need the matching example revisions. See the source links on each page.
+
+Models used in the tutorial
+===============================
+
+The tutorial builds a small demonstration clock from a disc, a pointer
+and a pin, one step at a time. Those examples belong to the framework,
+under its Apache-2.0 licence; they are not derived from 3DPrintedClocks.
+
+Small exports under ``docs/_exports/`` illustrate those steps
+(:doc:`assemblies`, :doc:`animation`, :doc:`testing`), the knob
+fusion (:doc:`fusion`), backend and sheet examples (:doc:`leaf-nodes`)
+and the two-axis plotter (:doc:`driving`).

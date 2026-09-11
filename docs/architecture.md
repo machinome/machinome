@@ -1286,7 +1286,8 @@ package — a React-free three.js **widget** whose side-effect-free imperative c
 published tree into a host and returns a lifecycle handle; its published entry
 auto-mounts `data-solid-widget` containers, animates `$t` client-side (play/
 pause + timeline when animated), and honors `?t=`/`?autoplay=0`. The browser
-global exposes API version 5 so a host can check compatibility before mounting.
+global exposes API version 7 in the matching viewer source and accepts
+document schemas 1–4, so a host can check compatibility before mounting.
 The handle exposes immutable assembly metadata and host-controlled subtree
 focus and visibility by root-relative name path. Those inspection controls are
 session state: they neither mutate nor unload the published tree, and valid

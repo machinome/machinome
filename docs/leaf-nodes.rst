@@ -5,9 +5,11 @@
 Modeling parts
 ==============
 
-Make sure you have completed the :doc:`Quickstart <quickstart>`.
-At this point, you should be able to view your project in the viewer
-- either Openscad or the web viewer - and have a source code to edit.
+Continue from :doc:`quickstart` with the small part created by
+``solid new``. First change that part and inspect the result.
+Then compare how to make the same shape with other modelling backends.
+You can follow the SolidPython and CadQuery sections first and return
+to the other adapters when you need them.
 
 In Solid Node, a project is organized in a tree structure, with leaf
 nodes and internal nodes. **Leaf nodes** use underlying modelling
@@ -20,12 +22,9 @@ covered in :doc:`Combining parts <assemblies>`.
 Each node implements the `render()` method. Leaf nodes return an object
 of the underlying library.
 
-This page and the next build nodes the constructor way, with an
-``__init__`` that takes the part's parameters. A part can instead
-*declare* its parameters in the class body and let the framework derive
-identity, propagation and the command-line surface from the
-declaration; see :doc:`Declaring a machine <declaring>` once the
-constructor form is familiar.
+Declare configurable values with typed parameters as in :doc:`declaring`.
+The examples below concentrate on each adapter's geometry contract;
+constructor-based nodes remain supported for existing projects.
 
 There are five types of LeafNodes, each supporting one underlying
 technology to create solids:
@@ -60,9 +59,8 @@ And one whose part does not hold still:
   first adapter of the **FlexibleNode** base, which owns the flexible
   contract.
 
-The :doc:`Quickstart <quickstart>` starts with a Solid2Node example showing
-a box with a hole. Below are the codes for the same model in each modelling
-technology.
+The following examples model a box with a hole in each technology.
+They are separate from the clock tutorial.
 
 Solid2Node
 ==========

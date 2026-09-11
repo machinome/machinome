@@ -656,10 +656,10 @@ class Orbit(Joint):
     """A point of a body carried round one line, the body's attitude
     left alone: `Orbit(axis, at, carries, range, unit)`.
 
-    `axis` and `at` mean exactly what a `Revolute`'s mean -- a direction
+    ``axis`` and ``at`` have the same meaning as on a revolute joint: a direction
     and a point ON the line, in the frame of whoever declares the joint.
     `carries` is the point of the BODY that travels round that line,
-    stated in the SAME frame as `axis`/`at` when it is WRITTEN, and
+    stated in the SAME frame as ``axis`` / ``at`` when it is WRITTEN, and
     resolved the same way -- but its DEFAULT does not follow that rule
     (ADR-094's asymmetry, restated by the declaration-site-joint cycle):
     left unstated it is always the CHILD's own origin. Declared on the
@@ -671,7 +671,7 @@ class Orbit(Joint):
     literal `(0, 0, 0)` for it with no carry at all. Defaulting a SITE
     `carries` to the parent's origin instead -- following `at` -- would
     name a point that is not of the body, and with `at` also defaulted
-    would always lie ON the line: OpenCycloid's four `Orbit`s, every one
+    would always lie ON the line: OpenCycloid's four orbit joints, every one
     with both defaulted, are the measurement that settles it
     (evidence.md, task 2.1).
 
