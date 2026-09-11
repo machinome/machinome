@@ -4,8 +4,9 @@
 
 """Mechanical formula helpers for solid-node projects.
 
-This independent Apache-2.0 package depends on solid-node; solid-node
-does not depend on it. Import helpers from `solid_node_mechanics`.
+This independent Apache-2.0 package depends on solid-node. Its optional
+mechanics extra installs these helpers, but framework code never imports
+them. Import helpers from `solid_node_mechanics`.
 
 A *mechanism law* here is textbook geometry, not a design decision: how
 far a meshed gear has turned, how far a lead screw has advanced, where a

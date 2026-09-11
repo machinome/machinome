@@ -3,8 +3,10 @@
 Mechanical formula helpers for solid-node projects, licensed Apache-2.0.
 Version 0.1.0 is founded locally and **not published**.
 
-The dependency goes one way: **solid-node-mechanics depends on solid-node**.
-solid-node does not depend on, install, import or re-export this package.
+The runtime import dependency goes one way: **mechanics imports solid-node**.
+The default solid-node installation does not require this package. Its optional
+`mechanics` extra installs it, but framework code never imports or re-exports
+these helpers.
 The formulas use `solid_node.math` for degree-based numeric computation and
 symbolic expressions that solid-node's animation paths already understand.
 
@@ -19,6 +21,25 @@ python -m pip install .
 This installs solid-node if necessary. The required math operations exist in
 solid-node 0.6.0. Declarative parameters and the newer motion API are features
 of solid-node's unreleased development line, not promises about 0.6.0.
+
+The framework's unreleased `mechanics` extra follows its viewer installation
+pattern. Once both versions are published:
+
+```sh
+python -m pip install 'solid-node[mechanics]'
+# Or install both optional packages:
+python -m pip install 'solid-node[viewer,mechanics]'
+```
+
+For now, supply both local repositories, using a framework checkout that
+contains the new extra:
+
+```sh
+python -m pip install -e '/path/to/solid-node[mechanics]' -e /path/to/solid-node-mechanics
+```
+
+The extra selects a package to install; helpers still use the
+`solid_node_mechanics` import. Released solid-node 0.6.0 has no mechanics extra.
 
 ## Use
 

@@ -19,11 +19,15 @@ Kossel and V8 continue to need those formulas inside their new motion laws.
 
 The pilot directed this extraction on 2026-09-11: keep the useful helpers,
 allow their collection to expand independently, retain solid-node math and
-forbid the dependency in the other direction.
+initially forbid the dependency in the other direction. Later the same day,
+the pilot requested `solid-node[mechanics]`, following the viewer extra.
+That explicitly revises the packaging restriction, not the runtime import rule.
 
 Distribution `solid-node-mechanics` exposes `solid_node_mechanics`.
-It depends on `solid-node>=0.6.0`; solid-node never depends on this package,
-even optionally. No new mathematical backend or mechanism registry is added.
+It depends on `solid-node>=0.6.0`. The framework's default install remains
+independent; its optional mechanics extra installs this package. Framework code
+never imports or re-exports the helpers. No new mathematical backend or
+mechanism registry is added.
 The formulas remain pure functions over their arguments and retain their
 documented frame, degree, sign and unreachable-configuration conventions.
 
