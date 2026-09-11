@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "solid-node-mechanics"
+version = "0.1.0"
+description = "Mechanical formula helpers for solid-node projects"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [
+    { name = "Luis Henrique Cassis Fagundes", email = "lhfagundes@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = ["solid-node>=0.6.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "build>=1.2", "twine>=5"]
+
+[tool.setuptools.packages.find]
+include = ["solid_node_mechanics", "solid_node_mechanics.*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"
