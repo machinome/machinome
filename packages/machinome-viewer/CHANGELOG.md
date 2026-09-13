@@ -60,10 +60,56 @@ The viewer stops posing a machine and starts running one.
   name and by list, which is the sentence every viewer released so far
   gives a version 5 one.
 
-- **There is no on-screen control for a running document yet.** A version
-  5 document mounts, poses at its published rest values and is driven by
-  its host through `handle.run()`. The chrome — run, pause, step, speed,
-  the instruction buttons and the elapsed readout — is the next change.
+- **A running machine is driven on screen.** A document carrying a
+  program gets its own chrome: per declared input, a follow-only readout
+  of its committed position in design units, a nudge pair asking for a
+  relative movement over a duration, and a hold-to-jog pair asking for a
+  rate until the interaction ends; per declared instruction, one button,
+  which submits the instruction whichever form it is declared in — a
+  travel or a target — where the shipped button could only read a
+  target. Along the bottom runs the transport: run, pause, step one step
+  of the run, the speed to watch at, the elapsed simulation time, and
+  reset. Every request reports at the control that made it: completed,
+  blocked with the travel the machine actually admitted, refused with the
+  run's own reason, or cancelled; a step the run refuses is reported
+  across the panel and pauses it. Ten presses of `Add one` on the
+  Pascaline module's published build, made **on screen**, leave its
+  `units_entry` readout at ten digits and its tens drum at 65.54°.
+  (OpenSpec change `drive-the-run-on-screen`, ADR-048.)
+
+- **A running document has no slider and no timeline.** A slider writes a
+  position into a coordinate, and under a run a coordinate carries
+  history: writing one is the re-entry the running mode exists to
+  remove. A jog is bounded by the interaction that started it — release,
+  lost pointer capture, lost window focus, and a page that stops being
+  displayed — and the amount and rate editors configure the next request
+  rather than moving anything. A document of versions 1 to 4 keeps every
+  pixel of the chrome it had: the same sliders, the same click-to-edit
+  readouts, the same instruction buttons, the same animation bar.
+  `driverControls: 'none'` suppresses the running chrome exactly as it
+  suppresses the posed one, and `run: {nudge, jog}` sets what the
+  controls ask for.
+
+- **A rebuild keeps a live run only when it is the same machine.** The
+  development page's targeted document update keeps the bank, the active
+  commands, the step count and the elapsed clock when the republished
+  program's identity and the run's step size are both unchanged, and
+  otherwise discards the run, starts a fresh one at the new document's
+  rest state and says which it did. A coordinate is never carried across
+  because an identifier matched.
+
+- **A document carrying a program is photographed at its rest state.** No
+  step of the run is taken and the program's clock resolves to zero,
+  which is the instant the rest state is defined at; a non-zero `--time`
+  on such a document is refused by name before any browser starts, since
+  a running document publishes no animation cycle. The capture now also
+  mounts with the on-screen chrome suppressed, for a posed document and a
+  running one alike: a panel over the canvas would be in the photograph.
+
+- **Constrained dragging of a part is not in this release.** Picking a
+  part and dragging it along a declared input's freedom, through the same
+  command interface and with the same blocked-travel reporting, is the
+  next viewer cycle.
 
 ## 0.1.0 — unreleased
 

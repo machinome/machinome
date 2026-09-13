@@ -25,6 +25,9 @@ from solid_node_viewer.bundle import bundle_path, index_path
 
 FIXTURES = Path(__file__).parent / 'fixtures'
 SPINNER = FIXTURES / 'spinner'
+#: The Pascaline module's own published build: a version 5 document
+#: carrying a compiled mechanical program, beside stand-in meshes.
+PASCALINE = FIXTURES / 'pascaline'
 
 try:
     from PIL import Image, ImageChops  # noqa: F401
@@ -85,9 +88,24 @@ def published_build(target):
     return Path(target)
 
 
+def published_run(target):
+    """Stage the running fixture: a version 5 document carrying a
+    program, already named ``viewer.json``, beside the meshes it names."""
+    shutil.copytree(PASCALINE, target)
+    return Path(target)
+
+
 class QuietHandler(SimpleHTTPRequestHandler):
     def log_message(self, *args):
         pass
+
+    def end_headers(self):
+        # The suites rewrite a served document between two fetches of the
+        # same URL -- a republish, which is what `solid develop` does --
+        # and a browser answering the second from its cache would test
+        # the bytes of the first.
+        self.send_header('Cache-Control', 'no-store')
+        super().end_headers()
 
 
 @contextmanager

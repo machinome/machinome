@@ -10,6 +10,8 @@ import type {
 } from './viewer';
 import type { ViewerView } from './camera';
 import { assertSpeed } from './playback';
+import { DEFAULT_JOG, DEFAULT_NUDGE } from './runControls';
+import type { JogPlan, NudgePlan } from './runControls';
 
 /** The run's own mount options (OpenSpec `run-in-the-worker`, D6, D13).
  *
@@ -21,6 +23,12 @@ export interface ResolvedRunOptions {
   dt: number;
   record: number | null;
   autostart: boolean;
+  /** What a nudge and a jog ASK FOR (OpenSpec `drive-the-run-on-screen`,
+   * design D3/D4). They configure the request a control will make and
+   * write no coordinate anywhere: typing 5 into the amount moves
+   * nothing, and the next `+` asks for five. */
+  nudge: NudgePlan;
+  jog: JogPlan;
 }
 
 /** 1/240 s: the step the campaign's own interface sketch uses, four
@@ -31,6 +39,20 @@ export const DEFAULT_DT = 1 / 240;
 
 /** 600 ticks, 2.5 s at the default step. */
 export const DEFAULT_RECORD = 600;
+
+/** A finite number a request can actually be stated in, or a loud
+ * refusal naming the value. `nonNegative` is for a duration, which a
+ * negative number is not. */
+export function assertRequestValue(what: string, value: number,
+                                   nonNegative = false): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)
+      || (nonNegative && value < 0)) {
+    throw new Error(
+      `a run's ${what} must be a finite ${nonNegative ? 'non-negative ' : ''}`
+      + `number; got ${value}.`);
+  }
+  return value;
+}
 
 export function assertDt(dt: number): number {
   if (typeof dt !== 'number' || !Number.isFinite(dt) || dt <= 0) {
@@ -95,6 +117,20 @@ export function resolveOptions(
       record: options.run?.record === undefined
         ? DEFAULT_RECORD : options.run.record,
       autostart: options.run?.autostart ?? false,
+      nudge: {
+        amount: options.run?.nudge?.amount === undefined
+          ? DEFAULT_NUDGE.amount
+          : assertRequestValue('nudge amount', options.run.nudge.amount),
+        seconds: options.run?.nudge?.seconds === undefined
+          ? DEFAULT_NUDGE.seconds
+          : assertRequestValue('nudge duration', options.run.nudge.seconds,
+                               true),
+      },
+      jog: {
+        rate: options.run?.jog?.rate === undefined
+          ? DEFAULT_JOG.rate
+          : assertRequestValue('jog rate', options.run.jog.rate),
+      },
     },
   };
 }
@@ -135,6 +171,21 @@ export function showsDriverChrome(
   declaresDrivers: boolean,
 ): boolean {
   return mode === 'inline' && declaresDrivers;
+}
+
+/** Whether this mount presents the RUNNING chrome (OpenSpec
+ * `drive-the-run-on-screen`).
+ *
+ * The same switch as the posed chrome's, and the same two independent
+ * conditions: the host must want the chrome, and the document must
+ * carry a program for there to be any. What is gated is the pixels, not
+ * the interface -- a host that suppresses them keeps the whole run API.
+ */
+export function showsRunControls(
+  mode: DriverControlsMode,
+  carriesProgram: boolean,
+): boolean {
+  return mode === 'inline' && carriesProgram;
 }
 
 export function controlPlan(

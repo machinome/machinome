@@ -11,8 +11,8 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  SPEED_LADDER, advance, assertSpeed, cycleSecondsFor, formatMachineTime,
-  ladderFor, timelinePosition, timelineStep, timelineTime,
+  SPEED_LADDER, advance, assertSpeed, cycleSecondsFor, formatElapsed,
+  formatMachineTime, ladderFor, timelinePosition, timelineStep, timelineTime,
 } from './playback';
 
 describe('timelineStep', () => {
@@ -103,5 +103,60 @@ describe('assertSpeed', () => {
     for (const bad of [0, -5, NaN, Infinity, -Infinity]) {
       expect(() => assertSpeed(bad)).toThrow(String(bad));
     }
+  });
+});
+
+describe('formatElapsed', () => {
+  // Elapsed SIMULATION seconds, which never wrap: the same number the
+  // program's clock name binds to, and a different thing from
+  // `formatMachineTime`'s position inside a loop (OpenSpec
+  // `drive-the-run-on-screen`, design D6).
+  it('writes minutes, seconds and hundredths below an hour', () => {
+    expect(formatElapsed(0)).toBe('0:00.00');
+    expect(formatElapsed(10)).toBe('0:10.00');
+    expect(formatElapsed(65.54)).toBe('1:05.54');
+    expect(formatElapsed(599.99)).toBe('9:59.99');
+  });
+
+  it('grows an hours field at an hour and keeps it', () => {
+    expect(formatElapsed(3600)).toBe('1:00:00.00');
+    expect(formatElapsed(3661.5)).toBe('1:01:01.50');
+    expect(formatElapsed(36000)).toBe('10:00:00.00');
+  });
+
+  it('rounds into the next second rather than showing sixty', () => {
+    expect(formatElapsed(59.999)).toBe('1:00.00');
+    expect(formatElapsed(3599.999)).toBe('1:00:00.00');
+  });
+
+  it('holds one width while its leading field holds its digits', () => {
+    for (const seconds of [0, 0.5, 9.99, 59.99, 60, 599.99]) {
+      expect(formatElapsed(seconds)).toHaveLength(7);
+    }
+    for (const seconds of [600, 3599.99]) {
+      expect(formatElapsed(seconds)).toHaveLength(8);
+    }
+  });
+
+  it('never narrows once it has widened', () => {
+    // The caller carries the widest form it has shown; the readout pads
+    // its leading field rather than letting the digits walk left.
+    let width = 0;
+    const shown = [0, 5, 61, 600, 3600, 4000].map((seconds) => {
+      const text = formatElapsed(seconds, width);
+      width = Math.max(width, text.length);
+      return text;
+    });
+
+    expect(shown).toEqual([
+      '0:00.00', '0:05.00', '1:01.00', '10:00.00',
+      '1:00:00.00', '1:06:40.00',
+    ]);
+    expect(formatElapsed(5, 8)).toBe('00:05.00');
+  });
+
+  it('reads zero for a clock that has not started', () => {
+    expect(formatElapsed(-1)).toBe('0:00.00');
+    expect(formatElapsed(Number.NaN)).toBe('0:00.00');
   });
 });

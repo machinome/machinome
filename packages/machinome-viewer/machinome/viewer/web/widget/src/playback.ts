@@ -96,6 +96,32 @@ export function formatMachineTime(seconds: number, loop: number): string {
   return `${seconds.toFixed(2)} s`;
 }
 
+/** Elapsed SIMULATION seconds, which never wrap (OpenSpec
+ * `drive-the-run-on-screen`, design D6).
+ *
+ * A different number from `formatMachineTime`'s, and a different job: a
+ * loop has a length to choose a form from, and a run has none -- it only
+ * grows. So the form grows with it, `m:ss.ss` up to an hour and
+ * `h:mm:ss.ss` beyond, and `minWidth` is how a caller stops it NARROWING
+ * again: pass back the width of the widest reading shown so far and the
+ * leading field is zero-padded to hold it, so the digits stand still the
+ * way the driver readouts do instead of walking left as a run grows.
+ */
+export function formatElapsed(seconds: number, minWidth = 0): string {
+  const safe = Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+  // Rounded to hundredths ONCE, as an integer, so a value a hair under a
+  // minute reads 1:00.00 rather than 0:60.00.
+  const hundredths = Math.round(safe * 100);
+  const whole = Math.floor(hundredths / 100);
+  const rest = `${pad(whole % 60)}.${pad(hundredths % 100)}`;
+  const minutes = Math.floor(whole / 60);
+  const text = whole >= 3600
+    ? `${Math.floor(whole / 3600)}:${pad(minutes % 60)}:${rest}`
+    : `${minutes}:${rest}`;
+  return text.length >= minWidth
+    ? text : `${'0'.repeat(minWidth - text.length)}${text}`;
+}
+
 function pad(value: number): string {
   return value < 10 ? `0${value}` : String(value);
 }

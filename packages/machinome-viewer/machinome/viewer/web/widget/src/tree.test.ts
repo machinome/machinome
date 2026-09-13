@@ -27,6 +27,7 @@ import { evalExpr } from './evaluator';
 import { bindingTable } from './bindings';
 import { assemblyPathKey, materialForColor, WidgetTree } from './tree';
 import { Manifest, ManifestNode } from './types';
+import pascaline from '../../../tests/fixtures/pascaline/viewer.json';
 
 const evaluations = () =>
   (evalExpr as unknown as ReturnType<typeof vi.fn>).mock.calls
@@ -321,6 +322,22 @@ describe('WidgetTree driver-aware updates', () => {
     // about the `$t` transport, and `x_axis.motor` is not it.
     expect(timeDriven.animated).toBe(true);
     expect(driverOnly.animated).toBe(false);
+  });
+
+  it('is not animated for a document a committed bank poses', async () => {
+    // A version 5 document has no `$t`: its poses name bank
+    // coordinates, so `animated` is false and the animation bar is not
+    // built at all. Pinned on the acceptance document itself, so a
+    // change that made both the timeline and the transport appear
+    // beside each other would be loud here (OpenSpec
+    // `drive-the-run-on-screen`, task 2.2).
+    const document = pascaline as unknown as Manifest;
+    const tree = new WidgetTree(document.root, './', null,
+                               bindingTable(document, 'pascaline'));
+    await tree.loaded;
+
+    expect(document.version).toBe(5);
+    expect(tree.animated).toBe(false);
   });
 
   it('forgets a node\'s free variables when its operations are replaced', async () => {

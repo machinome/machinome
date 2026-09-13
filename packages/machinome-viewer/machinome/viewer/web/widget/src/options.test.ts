@@ -12,6 +12,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   controlPlan, resolveBaseUrl, resolveOptions, showsDriverChrome,
+  showsRunControls,
 } from './options';
 
 describe('resolveOptions', () => {
@@ -190,8 +191,13 @@ describe('showsDriverChrome', () => {
 
 describe('resolveOptions: the run', () => {
   it('defaults to 1/240 s, a 600-tick record, and NOT started', () => {
-    expect(resolveOptions({}).run)
-      .toEqual({ dt: 1 / 240, record: 600, autostart: false });
+    expect(resolveOptions({}).run).toEqual({
+      dt: 1 / 240, record: 600, autostart: false,
+      // OpenSpec `drive-the-run-on-screen`, design D3/D4: what a nudge
+      // and a jog ASK for, never a coordinate anything writes.
+      nudge: { amount: 1, seconds: 0.2 },
+      jog: { rate: 1 },
+    });
   });
 
   it('takes a step size the host chooses, once', () => {
@@ -215,4 +221,54 @@ describe('resolveOptions: the run', () => {
        expect(resolveOptions({ run: { autostart: true } }).run.autostart)
          .toBe(true);
      });
+});
+
+// ---------------------------------------------------------------------
+// OpenSpec `drive-the-run-on-screen`: what a nudge and a jog ask for,
+// and the one switch that suppresses both chromes.
+// ---------------------------------------------------------------------
+
+describe('resolveOptions: the running controls', () => {
+  it('takes a nudge amount and duration the host chooses', () => {
+    expect(resolveOptions({ run: { nudge: { amount: 5, seconds: 1 } } })
+      .run.nudge).toEqual({ amount: 5, seconds: 1 });
+  });
+
+  it('takes either half of a nudge on its own', () => {
+    expect(resolveOptions({ run: { nudge: { amount: 36 } } }).run.nudge)
+      .toEqual({ amount: 36, seconds: 0.2 });
+    expect(resolveOptions({ run: { nudge: { seconds: 0.5 } } }).run.nudge)
+      .toEqual({ amount: 1, seconds: 0.5 });
+  });
+
+  it('takes a jog rate in design units per simulated second', () => {
+    expect(resolveOptions({ run: { jog: { rate: 0.25 } } }).run.jog)
+      .toEqual({ rate: 0.25 });
+  });
+
+  it('refuses a request it could never issue, naming the value', () => {
+    expect(() => resolveOptions({ run: { nudge: { amount: Number.NaN } } }))
+      .toThrow(/NaN/);
+    expect(() => resolveOptions({ run: { nudge: { seconds: -1 } } }))
+      .toThrow(/-1/);
+    expect(() => resolveOptions({ run: { jog: { rate: Infinity } } }))
+      .toThrow(/Infinity/);
+  });
+});
+
+describe('showsRunControls', () => {
+  it('shows the running chrome for a document that carries a program', () => {
+    expect(showsRunControls('inline', true)).toBe(true);
+  });
+
+  it('shows nothing when the host suppresses the chrome', () => {
+    // The SAME switch as the posed chrome's, and it gates the pixels
+    // only: a host that suppresses them keeps the whole run API.
+    expect(showsRunControls('none', true)).toBe(false);
+  });
+
+  it('shows nothing for a document that carries no program', () => {
+    expect(showsRunControls('inline', false)).toBe(false);
+    expect(showsRunControls('none', false)).toBe(false);
+  });
 });

@@ -76,10 +76,26 @@ class CaptureCommandTest(TestCase):
         self.assertEqual(status, 0)
         capture.assert_called_once_with('staged')
         capture.return_value.render.assert_called_once_with('out.png', (100, 50), {
-            'animation': 'external', 'time': 0.5,
+            'animation': 'external', 'time': 0.5, 'driverControls': 'none',
             'view': {'camera': [1.0, 2.0, 3.0], 'target': [0.0, 0.0, 0.0]},
             'up': [0.0, 0.0, 1.0], 'fov': 22.5,
         })
+
+    def test_an_instant_on_a_running_document_exits_nonzero_by_name(self):
+        # The refusal is the capture's, raised before any browser starts,
+        # and the command reports it the way it reports every other
+        # thing the photograph cannot be.
+        from solid_node_viewer.capture import CaptureError
+        errors = io.StringIO()
+        with patch('solid_node_viewer.capture.Capture') as capture, \
+             redirect_stderr(errors):
+            capture.return_value.render.side_effect = CaptureError(
+                '--time 0.5 means nothing to a document carrying a program')
+            status = cli.main(['capture', 'staged', '-o', 'out.png',
+                               '--time', '0.5'])
+        self.assertEqual(status, 1)
+        self.assertIn('--time', errors.getvalue())
+        self.assertIn('program', errors.getvalue())
 
     def test_a_capture_failure_is_reported_and_exits_nonzero(self):
         from solid_node_viewer.capture import CaptureError

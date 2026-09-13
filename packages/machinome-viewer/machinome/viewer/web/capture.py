@@ -14,6 +14,14 @@ background left transparent.
 Everything about the node lives in the staged document. The options that
 come in from the command line describe the photograph only: its size, the
 animation instant, and the camera.
+
+A document carrying a mechanical program is photographed at its REST
+STATE: the run is created and never started, so no step of it is taken
+and the program's clock name resolves to zero, which is the instant the
+rest state is defined at. An animation instant means nothing to such a
+document -- it publishes no animation cycle -- so a non-zero ``--time``
+on one is refused by name before any browser starts. A still of a state
+the machine reached is a different picture and is not offered here.
 """
 
 import json
@@ -47,14 +55,32 @@ class _QuietHandler(SimpleHTTPRequestHandler):
         pass
 
 
+def carries_program(document):
+    """Whether a staged document carries a compiled mechanical program.
+
+    Version 5 is version 4 plus ``program``; a document declaring the
+    running version must carry one, whether or not the key is there,
+    which is the first thing the widget's loader refuses.
+    """
+    if not isinstance(document, dict):
+        return False
+    return document.get("program") is not None or document.get("version") == 5
+
+
 def mount_options(time=0.0, view=None, up=None, fov=None):
     """The options the mount page hands to the viewer.
 
     ``view`` is ``(eye, target)``, each a three-tuple; ``up`` a three-tuple;
     ``fov`` degrees. Absent camera options leave the viewer to frame the
     whole model itself.
+
+    The on-screen chrome is suppressed, for a posed document and a
+    running one alike: a photograph is of the model, and a control panel
+    drawn over the canvas would be in the picture -- opaque pixels where
+    the transparent background promises there are none.
     """
-    options = {"animation": "external", "time": time}
+    options = {"animation": "external", "time": time,
+               "driverControls": "none"}
     if view is not None:
         eye, target = view
         options["view"] = {"camera": list(eye), "target": list(target)}
@@ -78,13 +104,42 @@ class Capture:
         :func:`mount_options`.
         """
         self.assert_not_root()
-        if not os.path.isfile(os.path.join(self.staging, DOCUMENT)):
-            raise CaptureError(
-                f"Staged document not found: "
-                f"{os.path.join(self.staging, DOCUMENT)}"
-            )
+        document = self.staged_document()
+        self.assert_instant(document, options)
         self.add_viewer(options)
         self.capture(output, imgsize)
+
+    def staged_document(self):
+        """The staged ``viewer.json``, or a refusal naming what is
+        missing. Read before anything is copied or started."""
+        path = os.path.join(self.staging, DOCUMENT)
+        if not os.path.isfile(path):
+            raise CaptureError(f"Staged document not found: {path}")
+        try:
+            with open(path) as handle:
+                return json.load(handle)
+        except ValueError as error:
+            raise CaptureError(
+                f"Staged document is not readable JSON: {path}: {error}"
+            ) from error
+
+    def assert_instant(self, document, options):
+        """Refuse an animation instant a running document cannot have.
+
+        Before any browser starts, which is the posture this capability
+        already takes toward everything it cannot do.
+        """
+        time = options.get("time", 0.0)
+        if not time or not carries_program(document):
+            return
+        raise CaptureError(
+            f"--time {time} means nothing to a staged document carrying a "
+            "mechanical program: a running document publishes no animation "
+            "cycle, so honouring an instant would photograph the rest state "
+            "while claiming another. Photograph the rest state with "
+            "--time 0, which is the default. A still of a state the machine "
+            "reached is a different picture and is not offered here."
+        )
 
     def add_viewer(self, options):
         """Put the bundle and a mount page beside the staged document."""
@@ -102,8 +157,17 @@ background:transparent}}
 canvas{{background:transparent}}
 </style></head><body><div id="host"></div>
 <script src="{BUNDLE_NAME}"></script><script>
-SolidNodeWidget.mount('#host', '{DOCUMENT}', {payload}).then(() => {{
+SolidNodeWidget.mount('#host', '{DOCUMENT}', {payload}).then((viewer) => {{
   requestAnimationFrame(() => requestAnimationFrame(() => {{
+    var run = viewer.run();
+    if (run) {{
+      // The instant this picture was taken at. A run is created paused
+      // and nothing here starts it, so a document carrying a program is
+      // photographed at its rest state.
+      document.body.dataset.tick = String(run.tick());
+      document.body.dataset.clock = String(run.elapsed());
+      document.body.dataset.state = JSON.stringify(run.state());
+    }}
     document.body.dataset.ready = '1';
   }}));
 }}).catch((error) => {{ document.body.dataset.error = String(error); }});

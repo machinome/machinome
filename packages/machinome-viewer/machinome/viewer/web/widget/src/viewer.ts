@@ -10,6 +10,7 @@ import { frameBounds, ViewerView } from './camera';
 import { AssemblyNavigation } from './assembly';
 import {
   controlPlan, resolveBaseUrl, resolveOptions, showsDriverChrome,
+  showsRunControls,
 } from './options';
 import {
   BreadcrumbSegment, ControlLayer, controlLayer, DriverControl,
@@ -22,6 +23,15 @@ import {
   Animation, advance, assertSpeed, cycleSecondsFor, formatMachineTime,
   ladderFor, timelinePosition, timelineTime,
 } from './playback';
+import {
+  formatOutcome, runControlLayer, runInputControl, transportPlan,
+} from './runControls';
+import type {
+  JogPlan, NudgePlan, OutcomeReport, RunControlLayer, RunControlsInput,
+  RunInputControl, RunInstructionControl, TransportPlan,
+} from './runControls';
+import { republishPlan } from './run/republish';
+import type { RunIdentity } from './run/republish';
 import { EvalScope, freeVariables, TIME_ID } from './evaluator';
 import { releaseExpressions, retainExpressions } from './expressions';
 import { BindingTable, bindingTable, EMPTY_BINDINGS } from './bindings';
@@ -73,6 +83,12 @@ export interface ViewerOptions {
     dt?: number;
     record?: number | null;
     autostart?: boolean;
+    /** What the on-screen nudge and jog controls ASK FOR (OpenSpec
+     * `drive-the-run-on-screen`): a relative travel over a duration,
+     * and a rate in design units per simulated second. They configure
+     * the request, never a coordinate. */
+    nudge?: { amount?: number; seconds?: number };
+    jog?: { rate?: number };
   };
 }
 
@@ -238,6 +254,28 @@ export async function mount(
   let loadedProgram: LoadedProgram | null = null;
   let bank: Record<string, number> = {};
   let elapsedSeconds = 0;
+  // The running chrome (OpenSpec `drive-the-run-on-screen`). What a
+  // maker has typed into the amount and rate fields is a REQUEST
+  // setting, not a coordinate: it survives a republish and moves
+  // nothing by itself. `outcomes` is the last report of each control,
+  // by input id or instruction name; `refusal` is the run's own message
+  // for a tick it refused, shown across the panel until the next tick
+  // commits.
+  let runChrome: RunChrome | undefined;
+  const nudgeSettings: Record<string, NudgePlan> = {};
+  const jogSettings: Record<string, JogPlan> = {};
+  let outcomes: Record<string, OutcomeReport | null> = {};
+  // How many requests each control still has in flight. A control
+  // indicates the run until its OWN commands retire, which is a
+  // different question from what its last report said: pressing an
+  // instruction whose input the previous press still owns is refused
+  // at once, and the movement already running is untouched.
+  let pending: Record<string, number> = {};
+  let refusal: string | null = null;
+  let republishNotice: string | null = null;
+  // The widest elapsed reading shown so far: the readout widens once and
+  // never narrows, so the digits hold still as the run grows.
+  let elapsedWidth = 0;
 
   // Under a run the BANK is what poses the geometry, and the program's
   // clock name binds to elapsed simulation seconds beside it. `$t` stays
@@ -280,6 +318,68 @@ export async function mount(
     if (speedControl && speedControl.value !== String(speed)) {
       fillSpeedControl(speedControl, speed);
     }
+    refreshTransport();
+  };
+
+  /** The transport bar, from where the run actually stands. Called on
+   * every committed frame and after anything a control did. */
+  const refreshTransport = () => {
+    if (runChrome === undefined) {
+      return;
+    }
+    const plan = transportPlan({
+      running: runtime?.running() ?? false,
+      speed,
+      elapsedSeconds: runtime?.elapsedSeconds() ?? 0,
+      tick: runtime?.tick() ?? 0,
+      refusal,
+      elapsedWidth,
+    });
+    elapsedWidth = Math.max(elapsedWidth, plan.elapsed.length);
+    runChrome.transport(plan);
+  };
+
+  /** Issue one request and report its outcome AT THE CONTROL that made
+   * it (design D7), whatever the run answers.
+   *
+   * `key` is the input id or the instruction name -- the control the
+   * maker pressed. A request made here goes through the same handle a
+   * host would call, so the two are indistinguishable to the run, to
+   * its listeners and to a readback.
+   */
+  const request = (key: string, unit: string | null,
+                   issue: () => Promise<Outcome[]>): Promise<void> => {
+    // A request into a paused run would report nothing, forever, which
+    // is indistinguishable from a broken button: pressing a control is
+    // asking the machine to move (design D5).
+    if (runtime !== undefined && !runtime.running()) {
+      runtime.start();
+    }
+    const started: OutcomeReport = {
+      status: 'active', admitted: null, unit, message: null,
+    };
+    pending[key] = (pending[key] ?? 0) + 1;
+    outcomes[key] = started;
+    runChrome?.outcome(key, started, true);
+    refreshTransport();
+    return issue().then(
+      (settled) => { outcomes[key] = summarise(settled, unit); },
+      (error: unknown) => {
+        // A request the run DECLINED -- a second command on an input
+        // another one already owns, an unknown instruction, a duration
+        // that is not a whole number of ticks. Reported in place, so a
+        // manual control never appears to have taken over an input it
+        // did not.
+        outcomes[key] = {
+          status: 'refused', admitted: null, unit,
+          message: error instanceof Error ? error.message : String(error),
+        };
+      },
+    ).then(() => {
+      pending[key] = Math.max((pending[key] ?? 1) - 1, 0);
+      runChrome?.outcome(key, outcomes[key], pending[key] > 0);
+      refreshTransport();
+    });
   };
 
   const applyFrame = (view: View | null) => {
@@ -303,13 +403,38 @@ export async function mount(
   });
 
   /** Start (or restart) the run of a document carrying a program, posed
-   * at its published rest bank before the first tick is ever taken. */
+   * at its published rest bank before the first tick is ever taken.
+   *
+   * `republished` marks the targeted document update `solid develop`
+   * drives, where a live run may stand rather than restart: it keeps
+   * its bank, its active commands, its step count and its elapsed clock
+   * only when the republished program's identity and the run's step
+   * size are both unchanged (OpenSpec `drive-the-run-on-screen`, §3).
+   * A coordinate is never carried across because an identifier matched.
+   */
   const startRuntime = async (document: Manifest,
-                             program: LoadedProgram | null) => {
+                              program: LoadedProgram | null,
+                              republished = false) => {
+    const current: RunIdentity | null =
+      runtime === undefined || loadedProgram === null
+        ? null : { identity: runtime.identity(), dt: resolved.run.dt };
+    const next: RunIdentity | null = program === null
+      ? null : { identity: program.identity, dt: resolved.run.dt };
+    const plan = republished ? republishPlan(current, next) : null;
+    republishNotice = plan === null ? null : plan.message;
+    if (plan !== null && plan.keep) {
+      // The same machine: only the geometry and the chrome reconcile.
+      loadedProgram = program;
+      return;
+    }
     runtime?.dispose();
     runtime = undefined;
     loadedProgram = program;
     elapsedSeconds = 0;
+    outcomes = {};
+    pending = {};
+    refusal = null;
+    elapsedWidth = 0;
     if (program === null) {
       bank = {};
       return;
@@ -329,7 +454,27 @@ export async function mount(
       // Rendering never advances the run, and the run never renders: a
       // dropped frame drops DISPLAY, not mechanics.
       tree?.update(scope(), posed(frame.moved));
+      // The readouts FOLLOW committed state and never feed a movement
+      // back into the run. Only the controls whose input moved are
+      // written; a refusal shown across the panel clears here, because
+      // a tick has committed.
+      if (refusal !== null) {
+        refusal = null;
+        runChrome?.refuse(null);
+      }
+      runChrome?.commit(frame);
+      refreshTransport();
       renderer.render(scene, camera);
+    });
+    started.onRefusal((reply) => {
+      // A tick that committed nothing: the whole machine disagreeing
+      // with itself. Its message names the relation as its author wrote
+      // it, it is shown across the panel rather than on one control,
+      // and the run pauses on it rather than repeating the refused step
+      // sixty times a second.
+      refusal = reply.message;
+      runChrome?.refuse(reply.message);
+      refreshTransport();
     });
     // Awaited before the tree is built, so the handle a host receives
     // answers for a run that has loaded its program -- and so a program
@@ -397,6 +542,7 @@ export async function mount(
     // reflects the values that survived the republish and a focus the
     // update may have reset (design D10).
     rebuildDriverChrome();
+    rebuildRunChrome();
   };
 
   // The ONE place focus moves, whether the host called `setRoot` or the
@@ -410,6 +556,7 @@ export async function mount(
     assemblyNavigation.setRoot(tree, path);
     applyFrame(null);
     rebuildDriverChrome();
+    rebuildRunChrome();
     renderer.render(scene, camera);
   };
 
@@ -456,6 +603,98 @@ export async function mount(
       trigger: (name: string) => drivers.trigger(name),
       focus: focusOn,
     });
+  }
+
+  /** What the running chrome is looking at right now: the loaded
+   * program's tables, the committed bank, the focused layer, the
+   * maker's own request settings, and where each control's last request
+   * got to. */
+  const runLayerInput = (): RunControlsInput => ({
+    program: loadedProgram,
+    values: runtime === undefined ? { ...(loadedProgram?.initial ?? {}) }
+      : runtime.bank(),
+    focus: assemblyNavigation.root(),
+    rootLabel: tree?.name ?? 'root',
+    nudge: nudgeSettings,
+    jog: jogSettings,
+    outcomes,
+    transport: {
+      running: runtime?.running() ?? false,
+      speed,
+      elapsedSeconds: runtime?.elapsedSeconds() ?? 0,
+      tick: runtime?.tick() ?? 0,
+      refusal,
+      elapsedWidth,
+    },
+  });
+
+  function rebuildRunChrome(): void {
+    runChrome?.remove();
+    runChrome = undefined;
+    const started = runtime;
+    if (loadedProgram === null || started === undefined) {
+      return;
+    }
+    // The same switch as the posed chrome's, gating the pixels only: a
+    // host that suppresses them keeps the whole run API.
+    if (!showsRunControls(resolved.driverControls, true)) {
+      return;
+    }
+    const unit = (id: string): string | null =>
+      (loadedProgram as LoadedProgram).drivers[id]?.unit ?? null;
+    runChrome = buildRunChrome(container, runControlLayer(runLayerInput()), {
+      nudge(id: string, amount: number, seconds: number) {
+        void request(id, unit(id),
+                     () => started.move(id, { by: amount, duration: seconds }));
+      },
+      jogStart(id: string, rate: number) {
+        void request(id, unit(id), () => started.rate(id, rate));
+      },
+      jogStop(id: string) {
+        // The release itself reports nothing: the outcome a maker reads
+        // is the one the RATE command retires with, under the handle
+        // the press created.
+        started.rate(id, 0).catch(() => undefined);
+      },
+      trigger(name: string) {
+        void request(name, null, () => started.trigger(name));
+      },
+      setNudge(id: string, plan: NudgePlan) {
+        // Configures the next request; nothing moves (design D3).
+        nudgeSettings[id] = plan;
+      },
+      setJog(id: string, plan: JogPlan) {
+        jogSettings[id] = plan;
+      },
+      play() {
+        if (started.running()) {
+          started.pause();
+        } else {
+          started.start();
+        }
+        refreshTransport();
+      },
+      step() {
+        // Exactly one tick, whether or not the run is started, which is
+        // what makes a jump or a stop inspectable.
+        started.step(1).catch(() => undefined).then(refreshTransport);
+      },
+      reset() {
+        // The initial snapshot: the rest bank, tick zero, no commands.
+        // The readouts follow, because they follow committed state.
+        outcomes = {};
+        pending = {};
+        elapsedWidth = 0;
+        started.reset().catch(() => undefined).then(() => {
+          runChrome?.clearOutcomes();
+          refreshTransport();
+        });
+      },
+      setSpeed,
+      focus: focusOn,
+    });
+    runChrome.notice(republishNotice);
+    refreshTransport();
   }
 
   // The initial load: retains the shared expression table (D8)
@@ -526,6 +765,8 @@ export async function mount(
       unsubscribeDrivers();
       driverChrome?.remove();
       driverChrome = undefined;
+      runChrome?.remove();
+      runChrome = undefined;
       // Nothing will advance the ramps again, so their promises settle
       // here rather than never.
       drivers.dispose();
@@ -557,7 +798,7 @@ export async function mount(
       // of every node that reads it differently, whether or not that
       // node's own operations changed.
       bindingsTable = table;
-      await startRuntime(document, program);
+      await startRuntime(document, program, true);
       await tree?.reconcile(document.root, baseUrl, null, bindingsTable);
       if (tree) {
         const rootChanged = assemblyNavigation.reconcile(tree);
@@ -921,7 +1162,8 @@ function buildDriverChrome(
   panel.className = 'driver-controls';
   panel.style.cssText = PANEL_STYLE;
 
-  panel.append(buildBreadcrumb(layer, actions));
+  panel.append(buildBreadcrumb(layer.breadcrumb, layer.children,
+                               actions.focus, 'driver'));
 
   if (layer.instructions.length > 0) {
     const row = document.createElement('div');
@@ -950,33 +1192,39 @@ function buildDriverChrome(
   };
 }
 
+// One breadcrumb, for either chrome: the posed one and the running one
+// follow the SAME focused layer, so they navigate it through the same
+// element rather than through two that could drift apart. `prefix`
+// keeps the class names each chrome's own.
 function buildBreadcrumb(
-  layer: ControlLayer,
-  actions: DriverChromeActions,
+  trail: BreadcrumbSegment[],
+  children: string[],
+  focus: (path: AssemblyPath | null) => void,
+  prefix: string,
 ): HTMLElement {
   const nav = document.createElement('nav');
-  nav.className = 'driver-breadcrumb';
+  nav.className = `${prefix}-breadcrumb`;
   nav.setAttribute('aria-label', 'Assembly focus');
   nav.style.cssText =
     'display:flex;flex-wrap:wrap;align-items:center;gap:4px;';
 
-  layer.breadcrumb.forEach((segment, index) => {
+  trail.forEach((segment, index) => {
     if (index > 0) {
       nav.append(separator('/'));
     }
-    nav.append(buildBreadcrumbStep(segment, actions));
+    nav.append(buildBreadcrumbStep(segment, focus, prefix));
   });
 
-  const focused = layer.breadcrumb[layer.breadcrumb.length - 1].path;
-  layer.children.forEach((name) => {
+  const focused = trail[trail.length - 1].path;
+  children.forEach((name) => {
     nav.append(separator('|'));
     const button = document.createElement('button');
-    button.className = 'driver-descend';
+    button.className = `${prefix}-descend`;
     button.textContent = `${name} ▸`;
     button.setAttribute('aria-label', `Focus ${name}`);
     button.style.cssText = BUTTON_STYLE;
     button.addEventListener('click', () => {
-      actions.focus([...focused, name]);
+      focus([...focused, name]);
     });
     nav.append(button);
   });
@@ -986,10 +1234,11 @@ function buildBreadcrumb(
 
 function buildBreadcrumbStep(
   segment: BreadcrumbSegment,
-  actions: DriverChromeActions,
+  focus: (path: AssemblyPath | null) => void,
+  prefix: string,
 ): HTMLElement {
   const button = document.createElement('button');
-  button.className = 'driver-breadcrumb-step';
+  button.className = `${prefix}-breadcrumb-step`;
   button.textContent = segment.label;
   button.setAttribute('aria-label', `Focus ${segment.label}`);
   button.style.cssText = BUTTON_STYLE;
@@ -1001,7 +1250,7 @@ function buildBreadcrumbStep(
   }
   button.addEventListener('click', () => {
     // The document root is `null` to the focus API, not an empty path.
-    actions.focus(segment.path.length === 0 ? null : segment.path);
+    focus(segment.path.length === 0 ? null : segment.path);
   });
   return button;
 }
@@ -1332,4 +1581,508 @@ function buildControls(
   }
   container.append(bar);
   return { slider, speedControl, readout, elements };
+}
+
+// ---------------------------------------------------------------------
+// The RUNNING chrome's DOM (OpenSpec `drive-the-run-on-screen`).
+// Everything below RENDERS a `RunControlLayer` and calls back through
+// the same `run()` handle a host uses; it decides nothing itself,
+// because every decision lives in `runControls.ts` where plain node can
+// test it. Its proof is the live browser drive.
+//
+// What a maker meets is one row per declared input -- its committed
+// position, a nudge pair, a hold-to-jog pair and the amount and rate
+// those two will ask for -- one button per declared instruction, and a
+// transport bar. There is no slider and no timeline, because a slider
+// writes a position into a coordinate and a coordinate under a run
+// carries history.
+
+interface RunChromeActions {
+  nudge(id: string, amount: number, seconds: number): void;
+  jogStart(id: string, rate: number): void;
+  jogStop(id: string): void;
+  trigger(name: string): void;
+  setNudge(id: string, plan: NudgePlan): void;
+  setJog(id: string, plan: JogPlan): void;
+  play(): void;
+  step(): void;
+  reset(): void;
+  setSpeed(speed: number): void;
+  focus(path: AssemblyPath | null): void;
+}
+
+interface RunChrome {
+  /** A committed frame: the readouts follow it, and only the controls
+   * whose input moved are written. */
+  commit(frame: CommittedFrame): void;
+  /** What became of the last request one control made, and whether
+   * that control still has one in flight. */
+  outcome(key: string, report: OutcomeReport | null, busy?: boolean): void;
+  /** The run's own message for a tick it refused, or null to clear it. */
+  refuse(message: string | null): void;
+  /** Everything the transport shows. */
+  transport(plan: TransportPlan): void;
+  /** What a republish did to the run, or null. */
+  notice(message: string | null): void;
+  clearOutcomes(): void;
+  remove(): void;
+}
+
+// A running document's panel carries more per row than a posed one --
+// a readout, two control pairs and the three fields those pairs will
+// ask with -- so it is given the width to keep one input on one line.
+const RUN_PANEL_STYLE = PANEL_STYLE.replace('max-width:75%;',
+                                            'max-width:96%;');
+
+const RUN_FIELD_STYLE =
+  'width:3.6em;font:inherit;background:rgba(255,255,255,0.08);'
+  + 'border:1px solid rgba(255,255,255,0.25);border-radius:3px;'
+  + 'color:inherit;padding:1px 3px;';
+
+const RUN_LEGEND_STYLE = 'opacity:0.6;font-size:11px;';
+
+const RUN_OUTCOME_STYLE =
+  'opacity:0.85;font-size:11px;min-height:13px;max-width:32em;';
+
+/** What became of one request, from the handles it created.
+ *
+ * A `trigger` claims one command per input it moves, so the honest
+ * summary is the first one that did NOT simply complete -- a blocked or
+ * refused half of an instruction is the half worth reading. */
+function summarise(settled: readonly Outcome[],
+                   unit: string | null): OutcomeReport {
+  const notable = settled.find((one) => one.status !== 'completed');
+  const chosen = notable ?? settled[settled.length - 1];
+  if (chosen === undefined) {
+    return { status: 'completed', admitted: null, unit, message: null };
+  }
+  return {
+    status: chosen.status as OutcomeReport['status'],
+    admitted: chosen.admitted,
+    unit,
+    message: null,
+  };
+}
+
+function buildRunChrome(
+  container: HTMLElement,
+  layer: RunControlLayer,
+  actions: RunChromeActions,
+): RunChrome {
+  const panel = document.createElement('div');
+  panel.className = 'run-controls';
+  panel.style.cssText = RUN_PANEL_STYLE;
+
+  panel.append(buildBreadcrumb(layer.breadcrumb, layer.children,
+                               actions.focus, 'run'));
+
+  const reports = new Map<string, OutcomeWriter>();
+  const rows = new Map<string, (value: number) => void>();
+  const releasers = new Set<() => void>();
+
+  if (layer.instructions.length > 0) {
+    panel.append(legend('Instructions'));
+    const row = document.createElement('div');
+    row.className = 'run-instructions';
+    row.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;';
+    layer.instructions.forEach((entry) => {
+      row.append(buildInstructionControl(entry, actions, reports));
+    });
+    panel.append(row);
+  }
+
+  if (layer.inputs.length > 0) {
+    panel.append(legend('Inputs — ask the machine to move'));
+    layer.inputs.forEach((control) => {
+      panel.append(buildRunInputRow(control, actions, reports, rows,
+                                    releasers));
+    });
+  }
+
+  const refusalLine = document.createElement('div');
+  refusalLine.className = 'run-refusal';
+  refusalLine.hidden = true;
+  refusalLine.setAttribute('role', 'status');
+  refusalLine.style.cssText =
+    'color:#ffd166;font-size:12px;max-width:40em;';
+  panel.append(refusalLine);
+
+  const noticeLine = document.createElement('div');
+  noticeLine.className = 'run-notice';
+  noticeLine.hidden = true;
+  noticeLine.setAttribute('role', 'status');
+  noticeLine.style.cssText = 'opacity:0.7;font-size:11px;max-width:40em;';
+  panel.append(noticeLine);
+
+  container.append(panel);
+
+  // A jog left engaged is the failure that damages trust, so the same
+  // release runs on a pointer that goes away AND on a page that does:
+  // the window losing focus, and the page ceasing to be displayed.
+  const releaseAll = () => { releasers.forEach((release) => release()); };
+  window.addEventListener('blur', releaseAll);
+  const onVisibility = () => { if (document.hidden) releaseAll(); };
+  document.addEventListener('visibilitychange', onVisibility);
+
+  const bar = buildTransportBar(layer.transport, actions);
+  container.append(bar.element);
+
+  return {
+    commit(frame: CommittedFrame) {
+      for (const id of frame.moved) {
+        rows.get(id)?.(frame.bank[id]);
+      }
+    },
+    outcome(key: string, report: OutcomeReport | null, busy = false) {
+      reports.get(key)?.(report, busy);
+    },
+    refuse(message: string | null) {
+      refusalLine.hidden = message === null;
+      refusalLine.textContent = message === null ? '' : `refused: ${message}`;
+    },
+    transport: bar.update,
+    notice(message: string | null) {
+      noticeLine.hidden = message === null;
+      noticeLine.textContent = message ?? '';
+    },
+    clearOutcomes() {
+      reports.forEach((write) => write(null, false));
+    },
+    remove() {
+      releaseAll();
+      window.removeEventListener('blur', releaseAll);
+      document.removeEventListener('visibilitychange', onVisibility);
+      panel.remove();
+      bar.element.remove();
+    },
+  };
+}
+
+function legend(text: string): HTMLElement {
+  const span = document.createElement('span');
+  span.className = 'run-legend';
+  span.textContent = text;
+  span.style.cssText = RUN_LEGEND_STYLE;
+  return span;
+}
+
+function outcomeElement(): HTMLElement {
+  const span = document.createElement('span');
+  span.className = 'run-outcome';
+  span.setAttribute('aria-live', 'polite');
+  span.style.cssText = RUN_OUTCOME_STYLE;
+  return span;
+}
+
+type OutcomeWriter = (report: OutcomeReport | null, busy: boolean) => void;
+
+/** Writes a report into one element, and marks the control that issued
+ * it busy while any request it made is still in flight.
+ *
+ * The two are deliberately separate questions. A second press on an
+ * input the first press still owns is refused AT ONCE -- so the text
+ * says so immediately -- while the movement already running is
+ * untouched, and the button goes on indicating the run until its own
+ * commands retire. */
+function outcomeWriter(target: HTMLElement,
+                       indicator?: HTMLElement): OutcomeWriter {
+  return (report, busy) => {
+    target.textContent = formatOutcome(report);
+    target.title = report?.message ?? '';
+    target.style.color = report !== null
+      && (report.status === 'refused' || report.status === 'blocked')
+      ? '#ffd166' : 'inherit';
+    if (indicator === undefined) {
+      return;
+    }
+    if (busy) {
+      indicator.setAttribute('aria-busy', 'true');
+      indicator.style.cssText = BUTTON_STYLE
+        + 'background:rgba(127,209,255,0.35);';
+    } else {
+      indicator.removeAttribute('aria-busy');
+      indicator.style.cssText = BUTTON_STYLE;
+    }
+  };
+}
+
+function buildInstructionControl(
+  entry: RunInstructionControl,
+  actions: RunChromeActions,
+  reports: Map<string, OutcomeWriter>,
+): HTMLElement {
+  const cell = document.createElement('div');
+  cell.className = 'run-instruction-control';
+  cell.dataset.instruction = entry.name;
+  cell.style.cssText = 'display:flex;flex-direction:column;gap:2px;';
+
+  const button = document.createElement('button');
+  button.className = 'run-instruction';
+  button.dataset.instruction = entry.name;
+  button.textContent = entry.label;
+  // The button REFERENCES the instruction; it does not repeat its
+  // definition, and a travel (`by`) and a target are one button apiece.
+  button.setAttribute('aria-label', `Run ${entry.label}`);
+  button.style.cssText = BUTTON_STYLE;
+  button.addEventListener('click', () => { actions.trigger(entry.name); });
+
+  const report = outcomeElement();
+  const write = outcomeWriter(report, button);
+  write(entry.outcome, entry.outcome?.status === 'active');
+  reports.set(entry.name, write);
+
+  cell.append(button, report);
+  return cell;
+}
+
+function buildRunInputRow(
+  control: RunInputControl,
+  actions: RunChromeActions,
+  reports: Map<string, OutcomeWriter>,
+  rows: Map<string, (value: number) => void>,
+  releasers: Set<() => void>,
+): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'run-input';
+  row.dataset.input = control.id;
+  row.style.cssText =
+    'display:flex;flex-wrap:wrap;align-items:center;gap:6px;';
+
+  const name = document.createElement('span');
+  name.className = 'run-input-name';
+  name.textContent = control.label;
+  name.style.cssText = 'min-width:7em;';
+
+  // A follow-only readout: it never becomes an editor, and there is no
+  // way to type or drag a position into it. Tabular figures and a fixed
+  // `ch` reservation keep the digits still under a jog, the same
+  // treatment the posed chrome's passive readout has.
+  const readout = document.createElement('span');
+  readout.className = 'run-readout';
+  const figure = document.createElement('span');
+  figure.className = 'run-readout-value';
+  figure.style.cssText = 'display:inline-block;min-width:9ch;text-align:right;'
+    + 'font-variant-numeric:tabular-nums;';
+  const unit = document.createElement('span');
+  unit.className = 'run-readout-unit';
+  readout.append(figure, unit);
+  readout.setAttribute('aria-label', control.unit === null
+    ? `${control.label} position`
+    : `${control.label} position (${control.unit})`);
+
+  let amount = control.nudge.amount;
+  let seconds = control.nudge.seconds;
+  let rate = control.jog.rate;
+
+  const nudgeGroup = document.createElement('span');
+  nudgeGroup.style.cssText = 'display:inline-flex;gap:2px;';
+  const nudge = (sign: number, mark: string, way: string) => {
+    const button = document.createElement('button');
+    button.className = 'run-nudge';
+    button.dataset.direction = sign < 0 ? '-' : '+';
+    button.textContent = mark;
+    button.setAttribute('aria-label', `Nudge ${control.label} ${way}`);
+    button.title = `Ask ${control.label} to move ${way} by the amount beside`;
+    button.style.cssText = BUTTON_STYLE;
+    button.addEventListener('click', () => {
+      actions.nudge(control.id, sign * amount, seconds);
+    });
+    return button;
+  };
+  nudgeGroup.append(nudge(-1, '−', 'down'), nudge(1, '+', 'up'));
+
+  const jogGroup = document.createElement('span');
+  jogGroup.style.cssText = 'display:inline-flex;gap:2px;';
+  const jog = (sign: number, mark: string, way: string) => {
+    const button = document.createElement('button');
+    button.className = 'run-jog';
+    button.dataset.direction = sign < 0 ? '-' : '+';
+    button.textContent = mark;
+    button.setAttribute('aria-label', `Jog ${control.label} ${way}`);
+    button.title = `Hold to move ${control.label} ${way} at the rate beside`;
+    button.style.cssText = BUTTON_STYLE;
+    let held = false;
+    const release = () => {
+      if (!held) {
+        return;
+      }
+      held = false;
+      button.style.cssText = BUTTON_STYLE;
+      actions.jogStop(control.id);
+    };
+    releasers.add(release);
+    button.addEventListener('pointerdown', (event: PointerEvent) => {
+      event.preventDefault();
+      if (held) {
+        return;
+      }
+      held = true;
+      button.style.cssText = BUTTON_STYLE + 'background:rgba(127,209,255,0.35);';
+      // Captured on press, so a drag off the button still releases.
+      try {
+        button.setPointerCapture(event.pointerId);
+      } catch {
+        // A browser that cannot capture still releases on pointerup.
+      }
+      actions.jogStart(control.id, sign * rate);
+    });
+    // Five independent release paths, because a pointer or a page that
+    // goes away while the button is held must not leave a machine
+    // running. The window's `blur` and the page's `visibilitychange`
+    // are registered once, for the whole chrome.
+    button.addEventListener('pointerup', release);
+    button.addEventListener('pointercancel', release);
+    button.addEventListener('lostpointercapture', release);
+    return button;
+  };
+  jogGroup.append(jog(-1, '◂', 'down'), jog(1, '▸', 'up'));
+
+  // The amount, the duration and the rate configure the REQUEST those
+  // controls will make. Typing into one moves nothing.
+  const field = (
+    className: string, value: number, label: string,
+    write: (parsed: number) => void,
+  ): HTMLInputElement => {
+    const input = document.createElement('input');
+    input.className = className;
+    input.type = 'number';
+    input.step = 'any';
+    input.value = formatDisplay(value);
+    input.setAttribute('aria-label', label);
+    input.title = label;
+    input.style.cssText = RUN_FIELD_STYLE;
+    const commit = () => {
+      const parsed = Number(input.value);
+      if (Number.isFinite(parsed)) {
+        write(parsed);
+      }
+    };
+    input.addEventListener('input', commit);
+    input.addEventListener('change', commit);
+    return input;
+  };
+
+  const amountField = field('run-amount', amount,
+    `Nudge ${control.label} by (${control.unit ?? 'design units'})`,
+    (parsed) => {
+      amount = parsed;
+      actions.setNudge(control.id, { amount, seconds });
+    });
+  const secondsField = field('run-seconds', seconds,
+    `Nudge ${control.label} over (seconds)`, (parsed) => {
+      seconds = parsed;
+      actions.setNudge(control.id, { amount, seconds });
+    });
+  const rateField = field('run-rate', rate,
+    `Jog ${control.label} at (${control.unit ?? 'design units'} per second)`,
+    (parsed) => {
+      rate = parsed;
+      actions.setJog(control.id, { rate });
+    });
+
+  const report = outcomeElement();
+  const write = outcomeWriter(report);
+  write(control.outcome, control.outcome?.status === 'active');
+  reports.set(control.id, write);
+
+  const show = (state: RunInputControl) => {
+    figure.textContent = state.readout;
+    unit.textContent = state.unit === null ? '' : ` ${state.unit}`;
+  };
+  show(control);
+  rows.set(control.id, (value: number) => {
+    show(runInputControl(control.id, control.driver, value));
+  });
+
+  row.append(name, readout, nudgeGroup, label('by'), amountField,
+             label('over'), secondsField, label('s'),
+             jogGroup, label('at'), rateField,
+             label(control.unit === null ? '/s' : `${control.unit}/s`),
+             report);
+  return row;
+}
+
+function label(text: string): HTMLElement {
+  const span = document.createElement('span');
+  span.textContent = text;
+  span.style.cssText = RUN_LEGEND_STYLE;
+  return span;
+}
+
+function buildTransportBar(
+  plan: TransportPlan,
+  actions: RunChromeActions,
+): { element: HTMLElement; update: (plan: TransportPlan) => void } {
+  const bar = document.createElement('div');
+  bar.className = 'run-transport';
+  bar.style.cssText =
+    'position:absolute;left:0;right:0;bottom:0;display:flex;' +
+    'align-items:center;gap:8px;padding:6px 10px;' +
+    'background:rgba(30,33,38,0.65);color:#fff;' +
+    'font:13px system-ui,sans-serif;';
+
+  const play = document.createElement('button');
+  play.className = 'run-play';
+  // Words rather than the animation bar's transport glyphs: a headless
+  // or minimal font renders ⏸ as an empty box, and a maker meeting a
+  // machine for the first time should not have to guess.
+  play.style.cssText = BUTTON_STYLE + 'min-width:5em;';
+  play.addEventListener('click', () => { actions.play(); });
+
+  const step = document.createElement('button');
+  step.className = 'run-step';
+  step.textContent = 'Step';
+  step.setAttribute('aria-label', 'Step one step of the run');
+  step.title = 'Advance exactly one step of the run';
+  step.style.cssText = BUTTON_STYLE;
+  step.addEventListener('click', () => { actions.step(); });
+
+  const speed = document.createElement('select');
+  speed.className = 'run-speed';
+  speed.setAttribute('aria-label', 'Playback speed');
+  // Speed changes how fast the machine is WATCHED, never how finely it
+  // is simulated.
+  speed.title = 'How fast the machine is watched, as a multiple of real '
+    + 'time. The step size never changes.';
+  speed.style.cssText =
+    'background:none;border:1px solid rgba(255,255,255,0.4);' +
+    'border-radius:3px;color:inherit;font:inherit;padding:1px 4px;';
+  speed.addEventListener('change', () => {
+    actions.setSpeed(Number(speed.value));
+  });
+
+  const elapsed = document.createElement('span');
+  elapsed.className = 'run-elapsed';
+  elapsed.setAttribute('aria-label', 'Elapsed simulation time');
+  elapsed.setAttribute('aria-live', 'off');
+  elapsed.style.cssText =
+    'font-variant-numeric:tabular-nums;min-width:8ch;text-align:right;';
+
+  const reset = document.createElement('button');
+  reset.className = 'run-reset';
+  reset.textContent = 'Reset';
+  reset.setAttribute('aria-label', 'Reset the run to its initial state');
+  reset.title = 'Back to the state the document was mounted at';
+  reset.style.cssText = BUTTON_STYLE;
+  reset.addEventListener('click', () => { actions.reset(); });
+
+  // Deliberately NO timeline: seeking belongs to recorded history, and a
+  // running document has no animation fraction to drag.
+  const spacer = document.createElement('span');
+  spacer.style.cssText = 'flex:1;';
+  bar.append(play, step, spacer, elapsed, speed, reset);
+
+  const update = (next: TransportPlan) => {
+    play.textContent = next.running ? 'Pause' : 'Run';
+    play.title = next.running ? 'Pause the run' : 'Run';
+    play.setAttribute('aria-label', next.running ? 'Pause the run' : 'Run');
+    elapsed.textContent = next.elapsed;
+    elapsed.title = `step ${next.tick}`;
+    if (speed.value !== String(next.speed)) {
+      fillSpeedControl(speed, next.speed);
+    }
+  };
+  update(plan);
+
+  return { element: bar, update };
 }

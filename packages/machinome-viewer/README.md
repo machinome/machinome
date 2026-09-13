@@ -14,7 +14,9 @@ something a person can look at in a browser:
   timeline is — one slider with a passive click-to-edit numeric readout per
   declared driver and one button per declared instruction, molejo flexible
   parts evaluated per frame, **the machine itself run in a Web Worker for
-  a document that carries a compiled mechanical program**, and the
+  a document that carries a compiled mechanical program**, **driven on
+  screen by nudge, hold-to-jog and instruction controls over a transport
+  of run, pause, step, speed, elapsed time and reset**, and the
   `SolidNodeWidget.mount()` API a host page drives it through;
 - the **standalone export page** a `solid export` directory ships with;
 - the **development server** that `solid develop` launches beside its
@@ -64,6 +66,44 @@ That process boundary is the licensing boundary. solid-node is Apache-2.0
 and stays complete and useful on its own; this viewer is AGPL-3.0-only and
 is an optional, separately installed addition to it. Nothing flows from here
 back into the framework.
+
+## Driving a running machine
+
+A document that carries a compiled mechanical program is not posed, it is
+**run**, and it gets its own chrome rather than a widened version of the
+posed one. Per declared input of the focused layer the widget shows a
+follow-only readout of the input's committed position in design units, a
+nudge pair asking for a relative movement over a duration, and a
+hold-to-jog pair asking for a rate until the interaction ends — on
+release, on lost pointer capture, on lost window focus, or when the page
+stops being displayed. Per declared instruction it shows one button,
+which submits that named instruction whichever form it is declared in.
+Every request reports at the control that made it: completed, blocked
+with the travel the machine actually admitted, refused with the run's own
+reason, or cancelled. Along the bottom runs the transport: run, pause,
+step one step of the run, the speed to watch at, the elapsed simulation
+time, and reset.
+
+What a running document has **no** control for is a position. A slider
+writes a position into a coordinate, and under a run a coordinate is the
+output of an integration that carries history — ten `Add one` on a slider
+would leave the drum where one did. So there is no slider, and no
+timeline: seeking belongs to recorded history. A document of versions 1
+to 4 keeps every pixel of the chrome it has always had.
+
+The nudge amount, its duration and the jog rate are editable in the panel
+and settable at mount:
+
+```js
+SolidNodeWidget.mount('#host', 'viewer.json', {
+  run: { nudge: { amount: 1, seconds: 0.2 }, jog: { rate: 1 } },
+});
+```
+
+They configure the **request** those controls will make; typing in one
+moves nothing. `driverControls: 'none'` suppresses this chrome exactly as
+it suppresses the posed one, and leaves the whole `handle.run()` API
+untouched for a host building its own panel.
 
 ## Versions
 
