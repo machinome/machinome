@@ -161,10 +161,17 @@ class ViewerMountApiTest(TestCase):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
           const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
-          return { bundle: SolidNodeWidget.apiVersion, handle: viewer.apiVersion };
+          return { bundle: SolidNodeWidget.apiVersion, handle: viewer.apiVersion,
+                   run: viewer.run() };
         }""")
         self.assertEqual(result['bundle'], api_version())
         self.assertEqual(result['bundle'], result['handle'])
+        # OpenSpec `run-in-the-worker`: executing a published program is a
+        # capability a host may require, so the declared version moves.
+        self.assertEqual(result['bundle'], 8)
+        # And a document carrying no program has no run, which is what a
+        # host asking one question is answered with.
+        self.assertIsNone(result['run'])
 
     def test_the_mount_handle_exposes_and_controls_the_assembly(self):
         result = self.in_page("""async () => {

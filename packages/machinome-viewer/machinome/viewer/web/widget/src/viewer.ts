@@ -25,6 +25,14 @@ import {
 import { EvalScope, freeVariables, TIME_ID } from './evaluator';
 import { releaseExpressions, retainExpressions } from './expressions';
 import { BindingTable, bindingTable, EMPTY_BINDINGS } from './bindings';
+import { loadProgram, uncomputedValues } from './run/program';
+import type {
+  LoadedProgram, ProgramCoordinate, RunDocument,
+} from './run/program';
+import { RunRuntime } from './run/runtime';
+import type { CommittedFrame, Outcome } from './run/runtime';
+import type { RunState } from './run/run';
+import { posed, poseScope } from './run/pose';
 import { evaluatesTech, knownTechnologies, specRefusal } from './flexible';
 import { AssemblyNode, AssemblyPath, WidgetTree } from './tree';
 import { Manifest, ManifestDriver, ManifestInstruction, ManifestNode } from './types';
@@ -58,6 +66,48 @@ export interface ViewerOptions {
   className?: string;
   role?: string;
   ariaLabel?: string;
+  /** The run's own options, for a document carrying a program
+   * (OpenSpec `run-in-the-worker`). The step size is settable ONCE,
+   * here, and never afterwards. */
+  run?: {
+    dt?: number;
+    record?: number | null;
+    autostart?: boolean;
+  };
+}
+
+/** What a host drives a running document with (design §7). `move`,
+ * `rate` and `trigger` resolve when the command RETIRES, with its final
+ * status and the travel it admitted -- the one thing the pilot's model
+ * insists every request reports. */
+export interface RunHandle {
+  identity(): string;
+  dt(): number;
+  tick(): number;
+  /** Elapsed simulation seconds, which never wrap. */
+  elapsed(): number;
+  state(): Record<string, number>;
+  coordinates(): Record<string, ProgramCoordinate>;
+  start(): void;
+  pause(): void;
+  running(): boolean;
+  /** Integrate exactly `ticks` ticks, whether or not the run is started
+   * -- which is what makes a headless or a scripted drive
+   * deterministic. */
+  step(ticks?: number): Promise<void>;
+  move(input: string, request: { by?: number; to?: number;
+                                 duration?: number }): Promise<Outcome[]>;
+  rate(input: string, rate: number): Promise<Outcome[]>;
+  trigger(name: string): Promise<Outcome[]>;
+  cancel(input: string): void;
+  reset(): Promise<void>;
+  snapshot(): Promise<RunState>;
+  restore(state: RunState): Promise<void>;
+  onCommit(listener: (frame: CommittedFrame) => void): () => void;
+  onOutcome(listener: (outcome: Outcome) => void): () => void;
+  /** False when the page could not create the worker and the same
+   * engine is running on the rendering thread instead. */
+  runsInWorker: boolean;
 }
 
 export interface ViewerHandle {
@@ -84,6 +134,10 @@ export interface ViewerHandle {
   onDriverChange(listener: DriverListener): () => void;
   instructions(): Record<string, ManifestInstruction>;
   trigger(name: string): TriggerHandle;
+  /** The run of a document carrying a program, or `null` for one that
+   * carries none -- which is every document of versions 1 to 4, so a
+   * host asks one question and gets a truthful answer. */
+  run(): RunHandle | null;
   apiVersion: number;
 }
 
@@ -177,9 +231,20 @@ export async function mount(
   // document is republished, so a host's listeners and its current pose
   // survive a live rebuild.
   const drivers = new DriverStore();
+  // The run of a version 5 document (OpenSpec `run-in-the-worker`). A
+  // document carrying no program never builds one, and every version 1
+  // to 4 mount is untouched by all of this.
+  let runtime: RunRuntime | undefined;
+  let loadedProgram: LoadedProgram | null = null;
+  let bank: Record<string, number> = {};
+  let elapsedSeconds = 0;
 
-  const scope = (): EvalScope =>
-    ({ time, drivers: drivers.scope(), bindings: bindingsTable.roots() });
+  // Under a run the BANK is what poses the geometry, and the program's
+  // clock name binds to elapsed simulation seconds beside it. `$t` stays
+  // 0 for a version 5 document, because no expression in one reads it.
+  const scope = (): EvalScope => (loadedProgram === null
+    ? { time, drivers: drivers.scope(), bindings: bindingsTable.roots() }
+    : poseScope(bank, loadedProgram.clock, elapsedSeconds, bindingsTable));
 
   // One door for a driver value, whether the maker moved a slider or
   // the host called setDriver: identical store semantics, identical
@@ -208,6 +273,10 @@ export async function mount(
   const setSpeed = (next: number) => {
     speed = assertSpeed(next);
     cycleSeconds = cycleSecondsFor(animation, speed);
+    // Speed keeps its one meaning -- a multiple of real time -- and
+    // under a run it changes how many TICKS a wall second earns, never
+    // the step size (design D7).
+    runtime?.setSpeed(speed);
     if (speedControl && speedControl.value !== String(speed)) {
       fillSpeedControl(speedControl, speed);
     }
@@ -233,12 +302,48 @@ export async function mount(
     target: controls.target.clone(),
   });
 
+  /** Start (or restart) the run of a document carrying a program, posed
+   * at its published rest bank before the first tick is ever taken. */
+  const startRuntime = async (document: Manifest,
+                             program: LoadedProgram | null) => {
+    runtime?.dispose();
+    runtime = undefined;
+    loadedProgram = program;
+    elapsedSeconds = 0;
+    if (program === null) {
+      bank = {};
+      return;
+    }
+    bank = { ...program.initial };
+    const started = RunRuntime.start(document as RunDocument, {
+      dt: resolved.run.dt,
+      record: resolved.run.record,
+      autostart: resolved.run.autostart,
+      sourceUrl,
+    });
+    runtime = started;
+    started.setSpeed(speed);
+    started.onFrame((frame) => {
+      bank = frame.bank;
+      elapsedSeconds = frame.clock;
+      // Rendering never advances the run, and the run never renders: a
+      // dropped frame drops DISPLAY, not mechanics.
+      tree?.update(scope(), posed(frame.moved));
+      renderer.render(scene, camera);
+    });
+    // Awaited before the tree is built, so the handle a host receives
+    // answers for a run that has loaded its program -- and so a program
+    // the ENGINE refuses (rather than the loader) refuses the mount.
+    await started.ready;
+  };
+
   const replaceTree = async (view: View | null) => {
-    const { document, table } = await loadDocument(sourceUrl);
+    const { document, table, program } = await loadDocument(sourceUrl);
     drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
     // Installed before the update that follows (design D6), in the same
     // place and order `drivers.reconcile(...)` already runs before it.
     bindingsTable = table;
+    await startRuntime(document, program);
     const next = new WidgetTree(document.root, baseUrl, null, bindingsTable);
     next.update(scope());
     await next.loaded;
@@ -320,6 +425,13 @@ export async function mount(
     driverChrome?.remove();
     driverChrome = undefined;
     const table = drivers.drivers();
+    // A document carrying a program has NO on-screen control in this
+    // change (design §11): its inputs are moved by commands, not by a
+    // slider over a driver value the bank no longer poses from. The
+    // chrome is `drive-the-run-on-screen`.
+    if (loadedProgram !== null) {
+      return;
+    }
     if (!showsDriverChrome(resolved.driverControls,
                            Object.keys(table).length > 0)) {
       return;
@@ -386,6 +498,14 @@ export async function mount(
     // them varies with the frame rate (design D4 -- this is an
     // animation, and determinism stays with the Python simulation).
     const movedDrivers = drivers.tick();
+    if (runtime !== undefined) {
+      // The render loop drives the CADENCE and the worker owns the
+      // mechanics: one advance in flight, and a committed bank poses the
+      // tree from the frame listener above (design D2).
+      runtime.frame(elapsed);
+      renderer.render(scene, camera);
+      return;
+    }
     if (playing) {
       setTime(advance(time, elapsed, cycleSeconds));
     }
@@ -409,6 +529,8 @@ export async function mount(
       // Nothing will advance the ramps again, so their promises settle
       // here rather than never.
       drivers.dispose();
+      runtime?.dispose();
+      runtime = undefined;
       tree?.dispose();
       renderer.dispose();
       container.replaceChildren();
@@ -428,13 +550,14 @@ export async function mount(
       renderer.render(scene, camera);
     },
     async manifestChanged() {
-      const { document, table } = await loadDocument(sourceUrl);
+      const { document, table, program } = await loadDocument(sourceUrl);
       drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
       // Installed before the update that follows (design D6): a
       // republish carrying a different table invalidates the free set
       // of every node that reads it differently, whether or not that
       // node's own operations changed.
       bindingsTable = table;
+      await startRuntime(document, program);
       await tree?.reconcile(document.root, baseUrl, null, bindingsTable);
       if (tree) {
         const rootChanged = assemblyNavigation.reconcile(tree);
@@ -474,6 +597,33 @@ export async function mount(
       drivers.onDriverChange(listener),
     instructions: () => drivers.instructions(),
     trigger: (name: string) => drivers.trigger(name),
+    run(): RunHandle | null {
+      const started = runtime;
+      const program = loadedProgram;
+      if (started === undefined || program === null) return null;
+      return {
+        identity: () => started.identity(),
+        dt: () => resolved.run.dt,
+        tick: () => started.tick(),
+        elapsed: () => started.elapsedSeconds(),
+        state: () => started.bank(),
+        coordinates: () => started.coordinates(),
+        start: () => started.start(),
+        pause: () => started.pause(),
+        running: () => started.running(),
+        step: (ticks = 1) => started.step(ticks),
+        move: (input, request) => started.move(input, request),
+        rate: (input, rate) => started.rate(input, rate),
+        trigger: (name) => started.trigger(name),
+        cancel: (input) => started.cancel(input),
+        reset: () => started.reset().then(() => undefined),
+        snapshot: () => started.snapshot(),
+        restore: (state) => started.restore(state).then(() => undefined),
+        onCommit: (listener) => started.onFrame(listener),
+        onOutcome: (listener) => started.onOutcome(listener),
+        runsInWorker: started.runsInWorker,
+      };
+    },
   };
 }
 
@@ -505,8 +655,17 @@ function visibleBounds(root: THREE.Object3D): THREE.Box3 {
 // node is byte-identical to the version 2 it always was -- so this set
 // is exactly what the producer can emit and this build can read.
 // OpenSpec `read-expression-bindings`: version 4 (a document carrying a
-// shared-subexpression `bindings` table) joins it.
-const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4];
+// shared-subexpression `bindings` table) joins it. OpenSpec
+// `run-in-the-worker`: version 5 (a document carrying a compiled
+// mechanical `program`) joins it too, and a version 6 document is
+// refused by name and by list -- the same sentence a version 5 document
+// got from every viewer released so far.
+//
+// Exported so `version.test.ts` can pin it against the ONE declaration
+// the bundle and `bundle.py` both read (`solidNodeDocumentVersions` in
+// package.json): the number this viewer reports and the versions it
+// refuses by must not be able to drift apart.
+export const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4, 5];
 
 // The document schema this viewer evaluates. Version 2 added the
 // `drivers` table, and since ADR-056 stage 3b this viewer EVALUATES
@@ -531,7 +690,16 @@ const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4];
 // cannot evaluate; the table itself is validated first, by `bindingTable`
 // (D7), so a table this viewer cannot resolve is refused before a single
 // expression is walked.
-export function assertRenderable(document: Manifest, sourceUrl: string): BindingTable {
+export interface LoadedDocument {
+  table: BindingTable;
+  /** The compiled program a version 5 document carries, or `null` for
+   * every version 1 to 4 document -- so a host asks one question and
+   * gets a truthful answer. */
+  program: LoadedProgram | null;
+}
+
+export function assertRenderable(document: Manifest,
+                                 sourceUrl: string): LoadedDocument {
   if (!RENDERED_VERSIONS.includes(document.version)) {
     throw new Error(
       `${sourceUrl} declares document version ${document.version}, which ` +
@@ -550,8 +718,30 @@ export function assertRenderable(document: Manifest, sourceUrl: string): Binding
   // catches or rewords it.
   const table = bindingTable(document, sourceUrl);
 
-  const declared = new Set(Object.keys(document.drivers ?? {}));
+  // The compiled program, loaded and validated by name (design §4)
+  // before the tree's expressions are walked, so a program this engine
+  // cannot execute is refused before a single pose is evaluated. A
+  // document below version 5 carries none and loads exactly as it did.
+  // A document DECLARING the running version must carry one, whether or
+  // not the key is there: that is the first thing design §4 refuses.
+  const program = document.version === 5
+      || (document as RunDocument).program !== undefined
+    ? loadProgram(document as RunDocument, sourceUrl, table)
+    : null;
+  const uncomputed = program === null
+    ? EMPTY : uncomputedValues(program);
+
+  // Under version 5 the identifiers an expression may name widen with
+  // the program: its clock, its bank coordinates and the values it
+  // publishes as computed. A jump plan's branch placeholders are legal
+  // only INSIDE that plan's own expressions -- which `loadProgram` has
+  // already checked -- and are deliberately not admitted here.
+  const declared = new Set([
+    ...Object.keys(document.drivers ?? {}),
+    ...(program === null ? [] : program.declaredNames),
+  ]);
   const missing = new Set<string>();
+  const unreadable = new Set<string>();
 
   // A name a document's expressions read, closed over the table (D5): a
   // binding name resolves away to what it transitively reads -- $t, a
@@ -563,6 +753,11 @@ export function assertRenderable(document: Manifest, sourceUrl: string): Binding
     for (const name of table.closure(freeVariables(expression))) {
       if (name !== TIME_ID && !declared.has(name)) {
         missing.add(name);
+      } else if (uncomputed.has(name)) {
+        // A published computed value is not stored anywhere: one no edge
+        // determines has no number to read, so a pose that reads it
+        // would be posed from a number that was never produced.
+        unreadable.add(name);
       }
     }
   };
@@ -602,10 +797,30 @@ export function assertRenderable(document: Manifest, sourceUrl: string): Binding
   // Entries the document never references are validated too (D7): an
   // entry naming an undeclared driver is a malformed table by the
   // producer's own rule, and checking it costs one closure lookup per
-  // entry. `note` here is the SAME check an operation's expression gets,
-  // so an entry naming an earlier entry that is itself dangling is
-  // caught through the earlier entry's own closure.
-  (document.bindings ?? []).forEach((entry) => note(entry.expression));
+  // entry.
+  //
+  // One name more is legal HERE than in an operation: a jump plan's
+  // BRANCH PLACEHOLDER (design §15 finding 2). A version 5 document
+  // shares the subexpressions of its plans' skeletons into the same
+  // table -- the acceptance document publishes `_b33 = (360.0 * _j0)`
+  // and five more like it -- and a placeholder has a value only while
+  // the plan that mints it is being integrated. This viewer never
+  // evaluates the table forward: a binding resolves through the shared
+  // DAG WHERE IT IS READ, so an entry nothing reads is never evaluated,
+  // and `loadProgram` has already checked that each plan's own
+  // expressions, closed over this table, name only that plan's
+  // placeholders and that edge's sources. What stays refused is a
+  // placeholder reached from an OPERATION, which no scope binds.
+  const insidePlan = new Set([
+    ...declared,
+    ...(program === null ? [] : program.placeholders.keys()),
+  ]);
+  (document.bindings ?? []).forEach((entry) => {
+    for (const name of table.closure(freeVariables(entry.expression))) {
+      if (name !== TIME_ID && !insidePlan.has(name)) missing.add(name);
+      else if (uncomputed.has(name)) unreadable.add(name);
+    }
+  });
 
   if (missing.size > 0) {
     const known = [...declared].sort().join(', ') || 'none';
@@ -617,12 +832,23 @@ export function assertRenderable(document: Manifest, sourceUrl: string): Binding
     );
   }
 
-  return table;
+  if (unreadable.size > 0) {
+    throw new Error(
+      `${sourceUrl} has expressions reading the published computed ` +
+      `value(s) ${[...unreadable].sort().join(', ')}, which no edge of its ` +
+      'program determines. A computed value is not stored anywhere: one ' +
+      'nothing computes has no number to read. Refusing the document ' +
+      'rather than posing the model from a number that was never ' +
+      'produced.',
+    );
+  }
+
+  return { table, program };
 }
 
 async function loadDocument(
   sourceUrl: string,
-): Promise<{ document: Manifest; table: BindingTable }> {
+): Promise<{ document: Manifest } & LoadedDocument> {
   let response: Response;
   try {
     response = await fetch(sourceUrl);
@@ -638,8 +864,8 @@ async function loadDocument(
   } catch (error) {
     throw new Error(`Failed to parse ${sourceUrl}: ${String(error)}`);
   }
-  const table = assertRenderable(document, sourceUrl);
-  return { document, table };
+  const { table, program } = assertRenderable(document, sourceUrl);
+  return { document, table, program };
 }
 
 function resolveContainer(target: HTMLElement | string): HTMLElement {

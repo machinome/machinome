@@ -183,3 +183,36 @@ describe('showsDriverChrome', () => {
     expect(showsDriverChrome('inline', true)).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------
+// OpenSpec `run-in-the-worker` (design D6, D13): the run's mount option.
+// ---------------------------------------------------------------------
+
+describe('resolveOptions: the run', () => {
+  it('defaults to 1/240 s, a 600-tick record, and NOT started', () => {
+    expect(resolveOptions({}).run)
+      .toEqual({ dt: 1 / 240, record: 600, autostart: false });
+  });
+
+  it('takes a step size the host chooses, once', () => {
+    expect(resolveOptions({ run: { dt: 1 / 120 } }).run.dt).toBe(1 / 120);
+  });
+
+  it('refuses a non-finite or non-positive step size, naming the value', () => {
+    expect(() => resolveOptions({ run: { dt: 0 } })).toThrow(/0/);
+    expect(() => resolveOptions({ run: { dt: -1 / 240 } })).toThrow(/-0\.0041|-/);
+    expect(() => resolveOptions({ run: { dt: Number.NaN } })).toThrow(/NaN/);
+    expect(() => resolveOptions({ run: { dt: Infinity } })).toThrow(/Infinity/);
+  });
+
+  it('takes a record length, and none at all', () => {
+    expect(resolveOptions({ run: { record: 60 } }).run.record).toBe(60);
+    expect(resolveOptions({ run: { record: null } }).run.record).toBeNull();
+  });
+
+  it('takes autostart, for a host that wants a machine running on arrival',
+     () => {
+       expect(resolveOptions({ run: { autostart: true } }).run.autostart)
+         .toBe(true);
+     });
+});

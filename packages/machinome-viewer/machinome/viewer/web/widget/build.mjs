@@ -30,6 +30,22 @@ const banner = `/*!
  *   Apache License 2.0 - https://github.com/LibreSolid/molejo/blob/main/LICENSE
  */`;
 
+// The worker is bundled FIRST, to a string, and injected into the main
+// pass as `__WORKER_SOURCE__` (OpenSpec `run-in-the-worker`, design D3).
+// `runtime.ts` makes the worker from a blob URL of that string, so there
+// is still exactly ONE published artifact -- `dist/solid-widget.js`,
+// whose name is a compatibility contract -- and `solid export`, the
+// development server's `/_viewer/bundle.js` and the capture page go on
+// copying one file.
+const worker = await build({
+  entryPoints: ['src/run/worker.ts'],
+  bundle: true,
+  minify: true,
+  format: 'iife',
+  write: false,
+  logLevel: 'info',
+});
+
 await build({
   entryPoints: ['src/widget.ts'],
   bundle: true,
@@ -39,6 +55,8 @@ await build({
   outfile: 'dist/solid-widget.js',
   define: {
     __VIEWER_API_VERSION__: JSON.stringify(pkg.solidNodeViewerApi),
+    __DOCUMENT_VERSIONS__: JSON.stringify(pkg.solidNodeDocumentVersions),
+    __WORKER_SOURCE__: JSON.stringify(worker.outputFiles[0].text),
   },
   banner: { js: banner },
   logLevel: 'info',

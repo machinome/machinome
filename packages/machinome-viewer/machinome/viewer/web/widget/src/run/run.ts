@@ -1,0 +1,876 @@
+/*
+ * solid-node-viewer - the browser viewer for solid-node models
+ * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+// What owns a running document's coordinates (`simulation/run.py`'s
+// `class Run`, reproduced function for function, minus the tree binding
+// -- there is no tree here, only a bank).
+//
+// The tick's path is integrated by exactly one pass over the whole
+// stretch. If that would take a banked coordinate outside a declared
+// bound, and FURTHER outside than it stood at the stretch's start, the
+// bound is a physical stop: the fraction `t*` at which the coordinate
+// reaches it is located, the stretch is re-integrated over `[0, t*]`
+// only, the coordinate is committed AT its bound, every input whose
+// movement pushes it is stopped for the rest of the tick, and what
+// remains is examined again. The earliest `t*` is always taken first.
+//
+// The tick stays ATOMIC across its segments: the bank, the commands'
+// admitted travel and the three records are STAGED and applied only when
+// every segment has succeeded.
+
+import { toNative } from '../drivers';
+import { ManifestDriver, ManifestInstruction } from '../types';
+import { Command, CommandRecord } from './commands';
+import { edgeCuts, edgeIncrements, edgeValues, predictsOf } from './edges';
+import { CrossingRecord } from './jumps';
+import {
+  evaluateExpression, ProgramBound, ProgramEdge, RunConflict,
+  StopInvariantError, TooManyCrossings, UnsupportedLaw,
+} from './program';
+import type { LoadedProgram } from './program';
+
+/** One declared bound reached inside one tick.
+ *
+ * A stop is a BOUND OF A COORDINATE, which stops motion; a crossing is a
+ * JUMP SURFACE of a law, which moves nothing. They answer different
+ * questions and live in different rings. */
+export interface StopRecord {
+  tick: number;
+  coordinate: string;
+  bound: 'low' | 'high';
+  value: number;
+  t: number;
+  inputs: string[];
+}
+
+export interface TrajectoryEntry {
+  tick: number;
+  bank: Record<string, number>;
+}
+
+/** A running document's whole state, as a value. Carries the compiled
+ * program's IDENTITY rather than the program, so restoring it into a
+ * machine whose kinematics have moved on is refused rather than
+ * silently wrong. */
+export interface RunState {
+  program: string;
+  dt: number;
+  tick: number;
+  bank: Record<string, number>;
+  commands: CommandRecord[];
+}
+
+export interface MoveRequest {
+  by?: number;
+  to?: number;
+  duration?: number;
+}
+
+type Reached = [string, 'low' | 'high', number];
+type Located = [number, string, 'low' | 'high', number];
+
+/** A bounded ring of the most recent entries, or nothing at all. */
+class Ring<T> {
+  private entries: T[] = [];
+
+  constructor(private readonly limit: number) {}
+
+  push(entry: T): void {
+    this.entries.push(entry);
+    if (this.entries.length > this.limit) this.entries.shift();
+  }
+
+  extend(entries: readonly T[]): void {
+    for (const entry of entries) this.push(entry);
+  }
+
+  clear(): void {
+    this.entries = [];
+  }
+
+  list(): T[] {
+    return [...this.entries];
+  }
+}
+
+function ringOf<T>(record: number | null): Ring<T> | null {
+  if (record === null || record === undefined) return null;
+  if (!Number.isInteger(record) || record < 1) {
+    throw new Error(
+      `record=${record} is not a number of ticks to keep. Recording is ` +
+      'explicit and bounded: no record keeps nothing, and a record of N ' +
+      'keeps a ring of the most recent N ticks.');
+  }
+  return new Ring<T>(record);
+}
+
+/** A located fraction, held inside the stretch it was located on. */
+function clamped(t: number): number {
+  if (t < 0) return 0;
+  return t > 1 ? 1 : t;
+}
+
+/** Python's `round`: half to EVEN, which is not `Math.round`. */
+function roundHalfToEven(value: number): number {
+  const floor = Math.floor(value);
+  const rest = value - floor;
+  if (rest > 0.5) return floor + 1;
+  if (rest < 0.5) return floor;
+  return floor % 2 === 0 ? floor : floor + 1;
+}
+
+export class Run {
+  private bank: Record<string, number>;
+  private ticks = 0;
+  private readonly active = new Map<string, Command>();
+  private readonly ring: Ring<TrajectoryEntry> | null;
+  private readonly crossingRing: Ring<CrossingRecord> | null;
+  private readonly stopRing: Ring<StopRecord> | null;
+  private readonly bankKeys: Set<string>;
+  private readonly spans: [string, ProgramBound, ProgramBound][];
+  private readonly initial: RunState;
+
+  constructor(readonly program: LoadedProgram, readonly dt: number,
+              record: number | null = null) {
+    if (!Number.isFinite(dt) || dt <= 0) {
+      throw new Error(
+        `dt=${dt} is not a step size. The step size is a positive number ` +
+        'of simulated seconds per tick.');
+    }
+    this.ring = ringOf<TrajectoryEntry>(record);
+    // A second ring of the same length for the CROSSINGS located inside
+    // a tick, and a third for the STOPS. No record builds none of them,
+    // so a run that records nothing pays nothing for the record.
+    this.crossingRing = ringOf<CrossingRecord>(record);
+    this.stopRing = ringOf<StopRecord>(record);
+    this.bank = { ...program.initial };
+    this.bankKeys = new Set(program.order);
+    this.spans = Object.entries(program.spans).map(
+      ([id, span]) => [id, span.low, span.high]);
+    this.initial = this.snapshot();
+  }
+
+  // ------------------------------------------------------------------
+  // What a caller reads
+
+  tick(): number {
+    return this.ticks;
+  }
+
+  /** The elapsed simulation seconds: computed from the integer tick
+   * count on every access, never accumulated, so it is the exact instant
+   * the run stands at. */
+  clock(): number {
+    return this.ticks * this.dt;
+  }
+
+  state(): Record<string, number> {
+    const found: Record<string, number> = {};
+    for (const id of Object.keys(this.bank).sort()) found[id] = this.bank[id];
+    return found;
+  }
+
+  /** The bank as a positional array in the program's own id order, which
+   * is what a frame message carries. */
+  positions(): Float64Array<ArrayBufferLike> {
+    const found = new Float64Array(this.program.order.length);
+    this.program.order.forEach((id, index) => { found[index] = this.bank[id]; });
+    return found;
+  }
+
+  commands(): Command[] {
+    return [...this.active.values()];
+  }
+
+  trajectory(): TrajectoryEntry[] {
+    return this.ring === null ? [] : this.ring.list();
+  }
+
+  crossings(): CrossingRecord[] {
+    return this.crossingRing === null ? [] : this.crossingRing.list();
+  }
+
+  stops(): StopRecord[] {
+    return this.stopRing === null ? [] : this.stopRing.list();
+  }
+
+  // ------------------------------------------------------------------
+  // Requests
+
+  /** A duration in seconds as a whole number of ticks. */
+  ticksFor(value: number, what: string): number {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new Error(`${what} ${value} is not a number of seconds.`);
+    }
+    const count = roundHalfToEven(value / this.dt);
+    if (Math.abs(count * this.dt - value) > 1e-9) {
+      throw new Error(
+        `${what} ${value} is not a whole number of dt=${this.dt} ticks.`);
+    }
+    return count;
+  }
+
+  move(inputId: string, request: MoveRequest = {}): Command {
+    const declaration = this.declarationOf(inputId);
+    const { by, to, duration } = request;
+    if ((by === undefined || by === null)
+        === (to === undefined || to === null)) {
+      throw new Error(
+        `move('${inputId}', ...) states exactly one of by= (how far to ` +
+        'travel) and to= (where to land), both in design units; got ' +
+        `by=${by} and to=${to}.`);
+    }
+    const value = this.bank[inputId];
+    const native = to !== undefined && to !== null
+      ? toNative(to, declaration) - value
+      : toNative(by as number, declaration);
+    const ticks = this.ticksFor(duration ?? 0,
+                                `duration of the move on '${inputId}'`);
+    this.claim(inputId);
+    const command = new Command(inputId, 'move', declaration, this.ticks,
+                                { native, ticks, value });
+    this.active.set(inputId, command);
+    if (!ticks) {
+      // A zero-duration move settles at the CURRENT tick, without
+      // advancing the clock.
+      this.integrate(this.ticks, false, command);
+    }
+    return command;
+  }
+
+  rate(inputId: string, rate: number): Command | null {
+    const declaration = this.declarationOf(inputId);
+    if (rate === 0) {
+      const running = this.active.get(inputId);
+      if (running === undefined || running.kind !== 'rate') return null;
+      running.status = 'completed';
+      this.active.delete(inputId);
+      return running;
+    }
+    this.claim(inputId);
+    const nativeRate = declaration.scale === null
+      || declaration.scale === undefined ? rate : rate / declaration.scale;
+    const command = new Command(inputId, 'rate', declaration, this.ticks,
+                                { nativeRate });
+    this.active.set(inputId, command);
+    return command;
+  }
+
+  /** A declared instruction: its targets as moves TO, its travels as
+   * moves BY -- every input claimed before any command starts, so an
+   * ownership conflict refuses the whole instruction and leaves nothing
+   * running. */
+  trigger(name: string): Command[] {
+    const instruction = this.program.instructions[name] as
+      (ManifestInstruction & { by?: Record<string, number> }) | undefined;
+    if (instruction === undefined) {
+      const known = Object.keys(this.program.instructions).sort().join(', ')
+        || 'none';
+      throw new Error(
+        `no instruction '${name}' in this document; declared: ${known}`);
+    }
+    const relative = instruction.by !== undefined;
+    const stated = (relative ? instruction.by : instruction.targets) as
+      Record<string, number>;
+    for (const inputId of Object.keys(stated)) {
+      this.declarationOf(inputId);
+      this.claim(inputId);
+    }
+    const issued: Command[] = [];
+    for (const [inputId, amount] of Object.entries(stated)) {
+      issued.push(relative
+        ? this.move(inputId, { by: amount, duration: instruction.duration })
+        : this.move(inputId, { to: amount, duration: instruction.duration }));
+    }
+    return issued;
+  }
+
+  cancel(inputId: string): Command | null {
+    const command = this.active.get(inputId);
+    if (command === undefined) return null;
+    command.cancel();
+    this.active.delete(inputId);
+    return command;
+  }
+
+  private claim(inputId: string): void {
+    const owner = this.active.get(inputId);
+    if (owner !== undefined) {
+      throw new Error(
+        `'${inputId}' is already owned by a ${owner.kind} command. An input ` +
+        'has one owner at a time: cancel that command, or release the rate ' +
+        'with rate(input, 0), before asking for another.');
+    }
+  }
+
+  private declarationOf(inputId: string): ManifestDriver {
+    const declaration = this.program.drivers[inputId];
+    if (declaration === undefined) {
+      const known = Object.keys(this.program.drivers).sort().join(', ')
+        || 'none';
+      throw new Error(
+        `'${inputId}' is not a declared input of this document. Only a ` +
+        'declared input can be moved -- a joint coordinate is what a ' +
+        `relation moves, not what a command does; the declared inputs ` +
+        `are: ${known}.`);
+    }
+    return declaration;
+  }
+
+  // ------------------------------------------------------------------
+  // The tick
+
+  advance(): void {
+    this.integrate(this.ticks + 1, true);
+  }
+
+  integrate(tick: number, advance: boolean, only: Command | null = null): void {
+    const admissions: Record<string, number> = {};
+    for (const [inputId, command] of this.active) {
+      admissions[inputId] = (only !== null && command !== only)
+        ? 0 : command.admits(tick, this.dt);
+    }
+    const moved: Command[] = [];
+    for (const inputId of Object.keys(admissions)) {
+      if (admissions[inputId]) moved.push(this.active.get(inputId)!);
+    }
+
+    // Each bound as a number for THIS tick, from the committed bank,
+    // before any segment: every segment of one tick is measured against
+    // the same number.
+    const bounds = this.boundsNow();
+    let staged = this.bank;
+    const admitted: Record<string, number> = {};
+    for (const inputId of Object.keys(admissions)) admitted[inputId] = 0;
+    let stopped = new Set<string>();
+    // Fresh lists per tick, appended to the rings only on COMMIT, so a
+    // refused tick records nothing.
+    const crossings: CrossingRecord[] | null =
+      this.crossingRing === null ? null : [];
+    const stops: StopRecord[] | null = this.stopRing === null ? null : [];
+    // Every stop event stops at least one input that was moving, and a
+    // stopped input stays stopped, so a tick has at most as many events
+    // as it has inputs admitting travel.
+    const limit = moved.length;
+    let start = 0;
+    let events = 0;
+
+    try {
+      for (;;) {
+        const stretch = 1 - start;
+        const scaled = this.scaled(admissions, stopped, stretch);
+        const values = this.valuesOf(staged);
+        let deltas = this.deltasOf(scaled);
+        let found: CrossingRecord[] | null = crossings === null ? null : [];
+        this.pass(values, deltas, found, tick);
+        let committed: Record<string, number> = {};
+        for (const id of Object.keys(staged)) {
+          committed[id] = staged[id] + (deltas[id] ?? 0);
+        }
+        const reached = this.reachedBounds(staged, committed, bounds);
+        if (reached.length === 0) {
+          record(crossings, found, start, 1);
+          staged = committed;
+          for (const inputId of Object.keys(scaled)) {
+            admitted[inputId] += scaled[inputId];
+          }
+          break;
+        }
+
+        events += 1;
+        if (events > limit) {
+          throw new StopInvariantError(this.runaway(reached, limit));
+        }
+        const event = this.eventOf(reached, staged, values, deltas);
+        const where = event[0][0];
+        const boundary = start + where * stretch;
+
+        const segment: Record<string, number> = {};
+        for (const inputId of Object.keys(scaled)) {
+          segment[inputId] = scaled[inputId] * where;
+        }
+        deltas = this.deltasOf(segment);
+        found = crossings === null ? null : [];
+        this.pass(values, deltas, found, tick);
+        committed = {};
+        for (const id of Object.keys(staged)) {
+          committed[id] = staged[id] + (deltas[id] ?? 0);
+        }
+
+        const blocked = new Set<string>();
+        for (const [, identifier, side, bound] of event) {
+          // AT the bound, exactly. The localization's own error is
+          // absorbed here rather than left to raise later.
+          committed[identifier] = bound;
+          const group = this.groupOf(identifier, scaled, values);
+          for (const inputId of group) blocked.add(inputId);
+          if (stops !== null) {
+            stops.push({
+              tick, coordinate: identifier, bound: side, value: bound,
+              t: boundary, inputs: [...group].sort(),
+            });
+          }
+        }
+        if (blocked.size === 0) {
+          throw new StopInvariantError(this.runaway(reached, limit));
+        }
+
+        record(crossings, found, start, boundary);
+        staged = committed;
+        for (const inputId of Object.keys(segment)) {
+          admitted[inputId] += segment[inputId];
+        }
+        stopped = new Set([...stopped, ...blocked]);
+        start = boundary;
+      }
+    } catch (error) {
+      if (error instanceof RunConflict || error instanceof TooManyCrossings
+          || error instanceof UnsupportedLaw
+          || error instanceof StopInvariantError) {
+        // A tick that fails commits nothing, every segment of it
+        // included.
+        this.refuse(moved);
+      }
+      throw error;
+    }
+
+    // Nothing above committed anything. From here the tick is taken.
+    this.bank = staged;
+    if (advance) this.ticks = tick;
+    for (const inputId of Object.keys(admitted)) {
+      const command = this.active.get(inputId);
+      if (command !== undefined) command.admittedNative += admitted[inputId];
+    }
+    this.block(stopped);
+    for (const [inputId, command] of [...this.active]) {
+      if (only !== null && command !== only) {
+        // A zero-duration move is one EXTRA pass at the current tick: it
+        // must not retire a command whose own tick has not been admitted
+        // in it.
+        continue;
+      }
+      if (command.finished(tick)) {
+        command.status = 'completed';
+        this.active.delete(inputId);
+      }
+    }
+    if (this.ring !== null) {
+      this.ring.push({ tick: this.ticks, bank: { ...this.bank } });
+      this.crossingRing!.extend(crossings!);
+      this.stopRing!.extend(stops!);
+    }
+  }
+
+  /** ONE propagation over the compiled program, over whatever stretch
+   * `deltas` describes. Mutates and returns `deltas`; raises rather than
+   * retiring anything, because a segment is not a tick. */
+  private pass(values: Record<string, number>,
+               deltas: Record<string, number>,
+               found: CrossingRecord[] | null,
+               tick: number): Record<string, number> {
+    const determined = new Set<string>();
+    for (const edge of this.program.edges) {
+      if (edge.kind === 'check') {
+        const predicted = predictsOf(edge, deltas, 0);
+        const received = deltas[edge.slot as string];
+        if (!this.agree(predicted, received)) {
+          throw new RunConflict(this.conflict(edge, predicted, received));
+        }
+        continue;
+      }
+      for (const [key, delta] of edgeIncrements(this.program, edge, values,
+                                                deltas, found, tick)) {
+        if (determined.has(key) && !this.agree(deltas[key], delta)) {
+          throw new RunConflict(this.disagreement(edge, key, delta));
+        }
+        deltas[key] = delta;
+        determined.add(key);
+      }
+    }
+    return deltas;
+  }
+
+  private agree(left: number, right: number): boolean {
+    return Math.abs(left - right) <= this.program.limits.agreement
+      * Math.max(1, Math.abs(left), Math.abs(right));
+  }
+
+  /** Each input's admission over one stretch: nothing for a stopped
+   * input, and the tick's own admission UNTOUCHED over a full stretch,
+   * so an unsegmented tick is the arithmetic it always was. */
+  private scaled(admissions: Record<string, number>, stopped: Set<string>,
+                 stretch: number): Record<string, number> {
+    const found: Record<string, number> = {};
+    for (const inputId of Object.keys(admissions)) {
+      if (stopped.has(inputId)) found[inputId] = 0;
+      else if (stretch === 1) found[inputId] = admissions[inputId];
+      else found[inputId] = admissions[inputId] * stretch;
+    }
+    return found;
+  }
+
+  private deltasOf(admissions: Record<string, number>): Record<string, number> {
+    const deltas: Record<string, number> = {};
+    for (const id of this.program.order) deltas[id] = 0;
+    for (const id of this.program.intermediates) deltas[id] = 0;
+    for (const inputId of Object.keys(admissions)) {
+      if (admissions[inputId]) deltas[inputId] = admissions[inputId];
+    }
+    return deltas;
+  }
+
+  /** The bank, plus every computed value the program derives from it:
+   * recomputed here rather than stored. */
+  private valuesOf(bank: Record<string, number>): Record<string, number> {
+    const values: Record<string, number> = { ...bank };
+    for (const edge of this.program.edges) {
+      if (edge.gives.every((key) => this.bankKeys.has(key))) {
+        // Nothing this edge computes is a computed value, so its values
+        // were computed here and discarded. Skipping it is
+        // behaviour-neutral and removes one evaluation per law per tick.
+        continue;
+      }
+      for (const [key, value] of edgeValues(this.program, edge, values)) {
+        if (!this.bankKeys.has(key)) values[key] = value;
+      }
+    }
+    return values;
+  }
+
+  // ------------------------------------------------------------------
+  // Stops
+
+  /** Every banked coordinate that ends the stretch OUTSIDE a bound and
+   * FURTHER outside than it began it. A coordinate already at or below
+   * its low bound that moves UP is free, and one that does not move at
+   * all is free. */
+  private reachedBounds(held: Record<string, number>,
+                        committed: Record<string, number>,
+                        bounds: [string, number | null, number | null][]):
+  Reached[] {
+    const found: Reached[] = [];
+    for (const [identifier, low, high] of bounds) {
+      const value = committed[identifier];
+      const was = held[identifier];
+      if (low !== null && value < low && value < was) {
+        found.push([identifier, 'low', low]);
+      } else if (high !== null && value > high && value > was) {
+        found.push([identifier, 'high', high]);
+      }
+    }
+    return found;
+  }
+
+  /** The EARLIEST stop of this stretch, with everything within the
+   * crossing tolerance of it: one event, one segment boundary, the union
+   * of their groups. Ties are therefore never resolved by ordering;
+   * there is no ordering to get wrong. */
+  private eventOf(reached: Reached[], held: Record<string, number>,
+                  values: Record<string, number>,
+                  deltas: Record<string, number>): Located[] {
+    const located: Located[] = reached.map(([identifier, side, bound]) => [
+      this.locate(identifier, side, bound, held, values, deltas),
+      identifier, side, bound,
+    ]);
+    located.sort((a, b) => (a[0] - b[0])
+      || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0)
+      || (a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0));
+    const first = located[0][0];
+    return located.filter(
+      (entry) => entry[0] - first <= this.program.limits.crossingTolerance);
+  }
+
+  /** The smallest fraction of the STRETCH at which `identifier` reaches
+   * `bound`, by the framework's three cases. */
+  private locate(identifier: string, side: 'low' | 'high', bound: number,
+                 held: Record<string, number>, values: Record<string, number>,
+                 deltas: Record<string, number>): number {
+    const determination = this.program.determiner.get(identifier);
+    if (determination === undefined) {
+      throw new StopInvariantError(
+        `${identifier} left its declared range over this tick and no ` +
+        'relation determines it, so nothing can have moved it. The tick ' +
+        'committed nothing.');
+    }
+    const { edge, index } = determination;
+    const value = held[identifier];
+    if ((bound - value) * (side === 'high' ? 1 : -1) <= 0) {
+      // Already at or beyond it: the stop is at the very start of the
+      // stretch, and the coordinate stands where it stands.
+      return 0;
+    }
+    if (edge.affine[index]) {
+      const cuts = edgeCuts(this.program, edge, values, deltas, index);
+      if (cuts.length === 0) {
+        // Linear in `t`: one division, exact, no extra evaluation.
+        const travel = deltas[identifier];
+        return travel ? clamped((bound - value) / travel) : 0;
+      }
+      return this.piecewise(edge, identifier, bound, value, values, deltas,
+                            cuts);
+    }
+    return this.searched(edge, identifier, bound, value, values, deltas);
+  }
+
+  /** An affine skeleton with a jump plan: piecewise affine in `t`, with
+   * breakpoints at the plan's own cuts, solved linearly inside the piece
+   * that brackets the bound. Exact. */
+  private piecewise(edge: ProgramEdge, key: string, bound: number,
+                    value: number, values: Record<string, number>,
+                    deltas: Record<string, number>, cuts: number[]): number {
+    let left = 0;
+    let below = value;
+    for (const cut of cuts.slice(1)) {
+      const here = value + this.along(edge, key, values, deltas, cut);
+      if (Math.min(below, here) <= bound && bound <= Math.max(below, here)) {
+        if (here === below) return left;
+        return left + (cut - left) * (bound - below) / (here - below);
+      }
+      left = cut;
+      below = here;
+    }
+    return 1;
+  }
+
+  /** Anything else: sampled, bracketed and bisected under the same three
+   * published limits a searched jump crossing uses. */
+  private searched(edge: ProgramEdge, key: string, bound: number,
+                   value: number, values: Record<string, number>,
+                   deltas: Record<string, number>): number {
+    const { subdivisions, bisectionRounds, crossingTolerance } =
+      this.program.limits;
+    const points: number[] = [];
+    for (let step = 0; step <= subdivisions; step += 1) {
+      points.push(step / subdivisions);
+    }
+    const levels = points.map(
+      (where) => value + this.along(edge, key, values, deltas, where) - bound);
+    for (let step = 0; step < subdivisions; step += 1) {
+      let below = levels[step];
+      const above = levels[step + 1];
+      if (below === 0) return points[step];
+      if (above === 0) return points[step + 1];
+      if ((below < 0) === (above < 0)) continue;
+      let low = points[step];
+      let high = points[step + 1];
+      for (let round = 0; round < bisectionRounds; round += 1) {
+        if (high - low <= crossingTolerance) break;
+        const middle = (low + high) / 2;
+        const here = value
+          + this.along(edge, key, values, deltas, middle) - bound;
+        if (here === 0 || (here < 0) !== (below < 0)) {
+          high = middle;
+        } else {
+          low = middle;
+          below = here;
+        }
+      }
+      return (low + high) / 2;
+    }
+    return 1;
+  }
+
+  /** The increment `key` receives over the stretch truncated at `t`. */
+  private along(edge: ProgramEdge, key: string,
+                values: Record<string, number>,
+                deltas: Record<string, number>, t: number): number {
+    const truncated: Record<string, number> = {};
+    for (const other of Object.keys(deltas)) truncated[other] = deltas[other] * t;
+    for (const [given, increment] of edgeIncrements(
+      this.program, edge, values, truncated, null, 0)) {
+      if (given === key) return increment;
+    }
+    return 0;
+  }
+
+  /** The inputs a stop on `identifier` stops: the candidates the
+   * compiled program says reach it, filtered by whether their own
+   * movement over this stretch actually PUSHES it. */
+  private groupOf(identifier: string, admissions: Record<string, number>,
+                  values: Record<string, number>): string[] {
+    const found: string[] = [];
+    for (const candidate of [...(this.program.sources[identifier] ?? [])]
+      .sort()) {
+      const delta = admissions[candidate] ?? 0;
+      if (delta && this.pushes(candidate, delta, identifier, values)) {
+        found.push(candidate);
+      }
+    }
+    return found;
+  }
+
+  /** Whether `candidate`'s own admission, with every other input's set
+   * to zero, gives `key` a nonzero increment. An input coupled to `key`
+   * only through a law that is currently disengaged -- an open clutch, a
+   * carry outside its window -- contributes nothing and is not stopped. */
+  private pushes(candidate: string, delta: number, key: string,
+                 values: Record<string, number>): boolean {
+    const deltas = this.deltasOf({ [candidate]: delta });
+    for (const edge of this.program.edges) {
+      if (edge.kind === 'check') continue;
+      if (edge.needs.some((need) => deltas[need])) {
+        for (const [gives, increment] of edgeIncrements(
+          this.program, edge, values, deltas, null, 0)) {
+          deltas[gives] = increment;
+        }
+      }
+      if (edge.gives.includes(key)) break;
+    }
+    return deltas[key] !== 0;
+  }
+
+  /** Every active command whose input is in the stopped group retires
+   * reporting `blocked`, with the travel it actually admitted, and its
+   * input is released so a new command may be issued at once. */
+  private block(stopped: Set<string>): void {
+    for (const inputId of [...stopped].sort()) {
+      const command = this.active.get(inputId);
+      if (command !== undefined) {
+        this.active.delete(inputId);
+        command.status = 'blocked';
+      }
+    }
+  }
+
+  private runaway(reached: Reached[], limit: number): string {
+    const named = reached.map(([identifier]) => identifier).join(', ');
+    return (
+      `${named} left a declared bound over this tick, and locating the stop ` +
+      `stopped no input that was moving -- after ${limit} event(s), one per ` +
+      'input admitting travel. Every stop stops at least one moving input, ' +
+      'so this is a broken invariant of the run rather than a coarse dt. ' +
+      'The tick committed nothing.');
+  }
+
+  /** A tick that fails commits nothing, and every command that moved an
+   * input in it is retired reporting `refused` with the travel it had
+   * admitted before. */
+  private refuse(moved: Command[]): void {
+    for (const command of moved) {
+      command.status = 'refused';
+      this.active.delete(command.input);
+    }
+  }
+
+  private conflict(edge: ProgramEdge, predicted: number,
+                   received: number): string {
+    const coordinate = edge.slot as string;
+    const binder = this.program.determiner.get(coordinate);
+    const by = binder !== undefined
+      ? `${binder.edge.description} (stated by ${binder.edge.statedBy})`
+      : 'nothing in the program';
+    return (
+      `${coordinate}: ${edge.description}, stated by ${edge.statedBy}, ` +
+      `predicts an increment of ${predicted} over this tick, while ${by} ` +
+      `gives it ${received}. Two increments that disagree on one ` +
+      'coordinate are a conflict, and the framework does not compare two ' +
+      'values to decide which is right. The tick committed nothing: the ' +
+      'bank, the tick count and the pose stand as they were, and the ' +
+      'commands that moved an input in it are retired as refused.');
+  }
+
+  private disagreement(edge: ProgramEdge, key: string, delta: number): string {
+    return (
+      `${key}: ${edge.description}, stated by ${edge.statedBy}, gives it an ` +
+      `increment of ${delta} over this tick, while another relation gives ` +
+      `${key} a different one. Two increments that disagree on one ` +
+      'coordinate are a conflict; the tick committed nothing.');
+  }
+
+  /** Each declared bound as a NUMBER for this tick: evaluated once, at
+   * the tick's start, from the committed bank, so every segment of one
+   * tick is measured against the same number. */
+  private boundsNow(): [string, number | null, number | null][] {
+    return this.spans.map(([identifier, low, high]) => [
+      identifier, this.boundOf(low, identifier),
+      this.boundOf(high, identifier),
+    ]);
+  }
+
+  private boundOf(bound: ProgramBound, identifier: string): number | null {
+    if (bound === null) return null;
+    if (typeof bound === 'number') return bound;
+    return evaluateExpression(this.program, bound.expression,
+                              { [identifier]: this.bank[identifier] });
+  }
+
+  // ------------------------------------------------------------------
+  // Snapshot, restore, reset
+
+  snapshot(): RunState {
+    const bank: Record<string, number> = {};
+    for (const id of Object.keys(this.bank).sort()) bank[id] = this.bank[id];
+    return {
+      program: this.program.identity,
+      dt: this.dt,
+      tick: this.ticks,
+      bank,
+      commands: [...this.active.values()].map((command) => command.record()),
+    };
+  }
+
+  restore(state: RunState): void {
+    if (state === null || typeof state !== 'object') {
+      throw new Error(
+        `restore() takes a state taken by snapshot(), not ${state}.`);
+    }
+    if (state.program !== this.program.identity) {
+      throw new Error(
+        `that run state was taken over the program ${state.program}, and ` +
+        `this run executes ${this.program.identity}. A state restores into ` +
+        'the machine it was taken from: its coordinates, its inputs and ' +
+        'its relations are what its bank means.');
+    }
+    if (state.dt !== this.dt) {
+      throw new Error(
+        `that run state was taken at dt=${state.dt} and this run steps at ` +
+        `dt=${this.dt}. A command admits its travel per tick, so a bank ` +
+        'restored across two step sizes would replay a different movement.');
+    }
+    for (const command of this.active.values()) command.status = 'cancelled';
+    this.active.clear();
+    for (const record of state.commands) {
+      const declaration = this.program.drivers[record.input];
+      const command = new Command(
+        record.input, record.kind, declaration, record.started, {
+          native: record.native,
+          nativeRate: record.nativeRate,
+          ticks: record.ticks,
+          value: state.bank[record.input] - record.admitted,
+        });
+      command.admittedNative = record.admitted;
+      command.status = record.status;
+      this.active.set(record.input, command);
+    }
+    this.bank = { ...state.bank };
+    this.ticks = state.tick;
+    if (this.ring !== null) {
+      this.ring.clear();
+      this.crossingRing!.clear();
+      this.stopRing!.clear();
+    }
+  }
+
+  reset(): void {
+    this.restore(this.initial);
+  }
+}
+
+/** A segment's crossings, their fractions mapped back to the TICK.
+ *
+ * A segment's partition is in the fraction of the SEGMENT, and a
+ * crossing's `t` is the fraction of the tick: without this the same
+ * crossing would be reported at a different fraction depending on
+ * whether a stop happened to cut the tick after it. */
+function record(crossings: CrossingRecord[] | null,
+                found: CrossingRecord[] | null,
+                first: number, last: number): void {
+  if (crossings === null || found === null || found.length === 0) return;
+  const width = last - first;
+  for (const entry of found) {
+    crossings.push({ ...entry, t: first + entry.t * width });
+  }
+}

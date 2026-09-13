@@ -1,0 +1,285 @@
+/*
+ * solid-node-viewer - the browser viewer for solid-node models
+ * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+// One step of the program: what it reads, what it determines, and how
+// (`simulation/program.py`'s `class Edge`, reproduced).
+
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { prepare, valueOf } from '../expressions';
+import { nest } from './scope';
+import { loadProgram } from './program';
+import type { LoadedProgram, RunDocument } from './program';
+import { edgeCuts, edgeIncrements, edgeValues, linearOf, predictsOf } from './edges';
+
+const LIMITS = {
+  crossing_tolerance: 1e-12, subdivisions: 64, bisection_rounds: 64,
+  max_crossings: 1000, agreement: 1e-9,
+};
+
+interface Bench {
+  coordinates: Record<string, unknown>;
+  intermediates?: string[];
+  edges: unknown[];
+  sources?: Record<string, string[]>;
+  drivers?: Record<string, unknown>;
+}
+
+function bench(spec: Bench): LoadedProgram {
+  const ids = Object.keys(spec.coordinates);
+  const inputs = ids.filter(
+    (id) => (spec.coordinates[id] as { kind: string }).kind === 'input');
+  const sources: Record<string, string[]> = spec.sources ?? Object.fromEntries(
+    [...ids, ...(spec.intermediates ?? [])].map(
+      (id) => [id, inputs.includes(id) ? [id] : inputs]));
+  const drivers = spec.drivers ?? Object.fromEntries(inputs.map((id) => [id, {
+    default: 0, range: null, unit: null, dtype: null, scale: null,
+  }]));
+  return loadProgram({
+    format: 'solid-node-export',
+    version: 5,
+    drivers,
+    instructions: {},
+    program: {
+      identity: 'bench',
+      clock: 'time',
+      coordinates: spec.coordinates,
+      intermediates: spec.intermediates ?? [],
+      edges: spec.edges,
+      spans: {},
+      sources,
+      limits: { ...LIMITS },
+    },
+  } as unknown as RunDocument, 'bench://edges');
+}
+
+const input = (initial: number) =>
+  ({ kind: 'input', initial, domain: null });
+const coordinate = (initial: number) =>
+  ({ kind: 'coordinate', initial, unit: null, domain: null });
+
+describe('a law', () => {
+  const program = bench({
+    coordinates: { crank: input(0), 'first.turn': coordinate(0) },
+    edges: [{
+      kind: 'law', needs: ['crank'], gives: ['first.turn'],
+      description: 'crank drives first.turn', stated_by: 'Bench',
+      expressions: ['(crank ^ 2)'], affine: [false], plans: [null],
+    }],
+  });
+  const edge = program.edges[0];
+
+  it('values its target at the committed state', () => {
+    expect(edgeValues(program, edge, { crank: 3, 'first.turn': 0 }))
+      .toEqual([['first.turn', 9]]);
+  });
+
+  it('increments by the DIFFERENCE of two evaluations, so a kink is exact', () => {
+    const values = { crank: 3, 'first.turn': 9 };
+    const deltas = { crank: 2, 'first.turn': 0 };
+    expect(edgeIncrements(program, edge, values, deltas, null, 0))
+      .toEqual([['first.turn', 25 - 9]]);
+  });
+
+  it('has no cuts without a plan', () => {
+    expect(edgeCuts(program, edge, { crank: 3 }, { crank: 2 }, 0)).toEqual([]);
+  });
+});
+
+describe('a constant law', () => {
+  const program = bench({
+    coordinates: { crank: input(0), pin: coordinate(7) },
+    edges: [{
+      kind: 'law', needs: ['crank'], gives: ['pin'],
+      description: 'the pin holds', stated_by: 'Bench',
+      expressions: [null], affine: [true], plans: [null],
+    }],
+  });
+  const edge = program.edges[0];
+
+  it('values as zero and contributes zero', () => {
+    expect(edgeValues(program, edge, { crank: 5, pin: 7 }))
+      .toEqual([['pin', 0]]);
+    expect(edgeIncrements(program, edge, { crank: 5, pin: 7 },
+                          { crank: 3, pin: 0 }, null, 0))
+      .toEqual([['pin', 0]]);
+  });
+});
+
+describe('a wiring', () => {
+  const program = bench({
+    coordinates: { crank: input(0), 'slide.travel': coordinate(0) },
+    edges: [{
+      kind: 'wiring', needs: ['crank'], gives: ['slide.travel'],
+      description: 'crank wires slide.travel', stated_by: 'Bench',
+      factor: 2.5,
+    }],
+  });
+  const edge = program.edges[0];
+
+  it('values source x factor and increments delta x factor', () => {
+    expect(edgeValues(program, edge, { crank: 4, 'slide.travel': 0 }))
+      .toEqual([['slide.travel', 10]]);
+    expect(edgeIncrements(program, edge, { crank: 4, 'slide.travel': 10 },
+                          { crank: 2, 'slide.travel': 0 }, null, 0))
+      .toEqual([['slide.travel', 5]]);
+  });
+});
+
+describe('a formula, forward', () => {
+  const program = bench({
+    coordinates: {
+      a: input(0), b: input(0), derived: coordinate(0),
+    },
+    edges: [{
+      kind: 'formula', needs: ['a', 'b'], gives: ['derived'],
+      description: "the derived coordinate 'derived'", stated_by: 'Bench',
+      factors: [2, 3], constant: 10, slot: 'derived',
+    }],
+  });
+  const edge = program.edges[0];
+
+  it('is constant + the linear combination, in needs order', () => {
+    expect(edgeValues(program, edge, { a: 1, b: 2, derived: 0 }))
+      .toEqual([['derived', 10 + 2 + 6]]);
+  });
+
+  it('increments with the constant replaced by zero', () => {
+    expect(edgeIncrements(program, edge, { a: 1, b: 2, derived: 18 },
+                          { a: 1, b: 1, derived: 0 }, null, 0))
+      .toEqual([['derived', 5]]);
+  });
+});
+
+describe('a formula, solved backward into its one term', () => {
+  // The producer's own published shape: `needs` carries the SLOT first
+  // with factor 0.0, then the other terms, then the solved-for term
+  // last with its own coefficient.
+  const program = bench({
+    coordinates: {
+      slot: input(0), other: input(0), own: coordinate(0),
+    },
+    edges: [{
+      kind: 'formula', needs: ['slot', 'other', 'own'], gives: ['own'],
+      description: "the derived coordinate 'own'", stated_by: 'Bench',
+      factors: [0.0, 3, 2], constant: 10, slot: 'slot',
+    }],
+  });
+  const edge = program.edges[0];
+
+  it('is (slot - constant - the other terms) / its own coefficient', () => {
+    // slot = 10 + 3*other + 2*own, so own = (slot - 10 - 3*other) / 2
+    expect(edgeValues(program, edge, { slot: 30, other: 2, own: 0 }))
+      .toEqual([['own', (30 - 10 - 6) / 2]]);
+  });
+
+  it('increments with the constant replaced by zero', () => {
+    expect(edgeIncrements(program, edge,
+                          { slot: 30, other: 2, own: 7 },
+                          { slot: 4, other: 1, own: 0 }, null, 0))
+      .toEqual([['own', (4 - 0 - 3) / 2]]);
+  });
+});
+
+describe('a check', () => {
+  const program = bench({
+    coordinates: {
+      slot: input(0), a: input(0), b: coordinate(0),
+    },
+    edges: [
+      {
+        kind: 'law', needs: ['a'], gives: ['b'],
+        description: 'a drives b', stated_by: 'Bench',
+        expressions: ['a'], affine: [true], plans: [null],
+      },
+      {
+        kind: 'check', needs: ['slot', 'a', 'b'], gives: [],
+        description: "the derived coordinate 'slot'", stated_by: 'Bench',
+        factors: [0.0, 1, 1], constant: 5, slot: 'slot',
+      },
+    ],
+  });
+  const edge = program.edges[1];
+
+  it('determines nothing', () => {
+    expect(edgeValues(program, edge, { slot: 0, a: 1, b: 1 })).toEqual([]);
+    expect(edgeIncrements(program, edge, { slot: 0, a: 1, b: 1 },
+                          { slot: 0, a: 1, b: 1 }, null, 0)).toEqual([]);
+  });
+
+  it('predicts over every need but the slot', () => {
+    expect(predictsOf(edge, { slot: 99, a: 1, b: 2 })).toBe(5 + 1 + 2);
+    expect(predictsOf(edge, { slot: 0, a: 1, b: 2 }, 0)).toBe(3);
+  });
+});
+
+describe('the accumulation order is the producer\'s', () => {
+  // `total = total + held[key] * factor`, in `needs` order, and never a
+  // re-association: these three terms sum to 1e16 in that order and to
+  // 10000000000000002 in the other.
+  const program = bench({
+    coordinates: {
+      big: input(0), one: input(0), two: input(0), derived: coordinate(0),
+    },
+    edges: [{
+      kind: 'formula', needs: ['big', 'one', 'two'], gives: ['derived'],
+      description: 'the sum', stated_by: 'Bench',
+      factors: [1, 1, 1], constant: 0, slot: 'derived',
+    }],
+  });
+  const edge = program.edges[0];
+  const held = { big: 1e16, one: 1, two: 1, derived: 0 };
+
+  it('sums in needs order, to the last bit', () => {
+    expect(linearOf(edge, held)).toBe(1e16);
+    // The same three numbers, re-associated, differ in the last bits --
+    // which is what the corpus's 1e-9 window would hide until it did not.
+    expect(((0 + 1) + 1) + 1e16).toBe(10000000000000002);
+  });
+});
+
+describe('every evaluation gets a FRESH scope object (design D11)', () => {
+  it('a mutated scope object returns the previous pass\'s number', () => {
+    const id = prepare('(fresh.source * 3)');
+    const reused = { time: 0, drivers: nest({ 'fresh.source': 2 }) };
+    const first = valueOf(id, reused);
+    // Mutating in place is exactly what the engine must never do: the
+    // identity fast path sees the same object and reuses the memo.
+    (reused.drivers as Record<string, Record<string, number>>)
+      .fresh.source = 5;
+    const second = valueOf(id, reused);
+    expect(first).toBe(6);
+    expect(second).toBe(6);
+
+    const a = valueOf(id, { time: 0, drivers: nest({ 'fresh.source': 2 }) });
+    const b = valueOf(id, { time: 0, drivers: nest({ 'fresh.source': 5 }) });
+    expect(a).toBe(6);
+    expect(b).toBe(15);
+  });
+
+  it('no module under src/run/ evaluates through a scope of its own', () => {
+    // One call site, by construction: `evaluateExpression` in program.ts
+    // builds a fresh literal per call and is the only thing in the
+    // engine that reaches the evaluator at all.
+    const sources = [
+      'program.ts', 'edges.ts', 'jumps.ts', 'commands.ts', 'run.ts',
+      'engine.ts', 'scope.ts', 'runtime.ts', 'worker.ts', 'protocol.ts',
+    ];
+    const callers: string[] = [];
+    for (const name of sources) {
+      let text: string;
+      try {
+        text = readFileSync(new URL(name, import.meta.url), 'utf8');
+      } catch {
+        continue;
+      }
+      if (/\bvalueOf\s*\(/.test(text) || /\bevalExpr\s*\(/.test(text)) {
+        callers.push(name);
+      }
+    }
+    expect(callers).toEqual(['program.ts']);
+  });
+});

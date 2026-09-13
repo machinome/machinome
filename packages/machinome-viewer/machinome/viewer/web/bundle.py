@@ -42,10 +42,28 @@ def has_bundle():
     return bundle_path().is_file()
 
 
+#: What every viewer released so far reads. A consumer that receives no
+#: ``documentVersions`` is entitled to assume exactly this, so a build
+#: whose package predates the declaration still answers truthfully.
+RELEASED_DOCUMENT_VERSIONS = [1, 2, 3, 4]
+
+
 def api_version():
     """Return the viewer API version declared by the widget package."""
     with open(PACKAGE_JSON) as stream:
         return json.load(stream)['solidNodeViewerApi']
+
+
+def document_versions():
+    """Return the document schema versions this build's widget renders.
+
+    Read from the widget package's own single declaration -- the same one
+    the bundle is built from -- so the answer a framework reads and the
+    versions the bundle actually refuses can never disagree.
+    """
+    with open(PACKAGE_JSON) as stream:
+        declared = json.load(stream).get('solidNodeDocumentVersions')
+    return list(declared) if declared else list(RELEASED_DOCUMENT_VERSIONS)
 
 
 def version():
@@ -79,7 +97,8 @@ def describe():
 
     Returns a JSON-serializable mapping with the absolute ``path`` of the
     bundle, the absolute ``index`` of the standalone export page, the integer
-    ``apiVersion`` the widget declares and the package ``version``. Raises
+    ``apiVersion`` the widget declares, the list of document schema versions
+    it renders as ``documentVersions``, and the package ``version``. Raises
     :class:`BundleMissing` when the installation has no built bundle, so a
     caller never receives a path that does not exist.
     """
@@ -89,5 +108,6 @@ def describe():
         'path': str(bundle_path().resolve()),
         'index': str(index_path().resolve()),
         'apiVersion': api_version(),
+        'documentVersions': document_versions(),
         'version': version(),
     }

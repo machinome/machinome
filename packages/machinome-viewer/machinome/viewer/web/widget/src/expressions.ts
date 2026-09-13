@@ -543,6 +543,13 @@ context.acos = (value: number) => (Math.acos(value) * 180) / Math.PI;
 context.atan = (value: number) => (Math.atan(value) * 180) / Math.PI;
 context.atan2 = (y: number, x: number) => (Math.atan2(y, x) * 180) / Math.PI;
 
+// `solid_node.math.sign` is `(x > 0) - (x < 0)`: which side of zero its
+// argument is on, with no branch. `Math.sign` agrees everywhere except
+// at negative zero, where it answers -0 and the producer answers 0 --
+// and the run reads the branch of a `sign` jump off this same formula
+// (design §8, §15 finding 3), so one definition serves both.
+context.sign = (value: number) => (value > 0 ? 1 : 0) - (value < 0 ? 1 : 0);
+
 // ---------------------------------------------------------------------
 // Name resolution (D5): the first part of a dotted (or bare) name is
 // resolved in the order the old spread scope established -- `$t`, then

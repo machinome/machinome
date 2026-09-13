@@ -19,6 +19,7 @@
 
 import { DriverScope } from './evaluator';
 import { ManifestDriver, ManifestInstruction } from './types';
+import { nest } from './run/scope';
 
 export type DriverListener = (id: string, value: number) => void;
 
@@ -171,11 +172,15 @@ export class DriverStore {
     );
   }
 
-  /** The declared instructions, verbatim, targets in design units. */
+  /** The declared instructions, verbatim, in design units. A version 5
+   * document's relative instruction states `by` where an absolute one
+   * states `targets`; both travel, and neither is invented. */
   instructions(): Record<string, ManifestInstruction> {
     return Object.fromEntries(
       Object.entries(this.events).map(([name, entry]) => [name, {
-        targets: { ...entry.targets },
+        ...(entry.targets === undefined
+          ? {} : { targets: { ...entry.targets } }),
+        ...(entry.by === undefined ? {} : { by: { ...entry.by } }),
         duration: entry.duration,
       }]),
     );
@@ -212,21 +217,11 @@ export class DriverStore {
   }
 
   /** The driver values as the expressions read them: nested by qualified
-   * id, bare root ids at the top level. */
+   * id at EVERY segment (`run/scope.ts`, design D10), bare root ids at
+   * the top level. This builder used to split at the first dot only,
+   * which left a three-segment id unresolvable. */
   scope(): DriverScope {
-    const scope: DriverScope = {};
-    for (const [id, value] of this.values) {
-      const dot = id.indexOf('.');
-      if (dot < 0) {
-        scope[id] = value;
-        continue;
-      }
-      const owner = id.slice(0, dot);
-      const name = id.slice(dot + 1);
-      const nested = (scope[owner] ??= {}) as Record<string, number>;
-      nested[name] = value;
-    }
-    return scope;
+    return nest(Object.fromEntries(this.values));
   }
 
   /** Advance the ramps to now, tell listeners what moved, and hand the
@@ -265,7 +260,7 @@ export class DriverStore {
     }
     const now = this.clock();
     const run = new Run(this);
-    for (const [id, target] of Object.entries(instruction.targets)) {
+    for (const [id, target] of Object.entries(instruction.targets ?? {})) {
       const declaration = this.table[id];
       if (declaration === undefined) {
         throw new Error(

@@ -3,6 +3,68 @@
 All notable changes to solid-node-viewer. The Python package and the widget
 it carries release together and share one version.
 
+## 0.2.0 — unreleased
+
+The viewer stops posing a machine and starts running one.
+
+- **A document that carries a compiled mechanical program is executed.**
+  solid-node's version 5 document is a version 4 one plus a `program`
+  object — the bank of coordinates with their rest values, the values the
+  program computes and never stores, the edges in propagation order with
+  their expressions, their affinity and their jump plans, the declared
+  bounds, the reaching-inputs table and the five constants the algorithm
+  is defined by — beside a tree whose pose expressions name **joint
+  coordinates** rather than drivers. Under that document the carry law is
+  no longer part of a drum's pose: the drum's rotation is one name, and
+  what puts a number there is a **run**. The widget now takes the tick.
+  Ten `Add one` on the Pascaline module's own published build leave its
+  tens drum at 65.54°, where ten of them left it, and not where one
+  would have. (OpenSpec change `run-in-the-worker`, ADR-045.)
+
+- **The run executes off the rendering thread.** A TypeScript engine
+  mirroring the framework's own `program.py` and `run.py` function for
+  function runs in a Web Worker, bundled into the one published
+  `solid-widget.js`. The render loop drives the cadence with one advance
+  in flight: a page nobody is watching accumulates no unseen steps and
+  resumes where it stands, a slow tick drops display frames and never
+  mechanics, and a page whose policy forbids a blob worker runs the same
+  engine on the rendering thread and says so on the handle. The step size
+  is the viewer's own choice — `1/240` s by default, settable once at
+  mount — and playback speed changes how many steps a wall second earns,
+  never the step size.
+
+- **The numbers are pinned against the producer's own corpus.** The
+  framework's committed running corpus — thirteen scenarios over eleven
+  machines, 260 steps, every jump primitive, a multi-source law, a
+  blocked command, a rate, a state taken and restored — is replayed here
+  through the shipped engine and compared step by step: exact for
+  discrete state and within the run's own agreement window for floats. A
+  disagreement is a bug in this viewer. (ADR-047.)
+
+- **A committed bank poses the geometry through the evaluator that was
+  already here**, with no second pose path: the bank's coordinate ids are
+  names in the same scope as driver ids, only the parts that read a
+  coordinate that moved are re-evaluated, and a flexible part's shape
+  follows by the same rule. Two corrections came with it, and neither
+  moves a number any correct document produced: a qualified identifier
+  now resolves at **every** segment, so an id of three or more segments
+  resolves to its value instead of to nothing — which had been silently
+  breaking a three-segment driver id in every document version — and
+  `sign` resolves by the producer's own definition, including at negative
+  zero. (ADR-046.)
+
+- **The declared API version rises to 8**, and `describe` reports
+  `documentVersions` beside it — the document schema versions this build
+  reads, from the same single declaration the bundle refuses by, so a
+  producer can ask rather than infer. A version 6 document is refused by
+  name and by list, which is the sentence every viewer released so far
+  gives a version 5 one.
+
+- **There is no on-screen control for a running document yet.** A version
+  5 document mounts, poses at its published rest values and is driven by
+  its host through `handle.run()`. The chrome — run, pause, step, speed,
+  the instruction buttons and the elapsed readout — is the next change.
+
 ## 0.1.0 — unreleased
 
 The viewer leaves the solid-node framework and becomes this package.

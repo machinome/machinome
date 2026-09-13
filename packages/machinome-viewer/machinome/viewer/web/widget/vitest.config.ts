@@ -19,5 +19,11 @@ const pkg = JSON.parse(
 export default defineConfig({
   define: {
     __VIEWER_API_VERSION__: JSON.stringify(pkg.solidNodeViewerApi ?? null),
+    __DOCUMENT_VERSIONS__: JSON.stringify(
+      pkg.solidNodeDocumentVersions ?? null),
+    // The suite never builds a worker: `runtime.ts` falls back in-thread
+    // when there is no source to make one from, which is the same path a
+    // page with a restrictive policy takes.
+    __WORKER_SOURCE__: JSON.stringify(''),
   },
 });

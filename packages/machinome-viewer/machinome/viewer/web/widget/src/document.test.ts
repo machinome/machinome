@@ -22,7 +22,9 @@
 // broken producer loud instead of silent.
 
 import { describe, expect, it } from 'vitest';
-import { assertRenderable, mountRetained } from './viewer';
+import {
+  assertRenderable, mountRetained, RENDERED_VERSIONS,
+} from './viewer';
 import { expressionMetrics, prepare, releaseExpressions } from './expressions';
 import {
   Manifest, ManifestFlexible, ManifestNode, RawOperation,
@@ -192,17 +194,18 @@ describe('assertRenderable on a flexible document', () => {
   });
 
   it('refuses a version it does not render, naming it and the ones it does', () => {
-    // OpenSpec `read-expression-bindings`: version 4 is now RENDERED (see
-    // the `assertRenderable on a document carrying bindings` suite
-    // below), so the version this test names moves to 5, the next one
-    // still refused.
+    // OpenSpec `run-in-the-worker`: version 5 is now RENDERED (see the
+    // `assertRenderable on a document carrying a program` suite below),
+    // so the version this test names moves to 6, the next one still
+    // refused -- the same sentence a version 5 document got from every
+    // viewer released so far.
     const manifest = document({
-      version: 5 as unknown as Manifest['version'],
+      version: 6 as unknown as Manifest['version'],
       root: node('root', []),
     });
 
-    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b5\b/);
-    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/1, 2, 3, 4/);
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b6\b/);
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/1, 2, 3, 4, 5/);
     expect(() => assertRenderable(manifest, '/m.json')).toThrow(/m\.json/);
   });
 
@@ -420,5 +423,177 @@ describe('mountRetained holds the shared table only for a mount that succeeded (
     releaseExpressions(); // the handle's dispose(), in the real mount()
 
     expect(expressionMetrics().nodes).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------
+// OpenSpec `run-in-the-worker` (design §4, §10). A version 5 document is
+// a version 4 one plus the compiled mechanical program, and the names
+// its expressions may read widen with it: the program's clock, its bank
+// coordinates, the values it publishes as computed, and -- inside a jump
+// plan's own expressions -- that plan's branch placeholders.
+// ---------------------------------------------------------------------
+
+const PROGRAM = {
+  identity: 'a-program',
+  clock: 'time',
+  coordinates: {
+    crank: { kind: 'input', initial: 0, domain: null },
+    'units.drum.turn': {
+      kind: 'coordinate', initial: 0, unit: 'deg', domain: 'rotational',
+    },
+  },
+  intermediates: [],
+  edges: [{
+    kind: 'law',
+    needs: ['crank'],
+    gives: ['units.drum.turn'],
+    description: 'crank drives units.drum.turn',
+    stated_by: 'Bench',
+    expressions: ['(36.0 * crank)'],
+    affine: [true],
+    plans: [null],
+  }],
+  spans: {},
+  sources: { crank: ['crank'], 'units.drum.turn': ['crank'] },
+  limits: {
+    crossing_tolerance: 1e-12, subdivisions: 64, bisection_rounds: 64,
+    max_crossings: 1000, agreement: 1e-9,
+  },
+};
+
+const entry = {
+  default: 0, range: null, unit: 'digit', dtype: null, scale: null,
+};
+
+const running = (overrides: Record<string, unknown> = {},
+                 program: Record<string, unknown> = {}): Manifest =>
+  document({
+    version: 5 as unknown as Manifest['version'],
+    drivers: { crank: entry },
+    // The pose names the joint COORDINATE, not the driver: under a run
+    // it is the bank that poses the geometry.
+    root: node('root', [['r', 'units.drum.turn', [0, 0, 1]]]),
+    ...overrides,
+  } as Partial<Manifest>) as Manifest & { program?: unknown };
+
+function withProgram(overrides: Record<string, unknown> = {},
+                     program: Record<string, unknown> = {}): Manifest {
+  const manifest = running(overrides) as Manifest & { program?: unknown };
+  manifest.program = { ...PROGRAM, ...program };
+  return manifest;
+}
+
+describe('assertRenderable on a document carrying a program', () => {
+  it('renders version 5 and says so in its list', () => {
+    expect(RENDERED_VERSIONS).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('accepts a version 5 document and hands back its loaded program', () => {
+    const { program } = assertRenderable(withProgram(), '/m.json');
+    expect(program).not.toBeNull();
+    expect(program!.identity).toBe('a-program');
+    expect(program!.order).toEqual(['crank', 'units.drum.turn']);
+  });
+
+  it('hands back no program for a document that carries none', () => {
+    const { program } = assertRenderable(
+      document({ version: 4 as unknown as Manifest['version'] }), '/m.json');
+    expect(program).toBeNull();
+  });
+
+  it('refuses a version 5 document with no program at all', () => {
+    const manifest = running();
+    expect(() => assertRenderable(manifest, '/m.json'))
+      .toThrow(/"program"/);
+  });
+
+  it('refuses a malformed program by the loader\'s own messages', () => {
+    expect(() => assertRenderable(
+      withProgram({}, { limits: { subdivisions: 64 } }), '/m.json'))
+      .toThrow(/crossing_tolerance/);
+    expect(() => assertRenderable(
+      withProgram({}, {
+        edges: [{ ...PROGRAM.edges[0], kind: 'coupling' }],
+      }), '/m.json')).toThrow(/coupling/);
+  });
+
+  it('admits the clock, a coordinate and a computed value as names', () => {
+    expect(() => assertRenderable(withProgram({
+      root: node('root', [
+        ['r', 'units.drum.turn', [0, 0, 1]],
+        ['t', ['time', 'crank', '0']],
+      ]),
+    }), '/m.json')).not.toThrow();
+  });
+
+  it('admits a plan\'s placeholder inside that plan, and nowhere else', () => {
+    const planned = {
+      edges: [{
+        kind: 'law',
+        needs: ['crank'],
+        gives: ['units.drum.turn'],
+        description: 'crank drives units.drum.turn',
+        stated_by: 'Bench',
+        expressions: ['(crank - floor(crank))'],
+        affine: [true],
+        plans: [{
+          skeleton: '(crank - _j0)',
+          jumps: [{ name: '_j0', primitive: 'floor', level: 'crank',
+                    affine: true }],
+        }],
+      }],
+    };
+    expect(() => assertRenderable(withProgram({}, planned), '/m.json'))
+      .not.toThrow();
+    // The same placeholder in a POSE expression is not a declared name.
+    expect(() => assertRenderable(withProgram({
+      root: node('root', [['r', '_j0', [0, 0, 1]]]),
+    }, planned), '/m.json')).toThrow(/_j0/);
+  });
+
+  it('admits a bindings entry that names a placeholder, which a version 5 '
+     + 'document publishes', () => {
+    // Design §15 finding 2: a plan's skeleton shares subexpressions into
+    // the same table, so the table carries entries only the plan can
+    // evaluate. This viewer never evaluates the table forward, so they
+    // cost it nothing -- and a placeholder reached from an OPERATION is
+    // still refused, by the case above.
+    const planned = {
+      edges: [{
+        kind: 'law',
+        needs: ['crank'],
+        gives: ['units.drum.turn'],
+        description: 'crank drives units.drum.turn',
+        stated_by: 'Bench',
+        expressions: ['(crank - floor(crank))'],
+        affine: [true],
+        plans: [{
+          skeleton: '(crank - _b1)',
+          jumps: [{ name: '_j0', primitive: 'floor', level: 'crank',
+                    affine: true }],
+        }],
+      }],
+    };
+    const manifest = withProgram({
+      bindings: [{ name: '_b1', expression: '(1.0 * _j0)' }],
+    } as Record<string, unknown>, planned);
+    expect(() => assertRenderable(manifest, '/m.json')).not.toThrow();
+  });
+
+  it('still refuses a name that is none of those', () => {
+    expect(() => assertRenderable(withProgram({
+      root: node('root', [['r', 'nowhere.at.all', [0, 0, 1]]]),
+    }), '/m.json')).toThrow(/nowhere\.at\.all/);
+  });
+
+  it('refuses a pose that reads a computed value no edge determines', () => {
+    // Design §15 finding 1: a published computed value nothing computes
+    // is admitted as a NAME and refused the moment something reads it.
+    expect(() => assertRenderable(withProgram({
+      root: node('root', [['r', 'units.wheel', [0, 0, 1]]]),
+    }, { intermediates: ['units.wheel'],
+         sources: { ...PROGRAM.sources, 'units.wheel': [] } }), '/m.json'))
+      .toThrow(/units\.wheel/);
   });
 });

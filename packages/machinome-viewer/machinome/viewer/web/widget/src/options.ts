@@ -11,6 +11,36 @@ import type {
 import type { ViewerView } from './camera';
 import { assertSpeed } from './playback';
 
+/** The run's own mount options (OpenSpec `run-in-the-worker`, D6, D13).
+ *
+ * `dt` is the VIEWER's choice -- the document publishes none -- and is
+ * fixed for the life of a mount, because a run state carries its step
+ * size and a restore across two of them is refused by the framework's
+ * own rule. Changing it means a new mount. */
+export interface ResolvedRunOptions {
+  dt: number;
+  record: number | null;
+  autostart: boolean;
+}
+
+/** 1/240 s: the step the campaign's own interface sketch uses, four
+ * ticks per frame at 60 Hz and real time, and inside the
+ * cadence-independent band the acceptance machine has already measured
+ * (its narrowest carry window is 1/12 s, which is twenty ticks). */
+export const DEFAULT_DT = 1 / 240;
+
+/** 600 ticks, 2.5 s at the default step. */
+export const DEFAULT_RECORD = 600;
+
+export function assertDt(dt: number): number {
+  if (typeof dt !== 'number' || !Number.isFinite(dt) || dt <= 0) {
+    throw new Error(
+      `a run's step size must be a positive number of simulated seconds ` +
+      `per tick; got ${dt}.`);
+  }
+  return dt;
+}
+
 export interface ResolvedViewerOptions {
   baseUrl: string | null;
   animation: AnimationMode;
@@ -24,6 +54,7 @@ export interface ResolvedViewerOptions {
   className: string | null;
   role: string | null;
   ariaLabel: string | null;
+  run: ResolvedRunOptions;
 }
 
 export interface ControlPlan {
@@ -58,6 +89,13 @@ export function resolveOptions(
     className: options.className ?? null,
     role: options.role ?? null,
     ariaLabel: options.ariaLabel ?? null,
+    run: {
+      dt: options.run?.dt === undefined
+        ? DEFAULT_DT : assertDt(options.run.dt),
+      record: options.run?.record === undefined
+        ? DEFAULT_RECORD : options.run.record,
+      autostart: options.run?.autostart ?? false,
+    },
   };
 }
 

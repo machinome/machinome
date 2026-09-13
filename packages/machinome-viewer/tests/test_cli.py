@@ -18,13 +18,15 @@ class DescribeCommandTest(TestCase):
         output = io.StringIO()
         with patch.object(cli, 'describe', return_value={
                  'path': '/tmp/solid-widget.js', 'index': '/tmp/index.html',
-                 'apiVersion': 5, 'version': '0.1.0'}), \
+                 'apiVersion': 5, 'documentVersions': [1, 2, 3, 4, 5],
+                 'version': '0.1.0'}), \
              redirect_stdout(output):
             status = cli.main(['describe'])
         self.assertEqual(status, 0)
         self.assertEqual(json.loads(output.getvalue()), {
             'path': '/tmp/solid-widget.js', 'index': '/tmp/index.html',
-            'apiVersion': 5, 'version': '0.1.0',
+            'apiVersion': 5, 'documentVersions': [1, 2, 3, 4, 5],
+            'version': '0.1.0',
         })
 
     def test_a_missing_bundle_exits_nonzero_with_the_remedy_and_no_stdout(self):
@@ -114,4 +116,6 @@ class ModuleEntryTest(TestCase):
             capture_output=True, text=True,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('apiVersion', json.loads(result.stdout))
+        reported = json.loads(result.stdout)
+        self.assertIn('apiVersion', reported)
+        self.assertEqual(reported['documentVersions'], [1, 2, 3, 4, 5])

@@ -11,4 +11,4 @@ published build to it, and the headless browser capture behind
 one entry point and three commands; it never imports this package's code.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

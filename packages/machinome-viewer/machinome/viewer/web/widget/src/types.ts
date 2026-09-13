@@ -52,7 +52,7 @@ export interface ManifestNode {
 // LOWEST version its content needs -- a document holding no flexible
 // node is byte-identical to the version 2 it always was -- so accepting
 // the whole union is accepting exactly what the producer can emit.
-export type ManifestVersion = 1 | 2 | 3 | 4;
+export type ManifestVersion = 1 | 2 | 3 | 4 | 5;
 
 // One entry of a version-4 document's shared-subexpression table
 // (OpenSpec `read-expression-bindings`, ADR-044). `expression` names
@@ -77,7 +77,14 @@ export interface ManifestDriver {
 // DESIGN units, keyed by qualified driver id; the conversion to native
 // driver units happens here, once, through the driver table.
 export interface ManifestInstruction {
-  targets: Record<string, number>;
+  /** Where the drivers LAND. An absolute instruction states these. */
+  targets?: Record<string, number>;
+  /** How far the drivers TRAVEL from where they stand. A relative
+   * instruction states these instead, and travels only in a version 5
+   * document: below it a relative instruction is omitted from the table
+   * altogether, so a shipped viewer reading `targets` off every entry
+   * cannot meet one. */
+  by?: Record<string, number>;
   duration: number;
 }
 
@@ -108,5 +115,16 @@ export interface Manifest {
   // Absent from a document with nothing shared, so a version 1-3
   // document is typed exactly as it is without this change.
   bindings?: ManifestBinding[];
+  /** The compiled mechanical program a version 5 document carries: the
+   * bank of coordinates with their rest values, the values the program
+   * computes and never stores, the edges in propagation order with their
+   * expressions, affinity and jump plans, the declared bounds, the
+   * reaching-inputs table, the five constants the algorithm is defined
+   * by, and the free name elapsed simulation seconds bind to.
+   *
+   * Deliberately opaque here: `run/program.ts` reads it field by field
+   * and refuses by name everything the engine cannot execute, which is a
+   * validation no structural type can perform. */
+  program?: unknown;
   root: ManifestNode;
 }

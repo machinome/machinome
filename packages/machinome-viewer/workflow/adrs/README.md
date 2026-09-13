@@ -51,3 +51,6 @@ both repositories. Consequences:
 - [ADR-042](EXPORT/ADR-042-host-controlled-viewer-assembly-navigation.md) — Host-controlled viewer assembly navigation — **Accepted**
 - [ADR-043](EXPORT/ADR-043-hash-consed-expression-evaluation.md) — Hash-consed expression evaluation — **Accepted**
 - [ADR-044](EXPORT/ADR-044-a-binding-name-resolves-into-the-shared-dag.md) — A binding name resolves into the shared DAG — **Accepted**
+- [ADR-045](EXPORT/ADR-045-the-run-executes-in-a-worker.md) — The run executes in a worker and the main thread only poses — **Accepted**
+- [ADR-046](EXPORT/ADR-046-a-committed-bank-is-a-name-in-the-same-scope.md) — A committed bank is a name in the same scope as a driver — **Accepted**
+- [ADR-047](EXPORT/ADR-047-the-corpus-makes-the-two-runtimes-one-algorithm.md) — The corpus is what makes the two runtimes one algorithm — **Accepted**

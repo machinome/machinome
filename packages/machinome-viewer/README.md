@@ -13,7 +13,8 @@ something a person can look at in a browser:
   machine-time readout, when the document declares how long a turn of the
   timeline is — one slider with a passive click-to-edit numeric readout per
   declared driver and one button per declared instruction, molejo flexible
-  parts evaluated per frame, and the
+  parts evaluated per frame, **the machine itself run in a Web Worker for
+  a document that carries a compiled mechanical program**, and the
   `SolidNodeWidget.mount()` API a host page drives it through;
 - the **standalone export page** a `solid export` directory ships with;
 - the **development server** that `solid develop` launches beside its
@@ -48,7 +49,8 @@ playwright install chromium
 
 The framework never imports this package's code. It finds the installed
 viewer through one Python entry point, `solid_node.viewer`, which returns
-the bundle path, the export page and the declared viewer API version; and it
+the bundle path, the export page, the declared viewer API version and the
+document schema versions this build reads; and it
 runs three commands of the `solid-node-viewer` console script (or, as the
 framework does it, `python -m solid_node_viewer`) as separate processes:
 
@@ -70,12 +72,16 @@ The API version is the integer a host checks before mounting — the widget
 declares it once in `package.json` as `solidNodeViewerApi`, and every mount
 handle and the `SolidNodeWidget` global report it. It rises when the mount
 interface changes incompatibly or gains a capability a host may require.
-The document schema versions the widget reads (`1`, `2`, `3` and `4`) are
-a third number, owned by the producer.
+The document schema versions the widget reads are a third number, owned by
+the producer; the widget declares the list it reads once in the same
+`package.json` as `solidNodeDocumentVersions`, and `describe` reports it as
+`documentVersions` beside the API version, so a producer can ask what this
+build reads rather than infer it.
 
 | solid-node-viewer | viewer API | reads document versions |
 | --- | --- | --- |
 | 0.1.0 | 7 | 1, 2, 3, 4 |
+| 0.2.0 | 8 | 1, 2, 3, 4, 5 |
 
 ## Working on the viewer
 

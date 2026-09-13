@@ -5,5 +5,12 @@
  */
 
 declare const __VIEWER_API_VERSION__: number;
+declare const __DOCUMENT_VERSIONS__: number[];
 
 export const API_VERSION = __VIEWER_API_VERSION__;
+
+/** The document schema versions this build reads, declared ONCE in
+ * `package.json` as `solidNodeDocumentVersions` and read from that same
+ * file by `bundle.py`, so the answer a framework reads and the versions
+ * the bundle actually refuses can never disagree. */
+export const DOCUMENT_VERSIONS: readonly number[] = __DOCUMENT_VERSIONS__;

@@ -202,6 +202,22 @@ describe('valueOf: semantics agree with the shipped evaluator', () => {
     agrees('(x_axis.motor ? 1 : -1)', { time: 0, drivers: { x_axis: { motor: 0 } } });
   });
 
+  it('resolves sign by the producer\'s formula, including at negative zero', () => {
+    // `solid_node.math.sign` is `(x > 0) - (x < 0)`, which is 0 at
+    // -0.0; `Math.sign(-0)` is -0. No parity case pinned it, and the
+    // run reads a `sign` branch off the same formula (design §8, §15
+    // finding 3), so the two runtimes have to agree here.
+    expect(valueOf(prepare('sign(-0.0)'), { time: 0 } as never)).toBe(0);
+    expect(Object.is(evalExpr('sign(-0.0)', { time: 0 }), 0)).toBe(true);
+    expect(evalExpr('sign(-3)', { time: 0 })).toBe(-1);
+    expect(evalExpr('sign(0)', { time: 0 })).toBe(0);
+    expect(evalExpr('sign(3)', { time: 0 })).toBe(1);
+    // And through a driver, where the negative zero is a VALUE rather
+    // than a literal the parser folds.
+    expect(Object.is(
+      evalExpr('sign(x)', { time: 0, drivers: { x: -0 } }), 0)).toBe(true);
+  });
+
   it('short-circuits && without forcing an undefined right side', () => {
     // `nope` names nothing: forcing it would read `undefined` into the
     // arithmetic below and the two implementations would disagree.
