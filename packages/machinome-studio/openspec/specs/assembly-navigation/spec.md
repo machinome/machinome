@@ -4,75 +4,76 @@
 
 Let a maker inspect the model hierarchy and control the current viewer's focus
 and subtree visibility without changing the CAD project or its build artifacts.
-
 ## Requirements
+### Requirement: The Model panel presents the viewer's navigator
+When the workspace has a mounted functional model, the Model panel SHALL
+present the assembly navigator the installed browser viewer package mounts over
+that viewer, under the panel's own heading, and SHALL NOT build, reproduce, or
+substitute a tree of its own. The navigator's hierarchy, node labels, effective
+colours, focused root, hidden subtrees, visibility controls, keyboard contract,
+and restore-the-full-assembly affordance are the viewer's, specified by the
+viewer package's own assembly-navigation capability; the shop SHALL NOT
+reimplement, reword, or re-specify them. The panel SHALL give the navigator the
+accessible name `Assembly` and SHALL present it in the workspace's own
+typography and palette, as the reference design's Model panel states them,
+using only the presentation surface the viewer package publishes for a host.
+When no viewer is mounted, the panel SHALL say no model assembly is available
+rather than show an empty tree.
 
-### Requirement: The Model panel provides an interactive assembly navigator
-When the workspace has a mounted functional model, the Model panel SHALL show
-an accessible tree of every node in that viewer's current published assembly.
-Each row SHALL show the node's label, hierarchy position, and effective viewer
-colour when one exists. The tree SHALL identify the selected row, the focused
-viewer root, and hidden subtrees separately. It SHALL provide labelled controls
-to focus the selected subtree, restore the full assembly, and hide or show a
-selected subtree. Each visibility control SHALL have checkbox semantics and
-appear as a square filled with the node's effective viewer colour while checked
-and visible, or empty with only its border while unchecked and hidden. A visible
-node without a single effective colour SHALL use a neutral gray fill. The
-checked state and accessible name SHALL communicate visibility independently of
-colour.
+#### Scenario: A maker inspects a mounted model
+- **WHEN** the maker opens a workspace whose functional model is mounted
+- **THEN** the Model panel shows the viewer's own assembly navigator for that
+  model, named `Assembly`, with a row for each node of the viewer's published
+  assembly
 
-#### Scenario: A maker inspects a coloured nested assembly
-- **WHEN** the mounted functional model contains coloured nested assemblies
-- **THEN** the Model panel shows the same hierarchy and each row's effective
-  viewer colour, including colours inherited from an ancestor
+#### Scenario: The navigator wears the workspace's presentation
+- **WHEN** the Model panel shows the viewer's navigator
+- **THEN** its rows, indentation, colour chips, focused-root marking, and focus
+  ring are the Model panel's own, matching the reference design, and the shop
+  achieves that without depending on any part of the navigator the viewer
+  package has not published for a host
 
-#### Scenario: A maker focuses a subassembly
-- **WHEN** the maker focuses an assembly-tree node
-- **THEN** the viewer displays that node's subtree as its root and the tree
-  marks that row as the focused root without changing any visibility state
+#### Scenario: A maker restores the full assembly
+- **WHEN** a subtree is the viewer's focused root
+- **THEN** the panel offers the navigator's own affordance to restore the
+  published document root, and the shop offers no second control of its own
 
-#### Scenario: A maker returns to the whole assembly
-- **WHEN** the maker selects Show full assembly
-- **THEN** the viewer restores the published document root and leaves each
-  current hidden or shown subtree in its current visibility state
+#### Scenario: No functional model is mounted
+- **WHEN** the workspace has no mounted viewer
+- **THEN** the Model panel says no model assembly is available
 
-#### Scenario: A maker hides and restores a part
-- **WHEN** the maker hides an assembly-tree node and later shows it
-- **THEN** the viewer hides and restores that node and all its descendants
-  without changing the focused viewer root
+#### Scenario: The mounted viewer goes away
+- **WHEN** the workspace's mounted viewer is disposed, or the maker leaves the
+  project
+- **THEN** the panel disposes the navigator it mounted, leaves no second
+  navigator behind, and stops observing that viewer
 
-#### Scenario: A maker reads visibility from the assembly tree
-- **WHEN** one coloured node is visible and another is hidden
-- **THEN** the visible node's checkbox square is filled with its effective
-  model colour, the hidden node's square is empty with a border, and both
-  expose their checked state to assistive technology
+#### Scenario: The maker moves between workspace areas
+- **WHEN** the maker selects Code and then returns to Model
+- **THEN** the same navigator is still mounted over the same viewer, neither
+  having been torn down and remounted
 
-#### Scenario: A colourless node is visible
-- **WHEN** a visible node has no single effective viewer colour
-- **THEN** its checkbox square uses the neutral visible fill and remains
-  distinguishable from the empty hidden state
-
-#### Scenario: A maker uses the assembly keyboard controls
-- **WHEN** keyboard focus is in the assembly tree
-- **THEN** Up and Down move between visible rows, Right expands a collapsed
-  parent, Left collapses an expanded parent or moves to its parent, Enter
-  focuses the selected row, and Space toggles its visibility
-
-### Requirement: Assembly navigation is session-local and reconciles on viewer updates
-Assembly selection, focus, visibility, and expansion SHALL apply only to the
+### Requirement: The Model panel reflects the viewer after an update
+Assembly focus, subtree visibility, and expansion SHALL apply only to the
 currently mounted viewer session and SHALL NOT alter the project source or
-published build artifacts. When a viewer update retains a named node, its
-compatible assembly-navigation state SHALL remain. When an update removes a
-selected, focused, or hidden node, the workspace SHALL clear the unavailable
-state and retain an inspectable viewer.
+published build artifacts. The shop SHALL NOT hold its own copy of the focused
+root or the hidden subtrees, and SHALL NOT reconcile them after a published
+update: the panel SHALL show whatever the viewer's navigation state is at that
+moment, whichever gesture or update moved it.
 
 #### Scenario: A model update retains the focused part
 - **WHEN** a published viewer update changes another part while retaining the
   focused node
-- **THEN** the focus and existing visibility state remain applied after the
-  update
+- **THEN** the panel shows the updated assembly with that focus and the existing
+  visibility state still applied, and the shop performs no reconciliation of its
+  own
 
 #### Scenario: A model update removes the focused part
 - **WHEN** a published viewer update removes the focused node
-- **THEN** the workspace returns the viewer to the full assembly, clears the
-  unavailable selection or hidden state, and remains usable
+- **THEN** the panel shows the viewer's resulting navigation state and remains
+  inspectable, without the shop clearing or restoring any state it kept
+
+#### Scenario: The maker's inspection does not reach the project
+- **WHEN** the maker focuses a subtree and hides a part
+- **THEN** the project's source and published build artifacts are unchanged
+

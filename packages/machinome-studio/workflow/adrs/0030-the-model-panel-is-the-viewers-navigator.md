@@ -1,6 +1,6 @@
 # ADR 0030: The Model panel is the viewer's navigator
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Date:** 2026-09-14
 
