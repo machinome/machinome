@@ -1,0 +1,4 @@
+# The evidence bench is a real Solid project, so `solid test` discovers a
+# root and a model through a manifest exactly as a maker's project does.
+[tool.solid-node]
+model = "machine:Bench"
