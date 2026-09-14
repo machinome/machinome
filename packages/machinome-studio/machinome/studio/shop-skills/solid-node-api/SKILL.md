@@ -38,7 +38,7 @@ from solid_node.motion.joints import (         # where a body may move
 from solid_node.motion.couplings import (      # a law between two coordinates
     Affine, UnreachedCoordinate, DoublyBound, NotInvertible, PrematureRead)
 from solid_node.simulation import (            # how it runs
-    Driver, Instruction, Sim, ScenarioTest, RampProgram,
+    Driver, Instruction, Button, Turn, Sim, ScenarioTest, RampProgram,
     qualified_drivers, qualified_instructions,
     RunConflict, UnsupportedLaw, TooManyCrossings, Crossing, Stop)
 from solid_node.test import (
@@ -854,13 +854,83 @@ version 5 and `sim.trigger(name)` returns a tuple of move handles. All
 target inputs are checked for ownership before issuing commands; an
 already-owned input refuses the instruction rather than replacing its move.
 
-The viewer scopes controls to the focused assembly, with a breadcrumb into
+**Controls** put a request on the PART instead of a panel button, in a
+`controls` dict beside `instructions`, on a root declaring
+`Time.running()`:
+
+```python
+controls = {
+    'units dial': Button(units.input.dial, 'Add one'),
+    'turn units': Turn(units.input.dial, units_entry),
+}
+```
+
+`Button(part, instruction)` is a press submitting that named instruction;
+`Turn(part, input)` is a drag about the rotational coordinate the part
+rides, issued as relative moves on `input`. `Slide`, for a prismatic
+coordinate, does not exist yet. A control MOVES NOTHING ITSELF and carries
+no state: it names a request the run already accepts, so ownership,
+admission, stops and outcomes are exactly what `trigger`, `move` and
+`rate` state, and a blocked drag reports blocked with no hidden backlog.
+
+`part` is a NODE, written the way a relation's path ends are —
+`units.input.dial`, a declared child or a path of declared children
+through one — never a coordinate and never a driver. `Turn`'s `input` is
+the `Driver` DECLARATION, not a qualified id string; a child's driver is
+reached by declaring the control on that child, exactly as an instruction
+over it is. Controls qualify through the declaring node's instance path
+(`column.dial`), and a button's instruction qualifies with it, so it is a
+key of the tree's instruction table by construction. `controls` is a
+reserved name on a node class: a mistyped table is never silently inert.
+
+Nothing about the gesture is declared. The coordinate is the one owned by
+the nearest ancestor-or-self of the part that declares a joint the run
+banks; the axis and the point the part turns about are read off the tree,
+being the values that joint's own placement used; and `per_unit` — the
+coordinate units the part moves per design unit the input travels — is
+MEASURED from the compiled program at the rest bank, with that input
+displaced a little each way and nothing else moved. It is a reading AT
+REST: a law whose response to that input changes with state makes a drag
+looser, never wrong, because the part is posed only by what the run
+commits. Declaring the ratio would repeat a relation the program already
+holds.
+
+Every mistake is refused where its facts exist. At class definition: a
+part the declaring class does not hold, a misspelt path segment, a
+coordinate or a driver written where a part belongs, a repeated or
+list-held child, a `Turn` over a driver that class does not declare, and a
+`controls` value that is not a table of controls. When the tree is
+enumerated or the program compiled: a `Button` naming no declared
+instruction, a part no run-owned coordinate poses, a posing node declaring
+several joints or a joint owning several coordinates, a `Turn` over a
+coordinate whose domain is not rotational, a `Turn` whose input does not
+reach the coordinate (naming the inputs that do). A control under a root
+that does not declare `Time.running()` is refused when the simulation is
+constructed and again at publication. At publication: a `Turn`
+whose input moves the part by nothing at rest, and one whose two readings
+disagree.
+
+A version 5 document publishes a `controls` table beside `instructions`,
+keyed and ordered by qualified name: `kind` (`"button"` or `"turn"`),
+`part` and `joint` as node-name paths, `instruction` or `input` with
+`per_unit`, `coordinate`, `axis` and `origin` (the axis and the point in
+the joint node's own frame). It is ADDITIVE — the version does not move,
+the key is absent when nothing is declared, and the compiled program's
+`identity` never learns a control exists, so a model that declares one
+publishes the same program as before. A control whose part THIS render
+omitted is left out rather than refused; the headless browser-snapshot
+capture publishes no table at all, as it publishes no instructions.
+
+The viewer scopes the driving panel to the focused assembly, with a breadcrumb into
 subassemblies; declare a whole-machine move on the root. Versions 1–4 use
 driver sliders and absolute instruction buttons. A viewer supporting the
 running controls uses nudge, hold-to-jog and instruction buttons with
 committed readouts instead of position sliders, and run/pause/step/speed/
-elapsed-time/reset transport instead of a seekable timeline. Check the
-installed viewer's `solid viewer` report, not its package version alone.
+elapsed-time/reset transport instead of a seekable timeline. A viewer that
+reads the `controls` table (viewer API 12) also hovers each declared part,
+presses it to submit its instruction and drags it round its own axis,
+reporting a blocked travel where the run refuses it. Check the installed
+viewer's `solid viewer` report, not its package version alone.
 
 ## Instance surface
 
