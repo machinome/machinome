@@ -131,12 +131,10 @@ function rowFor(name: string): HTMLElement {
   return row;
 }
 
-/** Dispatches a real keydown on whichever row currently holds DOM focus
- * (`document.activeElement`) -- the only row this module ever treats as
- * "active" (design D8: the roving tab stop is the navigator's own state,
- * never re-derived from wherever a test or a host happened to call
- * `.focus()`). A keyboard maker can only ever reach a row this way: by
- * Tab landing on the single tab stop, then moving with these keys. */
+/** Dispatches a real keydown on whichever element currently holds DOM
+ * focus (`document.activeElement`). A row reached by any route -- Tab
+ * onto the tab stop, a key, or a pointer click (which `.focus()` stands
+ * in for here) -- is the row the keys act on. */
 function press(key: string): KeyboardEvent {
   const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
   (document.activeElement as HTMLElement).dispatchEvent(event);
@@ -280,6 +278,28 @@ describe('keyboard', () => {
 
     press(' ');
     expect(stub.calls.setVisible).toEqual([[['A'], false], [['A'], true]]);
+  });
+});
+
+describe('keyboard on a row reached by pointer', () => {
+  it('acts on the row that holds focus, not the row last remembered', () => {
+    const stub = new StubHandle();
+    mount(stub);
+    rowFor('A').focus(); // a pointer click on A's blank area lands here
+    expect(rowFor('A').tabIndex).toBe(0);
+    expect(rowFor('Root').tabIndex).toBe(-1);
+    press('ArrowUp');
+    expect(document.activeElement).toBe(rowFor('Root'));
+  });
+
+  it('leaves a row\'s own control its native keys', () => {
+    const stub = new StubHandle();
+    mount(stub);
+    const checkbox = rowFor('A').querySelector<HTMLInputElement>('.solid-nav-visibility')!;
+    checkbox.focus();
+    const space = press(' ');
+    expect(space.defaultPrevented).toBe(false);
+    expect(stub.calls.setVisible).toEqual([]);
   });
 });
 

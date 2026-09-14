@@ -248,6 +248,10 @@ export function mountNavigator(
   let currentAssembly: AssemblyNode = viewer.assembly();
   let currentNavigation: AssemblyNavigationState | null = null;
   const rowElements = new Map<string, HTMLElement>();
+  // The reverse map, for the row an event actually landed on: a pointer
+  // focuses whatever row it clicks, so the keyboard acts on the row that
+  // HOLDS focus, not on the row the navigator last remembered.
+  const rowKeys = new WeakMap<HTMLElement, string>();
 
   /** Every call into the viewer is wrapped here (design D10): a refused
    * or impossible call (the viewer disposed first, an ambiguous path)
@@ -382,8 +386,28 @@ export function mountNavigator(
     rows.forEach((row) => {
       const el = buildRow(row);
       rowElements.set(row.key, el);
+      rowKeys.set(el, row.key);
       treeEl.append(el);
     });
+  }
+
+  /** A row that receives focus by any route -- Tab onto the tab stop, a
+   * key, or a pointer click -- becomes the active row: the roving tab
+   * stop moves to it without a rebuild and without moving focus again,
+   * so the next key acts on the row the maker is actually on. */
+  function activate(key: string): void {
+    if (!local || local.active === key) {
+      return;
+    }
+    const previous = local.active === null ? undefined : rowElements.get(local.active);
+    if (previous) {
+      previous.tabIndex = -1;
+    }
+    local.active = key;
+    const next = rowElements.get(key);
+    if (next) {
+      next.tabIndex = 0;
+    }
   }
 
   /** The ONE place a local-only change (expansion, the active row)
@@ -454,11 +478,23 @@ export function mountNavigator(
     }
   }
 
+  treeEl.addEventListener('focusin', (event) => {
+    const key = event.target instanceof HTMLElement ? rowKeys.get(event.target) : undefined;
+    if (key !== undefined) {
+      activate(key);
+    }
+  });
+
   treeEl.addEventListener('keydown', (event) => {
-    if (!local || local.active === null) {
+    // Only a ROW answers the keyboard contract. A key on a row's own
+    // control -- the checkbox a pointer left focused -- keeps its native
+    // meaning, so Space there toggles that checkbox and nothing else.
+    const key = event.target instanceof HTMLElement ? rowKeys.get(event.target) : undefined;
+    if (!local || key === undefined) {
       return;
     }
-    const action = keyAction(rows, local.active, event.key);
+    activate(key);
+    const action = keyAction(rows, key, event.key);
     if (!action) {
       return;
     }
