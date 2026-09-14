@@ -25,8 +25,8 @@ class BundleLookupTest(TestCase):
         self.assertTrue(froms <= {'pathlib', 'importlib.metadata', 'solid_node_viewer'},
                         froms)
 
-    def test_declares_api_version_eight(self):
-        self.assertEqual(bundle.api_version(), 8)
+    def test_declares_api_version_nine(self):
+        self.assertEqual(bundle.api_version(), 9)
 
     def test_declares_the_document_versions_this_build_reads(self):
         self.assertEqual(bundle.document_versions(), [1, 2, 3, 4, 5])

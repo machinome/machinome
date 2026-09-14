@@ -254,3 +254,57 @@ $ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest
 ```
 Same one pre-existing skip as the baseline (`test_server.py:170`).
 
+## 4. The declared version
+
+### 4.1 Red
+
+`src/version.test.ts:50-58` now expects 9, with the comment extending the
+numbered capability history to explain why (a navigator needs
+`navigation()`/`onAssemblyChange()` to exist before it can mount at all).
+`tests/test_bundle.py:28-29` (renamed `test_declares_api_version_nine`),
+`tests/test_widget_e2e.py:187` and `tests/test_running_document.py:146`
+follow — four literal assertions.
+
+```
+$ npx vitest run src/version.test.ts
+ FAIL  src/version.test.ts > API_VERSION > declares the assembly-navigation API as version 9
+AssertionError: expected 8 to be 9
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest tests/test_bundle.py -q -k version
+FAILED tests/test_bundle.py::BundleLookupTest::test_declares_api_version_nine
+  AssertionError: 8 != 9
+1 failed, 3 passed, 5 deselected
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest tests/test_widget_e2e.py -q -k report_one_api_version
+FAILED tests/test_widget_e2e.py::ViewerMountApiTest::test_the_bundle_and_mount_handle_report_one_api_version
+  AssertionError: 8 != 9
+1 failed, 18 deselected
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest tests/test_running_document.py -q -k ten_add_ones
+FAILED tests/test_running_document.py::RunningDocumentTest::test_ten_add_ones_accumulate_the_carry_on_the_page
+  AssertionError: 8 != 9
+1 failed, 5 deselected
+```
+Red as expected against `package.json:4`, which still said 8.
+
+### 4.2 Green
+
+`solid_node_viewer/widget/package.json`: `solidNodeViewerApi: 9`.
+
+```
+$ npx tsc --noEmit
+(no output, exit 0)
+
+$ npm test
+ Test Files  28 passed (28)
+      Tests  533 passed (533)
+
+$ npm run build
+  dist/solid-widget.js  644.4kb
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest -q
+80 passed, 1 skipped, 11 warnings in 52.08s
+```
+

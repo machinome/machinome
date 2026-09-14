@@ -111,17 +111,17 @@ environment — so the red test for the wiring is the Playwright one.
 
 ## 4. The declared version
 
-- [ ] 4.1 **Red** — `src/version.test.ts:52` expects 9 instead of 8, with
+- [x] 4.1 **Red** — `src/version.test.ts:52` expects 9 instead of 8, with
       the comment saying why (a capability a host may require: the
       navigation state and its subscription, which a navigator built on
       this bundle needs to exist); `tests/test_widget_e2e.py:170`,
       `tests/test_running_document.py:146` and `tests/test_bundle.py:29`
       follow — four literal assertions, not three.
       *Red against `package.json:4`, which still says 8.*
-- [ ] 4.2 **Green** — `solid_node_viewer/widget/package.json`:
+- [x] 4.2 **Green** — `solid_node_viewer/widget/package.json`:
       `solidNodeViewerApi: 9`. Nothing else declares it; `bundle.py:54`
       reads that file.
-- [ ] Commit: `feat(viewer): declare API version 9`.
+- [x] Commit: `feat(viewer): declare API version 9`.
 
 ## 5. The records
 

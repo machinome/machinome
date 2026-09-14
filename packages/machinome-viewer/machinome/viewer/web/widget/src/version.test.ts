@@ -47,8 +47,15 @@ describe('API_VERSION', () => {
   // mounts a document the framework now publishes at version 5 -- `solid
   // develop`, the shop floor's live viewer, the standalone export page
   // -- needs a number it can check before mounting.
-  it('declares the run-in-the-worker API as version 8', () => {
-    expect(API_VERSION).toBe(8);
+  // Publishing the navigation state and a change subscription (OpenSpec
+  // `observe-assembly-navigation`) is the one after that (9): a
+  // navigator -- this package's own, in the next cycle, or a host's own
+  // built on the same channel -- needs `navigation()` and
+  // `onAssemblyChange()` to exist before it can be mounted at all, which
+  // is exactly the capability a host may require this number exists to
+  // answer.
+  it('declares the assembly-navigation API as version 9', () => {
+    expect(API_VERSION).toBe(9);
   });
 });
 
