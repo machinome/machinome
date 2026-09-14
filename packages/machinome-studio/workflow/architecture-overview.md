@@ -456,12 +456,21 @@ reuses the same visibility, containment, symlink, regular-file, and one-MiB
 checks for `.png` paths, verifies the PNG signature, and returns inert image
 bytes without admitting them to the text save flow.
 
-Each project browser mounts its framework viewer for that workspace. It maps
+Each project browser mounts its framework viewer for that workspace, and
+mounts that same viewer's own assembly navigator into the Model context
+panel, over the mounted viewer rather than beside a copy of it. It maps
 each published path directly to the viewer: the manifest reconciles the model,
 a regular artifact updates only the geometry that names it, and `errors.json`
 updates the separate build-failure banner. A failed targeted request reports
 beside the retained model and the next publication retries normally; the browser
-does not remount the viewer or interpret artifact contents.
+does not remount the viewer or interpret artifact contents. The navigator is
+themed by the workspace's own stylesheet, entirely through the viewer's
+published `--solid-nav-*` custom properties and its two named classes for the
+two accents a shared variable cannot carry; the browser specifies none of the
+navigator's tree, keyboard, or visibility behaviour and holds no assembly
+state of its own — no focused root, no hidden set, no expansion — and
+disposes the navigator when the viewer it was mounted over goes away or the
+panel unmounts.
 
 The activity rail has interactive Model, Code, Agents, and Build areas, in that
 order; there is no Files or deferred Sheets area. Code shows the
