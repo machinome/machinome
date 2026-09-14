@@ -15,7 +15,7 @@ vi.mock('three/examples/jsm/loaders/STLLoader.js', () => ({
   STLLoader: class { loadAsync = loadAsync; },
 }));
 
-import { AssemblyNavigation } from './assembly';
+import { AssemblyChange, AssemblyChangeNotifier, AssemblyNavigation } from './assembly';
 import { WidgetTree } from './tree';
 import { ManifestNode } from './types';
 
@@ -130,5 +130,99 @@ describe('AssemblyNavigation', () => {
 
       expect(navigation.state()).toEqual({ root: null, hidden: [] });
     });
+  });
+});
+
+const change = (): AssemblyChange => ({
+  assembly: { name: 'root', path: [], color: null, model: false, children: [] },
+  navigation: { root: null, hidden: [] },
+});
+
+describe('AssemblyChangeNotifier', () => {
+  it('calls every subscribed listener with the exact change notified', () => {
+    const notifier = new AssemblyChangeNotifier();
+    const first: AssemblyChange[] = [];
+    const second: AssemblyChange[] = [];
+    notifier.subscribe((c) => first.push(c));
+    notifier.subscribe((c) => second.push(c));
+    const sent = change();
+
+    notifier.notify(sent);
+
+    expect(first).toEqual([sent]);
+    expect(second).toEqual([sent]);
+  });
+
+  it('subscribing returns a cancel function that stops that listener', () => {
+    const notifier = new AssemblyChangeNotifier();
+    const received: AssemblyChange[] = [];
+    const cancel = notifier.subscribe((c) => received.push(c));
+
+    cancel();
+    notifier.notify(change());
+
+    expect(received).toEqual([]);
+  });
+
+  it('cancelling twice is safe', () => {
+    const notifier = new AssemblyChangeNotifier();
+    const cancel = notifier.subscribe(() => {});
+
+    expect(() => { cancel(); cancel(); }).not.toThrow();
+  });
+
+  it('a listener cancelled during a notification does not receive it', () => {
+    const notifier = new AssemblyChangeNotifier();
+    const received: AssemblyChange[] = [];
+    let cancelSecond: () => void;
+    notifier.subscribe(() => { cancelSecond(); });
+    cancelSecond = notifier.subscribe((c) => received.push(c));
+
+    notifier.notify(change());
+
+    expect(received).toEqual([]);
+  });
+
+  it('a listener added during a notification does not receive that one, but hears the next', () => {
+    const notifier = new AssemblyChangeNotifier();
+    const received: AssemblyChange[] = [];
+    notifier.subscribe(() => {
+      notifier.subscribe((c) => received.push(c));
+    });
+
+    const firstChange = change();
+    notifier.notify(firstChange);
+    expect(received).toEqual([]);
+
+    const secondChange = change();
+    notifier.notify(secondChange);
+    expect(received).toEqual([secondChange]);
+  });
+
+  it('a throwing listener does not stop the others or escape notify', () => {
+    const notifier = new AssemblyChangeNotifier();
+    const received: AssemblyChange[] = [];
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    notifier.subscribe(() => { throw new Error('boom'); });
+    notifier.subscribe((c) => received.push(c));
+    const sent = change();
+
+    expect(() => notifier.notify(sent)).not.toThrow();
+
+    expect(received).toEqual([sent]);
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it('dispose drops every listener; a later notify calls nobody', () => {
+    const notifier = new AssemblyChangeNotifier();
+    const received: AssemblyChange[] = [];
+    const cancel = notifier.subscribe((c) => received.push(c));
+
+    notifier.dispose();
+    notifier.notify(change());
+
+    expect(received).toEqual([]);
+    expect(() => cancel()).not.toThrow();
   });
 });

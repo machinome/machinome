@@ -5,6 +5,7 @@
  */
 
 import {
+  AssemblyNode,
   AssemblyPath,
   assemblyPathKey,
   WidgetTree,
@@ -77,5 +78,51 @@ export class AssemblyNavigation {
 
   private apply(tree: WidgetTree): void {
     tree.applyVisibility(this.focusedPath, new Set(this.hiddenPaths.keys()));
+  }
+}
+
+/** What a subscribed listener receives: the fresh assembly and navigation
+ * snapshots, equal to what `assembly()` and `navigation()` return at that
+ * moment (design D4) -- so a listener never has to call back into the
+ * handle to redraw. */
+export interface AssemblyChange {
+  assembly: AssemblyNode;
+  navigation: AssemblyNavigationState;
+}
+
+export type AssemblyListener = (change: AssemblyChange) => void;
+
+/** Subscribe, notify, dispose -- mirroring `onDriverChange`
+ * (`drivers.ts:214-217`, `:310-314`, `:286-292`), but defensive where
+ * that channel is not (design D6): a listener cancelled or added while a
+ * notification is being delivered is not called for that notification,
+ * and a listener that throws does not stop the others or escape
+ * `notify`. `viewer.ts` decides *when* to call `notify`; this class
+ * decides nothing. */
+export class AssemblyChangeNotifier {
+  private listeners = new Set<AssemblyListener>();
+
+  subscribe(listener: AssemblyListener): () => void {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  }
+
+  notify(change: AssemblyChange): void {
+    for (const listener of [...this.listeners]) {
+      if (!this.listeners.has(listener)) {
+        // Cancelled by an earlier listener in this same dispatch.
+        continue;
+      }
+      try {
+        listener(change);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('assembly change listener threw', error);
+      }
+    }
+  }
+
+  dispose(): void {
+    this.listeners.clear();
   }
 }

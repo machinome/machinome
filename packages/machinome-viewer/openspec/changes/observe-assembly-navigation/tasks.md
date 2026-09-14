@@ -30,7 +30,7 @@
 
 ## 2. The notifier, where vitest reaches it
 
-- [ ] 2.1 **Red** — `src/assembly.test.ts`: a new `AssemblyChangeNotifier`
+- [x] 2.1 **Red** — `src/assembly.test.ts`: a new `AssemblyChangeNotifier`
       block. Subscribing returns a cancel function; `notify(change)` calls
       every listener with that exact change; cancelling stops it and is
       safe twice; a listener cancelled **during** a notification does not
@@ -39,11 +39,11 @@
       does not propagate out of `notify`; `dispose()` drops every listener
       and a later `notify` calls nobody.
       *Goes red because the class does not exist.*
-- [ ] 2.2 **Green** — `src/assembly.ts`: `AssemblyChangeNotifier` beside
+- [x] 2.2 **Green** — `src/assembly.ts`: `AssemblyChangeNotifier` beside
       `AssemblyNavigation`, plus the `AssemblyNavigationState`,
       `AssemblyChange` and `AssemblyListener` types. It decides **when
       nothing**: it is told.
-- [ ] Commit: `feat(assembly): add a change notifier for navigation state`.
+- [x] Commit: `feat(assembly): add a change notifier for navigation state`.
 
 ## 3. The handle, proved against the real bundle
 

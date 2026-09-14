@@ -85,3 +85,62 @@ $ npx tsc --noEmit
 (no output, exit 0)
 ```
 
+## 2. The notifier, where vitest reaches it
+
+### 2.1 Red
+
+Added a top-level `describe('AssemblyChangeNotifier', ...)` block to
+`src/assembly.test.ts`: subscribing returns a cancel function; `notify`
+calls every listener with the exact change; cancelling twice is safe; a
+listener cancelled by an earlier listener in the same dispatch does not
+receive it; a listener added during a dispatch does not receive that one
+but hears the next; a throwing listener does not stop the others or escape
+`notify` (asserted via `console.error`); `dispose()` drops every listener
+and a later `notify` calls nobody.
+
+```
+$ npx vitest run src/assembly.test.ts
+ FAIL  src/assembly.test.ts > AssemblyChangeNotifier > calls every subscribed listener with the exact change notified
+TypeError: AssemblyChangeNotifier is not a constructor
+ FAIL  src/assembly.test.ts > AssemblyChangeNotifier > subscribing returns a cancel function that stops that listener
+TypeError: AssemblyChangeNotifier is not a constructor
+ FAIL  src/assembly.test.ts > AssemblyChangeNotifier > cancelling twice is safe
+TypeError: AssemblyChangeNotifier is not a constructor
+ FAIL  src/assembly.test.ts > AssemblyChangeNotifier > a listener cancelled during a notification does not receive it
+TypeError: AssemblyChangeNotifier is not a constructor
+ FAIL  src/assembly.test.ts > AssemblyChangeNotifier > a listener added during a notification does not receive that one, but hears the next
+TypeError: AssemblyChangeNotifier is not a constructor
+ FAIL  src/assembly.test.ts > AssemblyChangeNotifier > a throwing listener does not stop the others or escape notify
+TypeError: AssemblyChangeNotifier is not a constructor
+ FAIL  src/assembly.test.ts > AssemblyChangeNotifier > dispose drops every listener; a later notify calls nobody
+TypeError: AssemblyChangeNotifier is not a constructor
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 7 passed (14)
+```
+Red as expected: the class did not exist.
+
+### 2.2 Green
+
+`src/assembly.ts`: added `AssemblyChange`, `AssemblyListener` and
+`AssemblyChangeNotifier` beside `AssemblyNavigation`. `notify` iterates a
+snapshot of the listener set and checks live membership before calling
+each one, so a listener cancelled earlier in the same dispatch is skipped
+and a listener added during the dispatch (not in the snapshot) is not
+called until the next `notify`; a throwing listener is reported to
+`console.error` and does not stop the loop.
+
+```
+$ npx vitest run src/assembly.test.ts
+ ✓ src/assembly.test.ts (14 tests) 13ms
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+
+$ npx tsc --noEmit
+(no output, exit 0)
+
+$ npm test
+ Test Files  28 passed (28)
+      Tests  533 passed (533)
+```
+
