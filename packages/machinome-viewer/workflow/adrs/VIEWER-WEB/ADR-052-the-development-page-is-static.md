@@ -1,6 +1,6 @@
 # ADR-052: The development page is a static page over the bundle
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Date:** 2026-09-14
 

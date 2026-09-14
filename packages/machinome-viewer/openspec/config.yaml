@@ -4,8 +4,8 @@ schema: spec-driven
 context: |
   solid-node-viewer is the browser viewer for solid-node models: the
   embeddable three.js widget (solid_node_viewer/widget, TypeScript, built
-  by esbuild to dist/solid-widget.js), the Create React App development
-  shell (solid_node_viewer/app), the FastAPI development server
+  by esbuild to dist/solid-widget.js) with the export page and the static
+  development page beside it, the FastAPI development server
   (solid_node_viewer/server.py) and the Playwright capture
   (solid_node_viewer/capture.py), packaged for pip as `solid-node-viewer`.
 

@@ -156,7 +156,7 @@ identifier happened to match.
   keeping its canvas, camera, and unchanged meshes, and without loading the
   page again
 
-#### Scenario: An installation without a built bundle
+#### Scenario: A source checkout without the built app
 
 - **WHEN** a browser requests the page of a server whose viewer bundle is
   not built

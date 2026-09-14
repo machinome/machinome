@@ -877,3 +877,9 @@ sidebar width e2e waits for the viewer's ResizeObserver instead of reading
 the canvas in the click's own turn (it had failed once in the full run:
 506 != 767); the layout creates its elements in the target's own document as
 the navigator does. Widget 642 tests; inspector e2e 5 passed × 3 runs.
+
+Archive note: the archiver refuses a MODIFIED requirement that drops a
+baseline scenario by name, so the delta's "An installation without a built
+bundle" scenario travels under the old title "A source checkout without the
+built app" through the archive and is retitled in the synced baseline, where
+there is no app left to build.

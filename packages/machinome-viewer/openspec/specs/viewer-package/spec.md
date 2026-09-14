@@ -363,11 +363,12 @@ the canvas. Absent a host choice, it SHALL add no such attributes.
 The package SHALL declare one API version, expose it on every mount handle and
 the browser global, and make it readable without executing the bundle. It SHALL
 be raised whenever the mount interface or handle changes incompatibly, and when
-a capability a host may require is added to the handle. The declared version
-SHALL be 10, reflecting the addition of the mountable assembly navigator — the
-tree component the bundle carries, mounted into a host's own element from a
-viewer handle alone — on top of the published assembly-navigation state and its
-change subscription.
+a capability a host may require is added. The declared version SHALL be 11,
+reflecting the addition of the inspector layout — the composed sidebar,
+navigator and viewer the bundle mounts into one host element, and the
+development page's own mount built on it — on top of the mountable assembly
+navigator, the published assembly-navigation state and its change
+subscription.
 
 The package SHALL also declare, in the same one place, the document schema
 versions this build reads, and SHALL report them beside the API version
@@ -423,6 +424,15 @@ entitled to assume the versions every released viewer reads.
 - **THEN** the declared API version tells it whether the bundle carries
   one, before it mounts a bundle that publishes the navigation state but
   no navigator
+
+#### Scenario: A host requires the inspector layout
+
+- **WHEN** a host means to mount the package's composed inspector —
+  sidebar, navigator and viewer in one element — rather than lay those
+  parts out itself
+- **THEN** the declared API version tells it whether the bundle carries
+  one, before it mounts a bundle that carries a navigator and no layout to
+  put it in
 
 #### Scenario: A producer asks which documents this viewer reads
 

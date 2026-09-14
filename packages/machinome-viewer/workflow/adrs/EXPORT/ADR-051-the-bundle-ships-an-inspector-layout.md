@@ -1,6 +1,6 @@
 # ADR-051: The bundle ships an inspector layout, and the page selects it
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Date:** 2026-09-14
 

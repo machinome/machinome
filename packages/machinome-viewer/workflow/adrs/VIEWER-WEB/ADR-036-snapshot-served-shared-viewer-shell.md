@@ -1,6 +1,6 @@
 # ADR-036: Snapshot-served shared viewer shell
 
-**Status:** Accepted
+**Status:** Accepted, amended by [ADR-052](ADR-052-the-development-page-is-static.md)
 **Date:** 2026-08-02
 **Depends on:**
 - [ADR-013: React frontend framework](ADR-013-react-frontend-framework.md)

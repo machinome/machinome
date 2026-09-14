@@ -39,12 +39,12 @@ both repositories. Consequences:
 
 ### VIEWER-WEB — development server and app
 - [ADR-012](VIEWER-WEB/ADR-012-threejs-for-3d-rendering.md) — Three.js rendering — **Accepted**
-- [ADR-013](VIEWER-WEB/ADR-013-react-frontend-framework.md) — React frontend — **Accepted**, amended by 036
+- [ADR-013](VIEWER-WEB/ADR-013-react-frontend-framework.md) — React frontend — **Superseded** by 052
 - [ADR-014](VIEWER-WEB/ADR-014-recursive-nodeapi-rest-pattern.md) — Recursive NodeAPI REST pattern — **Superseded** by 036
 - [ADR-027](VIEWER-WEB/ADR-027-absolute-matrix-composition-for-viewer-transforms.md) — Absolute world-matrix viewer transforms — **Superseded** by 036
-- [ADR-036](VIEWER-WEB/ADR-036-snapshot-served-shared-viewer-shell.md) — Snapshot-served shared viewer shell — **Accepted**
+- [ADR-036](VIEWER-WEB/ADR-036-snapshot-served-shared-viewer-shell.md) — Snapshot-served shared viewer shell — **Accepted**, amended by 052
 - [ADR-037](VIEWER-WEB/ADR-037-targeted-in-place-viewer-updates.md) — Targeted in-place viewer updates — **Accepted**
-- [ADR-052](VIEWER-WEB/ADR-052-the-development-page-is-static.md) — The development page is a static page over the bundle — **Proposed**, supersedes 013, amends 036
+- [ADR-052](VIEWER-WEB/ADR-052-the-development-page-is-static.md) — The development page is a static page over the bundle — **Accepted**, supersedes 013, amends 036
 
 ### EXPORT — the widget and its host API
 - [ADR-020](EXPORT/ADR-020-static-export-and-embeddable-viewer-widget.md) — Static export and embeddable widget — **Accepted**
@@ -58,4 +58,4 @@ both repositories. Consequences:
 - [ADR-048](EXPORT/ADR-048-running-controls-submit-requests.md) — Running controls submit requests; nothing binds back — **Accepted**
 - [ADR-049](EXPORT/ADR-049-the-viewer-publishes-its-navigation-state.md) — The viewer publishes its assembly navigation state — **Accepted**, amends 042
 - [ADR-050](EXPORT/ADR-050-the-navigator-is-a-component-of-the-viewer.md) — The assembly navigator is a component of the viewer package — **Accepted**, amends 042
-- [ADR-051](EXPORT/ADR-051-the-bundle-ships-an-inspector-layout.md) — The bundle ships an inspector layout, and the page selects it — **Proposed**, extends 050
+- [ADR-051](EXPORT/ADR-051-the-bundle-ships-an-inspector-layout.md) — The bundle ships an inspector layout, and the page selects it — **Accepted**, extends 050

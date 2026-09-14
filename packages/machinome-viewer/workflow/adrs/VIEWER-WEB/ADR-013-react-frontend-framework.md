@@ -1,6 +1,6 @@
 # ADR-013: React as Frontend Framework for Web Viewer
 
-**Status:** Accepted, amended by [ADR-036](ADR-036-snapshot-served-shared-viewer-shell.md)
+**Status:** Superseded by [ADR-052](ADR-052-the-development-page-is-static.md); was amended by [ADR-036](ADR-036-snapshot-served-shared-viewer-shell.md)
 **Date:** Unknown
 **Depends on:** [ADR-012: Three.js for 3D Mesh Rendering and Visualization](./ADR-012-threejs-for-3d-rendering.md)
 
