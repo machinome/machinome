@@ -567,22 +567,57 @@ A numeric binding outside a declared `range` raises `JointRangeError`
 naming the node's path, the joint, the value, the range and the unit; a
 symbolic binding is not checked at bind time, because its value is not yet
 known; a joint with no declared `range` accepts any binding. Either bound
-may be `None` (unbounded on that side) or a one-argument callable over
-that joint's own coordinate:
+may be `None` (unbounded on that side), a one-argument callable over
+that joint's own coordinate, or `Bound(expression, reads=(...))`, a
+callable over that coordinate AND the coordinates it names:
 
 ```python
+from solid_node.motion.joints import Bound, Prismatic, Revolute
+
 turn = Revolute(axis=(1, 0, 0),
                 range=(lambda turn: 36 * floor(turn / 36), None))
+
+class Plug(AssemblyNode):
+    p1 = Pin()
+    p2 = Pin()
+    turn = Revolute(axis=(0, 0, 1), unit='deg', range=(0, Bound(
+        lambda turn, a, b: 90 * (abs(a) <= 0.05) * (abs(b) <= 0.05),
+        reads=(p1.lift, p2.lift))))
+    key = Key(insert=Prismatic(axis=(0, 0, 1), unit='mm', range=(
+        Bound(lambda insert, turn: -60 + 60 * (abs(turn) > 0),
+              reads=(turn,)), 0)))
 ```
 
-That lower bound is the last seated ratchet tooth. A callable INSIDE the
-pair reads the coordinate; a callable for the WHOLE `range`,
+The first lower bound is the last seated ratchet tooth. The plug's upper
+bound lets it turn only while both pins clear a window, and the key's
+lower bound captures it at full insertion while the plug is turned. A
+`Bound`'s expression is applied to the joint's own coordinate FIRST and
+then to each read in the order `reads` states them, and returns a number
+or an expression in `solid_node.math`'s vocabulary. Reads are named as a
+relation's ends are — a joint or port the class body owns, a path through
+child declarations, a driver of the class — and are refused at class
+definition by the same rules (no list-held child, no `.repeat()`, no
+sideways driver read) plus one: never the bounded coordinate itself.
+Reads resolve against the joint's DECLARER: the node for a class-body
+joint, the declaring parent for a site joint (`key = Key(insert=...)`
+above reads `Plug`'s own `turn`), so declare the joint in the body whose
+subtree holds everything it reads. A `Bound` that returns a plain number
+or never uses a read it declares is refused at simulation construction,
+and so is a read of a plain port or derived coordinate — a bound reads
+the state; read the joint the port follows. A callable INSIDE the pair
+reads coordinates; a callable for the WHOLE `range`,
 `range=lambda node: (lo, hi)`, reads the realized declarer as before.
-At numeric binding, a callable bound is evaluated at the proposed value.
-In a running simulation it is additionally compiled and evaluated at the
-committed value at the start of each tick, then held fixed for that tick.
-A bound may name only its own coordinate, not a second coordinate such as
-a pawl lift. An invalid/reversed evaluated pair is refused by name.
+
+At numeric binding, a one-argument bound is evaluated at the proposed
+value. A `Bound` with reads is not judged at bind time — its reads are
+bound in solver order — but when the enumeration closes, over the values
+then bound: an impossible pose raises `JointRangeError` naming the joint,
+the value, the evaluated bound and every read with its value, and a read
+left unbound or symbolic is not judged. In a running simulation a
+one-argument bound is compiled and evaluated at the committed value at
+the start of each tick, then held fixed for that tick; a `Bound` with
+reads is a CONSTRAINT evaluated along the tick's path (see "Running
+simulations"). An invalid/reversed evaluated pair is refused by name.
 Under a run, travel that would exceed a joint range stops the pushing
 inputs at the bound; it does not fail as an out-of-range pose. The driver's
 own range remains presentation metadata (see "Running simulations").
@@ -1243,10 +1278,47 @@ spring stiffness or material limits are inferred by the simulation.
 Affine crossings are solved exactly. Nonlinear crossings are bracketed
 over 64 subdivisions and bisected; multiple turns inside one subdivision
 can be missed. More than 1000 crossings of one law in a tick is refused.
-An excursion outside a range that returns inside before the tick ends
-can escape stop detection. With nonlinear upstream laws, only the stopped
-coordinate lands exactly on its bound; related travel uses the linearized
-source path. Choose and test a smaller `dt` where these limits matter.
+For a bound over its own coordinate alone, an excursion outside the
+range that returns inside before the tick ends can escape stop detection
+(impossible for an affine determiner). With nonlinear upstream laws, only
+the stopped coordinate lands exactly on its bound; related travel uses
+the linearized source path. Choose and test a smaller `dt` where these
+limits matter.
+
+**A bound that reads other coordinates is a constraint.** Its own
+coordinate in the expression takes the tick's committed value, so a
+ratchet's tooth stays the tooth it started on; every read takes the value
+it has along the tick's path, computed over the edges that determine it.
+Detection looks inside the tick: whenever the bounded coordinate or a
+read moves, the constraint is sampled at 64 fractions of the tick,
+stopped at the first sample carried outward and bisected to the crossing
+tolerance; the coordinate is left inside the bound by at most that
+tolerance of the tick's travel, never snapped onto it. The stop blocks
+every input whose own motion carries the constraint outward — through
+the bounded coordinate OR through what it reads — so a dependency that
+would invalidate a standing coordinate is stopped where the constraint
+becomes active and the standing coordinate does not move: a plug bounded
+by its pins' lifts stops the key's withdrawal, `sim.stops` naming the
+plug's coordinate and the key's input. An input moving a read so as to
+relieve the constraint runs its full tick, and a command on it completes.
+A tick in which nothing the constraint depends on moves pays nothing
+extra; a tick in which something does pays up to 64 sub-program passes
+for that constraint whether or not it stops (0.36 ms quiet, 5.4 ms
+active, 3.3 ms blocking on a four-edge fixture). A violation that begins
+and ends inside one of the 64 sub-intervals is missed, and the pushing
+test is net over the tick. A published document carries the bound's
+expression over the ids it reads under the same version 5; the shipped
+viewer worker refuses such a document by name until the viewer's own
+cycle executes it.
+
+**Naming under a running root.** `set_state` records every joint
+coordinate under its bare name beside the drivers, so a root driver named
+like any joint anywhere in the tree — a `turn` driver beside a
+`plug.turn` joint — is refused as ambiguous at simulation construction:
+name the input differently. A `.repeat()` child that owns a joint is
+refused too, because `drivers-0` is not a legal id segment: hold such
+children on named attributes and keep `.repeat()` for children whose
+only coordinates are plain ports.
 `RunConflict`, `UnsupportedLaw` and `TooManyCrossings` are exported from
 `solid_node.simulation`. A refused tick commits no bank, time, pose or
 record change, and the commands that attempted travel retire `refused`.
