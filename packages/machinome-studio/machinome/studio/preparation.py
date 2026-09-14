@@ -25,7 +25,10 @@ LOGGER = logging.getLogger(__name__)
 
 LOWER_KEBAB_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 AGENT_ID = LOWER_KEBAB_ID
-REQUIRED_VIEWER_API = 4
+# Viewer API 10 is the version that introduced `mountNavigator` (viewer
+# ADR-050): the capability the Model panel needs, not merely the newest
+# build available.
+REQUIRED_VIEWER_API = 10
 CLAUDE_MODELS = {"sonnet", "opus", "fable"}
 CLAUDE_EFFORTS = {"low", "medium", "high"}
 

@@ -125,7 +125,7 @@ class ProjectOpenTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(self.calls("viewer"), 1)
         self.assertEqual(alpha.prepared.viewer_bundle, bravo.prepared.viewer_bundle)
-        self.assertEqual(alpha.prepared.viewer_api_version, 4)
+        self.assertEqual(alpha.prepared.viewer_api_version, 10)
 
         await self.registry.request_close(alpha.id)
         reopened = await self.open("alpha")
