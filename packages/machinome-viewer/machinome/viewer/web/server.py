@@ -130,7 +130,10 @@ class WebViewer:
             if not candidate.is_file():
                 raise HTTPException(
                     status_code=404, detail='Published build artifact not found')
-            return FileResponse(candidate)
+            # Never cached: the widget re-fetches a republished document
+            # with a plain fetch(), and a browser's heuristic freshness
+            # would hand it the previous one for a while.
+            return FileResponse(candidate, headers={'Cache-Control': 'no-store'})
 
     def _setup_viewer_bundle(self):
         @self.app.get('/_viewer')

@@ -867,3 +867,13 @@ in name, count and location.
 $ npx openspec validate ship-the-inspector-layout --strict
 Change 'ship-the-inspector-layout' is valid
 ```
+
+## Review (2026-09-14)
+
+Three reviewer corrections, one commit: the `/build/{path}` route now answers
+`Cache-Control: no-store` (unit test red 1 failed → green 13 passed), so the
+in-place reload test no longer forces revalidation from the harness; the
+sidebar width e2e waits for the viewer's ResizeObserver instead of reading
+the canvas in the click's own turn (it had failed once in the full run:
+506 != 767); the layout creates its elements in the target's own document as
+the navigator does. Widget 642 tests; inspector e2e 5 passed × 3 runs.

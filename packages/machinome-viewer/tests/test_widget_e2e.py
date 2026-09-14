@@ -812,12 +812,21 @@ class InspectorLayoutE2ETest(TestCase):
             page.wait_for_selector('.solid-nav-tree [role="treeitem"]')
             self.assertIsNone(
                 page.locator('.solid-inspector-sidebar').get_attribute('hidden'))
+            # The viewer resizes through its own ResizeObserver, which
+            # fires after layout: wait for the canvas to follow the pane
+            # rather than reading its width in the same turn as the click.
+            narrowed = ("(before) => document.querySelector('.solid-inspector-viewer canvas')"
+                        ".getBoundingClientRect().width < before")
+            page.wait_for_function(narrowed, arg=before, timeout=5_000)
             opened = canvas.bounding_box()['width']
             self.assertLess(opened, before, 'the canvas did not narrow when the sidebar opened')
 
             page.locator('.solid-inspector-toggle').click()
             self.assertIsNotNone(
                 page.locator('.solid-inspector-sidebar').get_attribute('hidden'))
+            restored = ("(before) => Math.abs(document.querySelector('.solid-inspector-viewer canvas')"
+                        ".getBoundingClientRect().width - before) <= 2")
+            page.wait_for_function(restored, arg=before, timeout=5_000)
             closed = canvas.bounding_box()['width']
             self.assertAlmostEqual(closed, before, delta=2,
                                    msg='the canvas did not return to its width when closed')

@@ -149,28 +149,31 @@ export async function mountInspectorWith(
   const stylesMode = styles ?? 'inject';
   const label = navigatorOptions?.label ?? 'Assembly';
 
+  // Built in the target's own document, as the navigator is, so a layout
+  // mounted inside an iframe belongs to that iframe.
+  const doc = container.ownerDocument;
   if (stylesMode === 'inject') {
-    injectStylesheet(container.ownerDocument);
+    injectStylesheet(doc);
   }
 
-  const root = document.createElement('div');
+  const root = doc.createElement('div');
   root.className = 'solid-inspector';
 
-  const rail = document.createElement('div');
+  const rail = doc.createElement('div');
   rail.className = 'solid-inspector-rail';
 
   const sidebarId = `solid-inspector-sidebar-${(nextSidebarId += 1)}`;
-  const sidebarEl = document.createElement('div');
+  const sidebarEl = doc.createElement('div');
   sidebarEl.className = 'solid-inspector-sidebar';
   sidebarEl.id = sidebarId;
 
-  const toggle = document.createElement('button');
+  const toggle = doc.createElement('button');
   toggle.type = 'button';
   toggle.className = 'solid-inspector-toggle';
   toggle.setAttribute('aria-controls', sidebarId);
   toggle.textContent = label;
 
-  const viewerPane = document.createElement('div');
+  const viewerPane = doc.createElement('div');
   viewerPane.className = 'solid-inspector-viewer';
 
   rail.append(toggle);

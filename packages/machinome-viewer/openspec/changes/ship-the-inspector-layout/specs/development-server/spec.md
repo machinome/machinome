@@ -1,5 +1,37 @@
 ## MODIFIED Requirements
 
+### Requirement: The server serves the published build snapshot
+
+The system SHALL serve the published `viewer.json` and its referenced model
+files below `/build/`, resolving every request from the build directory it
+was launched on, refusing any path that resolves outside it, and never
+importing project source or waiting for an artifact. Every artifact response SHALL forbid caching, so a
+republished document or model reaches the browser's next fetch rather than
+a copy the browser judged fresh.
+
+#### Scenario: A completed build is served to the browser
+
+- **WHEN** a browser requests `/build/viewer.json`
+- **THEN** it receives the snapshot and every named model resolves below
+  `/build/`
+
+#### Scenario: A path that escapes the build directory
+
+- **WHEN** a request resolves to a file outside the build directory
+- **THEN** the server answers not found and serves nothing
+
+#### Scenario: Serving a project never imports it
+
+- **WHEN** the served project's source would raise on import
+- **THEN** its published snapshot remains servable unchanged
+
+#### Scenario: A republished artifact is not served from the browser cache
+
+- **WHEN** the browser fetches an artifact the builder republished since its
+  last fetch
+- **THEN** the response carries a directive forbidding caching, and the
+  browser receives the republished content
+
 ### Requirement: The server is launched on a build directory
 
 The system SHALL provide `solid-node-viewer serve --build-dir DIR`, serving

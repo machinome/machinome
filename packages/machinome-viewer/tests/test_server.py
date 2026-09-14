@@ -124,6 +124,17 @@ class BundleRoutesTest(TestCase):
         self.assertEqual(script.status_code, 503)
         self.assertEqual(script.json()['remedy'], 'run npm run build')
 
+    def test_a_build_artifact_is_never_cached(self):
+        # A republished `viewer.json` must reach the widget's plain
+        # `fetch()` on the next reload; a browser's heuristic freshness
+        # would otherwise serve the previous document for a while.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            Path(tmpdir, 'viewer.json').write_text('{}')
+            client = TestClient(WebViewer(tmpdir).app)
+            artifact = client.get('/build/viewer.json')
+        self.assertEqual(artifact.status_code, 200)
+        self.assertEqual(artifact.headers.get('cache-control'), 'no-store')
+
     def test_the_development_page_is_served_from_the_package(self):
         # The page is a package file this server answers `/` with
         # (design D13) -- not a build output, so it is present whether
@@ -249,16 +260,6 @@ class DevelopmentPageReloadTest(TestCase):
             try:
                 page = browser.new_page(viewport={'width': 800, 'height': 600})
                 page.on('pageerror', lambda error: errors.append(str(error)))
-                # `/build/{path}` (unchanged by this cycle) sets no
-                # explicit Cache-Control, so a browser's own heuristic
-                # freshness can serve a stale `viewer.json` to a plain
-                # `fetch()` -- invisible to every other suite here
-                # because `tests/support.py`'s OWN test server disables
-                # caching for exactly this reason. Forcing revalidation
-                # on the request is a test-harness fix, not a production
-                # one (recorded in evidence.md for the reviewer).
-                page.route('**/build/**', lambda route: route.continue_(
-                    headers={**route.request.headers, 'cache-control': 'no-cache'}))
                 # Capture the reloader's own socket so the test can force
                 # exactly the reconnect a `solid develop` server restart
                 # drives (spec "Rebuild refreshes the browser"), without
