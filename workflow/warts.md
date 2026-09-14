@@ -2260,3 +2260,95 @@ framework code changed for any of them in that cycle.
   coordinate that read the same coordinates, and consider fewer samples with
   a bracketed refinement when the constraint's reads are affine over the
   stretch. Numbers in the cycle's evidence.
+
+# Execution plan (2026-09-14, autonomous wart fixes)
+
+Triage of every entry above still open, made under the pilot's standing
+delegation ("fix what you can that does not need my attention"; opus
+proposes, sonnet applies, the reviewing agent's adversarial pass is the
+ratification gate). Ranked by benefit over cost. Each item below is a
+standalone two-commit cycle stacked on branch `fix-warts` (worktree
+`WTs/fix-warts`, base bd74132), one after another, so integration is one
+fast-forward the pilot performs or declines. Nothing is integrated or
+pushed by this plan.
+
+## Fix now, in this order
+
+1. **`Command.cancel()` does not stop the command** (Pin tumbler lock,
+   2026-09-14). Spec violation with a reproduction; the shop skill carries
+   a warning a fix deletes. Cycle `cancel-stops-the-command`.
+2. **The program names coordinates it does not compute**: a `.repeat()`
+   child's driven port refuses publication, and a relation onto an omitted
+   child's coordinate refuses the whole document (Pin tumbler lock and
+   `declare-controls-on-parts`, 2026-09-14). Both root-caused in
+   `compile_program`'s node registry. Cycle `publish-only-what-runs`.
+3. **The runner's checkpoints double a root leaf's joint displacement under
+   a running root** (Pin tumbler lock). Wrong geometry from the second test
+   on, root-caused at `manager/test.py`. Cycle `checkpoint-the-joint`.
+4. **A child-declared relation read by a root-declared one publishes as
+   `DoublyBound`** (Pin tumbler lock). False refusal of a legal shape,
+   located in the publication binder. Cycle `a-read-is-not-a-binding`.
+5. **`solid import-step` emits a `render()` that does not parse** when
+   every placement is the identity (orcahand). Trivial. Folded into 6.
+6. **`StepNode` cannot select between products sharing a name**, and
+   `import-step` scaffolds selectors it cannot build (YouCanBuildDog,
+   orcahand, Voron-2: 3, 15 and 118 duplicates). A stable per-occurrence
+   selector emitted by the importer whenever a name is not unique. Cycle
+   `select-a-step-occurrence`.
+7. **A leaf's artifact is imported into its parent's `.scad` by bare
+   filename**, so an assembly in another package renders it as nothing
+   (Thor). Silent wrong render. Cycle `import-the-artifact-by-path`.
+8. **`StepNode`/`StlNode` with an absent file fail late inside
+   `mtime_ns`** (Internal-Cycloidal-Actuator). Validate at construction,
+   naming class and path. Cycle `name-the-missing-file`.
+9. **The test runner counts `SkipTest` and `expectedFailure` as plain
+   failures** (Internal-Cycloidal-Actuator). Cycle `honour-skip-and-xfail`.
+10. **Interference failures name the leaf, not its path** (3DPrintedClocks
+    mantel 34, Thor). Cycle `name-solids-by-path`.
+11. **`%` on a symbolic value disagrees across runtimes** (item 7). A
+    `remainder` in `solid_node.math` with a parity case. Cycle
+    `expression-remainder`.
+12. **`self.children` reads empty during `simulate()`** and a loop over it
+    silently applies nothing (AlbertPro). Cycle `children-refuse-early-reads`.
+13. **`tools/generate_parity_fixture.py` cannot run from a worktree**
+    (item 9) and **`solid snapshot --preview` sends a bare `--preview`**
+    (item 14). Tooling; one small cycle `tooling-paths-and-flags` if time.
+14. **A `.repeat()` copy's joint arguments resolve before `index` exists**
+    (`joint-frame-follows-declarer`, three projects worked around). Cycle
+    `resolve-repeated-joints-per-copy` if time.
+15. **Generated-artifact freshness** (3DPrintedClocks, 2026-09-10): make the
+    test artifact index self-healing when an artifact is absent, and audit
+    the source-adapter fingerprint. Investigation first; if time.
+
+## Held for the pilot (a product, architecture or policy choice)
+
+- Negative faceted volumes in STRICT pairwise assertions (items 13, Locks,
+  Voron-2): `voron-faceted-contact` deliberately kept pairwise strictness;
+  relaxing it reverses that decision.
+- A driver's `range` enforcement policy (AlbertPro): clamp, refuse or leave.
+- Dimensioned literals and number-plus-token in the parameter algebra
+  (item 8, Pascaline): language design.
+- An exact boolean that returns empty for an overlapping pair
+  (YouCanBuildDog), an indeterminate pair verdict (science-jubilee) and a
+  per-pair exact fallback when the faceted engine refuses a mesh (Thor):
+  kernel semantics and sweep cost.
+- A public interference inventory `solid_interference(node)` (Thor): a new
+  public contract; proposed only after item 10 lands, if the pilot wants it.
+- `exact-solid-index-bounds`: reverses two ratified spec sentences; filed,
+  left for the pilot to open.
+- Mechanism history across the control surface (Locks): framework, viewer
+  or host is undecided.
+- The seams recorded as "needs its own sighting": hand-written motion
+  versus a site joint on one child; naming a data-built child in a
+  relation; a descendant's hand-written read of a deferred relation; a
+  subclass's inner joint slot; indexing a repeat in a class body.
+- `solid import-stl` (AlbertPro): a new command.
+- The viewer bundle staleness entry belongs to `solid-node-viewer`, not
+  this branch.
+
+## Already fixed, recorded here so nobody reopens them
+
+- `assertNoDisconnectedSolids` takes the exact path for an exact solid
+  (YouCanBuildDog, Thor): `_routes_exact` in `solid_node/test.py`.
+- Stale author-bound joint values (v8-engine): `whole-tree-fixpoint`.
+- Negative faceted volume in the ASSEMBLY check: `voron-faceted-contact`.
