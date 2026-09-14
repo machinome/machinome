@@ -127,7 +127,7 @@ asked what the component thinks.
 
 ## 3. Published on the global, proved against the real bundle
 
-- [ ] 3.1 **Red** — `tests/test_widget_e2e.py`, in `ViewerMountApiTest`
+- [x] 3.1 **Red** — `tests/test_widget_e2e.py`, in `ViewerMountApiTest`
       (its harness page gains a second host element for the navigator —
       `HARNESS_PAGE`, `:92-106`):
       - `test_the_bundle_mounts_a_navigator_from_a_handle`:
@@ -162,10 +162,10 @@ asked what the component thinks.
       tests/test_widget_e2e.py -q -k navigator` (rebuild the bundle
       first, so the red is against a real bundle that simply lacks the
       export).
-- [ ] 3.2 **Green** — `src/widget.ts`: export `mountNavigator` beside
+- [x] 3.2 **Green** — `src/widget.ts`: export `mountNavigator` beside
       `mount` (`widget.ts:14-16`) and re-export `NavigatorOptions` and
       `NavigatorHandle` as types; `npm run build`; rerun 3.1.
-- [ ] Commit: `feat(widget): publish mountNavigator on the global`.
+- [x] Commit: `feat(widget): publish mountNavigator on the global`.
 
 ## 4. The declared version
 

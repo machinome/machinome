@@ -186,3 +186,83 @@ $ npm test
 28 pre-existing files + `navtree.test.ts` + `navigator.test.ts` = 30; only
 `navigator.test.ts` declares `@vitest-environment jsdom` (confirmed by
 `grep -rl "vitest-environment" src/`); `vitest.config.ts` is unchanged.
+
+## 3. Published on the global, proved against the real bundle
+
+### 3.1 Red
+
+`tests/test_widget_e2e.py`'s `HARNESS_PAGE` gains a second host element,
+`#navHost`, sized as a sidebar. `ViewerMountApiTest` gains five tests:
+`test_the_bundle_mounts_a_navigator_from_a_handle`,
+`test_the_navigator_keyboard_drives_the_viewer`,
+`test_the_breadcrumb_moves_the_navigators_root`,
+`test_a_targeted_update_reconciles_the_navigator` (direct
+`sync_playwright`, a manifest write landing between two evaluations, like
+`test_a_targeted_update_notifies_once_with_reconciled_state`), and
+`test_two_navigators_agree_and_dispose_independently`.
+
+```
+$ cd solid_node_viewer/widget && npm run build
+  dist/solid-widget.js  644.4kb
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest \
+    tests/test_widget_e2e.py -q -k navigator
+FAILED tests/test_widget_e2e.py::ViewerMountApiTest::test_the_bundle_mounts_a_navigator_from_a_handle
+  Error: Page.evaluate: TypeError: SolidNodeWidget.mountNavigator is not a function
+FAILED tests/test_widget_e2e.py::ViewerMountApiTest::test_the_navigator_keyboard_drives_the_viewer
+  Error: Page.evaluate: TypeError: SolidNodeWidget.mountNavigator is not a function
+FAILED tests/test_widget_e2e.py::ViewerMountApiTest::test_the_breadcrumb_moves_the_navigators_root
+  Error: Page.evaluate: TypeError: SolidNodeWidget.mountNavigator is not a function
+FAILED tests/test_widget_e2e.py::ViewerMountApiTest::test_a_targeted_update_reconciles_the_navigator
+  Error: Page.evaluate: TypeError: SolidNodeWidget.mountNavigator is not a function
+FAILED tests/test_widget_e2e.py::ViewerMountApiTest::test_two_navigators_agree_and_dispose_independently
+  Error: Page.evaluate: TypeError: SolidNodeWidget.mountNavigator is not a function
+5 failed, 19 deselected in 6.51s
+```
+Red as expected: rebuilt against the real bundle first, which still
+lacked the export.
+
+### 3.2 Green
+
+`src/widget.ts`: `export { mountNavigator } from './navigator';` beside
+`mount`, and `export type { NavigatorHandle, NavigatorOptions }` beside
+the existing type re-exports.
+
+```
+$ npx tsc --noEmit
+(no output, exit 0)
+
+$ npm run build
+  dist/solid-widget.js  653.6kb
+```
+`dist/solid-widget.js` size: 669243 bytes (653.6kb reported by esbuild).
+
+```
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest \
+    tests/test_widget_e2e.py -q -k navigator
+.....
+5 passed, 19 deselected in 5.90s
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest tests/test_widget_e2e.py -q
+........................
+24 passed, 4 warnings in 27.71s
+```
+
+### Deviation
+
+`test_a_targeted_update_reconciles_the_navigator`'s task asks to "expand
+a child, write a pruned manifest.json... and assert... the surviving
+expansion is kept". The Spinner fixture is flat -- `Hub`, `b0`, `b1`,
+`b2` are all `LeafNode`s with no children of their own (confirmed by
+reading `tests/fixtures/spinner/manifest.json`) -- so there is no child
+row this harness can expand to reveal grandchildren of, the same
+limitation the prior cycle's evidence recorded for its own nested
+scenario (`observe-assembly-navigation`'s evidence.md, deviation 2).
+Wrote the test against the only expandable row the fixture has instead
+(the document root): its expansion survives the targeted update, a
+removed child's row is gone, a kept child's row survives, and exactly
+one row remains the keyboard stop. The stronger claim design D9 makes --
+a CHILD's own expansion surviving reconciliation -- needs real nesting
+and is already pinned at the unit level in `navtree.test.ts`'s
+`reconcileLocal` block (increment 1) and exercised through the DOM in
+`navigator.test.ts`'s "reconciles a pruned tree" test (increment 2).

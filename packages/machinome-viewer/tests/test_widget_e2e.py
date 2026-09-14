@@ -96,10 +96,12 @@ HARNESS_PAGE = """<!doctype html>
     <style>
       html, body { margin: 0; }
       #host { width: 800px; height: 600px; position: relative; }
+      #navHost { width: 300px; }
     </style>
   </head>
   <body>
     <div id="host"></div>
+    <div id="navHost"></div>
     <script src="solid-widget.js"></script>
   </body>
 </html>
@@ -441,6 +443,179 @@ class ViewerMountApiTest(TestCase):
         self.assertEqual(result['count'], 1,
                          'a targeted update that discards state did not notify exactly once')
         self.assertEqual(result['navigation'], {'root': None, 'hidden': []})
+
+    def test_the_bundle_mounts_a_navigator_from_a_handle(self):
+        result = self.in_page("""async () => {
+          const host = document.getElementById('host');
+          const navHost = document.getElementById('navHost');
+          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const nav = SolidNodeWidget.mountNavigator(navHost, viewer);
+          const rows = [...navHost.querySelectorAll('[role="treeitem"]')];
+          const info = rows.map((row) => ({
+            role: row.getAttribute('role'),
+            label: row.querySelector('.solid-nav-name')?.textContent,
+          }));
+          nav.dispose();
+          return { count: rows.length, info };
+        }""")
+        self.assertEqual(result['count'], 5, 'root + four children were not all drawn')
+        self.assertEqual([item['role'] for item in result['info']], ['treeitem'] * 5)
+        self.assertEqual(result['info'][0]['label'], 'Spinner')
+
+    def test_the_navigator_keyboard_drives_the_viewer(self):
+        result = self.in_page("""async () => {
+          const host = document.getElementById('host');
+          const navHost = document.getElementById('navHost');
+          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const nav = SolidNodeWidget.mountNavigator(navHost, viewer);
+          const rows = () => [...navHost.querySelectorAll('.solid-nav-row')];
+          const press = (key) => document.activeElement.dispatchEvent(
+            new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+
+          rows().find((row) => row.tabIndex === 0).focus();
+          press('ArrowDown');
+          const firstChildLabel = document.activeElement.querySelector('.solid-nav-name').textContent;
+          press('Enter');
+          const rootAfterEnter = viewer.navigation().root;
+          press(' ');
+          const hiddenAfterSpace = viewer.navigation().hidden;
+          press('ArrowLeft');
+          const labelAfterLeft = document.activeElement.querySelector('.solid-nav-name').textContent;
+
+          nav.dispose();
+          return { firstChildLabel, rootAfterEnter, hiddenAfterSpace, labelAfterLeft };
+        }""")
+        self.assertEqual(result['rootAfterEnter'], [result['firstChildLabel']])
+        self.assertEqual(result['hiddenAfterSpace'], [[result['firstChildLabel']]])
+        self.assertEqual(result['labelAfterLeft'], 'Spinner')
+
+    def test_the_breadcrumb_moves_the_navigators_root(self):
+        # nested-driven.json (design D9/D4's own fixture, `:134-141`):
+        # 'Hub' is a real child of the Spinner root, so the driver
+        # chrome's breadcrumb offers a descend button for it.
+        result = self.in_page("""async () => {
+          const host = document.getElementById('host');
+          const navHost = document.getElementById('navHost');
+          const viewer = await SolidNodeWidget.mount(
+            host, 'nested-driven.json', { autoplay: false });
+          const nav = SolidNodeWidget.mountNavigator(navHost, viewer);
+
+          const descend = host.querySelector('.driver-descend');
+          descend?.click();
+
+          const hubRow = [...navHost.querySelectorAll('.solid-nav-row')]
+            .find((row) => row.querySelector('.solid-nav-name')?.textContent === 'Hub');
+          const outcome = {
+            found: hubRow !== undefined,
+            selected: hubRow?.getAttribute('aria-selected'),
+            root: viewer.navigation().root,
+          };
+          nav.dispose();
+          return outcome;
+        }""")
+        self.assertTrue(result['found'], 'the navigator has no row for Hub')
+        self.assertEqual(result['selected'], 'true',
+                         'the breadcrumb descend did not reach the navigator with no host code')
+        self.assertEqual(result['root'], ['Hub'])
+
+    def test_a_targeted_update_reconciles_the_navigator(self):
+        # Playwright directly, not in_page: a manifest.json write has to
+        # land BETWEEN two page evaluations, as `solid develop`'s
+        # targeted update does (matching
+        # test_a_targeted_update_notifies_once_with_reconciled_state
+        # above). The Spinner fixture is flat -- Hub, b0, b1, b2 are all
+        # LeafNodes with no children of their own -- so there is no
+        # CHILD row to expand and reveal grandchildren of here; this
+        # proves the navigator's reconciliation against the only
+        # expandable row the fixture has (the document root) instead: it
+        # survives the update, a removed child's row is gone, a kept
+        # child's row survives, and exactly one row is still the
+        # keyboard stop.
+        errors = []
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 800, 'height': 600})
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.goto(self.harness_url)
+                page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+                setup = page.evaluate("""async () => {
+                  const host = document.getElementById('host');
+                  const navHost = document.getElementById('navHost');
+                  const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+                  const nav = SolidNodeWidget.mountNavigator(navHost, viewer);
+                  window.__viewer = viewer;
+                  window.__nav = nav;
+                  const names = [...navHost.querySelectorAll('.solid-nav-name')]
+                    .map((el) => el.textContent);
+                  return { names };
+                }""")
+                removed_name = setup['names'][1]
+                kept_name = setup['names'][2]
+
+                manifest = json.loads((self.out_dir / 'manifest.json').read_text())
+                manifest['root']['children'] = [
+                    child for child in manifest['root']['children']
+                    if child['name'] != removed_name
+                ]
+                (self.out_dir / 'manifest.json').write_text(json.dumps(manifest))
+
+                result = page.evaluate("""async () => {
+                  await window.__viewer.manifestChanged();
+                  const navHost = document.getElementById('navHost');
+                  const rows = [...navHost.querySelectorAll('.solid-nav-row')];
+                  return {
+                    names: rows.map((row) => row.querySelector('.solid-nav-name').textContent),
+                    rootExpanded: rows[0].getAttribute('aria-expanded'),
+                    tabStops: rows.filter((row) => row.tabIndex === 0).length,
+                  };
+                }""")
+            finally:
+                browser.close()
+
+        self.assertEqual(errors, [], f'uncaught page errors: {errors}')
+        self.assertNotIn(removed_name, result['names'], 'the removed child\'s row survived')
+        self.assertIn(kept_name, result['names'], 'a surviving child lost its row')
+        self.assertEqual(result['rootExpanded'], 'true', 'the root\'s expansion was not kept')
+        self.assertEqual(result['tabStops'], 1, 'the tree lost its single keyboard stop')
+
+    def test_two_navigators_agree_and_dispose_independently(self):
+        result = self.in_page("""async () => {
+          const host = document.getElementById('host');
+          const navHost = document.getElementById('navHost');
+          const navHost2 = document.createElement('div');
+          document.body.appendChild(navHost2);
+          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const navA = SolidNodeWidget.mountNavigator(navHost, viewer);
+          const navB = SolidNodeWidget.mountNavigator(navHost2, viewer);
+
+          const firstChip = (root) => root.querySelectorAll('.solid-nav-visibility')[1];
+          firstChip(navHost).click();
+          const afterHide = {
+            a: firstChip(navHost).checked,
+            b: firstChip(navHost2).checked,
+            styleCount: document.querySelectorAll('#solid-node-navigator-style').length,
+          };
+
+          navA.dispose();
+          const navHostEmptyAfterDispose = navHost.children.length === 0;
+
+          const secondChip = (root) => root.querySelectorAll('.solid-nav-visibility')[2];
+          secondChip(navHost2).click();
+          const bStillUpdates = secondChip(navHost2).checked === false;
+
+          navB.dispose();
+          return { afterHide, navHostEmptyAfterDispose, bStillUpdates };
+        }""")
+        self.assertEqual(result['afterHide']['a'], result['afterHide']['b'])
+        self.assertFalse(result['afterHide']['a'], 'hiding in one navigator did not reach the other')
+        self.assertEqual(result['afterHide']['styleCount'], 1,
+                         'two navigators injected more than one stylesheet')
+        self.assertTrue(result['navHostEmptyAfterDispose'])
+        self.assertTrue(result['bStillUpdates'],
+                        'the surviving navigator stopped updating after the other disposed')
 
     def test_a_captured_view_survives_a_remount(self):
         result = self.in_page("""async () => {

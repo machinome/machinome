@@ -13,6 +13,8 @@ import { API_VERSION } from './version';
 
 export { mount } from './viewer';
 export { API_VERSION } from './version';
+export { mountNavigator } from './navigator';
+export type { NavigatorHandle, NavigatorOptions } from './navigator';
 export const apiVersion = API_VERSION;
 
 function autoMount(): void {
