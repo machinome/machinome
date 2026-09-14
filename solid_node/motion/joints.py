@@ -119,11 +119,12 @@ import math
 
 from solid_node.motion.ports import (BoundPort, Coordinate, Port,
                                      RotationalPort, TranslationalPort,
-                                     bind)
+                                     bind, get_coordinate)
 
 
 __all__ = ['Bound', 'Free', 'Joint', 'JointRangeError', 'Orbit',
-           'Prismatic', 'Revolute', 'coordinates_of', 'declared_joints']
+           'Prismatic', 'Revolute', 'coordinates_of', 'declared_joints',
+           're_place_declared_joints']
 
 
 # How close to an exact 0, 1 or -1 a normalized axis component has to be
@@ -739,18 +740,26 @@ class Joint(Coordinate):
         """Drop the operations the previous binding of this joint
         applied.
 
-        The recorded objects are a hint to remove, never an invariant:
-        `_sweep` drops tagged operations by animator identity between
-        runs and the test runner's checkpoint restore can replace the
-        list wholesale, so an operation that is no longer there is
-        simply not there.
+        Dropped by the MARK every one of them carries -- `_joint_slot`,
+        this joint's own index in `declared_joints(type(node))`,
+        stamped by `apply_joint_motion` and nothing else -- rather than
+        by the objects `_joint_motion` recorded: `_sweep` drops tagged
+        operations by animator identity between runs, and the test
+        runner's checkpoint restore can replace the list wholesale, so
+        the recorded objects are not dependable as a handle. The slot IS
+        dependable: it lives on the operation itself and survives
+        either kind of replacement.
+
+        `_joint_motion` is still written by `place` as the record of
+        what THIS binding applied -- nothing else in the framework reads
+        it -- but it is no longer what removal depends on.
         """
-        previous = node.__dict__.get('_joint_motion', {}).pop(self.name, ())
-        if not previous:
-            return
+        node.__dict__.get('_joint_motion', {}).pop(self.name, None)
+        slot = list(declared_joints(type(node))).index(self.name)
         node.operations[:] = [
             operation for operation in node.operations
-            if not any(operation is dropped for dropped in previous)]
+            if not (getattr(operation, '_motion', False)
+                    and getattr(operation, '_joint_slot', None) == slot)]
 
     def carried_points(self, node, anchor):
         """The POINTS this joint's placement takes, in the node's OWN
@@ -1371,3 +1380,28 @@ def resolve_declared_joints(node):
         if joint._declared_at_site:
             continue
         resolved[name] = joint.resolve(node, values)
+
+
+def re_place_declared_joints(node):
+    """Re-place every joint `node` declares from the values its own
+    coordinates hold: clear a joint whose coordinates are not all
+    bound, place it otherwise.
+
+    The one rule for making a node's placement agree with what its
+    coordinates state, wherever that agreement has to be re-established
+    rather than produced fresh by a binding -- `CoordinateDelivery.
+    restore` (`solid_node.node.assembly`) uses it to undo a refused
+    `set_state`, and the test runner's checkpoint restore
+    (`solid_node.manager.test`) uses it to make a restored child's
+    placement agree with the coordinates its content restore left
+    behind. Both callers otherwise wrote this loop by hand; stated once
+    here, it is the joint capability's own rule rather than a copy each
+    caller has to keep in step with `Free`'s arity.
+    """
+    for joint in declared_joints(type(node)).values():
+        held = [get_coordinate(node, name)._value
+                for name in joint.coordinates]
+        if any(value is None for value in held):
+            joint.clear(node)
+        else:
+            joint.place(node, held[0] if len(held) == 1 else None)

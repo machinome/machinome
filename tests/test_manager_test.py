@@ -12,8 +12,13 @@ from unittest.mock import patch
 from trimesh.creation import box
 from solid_node.manager.test import Test as Runner, StopTestRun
 from solid_node import test as framework
+from solid_node.motion.ports import get_coordinate
 from solid_node.node.base import AbstractBaseNode
 from solid_node.node.operations import Translation
+from solid_node.simulation import Sim
+from solid_node.simulation.enumeration import bind_declared_defaults
+
+from .running_project.machine import Conditional, Floating, Train, TrainBody
 
 
 def with_instants(*values):
@@ -261,6 +266,191 @@ class RestoreChildrenCheckpointsTest(TestCase):
         runner.restore_children_checkpoints(FakeParent(children=[child]))
 
         self.assertEqual(child.mesh_access_count, 0)
+
+
+def built(klass):
+    """The rest-render build sequence `evidence/probe_checkpoint.py` and
+    `evidence/probe_conditional.py` use, off the public API: bind every
+    declared default, render at instant 0, and prepare the tree the way
+    the build/test loader does before handing it to the runner."""
+    node = klass()
+    bind_declared_defaults(node)
+    node.set_keyframe(0)
+    node._prepare()
+    return node
+
+
+def motion_count(node):
+    return len([operation for operation in node.operations
+               if getattr(operation, '_motion', False)])
+
+
+def travel_of(node):
+    """The travel every motion operation on `node` states, added up --
+    `evidence/bench/test_machine.py`'s `placement()`."""
+    total = 0.0
+    for operation in node.operations:
+        if getattr(operation, '_motion', False):
+            total += float(operation.serialized[1][0])
+    return total
+
+
+class RestoreChildrenCheckpointsJointTest(TestCase):
+    """`evidence.md`'s reproduction, driven through the runner's own
+    `save_children_checkpoints`/`restore_children_checkpoints`, off a
+    real running root: a checkpoint saved and restored around a joint's
+    placement must leave a CHILD standing at the coordinates it holds,
+    never twice its travel and never at rest while its coordinate reads
+    otherwise."""
+
+    def test_a_running_roots_checkpoint_restore_does_not_double_the_slide(self):
+        # evidence.md §1: doubled, 12.0 and 0.0, for a coordinate
+        # reading 0.0.
+        root = built(Train)
+        runner = Runner()
+
+        sim = Sim(root, 0.1)
+        sim.move('lever', to=120.0, duration=0.2)
+        sim.run(0.2)                                # a Sim poses the tree
+
+        runner.save_children_checkpoints(root)        # the checkpoint is taken
+
+        Sim(root, 0.1)                                # a second Sim poses it
+
+        runner.restore_children_checkpoints(root)      # the checkpoint is restored
+
+        Sim(root, 0.1)                                # a third Sim poses it
+
+        self.assertEqual(motion_count(root.slide), 1)
+        self.assertAlmostEqual(
+            travel_of(root.slide),
+            get_coordinate(root.slide, 'travel')._value)
+
+    def test_a_running_roots_geometry_is_not_lost_after_the_next_keyframe(self):
+        # evidence.md §7 (`BenchGeometry`): the checkpoint held the
+        # build's TAGGED operation; `set_keyframe`'s sweep removes it,
+        # and nothing re-places it because a running root's own
+        # coordinate is not re-solved by the enumeration.
+        root = built(Train)
+        runner = Runner()
+
+        runner.save_children_checkpoints(root)   # what the runner saves
+                                                  # before every test
+
+        sim = Sim(root, 0.1)
+        sim.move('lever', to=120.0, duration=0.2)
+        sim.run(0.2)                             # a Sim poses the tree
+
+        runner.restore_children_checkpoints(root)  # the checkpoint is restored
+        root.set_keyframe(0)                       # and set_keyframe(0) runs
+
+        self.assertEqual(motion_count(root.slide), 1)
+        self.assertAlmostEqual(
+            travel_of(root.slide),
+            get_coordinate(root.slide, 'travel')._value)
+
+    def test_a_frees_whole_run_is_not_doubled_by_the_restore(self):
+        # evidence.md §3: a `Free`'s one binding places FOUR operations;
+        # the restore must not leave two runs of four standing.
+        root = built(Floating)
+        runner = Runner()
+
+        sim = Sim(root, 0.1)
+        sim.move('rise', to=6.0, duration=0.2)
+        sim.run(0.2)
+
+        runner.save_children_checkpoints(root)
+        Sim(root, 0.1)
+        runner.restore_children_checkpoints(root)
+        Sim(root, 0.1)
+
+        self.assertEqual(motion_count(root.floater), 4)
+
+    def test_a_guarded_bindings_re_place_does_not_outlive_its_value(self):
+        # revision 1's Finding A (evidence.md §A1/§A2/§A4): GREEN on the
+        # unchanged framework, RED once the restore re-places from the
+        # coordinate (task 3.1) and before `clear_solved` drops the
+        # motion with the value (task 4.0).
+        root = built(Conditional)
+        runner = Runner()
+
+        runner.save_children_checkpoints(root)
+
+        root.set_keyframe(0)                     # instant 0: the guard binds
+        runner.restore_children_checkpoints(root)  # cleanup between instants
+
+        root.set_keyframe(1)                     # instant 1: the guard does
+                                                  # not bind -- the test
+                                                  # method's own assertion
+                                                  # runs here, before this
+                                                  # instant's own restore
+
+        self.assertEqual(motion_count(root.gate), 0)
+        self.assertIsNone(get_coordinate(root.gate, 'travel')._value)
+
+
+class RestoreChildrenCheckpointsControlTest(TestCase):
+    """The green-before-and-after controls: what the restore must go on
+    doing exactly as it did (`evidence.md` §4 and the existing insertion
+    coverage, extended to a child that also owns a joint)."""
+
+    def test_an_untimed_root_reports_the_same_placement_throughout(self):
+        # evidence.md §4: untouched under a keyframe-only test, because
+        # every placement is TAGGED and a wholesale restore cannot
+        # strand one the next render does not already drop.
+        node = built(TrainBody)
+        runner = Runner()
+        before = travel_of(node.slide)
+
+        for _ in range(3):
+            runner.save_children_checkpoints(node)
+            node.set_keyframe(0)
+            self.assertEqual(motion_count(node.slide), 1)
+            self.assertAlmostEqual(travel_of(node.slide), before)
+            runner.restore_children_checkpoints(node)
+            self.assertEqual(motion_count(node.slide), 1)
+            self.assertAlmostEqual(travel_of(node.slide), before)
+
+    def test_a_leaked_operation_is_reverted_on_a_child_that_also_owns_a_joint(self):
+        node = built(TrainBody)
+        runner = Runner()
+        runner.save_children_checkpoints(node)
+
+        leaked = Translation([5, 0, 0], node=None)
+        node.slide.operations.insert(0, leaked)
+
+        runner.restore_children_checkpoints(node)
+
+        self.assertNotIn(leaked, node.slide.operations)
+        self.assertEqual(motion_count(node.slide), 1)
+        self.assertAlmostEqual(
+            travel_of(node.slide),
+            get_coordinate(node.slide, 'travel')._value)
+
+    def test_a_child_declaring_no_joint_is_restored_unchanged(self):
+        node = built(TrainBody)
+        runner = Runner()
+        runner.save_children_checkpoints(node)
+        before = list(node.wheel.operations)
+
+        node.wheel.operations.append(Translation([1, 0, 0], node=None))
+        runner.restore_children_checkpoints(node)
+
+        self.assertEqual(node.wheel.operations, before)
+
+    def test_a_joint_on_the_node_under_test_itself_is_left_alone(self):
+        # The runner checkpoints `node.children`, never the node under
+        # test -- a joint the root declares on itself is neither
+        # reverted nor re-placed.
+        node = built(TrainBody)
+        runner = Runner()
+        node.spindle = 30.0
+        runner.save_children_checkpoints(node)
+
+        node.spindle = 60.0
+        runner.restore_children_checkpoints(node)
+
+        self.assertEqual(get_coordinate(node, 'spindle')._value, 60.0)
 
 
 class ResolvePathMappingTest(TestCase):

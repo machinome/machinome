@@ -19,7 +19,7 @@ control reads as what it is rather than as one more block.
 
 from solid2 import cube, cylinder
 
-from solid_node.motion.joints import Prismatic, Revolute
+from solid_node.motion.joints import Free, Prismatic, Revolute
 from solid_node.motion.ports import RotationalPort, TranslationalPort
 from solid_node.node import Solid2Node
 
@@ -88,3 +88,15 @@ class Pin(Solid2Node):
 
     def render(self):
         return cylinder(r=2, h=12)
+
+
+class Floater(Solid2Node):
+    """A body with six freedoms: one joint, several operations for one
+    placement -- the `Free` case `checkpoint-the-joint`'s runner tests
+    need (a root-level LEAF, unlike `Sixfree`'s sub-assembly `chassis`),
+    the shape `evidence/bench/machine.py`'s `floater` is."""
+
+    pose = Free(at=(0, 0, 0))
+
+    def render(self):
+        return cylinder(r=3, h=6)

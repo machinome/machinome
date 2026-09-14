@@ -51,7 +51,7 @@ from .import_probe import probe
 from .joint_project.arm import (Arbor, ArborStack, Arm, Forearm, Gantry,
                                 SiteArm, BEARING_PITCH)
 from .joint_project.parts import Carriage, Rod, Spool, Wheel
-from .running_project.machine import (ClassGateBody, GateBody,
+from .running_project.machine import (ClassGateBody, Conditional, GateBody,
                                       UnreadGateBody)
 
 
@@ -854,6 +854,26 @@ class NonZeroGuardedWinch(AssemblyNode):
             self.rotor = 20.0
 
 
+class RelayCarriage(Solid2Node):
+    travel = Prismatic(axis=(1, 0, 0), unit='mm')
+
+    def render(self):
+        return cube([2, 2, 2])
+
+
+class RelayBench(AssemblyNode):
+    """A joint bound by a RELATION, for `evidence.md` §6/§A5: `push`
+    re-solves fresh on every enumeration, so a coordinate it once bound
+    and a test then rebinds BY HAND outside any phase is exactly open
+    question 2's shape -- the permanent ghost `clear_solved` now closes
+    (`checkpoint-the-joint`)."""
+
+    push = Driver(default=0.0, unit='mm')
+    carriage = RelayCarriage()
+
+    push.drives(carriage.travel)
+
+
 class StaleAuthorBoundJointTest(BaseNodeTest):
 
     def test_a_rest_default_joint_stands_where_it_says_it_stands(self):
@@ -925,6 +945,39 @@ class StaleAuthorBoundJointTest(BaseNodeTest):
         # First's own clear does not touch the untagged hand rotation.
         self.assertTrue(any(operation.serialized[0] == 'r'
                             for operation in shared.operations))
+
+    def test_a_hand_bound_ghost_does_not_outlive_the_next_enumeration(self):
+        """evidence.md §6/§A5, open question 2: a coordinate a relation
+        once bound, then rebound BY HAND outside any phase while
+        something else replaces its node's operation list wholesale in
+        between -- the checkpoint restore's own shape -- strands a
+        PERMANENT ghost today (7.0 + 0.0, for good, once the relation
+        rebinds). It must not survive the next enumeration."""
+        bench = RelayBench()
+        bench.set_state(push=0.0, time=0.0)  # BUILD: the relation binds
+                                              # 0.0, tagged
+
+        bench.carriage.travel = 7.0          # hand-bound, untagged
+        snapshot = list(bench.carriage.operations)  # what a checkpoint
+                                                     # would save
+        bench.carriage.travel = 7.0          # hand-bound again: clears
+                                              # the first, untagged run
+        bench.carriage.operations[:] = snapshot  # a wholesale replacement:
+                                              # the FIRST hand run comes
+                                              # back, stale to what the
+                                              # joint recorded
+        bench.carriage.travel = 7.0          # hand-bound a third time:
+                                              # `clear` cannot find what
+                                              # it recorded
+
+        self.assertEqual(bench.carriage.travel.value, 7.0)
+
+        bench.set_state(push=0.0, time=0.0)  # the next enumeration re-solves
+
+        self.assertEqual(len(motions(bench.carriage)), 1)
+        self.assertEqual(bench.carriage.travel.value, 0.0)
+        self.assertEqual(motions(bench.carriage)[0].serialized[1],
+                         ['0.0', '0', '0'])
 
 
 ##############################################
@@ -4578,3 +4631,142 @@ class _DriverHolder(AssemblyNode):
     pin = _BoundPin()
 
     feed.drives(pin.lift, ratio=1.0)
+
+
+##############################################
+# checkpoint-the-joint: a placement is identified by the mark its
+# operations carry (`_joint_slot`, ADR-093's declaration slot), not by
+# the objects `place` happened to create. That mark is what stays true
+# across a wholesale replacement of `node.operations` -- a test
+# runner's checkpoint restore, a pose capture -- which is the one thing
+# `_joint_motion`'s recorded objects cannot survive. `evidence.md`
+# sections 1, 3 and 6 measure the doubling and the loss this produces
+# today; the scenarios below pin the joints-capability half, with no
+# runner in it.
+
+class CheckpointReplacementTest(BaseNodeTest):
+    """`Joint.clear` must remove a previous placement by the mark its
+    operations carry, so a tool that replaces `node.operations`
+    wholesale between two placements cannot strand one beside the
+    other."""
+
+    def test_a_replaced_operation_list_strands_no_stale_placement(self):
+        # evidence.md §1: the checkpoint saved while the FIRST placement
+        # stood is restored after a SECOND one replaced it, and a THIRD
+        # placement must not find the first one unreachable.
+        hinge = Hinge()
+        hinge.swing = 10
+        snapshot = list(hinge.operations)        # what a checkpoint saves
+        hinge.swing = 20                          # clear(10's run), place(20's)
+        hinge.operations[:] = snapshot            # a wholesale replacement:
+                                                   # the STALE 10 run comes back
+        hinge.swing = 30                          # clear() must still find it
+
+        self.assertEqual(len(motions(hinge)), 3)
+        self.assertEqual(motions(hinge)[1].serialized[1], '30')
+
+    def test_a_frees_whole_run_is_replaced_as_one_unit(self):
+        # evidence.md §3: a `Free`'s one binding places FOUR operations,
+        # and a replaced list must not strand any of them individually
+        # -- four become eight if the removal is not a unit.
+        body = FloatingChassis()
+        for name, value in (('roll', 12.0), ('pitch', -6.0),
+                            ('yaw', 18.0), ('x', 3.0), ('y', 1.5),
+                            ('z', 6.0)):
+            setattr(body.pose, name, value)
+        snapshot = list(body.operations)
+        self.assertEqual(len(snapshot), 4)
+        body.pose.roll = 0.0                      # re-places the whole joint
+        body.operations[:] = snapshot              # the stale run comes back
+        body.pose.roll = 25.0
+
+        self.assertEqual(len(motions(body)), 4)
+        for operation in motions(body):
+            self.assertEqual(operation._joint_slot, 0)
+
+    def test_a_sibling_joint_is_untouched_by_a_replaced_lists_re_place(self):
+        # `Slider` declares `travel` (slot 0) before `spin` (slot 1):
+        # re-placing `travel` after a wholesale replacement must remove
+        # only ITS run, leaving `spin`'s where it stands.
+        slider = Slider()
+        slider.travel = 10
+        slider.spin = 90
+        snapshot = list(slider.operations)
+        slider.travel = 40
+        slider.operations[:] = snapshot
+        slider.travel = 70
+
+        found = motions(slider)
+        self.assertEqual(len(found), 2)
+        self.assertEqual(found[0].serialized[1], ['70', '0', '0'])
+        self.assertEqual(found[1].serialized[1], '90')
+
+    def test_clearing_a_replaced_list_leaves_nothing_of_its_placement(self):
+        hinge = Hinge()
+        hinge.swing = 10
+        snapshot = list(hinge.operations)
+        hinge.swing = 20
+        hinge.operations[:] = snapshot
+
+        Hinge.swing.clear(hinge)
+
+        self.assertEqual(motions(hinge), [])
+
+
+class JointSlotTaggingTest(BaseNodeTest):
+    """Every joint kind's placement carries the mark `Joint.clear` will
+    depend on: `_joint_slot`, stamped by `apply_joint_motion` and
+    nothing else. A future placement path that bypasses that seam is
+    caught here rather than by a project."""
+
+    def test_every_joint_kind_stamps_its_declaration_slot(self):
+        on_origin = SelfTurning()
+        on_origin.swing = 12
+        self.assertEqual([operation._joint_slot
+                          for operation in motions(on_origin)], [0])
+
+        off_origin = Hinge()
+        off_origin.swing = 12
+        self.assertEqual([operation._joint_slot
+                          for operation in motions(off_origin)], [0, 0, 0])
+
+        prismatic = Slider()
+        prismatic.travel = 12
+        self.assertEqual([operation._joint_slot
+                          for operation in motions(prismatic)], [0])
+
+        orbit = CarriedDisk()
+        orbit.orbit = 12
+        self.assertEqual([operation._joint_slot
+                          for operation in motions(orbit)], [0])
+
+        free = FloatingChassis()
+        free.pose.roll = 5.0
+        free.pose.x = 1.0
+        run = motions(free)
+        self.assertEqual(len(run), 2)
+        self.assertEqual([operation._joint_slot for operation in run],
+                         [0, 0])
+
+
+class UntaggedPlacementLifetimeTest(BaseNodeTest):
+    """Revision 1's Finding A, at the joints-capability level: an
+    UNTAGGED placement -- the shape a checkpoint restore's re-place
+    makes, outside any phase -- must not outlive an enumeration that
+    leaves its coordinate unbound (`evidence.md` §A1/§A2/§A4)."""
+
+    def test_an_untagged_placement_does_not_outlive_the_enumeration(self):
+        node = Conditional()
+        node.set_keyframe(0)                      # the guard binds: TAGGED
+
+        # What a checkpoint restore's re-place does: place the joint
+        # again, from the value its coordinate holds, with no phase
+        # current -- untagged, exactly as `apply_joint_motion` marks a
+        # placement made outside one.
+        travel = get_coordinate(node.gate, 'travel')._value
+        type(node.gate).travel.place(node.gate, travel)
+
+        node.set_keyframe(1)                      # the guard does not bind
+
+        self.assertEqual(motions(node.gate), [])
+        self.assertIsNone(get_coordinate(node.gate, 'travel')._value)

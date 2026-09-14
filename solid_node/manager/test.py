@@ -393,6 +393,19 @@ class Test:
         }
 
     def restore_children_checkpoints(self, node):
+        """Restore each child's operations by content, then re-place
+        every joint it declares from the coordinates it holds -- never
+        before the content restore, and never for the node under test
+        itself, which `save_children_checkpoints` never snapshotted.
+
+        The content restore is what reverts a leaked operation; the
+        re-place is what makes the result agree with the coordinates
+        again, including a child a running simulation posed with an
+        UNTAGGED placement the content restore alone cannot make
+        consistent (`checkpoint-the-joint`)."""
+        from solid_node.motion.joints import re_place_declared_joints
+
         for child, operations in getattr(
                 self, '_children_operations', {}).items():
             child.operations[:] = list(operations)
+            re_place_declared_joints(child)

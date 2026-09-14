@@ -557,3 +557,288 @@ in `render()`.
 7. The new clear must not reach a coordinate a running simulation owns
    (§A6), nor one another assembly has already re-bound in the current
    enumeration — both are exemptions `clear_solved` already makes.
+
+# Implementation: red, the intermediate regression, and the fix
+
+Everything below was run from this worktree with the workspace venv,
+`PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m
+pytest tests/<files> -q`, except the probes and `solid test`, run exactly
+as the commands above state.
+
+## Task 1: red first
+
+New tests, run before any framework file changed:
+
+`tests/test_joints.py -k "CheckpointReplacementTest or JointSlotTaggingTest
+or UntaggedPlacementLifetimeTest"`:
+
+```
+5 failed, 1 passed, 166 deselected
+FAILED CheckpointReplacementTest::test_a_frees_whole_run_is_replaced_as_one_unit
+FAILED CheckpointReplacementTest::test_a_replaced_operation_list_strands_no_stale_placement
+FAILED CheckpointReplacementTest::test_a_sibling_joint_is_untouched_by_a_replaced_lists_re_place
+FAILED CheckpointReplacementTest::test_clearing_a_replaced_list_leaves_nothing_of_its_placement
+FAILED UntaggedPlacementLifetimeTest::test_an_untagged_placement_does_not_outlive_the_enumeration
+```
+
+`JointSlotTaggingTest` (task 1.5, a pinning test rather than a red-first
+one: `_joint_slot` stamping already exists) passed unchanged.
+
+`tests/test_manager_test.py -k "RestoreChildrenCheckpointsJointTest or
+RestoreChildrenCheckpointsControlTest"`:
+
+```
+3 failed, 5 passed, 53 deselected
+FAILED test_a_frees_whole_run_is_not_doubled_by_the_restore: AssertionError: 8 != 4
+FAILED test_a_running_roots_checkpoint_restore_does_not_double_the_slide: AssertionError: 2 != 1
+FAILED test_a_running_roots_geometry_is_not_lost_after_the_next_keyframe: AssertionError: 0 != 1
+```
+
+`test_a_guarded_bindings_re_place_does_not_outlive_its_value` (task 1.6's
+runner twin) and every control of task 1.7 passed on the unchanged
+framework, exactly as predicted.
+
+## Task 2: the joint half (decisions 1 and 2, `CoordinateDelivery.restore`
+still unmoved)
+
+After 2.1 (`Joint.clear` by mark) and 2.2 (the `re_place_declared_joints`
+seam), `tests/test_joints.py tests/test_motion_package.py
+tests/test_couplings.py tests/test_kinematics.py tests/test_mechanisms.py`:
+
+```
+1 failed, 395 passed, 1 warning, 486 subtests passed
+FAILED UntaggedPlacementLifetimeTest::test_an_untagged_placement_does_not_outlive_the_enumeration
+```
+
+1.4 and 1.5 (and the other three `CheckpointReplacementTest` cases) turned
+green; the decision-5-only case stayed red, as task 2.4 predicts. 1.1-1.3
+live in `test_manager_test.py` and are untouched by this stage (the seam
+is not yet wired into the runner or `CoordinateDelivery`).
+
+## Task 2.3: `CoordinateDelivery.restore` moved onto the seam
+
+`tests/test_running_simulation.py tests/test_running_stops.py
+tests/test_running_jumps.py tests/test_running_document.py`:
+
+```
+242 passed, 2 warnings, 441 subtests passed
+```
+
+Unchanged, as task 2.3 requires.
+
+## Task 3.1-3.2: the runner half wired in
+
+After `restore_children_checkpoints` calls the seam,
+`tests/test_manager_test.py`:
+
+```
+1 failed, 60 passed
+FAILED RestoreChildrenCheckpointsJointTest::test_a_guarded_bindings_re_place_does_not_outlive_its_value
+    AssertionError: 1 != 0
+```
+
+1.1-1.3 and every 1.7 control turned green; 1.6 turned RED — the exact
+regression revision 1's Finding A predicted, now measured in the suite
+rather than in a probe (`evidence.md` §A2's shape).
+
+## Task 4.0-4.1: the motion goes with the value
+
+After `clear_solved` also clears the joint of every coordinate whose
+value it drops (inside both existing exemptions), the fourteen suites
+task 4.1 names, run together:
+
+```
+tests/test_couplings.py tests/test_joints.py tests/test_manager_test.py
+tests/test_running_simulation.py tests/test_motion_package.py
+tests/test_kinematics.py tests/test_mechanisms.py tests/test_running_stops.py
+tests/test_running_jumps.py tests/test_running_document.py
+tests/test_declarative_nodes.py tests/test_declarative_render.py
+tests/test_animator_tag.py tests/test_controls.py
+    860 passed, 10 warnings, 994 subtests passed
+```
+
+994 subtests passed is the exact number Revision 1 §A7 measured against
+the probe (846 tests there + the 14 new task-1 tests here = 860), so the
+implementation matches what was measured before a single framework file
+changed.
+
+## Task 4.2: the untimed HAND-binding ghost
+
+`test_a_hand_bound_ghost_does_not_outlive_the_next_enumeration`
+(`tests/test_joints.py`, `StaleAuthorBoundJointTest`) reproduces
+`evidence.md` §6/§A5 directly — a relation-bound coordinate, rebound TWICE
+by hand outside any phase with a wholesale list replacement in between
+(the checkpoint restore's own shape), so the second hand bind cannot find
+what it recorded and a stray operation is stranded beside the newest one.
+
+Run against the FULLY unchanged framework (`git stash` of every
+`solid_node/` file):
+
+```
+FAILED test_a_hand_bound_ghost_does_not_outlive_the_next_enumeration
+    AssertionError: 2 != 1
+```
+
+Confirms the permanent ghost: after the next enumeration re-solves the
+relation, TWO motion operations remain (the stranded 7.0 and the fresh
+0.0) instead of one.
+
+**Finding, not anticipated by the design:** run again with ONLY decision 1
+applied (`git stash` of `solid_node/motion/couplings.py` alone, decisions
+1-3 still in place), this test already PASSES. The reason: the coordinate
+here is RELATION-bound (`push.drives(carriage.travel)`), so the NEXT
+enumeration always calls `place()` for it regardless of the hand
+interference — `clear_solved`'s existing (pre-decision-5) VALUE-only drop
+already makes the solver see it as unbound and re-drive it, and that
+`place()` call's own `clear()` is decision 1's mark-based one, which
+removes every stray slot-0 operation it finds, whatever `_joint_motion`
+says. So for a coordinate an enumeration WILL rebind, decision 1 alone
+already closes open question 2's ghost; decision 5 is strictly load-bearing
+only for a coordinate the NEXT enumeration does NOT rebind (task 1.6's
+guarded/Finding-A shape, where nothing calls `place()`/`clear()` at all).
+This does not weaken the change -- decision 5 is still necessary for
+Finding A and is still the literal reading of "cleared with its motion"
+the spec requires for every coordinate `clear_solved` drops -- but the
+open-question-2 scenario specifically is over-determined: both decisions
+1 and 5 independently close it. The design's own text ("removed at the
+next enumeration, because `clear_solved` now drops a coordinate's
+placement with its value") is true but not the whole story; decision 1's
+own reach into this case went unremarked in `design.md`.
+
+## Task 5.1: probes and `solid test`, post-fix
+
+`evidence/probe_checkpoint.py`, post-fix (compare section 1 above):
+
+```
+=== 1. A running root: the checkpoint doubles a root-level leaf's joint displacement
+    built: 2 operations, coordinate travel=0.0, motion=[(['t', ['0.0', '0', '0']], 0, 'tagged')]
+    a scenario has stepped the run: 2 operations, coordinate travel=12.0, motion=[(['t', ['12.0', '0', '0']], 0, 'untagged')]
+    test 1: a second scenario binds the bank: 2 operations, coordinate travel=0.0, motion=[(['t', ['0.0', '0', '0']], 0, 'untagged')]
+    test 1: the runner restores: 2 operations, coordinate travel=0.0, motion=[(['t', ['0.0', '0', '0']], 0, 'untagged')]
+    test 2: a third scenario binds the bank: 2 operations, coordinate travel=0.0, motion=[(['t', ['0.0', '0', '0']], 0, 'untagged')]
+    test 2: the runner restores: 2 operations, coordinate travel=0.0, motion=[(['t', ['0.0', '0', '0']], 0, 'untagged')]
+    test 3: a fourth scenario binds the bank: 2 operations, coordinate travel=0.0, motion=[(['t', ['0.0', '0', '0']], 0, 'untagged')]
+```
+
+No more doubling at any step: one motion operation, always agreeing with
+the coordinate.
+
+```
+=== 3. A Free joint on a root-level leaf: several operations, one placement
+    a scenario has stepped the run: 5 operations, motion=[4 operations]
+    test 1: a second scenario binds the bank: 5 operations, motion=[4 operations]
+    test 2: a third scenario binds the bank: 5 operations, motion=[4 operations]
+```
+
+Stays at four (one rest op + four motion), never eight.
+
+```
+=== 6. An UNTIMED root whose test binds a coordinate BY HAND
+    ...
+    test 2: after the next set_keyframe(0): 2 operations, coordinate travel=0.0, motion=[(['t', ['0.0', '0', '0']], 0, 'tagged')]
+```
+
+The permanent ghost (7.0 + 0.0 for good) is gone: one operation, tagged,
+stating 0.0.
+
+`evidence/probe_conditional.py`, post-fix: sections A1, A2 and A4 all read
+identically now (the probe's own "decisions 1+2+3 only" monkeypatch of
+section A2 can no longer isolate decision 5, because decision 5 is baked
+into the real `solid_node.motion.couplings.clear_solved` the probe imports
+— A2 now shows the same green line A1 and A4 always did, `instant 1: the
+runner restores: travel=None, motion=[]`). A3's table of binding paths and
+A6's running-root exemption are unchanged, as expected — neither depends
+on which decisions are live.
+
+`solid test machine.py` over the fixture (compare section 7 above):
+
+```
+Running BenchScenario.test_a_push
+   scenario 1: slide.travel=12.0, placed=12.0, ...
+. passed
+Running BenchScenario.test_b_push_again
+   scenario 2: slide.travel=8.0, placed=8.0, ...
+. passed
+Running BenchGeometry.test_a
+   geometry A: slide.travel=8.0, placed=8.0, ...
+. passed
+Running BenchGeometry.test_b
+   geometry B: slide.travel=8.0, placed=8.0, ...
+. passed
+Running BenchHandOver.test_a_hand_the_node_over. passed
+Running BenchAfterSetUpClass.test_a
+   after setUpClass A: slide.travel=0.0, placed=0.0, ...
+. passed
+Running BenchAfterSetUpClass.test_b
+   after setUpClass B: slide.travel=0.0, placed=0.0, ...
+. passed
+Running BenchAfterSetUpClass.test_c
+   after setUpClass C: slide.travel=0.0, placed=0.0, ...
+. passed
+
+Ran 8 tests in 0.20 seconds: 8 passed, 0 failed
+```
+
+Both faces fixed: `BenchGeometry` no longer measures a lost placement
+(`placed` now equals `travel` at every step) and `BenchAfterSetUpClass`
+no longer doubles from its second test on.
+
+## Task 5.2: the wart's own reproduction, post-fix
+
+`evidence/probe_lock.py`, on the same lock project, post-fix:
+
+```
+-- after build
+  d1: 4 operations ... _joint_motion: {lift: [...660512...]}
+-- after test 1
+  d1: 4 operations ... _joint_motion: {lift: [...660464...]}
+-- after test 2
+  d1: 4 operations ... _joint_motion: {lift: [...660416...]}
+-- final set_keyframe(0)
+  d1: 4 operations ... _joint_motion: {lift: [...660224...]}
+```
+
+Identical in shape to the pre-fix run in section 8: four operations
+throughout, `_joint_motion` still visibly stale after each restore (the
+record is no longer the removal's handle, so its staleness is now
+harmless) but no doubling, because this sequence never binds a coordinate
+outside the enumeration -- consistent with section 8's own finding that
+this exact reproduction does not reach the defect on its own.
+
+## Full suite
+
+`PYTHONPATH="$PWD" .venv/bin/python -m pytest tests -q`:
+
+```
+6 failed, 2656 passed, 4 skipped, 50 warnings, 1493 subtests passed in 359.42s
+FAILED tests/test_coarse_filesystem_freshness.py::CoarseFilesystemTest::test_a_sub_millisecond_edit_is_never_current
+FAILED tests/test_coarse_filesystem_freshness.py::CoarseFilesystemTest::test_an_edited_source_is_never_current
+FAILED tests/test_coarse_filesystem_freshness.py::CoarseFilesystemTest::test_an_unchanged_exact_leaf_is_not_rebuilt
+FAILED tests/test_coarse_filesystem_freshness.py::CoarseFilesystemTest::test_exact_fusion_caches_both_artifacts
+FAILED tests/test_coarse_filesystem_freshness.py::CoarseFilesystemTest::test_faceted_leaf_caches_on_a_millisecond_filesystem
+FAILED tests/test_coarse_filesystem_freshness.py::NativeFilesystemTest::test_exact_equality_still_holds_natively
+```
+
+All six failures are `tests/test_coarse_filesystem_freshness.py`, unrelated
+to any file this change touches. Confirmed pre-existing and order-sensitive,
+not a regression: the same file run alone passes (13 passed) both on this
+worktree's unstashed changes and on a `git stash` of every file this change
+touched (baseline). Consistent with the workspace's known virtiofs
+filesystem-timestamp coarseness (`virtiofs-fd-exhaustion` finding) surfacing
+only under the full suite's cumulative I/O, not with anything
+`checkpoint-the-joint` changed.
+
+## Reviewer's note on the implementer's full-suite run
+
+The implementation report recorded six failures in
+`tests/test_coarse_filesystem_freshness.py` during its full-suite run and
+called them pre-existing. The reviewer re-ran the whole suite on the same
+tree with nothing else running on the host:
+
+    $ PYTHONPATH="$PWD" .venv/bin/python -m pytest tests -q -p no:cacheprovider
+    2662 passed, 4 skipped, 50 warnings, 1493 subtests passed in 363.86s
+
+Zero failures, the six included. Those tests quantise mtimes to a
+millisecond filesystem and are sensitive to host load; the reviewer's
+runs of the same suite at the two previous cycles' heads were also fully
+green. They are not touched by this change and not a finding against it.

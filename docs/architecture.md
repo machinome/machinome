@@ -654,6 +654,16 @@ order OUTSIDE it (`_insert_motion`, unchanged, is the hand-written
 path). Hand-written motion and joint motion still coexist on one node —
 nothing is deprecated.
 
+**A joint's own slot is also how its placement is REMOVED** (ADR-114):
+`Joint.place` clears the previous placement before applying the new one
+by dropping every operation of `node.operations` that is motion and
+whose `_joint_slot` matches this joint's own, never by the particular
+objects a previous `place` happened to create. The slot survives a
+node's `operations` list being replaced wholesale — a test runner's
+checkpoint restore, a pose capture — which a remembered object cannot,
+so a placement removed by mark can never be stranded beside the one that
+replaces it, however the list arrived at its current content.
+
 **A relation** (spec `couplings`) says that one coordinate's motion IS
 another's: `a.drives(b, ratio=…, offset=…, law=…)`, written as a
 STATEMENT in a class body and recorded on the class (ADR-089). An END is
@@ -736,6 +746,19 @@ own PREVIOUS phase never wipes out a value another assembly's phase,
 earlier in the same cascade, just produced. All of it happens while the
 phase is still that assembly's, so a relation's motion is tagged and
 swept exactly as a hand-written rotation is.
+
+**The value's clear also clears its joint's placement, by slot**
+(ADR-114): for every coordinate whose value and binder this step drops
+(the same two exemptions apply — a slot another assembly already
+re-bound this enumeration, and a coordinate a RUNNING SIMULATION owns),
+the framework finds the joint that owns it and clears it too. This is
+what makes "cleared with the motion it caused" literal rather than
+delegated to the sweep one line earlier: the sweep only reaches a TAGGED
+operation, and a placement made outside any phase — a test runner's
+checkpoint restore re-placing a child from its coordinates, a hand
+binding between two enumerations — is untagged, so without this a body
+could stand at a pose no coordinate states once its value was dropped
+out from under it.
 
 **One ENUMERATION is one tree pass** (ADR-099): the outermost `render()`
 call that finds none already open OWNS it, and drives every assembly's
@@ -1272,7 +1295,17 @@ geometry, checked on the real meshes. Tests live in companion files or
 on the node via `TestCaseMixin` (ADR-010), run by `solid test` — which
 builds first, then runs `test_` methods per declared animation instant
 (`@testing_instant` / `@testing_steps`, ADR-011) with operation
-checkpoints restored between instants.
+checkpoints restored between instants. The restore is by CONTENT, so an
+operation a test leaked anywhere in a child's list is reverted — and
+then, for every joint that child declares, RE-PLACED from the
+coordinates it holds (ADR-114): cleared if any is unbound, placed
+otherwise, through the same seam `CoordinateDelivery`'s own rollback of
+a refused `set_state` uses. This is what keeps a child's placement and
+its coordinates from disagreeing across a test boundary — including a
+child a running simulation posed, whose own placement the content
+restore alone cannot make consistent again. Only `node.children` are
+checkpointed and re-placed this way; a joint the node under test
+declares on itself is neither.
 
 Collision assertions (ADR-009/044) select the strongest shared representation
 the run allows: intersection-volume and connectivity questions use placed

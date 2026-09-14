@@ -1809,7 +1809,19 @@ def clear_solved(assembly):
     erase a value the current pass already produced correctly, before
     this assembly's own phase (later in the same cascade) even runs.
     `_enum_marker` (set by every `bind`) is what tells the two apart.
+
+    The value's drop is what licenses a drop of its JOINT's placement
+    too (`checkpoint-the-joint`, the literal reading of "cleared with
+    its motion"): a placement made OUTSIDE a phase -- the shape a test
+    runner's checkpoint restore's re-place makes -- is untagged, so
+    `_sweep` cannot reach it, and nothing else would. `slot.node` and
+    `slot.name` are enough to find the joint that owns this coordinate,
+    so nothing new has to be recorded to reach it, and the clear sits
+    INSIDE both exemptions above: neither a slot this pass already
+    re-bound nor a coordinate a running simulation owns ever reaches it.
     """
+    from solid_node.motion.joints import declared_joints
+
     current_enumeration = _current_enumeration()
     for slot in assembly.__dict__.pop('_solver_bound', ()):
         if slot._enum_marker is current_enumeration:
@@ -1822,6 +1834,10 @@ def clear_solved(assembly):
             continue
         slot._value = None
         slot.binder = None
+        for joint in declared_joints(type(slot.node)).values():
+            if slot.name in joint.coordinates:
+                joint.clear(slot.node)
+                break
 
 
 class _Deferred:

@@ -43,7 +43,7 @@ from solid_node.node import AssemblyNode
 from solid_node.parameters import Flag
 from solid_node.simulation import Button, Driver, Instruction, Turn
 
-from .parts import Arbor, Block, Dial, PenSpring, Pin, Slide, Wheel
+from .parts import Arbor, Block, Dial, Floater, PenSpring, Pin, Slide, Wheel
 
 
 def tooth_window(source, target):
@@ -354,6 +354,24 @@ class Guarded(AssemblyNode):
             self.slide.travel = 4.0
 
 
+class Conditional(AssemblyNode):
+    """An UNTIMED root whose `simulate()` binds a ROOT-LEVEL LEAF's
+    joint only under a guard on `self.time` -- the shape revision 1's
+    Finding A asks about (`evidence.md` sections A1-A4): instant 0
+    binds it, instant 1 leaves it UNBOUND at rest, which ADR-099's
+    clear semantics explicitly allow ('SHALL find the coordinate
+    unbound on every run')."""
+
+    gate = Slide()
+
+    def simulate(self):
+        if self.time < 0.5:
+            self.gate.travel = 10.0
+
+    def render(self):
+        self.gate.translate([0.0, 0.0, 4.0])
+
+
 class Opaque(AssemblyNode):
     """A relation into a bank coordinate sourced from a plain port the
     author's `simulate()` binds."""
@@ -461,6 +479,32 @@ class Sixfree(AssemblyNode):
     surge.drives(chassis.pose.x)
     sway.drives(chassis.pose.y)
     heading.drives(chassis.pose.yaw)
+
+
+class FloatingBody(AssemblyNode):
+    """A root-level LEAF (`floater`) carrying a `Free`, all six
+    coordinates driven, so a running root can own the whole placement --
+    `Sixfree`'s `chassis` is a SUB-ASSEMBLY and a run refuses it with
+    `pose.roll`/`pose.pitch` left unbound, so `checkpoint-the-joint`'s
+    many-operation-placement tests need this instead (`evidence/bench/
+    machine.py`'s `floater` is the shape)."""
+
+    rise = Driver(default=0.0, unit='mm')
+
+    floater = Floater()
+
+    rise.drives(floater.pose.x, ratio=0.5)
+    rise.drives(floater.pose.y, ratio=0.25)
+    rise.drives(floater.pose.z)
+    rise.drives(floater.pose.roll, ratio=2.0)
+    rise.drives(floater.pose.pitch, ratio=-1.0)
+    rise.drives(floater.pose.yaw, ratio=3.0)
+
+
+class Floating(FloatingBody):
+    """The same machine, running."""
+
+    time = Time.running()
 
 
 class Readout(AssemblyNode):

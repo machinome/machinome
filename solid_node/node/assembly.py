@@ -315,26 +315,15 @@ class CoordinateDelivery:
         return consumed
 
     def restore(self):
-        from solid_node.motion.joints import declared_joints
-        from solid_node.motion.ports import get_coordinate
+        from solid_node.motion.joints import re_place_declared_joints
 
         while self.saved:
-            node, name, slot, value, binder, marker, bound_by = self.saved.pop()
+            node, _name, slot, value, binder, marker, bound_by = self.saved.pop()
             slot._value = value
             slot.binder = binder
             slot._enum_marker = marker
             slot._bound_by = bound_by
-            for joint in declared_joints(type(node)).values():
-                if name not in joint.coordinates:
-                    continue
-                held = [get_coordinate(node, owned)._value
-                        for owned in joint.coordinates]
-                if any(one is None for one in held):
-                    joint.clear(node)
-                else:
-                    joint.place(node,
-                                held[0] if len(held) == 1 else None)
-                break
+            re_place_declared_joints(node)
 
 
 def _coordinate_delivery(node):

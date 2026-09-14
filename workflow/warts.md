@@ -2185,19 +2185,34 @@ scope; **status: filed here; triage open** unless marked otherwise. No
 framework code changed for any of them in that cycle.
 
 - **The test runner's operation checkpoints double a leaf child's joint
-  displacement under a running root.** `solid_node/manager/test.py:327`
+  displacement under a running root.** **FIXED (cycle
+  `checkpoint-the-joint`, ADR-114).** `solid_node/manager/test.py:327`
   snapshots each ROOT CHILD's `operations` before every test and `:368`/`:383`
-  restores them after; from the SECOND test on, the `set_keyframe(instant)`
-  at `:344` appends the joint displacement a second time. The lock's five
-  driver pins (leaves owning a `Prismatic`) then stand 0.1 mm deeper than
-  their own coordinate says (`d1.lift` reads `0.1000002`, the mesh sits at
+  restored them after; from the SECOND test on, the `set_keyframe(instant)`
+  at `:344` appended the joint displacement a second time. The lock's five
+  driver pins (leaves owning a `Prismatic`) then stood 0.1 mm deeper than
+  their own coordinate said (`d1.lift` read `0.1000002`, the mesh sat at
   `x = 12.46` instead of `12.56`), and `_prepare()`, `render()` and a
-  `set_state` round trip all leave the fifth operation in place. The same
-  tree under the project's previous UNTIMED model keeps four operations
-  through any number of cycles, so this is specific to a running root's
-  coordinate delivery; children of a sub-assembly are unaffected because the
-  runner checkpoints only the root's own children. Minimal reproduction, on
-  the lock:
+  `set_state` round trip all left the fifth operation in place. Children of
+  a sub-assembly were unaffected because the runner checkpoints only the
+  root's own children.
+
+  **Two factual errors in the original filing, corrected by the fix
+  cycle's own evidence.** The claim that the project's previous UNTIMED
+  model was immune is wrong: it is only RARER — an untimed root goes
+  out of phase too, whenever a test binds a coordinate by hand between
+  checkpoints, and before the fix that stranded a PERMANENT extra
+  operation no later enumeration could remove
+  (`openspec/changes/checkpoint-the-joint/evidence.md` §6, open question
+  2). And the minimal reproduction below, re-run verbatim on this
+  worktree, no longer reaches the defect on its own: the lock's own tests
+  stopped stepping the runner's node when this wart was filed
+  (`lock_under_test()` in `simulation/test_lock.py` builds a private
+  lock), so nothing in the sequence binds the runner's tree outside the
+  enumeration any more — it reports FOUR operations today, not the five
+  originally recorded (`evidence.md` §8). The doubling this wart
+  describes is reproduced instead on framework fixtures, in `evidence.md`
+  §1, §3 and §7:
 
       a = load_node('simulation/lock.py:PinTumblerLock')
       a.set_keyframe(0); a._prepare(); a.build_stls()
@@ -2205,15 +2220,36 @@ framework code changed for any of them in that cycle.
           saved = {c: list(c.operations) for c in a.children}
           a.set_keyframe(0)
           for c, ops in saved.items(): c.operations[:] = list(ops)
-      a.set_keyframe(0)          # -> d1 has 5 operations, not 4
+      a.set_keyframe(0)          # -> d1 has 4 operations today, not the
+                                  #    five originally recorded
 
   Cost to the project: `assertNoSolidInterference` reported
   `core should not interfere with d2 (intersection volume 0.103)` at ±90°
   from the second geometry test on; its geometry tests now build a lock of
-  their own. Candidate fix: the runner's checkpoint must restore a joint's
-  placement bookkeeping with the operation list, or checkpoint through the
-  joint's own `clear`/`place` rather than the raw list. Needs its own cycle;
-  it affects every running root with a joint on a root-level leaf.
+  their own (`lock_under_test()`) rather than testing the node the runner
+  hands it — a project change the pilot may now undo, since testing the
+  runner's own node is safe again.
+
+  **Root cause and fix.** A joint identified its previous placement by
+  the OBJECT IDENTITIES `place` recorded in
+  `node.__dict__['_joint_motion']`, while the runner's checkpoint restore
+  replaces a child's operation list BY CONTENT — deliberately, so a
+  leaked operation inserted anywhere is reverted. After a restore the two
+  disagreed and `Joint.clear` found nothing to remove. Fixed by
+  identifying a placement by the MARK its operations carry instead
+  (`_joint_slot`, ADR-093's declaration slot), stable across a wholesale
+  list replacement, behind a new seam (`re_place_declared_joints`) the
+  runner's restore and the refused-`set_state` rollback
+  (`CoordinateDelivery.restore`) both call to re-place a child's joints
+  from the coordinates it holds — neither of the two candidate fixes this
+  entry originally proposed (both examined and rejected in the cycle's
+  `design.md`, decision 3). A second, narrower gap the fix's own design
+  surfaced — an untagged placement the restore's re-place makes can
+  outlive an enumeration that leaves its coordinate unbound — is closed
+  by making `clear_solved` (ADR-099) drop a coordinate's joint along with
+  its value literally, rather than delegating to a sweep that cannot see
+  an untagged operation. Full measurement in
+  `openspec/changes/checkpoint-the-joint/evidence.md`.
 
 - **`solid build` refuses a coordinate bound by a CHILD-declared relation
   and read by a ROOT-declared one as doubly bound.** With
