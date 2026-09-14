@@ -1,9 +1,9 @@
 ## 0. Before anything else
 
-- [ ] 0.1 Confirm the worktree: `git rev-parse --show-toplevel` names
+- [x] 0.1 Confirm the worktree: `git rev-parse --show-toplevel` names
       `solid-node-viewer/WTs/viewer-navigator` and the branch is
       `viewer-navigator`. Record the head this change starts from.
-- [ ] 0.2 Record the baseline in `evidence.md`: `npm run typecheck`,
+- [x] 0.2 Record the baseline in `evidence.md`: `npm run typecheck`,
       `npm test`, `npm run build` in `solid_node_viewer/widget`, and
       `PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python
       -m pytest` at the repository root — counts, bundle size in bytes,
@@ -15,7 +15,7 @@ No DOM in this increment: it is `controls.ts`'s pattern, and every rule
 in design D3, D4, D5 and D9 is decided here so a browser never has to be
 asked what the component thinks.
 
-- [ ] 1.1 **Red** — `src/navtree.test.ts` (node environment, like
+- [x] 1.1 **Red** — `src/navtree.test.ts` (node environment, like
       `controls.test.ts`), against hand-built `AssemblyNode` literals —
       a root with a nested child and a leaf, one coloured ancestor:
       - `navigatorRows`: the root alone when nothing is expanded; the
@@ -46,11 +46,11 @@ asked what the component thinks.
         when the root did not move (design D9).
       *Goes red because `src/navtree.ts` does not exist.*
       Command: `cd solid_node_viewer/widget && npx vitest run src/navtree.test.ts`
-- [ ] 1.2 **Green** — `src/navtree.ts`: the types of design D3 and those
+- [x] 1.2 **Green** — `src/navtree.ts`: the types of design D3 and those
       four functions, pure, importing only `assemblyPathKey` from
       `tree.ts` and the assembly/navigation **types**. No DOM, no
       viewer import.
-- [ ] Commit: `feat(navigator): decide the navigator's rows and keys`.
+- [x] Commit: `feat(navigator): decide the navigator's rows and keys`.
 
 ## 2. The component, in a DOM vitest can hold
 
