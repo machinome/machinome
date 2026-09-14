@@ -521,7 +521,10 @@ an unchanged model produces a byte-identical document.
 - `intermediates`: the sorted qualified ids of every value a compiled edge
   determines that the bank does NOT hold — a plain port, a derived
   coordinate — which a consumer recomputes from the bank on every tick and
-  never stores.
+  never stores. A value NO compiled edge determines SHALL NOT be listed:
+  the end of a relation left to the ordinary enumeration is not part of
+  the program and SHALL NOT be published as one, so every id here is
+  named in the `gives` of an `edges` entry.
 - `edges`: one entry per compiled edge, IN PROGRAM ORDER, defined by the
   requirement "The published edges say what each one reads, gives and
   computes".
@@ -545,6 +548,14 @@ intermediate whose qualified id could not be computed from its position in
 the tree, naming the node and the reason: a fallback name derived from a
 class name is not unique across two instances of that class, and publishing
 it would put two different values under one name in one expression scope.
+That refusal SHALL be over the coordinates the program COMPUTES — the
+bank's, and the ends its compiled edges read and give — and over nothing
+else: a value the ordinary enumeration recomputes from the bank, whose
+relation reaches no bank coordinate, is not part of the program, is
+published nowhere in it, and SHALL NOT refuse the document however its
+node is named. A machine whose optional part this render omits, and a
+machine whose `.repeat()` children own a port a relation drives, SHALL
+therefore publish.
 
 The producer SHALL REFUSE a running root on which a declared driver or a
 joint coordinate qualifies to the id `time`, naming it and the reservation:
@@ -601,10 +612,44 @@ run's binder is restored afterwards.
 
 #### Scenario: A plain port is an intermediate, not a bank entry
 
-- **WHEN** a running root drives a plain readout port from a joint
-  coordinate
+- **WHEN** a running root drives a plain port from a driver and drives a
+  joint coordinate from that port
 - **THEN** that port's qualified id is in `program.intermediates`, is not in
-  `program.coordinates`, and the edge that computes it names it in `gives`
+  `program.coordinates`, the edge that computes it names it in `gives`,
+  and `program.sources` names the driver that reaches it
+
+#### Scenario: A plain port the program does not compute is published nowhere
+
+- **WHEN** a running root drives a plain readout port from a joint
+  coordinate and no relation carries that port back to a bank coordinate
+- **THEN** the document is published, that port's qualified id is in
+  neither `program.intermediates` nor `program.coordinates` nor
+  `program.sources`, no `edges` entry names it, and the pose expression
+  the port drives still resolves to the joint coordinate's qualified id
+
+#### Scenario: A repeated child's driven port does not refuse the document
+
+- **WHEN** a running root drives the `height` port of its `.repeat()`
+  children, whose list-held names are not legal id segments
+- **THEN** the document is published, no copy's port appears in
+  `program`, and the same root without `Time.running()` publishes the
+  document it always has
+
+#### Scenario: An omitted part's driven coordinate does not refuse the document
+
+- **WHEN** a running root's parameter omits an optional part whose joint
+  one of its drivers drives
+- **THEN** the document is published, the omitted part's coordinate
+  appears nowhere in `program`, and the same root with the part fitted
+  publishes it as a bank coordinate
+
+#### Scenario: An omitted part the program still reads is refused
+
+- **WHEN** a running root's parameter omits a part whose coordinate a
+  chain of relations reaching a bank coordinate passes through, so a
+  compiled edge still reads and gives it
+- **THEN** publication is refused naming that node and saying a fallback
+  class name is not unique, and no document is written
 
 #### Scenario: A declared range travels as a span
 
@@ -641,8 +686,9 @@ run's binder is restored afterwards.
 
 #### Scenario: An id that cannot be qualified is refused
 
-- **WHEN** a running root's relation reaches a value on a node whose
-  instance path is not computable
+- **WHEN** a COMPILED edge of a running root's program reaches a value on
+  a node whose qualified id is not computable — its instance path is not
+  derivable, or a name on that path is not a legal id segment
 - **THEN** publication fails naming that node and saying a fallback class
   name is not unique, and no document is written
 
@@ -1049,3 +1095,4 @@ inconsistent.
 - **THEN** that document carries no `controls` key, exactly as it
   carries an empty `instructions` table, and is otherwise the document
   the capture published before this change
+

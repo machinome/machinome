@@ -2097,7 +2097,14 @@ sim.move("feed", by=1, duration=0.02)  # observed: ValueError, already owned
 # declare-controls-on-parts (2026-09-14)
 
 - **A relation onto a coordinate the render OMITS makes a running root's
-  document unpublishable.** Met while building the cycle's
+  document unpublishable.**
+  **FIXED (cycle `publish-only-what-runs`).** The compiled program's
+  coordinate table is now exactly the bank plus the ends its kept edges
+  read and give; a relation onto an omitted part's own joint reaches no
+  bank coordinate, so `_reaching_the_bank` was already dropping it, and
+  the table no longer keeps its end after. The omitted node's fallback
+  name is published nowhere and can no longer refuse the document. Met
+  while building the cycle's
   `OmittedControl` fixture; it involves no control and is entirely
   pre-existing. `omit()` leaves a node "not linked, built, exported,
   fused or serialized", so `qualified_coordinates` never sees the
@@ -2230,7 +2237,8 @@ framework code changed for any of them in that cycle.
   end it holds is recorded as solved rather than inverted.
 
 - **A `.repeat()` child's PORT cannot be published under a running root.**
-  `Program.published()` refuses the lock's spring bank:
+  **FIXED (cycle `publish-only-what-runs`).** `Program.published()`
+  refused the lock's spring bank:
 
       UnsupportedLaw: the program names 'PenSpring.height', which is a
       FALLBACK derived from a class name rather than an instance path ...
@@ -2239,17 +2247,38 @@ framework code changed for any of them in that cycle.
   Root cause located in `solid_node/simulation/program.py`:
   `compile_program` registers a program node for EVERY end of every candidate
   relation (`_relation_edge` → `_register`) before `_reaching_the_bank` drops
-  the edges that reach no bank coordinate, and `Program.nodes` keeps the
+  the edges that reach no bank coordinate, and `Program.nodes` kept the
   dropped edges' ends. `_refuse_unqualified` and the published
-  `intermediates` list then see nodes nothing in the program computes — the
+  `intermediates` list then saw nodes nothing in the program computes — the
   repeated springs' height ports, named by their class fallback. The run
-  itself is untouched (the edge is not compiled); only publication refuses.
-  Candidate fix, small: prune `nodes` to the bank plus the kept edges' ends
-  after `_reaching_the_bank`, with a test publishing a running root whose
-  `.repeat()` children own a port a relation drives. The lock named its
-  springs `s1`…`s5` meanwhile, and the shop's API skill says a `.repeat()`
-  child under a running root may own neither a joint nor a port a relation
-  drives.
+  itself was untouched (the edge is not compiled); only publication refused.
+  Fixed exactly as the candidate fix here proposed: `compile_program` now
+  reduces `nodes` to the bank plus the ends the kept edges read and give,
+  right after `_reaching_the_bank`, so the dropped springs' ports leave
+  nothing behind for `_refuse_unqualified` or `intermediates` to see. The
+  lock named its springs `s1`…`s5` as a workaround meanwhile; restored to
+  `springs = PenSpring().repeat(5)` with the driving relation grouped by
+  `&` (the shape the project carried before its migration to
+  `Time.running()`), the lock now publishes, names none of the five
+  copies, and each spring's height still follows its own pin
+  independently — measured in the cycle's `evidence.md`. The shop's API
+  skill said a `.repeat()` child under a running root may own neither a
+  joint nor a port a relation drives; the port half of that claim is now
+  false.
+
+  **The other half — a `.repeat()` child that owns a JOINT — is a
+  DIFFERENT, still-open refusal, measured and left alone
+  (`evidence/probe_repeat_joint.py`).** It is not reached through
+  publication at all: `qualified_coordinates` (`program.py:227`) calls
+  `driver_id` while enumerating the BANK, and the id grammar
+  (`_LEGAL_SEGMENT`) raises `DriverIdError` on the list-held name
+  (`pins-0`) before any program exists — inside `Sim.__init__` via
+  `release_tree`, so the machine cannot be SIMULATED, let alone
+  published. No pruning of the program's node table can reach it; only a
+  change to what a qualified id segment may contain (the grammar's own
+  documented bijective-sanitization extension) could, and that is a
+  published-document contract the viewer reads, deliberately out of this
+  cycle's scope (design.md decision 6).
 
 - **The sampled search of a constraint costs about a whole program pass per
   sample.** On the lock (five `piecewise` lift laws of 8–26 knots feeding a

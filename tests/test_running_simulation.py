@@ -34,8 +34,9 @@ from .base import BaseNodeTest
 from .running_project.machine import (Backwards, Differential, Follower,
                                       Guarded, HandBound, LoopingTrain,
                                       Opaque, Ranged, RangedExact, Sixfree,
-                                      Stdlib, Stepped, SteppedBody, Stepper,
-                                      Train, TrainBody, Unbound)
+                                      SpringBank, SpringBankBody, Stdlib,
+                                      Stepped, SteppedBody, Stepper, Train,
+                                      TrainBody, Unbound)
 
 
 def reads(node, name):
@@ -328,6 +329,54 @@ class SnapshotTest(BaseNodeTest):
         self.assertEqual(fresh.status, 'active')
         sim.run(0.1)
         self.assertEqual(sim.state['crank'], 3.0)
+
+
+class ProgramReductionRunTest(BaseNodeTest):
+    """OpenSpec change ``publish-only-what-runs``: shrinking the
+    compiled program's coordinate table to what it computes changes
+    nothing about the RUN -- the relation onto a `.repeat()` child's
+    port is left to the ordinary enumeration exactly as before, and the
+    identity a snapshot is checked against is a digest of the inputs,
+    the coordinates, the spans and the edges, never of the node table
+    the reduction shrinks."""
+
+    def test_a_repeated_ports_run_follows_the_driver_like_the_untimed_pose(self):
+        node = SpringBank()
+        sim = Sim(node, 0.1)
+        sim.move('lift', by=6.0, duration=0.5)
+        for _ in range(6):
+            sim.run(0.1)
+            lift = sim.state['lift']
+            untimed = SpringBankBody()
+            untimed.set_state(lift=lift)
+            for copy, reference in zip(node.springs, untimed.springs):
+                self.assertAlmostEqual(reads(copy, 'height'),
+                                       reads(reference, 'height'))
+
+    def test_the_identity_a_repeated_ports_program_compiles_to_is_stable(self):
+        """Compiled twice in the same process, over the same tree
+        shape, the identity does not move: the second reading is taken
+        from a fresh compile, not from a stored digest."""
+        first = Sim(SpringBank(), 0.1).program.identity
+        second = Sim(SpringBank(), 0.1).program.identity
+        self.assertEqual(first, second)
+
+    def test_the_identity_the_corpus_carries_for_train_is_unchanged(self):
+        """The corpus is COMMITTED data, captured from a run of this
+        framework. Reading `Train`'s freshly compiled identity against
+        it -- rather than against a second in-process reading -- is
+        what proves the reduction does not move an identity an existing
+        snapshot was already checked against."""
+        import json
+        import os
+
+        corpus_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), 'running-corpus.json')
+        with open(corpus_path) as handle:
+            corpus = json.load(handle)
+        identities = {entry['document']['program']['identity']
+                     for entry in corpus['machines'] if entry['name'] == 'Train'}
+        self.assertEqual(identities, {Sim(Train(), 0.1).program.identity})
 
 
 class InstructionTest(BaseNodeTest):

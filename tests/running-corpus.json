@@ -91,9 +91,7 @@
               "domain": "rotational"
             }
           },
-          "intermediates": [
-            "wheel.turn"
-          ],
+          "intermediates": [],
           "edges": [
             {
               "kind": "law",
@@ -195,8 +193,7 @@
             ],
             "spindle": [
               "crank"
-            ],
-            "wheel.turn": []
+            ]
           },
           "limits": {
             "crossing_tolerance": 1e-12,
@@ -1160,9 +1157,7 @@
               "domain": "rotational"
             }
           },
-          "intermediates": [
-            "wheel.turn"
-          ],
+          "intermediates": [],
           "edges": [
             {
               "kind": "law",
@@ -1264,8 +1259,7 @@
             ],
             "spindle": [
               "crank"
-            ],
-            "wheel.turn": []
+            ]
           },
           "limits": {
             "crossing_tolerance": 1e-12,

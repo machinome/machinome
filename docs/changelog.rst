@@ -8,6 +8,25 @@ Changelog
 Unreleased
 ----------
 
+**A running root's document publishes only the program it computes.** A
+``.repeat()`` child's port and a part this render ``omit()``s used to
+refuse the whole document when a driver drove them: the relation reaches
+no bank coordinate and is left to the ordinary enumeration, but the
+compiled program kept a coordinate for it anyway, under a name
+publication then refused as unqualifiable. The program's coordinate
+table is now exactly the bank plus the ends its compiled edges read and
+give, so such a relation leaves nothing in it, is published nowhere and
+cannot refuse the document however its dropped node is named. A
+coordinate a kept edge still reads or gives — an omitted node's, reached
+through a chain of relations that does reach the bank — is refused
+exactly as before. Three existing fixtures publish one fewer name in
+consequence: ``Train`` (``wheel.turn``), ``Gauged`` (``gauge.angle``) and
+``PortDrivenJoint`` (``register``) — a name no expression in any of those
+documents reads, and none a ``bindings`` entry. Nothing about the run, ``program.identity``, the document version, the
+drivers table, the poses or the bindings table moves; the conformance
+corpus's two ``Train`` documents lose the same one name, and no tick or
+script in it changes.
+
 **``handle.cancel()`` now stops the command.** It used to set the
 handle's status to ``cancelled`` and nothing else: the command kept
 admitting travel every tick, kept owning its input, and a replacement

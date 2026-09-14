@@ -43,7 +43,7 @@ from solid_node.node import AssemblyNode
 from solid_node.parameters import Flag
 from solid_node.simulation import Button, Driver, Instruction, Turn
 
-from .parts import Arbor, Block, Dial, Pin, Slide, Wheel
+from .parts import Arbor, Block, Dial, PenSpring, Pin, Slide, Wheel
 
 
 def tooth_window(source, target):
@@ -2193,3 +2193,83 @@ class DriverGateBody(AssemblyNode):
 
 class DriverGate(DriverGateBody):
     time = Time.running()
+
+
+class SpringBankBody(AssemblyNode):
+    """The pin tumbler lock's spring bank, reduced to its shape: a
+    driver moving a joint on one leaf and driving the plain port each
+    of three `.repeat()` copies owns. The relation's driven ends are
+    ports, not bank coordinates, so under a running root the compiled
+    program drops the edge -- and, before `publish-only-what-runs`,
+    kept the ends it had already registered for it, which refused
+    publication naming a name no copy can carry qualified."""
+
+    lift = Driver(default=0.0, unit='mm')
+
+    slider = Slide()
+    springs = PenSpring().repeat(3)
+
+    lift.drives(slider.travel, ratio=1.0)
+    lift.drives(springs.height, ratio=-1.0)
+
+    def render(self):
+        pass
+
+
+class SpringBank(SpringBankBody):
+    time = Time.running()
+
+
+class OptionalBody(AssemblyNode):
+    """A running root with an optional part: `first` is always fitted,
+    `spare` is dropped by `render()` when `fitted` is false, and one
+    driver drives both joints. Before `publish-only-what-runs`, omitting
+    `spare` left its unlinked coordinate in the compiled program's
+    table and refused the document, even though the run never computed
+    it -- the relation onto it reaches no bank coordinate once `spare`
+    is gone."""
+
+    fitted = Flag(True)
+
+    crank = Driver(default=0.0, unit='deg')
+
+    first = Arbor()
+    spare = Arbor()
+
+    crank.drives(first.turn, ratio=2.0)
+    crank.drives(spare.turn, ratio=3.0)
+
+    def render(self):
+        self.spare.translate([20.0, 0.0, 0.0])
+        if not self.fitted:
+            self.spare.omit()
+
+
+class Optional(OptionalBody):
+    time = Time.running()
+
+
+class OptionalRead(AssemblyNode):
+    """`OptionalBody`'s shape with the relations CHAINED through
+    `spare`: `crank` drives `spare.turn` and `spare.turn` drives
+    `first.turn`, so both edges reach the bank and are kept, and
+    `spare.turn` stays an intermediate the program genuinely computes.
+    Omitting `spare` must still refuse this one -- the coordinate is
+    read, not merely registered and dropped."""
+
+    time = Time.running()
+
+    fitted = Flag(True)
+
+    crank = Driver(default=0.0, unit='deg')
+
+    first = Arbor()
+    spare = Arbor()
+
+    crank.drives(spare.turn, ratio=3.0)
+    spare.turn.drives(first.turn, ratio=2.0)
+
+    def render(self):
+        self.spare.translate([20.0, 0.0, 0.0])
+        if not self.fitted:
+            self.spare.omit()

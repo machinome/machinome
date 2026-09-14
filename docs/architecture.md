@@ -1766,6 +1766,24 @@ published. The producer compiles it through the run's own construction
 construction; a live run is asked for its own instead, and a root the run
 refuses has no program to publish.
 
+**The program's own coordinates are exactly the bank's, plus every end
+its COMPILED edges read or give.** `compile_program` builds a candidate
+edge for every relation, wiring and derived coordinate in the tree
+before it knows which reach the bank, so it reduces the coordinate
+table once the candidates that do not are dropped: a relation whose
+driven ends are all outside the bank and reach no bank coordinate — a
+`.repeat()` child's port, or a joint an unfitted `omit()` removed — is
+left to the ordinary enumeration, and leaves nothing in the program.
+Such a coordinate is published nowhere, in neither `coordinates` nor
+`intermediates` nor `sources`, and it is not a reason to refuse the
+document however its node is named: a class-name fallback that no
+compiled edge reads or gives cannot collide with anything, because
+nothing publishes it. The refusal for an unqualifiable id therefore
+stands only over what the program DOES compute — a coordinate a kept
+edge still reads or gives, reached through an omitted node a chain of
+relations passes through on its way to the bank, is refused exactly as
+before.
+
 Under that base the serialization ALSO binds every joint coordinate of
 the linked tree to a symbolic token of its qualified id, beside every
 driver's, through the delivery a run's own `set_state` uses, with a

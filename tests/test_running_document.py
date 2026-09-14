@@ -51,10 +51,12 @@ from .running_project.machine import (Captured, ClassGate, Clocked,
                                       ClockedBody, Columns, ColumnsBare,
                                       Derived, Gate, Gauged, Guarded,
                                       LoopingTrain, NotRunning, OffCentre,
-                                      OmittedControl, Ratchet,
-                                      Remainder, Sixbound, Sixfree,
-                                      StoppedDifferential, Swept, ThreeCarries,
-                                      Train, TrainBody, Window, Wired)
+                                      OmittedControl, Optional, OptionalRead,
+                                      PortDrivenJoint, PortDrivenSmooth,
+                                      Ratchet, Remainder, Sixbound, Sixfree,
+                                      SpringBank, StoppedDifferential, Swept,
+                                      ThreeCarries, Train, TrainBody, Window,
+                                      Wired)
 
 BASE_DOCUMENTS = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               'base_documents')
@@ -334,7 +336,8 @@ class PoseTest(BaseNodeTest):
                          {'lifter.travel'})
 
     def test_every_free_name_the_document_reads_is_declared(self):
-        for factory in (Train, ThreeCarries, Sixbound, Guarded, Gauged):
+        for factory in (Train, ThreeCarries, Sixbound, Guarded, Gauged,
+                        SpringBank, Optional, PortDrivenSmooth):
             with self.subTest(machine=factory.__name__):
                 published = document(bound(factory()))
                 declared = (set(published['drivers'])
@@ -432,10 +435,18 @@ class CoordinateTableTest(BaseNodeTest):
         self.assertEqual(table['slide.travel']['unit'], 'mm')
         self.assertNotIn('unit', table['crank'])
 
-    def test_the_intermediates_are_the_plain_ports_and_nothing_else(self):
-        published = document(bound(Train()))
-        self.assertEqual(published['program']['intermediates'],
-                         ['wheel.turn'])
+    def test_the_intermediates_are_the_plain_ports_the_program_computes(self):
+        """`Train`'s only plain port, `wheel.turn`, is a wiring OUT of
+        the bank that nothing reads back -- `_reaching_the_bank` drops
+        the edge, and, under ``publish-only-what-runs``, the program's
+        own table agrees: a port no compiled edge determines is not an
+        intermediate. `PortDrivenSmooth`'s `register` is a plain port a
+        KEPT edge does determine, and it is what the definition means."""
+        self.assertEqual(document(bound(Train()))['program']['intermediates'],
+                         [])
+        self.assertEqual(
+            document(bound(PortDrivenSmooth()))['program']['intermediates'],
+            ['register'])
 
     def test_the_drivers_table_is_the_one_declaration(self):
         published = document(bound(Train()))
@@ -467,6 +478,75 @@ class CoordinateTableTest(BaseNodeTest):
         published = document(bound(Train()))
         self.assertNotIn('dt', published['program'])
         self.assertNotIn('dt', published)
+
+
+class NothingLeftOfADroppedEdgeTest(BaseNodeTest):
+    """OpenSpec change ``publish-only-what-runs``: a coordinate no
+    compiled edge computes is not part of the program, so it cannot
+    refuse the document, however its node is named."""
+
+    def test_a_repeated_ports_document_publishes(self):
+        """`SpringBank` drives three `.repeat()` copies' plain port,
+        whose list-held names (`springs-0`, ...) are not legal id
+        segments. The relation onto them reaches no bank coordinate, so
+        it is dropped, and none of the three copies' names may appear
+        anywhere in the published program."""
+        published = document(bound(SpringBank()))
+        self.assertEqual(published['program']['intermediates'], [])
+        self.assertEqual(published['program']['sources'],
+                         {'lift': ['lift'], 'slider.travel': ['lift']})
+        text = json.dumps(published['program'])
+        for needle in ('PenSpring', 'height', 'springs-0'):
+            self.assertNotIn(needle, text)
+        names = [child['name'] for child in published['root']['children']
+                 if child['name'].startswith('springs')]
+        self.assertEqual(sorted(names), ['springs-0', 'springs-1',
+                                        'springs-2'])
+
+    def test_an_omitted_parts_driven_coordinate_publishes(self):
+        """`Optional` drives both arbors from one crank; `render()` omits
+        `spare` when `fitted` is false. Fitted, both coordinates are in
+        the bank; unfitted, `spare.turn` is not published anywhere --
+        the relation onto it reaches no bank coordinate once `spare` is
+        gone, and the document that publishes it fitted is the one that
+        never mentions it unfitted."""
+        fitted = document(bound(Optional(fitted=True)))
+        self.assertIn('spare.turn', fitted['program']['coordinates'])
+        self.assertEqual(fitted['program']['intermediates'], [])
+
+        unfitted = document(bound(Optional(fitted=False)))
+        self.assertNotIn('spare.turn', unfitted['program']['coordinates'])
+        self.assertEqual(unfitted['program']['intermediates'], [])
+        self.assertNotIn('spare.turn', unfitted['program']['sources'])
+        text = json.dumps(unfitted['program'])
+        self.assertNotIn('spare', text)
+        self.assertNotIn('Arbor.turn', text)
+
+    def test_a_plain_port_a_kept_edge_computes_is_untouched(self):
+        """`PortDrivenSmooth`'s `register` IS a coordinate the program
+        computes -- a continuous law drives it and it drives a bank
+        coordinate in turn -- so the reduction that drops `wheel.turn`
+        and `gauge.angle` must not touch it."""
+        published = document(bound(PortDrivenSmooth()))
+        self.assertEqual(published['program']['intermediates'], ['register'])
+        self.assertEqual(published['program']['sources']['register'],
+                         ['crank'])
+        gives = [name for edge in published['program']['edges']
+                 for name in edge['gives']]
+        self.assertIn('register', gives)
+
+    def test_a_wiring_a_kept_edge_computes_is_untouched(self):
+        """`Gauged` (`gauge.angle`) and `PortDrivenJoint` (`register`)
+        each drive a plain port FROM a bank coordinate, so no edge in
+        either program determines it -- the same shape as `wheel.turn`,
+        which is why the reduction removes both."""
+        gauged = document(bound(Gauged()))
+        self.assertEqual(gauged['program']['intermediates'], [])
+        self.assertNotIn('gauge.angle', gauged['program']['sources'])
+
+        port_driven_joint = document(bound(PortDrivenJoint()))
+        self.assertEqual(port_driven_joint['program']['intermediates'], [])
+        self.assertNotIn('register', port_driven_joint['program']['sources'])
 
 
 class EdgeTableTest(BaseNodeTest):
@@ -697,27 +777,44 @@ class RefusalTest(BaseNodeTest):
         """A node the walk could not qualify carries the
         `<ClassName>.<name>` FALLBACK and says so; publication refuses
         it, because that name is not unique across two instances of one
-        class. Reached at the seam: nothing in the framework's suite or
-        in any surveyed project produces an unlinked end today, which is
-        what the refusal keeps true.
+        class. Corrupted onto `PortDrivenSmooth`, whose `register` a
+        kept edge genuinely computes and the reduction of
+        ``publish-only-what-runs`` therefore leaves in `program.nodes`
+        -- unlike `Train`'s `wheel.turn`, which the reduction now drops
+        before this refusal ever sees it.
         """
         from solid_node.core.serializer import compiled_program
         from solid_node.simulation import program as program_module
 
-        node = Train()
+        node = PortDrivenSmooth()
         bind_declared_defaults(node)
         program, initial = compiled_program(node)
         for entry in program.nodes.values():
             if entry.kind == 'intermediate':
-                entry.name = 'Wheel.turn'
+                entry.name = 'Register.register'
                 entry.qualified = False
                 break
         else:
             self.fail('the fixture has no intermediate to unqualify')
         with self.assertRaises(program_module.UnsupportedLaw) as raised:
             program.published(initial)
-        self.assertIn('Wheel.turn', str(raised.exception))
+        self.assertIn('Register.register', str(raised.exception))
         self.assertIn('class name', str(raised.exception))
+
+    def test_an_omitted_part_a_kept_edge_still_reads_is_refused(self):
+        """`OptionalRead` chains its relations through `spare`, so both
+        edges reach the bank and are kept: `spare.turn` is a coordinate
+        the program genuinely computes, and omitting `spare` leaves it
+        unqualified rather than absent. Publication must go on refusing
+        this one -- the reduction removes only what no kept edge
+        touches."""
+        from solid_node.simulation import program as program_module
+
+        self.assertEqual(
+            document(bound(OptionalRead(fitted=True)))['version'], 5)
+        with self.assertRaises(program_module.UnsupportedLaw) as raised:
+            document(bound(OptionalRead(fitted=False)))
+        self.assertIn('Arbor.turn', str(raised.exception))
 
 
 class AcceptanceShapeTest(BaseNodeTest):

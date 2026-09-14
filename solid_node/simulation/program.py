@@ -793,6 +793,13 @@ class Program:
         # coordinate, read off the port declaration once so the
         # published table needs no second walk of the tree.
         self.declared = dict(declared or {})
+        # The bank plus every end a KEPT edge reads or gives --
+        # `compile_program`'s only caller, already reduced to that
+        # before this constructor runs. A coordinate no edge here
+        # touches is not part of the program: its relation was left to
+        # the ordinary enumeration, and nothing below -- `sources`,
+        # `published`, `published_names`, `_refuse_unqualified` -- may
+        # see it.
         self.nodes = nodes
         self.edges = tuple(edges)
         self.determiner = {key: edge for edge in self.edges
@@ -1224,6 +1231,14 @@ class _Node:
     """One coordinate the program computes over: a bank id, or an
     INTERMEDIATE a compiled edge determines.
 
+    `_register` mints one of these for every end of every CANDIDATE
+    edge, before `_reaching_the_bank` has decided which candidates the
+    program keeps -- it cannot know in advance which ends will turn out
+    to belong to a relation left to the ordinary enumeration.
+    `compile_program` is what makes the class docstring's "or an
+    INTERMEDIATE a compiled edge determines" true of `Program.nodes`:
+    it drops the ends of every candidate that did not survive.
+
     `qualified` is whether `name` is the instance-qualified id or the
     `<ClassName>.<name>` FALLBACK `_qualified` takes when the node is not
     linked under the root. The fallback is good enough for a message and
@@ -1292,6 +1307,18 @@ def compile_program(root, inputs, coordinates, controls=None,
                 candidates.append(edge)
 
     kept = _reaching_the_bank(candidates, bank_keys)
+    # `_register` made a node for every end of every CANDIDATE, before
+    # `_reaching_the_bank` decided which ones survive -- it cannot know
+    # a candidate will be dropped until the walk above has run. A
+    # coordinate no kept edge reads or gives is not part of the
+    # program: its relation is left to the ordinary enumeration, and
+    # the table the rest of `Program` reads as "what this program
+    # computes" must not go on carrying it.
+    touched = set(bank_keys)
+    for edge in kept:
+        touched.update(edge.needs)
+        touched.update(edge.gives)
+    nodes = {key: node for key, node in nodes.items() if key in touched}
     _refuse_opaque(kept, bank_keys, nodes)
     ordered = _ordered(kept, nodes)
     spans, bound_reads = _compiled_spans(root, inputs, coordinates)

@@ -674,7 +674,14 @@ coordinate SHALL be an
 identity edge and a derived coordinate a linear edge. A relation or
 wiring none of whose driven ends is, or reaches through such
 intermediates, a bank coordinate SHALL be left to the ordinary
-enumeration. The program SHALL have an IDENTITY derived from the root
+enumeration, and SHALL leave nothing of itself in the program: the
+program's COORDINATES SHALL be the bank's, plus exactly the ends its
+compiled edges read and give. An end of a relation left to the ordinary
+enumeration SHALL NOT be a coordinate of the program, SHALL NOT be
+published as one, and SHALL NOT be a reason to refuse the program — the
+run never computes it, and the ordinary enumeration recomputes it from
+the bank on every tick exactly as it does under no time base at all.
+The program SHALL have an IDENTITY derived from the root
 class, the bank's ids, the inputs' declarations and every edge's ends,
 direction and expression.
 
@@ -742,6 +749,24 @@ law that can only jump is refused as arithmetic".
 - **WHEN** a running root's law is `4 + 72 * clamp01((angle − 113.5) / 11.25)`
 - **THEN** construction succeeds and the compiled expression names the
   source's qualified id and only `min` and `max` among calls
+
+#### Scenario: A relation the enumeration keeps leaves no coordinate in the program
+
+- **WHEN** a running root drives the `height` port of its `.repeat()`
+  children, and no relation carries those ports back to a joint
+  coordinate
+- **THEN** the compiled program's coordinates are the driver and the
+  joint coordinates only, no copy's port is among them, the program's
+  edges are unchanged, and the run poses every copy exactly as the same
+  root without `Time.running()` does
+
+#### Scenario: A part this render omits leaves no coordinate in the program
+
+- **WHEN** a running root holds an optional part whose joint one of its
+  drivers drives, and this render `omit()`s that part
+- **THEN** the compiled program's coordinates are the driver and the
+  joint coordinates of the parts that ARE in the machine, the omitted
+  part's coordinate is not among them, and construction succeeds
 
 ### Requirement: A jump is located inside the tick and subtracted
 

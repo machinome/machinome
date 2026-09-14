@@ -8,16 +8,19 @@ Three kinds of coordinate, so one machine exercises all of them: a
 joint on a leaf (`Arbor`), a translational joint on a leaf (`Slide`),
 and a PLAIN port on a leaf (`Wheel`), which the run never owns and the
 ordinary enumeration recomputes from a run-bound source on every tick.
-`Block` is geometry with nothing that moves, for an assembly that needs
-a body to place, and `Dial` is the same thing under a different name:
-the part a HAND touches, so a fixture declaring a control reads as what
-it is rather than as one more block.
+`PenSpring` is a second plain-port leaf, translational rather than
+rotational, for the shape only a REPEATED leaf needs -- the pin tumbler
+lock's spring bank, where a `.repeat()` child owns the port a driver
+drives. `Block` is geometry with nothing that moves, for an assembly
+that needs a body to place, and `Dial` is the same thing under a
+different name: the part a HAND touches, so a fixture declaring a
+control reads as what it is rather than as one more block.
 """
 
 from solid2 import cube, cylinder
 
 from solid_node.motion.joints import Prismatic, Revolute
-from solid_node.motion.ports import RotationalPort
+from solid_node.motion.ports import RotationalPort, TranslationalPort
 from solid_node.node import Solid2Node
 
 
@@ -47,6 +50,16 @@ class Wheel(Solid2Node):
 
     def render(self):
         return cylinder(r=20, h=6)
+
+
+class PenSpring(Solid2Node):
+    """A spring copy: a plain TRANSLATIONAL port, no joint of its own --
+    a `.repeat()` fixture's element, since only a leaf can be one."""
+
+    height = TranslationalPort(unit='mm')
+
+    def render(self):
+        return cylinder(r=1, h=4)
 
 
 class Block(Solid2Node):
