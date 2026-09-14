@@ -1,13 +1,13 @@
 // Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 // SPDX-License-Identifier: AGPL-3.0-only
-import { CSSProperties, FormEvent, KeyboardEvent, lazy, MouseEvent, StrictMode, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { FormEvent, lazy, MouseEvent, StrictMode, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import type { Monaco, OnMount } from "@monaco-editor/react";
 import { createRoot } from "react-dom/client";
 import { artifactUrl, BUILD_VOLUME, canonicalModel, fitsBuildEnvelope, parsePieces, type PrintedPiece } from "./build-data";
 import "./monaco";
 import "./styles.css";
-import type { AssemblyNode, AssemblyPath, ViewerHandle, ViewerView } from "./solid-node-widget";
+import type { ViewerHandle, ViewerView } from "./solid-node-widget";
 
 const BuildPieceViewer = lazy(() => import("./build-viewer").then((module) => ({ default: module.BuildPieceViewer })));
 
@@ -153,12 +153,11 @@ type FileBuffer = SourceDocument & {
   missing: boolean;
 };
 
-function FunctionalModel({ artifact, reconnect, buildError, session, onAssemblyChange, onViewerChange }: {
+function FunctionalModel({ artifact, reconnect, buildError, session, onViewerChange }: {
   artifact: ModelArtifact | null;
   reconnect: number;
   buildError: string | null;
   session: string;
-  onAssemblyChange: (assembly: AssemblyNode | null) => void;
   onViewerChange: (viewer: ViewerHandle | null) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
@@ -187,7 +186,6 @@ function FunctionalModel({ artifact, reconnect, buildError, session, onAssemblyC
       try {
         if (path === "viewer.json") await mounted.manifestChanged();
         else await mounted.artifactChanged(path);
-        onAssemblyChange(mounted.assembly());
         setError(null);
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : String(reason));
@@ -216,7 +214,6 @@ function FunctionalModel({ artifact, reconnect, buildError, session, onAssemblyC
           if (disposed) { view.current = mountedHandle.view(); mountedHandle.dispose(); return; }
           handle.current = mountedHandle;
           onViewerChange(mountedHandle);
-          onAssemblyChange(mountedHandle.assembly());
           setError(null);
         } catch (reason) {
           if (!disposed) setError(reason instanceof Error ? reason.message : String(reason));
@@ -234,7 +231,6 @@ function FunctionalModel({ artifact, reconnect, buildError, session, onAssemblyC
         handle.current.dispose();
         handle.current = undefined;
         onViewerChange(null);
-        onAssemblyChange(null);
       });
     };
   }, [session]);
@@ -262,177 +258,6 @@ function FunctionalModel({ artifact, reconnect, buildError, session, onAssemblyC
       <div className="functional-model-host" ref={container} />
     </>
   );
-}
-
-type AssemblyRow = { node: AssemblyNode; depth: number };
-
-function pathKey(path: AssemblyPath): string {
-  return JSON.stringify(path);
-}
-
-function assemblyRows(root: AssemblyNode, expanded: ReadonlySet<string>): AssemblyRow[] {
-  const rows: AssemblyRow[] = [];
-  const visit = (node: AssemblyNode, depth: number) => {
-    rows.push({ node, depth });
-    if (node.children.length > 0 && expanded.has(pathKey(node.path))) {
-      node.children.forEach((child) => visit(child, depth + 1));
-    }
-  };
-  visit(root, 0);
-  return rows;
-}
-
-function allAssemblyPaths(root: AssemblyNode): Map<string, AssemblyNode> {
-  const paths = new Map<string, AssemblyNode>();
-  const visit = (node: AssemblyNode) => {
-    paths.set(pathKey(node.path), node);
-    node.children.forEach(visit);
-  };
-  visit(root);
-  return paths;
-}
-
-function AssemblyPanel({ assembly, viewer }: {
-  assembly: AssemblyNode | null;
-  viewer: ViewerHandle | null;
-}) {
-  const [active, setActive] = useState<string | null>(null);
-  const [focused, setFocused] = useState<string | null>(null);
-  const [hidden, setHidden] = useState<Set<string>>(() => new Set());
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const rowRefs = useRef(new Map<string, HTMLDivElement>());
-  const initializedAssembly = useRef(false);
-
-  useEffect(() => {
-    if (assembly === null) {
-      setActive(null);
-      setFocused(null);
-      setHidden(new Set());
-      setExpanded(new Set());
-      initializedAssembly.current = false;
-      return;
-    }
-    const paths = allAssemblyPaths(assembly);
-    const initializeExpansion = !initializedAssembly.current;
-    setActive((current) => current !== null && paths.has(current) ? current : pathKey(assembly.path));
-    setFocused((current) => current !== null && paths.has(current) ? current : pathKey(assembly.path));
-    setHidden((current) => new Set([...current].filter((key) => paths.has(key))));
-    setExpanded((current) => {
-      const next = new Set([...current].filter((key) => paths.has(key)));
-      if (initializeExpansion && assembly.children.length > 0) next.add(pathKey(assembly.path));
-      return next;
-    });
-    initializedAssembly.current = true;
-  }, [assembly]);
-
-  if (assembly === null || viewer === null) {
-    return <section className="assembly-panel" aria-labelledby="assembly-heading">
-      <h2 id="assembly-heading">MODEL</h2>
-      <p className="empty">No model assembly is available.</p>
-    </section>;
-  }
-
-  const rows = assemblyRows(assembly, expanded);
-  const rootKey = pathKey(assembly.path);
-  const moveKeyboardFocus = (key: string) => {
-    setActive(key);
-    rowRefs.current.get(key)?.focus();
-  };
-  const setRoot = (node: AssemblyNode | null) => {
-    viewer.setRoot(node?.path ?? null);
-    setFocused(node === null ? rootKey : pathKey(node.path));
-  };
-  const setVisible = (node: AssemblyNode, visible: boolean) => {
-    viewer.setVisible(node.path, visible);
-    const key = pathKey(node.path);
-    setHidden((current) => {
-      const next = new Set(current);
-      if (visible) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
-  const onTreeKeyDown = (event: KeyboardEvent<HTMLDivElement>, node: AssemblyNode) => {
-    const key = pathKey(node.path);
-    const index = rows.findIndex((row) => pathKey(row.node.path) === key);
-    if (event.key === "ArrowDown" && index < rows.length - 1) {
-      event.preventDefault();
-      moveKeyboardFocus(pathKey(rows[index + 1].node.path));
-    } else if (event.key === "ArrowUp" && index > 0) {
-      event.preventDefault();
-      moveKeyboardFocus(pathKey(rows[index - 1].node.path));
-    } else if (event.key === "ArrowRight" && node.children.length > 0) {
-      event.preventDefault();
-      if (!expanded.has(key)) setExpanded((current) => new Set(current).add(key));
-      else moveKeyboardFocus(pathKey(node.children[0].path));
-    } else if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      if (node.children.length > 0 && expanded.has(key)) {
-        setExpanded((current) => { const next = new Set(current); next.delete(key); return next; });
-      } else if (node.path.length > 0) {
-        moveKeyboardFocus(pathKey(node.path.slice(0, -1)));
-      }
-    } else if (event.key === "Enter") {
-      event.preventDefault();
-      setRoot(node);
-    } else if (event.key === " ") {
-      event.preventDefault();
-      setVisible(node, hidden.has(key));
-    }
-  };
-
-  return <section className="assembly-panel" aria-labelledby="assembly-heading">
-    <header>
-      <h2 id="assembly-heading">MODEL</h2>
-      {focused === rootKey ? null : <button type="button" onClick={() => setRoot(null)}>Show full assembly</button>}
-    </header>
-    <div className="assembly-tree" role="tree" aria-label="Assembly">
-      {rows.map(({ node, depth }) => {
-        const key = pathKey(node.path);
-        const isActive = active === key;
-        const isFocused = focused === key;
-        const isVisible = !hidden.has(key);
-        const style = { "--assembly-depth": depth, "--node-color": node.color ?? "#6b7280" } as CSSProperties;
-        return <div
-          className={`assembly-row ${isFocused ? "focused-root" : ""}`}
-          key={key}
-          role="treeitem"
-          aria-selected={isFocused}
-          aria-expanded={node.children.length > 0 ? expanded.has(key) : undefined}
-          tabIndex={isActive ? 0 : -1}
-          style={style}
-          ref={(element) => { if (element) rowRefs.current.set(key, element); else rowRefs.current.delete(key); }}
-          onKeyDown={(event) => onTreeKeyDown(event, node)}
-        >
-          {node.children.length === 0 ? <span className="assembly-spacer" /> : <button
-            type="button"
-            className="assembly-disclosure"
-            aria-label={`${expanded.has(key) ? "Collapse" : "Expand"} ${node.name}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              setExpanded((current) => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next; });
-            }}
-          >{expanded.has(key) ? "−" : "+"}</button>}
-          <input
-            className="assembly-visibility"
-            type="checkbox"
-            aria-label={`Visibility for ${node.name}`}
-            checked={isVisible}
-            onClick={(event) => event.stopPropagation()}
-            onChange={(event) => setVisible(node, event.currentTarget.checked)}
-          />
-          <span className="assembly-name">{node.name}</span>
-          {isFocused ? <span className="assembly-root-label">root</span> : null}
-          {!isFocused ? <button
-            type="button"
-            className="assembly-focus"
-            aria-label={`Focus ${node.name}`}
-            onClick={(event) => { event.stopPropagation(); setActive(key); setRoot(node); }}
-          >Focus</button> : null}
-        </div>;
-      })}
-    </div>
-  </section>;
 }
 
 function AssemblyNavigator({ viewer }: { viewer: ViewerHandle | null }) {
@@ -1743,7 +1568,6 @@ function Workspace({ path: entryPath }: { path: string }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [viewerReady, setViewerReady] = useState(false);
   const [viewerHandle, setViewerHandle] = useState<ViewerHandle | null>(null);
-  const [assembly, setAssembly] = useState<AssemblyNode | null>(null);
   const [opening, setOpening] = useState(false);
 
   useEffect(() => {
@@ -2004,7 +1828,7 @@ function Workspace({ path: entryPath }: { path: string }) {
                 Bringing the model up to date…
               </p>
             ) : null}
-            {viewerReady ? <FunctionalModel artifact={modelArtifact} reconnect={modelReconnect} buildError={modelBuildError} session={sessionId ?? ""} onAssemblyChange={setAssembly} onViewerChange={setViewerHandle} /> : <p className="empty">no completed build yet</p>}
+            {viewerReady ? <FunctionalModel artifact={modelArtifact} reconnect={modelReconnect} buildError={modelBuildError} session={sessionId ?? ""} onViewerChange={setViewerHandle} /> : <p className="empty">no completed build yet</p>}
           </div>
         </section>
         <CodeWorkspace
