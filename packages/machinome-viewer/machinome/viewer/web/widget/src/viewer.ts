@@ -7,7 +7,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { frameBounds, ViewerView } from './camera';
-import { AssemblyNavigation } from './assembly';
+import {
+  AssemblyChangeNotifier, AssemblyListener, AssemblyNavigation,
+  AssemblyNavigationState,
+} from './assembly';
 import {
   controlPlan, resolveBaseUrl, resolveOptions, showsDriverChrome,
   showsRunControls,
@@ -55,6 +58,7 @@ export type AnimationMode = 'inline' | 'toggle' | 'none' | 'external';
 export type DriverControlsMode = 'inline' | 'none';
 export type View = ViewerView;
 export type { AssemblyNode, AssemblyPath } from './tree';
+export type { AssemblyChange, AssemblyListener, AssemblyNavigationState } from './assembly';
 export type VectorInput = THREE.Vector3 | readonly [number, number, number];
 export interface ViewInput {
   camera: VectorInput;
@@ -135,6 +139,17 @@ export interface ViewerHandle {
   assembly(): AssemblyNode;
   setRoot(path: AssemblyPath | null): void;
   setVisible(path: AssemblyPath, visible: boolean): void;
+  /** The navigation state: the focused root and the explicitly hidden
+   * paths, as a serializable snapshot the handle does not later modify
+   * (design D1). Needs no tree and so never throws. */
+  navigation(): AssemblyNavigationState;
+  /** Subscribe to every accepted operation that publishes a tree or
+   * moves the focused root or the visibility state -- a host call, the
+   * widget's own breadcrumb, or a targeted update -- and returns a
+   * function that cancels the subscription. The notification means the
+   * state last read may be stale; it observes and must not be used to
+   * drive the viewer from inside itself (design D4-D6, ADR-049). */
+  onAssemblyChange(listener: AssemblyListener): () => void;
   setTime(time: number): void;
   /** The playback speed, a multiple of real time (1 without a loop). */
   speed(): number;
@@ -243,6 +258,21 @@ export async function mount(
   // hear back does not fight the input the maker is dragging.
   let drivingFromChrome = false;
   const assemblyNavigation = new AssemblyNavigation();
+  // The public channel a host and this package's own future navigator
+  // both read (design D4, ADR-049): no private path into the store,
+  // mirroring drivers.ts's onDriverChange (`:709-714`). Notified once,
+  // at the end of each operation that can move the state -- never from
+  // inside AssemblyNavigation itself, which runs mid-update.
+  const assemblyChanges = new AssemblyChangeNotifier();
+  const notifyAssemblyChange = (): void => {
+    if (!tree) {
+      return;
+    }
+    assemblyChanges.notify({
+      assembly: tree.assembly(),
+      navigation: assemblyNavigation.state(),
+    });
+  };
   // One driver state for this mount, reconciled (not replaced) when the
   // document is republished, so a host's listeners and its current pose
   // survive a live rebuild.
@@ -506,6 +536,12 @@ export async function mount(
     applyFrame(view);
 
     refreshControls(document);
+    // Mount calls this before the handle exists, so no listener can be
+    // subscribed yet and this notifies nobody by construction -- not a
+    // flag, a property of the ordering (design D5). reload() reaches
+    // this with the handle already returned, and notifies whoever is
+    // subscribed.
+    notifyAssemblyChange();
   };
 
   const refreshControls = (document: Manifest) => {
@@ -558,6 +594,11 @@ export async function mount(
     rebuildDriverChrome();
     rebuildRunChrome();
     renderer.render(scene, camera);
+    // Whether a host called setRoot or the maker clicked the
+    // breadcrumb, this is the one place that moved -- so this is the
+    // one place that notifies. `setRoot` throws from `requirePath`
+    // above for an unknown path, before any of this runs.
+    notifyAssemblyChange();
   };
 
   const nativeValues = (): Record<string, number> => {
@@ -763,6 +804,9 @@ export async function mount(
       observer.disconnect();
       controls.dispose();
       unsubscribeDrivers();
+      // Releases every subscription; disposal itself notifies nobody
+      // (design D5, mirroring drivers.dispose()).
+      assemblyChanges.dispose();
       driverChrome?.remove();
       driverChrome = undefined;
       runChrome?.remove();
@@ -789,6 +833,7 @@ export async function mount(
         assemblyNavigation.reconcile(tree);
       }
       renderer.render(scene, camera);
+      notifyAssemblyChange();
     },
     async manifestChanged() {
       const { document, table, program } = await loadDocument(sourceUrl);
@@ -809,6 +854,7 @@ export async function mount(
         }
       }
       renderer.render(scene, camera);
+      notifyAssemblyChange();
     },
     assembly() {
       if (!tree) {
@@ -816,6 +862,9 @@ export async function mount(
       }
       return tree.assembly();
     },
+    navigation: () => assemblyNavigation.state(),
+    onAssemblyChange: (listener: AssemblyListener) =>
+      assemblyChanges.subscribe(listener),
     setRoot(path: AssemblyPath | null) {
       focusOn(path);
     },
@@ -825,6 +874,7 @@ export async function mount(
       }
       assemblyNavigation.setVisible(tree, path, visible);
       renderer.render(scene, camera);
+      notifyAssemblyChange();
     },
     setTime,
     speed: () => speed,

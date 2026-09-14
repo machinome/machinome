@@ -144,3 +144,113 @@ $ npm test
       Tests  533 passed (533)
 ```
 
+## 3. The handle, proved against the real bundle
+
+`viewer.ts`'s mount has no unit test (vitest runs here with no DOM), so
+the red test for the wiring is Playwright against the real bundle.
+
+### 3.1 / 3.2 Red
+
+Added to `tests/test_widget_e2e.py`'s `ViewerMountApiTest`:
+- a second fixture document, `nested-driven.json` (driver id `Hub.turns`,
+  `Hub` a real child of the Spinner root), because `driven.json`'s
+  single-segment `turns` id offers no breadcrumb descend button
+  (`navigableChildren`, `controls.ts:131-146`) and three existing
+  assertions read that id (`test_widget_e2e.py:289-301` at the time of
+  reading, now shifted).
+- `test_navigation_reads_focus_and_hidden_and_notifies_once_per_source`
+- `test_a_redundant_visibility_call_still_notifies`
+- `test_a_refused_focus_notifies_nobody`
+- `test_cancel_and_dispose_stop_notifications`
+- `test_each_explicitly_hidden_path_is_tracked_independently`
+- `test_the_breadcrumb_notifies_a_subscribed_host`
+- `test_a_targeted_update_notifies_once_with_reconciled_state` (direct
+  `sync_playwright`, not `in_page`: a manifest.json write lands between
+  two page evaluations)
+
+Rebuilt the bundle first (`npm run build`, still only carrying increments
+1-2 — `viewer.ts` unchanged) so the red is against the real handle.
+
+```
+$ npm run build
+  dist/solid-widget.js  643.9kb
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest \
+    tests/test_widget_e2e.py -q -k "navigation or redundant_visibility or \
+    refused_focus or cancel_and_dispose or explicitly_hidden or breadcrumb"
+FAILED tests/test_widget_e2e.py::ViewerMountApiTest::test_a_redundant_visibility_call_still_notifies
+  Error: Page.evaluate: TypeError: viewer.navigation is not a function
+FAILED tests/test_widget_e2e.py::ViewerMountApiTest::test_a_refused_focus_notifies_nobody
+  Error: Page.evaluate: TypeError: viewer.navigation is not a function
+FAILED tests/test_widget_e2e.py::ViewerMountApiTest::test_cancel_and_dispose_stop_notifications
+  Error: Page.evaluate: TypeError: viewer.onAssemblyChange is not a function
+FAILED tests/test_widget_e2e.py::ViewerMountApiTest::test_each_explicitly_hidden_path_is_tracked_independently
+  Error: Page.evaluate: TypeError: viewer.navigation is not a function
+FAILED tests/test_widget_e2e.py::ViewerMountApiTest::test_navigation_reads_focus_and_hidden_and_notifies_once_per_source
+  Error: Page.evaluate: TypeError: viewer.navigation is not a function
+FAILED tests/test_widget_e2e.py::ViewerMountApiTest::test_the_breadcrumb_notifies_a_subscribed_host
+  Error: Page.evaluate: TypeError: viewer.onAssemblyChange is not a function
+6 failed, 12 deselected in 7.62s
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest \
+    tests/test_widget_e2e.py -q -k targeted_update
+FAILED tests/test_widget_e2e.py::ViewerMountApiTest::test_a_targeted_update_notifies_once_with_reconciled_state
+  Error: Page.evaluate: TypeError: viewer.onAssemblyChange is not a function
+1 failed, 18 deselected in 1.42s
+```
+Red as expected: `navigation` and `onAssemblyChange` are not yet on the
+handle (`viewer.ts:129-158`).
+
+### 3.3 Green
+
+`solid_node_viewer/widget/src/viewer.ts`:
+- `navigation()` and `onAssemblyChange()` added to `ViewerHandle` and to
+  the returned handle.
+- `AssemblyChangeNotifier` created beside `assemblyNavigation`, plus a
+  `notifyAssemblyChange()` helper that reads `tree.assembly()` and
+  `assemblyNavigation.state()` and calls `assemblyChanges.notify(...)` --
+  a no-op when `tree` is undefined, so it is safe to call unconditionally.
+- One `notifyAssemblyChange()` call at the end of each of `focusOn`,
+  `setVisible`, `replaceTree`, `artifactChanged` and `manifestChanged`,
+  after their existing render and, for `replaceTree`, after
+  `refreshControls`. Each of these already throws before reaching that
+  point for a refused path (`tree.requirePath` inside
+  `AssemblyNavigation.setRoot`/`setVisible`), so a refused operation
+  notifies nobody with no extra guard.
+- `assemblyChanges.dispose()` added to `dispose()`, beside
+  `unsubscribeDrivers()`.
+- `AssemblyChange`, `AssemblyListener`, `AssemblyNavigationState`
+  re-exported beside `AssemblyNode`/`AssemblyPath` (`widget.ts` re-exports
+  no types, so it needed no change).
+- `replaceTree` runs both from `mount()`, before the handle exists, and
+  from `reload()`, after it -- the same function, one notify call at its
+  end. Mount notifies nobody because `assemblyChanges` has no
+  subscribers yet at that point, not because of a flag; commented in
+  place, matching design D5.
+
+```
+$ cd solid_node_viewer/widget && npx tsc --noEmit
+(no output, exit 0)
+
+$ npm test
+ Test Files  28 passed (28)
+      Tests  533 passed (533)
+
+$ npm run build
+  dist/solid-widget.js  644.4kb
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest \
+    tests/test_widget_e2e.py -q -k "navigation or redundant_visibility or \
+    refused_focus or cancel_and_dispose or explicitly_hidden or breadcrumb or targeted_update"
+.......
+7 passed, 12 deselected in 8.29s
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest tests/test_widget_e2e.py -q
+...................
+19 passed, 4 warnings in 21.91s
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest -q
+80 passed, 1 skipped, 11 warnings in 52.70s
+```
+Same one pre-existing skip as the baseline (`test_server.py:170`).
+

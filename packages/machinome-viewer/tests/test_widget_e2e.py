@@ -123,6 +123,22 @@ class ViewerMountApiTest(TestCase):
             },
         }
         (self.out_dir / 'driven.json').write_text(json.dumps(manifest))
+        # A second driven document, distinct from driven.json (whose
+        # single-segment 'turns' id three existing assertions read):
+        # navigableChildren (controls.ts:131-146) only offers a
+        # breadcrumb descend button for an id of at least
+        # focus.length + 2 segments, so a root-focused single-segment
+        # driver id has nothing to descend into. 'Hub.turns' does --
+        # 'Hub' is a real child of the Spinner fixture's root -- which
+        # is what the breadcrumb notification test needs to click.
+        nested = json.loads((self.out_dir / 'manifest.json').read_text())
+        nested['drivers'] = {
+            'Hub.turns': {
+                'default': 0.0, 'range': [-55.0, 306.0], 'unit': 'turn',
+                'dtype': None, 'scale': None,
+            },
+        }
+        (self.out_dir / 'nested-driven.json').write_text(json.dumps(nested))
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(self.out_dir)
         base = server.__enter__()
@@ -198,6 +214,232 @@ class ViewerMountApiTest(TestCase):
         self.assertIsInstance(result['node']['model'], bool)
         self.assertEqual(result['node']['children'], 4)
         self.assertIn('Unknown assembly path: missing', result['invalid'])
+
+    def test_navigation_reads_focus_and_hidden_and_notifies_once_per_source(self):
+        result = self.in_page("""async () => {
+          const host = document.getElementById('host');
+          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const target = viewer.assembly().children[0];
+          const initial = viewer.navigation();
+
+          const events = [];
+          let consistent = true;
+          const unsubscribe = viewer.onAssemblyChange((change) => {
+            if (JSON.stringify(change.assembly) !== JSON.stringify(viewer.assembly())
+                || JSON.stringify(change.navigation) !== JSON.stringify(viewer.navigation())) {
+              consistent = false;
+            }
+            events.push(change.navigation);
+          });
+
+          viewer.setRoot(target.path);
+          const afterSetRoot = { count: events.length, navigation: viewer.navigation() };
+
+          viewer.setVisible(target.path, false);
+          const afterSetVisible = { count: events.length, navigation: viewer.navigation() };
+
+          await viewer.reload();
+          const afterReload = { count: events.length, navigation: viewer.navigation() };
+
+          await viewer.manifestChanged();
+          const afterManifestChanged = { count: events.length, navigation: viewer.navigation() };
+
+          unsubscribe();
+          viewer.setVisible(target.path, true);
+          const afterUnsubscribe = { count: events.length };
+
+          return {
+            targetPath: target.path, initial, consistent,
+            afterSetRoot, afterSetVisible, afterReload, afterManifestChanged,
+            afterUnsubscribe,
+          };
+        }""")
+        self.assertEqual(result['initial'], {'root': None, 'hidden': []})
+        self.assertTrue(result['consistent'],
+                        'a listener read a snapshot unequal to a fresh read')
+        target = result['targetPath']
+        self.assertEqual(result['afterSetRoot']['count'], 1)
+        self.assertEqual(result['afterSetRoot']['navigation']['root'], target)
+        self.assertEqual(result['afterSetVisible']['count'], 2)
+        self.assertIn(target, result['afterSetVisible']['navigation']['hidden'])
+        self.assertEqual(result['afterReload']['count'], 3,
+                         'reload() did not notify exactly once')
+        self.assertEqual(result['afterReload']['navigation']['root'], target)
+        self.assertEqual(result['afterManifestChanged']['count'], 4,
+                         'manifestChanged() did not notify exactly once')
+        self.assertEqual(result['afterManifestChanged']['navigation']['root'], target)
+        self.assertIn(target, result['afterManifestChanged']['navigation']['hidden'])
+        self.assertEqual(result['afterUnsubscribe']['count'], 4,
+                         'a cancelled subscription was still notified')
+
+    def test_a_redundant_visibility_call_still_notifies(self):
+        result = self.in_page("""async () => {
+          const host = document.getElementById('host');
+          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const target = viewer.assembly().children[0];
+          let count = 0;
+          viewer.onAssemblyChange(() => { count += 1; });
+
+          viewer.setVisible(target.path, true);
+
+          return { count, hidden: viewer.navigation().hidden };
+        }""")
+        self.assertEqual(result['count'], 1,
+                         'showing an already-visible node did not notify (design D4)')
+        self.assertEqual(result['hidden'], [])
+
+    def test_a_refused_focus_notifies_nobody(self):
+        result = self.in_page("""async () => {
+          const host = document.getElementById('host');
+          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const before = viewer.navigation();
+          let count = 0;
+          viewer.onAssemblyChange(() => { count += 1; });
+
+          let message = null;
+          try { viewer.setRoot(['missing']); }
+          catch (error) { message = String(error); }
+
+          return { count, message, before, after: viewer.navigation() };
+        }""")
+        self.assertIn('Unknown assembly path: missing', result['message'])
+        self.assertEqual(result['count'], 0, 'a refused setRoot notified a listener')
+        self.assertEqual(result['before'], result['after'])
+
+    def test_cancel_and_dispose_stop_notifications(self):
+        result = self.in_page("""async () => {
+          const host = document.getElementById('host');
+          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const target = viewer.assembly().children[0];
+
+          let cancelledCount = 0;
+          const cancel = viewer.onAssemblyChange(() => { cancelledCount += 1; });
+          cancel();
+          viewer.setRoot(target.path);
+          const afterCancel = cancelledCount;
+
+          let disposedCount = 0;
+          viewer.onAssemblyChange(() => { disposedCount += 1; });
+          viewer.dispose();
+          const disposeNotified = disposedCount;
+
+          let cancelAfterDisposeThrew = false;
+          try { cancel(); }
+          catch { cancelAfterDisposeThrew = true; }
+
+          return { afterCancel, disposeNotified, cancelAfterDisposeThrew };
+        }""")
+        self.assertEqual(result['afterCancel'], 0,
+                         'a cancelled subscription still received a notification')
+        self.assertEqual(result['disposeNotified'], 0, 'dispose() itself notified')
+        self.assertFalse(result['cancelAfterDisposeThrew'],
+                         'the cancel function was not safe to call after dispose()')
+
+    def test_each_explicitly_hidden_path_is_tracked_independently(self):
+        # The Spinner fixture is flat (Hub, b0, b1, b2 are siblings under
+        # the root), so this proves the WIRING through the handle: each
+        # path hidden explicitly stays listed until it is itself shown
+        # again, regardless of another path's visibility. The stronger
+        # claim design D3 makes -- a node made invisible only because an
+        # ANCESTOR is hidden is never itself listed -- needs a nested
+        # tree and is pinned at the unit level, against a real
+        # parent/child fixture, in assembly.test.ts's 'state' block.
+        result = self.in_page("""async () => {
+          const host = document.getElementById('host');
+          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const assembly = viewer.assembly();
+          const first = assembly.children[0];
+          const second = assembly.children[1];
+
+          viewer.setVisible(first.path, false);
+          viewer.setVisible(second.path, false);
+          const bothHidden = viewer.navigation().hidden;
+
+          viewer.setVisible(first.path, true);
+          const afterShowingFirst = viewer.navigation().hidden;
+
+          return { firstPath: first.path, secondPath: second.path,
+                   bothHidden, afterShowingFirst };
+        }""")
+        self.assertIn(result['firstPath'], result['bothHidden'])
+        self.assertIn(result['secondPath'], result['bothHidden'])
+        self.assertNotIn(result['firstPath'], result['afterShowingFirst'])
+        self.assertIn(result['secondPath'], result['afterShowingFirst'],
+                      'showing one hidden path dropped an unrelated one from the explicit set')
+
+    def test_the_breadcrumb_notifies_a_subscribed_host(self):
+        result = self.in_page("""async () => {
+          const host = document.getElementById('host');
+          const viewer = await SolidNodeWidget.mount(
+            host, 'nested-driven.json', { autoplay: false });
+          const events = [];
+          viewer.onAssemblyChange((change) => { events.push(change.navigation.root); });
+
+          const descend = host.querySelector('.driver-descend');
+          const label = descend ? descend.getAttribute('aria-label') : null;
+          descend?.click();
+
+          return { label, events, navigation: viewer.navigation() };
+        }""")
+        self.assertEqual(result['label'], 'Focus Hub')
+        self.assertEqual(result['events'], [['Hub']],
+                         'the breadcrumb descend did not notify a subscribed host')
+        self.assertEqual(result['navigation']['root'], ['Hub'])
+
+    def test_a_targeted_update_notifies_once_with_reconciled_state(self):
+        # Playwright directly, not in_page (which runs one script): a
+        # file write has to land BETWEEN two evaluations of the same
+        # page, as `solid develop`'s targeted update does.
+        errors = []
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 800, 'height': 600})
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.goto(self.harness_url)
+                page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+                setup = page.evaluate("""async () => {
+                  const host = document.getElementById('host');
+                  const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+                  window.__viewer = viewer;
+                  const assembly = viewer.assembly();
+                  const focused = assembly.children[0];
+                  const hidden = assembly.children[1];
+                  viewer.setRoot(focused.path);
+                  viewer.setVisible(hidden.path, false);
+                  window.__events = [];
+                  viewer.onAssemblyChange((change) => {
+                    window.__events.push(change.navigation);
+                  });
+                  return { focusedName: focused.path[0], hiddenName: hidden.path[0] };
+                }""")
+
+                # A targeted update that discards the focused root and
+                # the hidden path: drop both from the published tree.
+                manifest = json.loads((self.out_dir / 'manifest.json').read_text())
+                dropped = {setup['focusedName'], setup['hiddenName']}
+                manifest['root']['children'] = [
+                    child for child in manifest['root']['children']
+                    if child['name'] not in dropped
+                ]
+                (self.out_dir / 'manifest.json').write_text(json.dumps(manifest))
+
+                result = page.evaluate("""async () => {
+                  await window.__viewer.manifestChanged();
+                  return {
+                    count: window.__events.length,
+                    navigation: window.__events[window.__events.length - 1],
+                  };
+                }""")
+            finally:
+                browser.close()
+
+        self.assertEqual(errors, [], f'uncaught page errors: {errors}')
+        self.assertEqual(result['count'], 1,
+                         'a targeted update that discards state did not notify exactly once')
+        self.assertEqual(result['navigation'], {'root': None, 'hidden': []})
 
     def test_a_captured_view_survives_a_remount(self):
         result = self.in_page("""async () => {

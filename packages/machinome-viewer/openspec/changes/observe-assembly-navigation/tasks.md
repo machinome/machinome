@@ -50,7 +50,7 @@
 `viewer.ts`'s mount has no unit test — vitest runs here with no DOM
 environment — so the red test for the wiring is the Playwright one.
 
-- [ ] 3.1 **Red** — `tests/test_widget_e2e.py`, in `ViewerMountApiTest`
+- [x] 3.1 **Red** — `tests/test_widget_e2e.py`, in `ViewerMountApiTest`
       (the existing harness, `manifest.json`, four children):
       - `navigation()` reads `{root: null, hidden: []}` on a fresh mount;
         after `setRoot(child.path)` and `setVisible(child.path, false)` it
@@ -88,7 +88,7 @@ environment — so the red test for the wiring is the Playwright one.
         change the host did not make is the reason this change exists.
       *All go red: `navigation` and `onAssemblyChange` are not on the
       handle (`viewer.ts:129-158`).*
-- [ ] 3.2 **Red** — a targeted update that discards state notifies once
+- [x] 3.2 **Red** — a targeted update that discards state notifies once
       with the reconciled state. Two page evaluations around a file write:
       mount, focus a child, hide another, keep the handle on `window`;
       write a pruned `manifest.json` into the served export directory that
@@ -96,7 +96,7 @@ environment — so the red test for the wiring is the Playwright one.
       assert exactly one notification, `root: null`, and an empty hidden
       list. Use Playwright directly rather than `in_page`, which runs one
       script.
-- [ ] 3.3 **Green** — `solid_node_viewer/widget/src/viewer.ts`:
+- [x] 3.3 **Green** — `solid_node_viewer/widget/src/viewer.ts`:
       `navigation()` and `onAssemblyChange()` on `ViewerHandle` and on the
       returned handle; the notifier created beside `assemblyNavigation`
       (`:245`) and disposed in `dispose()` (`:757-784`); one `notify(...)`
@@ -107,7 +107,7 @@ environment — so the red test for the wiring is the Playwright one.
       new types beside `AssemblyNode`/`AssemblyPath` (`:57`).
       Mount notifies nobody by construction: `replaceTree` runs before the
       handle exists (`:707`). Assert that in a comment, not a flag.
-- [ ] Commit: `feat(viewer): publish navigation state and its changes`.
+- [x] Commit: `feat(viewer): publish navigation state and its changes`.
 
 ## 4. The declared version
 
