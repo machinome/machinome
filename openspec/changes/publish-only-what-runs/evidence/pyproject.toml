@@ -1,0 +1,8 @@
+# The probes beside this file are real Solid projects for the same reason
+# the test fixtures are: the framework discovers a root through a
+# manifest. Only `probe_omitted.py` is reached through the manifest (it
+# is the one probe that goes through `solid build`); the others are run
+# as scripts and publish through `program_of` directly.
+
+[tool.solid-node]
+model = "probe_omitted:Machine"
