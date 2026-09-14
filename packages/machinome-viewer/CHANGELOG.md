@@ -106,6 +106,22 @@ The viewer stops posing a machine and starts running one.
   mounts with the on-screen chrome suppressed, for a posed document and a
   running one alike: a panel over the canvas would be in the photograph.
 
+- **The viewer publishes what it is showing, and tells a host when that
+  moves.** A mount handle's `navigation()` reads the focused root and the
+  explicitly hidden paths as one serializable snapshot; `onAssemblyChange()`
+  subscribes to every accepted operation that publishes a tree or moves
+  the focus or the visibility state — a host call, the widget's own
+  breadcrumb, or a targeted update — exactly once per operation, whatever
+  caused it. A host that used to mirror this by hand, and could be wrong
+  about a focus change the widget made itself, now reads one state and
+  one subscription instead. Nothing renders: no navigator ships in this
+  release, and mounting one on this channel is the next viewer cycle.
+  (OpenSpec change `observe-assembly-navigation`, ADR-049.)
+
+- **The declared API version rises to 9**, for the navigation state and
+  its subscription — a capability a host may require, added to the
+  handle.
+
 - **Constrained dragging of a part is not in this release.** Picking a
   part and dragging it along a declared input's freedom, through the same
   command interface and with the same blocked-travel reporting, is the

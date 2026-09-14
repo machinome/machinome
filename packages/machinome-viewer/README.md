@@ -67,6 +67,23 @@ and stays complete and useful on its own; this viewer is AGPL-3.0-only and
 is an optional, separately installed addition to it. Nothing flows from here
 back into the framework.
 
+## Reading and moving the assembly
+
+A mount handle's `assembly()` reads the published tree as `AssemblyNode`s,
+addressed by root-relative paths of sibling names; `setRoot(path | null)`
+focuses a subtree (`null` restores the document root) and
+`setVisible(path, visible)` hides or shows one. `navigation()` reads what
+is currently focused and hidden — `{ root, hidden }`, a serializable
+snapshot the handle does not later modify — and `onAssemblyChange(listener)`
+subscribes to every accepted operation that moves that state or
+republishes the tree, whatever caused it: a host call, the widget's own
+breadcrumb, or a targeted update. It returns a function that cancels the
+subscription, and the listener receives the fresh `assembly` and
+`navigation` together, so it never has to call back into the handle to
+redraw. A listener **observes**: nothing stops it calling `setRoot` or
+`setVisible` back into the viewer, but doing so from inside the listener
+can loop forever, and a navigator built on this bundle does not.
+
 ## Driving a running machine
 
 A document that carries a compiled mechanical program is not posed, it is
@@ -121,7 +138,7 @@ build reads rather than infer it.
 | solid-node-viewer | viewer API | reads document versions |
 | --- | --- | --- |
 | 0.1.0 | 7 | 1, 2, 3, 4 |
-| 0.2.0 | 8 | 1, 2, 3, 4, 5 |
+| 0.2.0 | 9 | 1, 2, 3, 4, 5 |
 
 ## Working on the viewer
 

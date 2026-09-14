@@ -308,3 +308,82 @@ $ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest
 80 passed, 1 skipped, 11 warnings in 52.08s
 ```
 
+## 5. The records
+
+- `README.md`: the version table's unreleased `0.2.0` row now reads `9`.
+  See "Deviations" below for the section added to describe the handle's
+  navigation API — no such section existed to gain a sentence.
+- `CHANGELOG.md`: the unreleased `0.2.0` section gained two bullets — the
+  published navigation state and its subscription, and the API version
+  rising to 9 — placed before the closing "not in this release" bullet.
+- `docs/adrs/EXPORT/ADR-049-…` and its `docs/adrs/README.md` row: left as
+  **Proposed**, per instruction (task 5.3 is the reviewer's).
+
+## 6. The whole suite
+
+```
+$ cd solid_node_viewer/widget && npm run typecheck && npm test && npm run build
+> tsc --noEmit
+(no output, exit 0)
+ Test Files  28 passed (28)
+      Tests  533 passed (533)
+  dist/solid-widget.js  644.4kb
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest -q
+80 passed, 1 skipped, 11 warnings in ~52s
+```
+
+Bundle size: 659294 bytes (baseline) → 659879 bytes (final), +585 bytes —
+two handle methods, the notifier class and its types, no DOM. Published
+file list unchanged: `dist/` still carries exactly `solid-widget.js`
+beside the export page's `index.html`.
+
+Final counts: `npm test` 533 passed, 0 failed, 0 skipped (28 test files).
+Python suite: 80 passed, 1 skipped (pre-existing, `test_server.py:170`,
+the CRA dev app not built), 0 failed.
+
+```
+$ openspec validate observe-assembly-navigation --strict
+Change 'observe-assembly-navigation' is valid
+```
+
+## Deviations
+
+1. **README section.** Task 5.1 says "the section that describes the
+   handle gains a sentence on the navigation state and its subscription".
+   No such section existed: `assembly()`, `setRoot()` and `setVisible()`
+   were never documented in `README.md` before this change (confirmed by
+   grep — the words "assembly" and "navigat" appear nowhere in the file
+   except an unrelated CHANGELOG entry). Rather than force the sentence
+   into an unrelated section (Versions, or Driving a running machine),
+   added a new `## Reading and moving the assembly` section, sized to
+   match "Driving a running machine" next to it, covering `assembly()`,
+   `setRoot`/`setVisible`, `navigation()` and `onAssemblyChange()`, and
+   ending with the "a listener observes" caution the design's risk
+   section asks for. This is more than "a sentence", but there was
+   nothing to add a sentence to.
+
+2. **The "hiding a child of a hidden node" e2e scenario.** Task 3.1's
+   bullet list asks for a Playwright test where "hiding a child of an
+   already hidden node lists both paths; showing the parent again leaves
+   the child listed." The Spinner fixture (`tests/fixtures/spinner`) is
+   flat — `Hub`, `b0`, `b1`, `b2` are all direct children of `Spinner`,
+   with no nested assembly among them — so there is no real parent/child
+   pair to hide in the e2e harness. Wrote
+   `test_each_explicitly_hidden_path_is_tracked_independently` against
+   two sibling paths instead, which still proves the WIRING claim this
+   suite is responsible for (the explicit set tracks each hidden path
+   independently through the real handle) and named it and commented it
+   accordingly. The stronger claim design D3 actually makes — a
+   descendant hidden only because an ancestor is hidden is never itself
+   listed — needs real nesting and is already pinned at the unit level
+   in `assembly.test.ts`'s `state` block (increment 1), against a
+   purpose-built nested fixture.
+
+3. **Test method rename.** `tests/test_bundle.py`'s
+   `test_declares_api_version_eight` was renamed to
+   `test_declares_api_version_nine` alongside its assertion; tasks.md did
+   not ask for the rename explicitly but leaving the old name asserting a
+   different number would have been a wrong test name, not a preserved
+   one.
+

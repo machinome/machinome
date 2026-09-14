@@ -125,12 +125,12 @@ environment — so the red test for the wiring is the Playwright one.
 
 ## 5. The records
 
-- [ ] 5.1 `README.md`: the version table's unreleased `0.2.0` row reads
+- [x] 5.1 `README.md`: the version table's unreleased `0.2.0` row reads
       `9` (`README.md:124` — a moved row, not a new one), and the section
       that describes the handle gains a sentence on the navigation state
       and its subscription, saying plainly that a listener observes and
       must not drive the viewer from inside itself (design §5 risk 1).
-- [ ] 5.2 `CHANGELOG.md`: the same unreleased `0.2.0` section gains an
+- [x] 5.2 `CHANGELOG.md`: the same unreleased `0.2.0` section gains an
       entry — the viewer publishes what it is showing and tells a host
       when that moves, whatever moved it; the API version rises to 9; no
       navigator ships yet, and the next cycle mounts one.
@@ -138,22 +138,22 @@ environment — so the red test for the wiring is the Playwright one.
       moves from **Proposed** to **Accepted**, and its row in
       `docs/adrs/README.md` with it. Check its text against what was
       actually built before promoting it.
-- [ ] 5.4 `evidence.md`: every red output and its green counterpart, the
+- [x] 5.4 `evidence.md`: every red output and its green counterpart, the
       final counts, and the bundle size before and after — a bundle that
       grows by more than a few hundred bytes means something rendered,
       and nothing in this change renders.
 
 ## 6. The whole suite
 
-- [ ] 6.1 `npm run typecheck`, `npm test`, `npm run build` in
+- [x] 6.1 `npm run typecheck`, `npm test`, `npm run build` in
       `solid_node_viewer/widget`, and `PYTHONPATH="$PWD"
       /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest` at the
       repository root. Every pre-existing test passes unedited except the
       three version assertions this change deliberately moved.
-- [ ] 6.2 Confirm the published file list is unchanged: `dist/` still
+- [x] 6.2 Confirm the published file list is unchanged: `dist/` still
       carries exactly `solid-widget.js` beside the export page's
       `index.html`, so `solid export` and the Sphinx directive copy what
       they copied before and the framework needs no change.
-- [ ] 6.3 `openspec validate observe-assembly-navigation --strict` passes.
-- [ ] Commit: `docs: record the navigation-state cycle` (records only, if
+- [x] 6.3 `openspec validate observe-assembly-navigation --strict` passes.
+- [x] Commit: `docs: record the navigation-state cycle` (records only, if
       5.x did not travel with their own increments).
