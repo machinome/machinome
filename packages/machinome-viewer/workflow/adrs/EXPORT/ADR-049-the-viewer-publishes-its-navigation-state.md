@@ -1,6 +1,6 @@
 # ADR-049: The viewer publishes its assembly navigation state
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Date:** 2026-09-14
 

@@ -364,9 +364,11 @@ The package SHALL declare one API version, expose it on every mount handle and
 the browser global, and make it readable without executing the bundle. It SHALL
 be raised whenever the mount interface or handle changes incompatibly, and when
 a capability a host may require is added to the handle. The declared version
-SHALL be 8, reflecting the addition of version-5 document execution — the
-document's `program` object, the run it describes, and the `run()` operation
-on the handle — on top of version-4 rendering.
+SHALL be 9, reflecting the addition of published assembly-navigation state and
+its change subscription — the handle's report of the focused root and the
+hidden paths, and the notification that follows every change of the published
+tree, the focused root or the visibility state — on top of version-5 document
+execution.
 
 The package SHALL also declare, in the same one place, the document schema
 versions this build reads, and SHALL report them beside the API version
@@ -407,6 +409,13 @@ entitled to assume the versions every released viewer reads.
 - **WHEN** a host needs `version: 4` documents rendered
 - **THEN** the declared API version tells it whether the capability is
   available
+
+#### Scenario: A host requires the published navigation state
+
+- **WHEN** a host needs to read the focused root and the hidden paths, and
+  to be told when they change
+- **THEN** the declared API version tells it whether the capability is
+  available, before it mounts a bundle it cannot build a navigator on
 
 #### Scenario: A producer asks which documents this viewer reads
 
@@ -1673,3 +1682,4 @@ without anyone running the producer's generator.
   differs in the last bits beyond the corpus's tolerance
 - **THEN** the suite fails naming the scenario, the step and the
   coordinate
+
