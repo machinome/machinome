@@ -1289,11 +1289,13 @@ limits matter.
 coordinate in the expression takes the tick's committed value, so a
 ratchet's tooth stays the tooth it started on; every read takes the value
 it has along the tick's path, computed over the edges that determine it.
-Detection looks inside the tick: whenever the bounded coordinate or a
-read moves, the constraint is sampled at 64 fractions of the tick,
-stopped at the first sample carried outward and bisected to the crossing
-tolerance; the coordinate is left inside the bound by at most that
-tolerance of the tick's travel, never snapped onto it. The stop blocks
+Detection looks inside the tick: whenever a READ moves, the constraint
+is sampled at 64 fractions of the tick, stopped at the first sample
+carried outward and bisected to the crossing tolerance, and the
+coordinate is left inside the bound by at most that tolerance of the
+tick's travel rather than snapped onto it; when only the bounded
+coordinate moves, the bound is the number its standing reads give and
+the coordinate stops exactly as a self-only bound does. The stop blocks
 every input whose own motion carries the constraint outward — through
 the bounded coordinate OR through what it reads — so a dependency that
 would invalidate a standing coordinate is stopped where the constraint
@@ -1302,9 +1304,13 @@ by its pins' lifts stops the key's withdrawal, `sim.stops` naming the
 plug's coordinate and the key's input. An input moving a read so as to
 relieve the constraint runs its full tick, and a command on it completes.
 A tick in which nothing the constraint depends on moves pays nothing
-extra; a tick in which something does pays up to 64 sub-program passes
-for that constraint whether or not it stops (0.36 ms quiet, 5.4 ms
-active, 3.3 ms blocking on a four-edge fixture). A violation that begins
+extra, and one in which only the bounded coordinate moves pays one
+evaluation; a tick in which a read moves pays up to 64 sub-program
+passes for that constraint whether or not it stops (0.36 ms quiet,
+5.4 ms active, 3.3 ms blocking on a four-edge fixture; on the pin
+tumbler lock, whose plug bound reads five `piecewise` lift laws, 2.9 ms
+idle, 4.7 ms turning, 45 ms advancing the key). Keep the laws a bound
+reads small, and declare one bound per coordinate side that needs it. A violation that begins
 and ends inside one of the 64 sub-intervals is missed, and the pushing
 test is net over the tick. A published document carries the bound's
 expression over the ids it reads under the same version 5; the shipped
@@ -1316,9 +1322,17 @@ coordinate under its bare name beside the drivers, so a root driver named
 like any joint anywhere in the tree — a `turn` driver beside a
 `plug.turn` joint — is refused as ambiguous at simulation construction:
 name the input differently. A `.repeat()` child that owns a joint is
-refused too, because `drivers-0` is not a legal id segment: hold such
-children on named attributes and keep `.repeat()` for children whose
-only coordinates are plain ports.
+refused too, because `drivers-0` is not a legal id segment, and a
+`.repeat()` child whose PORT a relation drives makes `solid build`
+refuse the document (`the program names 'PenSpring.height', which is a
+FALLBACK derived from a class name`) although the run itself works:
+under a running root, hold every child that owns a joint or a driven
+port on a named attribute. A running root's drivers are bound by a
+`Sim`, a `set_state` or the loader, never by construction: a bare
+`assemble()` on one raises on the first unbound driver. And declare a
+relation whose driven coordinate a ROOT relation also reads in the
+root's body: a child-declared relation read by a root-declared one
+publishes as a false `DoublyBound` (framework wart, 2026-09-14).
 `RunConflict`, `UnsupportedLaw` and `TooManyCrossings` are exported from
 `solid_node.simulation`. A refused tick commits no bank, time, pose or
 record change, and the commands that attempted travel retire `refused`.
