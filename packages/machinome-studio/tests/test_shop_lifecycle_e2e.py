@@ -16,6 +16,7 @@ import zipfile
 from pathlib import Path
 from urllib.request import Request, urlopen
 
+from floor.preparation import REQUIRED_VIEWER_API
 from tests.fixtures.shop_process import isolated_launch_directory, subprocess_environment
 
 
@@ -51,6 +52,19 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.project_home = Path(self.temporary.name) / "projects"
         self.project_home.mkdir()
         self.shop = self.enterContext(isolated_launch_directory())
+        self._launch()
+        self.context = self.browser.new_context(viewport={"width": 1440, "height": 900})
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+
+    def _launch(self, extra_env: dict[str, str] | None = None) -> None:
+        """Start the shop subprocess. `setUp` calls this with no extra
+        environment; a test that needs the real viewer bundle stops the
+        default process and relaunches through this same method with
+        FAKE_SOLID_BUNDLE / FAKE_SOLID_VIEWER_API set, so the framework
+        viewer command the floor process itself later runs inherits them
+        (`resolve_viewer_bundle` runs with no `extra_env` of its own -- it
+        inherits the floor process's own environment)."""
         self.port = _free_port()
         self.process = subprocess.Popen(
             [
@@ -69,13 +83,45 @@ class ShopLifecycleE2E(unittest.TestCase):
                 "GIT_COMMITTER_NAME": "Shop Test",
                 "GIT_COMMITTER_EMAIL": "shop@example.invalid",
                 "FAKE_SOLID_NEW_DELAY": "0.5",
+                **(extra_env or {}),
             }),
         )
         self.addCleanup(self._stop)
         _wait_for(lambda: _request(self.url("/health"), "GET") == {"status": "open"})
-        self.context = self.browser.new_context(viewport={"width": 1440, "height": 900})
-        self.addCleanup(self.context.close)
-        self.page = self.context.new_page()
+
+    def _discover_real_viewer_bundle(self) -> tuple[Path, int]:
+        """The real viewer bundle a behavioural test proves the navigator
+        against (design D4). `SHOP_E2E_VIEWER_BUNDLE` first -- a value
+        naming no file is a hard failure, not a skip, because the pilot
+        asked for that exact bundle -- then the installed
+        `solid_node_viewer` package if it is new enough, else a named skip.
+        A skipped run is not evidence; the caller must actually be run with
+        the environment variable exported to prove anything red or green."""
+        supplied = os.environ.get("SHOP_E2E_VIEWER_BUNDLE")
+        if supplied:
+            path = Path(supplied)
+            if not path.is_file():
+                raise AssertionError(f"SHOP_E2E_VIEWER_BUNDLE names no file: {path}")
+            banner = path.read_bytes()[:512]
+            match = re.search(rb"\bviewer API (\d+)", banner)
+            if not match:
+                raise AssertionError(f"SHOP_E2E_VIEWER_BUNDLE has no 'viewer API N' banner: {path}")
+            return path, int(match.group(1))
+        installed_version: int | None = None
+        try:
+            from solid_node_viewer import bundle as installed_bundle
+        except ImportError:
+            installed_bundle = None
+        if installed_bundle is not None and installed_bundle.has_bundle():
+            installed_version = installed_bundle.api_version()
+            if installed_version >= REQUIRED_VIEWER_API:
+                return installed_bundle.bundle_path(), installed_version
+        self.skipTest(
+            f"no viewer bundle at API {REQUIRED_VIEWER_API} or newer is available: "
+            "export SHOP_E2E_VIEWER_BUNDLE to name one, or install a newer "
+            "solid-node-viewer (installed viewer API: "
+            f"{installed_version if installed_version is not None else 'no bundle installed'})"
+        )
 
     def test_hub_lists_projects_unopenable_entries_and_opens_the_creation_sheet(self) -> None:
         self._make_project("bracket")
@@ -558,150 +604,118 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_text("Locked after this agent's first use.").wait_for()
         self.assertTrue(self.page.get_by_role("button", name="opencode", exact=True).is_disabled())
 
-    def test_model_panel_navigates_the_viewer_assembly(self) -> None:
-        project = self._make_project("assembly-project")
-        (project / ".fake-solid-state.json").write_text(json.dumps({
-            "viewer": {
-                "version": 1,
-                "root": {
-                    "name": "engine", "color": None, "children": [
-                        {
-                            "name": "housing", "color": "#cc4444",
-                            "children": [{"name": "pin", "color": None}],
-                        },
-                        {"name": "unpainted", "color": None},
-                    ],
-                },
+    def test_model_panel_mounts_and_disposes_the_viewer_navigator(self) -> None:
+        self._make_project("navigator-project")
+        self._open("navigator-project")
+        self.page.goto(self.url("/projects/navigator-project"))
+
+        self.page.get_by_role("heading", name="MODEL", exact=True).wait_for()
+        # The fake widget's navigator is deliberately an EMPTY tree (design
+        # D5: no rows, so nothing gives it a non-zero height) -- it is
+        # attached, not necessarily "visible" by Playwright's box-size
+        # heuristic.
+        tree = self.page.get_by_role("tree", name="Assembly")
+        tree.wait_for(state="attached", timeout=10_000)
+        history = self.page.evaluate("() => window.__solidNodeWidgetHistory")
+        self.assertEqual(len(history["navigators"]), 1)
+        self.assertEqual(history["navigators"][0]["label"], "Assembly")
+
+        self.page.get_by_role("button", name="Code", exact=True).click()
+        self.page.get_by_role("button", name="Model", exact=True).click()
+        tree.wait_for(state="attached")
+        history = self.page.evaluate("() => window.__solidNodeWidgetHistory")
+        self.assertEqual(len(history["navigators"]), 1)
+        self.assertEqual(history["mounts"], 1)
+
+        self.page.get_by_role("button", name="Close project").click()
+        self.page.get_by_role("heading", name="Projects").wait_for()
+        history = self.page.evaluate("() => window.__solidNodeWidgetHistory")
+        self.assertEqual(len(history["navigators"]), 1)
+        self.assertTrue(history["navigators"][0]["disposed"])
+
+    def test_model_panel_presents_the_viewer_navigator(self) -> None:
+        """The one behavioural test that runs against a REAL viewer bundle
+        (design D4): the panel's look is proved against the navigator's
+        published class contract and the studio's own `--solid-nav-*`
+        overrides, not against the e2e fake's hand-written tree. A skipped
+        run is not evidence -- see `_discover_real_viewer_bundle`."""
+        bundle, api_version = self._discover_real_viewer_bundle()
+        self._stop()
+        self._launch({"FAKE_SOLID_BUNDLE": str(bundle), "FAKE_SOLID_VIEWER_API": str(api_version)})
+
+        project = self._make_project("navigator-look")
+        viewer_document = {
+            "format": "solid-node-export", "version": 1,
+            "animation": {"fps": 24, "frames": 1},
+            "root": {
+                "name": "engine", "type": "assembly", "color": None, "operations": [],
+                "children": [
+                    {
+                        "name": "housing", "type": "assembly", "color": "#cc4444", "operations": [],
+                        "children": [
+                            {"name": "pin", "type": "assembly", "color": None, "operations": [], "children": []},
+                        ],
+                    },
+                    {"name": "unpainted", "type": "assembly", "color": None, "operations": [], "children": []},
+                ],
             },
-        }))
-        self._open("assembly-project")
-        self.page.goto(self.url("/projects/assembly-project"))
+        }
+        (project / ".fake-solid-state.json").write_text(json.dumps({"viewer": viewer_document}))
+        self._open("navigator-look")
+        self.page.goto(self.url("/projects/navigator-look"))
 
         tree = self.page.get_by_role("tree", name="Assembly")
         tree.wait_for(timeout=10_000)
         self.page.get_by_role("heading", name="MODEL", exact=True).wait_for()
+
         engine_row = tree.get_by_role("treeitem").filter(has_text="engine")
-        self.assertIn("focused-root", engine_row.get_attribute("class") or "")
-        self.assertEqual(engine_row.get_by_text("root", exact=True).count(), 1)
+        self.assertIn("solid-nav-row--root", engine_row.get_attribute("class") or "")
+        self.assertEqual(engine_row.get_attribute("aria-selected"), "true")
         self.assertEqual(engine_row.evaluate("element => getComputedStyle(element).backgroundColor"), "rgb(28, 33, 40)")
-        self.assertEqual(tree.locator(".assembly-row.selected").count(), 0)
+        self.assertIn("rgb(79, 182, 184)", engine_row.evaluate("element => getComputedStyle(element).boxShadow"))
+        self.assertEqual(
+            engine_row.evaluate("element => getComputedStyle(element).getPropertyValue('--solid-nav-focus-ring')").strip(),
+            "#e0a350",
+        )
         self.assertEqual(self.page.get_by_role("button", name="Show full assembly").count(), 0)
-        self.assertEqual(engine_row.get_attribute("aria-expanded"), "true")
-        housing_row = tree.get_by_role("treeitem").filter(has_text="housing")
-        self.assertEqual(housing_row.get_attribute("aria-expanded"), "false")
+
         self.assertEqual(self.page.get_by_role("checkbox", name="Visibility for pin").count(), 0)
+        housing_row = tree.get_by_role("treeitem").filter(has_text="housing")
         housing_row.get_by_role("button", name="Expand housing").click()
         pin_visibility = self.page.get_by_role("checkbox", name="Visibility for pin")
         plain_visibility = self.page.get_by_role("checkbox", name="Visibility for unpainted")
+        pin_visibility.wait_for(timeout=10_000)
         self.assertTrue(pin_visibility.is_checked())
         self.assertTrue(plain_visibility.is_checked())
         self.assertEqual(pin_visibility.evaluate("element => getComputedStyle(element).backgroundColor"), "rgb(204, 68, 68)")
         self.assertEqual(plain_visibility.evaluate("element => getComputedStyle(element).backgroundColor"), "rgb(107, 114, 128)")
 
-        self.page.get_by_role("button", name="Code", exact=True).click()
-        self.page.get_by_role("button", name="Model", exact=True).click()
-        tree.wait_for()
-        self.assertEqual(self.page.evaluate("() => window.__solidNodeWidgetHistory.mounts"), 1)
-
-        housing_row.get_by_text("housing", exact=True).click()
-        self.assertIn("focused-root", engine_row.get_attribute("class") or "")
-        self.assertNotIn("focused-root", housing_row.get_attribute("class") or "")
-        self.assertEqual(tree.locator(".assembly-row.selected").count(), 0)
-
-        plain_row = tree.get_by_role("treeitem").filter(has_text="unpainted")
-        plain_focus = plain_row.get_by_role("button", name="Focus unpainted")
-        plain_row.hover()
-        self.assertEqual(plain_focus.evaluate("element => getComputedStyle(element).opacity"), "1")
-        plain_visibility.click()
-        self.page.get_by_role("img", name="Functional model").hover()
-        self.assertEqual(plain_focus.evaluate("element => getComputedStyle(element).opacity"), "0")
-
-        pin_row = tree.get_by_role("treeitem").filter(has_text="pin")
-        pin_focus = pin_row.get_by_role("button", name="Focus pin")
-        self.assertEqual(pin_focus.text_content(), "Focus")
-        self.assertEqual(pin_focus.evaluate("element => getComputedStyle(element).opacity"), "0")
-        pin_row.hover()
-        self.assertEqual(pin_focus.evaluate("element => getComputedStyle(element).opacity"), "1")
-        pin_focus.click()
-        self.assertEqual(pin_row.get_by_text("root", exact=True).count(), 1)
-        self.assertEqual(pin_row.evaluate("element => getComputedStyle(element).backgroundColor"), "rgb(28, 33, 40)")
-        self.assertEqual(pin_row.get_attribute("aria-selected"), "true")
-        self.assertEqual(engine_row.get_attribute("aria-selected"), "false")
-        self.page.get_by_role("button", name="Show full assembly").click()
-        self.assertEqual(engine_row.get_by_text("root", exact=True).count(), 1)
-        self.assertEqual(engine_row.evaluate("element => getComputedStyle(element).backgroundColor"), "rgb(28, 33, 40)")
-
+        # Keyboard contract: Down (engine -> housing), Right (housing is
+        # already expanded, so this MOVES to its first child, pin), Enter
+        # (pin becomes the focused root -- the navigator redraws which row
+        # carries `solid-nav-row--root`), Space (toggles the active row's --
+        # pin's -- own visibility, emptying its chip).
         self.page.get_by_text("engine", exact=True).click()
         self.page.keyboard.press("ArrowDown")
         self.page.keyboard.press("ArrowRight")
-        self.page.keyboard.press("Space")
+        self.page.keyboard.press("Enter")
+        pin_row = tree.get_by_role("treeitem").filter(has_text="pin")
+        self.assertIn("solid-nav-row--root", pin_row.get_attribute("class") or "")
+        self.assertNotIn("solid-nav-row--root", engine_row.get_attribute("class") or "")
+        self.page.keyboard.press(" ")
         self.assertFalse(pin_visibility.is_checked())
         self.assertEqual(pin_visibility.evaluate("element => getComputedStyle(element).backgroundColor"), "rgba(0, 0, 0, 0)")
-        desktop_tree = self.page.get_by_role("tree", name="Assembly").bounding_box()
-        desktop_viewer = self.page.get_by_role("img", name="Functional model").bounding_box()
-        self.assertIsNotNone(desktop_tree)
-        self.assertIsNotNone(desktop_viewer)
 
-        self.page.set_viewport_size({"width": 760, "height": 900})
-        pin_visibility.wait_for()
-        self.assertFalse(self.page.evaluate("() => document.documentElement.scrollWidth > window.innerWidth"))
-        housing_row.hover()
-        housing_row.get_by_role("button", name="Focus housing").click()
-
-        (project / ".fake-solid-state.json").write_text(json.dumps({
-            "viewer": {
-                "version": 1,
-                "root": {
-                    "name": "engine", "color": None,
-                    "children": [{"name": "unpainted", "color": None}],
-                },
-            },
-        }))
-        (project / "root" / "__init__.py").write_text("# changed model\n")
-        _wait_for(lambda: self.page.get_by_text("pin", exact=True).count() == 0)
+        self.page.get_by_role("button", name="Show full assembly").click()
+        self.assertIn("solid-nav-row--root", engine_row.get_attribute("class") or "")
         self.assertEqual(self.page.get_by_role("button", name="Show full assembly").count(), 0)
 
-        history = self.page.evaluate("() => window.__solidNodeWidgetHistory")
-        self.assertIn(["setVisible", ["housing", "pin"], False], history["updates"])
-        self.assertIn(["setRoot", ["housing", "pin"]], history["updates"])
-        self.assertIn(["setRoot", None], history["updates"])
-        self.assertIn(["manifestChanged"], history["updates"])
-
-    def test_model_panel_controls_the_supplied_framework_viewer(self) -> None:
-        project = self._make_project("real-assembly-viewer")
-        (project / ".fake-solid-state.json").write_text(json.dumps({
-            "viewer": {
-                "format": "solid-node-export", "version": 1,
-                "animation": {"fps": 24, "frames": 24},
-                "root": {
-                    "name": "engine", "type": "assembly", "color": None,
-                    "operations": [], "children": [
-                        {
-                            "name": "housing", "type": "assembly",
-                            "color": "#cc4444", "operations": [],
-                            "children": [{
-                                "name": "pin", "type": "assembly",
-                                "color": None, "operations": [], "children": [],
-                            }],
-                        },
-                    ],
-                },
-            },
-        }))
-        self._open("real-assembly-viewer")
-        self.page.goto(self.url("/projects/real-assembly-viewer"))
-
-        tree = self.page.get_by_role("tree", name="Assembly")
-        tree.get_by_role("button", name="Expand housing").click()
-        checkbox = self.page.get_by_role("checkbox", name="Visibility for pin")
-        checkbox.wait_for(timeout=10_000)
-        self.assertTrue(checkbox.is_checked())
-        checkbox.click()
-        self.assertFalse(checkbox.is_checked())
-        pin_row = self.page.get_by_role("treeitem").filter(has_text="pin")
-        pin_row.hover()
-        pin_row.get_by_role("button", name="Focus pin").click()
-        self.page.get_by_role("button", name="Show full assembly").click()
+        viewer_document["root"]["children"][0]["children"] = []
+        (project / ".fake-solid-state.json").write_text(json.dumps({"viewer": viewer_document}))
+        (project / "root" / "__init__.py").write_text("# changed model\n")
+        _wait_for(lambda: self.page.get_by_text("pin", exact=True).count() == 0)
+        tree.wait_for(state="attached")
+        self.page.get_by_role("heading", name="MODEL", exact=True).wait_for()
 
     def test_a_multi_model_card_shows_its_models_side_by_side(self) -> None:
         project = self._make_project("clocks", models=("wall_clock_01", "wall_clock_02", "wall_clock_03", "wall_clock_04"))

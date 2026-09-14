@@ -377,7 +377,7 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertEqual(prepared.artifact_root, (project / "_build").resolve())
         self.assertEqual(prepared.model_source, "root/__init__.py")
         self.assertTrue(prepared.viewer_bundle.is_file())
-        self.assertEqual(prepared.viewer_api_version, 4)
+        self.assertEqual(prepared.viewer_api_version, 10)
         self.assertEqual(self.call_log.read_text().splitlines()[0], "new:new_engine")
         self.assertTrue((project / "root" / "__init__.py").is_file())
         self.assertFalse((project / "pyproject.toml").exists())
@@ -520,7 +520,7 @@ class ProjectPreparationTest(unittest.TestCase):
         _make_repository(project)
         cases = (
             ({"FAKE_SOLID_VIEWER_MISSING": "1"}, "pip install \"solid-node[viewer]\""),
-            ({"FAKE_SOLID_VIEWER_API": "3"}, "viewer API 4 is required but installed viewer API is 3"),
+            ({"FAKE_SOLID_VIEWER_API": "3"}, "viewer API 10 is required but installed viewer API is 3"),
         )
         for environment, expected in cases:
             with self.subTest(environment=environment), patch.dict(os.environ, {**self.git_environment, **environment}):
@@ -538,6 +538,8 @@ class ProjectPreparationTest(unittest.TestCase):
     def test_required_viewer_api_matches_the_declared_widget_interface(self) -> None:
         declaration = (ROOT / "floor" / "frontend" / "src" / "solid-node-widget.d.ts").read_text()
         self.assertIn(f"SOLID_NODE_VIEWER_API_VERSION: {REQUIRED_VIEWER_API}", declaration)
+        self.assertIn("mountNavigator", declaration)
+        self.assertIn("NavigatorHandle", declaration)
 
     def test_reports_git_initialization_and_initial_commit_failures_by_stage(self) -> None:
         real_run = subprocess.run
@@ -724,6 +726,6 @@ elif command == "viewer":
         print("pip install \"solid-node[viewer]\"", file=sys.stderr)
         raise SystemExit(18)
     bundle = Path(tempfile.gettempdir()) / f"fake-solid-widget-{os.getpid()}.js"
-    bundle.write_text("globalThis.SolidNodeWidget={apiVersion:4,mount(){return Promise.resolve({apiVersion:4,artifactChanged(){return Promise.resolve()},manifestChanged(){return Promise.resolve()},reload(){return Promise.resolve()},assembly(){return{name:'root',path:[],color:null,model:false,children:[]}},setRoot(){},setVisible(){},view(){return{}},dispose(){}})}};")
-    print(json.dumps({"path": str(bundle), "apiVersion": int(os.environ.get("FAKE_SOLID_VIEWER_API", "4"))}))
+    bundle.write_text("globalThis.SolidNodeWidget={apiVersion:10,mount(){return Promise.resolve({apiVersion:10,artifactChanged(){return Promise.resolve()},manifestChanged(){return Promise.resolve()},reload(){return Promise.resolve()},assembly(){return{name:'root',path:[],color:null,model:false,children:[]}},setRoot(){},setVisible(){},view(){return{}},dispose(){}})}};")
+    print(json.dumps({"path": str(bundle), "apiVersion": int(os.environ.get("FAKE_SOLID_VIEWER_API", "10"))}))
 '''

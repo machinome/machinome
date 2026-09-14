@@ -4,9 +4,7 @@
 
 Provide the maker with a structured per-project workspace for live shop
 context, artifact inspection, and user-facing-agent conversation.
-
 ## Requirements
-
 ### Requirement: The shop floor provides a structured browser workspace
 The shop SHALL present the maker with one full-height browser workspace for each
 open project, at a browser location that identifies that project. The browser
@@ -56,14 +54,15 @@ SHALL return the maker to the hub when that project is no longer open.
 - **THEN** the maker is presented with the hub rather than an empty workspace
 
 ### Requirement: The workspace menu preserves live shop context
-The Model context panel SHALL show the current functional model's supported
-assembly navigator when that model is mounted, alongside every
-profile-declared agent's profile-provided display label and live state using
-the run data of the project that workspace shows. The assembly navigator SHALL
-not require or invent model data outside the viewer's published assembly, and
-the panel SHALL NOT require or invent separate profile display labels, build
-metadata, or per-agent assignment detail. It SHALL NOT show an agent belonging
-to another open project.
+The Model context panel SHALL show the assembly navigator the installed browser
+viewer mounts over the current functional model, when that model is mounted,
+alongside every profile-declared agent's profile-provided display label and live
+state using the run data of the project that workspace shows. The assembly
+navigator SHALL not require or invent model data outside the viewer's published
+assembly, and the shop SHALL NOT build a navigator of its own. The panel SHALL
+NOT require or invent separate profile display labels, build metadata, or
+per-agent assignment detail. It SHALL NOT show an agent belonging to another
+open project.
 
 #### Scenario: The default profile is visible
 - **WHEN** the maker opens the workspace of a project declaring `builder`
@@ -176,3 +175,4 @@ While any manifested role is failed, the browser SHALL show a live, accessible n
 #### Scenario: The page reconnects during a role failure
 - **WHEN** a page connects or reconnects while any role is failed
 - **THEN** it displays the same current failure notice from the snapshot
+

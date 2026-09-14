@@ -42,6 +42,7 @@ the overview says *what is true now*.
 | `0027` | [Depend on the OpenSpec CLI and refuse to start without it](./0027-depend-on-the-openspec-cli.md) | Accepted | 2026-08-22 |
 | `0028` | [Open on the published model, and build behind it](./0028-open-on-the-published-model.md) | Accepted | 2026-08-30 |
 | `0029` | [Hub entries are paths, and a session owns one model](./0029-hub-entries-are-paths-and-a-session-owns-one-model.md) | Accepted | 2026-09-06 |
+| `0030` | [The Model panel is the viewer's navigator](./0030-the-model-panel-is-the-viewers-navigator.md) | Accepted | 2026-09-14 |
 
 ## Conventions
 
