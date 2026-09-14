@@ -19,7 +19,7 @@ WebGL: `inspector.ts` exports `mountInspector`, which calls an internal
 the test calls the internal one with stubs, and nothing but `widget.ts`
 sees the public one.
 
-- [ ] 1.1 **Red** — `src/inspector.test.ts`, opening with
+- [x] 1.1 **Red** — `src/inspector.test.ts`, opening with
       `/** @vitest-environment jsdom */` (cycle 2's pragma, no
       `vitest.config.ts` change). Against a **stub `mount`** resolving to
       a stub `ViewerHandle` and a **stub `mountNavigator`** recording its
@@ -57,7 +57,7 @@ sees the public one.
       - a selector naming no element is refused with a message naming it.
       *Goes red at module resolution: `src/inspector.ts` does not exist.*
       Command: `cd solid_node_viewer/widget && npx vitest run src/inspector.test.ts`
-- [ ] 1.2 **Green** — `src/inspector.ts`: `InspectorOptions`,
+- [x] 1.2 **Green** — `src/inspector.ts`: `InspectorOptions`,
       `InspectorHandle`, `mountInspector`, `mountInspectorWith`, the
       `INSPECTOR_STYLESHEET` constant (the `solid-inspector-*` class
       contract and the `--solid-inspector-*` custom properties of design
@@ -65,10 +65,10 @@ sees the public one.
       No resize handler of any kind — the viewer's own `ResizeObserver`
       (`viewer.ts:757-769`) is the mechanism, and a task in increment 5
       proves it in a browser.
-- [ ] 1.3 Confirm the rest of the suite is untouched: `npm test` reports
+- [x] 1.3 Confirm the rest of the suite is untouched: `npm test` reports
       the 30 existing files plus this one, and only the jsdom files
       declare the pragma (`grep -rl "vitest-environment" src/`).
-- [ ] Commit: `feat(inspector): compose a navigator sidebar beside the viewer`.
+- [x] Commit: `feat(inspector): compose a navigator sidebar beside the viewer`.
 
 ## 2. The page selects a layout
 
