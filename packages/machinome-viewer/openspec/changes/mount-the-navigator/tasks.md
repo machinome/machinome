@@ -54,7 +54,7 @@ asked what the component thinks.
 
 ## 2. The component, in a DOM vitest can hold
 
-- [ ] 2.1 **Red** — `src/navigator.test.ts`, opening with the documented
+- [x] 2.1 **Red** — `src/navigator.test.ts`, opening with the documented
       docblock so the environment is this file's alone:
       ```ts
       /**
@@ -111,7 +111,7 @@ asked what the component thinks.
       - a selector naming no element is refused with a message naming it.
       *Goes red at module resolution: `src/navigator.ts` does not exist.*
       Command: `cd solid_node_viewer/widget && npx vitest run src/navigator.test.ts`
-- [ ] 2.2 **Green** — `src/navigator.ts`: `mountNavigator`,
+- [x] 2.2 **Green** — `src/navigator.ts`: `mountNavigator`,
       `NavigatorOptions`, `NavigatorHandle`, the injected stylesheet
       constant with the class contract and custom properties of design
       D13, and its own `resolveTarget` (design D2, with the comment
@@ -120,10 +120,10 @@ asked what the component thinks.
       `import type`, so this module pulls no renderer — check with
       `npx vitest run src/navigator.test.ts` staying fast and with
       `grep -n "^import" src/navigator.ts`.
-- [ ] 2.3 Confirm the rest of the suite is untouched by the new
+- [x] 2.3 Confirm the rest of the suite is untouched by the new
       environment: `npm test` still reports 28 files plus this one, and
       the pre-existing 533 tests still run in `node`.
-- [ ] Commit: `feat(navigator): mount a plain-DOM assembly navigator`.
+- [x] Commit: `feat(navigator): mount a plain-DOM assembly navigator`.
 
 ## 3. Published on the global, proved against the real bundle
 
