@@ -126,6 +126,49 @@ class AmbiguousPin(StepNode):
     part = 'Pin'
 
 
+class FirstPin(StepNode):
+    """The first of the two same-named `Pin` products, selected by its
+    index among the products of that name (the 1 mm cube, volume 1.000)."""
+
+    step_source = 'duplicate_names.step'
+    part = 'Pin'
+    part_index = 1
+
+
+class SecondPin(StepNode):
+    """The second of the two same-named `Pin` products (the 2 mm cube,
+    volume 8.000)."""
+
+    step_source = 'duplicate_names.step'
+    part = 'Pin'
+    part_index = 2
+
+
+class OutOfRangePinIndex(StepNode):
+    """`part_index` beyond the two products the name `Pin` has: refused,
+    never rounded to a neighbour."""
+
+    step_source = 'duplicate_names.step'
+    part = 'Pin'
+    part_index = 3
+
+
+class BelowRangePinIndex(StepNode):
+    """`part_index` below 1: refused."""
+
+    step_source = 'duplicate_names.step'
+    part = 'Pin'
+    part_index = 0
+
+
+class IndexWithNoPart(StepNode):
+    """`part_index` declared with no `part` to be relative to: refused,
+    because an index selects among the products of a declared name."""
+
+    step_source = 'duplicate_names.step'
+    part_index = 1
+
+
 class FaceOnlyPart(StepNode):
     """A product that carries only faces: no `adjust`, so it is rejected
     at admission."""

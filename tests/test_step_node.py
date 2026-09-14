@@ -376,6 +376,60 @@ class StepSelectionTest(BuildDirTestCase):
         self.assertIn('1.000', message)
         self.assertIn('8.000', message)
 
+    def test_the_ambiguity_message_names_part_index_as_the_way_to_choose(self):
+        message = self.inventory_error(parts.AmbiguousPin)
+
+        self.assertIn('part_index', message)
+
+    def test_a_shared_name_is_resolved_by_its_index(self):
+        first = parts.FirstPin()
+        second = parts.SecondPin()
+
+        first.assemble()
+        second.assemble()
+
+        self.assertAlmostEqual(first.shape().Volume(), 1.000, places=3)
+        self.assertAlmostEqual(second.shape().Volume(), 8.000, places=3)
+
+    def test_an_index_beyond_the_products_of_the_name_is_refused(self):
+        message = self.inventory_error(parts.OutOfRangePinIndex)
+
+        # Names the index declared (3) and how many products 'Pin' has (2).
+        self.assertIn('3', message)
+        self.assertIn('Pin', message)
+        self.assertIn('2', message)
+        # Never rounded to a neighbour: both real products are still
+        # described, distinguishable by their volumes.
+        self.assertIn('1.000', message)
+        self.assertIn('8.000', message)
+
+    def test_an_index_below_one_is_refused(self):
+        message = self.inventory_error(parts.BelowRangePinIndex)
+
+        self.assertIn('part_index', message)
+        self.assertIn('Pin', message)
+
+    def test_an_index_with_no_part_is_refused(self):
+        message = self.inventory_error(parts.IndexWithNoPart)
+
+        self.assertIn('part_index', message)
+        self.assertIn('part', message)
+
+    def test_a_shared_names_inventory_carries_its_index(self):
+        document = step_module.cached_document(DUPLICATE_NAMES_STEP)
+        inventory = document.inventory()
+
+        self.assertIn('Pin #1', inventory)
+        self.assertIn('Pin #2', inventory)
+
+    def test_a_unique_names_inventory_carries_no_index(self):
+        """Pins the no-change-for-unique-names promise (design D5): must
+        pass both before and after this change."""
+        document = step_module.cached_document(TWO_PRODUCTS_STEP)
+        inventory = document.inventory()
+
+        self.assertNotIn('#', inventory)
+
 
 ##############################################
 # Section 3: frame, correction, admission

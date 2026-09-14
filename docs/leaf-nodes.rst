@@ -722,8 +722,38 @@ inventory does for a mesh:
 A sub-assembly is a selectable product too: naming one selects its
 components at their own internal placements, which is what you want
 when a vendor ships a gearbox as one shippable unit inside a bigger
-file. Two distinct products sharing one name fail naming the ambiguity
-and describing both, rather than guessing which was meant.
+file.
+
+A name is not always unique — a Fusion or AP214 export routinely
+carries several distinct products under one generic name (`COMPOUND`,
+`SHELL`, `SOLID`). Naming a shared name fails, describing every match
+and giving each its own index:
+
+.. code-block:: text
+
+    Bracket: /home/me/rc-car/vendor/hinge.step has 2 products named
+    'Pin'; the name is ambiguous between:
+      Pin #1: part, 1 occurrence, 1 solid, bounds (-0.500, -0.500, -0.500)..(0.500, 0.500, 0.500), volume 1.000
+      Pin #2: part, 1 occurrence, 1 solid, bounds (-1.000, -1.000, -1.000)..(1.000, 1.000, 1.000), volume 8.000
+    Declare `part_index` to choose between them.
+
+Declare `part_index` beside `part` to choose — the 1-based position of
+the product meant among the products of that name, in document order,
+exactly the number the inventory just printed:
+
+.. code-block:: python
+
+    class UpperPin(StepNode):
+
+        step_source = 'vendor/hinge.step'
+        part = 'Pin'
+        part_index = 2
+
+The inventory numbers a product's line only when its name is shared —
+a document whose product names are all distinct reads exactly as it
+always has, with no index anywhere. An index that names no product of
+that name — out of range, below 1, or declared with no `part` — fails
+by name, the same inventory attached, never rounded to a neighbour.
 
 The part arrives in its own frame
 ----------------------------------

@@ -401,7 +401,8 @@ Simulating James Bruton's `dog02_9g` (51 solids, Fusion/AP214 export)
 and then fitting the M3 hardware its bores ask for hit three framework
 things worth fixing. None is filed.
 
-- **`StepNode` cannot select between products that share a name.**
+- **FIXED (cycle `select-a-step-product`, ADR-115). `StepNode` cannot
+  select between products that share a name.**
   `part` is a name, and this export carries **three** products called
   `COMPOUND` — the two chassis halves and the electronics tower, 150 003
   of the machine's 359 786 mm³. The framework refuses correctly and its
@@ -421,6 +422,15 @@ things worth fixing. None is filed.
   project wanted anyway (see the next paragraph), so the gap cost
   nothing extra here — but a project that only wanted the three
   compounds would have to build the same machinery.
+  **What shipped:** `part_index`, a 1-based selector relative to the
+  declared `part` name, in document order — not the document entry
+  `StepAssembly` exposes, measured unstable across a re-export that
+  inserts an unrelated product ahead of the selected ones (ADR-115
+  design D1). `StepAssembly.products` now also reports each product's
+  own document identity and its `part_index`, and `solid import-step`
+  is keyed on that identity end to end, so two same-named products each
+  get their own generated class and selector. Per-solid selection (the
+  next paragraph) remains open, unchanged by this fix.
 
   Worth noting the related shape: an upstream *product* is routinely not
   a printed piece. In this export 20 products hold 51 solids, and two
@@ -1850,7 +1860,8 @@ rather than folded into the closure:
 
 # orcahand_hardware (2026-09-10, ORCA v1 STEP import)
 
-- **`solid import-step` can generate Python that does not parse.** Importing
+- **FIXED (cycle `select-a-step-product`, ADR-115). `solid import-step`
+  can generate Python that does not parse.** Importing
   `orca_v1/ORCA_Assembly/ORCA_v1.step` generated 53 assembly adapters; an
   identity-only assembly received a `render()` body containing comments but
   no statement, so importing `simulation/v1/assembly.py` raised
@@ -1858,7 +1869,16 @@ rather than folded into the closure:
   `render()` made the transcription compile without changing any placement.
   The generator should emit `pass` whenever a generated method has no
   executable placement. Filed here; not triaged.
-- **`solid import-step` can scaffold a document that `StepNode` cannot
+  **What shipped:** exactly the candidate fix — `_placement_lines` now
+  reports whether it emitted a rotate/translate statement, and
+  `_assembly_class_source` appends `pass` under the comments whenever no
+  child of that class emitted one, subsuming the pre-existing
+  childless-assembly fallback. Proven on the framework's own fixtures:
+  three of five existing `StepNode` documents generated an unparseable
+  `assembly.py` before this fix, all compile after
+  (`tests/test_import_step.py::GeneratedSourceCompilesTest`).
+- **FIXED (cycle `select-a-step-product`, ADR-115). `solid import-step`
+  can scaffold a document that `StepNode` cannot
   select.** The same document contains 15 distinct products named `SHELL`.
   The importer generated adapters whose only selector is `part = 'SHELL'`;
   the first build then failed because `StepNode` correctly reported all 15
@@ -1873,6 +1893,16 @@ rather than folded into the closure:
   STLs are watertight single bodies. Evidence:
   `projects/Robotic-Hands/orcahand_hardware`, change
   `simulate-orca-v1`. Filed here; not triaged.
+  **What shipped:** a name-relative `part_index` on `StepNode` (not the
+  document entry the candidate fix suggested — measured unstable across
+  a re-export, ADR-115 design D1), and `solid import-step` keyed on
+  each product's own identity end to end, emitting `part_index` on a
+  generated class whenever its product name is shared. Proven on a
+  duplicate-name fixture reproducing this document's own shape: the
+  scaffold's two generated classes for two same-named products build
+  distinct geometry, never overwrite one another, and the generated
+  assembly places each at its own occurrence
+  (`tests/test_import_step.py::GeneratedModelFaithfulnessTest::test_a_duplicate_named_model_is_faithful`).
 
 # Locks (2026-09-13, Combination safe lock)
 
@@ -1966,7 +1996,8 @@ verification. No external issue was opened.
   still fails and both exact tests pass. Framework regression: 237 tests and
   72 subtests pass; both old-sign and positive-skipping mutations are caught.
   See `openspec/changes/archive/2026-09-13-voron-faceted-contact/validation.md`.
-- **Duplicate STEP names still defeat generated selectors.** This document
+- **FIXED (cycle `select-a-step-product`, ADR-115). Duplicate STEP
+  names still defeat generated selectors.** This document
   contains 118 products named `SOLID`; `solid import-step` emits distinct
   Python classes with identical `part = 'SOLID'` selectors, then a build is
   ambiguous. CadQuery's convenience `Assembly.load` also rejects duplicate
@@ -1976,6 +2007,13 @@ verification. No external issue was opened.
   STEP files. The 180-solid frame builds through ordinary `StepNode`.
   This repeats the YouCanBuildDog and orcahand findings. Selector changes are
   not part of `voron-faceted-contact`; workaround retained, triage open.
+  **What shipped:** `part_index` and the identity-keyed generator
+  described under the YouCanBuildDog and orcahand entries above, the
+  same fix for all three findings. Not applied back to this project's
+  own `simulation/tools/probe.py` workaround here — that remains the
+  project's own choice on its own schedule (`libresolid-studio/CLAUDE.md`,
+  "Mechanical project work"); this entry records that the underlying
+  framework gap identified across all three projects is closed.
 
 # solid-node-viewer bundle staleness (2026-09-14, shop floor, Pascaline-module)
 

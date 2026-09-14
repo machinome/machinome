@@ -274,3 +274,129 @@ scenario), so `index` would make the two STEP features mutually exclusive.
 `/home/asa/devel/libresolid-studio/.venv`. `probe_select.py` and
 `probe_dup_subassembly.py` write fixtures into the gitignored
 `tests/step_project/` and into the scratch directory respectively.)
+
+---
+
+## Implementation: RED, then GREEN
+
+Measured in the same worktree, same venv, starting from the planning
+commit `5fcada6`.
+
+### RED (tasks 1.1-1.8, before section 2-5 implementation)
+
+    PYTHONPATH="$PWD" .venv/bin/python -m pytest tests/test_step_node.py::StepSelectionTest tests/test_step_assembly.py::StepAssemblyIdentityTest tests/test_import_step.py -q
+
+19 failed (5 in `StepSelectionTest`, 2 in `StepAssemblyIdentityTest`, 12
+in `test_import_step.py` including all 5 `GeneratedSourceCompilesTest`
+subtests), matching every collapse this change's design names:
+
+    ValueError: FirstPin: .../duplicate_names.step has 2 products named
+    'Pin'; the name is ambiguous between: ...
+      (task 1.1 -- the selector does not exist yet)
+
+    AssertionError: 'Pin #1' not found in '  Root: root assembly, ...'
+      (task 1.3 -- the inventory carries no index yet)
+
+    AttributeError: 'ProductInfo' object has no attribute 'identity'
+    AttributeError: 'Occurrence' object has no attribute 'product_identity'
+      (task 1.4 -- the reader publishes no identity yet)
+
+    pin_classes = {class_names[pin.identity] for pin in pins}
+    KeyError: '0:1:1:3'
+      (task 1.6 -- generate_parts is still keyed on name)
+
+    IndentationError: expected an indented block after function
+    definition on line 20 (at line 25)
+      (task 1.7, 5 of 8 fixtures -- three the same ones evidence.md §4
+      measured, plus the two new duplicate-name fixtures)
+
+    AttributeError: 'ProductInfo' object has no attribute 'part_index'
+      (task 1.8 -- `_assert_faithful` was rewritten to require the
+      selector before relying on it, per the proposer's flagged trap;
+      this also turned the three PRE-EXISTING faithfulness tests red
+      until section 3 lands, since they use the same helper)
+
+`test_an_index_below_one_is_refused` (part of task 1.2) is not included
+in that 19: its first draft accidentally asserted `'0'` in the message,
+which passed today by coincidence (`'0'` appears inside a bounding-box
+coordinate, `-0.500`). Tightened to assert `'part_index'` in the
+message before implementing (`tests/test_step_node.py`), confirmed red
+on its own:
+
+    PYTHONPATH="$PWD" .venv/bin/python -m pytest tests/test_step_node.py::StepSelectionTest::test_an_index_below_one_is_refused -q
+    1 failed
+
+### GREEN (after sections 2-5)
+
+    PYTHONPATH="$PWD" .venv/bin/python -m pytest tests/test_step_node.py tests/test_step_assembly.py tests/test_import_step.py -q
+    99 passed, 2 skipped, 16 subtests passed
+
+The 2 skips are `test_all_55_actuator_placements_round_trip_to_1e_minus_9`
+and `test_the_actuator_document_has_no_improper_placement`
+(`tests/test_step_assembly.py`), pre-existing: they require the
+Internal-Cycloidal-Actuator vendor STEP file, absent from this worktree.
+
+### Byte-identical generated source (task 5.2)
+
+`import_simple`/`import_nested`/`import_repeated` generated through the
+planning-commit `import_step.py` (loaded standalone via
+`importlib.util.spec_from_file_location`, fed the SAME `StepAssembly`
+objects the current reader produces) and through the implemented
+module, `diff -r`'d: identical, byte for byte, both files, all three
+fixtures.
+
+### Mutation checks (task 6.6)
+
+Each mutation applied, the named test run, the mutation reverted,
+`tests/test_step_node.py tests/test_step_assembly.py
+tests/test_import_step.py` confirmed green again before the next.
+
+1. `_select`'s `return matches[self.part_index - 1]` reverted to
+   `return matches[0]`: `StepSelectionTest::test_a_shared_name_is_resolved_by_its_index`
+   fails — `AssertionError: 0.9999999999999998 != 8.0 within 3 places`.
+2. `generate_parts`'s `class_names[product.identity] = class_name`
+   reverted to `class_names[product.name] = class_name`:
+   `GeneratedPartsTest::test_duplicate_names_get_two_distinct_classes_each_with_its_own_index`
+   fails — `KeyError: '0:1:1:3'`.
+3. `_assembly_class_source`'s `elif not any_emitted: render_lines.append('        pass')`
+   removed: `GeneratedSourceCompilesTest::test_every_fixture_compiles`
+   fails on 5 of its 8 subtests (`duplicate_names`, `dup_subassembly`,
+   `single_product`, `wrapped_single_part`, `two_products`) —
+   `IndentationError: expected an indented block after function
+   definition on line 21`.
+
+### Full suite (task 6.5)
+
+    PYTHONPATH="$PWD" .venv/bin/python -m pytest -q
+    2682 passed, 4 skipped, 50 warnings, 1501 subtests passed in 322.01s
+
+No failures. The 50 warnings are pre-existing `FutureWarning`/
+`DeprecationWarning`s from unrelated modules (render-time driver reads,
+a deprecated assertion alias, `os.fork()` under multi-threading);
+none originates from this change. The 4 skips are the 2 actuator-gated
+ones above plus 2 pre-existing skips elsewhere in the suite, unrelated
+to this change.
+
+### Test counts, this change's three files
+
+| File | Before (planning commit `5fcada6`) | After |
+| --- | --- | --- |
+| `tests/test_step_node.py` | 42 | 49 (+7) |
+| `tests/test_step_assembly.py` | 22 | 24 (+2) |
+| `tests/test_import_step.py` | 24 | 28 (+4; 3 existing tests also adapted, see below) |
+
+### An anticipated contract change to three existing tests
+
+Design D3 changes `generate_parts`'s return type from
+`{product.name: class_name}` to `{product.identity: class_name}` --
+required to fix the exact collapse this change repairs (task 4.1).
+Three PRE-EXISTING tests in `GeneratedPartsTest` read that dict by
+product name (`class_names['Fixed_Ring']`,
+`assertNotIn('Machine', class_names)`,
+`class_names['Widget!']`/`class_names['Widget#']`) and would raise
+`KeyError`/assert wrongly once the key changed underneath them; they
+were updated to resolve the product's `identity` from
+`assembly.products` first, matching the new contract precisely rather
+than being loosened to make them pass. Not a task list item by number,
+but squarely implied by 4.1's own return-type change and reported here
+per the apply briefing's instruction to report a test that breaks.

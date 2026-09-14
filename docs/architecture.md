@@ -257,10 +257,15 @@ product out of the document by name — the candidates being every
 top-level XCAF label except a root that is itself an assembly, so a
 bare single-part file and the commoner file wrapping one part in an
 assembly root both select themselves, while a multi-component root is
-never handed to a node by omission. A wrong or missing selection fails
-with the document's own inventory — name, kind, occurrence count, solid
-count, bounding box, volume, one line per product — the failure again
-the discovery tool. The selected shape is always the product's own
+never handed to a node by omission. A name is not always unique — a
+document may carry several distinct products under one name — so a
+subclass may also declare `part_index`, the 1-based position of the
+product meant among the products of that name, in document order,
+relative to the name so it can never contradict it (ADR-115). A wrong
+or missing selection fails with the document's own inventory — name,
+kind, occurrence count, solid count, bounding box, volume, one line per
+product, a shared name additionally carrying its index — the failure
+again the discovery tool. The selected shape is always the product's own
 frame, never an occurrence's placed copy; `adjust(self, shape)`
 corrects it, and a shape holding no solid after `adjust` fails
 admission naming what it does hold, with the explicit
@@ -290,13 +295,22 @@ through OCCT's own quaternion (`gp_Trsf.GetRotation()`,
 accurate enough at a 180° turn. A placement that is not proper — a
 mirror or a scale, neither of which `rotate`/`translate` can state — is
 reported with its determinant and scale factor and left undecomposed;
-the rest of the document is unaffected. The CLI command `solid
-import-step` turns this reader into project-owned source in one shot:
-`parts.py` (one `StepNode` subclass per part) and `assembly.py` (one
-`AssemblyNode` per assembly product, its children placed at the
-document's own transforms, machine at rest — no driver, no
-`simulate()`), never overwriting existing source and never touching
-`pyproject.toml` (ADR-079).
+the rest of the document is unaffected. Because a name does not
+identify a product, each reported product also carries its own document
+identity and the `part_index` selector relative to its name, and each
+reported occurrence carries the identity of the product it places and
+of the product it is placed in, alongside their names — so two
+same-named products, or two same-named sub-assemblies, are always told
+apart (ADR-115). The CLI command `solid import-step` turns this reader
+into project-owned source in one shot: `parts.py` (one `StepNode`
+subclass per part PRODUCT) and `assembly.py` (one `AssemblyNode` per
+assembly PRODUCT, its children placed at the document's own
+transforms, machine at rest — no driver, no `simulate()`) — keyed on
+each product's identity end to end, so two products sharing one name
+each get their own generated class, and a generated class whose name is
+shared also declares the `part_index` that selects it — never
+overwriting existing source and never touching `pyproject.toml`
+(ADR-079, amended by ADR-115).
 
 One leaf kind names a *manufacturing method* rather than a backend.
 `SheetLeafNode` — internal base, `Build123dSheetNode` its v1 adapter — is a
@@ -2084,14 +2098,14 @@ The short list that changes must not silently break:
 
 | Subsystem | Code | Spec capability | ADRs |
 |---|---|---|---|
-| Node model | `solid_node/node/`, `solid_node/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082 |
+| Node model | `solid_node/node/`, `solid_node/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115 |
 | Build parameters | `solid_node/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104 |
 | Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105 |
 | Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106 |
 | Mechanisms | `solid_node/mechanisms/` | `mechanisms` | 022, 076 |
 | Build pipeline | `solid_node/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
-| CLI | `cli.py`, `solid_node/manager/` | `cli` | 021, 024, 068, 079, 103 |
+| CLI | `cli.py`, `solid_node/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |
 | Test framework | `solid_node/test.py`, `manager/test.py` | `test-framework` | 009–011, 025, 029, 040, 048, 052, 070, 073 |
 | Viewer lookup & snapshot staging | `solid_node/viewers/bundle.py`, `viewers/browser.py`, `viewers/openscad.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: solid-node-viewer) |
 | Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085 |

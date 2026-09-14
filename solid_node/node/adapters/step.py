@@ -23,7 +23,11 @@ The part is selected, not guessed. A STEP document is a tree of named
 products -- parts and sub-assemblies alike -- and `part` names the one
 this node is. A file with exactly one candidate needs no `part`; a file
 with several fails with the document's own inventory, so no separate
-inspection tool has to exist.
+inspection tool has to exist. A name is not always unique: when two
+products of the document share one name, `part_index` chooses between
+them -- the 1-based position of the one meant among the products of
+that name, in document order, printed as `Pin #1` / `Pin #2` beside
+every shared name the inventory lists.
 
 Corrections are code. `adjust(self, shape)` receives the selected
 product's own CadQuery `Shape` and returns the corrected one -- no
@@ -208,6 +212,40 @@ class _Document:
                 if target_entry in self._occurrences:
                     self._occurrences[target_entry].append(component)
 
+        # A name is not always unique (design D1): count how many
+        # products share each name, and each named product's 1-based
+        # position among them, in document order -- the selector a
+        # `StepNode` declares as `part_index`. An unnamed product (name
+        # `None`) is never counted or indexed: selecting one by omission
+        # is a different, out-of-scope question (design Non-Goals), and
+        # `part_index` is meaningless with no name to be relative to.
+        self._name_counts = {}
+        for entry in self.order:
+            name = self.products[entry].name
+            if name is not None:
+                self._name_counts[name] = self._name_counts.get(name, 0) + 1
+
+        self._name_index = {}
+        counters = {}
+        for entry in self.order:
+            name = self.products[entry].name
+            if name is not None:
+                counters[name] = counters.get(name, 0) + 1
+                self._name_index[entry] = counters[name]
+
+    def name_is_shared(self, name):
+        """Whether another product of the document carries `name` too
+        (design D5): the inventory prints an index only for these."""
+        return name is not None and self._name_counts.get(name, 0) > 1
+
+    def part_index(self, product):
+        """`product`'s 1-based position among the products carrying its
+        own name, in document order -- 1 for a name no other product
+        shares, `None` for an unnamed product (design D2: derivable from
+        `identity` plus document order, published because it is what a
+        reader of the structure is looking for)."""
+        return self._name_index.get(product.entry)
+
     def candidates(self):
         return [self.products[entry] for entry in self.order
                if self.products[entry].is_candidate]
@@ -269,8 +307,14 @@ class _Document:
         minimum, maximum = _bounding_box(shape)
         volume = shape.Volume()
         occurrences = self.occurrences(product)
+        # A product whose name is its own prints exactly as it always
+        # has (design D5, the no-change-for-unique-names promise); only
+        # a shared name gains the index a `StepNode` declares to choose
+        # between its products.
+        index_suffix = (f' #{self._name_index[product.entry]}'
+                        if self.name_is_shared(product.name) else '')
         return (
-            f'  {product.display_name}: {product.kind}, '
+            f'  {product.display_name}{index_suffix}: {product.kind}, '
             f'{occurrences} occurrence{"s" if occurrences != 1 else ""}, '
             f'{solids} solid{"s" if solids != 1 else ""}, '
             f'bounds {_point(minimum)}..{_point(maximum)}, '
@@ -377,10 +421,21 @@ class StepNode(ExactLeafNode):
     Select one product out of a multi-product document with `part`,
     naming it as the file carries it; a node that omits `part` on a
     document with more than one candidate product fails with the
-    document's inventory. Correct the shape by implementing
-    `adjust(self, shape)`. Sew a product a vendor published as bare
-    surfaces with the module-level `solids_from_faces` helper, called
-    knowingly from `adjust`.
+    document's inventory. When the document carries more than one
+    product of that name, declare `part_index` too -- the 1-based
+    position of the one meant among the products of that name, in
+    document order, exactly the number the inventory prints beside each
+    (`Pin #1`, `Pin #2`)::
+
+        class UpperPin(StepNode):
+
+            step_source = 'vendor/hinge.step'
+            part = 'Pin'
+            part_index = 2
+
+    Correct the shape by implementing `adjust(self, shape)`. Sew a
+    product a vendor published as bare surfaces with the module-level
+    `solids_from_faces` helper, called knowingly from `adjust`.
 
     Unlike `StlNode`, this leaf is exact: it derives `ExactLeafNode` and
     supplies nothing beyond its own reading and selection, so `shape()`,
@@ -396,6 +451,14 @@ class StepNode(ExactLeafNode):
     #: selects the document's one candidate product, if it has exactly
     #: one; otherwise a `part` must be declared.
     part = None
+
+    #: The 1-based position of the product this node is, among the
+    #: products of the document that carry the declared `part` name, in
+    #: document order -- printed as `#N` beside every matching line of
+    #: the inventory (`_Document.describe`). Required only when `part`
+    #: names more than one product of the document; refused when
+    #: declared with no `part`, since an index is relative to a name.
+    part_index = None
 
     #: `render()` returns a `cq.Workplane`, exactly as `CadQueryNode`
     #: does (design D2): a bare `cq.Shape` would force a broader
@@ -475,6 +538,8 @@ class StepNode(ExactLeafNode):
 
     def _select(self, document):
         if self.part is None:
+            if self.part_index is not None:
+                raise ValueError(self._index_without_part_error(document))
             candidates = document.candidates()
             if len(candidates) == 1:
                 return candidates[0]
@@ -487,9 +552,17 @@ class StepNode(ExactLeafNode):
         if not matches:
             raise ValueError(self._selection_error(
                 document, f'has no product named {self.part!r}'))
-        if len(matches) > 1:
-            raise ValueError(self._ambiguity_error(document, matches))
-        return matches[0]
+        if self.part_index is None:
+            if len(matches) > 1:
+                raise ValueError(self._ambiguity_error(document, matches))
+            return matches[0]
+        if self.part_index < 1 or self.part_index > len(matches):
+            raise ValueError(self._index_range_error(document, matches))
+        # `matches` is in document order (design D1), the same order
+        # `_Document`'s own `_name_index` counts against -- so a 1-based
+        # `part_index` here always names the product the inventory's
+        # `#N` printed for it.
+        return matches[self.part_index - 1]
 
     def _selection_error(self, document, complaint):
         return (
@@ -501,7 +574,25 @@ class StepNode(ExactLeafNode):
         lines = '\n'.join(document.describe(match) for match in matches)
         return (
             f'{self.name}: {self.step_source} has {len(matches)} products '
-            f'named {self.part!r}; the name is ambiguous between:\n{lines}')
+            f'named {self.part!r}; the name is ambiguous between:\n{lines}\n'
+            f'Declare `part_index` to choose between them.')
+
+    def _index_without_part_error(self, document):
+        return (
+            f'{self.name}: {self.step_source} declares part_index='
+            f'{self.part_index!r} with no `part`; an index selects among '
+            f'the products of a declared name. It holds '
+            f'{len(document.order)} products; declare `part = "<name>"` to '
+            f'select one, indexing this inventory:\n{document.inventory()}')
+
+    def _index_range_error(self, document, matches):
+        lines = '\n'.join(document.describe(match) for match in matches)
+        return (
+            f'{self.name}: {self.step_source} part_index='
+            f'{self.part_index} does not select a product named '
+            f'{self.part!r}; it has {len(matches)} '
+            f'product{"s" if len(matches) != 1 else ""}, indexed 1 to '
+            f'{len(matches)}:\n{lines}')
 
     def _require_admissible(self, shape, product):
         if shape.Solids():
@@ -537,21 +628,33 @@ _ZERO_ANGLE_TOLERANCE = 1e-9
 class ProductInfo:
     """One entry of `StepAssembly.products`: a product of the document,
     however many times it is placed (spec "document's assembly
-    structure")."""
+    structure").
 
-    __slots__ = ('name', 'kind', 'occurrence_count', 'solid_count', 'color')
+    `identity` is the product's own label entry -- distinct for every
+    product, stable across reads of one file (design D2) -- and
+    `part_index` is its 1-based position among the products carrying its
+    own name, in document order: 1 for a name no other product shares,
+    `None` for an unnamed product. It is the selector a `StepNode`
+    declares as `part_index` beside `part` to choose this product."""
 
-    def __init__(self, name, kind, occurrence_count, solid_count, color):
+    __slots__ = ('name', 'kind', 'occurrence_count', 'solid_count', 'color',
+                'identity', 'part_index')
+
+    def __init__(self, name, kind, occurrence_count, solid_count, color,
+                identity, part_index):
         self.name = name
         self.kind = kind
         self.occurrence_count = occurrence_count
         self.solid_count = solid_count
         self.color = color
+        self.identity = identity
+        self.part_index = part_index
 
     def __repr__(self):
         return (f'ProductInfo(name={self.name!r}, kind={self.kind!r}, '
                f'occurrence_count={self.occurrence_count}, '
-               f'solid_count={self.solid_count}, color={self.color!r})')
+               f'solid_count={self.solid_count}, color={self.color!r}, '
+               f'identity={self.identity!r}, part_index={self.part_index!r})')
 
 
 class Occurrence:
@@ -565,22 +668,32 @@ class Occurrence:
     root, not a name. It is never the label name, which is absent or
     meaningless depending on the writer (design fact 3).
 
+    `product_identity` and `parent_identity` are the *product* entries
+    of the shape placed and of the assembly it is placed in -- `None`
+    for `parent_identity` at the document root, matching `parent_name`
+    (design D2). A name does not tell two same-named products or two
+    same-named parents apart; their identities always do.
+
     `angle_deg`, `axis` and `translation` are None when `proper` is
     False (design D5): a mirror or a scale cannot be stated as the
     framework's `rotate`/`translate` pair.
     """
 
     __slots__ = ('identity', 'label_name', 'product_name', 'parent_name',
+                'product_identity', 'parent_identity',
                 'matrix', 'world_matrix', 'color', 'proper', 'determinant',
                 'scale_factor', 'angle_deg', 'axis', 'translation')
 
     def __init__(self, identity, label_name, product_name, parent_name,
+                product_identity, parent_identity,
                 matrix, world_matrix, color, proper, determinant,
                 scale_factor, angle_deg, axis, translation):
         self.identity = identity
         self.label_name = label_name
         self.product_name = product_name
         self.parent_name = parent_name
+        self.product_identity = product_identity
+        self.parent_identity = parent_identity
         self.matrix = matrix
         self.world_matrix = world_matrix
         self.color = color
@@ -718,6 +831,8 @@ class StepAssembly:
                 occurrence_count=document.occurrences(raw_product),
                 solid_count=_solid_count(document, raw_product),
                 color=document.color(raw_product),
+                identity=raw_product.entry,
+                part_index=document.part_index(raw_product),
             )
             self.products.append(info)
             if raw_product.is_free and self.root is None:
@@ -739,17 +854,20 @@ class StepAssembly:
             # A bare file: one product, no assembly root at all (spec
             # "a one-part file is one occurrence"). There is no
             # component label to identify it by, so its own product
-            # entry is the identity.
+            # entry is the identity -- and, for the same reason, its own
+            # product_identity too (task 3.2).
             angle_deg, axis, translation = _IDENTITY_DECOMPOSITION
             self.occurrences.append(Occurrence(
                 identity=product.entry, label_name='',
                 product_name=product.name, parent_name=None,
+                product_identity=product.entry, parent_identity=None,
                 matrix=np.eye(4), world_matrix=world, color=None,
                 proper=True, determinant=1.0, scale_factor=1.0,
                 angle_deg=angle_deg, axis=axis, translation=translation))
             return
 
         parent_name = None if product.is_free else product.name
+        parent_identity = None if product.is_free else product.entry
 
         components = TDF_LabelSequence()
         document.shape_tool.GetComponents_s(product.label, components)
@@ -784,6 +902,8 @@ class StepAssembly:
                 label_name=_label_name(component) or '',
                 product_name=target_product.name,
                 parent_name=parent_name,
+                product_identity=target_product.entry,
+                parent_identity=parent_identity,
                 matrix=local_matrix,
                 world_matrix=world_matrix,
                 color=document._label_color(component),

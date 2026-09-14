@@ -335,11 +335,16 @@ one :ref:`StepNode <step-import>` subclass per product that is a part,
 and ``assembly.py``, one ``AssemblyNode`` subclass per assembly product,
 declaring one child per occurrence and a ``render()`` that places each
 one by ``rotate`` then ``translate`` at the document's own placement,
-under a comment naming the occurrence and the file it came from. The
-generated model is a **machine at rest**: it declares no driver and
-defines no ``simulate()`` — which joints move is a design decision the
-pilot makes in the source this command hands over, not a guess the
-document's placements could support.
+under a comment naming the occurrence and the file it came from. Every
+generated class is a **product**, never a name: two distinct products
+sharing one name each get their own class, and a generated class whose
+product name is shared by another product of the document also declares
+``part_index``, so every generated class selects exactly one product and
+the scaffolded model builds. The generated model is a **machine at
+rest**: it declares no driver and defines no ``simulate()`` — which
+joints move is a design decision the pilot makes in the source this
+command hands over, not a guess the document's placements could
+support.
 
 ``--into`` names the package directory the two files are written into,
 created if it does not exist, and given an ``__init__.py`` when it holds

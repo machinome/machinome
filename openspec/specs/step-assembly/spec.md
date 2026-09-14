@@ -2,7 +2,6 @@
 
 ## Purpose
 Reading a STEP document's assembly structure without building it -- every product, every occurrence walked to any depth with its placement and world matrices, each proper placement decomposed exactly into the framework's rotate-then-translate pair and each improper one reported -- and the source the import-step scaffold generates from it: one StepNode per part and one AssemblyNode per assembly, placed at rest, never retyped by hand.
-
 ## Requirements
 ### Requirement: The document's assembly structure is readable
 
@@ -20,6 +19,14 @@ top-level shape, counted once however many times it is placed — carrying
 the product's name, its kind (`part`, `sub-assembly` or `root assembly`),
 its occurrence count, its solid count and its colour, the same facts the
 `StepNode` inventory reports.
+
+Because a name does not identify a product, each entry SHALL also carry the
+product's own identity within the document — distinct for every product,
+stable across reads of one file — and the index a `StepNode` must declare
+beside `part` to select it: its 1-based position among the products of that
+name in document order, which is 1 for a name no other product shares. Two
+products of one name SHALL therefore be told apart from the report alone,
+without reading their geometry.
 
 #### Scenario: The products of an assembly document are reported
 
@@ -41,6 +48,14 @@ its occurrence count, its solid count and its colour, the same facts the
   a `StepAssembly` is then constructed over the same file
 - **THEN** no further read or transfer of the document is performed
 
+#### Scenario: Two products of one name are distinguished in the report
+
+- **WHEN** a `StepAssembly` is constructed over a document holding two
+  distinct products named `Pin`
+- **THEN** the two entries carry different identities and the selectors 1
+  and 2, in document order, and each selector selects that product's own
+  geometry through a `StepNode`
+
 ### Requirement: Every occurrence of the document is walked
 
 `StepAssembly` SHALL report `occurrences`, one entry per *placement* in the
@@ -51,8 +66,11 @@ carry:
   writing CAD package named the component label — the occurrence's label
   name SHALL be reported when the file carries one and SHALL NOT be the
   entry's only identity;
-- the name of the product placed;
-- the name of the product it is placed in, or the document's root;
+- the name of the product placed, and that product's own identity in the
+  document, so an occurrence names one product even when several share its
+  name;
+- the name of the product it is placed in, and that product's identity, or
+  the document's root — for which both are absent;
 - its **placement matrix**, the 4x4 transform of the occurrence in its
   parent product's frame, as the document states it;
 - its **world matrix**, the composition of its own placement matrix with
@@ -93,6 +111,14 @@ placement.
 - **WHEN** a `StepAssembly` is constructed over a file holding a single
   part and no assembly
 - **THEN** one occurrence is reported, at the identity placement
+
+#### Scenario: Same-named parents are told apart by their occurrences
+
+- **WHEN** a document holds two distinct sub-assemblies both named `Stage`,
+  each holding a different part
+- **THEN** each part's occurrence reports the identity of the `Stage` it is
+  placed in, and the two identities differ, so the two sub-assemblies'
+  contents are never merged
 
 ### Requirement: A placement is decomposed into the framework's two operations
 
@@ -180,11 +206,18 @@ read: the products and every other occurrence are still reported.
 
 The scaffold SHALL write a `parts.py` holding one `StepNode` subclass per
 product of the document that is a part — never for a sub-assembly or the
-root — in the declarative class-body idiom.
+root — in the declarative class-body idiom. One class SHALL be written per
+part PRODUCT, never per part name: two distinct products of one name SHALL
+each get their own class, and neither SHALL be dropped or overwritten by the
+other.
 
 Each class SHALL declare `step_source`, the path of the STEP file relative
 to the directory the module is written into, and `part`, the product's name
-exactly as the document carries it. It SHALL declare no colour, so the
+exactly as the document carries it. When another product of the document
+carries that same name, the class SHALL also declare the index that selects
+this product among them, so every generated class selects exactly one
+product and the scaffolded model builds. A class whose product name is its
+own SHALL declare no index. It SHALL declare no colour, so the
 document's colour reaches the model through the leaf. It SHALL declare
 `angular_deflection = 0.5` under a comment saying why — a vendor document
 is fillets and threads, and the framework's 0.1 rad default costs an order
@@ -204,8 +237,9 @@ appending `_2`, `_3` and so on in document order.
 
 The rule is not injective, so the class name SHALL NOT be the record of
 which product a class is: `part` carries the exact product name on every
-generated class, including on a document holding one product only, so the
-product is always recoverable from the generated file.
+generated class, including on a document holding one product only, and the
+index carries the rest wherever the name is shared, so the product is always
+recoverable from the generated file.
 
 #### Scenario: A part becomes a leaf class
 
@@ -228,16 +262,26 @@ product is always recoverable from the generated file.
 - **WHEN** the document holds a root assembly and a sub-assembly
 - **THEN** `parts.py` holds no class for either
 
+#### Scenario: Same-named parts become distinct selecting classes
+
+- **WHEN** the document holds two distinct parts named `Pin`
+- **THEN** `parts.py` holds two classes, one selecting the first `Pin` and
+  one the second, and building each yields that product's own geometry
+
 ### Requirement: Generated assembly source
 
 The scaffold SHALL write an `assembly.py` holding one `AssemblyNode`
 subclass per assembly product of the document, the root's class named from
-the model name.
+the model name. One class SHALL be written per assembly PRODUCT, never per
+assembly name: two distinct sub-assemblies of one name SHALL each get their
+own class holding its own children, and neither SHALL absorb the other's.
 
 Each class SHALL declare one child per occurrence of that assembly in its
 class body — a `StepNode` subclass from `parts.py` for a part, the
 generated `AssemblyNode` subclass for a sub-assembly — with one attribute
-name per occurrence. Attribute names SHALL be derived from the product name
+name per occurrence. Each child SHALL be the class generated for the product
+that occurrence actually places, which a name alone does not determine.
+Attribute names SHALL be derived from the product name
 by the same splitting rule, lower-cased and joined with underscores,
 prefixed `p_` when the result does not start with a letter, and suffixed
 `_1`, `_2` … in document order when that assembly places the product more
@@ -256,6 +300,12 @@ decomposition of that occurrence's placement matrix in this assembly's
 frame, and SHALL emit neither operation when it is the identity. Each
 placement SHALL be preceded by a comment naming the occurrence and the
 document the matrix came from.
+
+Every module the scaffold writes SHALL be valid Python. A `render()` that
+states no operation at all — because every child of that assembly stands at
+the identity, or because it has no child — SHALL carry an inert statement
+under its comments, so a generated module always imports and the placements
+it does state are unaffected.
 
 The generated source SHALL describe the machine at rest: it SHALL declare
 no driver, define no `simulate()`, and apply no motion.
@@ -293,3 +343,20 @@ no driver, define no `simulate()`, and apply no motion.
 
 - **WHEN** the generated source is read
 - **THEN** it declares no driver and defines no `simulate()`
+
+#### Scenario: An assembly of unplaced children still parses
+
+- **WHEN** the document places every child of an assembly at the identity —
+  including a file whose one part is wrapped in a root that moves it
+  nowhere
+- **THEN** the generated module parses and imports, that `render()` states
+  no operation, and the model it builds holds the same geometry
+
+#### Scenario: Same-named sub-assemblies become distinct classes
+
+- **WHEN** the document holds two distinct sub-assemblies named `Stage`,
+  one holding `Alpha` and one holding `Beta`
+- **THEN** `assembly.py` holds a class for each, the first declaring
+  `Alpha` alone and the second `Beta` alone, and the generated model holds
+  exactly the document's solids
+
