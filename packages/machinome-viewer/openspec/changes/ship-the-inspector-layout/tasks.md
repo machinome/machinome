@@ -241,7 +241,7 @@ Only now, with a green served page behind it.
 
 ## 6. The declared version
 
-- [ ] 6.1 **Red** — `src/version.test.ts:62-64` expects 11, its comment
+- [x] 6.1 **Red** — `src/version.test.ts:62-64` expects 11, its comment
       extending the capability history with the reason (the bundle now
       carries a layout to mount the navigator in, and a development mount
       built on it; 10 is the bundle with a navigator and nowhere to put
@@ -252,10 +252,10 @@ Only now, with a green served page behind it.
       *Red against `package.json:4`, which says 10.*
       Commands: `npx vitest run src/version.test.ts` and
       `PYTHONPATH="$PWD" … -m pytest tests/test_bundle.py -q -k version`
-- [ ] 6.2 **Green** — `solid_node_viewer/widget/package.json`:
+- [x] 6.2 **Green** — `solid_node_viewer/widget/package.json`:
       `solidNodeViewerApi: 11`. Nothing else declares it
       (`bundle.py:51-54` reads that file).
-- [ ] Commit: `feat(viewer): declare API version 11`.
+- [x] Commit: `feat(viewer): declare API version 11`.
 
 ## 7. The records
 

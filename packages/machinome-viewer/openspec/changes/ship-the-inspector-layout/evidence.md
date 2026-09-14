@@ -649,3 +649,78 @@ $ cd solid_node_viewer/widget && npx tsc --noEmit && npm test
 $ PYTHONPATH="$PWD" … -m pytest -q
 95 passed, 24 warnings in 68.09s
 ```
+
+## 6. The declared version
+
+### 6.1 Red
+
+`src/version.test.ts:62-64`'s assertion moves to 11, its comment
+extending the capability history (the layout to mount the navigator in,
+and a development mount built on it; 10 was the bundle with a navigator
+and nowhere to put it). `tests/test_widget_e2e.py:190`,
+`tests/test_running_document.py:146` and `tests/test_bundle.py`
+(`test_declares_api_version_ten` renamed to
+`test_declares_api_version_eleven`, its name saying the number it
+asserts) follow.
+
+```
+$ cd solid_node_viewer/widget && npx vitest run src/version.test.ts
+ ✓ ... 5 passed
+ ✗ declares the inspector-layout API as version 11
+   - 11
+   + 10
+ Test Files  1 failed (1) | Tests  1 failed | 5 passed (6)
+
+$ PYTHONPATH="$PWD" … -m pytest tests/test_bundle.py -q -k version
+FAILED …test_declares_api_version_eleven: AssertionError: 10 != 11
+1 failed, 3 passed, 5 deselected
+
+$ PYTHONPATH="$PWD" … -m pytest tests/test_widget_e2e.py -q -k version
+FAILED …test_the_bundle_and_mount_handle_report_one_api_version: AssertionError: 10 != 11
+1 failed, 28 deselected
+
+$ PYTHONPATH="$PWD" … -m pytest tests/test_running_document.py -q
+FAILED …test_ten_add_ones_accumulate_the_carry_on_the_page: AssertionError: 10 != 11
+1 failed, 5 passed
+```
+Red as expected against `package.json:4`, which still said 10.
+
+### 6.2 Green
+
+`solid_node_viewer/widget/package.json`: `solidNodeViewerApi: 11`.
+Nothing else declares it (`bundle.py:api_version()` reads that file).
+
+```
+$ npx vitest run src/version.test.ts
+ ✓ src/version.test.ts (6 tests) 6ms
+
+$ npx tsc --noEmit
+(no output, exit 0)
+
+$ npm run build
+  dist/solid-widget.js  660.2kb
+
+$ PYTHONPATH="$PWD" … -m pytest tests/test_bundle.py -q -k version
+4 passed, 5 deselected
+
+$ PYTHONPATH="$PWD" … -m pytest tests/test_widget_e2e.py -q -k version
+1 passed, 28 deselected
+
+$ PYTHONPATH="$PWD" … -m pytest tests/test_running_document.py -q
+6 passed in 21.39s
+
+$ npm test
+ Test Files  34 passed (34)
+      Tests  642 passed (642)
+
+$ PYTHONPATH="$PWD" … -m pytest -q
+95 passed, 24 warnings in 68.44s   # one flake this run, see below
+```
+
+**Observed flake, not a regression.** One full-suite run showed
+`InspectorLayoutE2ETest::test_the_toggle_opens_the_sidebar_and_the_canvas_narrows`
+failing; run alone it passed immediately (`1 passed in 1.66s`), and a
+second full-suite run passed clean (`95 passed`). Consistent with
+`--use-angle=swiftshader` software-rendering timing variance under a
+loaded suite (`bounding_box()` read racing a still-resizing canvas), not
+a defect this change introduces — no code changed between the two runs.

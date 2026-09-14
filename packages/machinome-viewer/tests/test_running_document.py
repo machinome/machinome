@@ -143,7 +143,7 @@ class RunningDocumentTest(TestCase):
                              'the handle reported no run')
         self.assertEqual(result['identity'],
                          self.document['program']['identity'])
-        self.assertEqual(result['apiVersion'], 10)
+        self.assertEqual(result['apiVersion'], 11)
         self.assertAlmostEqual(result['dt'], 1 / 240, places=12)
 
         # The rest bank, before any tick.

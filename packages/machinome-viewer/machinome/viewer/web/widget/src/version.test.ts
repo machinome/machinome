@@ -59,8 +59,16 @@ describe('API_VERSION', () => {
   // is a capability a host may require -- rather than build its own tree
   // over the state version 9 published -- and this is the number that
   // tells it whether the bundle carries one.
-  it('declares the mountable-navigator API as version 10', () => {
-    expect(API_VERSION).toBe(10);
+  // Mounting the composed inspector layout (OpenSpec
+  // `ship-the-inspector-layout`, ADR-051) is the one after that (11):
+  // `SolidNodeWidget.mountInspector` -- the sidebar, the navigator and
+  // the viewer composed into one host element -- and
+  // `mountDevelopment`, the development page's own mount built on it,
+  // are capabilities a host may require rather than lay the parts out
+  // itself; 10 was the bundle that carried a navigator with nowhere to
+  // put it.
+  it('declares the inspector-layout API as version 11', () => {
+    expect(API_VERSION).toBe(11);
   });
 });
 
