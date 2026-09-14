@@ -435,6 +435,25 @@ function AssemblyPanel({ assembly, viewer }: {
   </section>;
 }
 
+function AssemblyNavigator({ viewer }: { viewer: ViewerHandle | null }) {
+  const host = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const target = host.current;
+    if (target === null || viewer === null) return;
+    const widget = window.SolidNodeWidget;
+    if (!widget || typeof widget.mountNavigator !== "function") return;
+    const mounted = widget.mountNavigator(target, viewer, { label: "Assembly", fullAssembly: true });
+    return () => mounted.dispose();
+  }, [viewer]);
+
+  return <section className="assembly-panel" aria-labelledby="assembly-heading">
+    <h2 id="assembly-heading">MODEL</h2>
+    {viewer === null ? <p className="empty">No model assembly is available.</p> : null}
+    <div className="assembly-navigator-host" ref={host} />
+  </section>;
+}
+
 function ProfileConversation({
   entries,
   failedAgents,
@@ -595,19 +614,36 @@ function relativeTime(value: string | null) {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
+// Mirrors solid-node-widget.d.ts's `SOLID_NODE_VIEWER_API_VERSION`: that
+// declaration file has no runtime module of its own to import a value from
+// (it is types only), so the required version is duplicated here.
+const REQUIRED_VIEWER_API = 10;
+
+function verifyLoadedViewer(): void {
+  const widget = window.SolidNodeWidget;
+  if (!widget || widget.apiVersion < REQUIRED_VIEWER_API) {
+    throw new Error("the framework viewer is unavailable");
+  }
+}
+
 function loadViewer(session: string) {
-  if (window.SolidNodeWidget) return Promise.resolve();
+  if (window.SolidNodeWidget) {
+    try { verifyLoadedViewer(); return Promise.resolve(); } catch (error) { return Promise.reject(error); }
+  }
   return new Promise<void>((resolve, reject) => {
+    const settle = () => {
+      try { verifyLoadedViewer(); resolve(); } catch (error) { reject(error as Error); }
+    };
     const existing = document.querySelector<HTMLScriptElement>("script[data-solid-node-viewer]");
     if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("load", settle, { once: true });
       existing.addEventListener("error", () => reject(new Error("the framework viewer is unavailable")), { once: true });
       return;
     }
     const script = document.createElement("script");
     script.dataset.solidNodeViewer = "true";
     script.src = `/api/sessions/${encodeURIComponent(session)}/viewer/solid-widget.js`;
-    script.onload = () => resolve();
+    script.onload = settle;
     script.onerror = () => reject(new Error("the framework viewer is unavailable"));
     document.head.append(script);
   });
@@ -1955,7 +1991,7 @@ function Workspace({ path: entryPath }: { path: string }) {
           ))}
         </nav>
         <aside className={`workspace-context ${activeArea === "model" ? "" : "area-hidden"}`} aria-label="Agent context">
-          <AssemblyPanel assembly={assembly} viewer={viewerHandle} />
+          <AssemblyNavigator viewer={viewerHandle} />
           <AgentPanel agents={run?.agents ?? []} />
         </aside>
         <section className={`artifact-view ${activeArea === "model" ? "" : "area-hidden"}`} aria-labelledby="artifact-heading">
