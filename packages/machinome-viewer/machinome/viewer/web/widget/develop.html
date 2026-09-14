@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<!--
+  solid-node-viewer - the browser viewer for solid-node models
+  Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+  SPDX-License-Identifier: AGPL-3.0-only
+
+  The development page: served by this package's own server at `/`
+  (design D9, D10). Not a published name like index.html -- served here
+  and named nowhere else. Everything testable lives in the bundle;
+  this file does only what code inside a bundle cannot do for itself --
+  check whether the bundle exists at all, and inject the script tag
+  that loads it.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>solid-node model</title>
+  <style>
+    html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    function showRemedy(reason) {
+      document.getElementById('root').textContent = String(
+        (reason && reason.message) || reason || 'solid-widget: the viewer bundle is unavailable');
+    }
+    function loadScript(src) {
+      return new Promise(function (resolve, reject) {
+        var script = document.createElement('script');
+        script.src = src;
+        script.onload = function () { resolve(); };
+        script.onerror = function () { reject(new Error('Failed to load ' + src)); };
+        document.head.appendChild(script);
+      });
+    }
+    fetch('/_viewer').then(function (response) { return response.json(); }).then(function (status) {
+      if (!status.available) {
+        showRemedy(status.remedy);
+        return;
+      }
+      loadScript('/_viewer/bundle.js').then(function () {
+        // ?sidebar=collapsed forwarded for a link that wants the model
+        // alone (design D10 point 1); ?sidebar=open is the page's own
+        // default and needs no forwarding.
+        var params = new URLSearchParams(window.location.search);
+        var options = {};
+        var sidebar = params.get('sidebar');
+        if (sidebar === 'open' || sidebar === 'collapsed') {
+          options.sidebar = sidebar;
+        }
+        return window.SolidNodeWidget.mountDevelopment('#root', options);
+      }).catch(showRemedy);
+    }).catch(showRemedy);
+  </script>
+</body>
+</html>

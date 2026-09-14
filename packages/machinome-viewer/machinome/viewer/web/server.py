@@ -23,11 +23,10 @@ import httpx
 import uvicorn
 from fastapi import FastAPI, HTTPException, Response, WebSocket
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from starlette.websockets import WebSocketDisconnect
 
 from solid_node_viewer.bundle import (
-    APP_DIR, api_version, app_build_path, bundle_path, has_bundle,
+    APP_DIR, api_version, bundle_path, develop_page_path, has_bundle,
     missing_bundle_remedy,
 )
 
@@ -104,11 +103,13 @@ class WebViewer:
         self._setup_build_snapshot()
         self._setup_viewer_bundle()
         self._setup_reload_websocket()
-
-        if dev:
-            self._setup_proxy_server()
-        else:
-            self._setup_frontend_server()
+        # The development page is a static file this package carries
+        # (design D13); `dev` no longer selects between it and a proxied
+        # npm dev server (design D14 -- there is no longer a second
+        # frontend process to proxy to). Kept as a constructor parameter
+        # so `cli.py` goes on accepting `--dev`/`--start-frontend`
+        # harmlessly for a released framework.
+        self._setup_development_page()
 
     def start(self):
         logger.info('START - will listen on port %s', self.port)
@@ -170,26 +171,22 @@ class WebViewer:
                 }, status_code=503)
             return FileResponse(bundle_path(), media_type='application/javascript')
 
-    def _setup_frontend_server(self):
-        frontend_dir = app_build_path()
-        if not frontend_dir.is_dir():
-            # A source checkout that has not built the app. Say so on the
-            # page rather than failing to start: the build routes, the
-            # error surface and the bundle are still worth serving.
-            @self.app.get('/')
-            async def missing_app():
-                return JSONResponse({
-                    'remedy': f'Development app not built at {frontend_dir}. '
-                              f'Build it with: cd {APP_DIR} && npm ci && '
-                              'npm run build.',
-                }, status_code=503)
-            return
+    def _setup_development_page(self):
+        page = develop_page_path()
 
         @self.app.get('/')
         async def read_root():
-            return FileResponse(frontend_dir / 'index.html')
-
-        self.app.mount('/', StaticFiles(directory=frontend_dir), name='frontend')
+            # A defensive route for the file being absent (design D13):
+            # it can only mean a broken installation, but answering 503
+            # with the file's own path is cheaper than a FileResponse
+            # raising inside uvicorn, and every other route -- the
+            # build, bundle and error surfaces -- stays available.
+            if not page.is_file():
+                return JSONResponse({
+                    'remedy': f'Development page not found at {page}. This '
+                              'installation is missing a package file.',
+                }, status_code=503)
+            return FileResponse(page)
 
     def _setup_proxy_server(self):
         @self.app.get('/')

@@ -143,7 +143,7 @@ checklist.
 Design D9, D10, D11, D13. **This increment lands before the deletion**, so
 the app is still there if the page is wrong (design risk 1).
 
-- [ ] 4.1 **Red** — `src/develop.test.ts` (jsdom) against a stub
+- [x] 4.1 **Red** — `src/develop.test.ts` (jsdom) against a stub
       `mountInspector` and a stub `fetch`:
       - `mountDevelopment('#root')` mounts the inspector on
         `/build/viewer.json` with `animation: 'inline'`, `autoplay:
@@ -162,24 +162,24 @@ the app is still there if the page is wrong (design risk 1).
         inspector mounted; clearing the error removes the pane (design
         D11).
       *Red: `src/develop.ts` does not exist.*
-- [ ] 4.2 **Green** — `src/develop.ts`: `mountDevelopment`,
+- [x] 4.2 **Green** — `src/develop.ts`: `mountDevelopment`,
       `DevelopmentOptions`, `DevelopmentHandle`, the error pane; exported
       on the global from `widget.ts`.
-- [ ] 4.3 **Red** — `tests/test_server.py`: `test_an_unbuilt_app_is_reported_not_fatal`
+- [x] 4.3 **Red** — `tests/test_server.py`: `test_an_unbuilt_app_is_reported_not_fatal`
       becomes `test_the_development_page_is_served_from_the_package`
       (a `FileResponse` of the page, 200, carrying the bundle route and
       `mountDevelopment`), and `DevelopmentAppBrowserTest`'s `skipTest`
       (`:146-147`) is deleted so the browser test actually runs.
       *Red: `/` still serves `app/build` or a 503.*
       Command: `PYTHONPATH="$PWD" … -m pytest tests/test_server.py -q`
-- [ ] 4.4 **Green** — `solid_node_viewer/widget/develop.html` (design D10:
+- [x] 4.4 **Green** — `solid_node_viewer/widget/develop.html` (design D10:
       the availability check, the script injection, `mountDevelopment`,
       and the page's own `<style>` for `html, body, #root`);
       `bundle.py`: `develop_page_path()` added beside `index_path()`
       (`bundle.py:30-32`); `server.py._setup_frontend_server` replaced by
       a `/` that answers that file, with a 503 naming the file if it is
       absent, and **no** `StaticFiles` mount. Rerun 4.3.
-- [ ] 4.5 **Red** — `tests/test_server.py`, the claim the whole cycle
+- [x] 4.5 **Red** — `tests/test_server.py`, the claim the whole cycle
       turns on: `test_a_republished_document_updates_the_page_in_place`.
       Serve a published build, open it in Playwright, stamp the page
       (`window.__pageLoad = performance.now()` or a counter installed
@@ -192,9 +192,9 @@ the app is still there if the page is wrong (design risk 1).
       *Red before 4.4 is green; run it after to confirm it passes for the
       right reason, then break the reloader deliberately once to confirm
       the test can fail.*
-- [ ] 4.6 **Green** — whatever 4.5 exposes; if nothing, record that and
+- [x] 4.6 **Green** — whatever 4.5 exposes; if nothing, record that and
       the deliberate-break check in `evidence.md`.
-- [ ] Commit: `feat(develop): serve the development page from the package`.
+- [x] Commit: `feat(develop): serve the development page from the package`.
 
 ## 5. React and Create React App leave
 

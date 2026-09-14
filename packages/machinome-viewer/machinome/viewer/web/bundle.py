@@ -32,6 +32,17 @@ def index_path():
     return WIDGET_DIR / INDEX_NAME
 
 
+def develop_page_path():
+    """Return the development page path.
+
+    Unlike the export page, this is not a published name -- it is served
+    by this package's own server at ``/`` and named nowhere else. It sits
+    beside the bundle it is authored against, so its version can never
+    drift from it (design D9).
+    """
+    return WIDGET_DIR / 'develop.html'
+
+
 def app_build_path():
     """Return the built development app directory."""
     return APP_DIR / 'build'

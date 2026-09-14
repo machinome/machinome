@@ -19,6 +19,8 @@ export { mountNavigator } from './navigator';
 export type { NavigatorHandle, NavigatorOptions } from './navigator';
 export { mountInspector } from './inspector';
 export type { InspectorHandle, InspectorOptions } from './inspector';
+export { mountDevelopment } from './develop';
+export type { DevelopmentHandle, DevelopmentOptions } from './develop';
 export const apiVersion = API_VERSION;
 
 function autoMount(): void {

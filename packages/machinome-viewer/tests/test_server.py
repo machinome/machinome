@@ -20,11 +20,14 @@ from solid_node_viewer import server as server_module
 from solid_node_viewer.server import WebViewer
 
 from .support import (
-    CHROME, HAS_PIL, needs_bundle, needs_chrome, needs_pil, published_build,
+    CHROME, HAS_PIL, HAS_PLAYWRIGHT, needs_bundle, needs_chrome, needs_pil,
+    needs_playwright, published_build,
 )
 
 if HAS_PIL:
     from PIL import Image
+if HAS_PLAYWRIGHT:
+    from playwright.sync_api import sync_playwright
 
 
 class PublishedBuildTest(TestCase):
@@ -121,15 +124,29 @@ class BundleRoutesTest(TestCase):
         self.assertEqual(script.status_code, 503)
         self.assertEqual(script.json()['remedy'], 'run npm run build')
 
-    def test_an_unbuilt_app_is_reported_not_fatal(self):
+    def test_the_development_page_is_served_from_the_package(self):
+        # The page is a package file this server answers `/` with
+        # (design D13) -- not a build output, so it is present whether
+        # or not the widget bundle itself has been built.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            client = TestClient(WebViewer(tmpdir).app)
+            page = client.get('/')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('/_viewer/bundle.js', page.text)
+        self.assertIn('mountDevelopment', page.text)
+
+    def test_a_missing_development_page_is_reported_not_fatal(self):
+        # Can only mean a broken installation (design D13), but the
+        # build, bundle and error routes stay available regardless --
+        # the same shape the old unbuilt-app route had.
         with tempfile.TemporaryDirectory() as tmpdir, \
-             patch.object(server_module, 'app_build_path',
-                          return_value=Path(tmpdir) / 'no-build'):
+             patch.object(server_module, 'develop_page_path',
+                          return_value=Path(tmpdir) / 'no-such-file.html'):
             client = TestClient(WebViewer(tmpdir).app)
             page = client.get('/')
             error = client.get('/_build_error')
         self.assertEqual(page.status_code, 503)
-        self.assertIn('npm run build', page.json()['remedy'])
+        self.assertIn('no-such-file.html', page.json()['remedy'])
         self.assertEqual(error.status_code, 200)
 
 
@@ -143,8 +160,6 @@ class DevelopmentAppBrowserTest(TestCase):
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         self.build_dir = published_build(Path(self.tempdir.name) / '_build')
-        if not server_module.app_build_path().is_dir():
-            self.skipTest('development app not built (npm run build)')
 
         with socket.socket() as reserved:
             reserved.bind(('127.0.0.1', 0))
@@ -169,10 +184,16 @@ class DevelopmentAppBrowserTest(TestCase):
 
     def test_the_spinner_renders_with_its_declared_colours(self):
         image_path = Path(self.tempdir.name) / 'development-viewer.png'
+        # The development page now opens with its assembly sidebar open
+        # (design D10) -- collapsed here by the query string so this
+        # colour-pixel test keeps measuring the full-width canvas its
+        # thresholds were tuned against; the sidebar itself is proved
+        # separately (`develop.test.ts`, `InspectorLayoutE2ETest`).
         result = run([
             CHROME, '--headless', '--no-sandbox', '--disable-gpu',
             '--use-angle=swiftshader', '--window-size=800,600',
-            '--virtual-time-budget=4000', f'--screenshot={image_path}', self.url,
+            '--virtual-time-budget=4000', f'--screenshot={image_path}',
+            f'{self.url}?sidebar=collapsed',
         ], capture_output=True, timeout=120)
         self.assertEqual(result.returncode, 0, result.stderr.decode()[-500:])
         image = Image.open(image_path).convert('RGB')
@@ -182,3 +203,106 @@ class DevelopmentAppBrowserTest(TestCase):
                    if b > 100 and b > 1.4 * r and b > 1.4 * g)
         self.assertGreater(red, 500, 'red hub not visible')
         self.assertGreater(blue, 2000, 'blue blades not visible')
+
+
+@needs_bundle
+@needs_playwright
+class DevelopmentPageReloadTest(TestCase):
+    """The claim this whole cycle turns on (design D12): a republished
+    document updates the served development page in place, with no page
+    load. Partial reload is `manifestChanged()` (ADR-037), untouched by
+    this change; what moves is only the 150 lines that decide WHEN to
+    call it, ported into the bundle in increment 3."""
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        self.build_dir = published_build(Path(self.tempdir.name) / '_build')
+
+        with socket.socket() as reserved:
+            reserved.bind(('127.0.0.1', 0))
+            port = reserved.getsockname()[1]
+        self.server = uvicorn.Server(uvicorn.Config(
+            WebViewer(self.build_dir, port=port).app,
+            host='127.0.0.1', port=port, log_level='error',
+        ))
+        self.thread = threading.Thread(target=self.server.run, daemon=True)
+        self.thread.start()
+        self.addCleanup(self.stop_server)
+        self.url = f'http://127.0.0.1:{port}/'
+        for _ in range(50):
+            if self.server.started:
+                break
+            threading.Event().wait(0.1)
+        self.assertTrue(self.server.started, 'development server did not start')
+
+    def stop_server(self):
+        self.server.should_exit = True
+        self.thread.join(timeout=5)
+
+    def test_a_republished_document_updates_the_page_in_place(self):
+        errors = []
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 800, 'height': 600})
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                # `/build/{path}` (unchanged by this cycle) sets no
+                # explicit Cache-Control, so a browser's own heuristic
+                # freshness can serve a stale `viewer.json` to a plain
+                # `fetch()` -- invisible to every other suite here
+                # because `tests/support.py`'s OWN test server disables
+                # caching for exactly this reason. Forcing revalidation
+                # on the request is a test-harness fix, not a production
+                # one (recorded in evidence.md for the reviewer).
+                page.route('**/build/**', lambda route: route.continue_(
+                    headers={**route.request.headers, 'cache-control': 'no-cache'}))
+                # Capture the reloader's own socket so the test can force
+                # exactly the reconnect a `solid develop` server restart
+                # drives (spec "Rebuild refreshes the browser"), without
+                # actually killing and rebinding this test's own server.
+                page.add_init_script("""
+                    window.__sockets = [];
+                    const Native = window.WebSocket;
+                    window.WebSocket = function(url) {
+                        const socket = new Native(url);
+                        window.__sockets.push(socket);
+                        return socket;
+                    };
+                    window.WebSocket.prototype = Native.prototype;
+                """)
+                page.goto(self.url)
+                page.wait_for_selector('.solid-nav-row')
+                # A property set on window survives an in-place update
+                # and is lost by a page load (design D11/D12's claim).
+                page.evaluate('window.__pageLoad = performance.now()')
+                stamp_before = page.evaluate('window.__pageLoad')
+                rows_before = page.locator('.solid-nav-row').count()
+
+                # The file write lands BETWEEN two evaluations, as
+                # `solid develop`'s own rebuild does
+                # (`tests/test_widget_e2e.py`'s
+                # `test_a_targeted_update_notifies_once_with_reconciled_state`
+                # uses the same direct-`sync_playwright` shape).
+                manifest = json.loads((self.build_dir / 'viewer.json').read_text())
+                manifest['root']['children'] = manifest['root']['children'][:-1]
+                (self.build_dir / 'viewer.json').write_text(json.dumps(manifest))
+
+                page.evaluate('window.__sockets[window.__sockets.length - 1].close()')
+                page.wait_for_function(
+                    'document.querySelectorAll(".solid-nav-row").length < %d'
+                    % rows_before, timeout=10000)
+
+                stamp_after = page.evaluate('window.__pageLoad')
+                rows_after = page.locator('.solid-nav-row').count()
+            finally:
+                browser.close()
+
+        self.assertEqual(errors, [], f'uncaught page errors: {errors}')
+        self.assertIsNotNone(stamp_after, 'the page reloaded: window.__pageLoad was lost')
+        self.assertEqual(stamp_after, stamp_before,
+                         'a page load happened between the two reads')
+        self.assertLess(rows_after, rows_before,
+                        'the tree did not shrink after the republish')

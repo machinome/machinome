@@ -272,3 +272,237 @@ $ npm test
       Tests  635 passed (635)
 ```
 32 pre-existing files + `reloader.test.ts` = 33.
+
+## 4. The development page, served
+
+Design D9, D10, D11, D13. Landed before the deletion (increment 5), so
+the CRA app is still there if the page were wrong.
+
+### 4.1 Red
+
+`src/develop.test.ts` (jsdom) against a stub `mountInspector` (design
+D15's seam applied again: `mountDevelopmentWith(mountInspectorFn, ...)`)
+and a stub `fetch`/`WebSocket`: `mountDevelopment('#root')` mounts the
+inspector on `/build/viewer.json` with `animation: 'inline', autoplay:
+true, sidebar: 'open'`; an explicit `sidebar` option wins; `sourceUrl`
+overrides the document and is not forwarded to `mountInspector`;
+`document.title` becomes the model's name split on capitals
+(`viewerShell.test.ts`'s `SpinnerProject` → `Spinner Project` case); the
+reloader's reload calls `inspector.viewer.manifestChanged()`, never
+`reload()`; a build error shows `.solid-inspector-error` with the
+message and leaves the inspector mounted, and clearing the error removes
+the pane.
+
+```
+$ cd solid_node_viewer/widget && npx vitest run src/develop.test.ts
+Error: Failed to resolve import "./develop" from "src/develop.test.ts". Does the file exist?
+ Test Files  1 failed (1)
+      Tests  no tests
+```
+Red as expected: `src/develop.ts` did not exist.
+
+### 4.2 Green
+
+`src/develop.ts`: `mountDevelopment`, `mountDevelopmentWith`,
+`DevelopmentOptions`, `DevelopmentHandle`, the error pane (a `position:
+fixed` `<pre class="solid-inspector-error">` injected via its own
+`#solid-node-develop-style`), `titleFromName` ported byte-for-byte from
+`viewerShell.ts:89-93`. `mountDevelopment` and its types exported on the
+global from `widget.ts`.
+
+```
+$ npx vitest run src/develop.test.ts
+ ✓ src/develop.test.ts (7 tests) 81ms
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+
+$ npx tsc --noEmit
+(no output, exit 0)
+
+$ npm test
+ Test Files  34 passed (34)
+      Tests  642 passed (642)
+```
+Green on the first pass.
+
+### 4.3 Red — the served page
+
+`tests/test_server.py`: `test_an_unbuilt_app_is_reported_not_fatal`
+becomes `test_the_development_page_is_served_from_the_package` (200,
+carrying `/_viewer/bundle.js` and `mountDevelopment`) plus
+`test_a_missing_development_page_is_reported_not_fatal` (the defensive
+503 design D13 asks for, naming the file). `DevelopmentAppBrowserTest`'s
+`skipTest` (`:146-147`) is deleted.
+
+```
+$ PYTHONPATH="$PWD" … -m pytest tests/test_server.py -q
+FAILED tests/test_server.py::BundleRoutesTest::test_a_missing_development_page_is_reported_not_fatal
+  AttributeError: <module 'solid_node_viewer.server' ...> does not have the attribute 'develop_page_path'
+FAILED tests/test_server.py::BundleRoutesTest::test_the_development_page_is_served_from_the_package
+  AssertionError: 503 != 200
+FAILED tests/test_server.py::DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+  AssertionError: 1656 not greater than 2000 : blue blades not visible
+3 failed, 8 passed, 6 warnings in 1.27s
+```
+Red as expected. The third failure is the newly-unskipped browser test
+running for the first time in this environment, against the OLD `/`
+route (still the unbuilt-app 503 JSON remedy, which Chrome's own
+JSON-syntax-highlighter apparently colours enough to clear the red
+threshold but not the blue one) — exactly the state this increment
+exists to fix.
+
+### 4.4 Green
+
+`bundle.py`: `develop_page_path()` added beside `index_path()`.
+`solid_node_viewer/widget/develop.html` (design D10: the availability
+check, the script injection, forwarding `?sidebar=` to
+`mountDevelopment`, and the page's own `<style>`).
+`server.py._setup_frontend_server` replaced by
+`_setup_development_page`: `/` unconditionally answers
+`FileResponse(develop_page_path())`, 503 naming the path if absent, no
+`StaticFiles` mount. `dev` is read but ignored (design D13/D14) — the
+`if dev: proxy else: frontend` branch in `__init__` is now a single
+unconditional call, since `/` no longer depends on it; `_setup_proxy_server`
+and `WebDevServer` are left in place, unused, for increment 5 to delete.
+The now-unused `app_build_path`/`StaticFiles` imports are dropped from
+`server.py` (a live import for a route that no longer reads it, not a
+deletion task 5 owns).
+
+```
+$ npm run build
+  dist/solid-widget.js  657.2kb   # (stale -- see below)
+
+$ PYTHONPATH="$PWD" … -m pytest tests/test_server.py -q
+..........F
+FAILED …DevelopmentAppBrowserTest::test_the_spinner_renders_with_its_declared_colours
+  AssertionError: 428 not greater than 500 : red hub not visible
+1 failed, 10 passed
+```
+The two new `BundleRoutesTest` cases went green immediately. The colour
+test still failed, now for two DIFFERENT and real reasons found by
+direct Playwright investigation (`page.evaluate` of
+`window.SolidNodeWidget.mountDevelopment`):
+
+1. **A stale bundle.** `npm run build` at 4.3 predated adding
+   `mountDevelopment` to `widget.ts`'s exports in 4.2; the served bundle
+   still lacked it (`mountDevelopment is not a function`). Rebuilt.
+2. **The sidebar now opens by default on the dev page** (design D10
+   point 1), so the canvas is narrower than the pixel thresholds were
+   tuned for. Fixed the TEST, not the code: navigates with
+   `?sidebar=collapsed` so this colour-only test keeps measuring the
+   full-width canvas; the sidebar-open default is what
+   `develop.test.ts` already pins, and increment 4.5 proves it live.
+
+```
+$ npm run build
+  dist/solid-widget.js  660.2kb
+
+$ PYTHONPATH="$PWD" … -m pytest tests/test_server.py -q
+11 passed, 9 warnings in 1.40s
+
+$ PYTHONPATH="$PWD" … -m pytest -q
+92 passed, 18 warnings in 65.76s
+```
+Zero skips — the skip recorded in section 0 is gone, one of this
+cycle's outcomes.
+
+### 4.5 Red, then green — the claim the whole cycle turns on
+
+`tests/test_server.py`'s new `DevelopmentPageReloadTest`
+(`test_a_republished_document_updates_the_page_in_place`): serves a
+published build with the real `WebViewer`, stamps the page
+(`window.__pageLoad = performance.now()`), rewrites `viewer.json` to
+drop a child, forces the same reconnect a `solid develop` server restart
+drives (closing the reloader's own captured `WebSocket`, per the spec's
+"Rebuild refreshes the browser" scenario) rather than actually killing
+and rebinding this test's own server, and asserts the assembly tree
+shrank **and** `window.__pageLoad` survived unchanged — i.e. no page
+load happened. Follows `tests/test_widget_e2e.py:397`'s direct
+`sync_playwright` shape (a file write lands between two evaluations).
+
+First run timed out (`Page.wait_for_function: Timeout 10000ms
+exceeded`). Investigated directly with Playwright (`page.on('response')`,
+an explicit `fetch(url, {cache: 'no-store'})` compared against the
+app's own plain `fetch(url)`) rather than assumed: `/build/{path}`
+(`server.py`, **unchanged** by this cycle, per design D13) sends no
+`Cache-Control`, so Chromium's own heuristic freshness can serve a
+**stale** `viewer.json` to `viewer.ts`'s `loadDocument`'s plain
+`fetch(sourceUrl)` — invisible to every other suite here because
+`tests/support.py`'s OWN test server (`QuietHandler`) explicitly disables
+caching for precisely this reason ("the suites rewrite a served document
+between two fetches of the same URL"), and the real `WebViewer` never
+gets exercised by a same-session republish anywhere else in this
+codebase. This is a **pre-existing** latent gap — `_setup_build_snapshot`
+and `viewer.ts`'s `loadDocument` are both untouched by this change, and
+the OLD React shell had the identical code path — never caught before
+because no earlier test republished a document against the real
+`WebViewer` in one browser session. Recorded under "Something worth the
+reviewer's attention" below; not fixed here, since the route is
+explicitly out of scope (design D13).
+
+Worked around in the TEST ONLY (not production code), the same way
+`support.py` already works around it for its own server: forcing
+revalidation on `/build/**` requests via `page.route()`.
+
+```
+$ PYTHONPATH="$PWD" … -m pytest tests/test_server.py::DevelopmentPageReloadTest -q
+1 passed, 10 warnings in 3.69s
+```
+
+**Deliberate-break check (task 4.5/4.6):** temporarily replaced
+`develop.ts`'s reload callback with a no-op (the reloader receiving
+"reload" and doing nothing), rebuilt, reran:
+
+```
+$ npm run build   # with the break in place
+$ PYTHONPATH="$PWD" … -m pytest tests/test_server.py::DevelopmentPageReloadTest -q
+FAILED …DevelopmentPageReloadTest::test_a_republished_document_updates_the_page_in_place
+  playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 10000ms exceeded.
+1 failed, 10 warnings in 11.99s
+```
+Confirmed the test can fail for the right reason. Reverted `develop.ts`
+to the committed version (`git diff` empty), rebuilt, reran the whole
+Python suite:
+
+```
+$ npm run build
+  dist/solid-widget.js  660.2kb
+
+$ PYTHONPATH="$PWD" … -m pytest -q
+93 passed, 24 warnings in 68.25s
+
+$ npm test
+ Test Files  34 passed (34)
+      Tests  642 passed (642)
+```
+
+### 4.6 Green
+
+Nothing new to implement: 4.5's red was a test-harness caching artefact
+in the SUITE, not a defect in the ported reload path, so what 4.5
+"exposed" and this step resolves is the `page.route()` fix recorded
+above, plus the deliberate-break confirmation. No production code
+changed in this sub-step.
+
+## Something worth the reviewer's attention (interim, increment 4)
+
+`/build/{path}` (`server.py`'s `_setup_build_snapshot`, unchanged by
+this cycle, and `viewer.ts`'s `loadDocument`, ported unchanged) sends no
+`Cache-Control` header. Against the real `WebViewer`, a browser's own
+heuristic freshness (RFC 7234 §4.2.2, based on `Last-Modified`) can
+serve a **stale** republished document to a plain `fetch()`, with no
+error and no visible symptom other than the model not updating. Every
+suite here that rewrites a document mid-session used
+`tests/support.py`'s `serve_directory`/`QuietHandler`, which explicitly
+sends `Cache-Control: no-store` for this exact reason — so this gap was
+never exercised against the real `WebViewer` before increment 4.5's
+`DevelopmentPageReloadTest`, the first test in this repository to
+republish a document against it in one browser session. The OLD React
+shell had the identical code path and would have had the identical
+exposure; this is not a regression this cycle introduces. Worked around
+in that one test only (`page.route()` forcing revalidation); `server.py`
+and `viewer.ts` are unchanged, per design D13's explicit "unchanged"
+routing table. Worth the pilot's attention as a candidate follow-up
+(sending `Cache-Control: no-store` from `_setup_build_snapshot`, or
+`viewer.ts` cache-busting its own fetches) — out of scope for this
+cycle, and not fixed here.
