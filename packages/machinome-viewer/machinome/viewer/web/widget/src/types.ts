@@ -88,6 +88,40 @@ export interface ManifestInstruction {
   duration: number;
 }
 
+// One declared control: how a PERSON issues a request on a part
+// (solid-node ADR-112, OpenSpec `declare-controls-on-parts`). A version
+// 5 document whose tree declares at least one carries a `controls`
+// table keyed by qualified control name; the entry carries no
+// expression, so it never enters the `bindings` pass.
+//
+// Deliberately typed as the producer publishes it -- `per_unit`, not
+// `perUnit` -- because this is the wire shape. `partControls.ts`
+// validates it field by field and hands back a `LoadedControl`.
+export interface ManifestControl {
+  /** `"button"` -- a press submitting an instruction -- or `"turn"` --
+   * a drag issuing relative moves on an input. */
+  kind: string;
+  /** The node-name path, from the document's root down, of the node a
+   * person touches. */
+  part: string[];
+  /** A button's instruction: a key of the same document's
+   * `instructions`. */
+  instruction?: string;
+  /** A turn's input: a key of the same document's `drivers`. */
+  input?: string;
+  /** The coordinate units the part moves per DESIGN unit the input
+   * travels, MEASURED at the rest bank. */
+  per_unit?: number;
+  /** The node-name path of the node the control's coordinate poses. */
+  joint: string[];
+  /** That coordinate's qualified id: a key of `program.coordinates`. */
+  coordinate: string;
+  /** The joint's axis, in the joint node's OWN frame. */
+  axis: number[];
+  /** The point the joint moves the part about, in the same frame. */
+  origin: number[];
+}
+
 export interface Manifest {
   format: string;
   version: ManifestVersion;
@@ -126,5 +160,12 @@ export interface Manifest {
    * and refuses by name everything the engine cannot execute, which is a
    * validation no structural type can perform. */
   program?: unknown;
+  /** The controls a version 5 document's parts carry, keyed and ordered
+   * by qualified control name (solid-node ADR-112 §6). ADDITIVE within
+   * version 5: the key is absent when the tree declares none, and a
+   * document carrying none is read exactly as it was before this viewer
+   * knew of controls. Validated by `partControls.ts`'s `readControls`
+   * at load, on `assertRenderable`'s own refusal surface. */
+  controls?: Record<string, ManifestControl>;
   root: ManifestNode;
 }

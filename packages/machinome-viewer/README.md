@@ -16,7 +16,10 @@ something a person can look at in a browser:
   parts evaluated per frame, **the machine itself run in a Web Worker for
   a document that carries a compiled mechanical program**, **driven on
   screen by nudge, hold-to-jog and instruction controls over a transport
-  of run, pause, step, speed, elapsed time and reset**, and the
+  of run, pause, step, speed, elapsed time and reset**, **the machine's
+  own parts made touchable wherever the document declares controls on
+  them — a press submits the instruction a part declares and a drag
+  turns it by whole quanta**, and the
   `SolidNodeWidget.mount()` API a host page drives it through;
 - the **standalone export page** a `solid export` directory ships with,
   and the **inspector layout** (`SolidNodeWidget.mountInspector`) it can
@@ -302,6 +305,84 @@ moves nothing. `driverControls: 'none'` suppresses this chrome exactly as
 it suppresses the posed one, and leaves the whole `handle.run()` API
 untouched for a host building its own panel.
 
+## Touching the machine
+
+A running document may also declare **controls on its parts**: a
+`controls` table beside `instructions`, published by the framework from
+the model's own `Button(part, instruction)` and `Turn(part, input)`
+declarations, carrying for each the part and the joint as node-name
+paths, the instruction it submits or the input it moves with the ratio
+the framework measured, the coordinate that joint poses, and that
+joint's axis and origin in its own frame. The viewer cannot infer any of
+it — one coordinate is often reached by two inputs, and plenty of posed
+parts are parts nobody may turn — so the binding is a declaration, and
+this is the viewer reading it.
+
+A part the table names becomes touchable. On hover it takes a pointer
+cursor, a light highlight and the display names of every control naming
+it; every other part orbits the camera exactly as before. A part the
+assembly navigation has hidden or focused out is not touchable, and a
+part standing in front of one is not reached through.
+
+- A **press** — pointer down and up without travelling more than a few
+  pixels — submits that part's declared instruction. It is the same
+  `run().trigger(...)` the panel's button makes, and indistinguishable to
+  the run, to its listeners and to a readback.
+- A **drag** turns the part about the joint the control names. Each time
+  the swept angle crosses one **quantum** — the input's current nudge
+  amount converted through the published ratio, one digit = 36° on a
+  Pascaline dial — one `move(input, {by, duration})` is issued, at most
+  one at a time because the run gives an input one owner. The part
+  **follows commits, never the pointer**: nothing here writes a
+  coordinate, so the pointer may run ahead while the machine catches up,
+  and a machine that will not move does not move. A request that does not
+  complete leaves no remainder to be executed later, so a drag against a
+  stop reports blocked and repeats nothing while it is held there.
+
+Either way the outcome is reported twice through one path: beside the
+pointer, in the same words the panel writes, and at the panel's own
+control for that instruction or input. A press or a drag into a paused
+run starts it, exactly as a press on the panel does.
+
+A `controls` table this viewer cannot resolve is refused when the
+document loads, naming the document, the control and what is wrong,
+before anything is rendered — a part or joint that does not resolve in
+the document's own tree, a joint that is not the part or one of its
+ancestors, an instruction, input or coordinate absent from the table it
+must belong to, a ratio that is missing, not finite or zero, an axis or
+origin that is not three finite numbers, a joint whose own operations do
+not begin with that coordinate's rotation (optionally preceded by
+translations), two controls of one kind on one part, or a table on a
+document that carries no program.
+
+```js
+const viewer = await SolidNodeWidget.mount('#host', 'viewer.json', {
+  partControls: 'inline',   // 'none' suppresses the affordance
+});
+viewer.controls();
+// [{ name: 'turn units', kind: 'turn', part: ['units', 'input', 'dial'],
+//    input: 'units_entry', perUnit: -36, joint: ['units', 'input'],
+//    coordinate: 'units.input.turn',
+//    rect: { x, y, width, height }, point: { x, y } }, …]
+```
+
+`controls()` lists what the document declares, with each part's current
+on-screen rectangle and a point at which a press actually reaches it —
+found by casting, because the centre of a dial's rectangle is its axle —
+both in viewport CSS pixels, and both `null` for a part that is hidden,
+off screen or reached nowhere. A document that declares no control
+answers `[]`.
+
+`partControls` is **independent** of `driverControls`: a host that builds
+its own instrument panel still wants the dial pressable, and the two
+choices gate different pixels. Neither gates an interface — `controls()`
+answers and the whole `handle.run()` API is there either way. The
+headless capture passes `partControls: 'none'`, because a still
+photograph is the last place a hover affordance should appear.
+
+Not in this: no `Slide` (a prismatic drag), no dialling by position, no
+keyboard gesture, and nothing anywhere writes a coordinate.
+
 ## Versions
 
 The package version and the **viewer API version** are different numbers.
@@ -318,7 +399,7 @@ build reads rather than infer it.
 | solid-node-viewer | viewer API | reads document versions |
 | --- | --- | --- |
 | 0.1.0 | 7 | 1, 2, 3, 4 |
-| 0.2.0 | 11 | 1, 2, 3, 4, 5 |
+| 0.2.0 | 12 | 1, 2, 3, 4, 5 |
 
 ## Working on the viewer
 

@@ -216,10 +216,104 @@ The viewer stops posing a machine and starts running one.
   the development page's own mount built on it — capabilities a host may
   require, on top of the mountable navigator version 10 published.
 
-- **Constrained dragging of a part is not in this release.** Picking a
-  part and dragging it along a declared input's freedom, through the same
-  command interface and with the same blocked-travel reporting, is the
-  next viewer cycle.
+- **A maker drives the machine by touching it.** A version 5 document
+  may carry a `controls` table beside `instructions` — the framework's
+  own `Button(part, instruction)` and `Turn(part, input)` declarations,
+  published with the part and the joint as node-name paths, the
+  coordinate that joint poses, that joint's axis and origin in its own
+  frame, and, for a turn, `per_unit`: the coordinate units the part
+  moves per design unit the input travels, measured off the compiled
+  program at the rest bank. The viewer reads it and binds a pick to it.
+  A part the table names takes a pointer cursor, a light highlight and
+  its controls' display names on hover; every other part orbits the
+  camera exactly as before, a part the assembly navigation has hidden or
+  focused out is not touchable, and a part in front of one is not
+  reached through it. (OpenSpec change `drive-the-run-by-touch`,
+  consuming solid-node's ADR-112; this is the cycle ADR-048 promised by
+  name.)
+
+- **A press submits the declared instruction; a drag turns the part by
+  whole quanta.** A pointer pressed and released without travelling more
+  than four pixels issues `run().trigger(instruction)` — the same call
+  the panel's button makes, indistinguishable to the run, to its
+  listeners and to a readback. Past that threshold it is a drag,
+  measured as the angle swept about the joint's world line, which the
+  viewer computes from that one node's world matrix and which does not
+  move under the drag that is moving the part. Each time the sweep
+  crosses one **quantum** — the input's current nudge amount times the
+  published ratio, one digit = 36° on a Pascaline dial — exactly one
+  `move(input, {by, duration})` is issued, and **at most one is ever in
+  flight**, because the run gives an input one owner at a time. What a
+  gesture owes is recomputed from where the pointer stands rather than
+  queued, so a sweep forward and back nets out instead of being paid for
+  twice.
+
+- **The part follows commits, never the pointer.** Nothing in either
+  gesture writes a coordinate, sets a matrix or poses anything: the only
+  effect a drag has on the scene is through the run's committed frames.
+  The pointer may run ahead while the machine catches up, and a machine
+  that refuses to move does not move. A request that does not complete
+  leaves the point the next quantum is measured from exactly where it
+  was, so a drag against a declared stop reports blocked with the travel
+  the machine actually admitted, leaves no remainder to be executed
+  later, and repeats nothing while the gesture is held there. The
+  gesture ends on all five sides a jog does — release, cancelled
+  pointer, lost pointer capture, lost window focus, and a page that
+  stops being displayed — and on every one of them the camera becomes
+  movable again; a `move` already in flight is left to retire and report
+  rather than cancelled.
+
+- **Every outcome is reported twice through one path**: a transient
+  `role="status"` label beside the pointer and the panel's own control
+  for that instruction or input, in the same words, so a press that is
+  blocked says exactly what a nudge that is blocked says.
+
+- **A `controls` table the viewer cannot resolve is refused by name**,
+  when the document loads and before anything is rendered — the surface
+  an undeclared driver id, an unreadable bindings table and an
+  inexecutable program already stand on. Refused: a table or an entry
+  that is not of the published shape; a kind that is neither `button`
+  nor `turn`; a part or joint that does not resolve to exactly one node
+  of the document's own tree, or a joint that is neither the part nor
+  one of its ancestors; an instruction, input or coordinate absent from
+  the table it must belong to, each naming what the document does
+  declare; a `per_unit` that is missing, not finite or zero; an axis or
+  origin that is not three finite numbers, or an axis of no direction; a
+  joint whose own operations do not begin with that coordinate's
+  rotation, optionally preceded by translations — the reading the
+  gesture's geometry depends on, and which accepts both shapes the
+  producer publishes, including the off-centre `Revolute(at=...)` that
+  `origin` exists for; two controls of one kind on one part; and a
+  `controls` table on a document that carries no program. A document
+  carrying no table loads, poses, runs and is driven exactly as it did
+  before.
+
+- **`controls()` on the handle, and `partControls` at mount.**
+  `controls()` lists the declared controls with each part's current
+  on-screen rectangle and a point at which a press actually reaches it —
+  found by casting, because the centre of a dial's rectangle is its axle
+  — both in viewport CSS pixels, both `null` for a part that is hidden,
+  off screen or reached nowhere, and `[]` for a document declaring none.
+  `partControls: 'inline' | 'none'` chooses whether the parts are
+  touchable, **independently of `driverControls`**, because a host that
+  builds its own instrument panel still wants the dial pressable. What
+  either switch gates is pixels and pointers, never an interface: the
+  listing answers and the whole run API is there either way. The
+  headless capture passes `partControls: 'none'`, and publishes no
+  `controls` table at all.
+
+- **The declared API version rises to 12**, for part controls — a
+  capability a host presenting a machine a maker touches may require,
+  on top of the inspector layout version 11 published. The document
+  schema versions this build reads do not move: `controls` is additive
+  within version 5.
+
+- **Not in this: no `Slide`** — a prismatic drag — because the framework
+  proposes none; **no dialling by position**, the historical Pascaline's
+  stylus-and-stop gesture, which belongs to the model and not to the
+  viewer; **no keyboard gesture**; and no stream of the crossings and
+  stops a drag passes through, which is a different feature from the
+  report a gesture needs.
 
 ## 0.1.0 — unreleased
 

@@ -77,6 +77,7 @@ class CaptureCommandTest(TestCase):
         capture.assert_called_once_with('staged')
         capture.return_value.render.assert_called_once_with('out.png', (100, 50), {
             'animation': 'external', 'time': 0.5, 'driverControls': 'none',
+            'partControls': 'none',
             'view': {'camera': [1.0, 2.0, 3.0], 'target': [0.0, 0.0, 0.0]},
             'up': [0.0, 0.0, 1.0], 'fov': 22.5,
         })

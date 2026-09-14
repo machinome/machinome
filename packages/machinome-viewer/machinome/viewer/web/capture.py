@@ -78,9 +78,14 @@ def mount_options(time=0.0, view=None, up=None, fov=None):
     running one alike: a photograph is of the model, and a control panel
     drawn over the canvas would be in the picture -- opaque pixels where
     the transparent background promises there are none.
+
+    The PART affordance is suppressed with it: a still photograph is the
+    last place a hover cursor or a highlight should be able to appear.
+    This capture publishes no ``controls`` table at all (solid-node
+    ADR-112 §6), so it can never matter -- belt and braces.
     """
     options = {"animation": "external", "time": time,
-               "driverControls": "none"}
+               "driverControls": "none", "partControls": "none"}
     if view is not None:
         eye, target = view
         options["view"] = {"camera": list(eye), "target": list(target)}

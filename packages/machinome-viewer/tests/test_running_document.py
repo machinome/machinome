@@ -19,7 +19,8 @@ from pathlib import Path
 from unittest import TestCase
 
 from tests.support import (
-    FIXTURES, needs_bundle, needs_playwright, serve_directory,
+    FIXTURES, TOUCHED, needs_bundle, needs_playwright, published_touched,
+    serve_directory,
 )
 from solid_node_viewer.bundle import bundle_path, index_path
 
@@ -33,6 +34,50 @@ PASCALINE = FIXTURES / 'pascaline'
 #: Where the two inspected screenshots are written, so the evidence is a
 #: file on disk rather than a claim.
 SHOTS = Path(__file__).parent / '_shots'
+
+
+def model_paths(node):
+    """Every model path a document's tree names, in tree order."""
+    found = [node['model']] if node.get('model') else []
+    for child in node.get('children') or []:
+        found.extend(model_paths(child))
+    return found
+
+
+class TouchedFixtureTest(TestCase):
+    """The committed `touched` fixture is complete on disk.
+
+    A missing mesh must fail as a missing mesh here rather than as a
+    blank canvas three browser tests later.
+    """
+
+    def test_every_model_path_resolves_beside_the_document(self):
+        document = json.loads((TOUCHED / 'viewer.json').read_text())
+        paths = model_paths(document['root'])
+        self.assertEqual(len(paths), 42)
+        missing = [path for path in sorted(set(paths))
+                   if not (TOUCHED / path).is_file()]
+        self.assertEqual(missing, [], 'the fixture names meshes it lacks')
+        self.assertEqual(len(set(paths)), 15)
+
+    def test_the_document_is_a_version_5_run_carrying_six_controls(self):
+        document = json.loads((TOUCHED / 'viewer.json').read_text())
+        self.assertEqual(document['version'], 5)
+        self.assertEqual(document['root']['name'], 'Touched')
+        self.assertIsNotNone(document.get('program'))
+        self.assertEqual(list(document['controls']), [
+            'hundreds dial', 'tens dial', 'turn hundreds', 'turn tens',
+            'turn units', 'units dial',
+        ])
+
+    def test_staging_the_fixture_copies_it_whole(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            staged = published_touched(Path(tempdir) / 'touched')
+            self.assertTrue((staged / 'viewer.json').is_file())
+            document = json.loads((staged / 'viewer.json').read_text())
+            for path in set(model_paths(document['root'])):
+                self.assertTrue((staged / path).is_file(), path)
+
 
 HARNESS_PAGE = """<!doctype html>
 <html>
@@ -84,6 +129,10 @@ DRIVE = """async () => {
     moved: restShot !== drivenShot,
     wall,
     apiVersion: viewer.apiVersion,
+    // A document that declares no control answers plainly, rather than
+    // with an error or an absent operation (OpenSpec
+    // `drive-the-run-by-touch`, design D15).
+    controls: viewer.controls(),
   };
 }"""
 
@@ -143,7 +192,8 @@ class RunningDocumentTest(TestCase):
                              'the handle reported no run')
         self.assertEqual(result['identity'],
                          self.document['program']['identity'])
-        self.assertEqual(result['apiVersion'], 11)
+        self.assertEqual(result['apiVersion'], 12)
+        self.assertEqual(result['controls'], [])
         self.assertAlmostEqual(result['dt'], 1 / 240, places=12)
 
         # The rest bank, before any tick.
@@ -653,3 +703,443 @@ class RepublishedRunTest(TestCase):
                 browser.close()
 
         self.assertEqual(errors, [], f'the page logged errors: {errors}')
+
+
+#: What a maker meets when the document declares controls on its parts
+#: (OpenSpec `drive-the-run-by-touch`). Everything below asks the PAGE
+#: where the dial is and then sends a real mouse there: no host code
+#: calls `run()` to move anything, and the geometry under test is the
+#: one the widget computed from the document's own tree.
+TOUCHED_PANEL = '#host .run-controls'
+LABEL = '#host .part-outcome'
+CANVAS = '#host canvas'
+
+#: The dial is a 3.5-pixel stand-in cube, so a press lands essentially
+#: ON the joint's axle and a drag has to travel before the in-plane
+#: angle is worth anything. These two distances were MEASURED against
+#: this fixture and this default camera: 120 px to the left is the first
+#: whole quantum (36 degrees of sweep, one digit), and 200 px downward is
+#: well past one quantum the other way -- the way the ratchet forbids.
+FORWARD_DRAG = (-120, 0)
+BLOCKED_DRAG = (0, 200)
+
+
+@needs_bundle
+@needs_playwright
+class TouchedByHandTest(TestCase):
+    """A maker presses and turns the Pascaline module's own dials.
+
+    The document is `tests/fixtures/touched/viewer.json` -- the module's
+    classes published with a `controls` table, verbatim. Its three dials
+    each carry a `Button` and a `Turn` at `per_unit -36.0`, and at the
+    rest bank `units.input.turn` stands at its own declared stop
+    (`high = 36·ceil(turn/36)`, which at rest IS the coordinate's own
+    value), so the very first backward quantum is refused travel.
+    """
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        self.out_dir = published_touched(Path(self.tempdir.name) / 'touched')
+        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
+        server = serve_directory(self.out_dir)
+        base = server.__enter__()
+        self.addCleanup(server.__exit__, None, None, None)
+        self.harness_url = f'{base}/harness.html'
+        self.document = json.loads((TOUCHED / 'viewer.json').read_text())
+        SHOTS.mkdir(exist_ok=True)
+
+    def browser(self, playwright):
+        return playwright.chromium.launch(args=[
+            '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+        ])
+
+    def open(self, page, options='{}'):
+        self.errors = []
+        page.on('pageerror', lambda error: self.errors.append(str(error)))
+        page.on('console', lambda message: self.errors.append(message.text)
+                if message.type == 'error' else None)
+        page.goto(self.harness_url)
+        page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+        page.evaluate("""async (options) => {
+          window.__viewer = await SolidNodeWidget.mount(
+            document.getElementById('host'), 'viewer.json', options);
+          window.__out = [];
+          window.__viewer.run().onOutcome((one) => window.__out.push(
+            [one.status, one.admitted]));
+        }""", json.loads(options))
+        page.wait_for_selector(TOUCHED_PANEL)
+        # One settled frame, so the projection `controls()` reports is
+        # the projection a press will meet.
+        page.wait_for_timeout(500)
+
+    def controls(self, page):
+        listing = page.evaluate('() => window.__viewer.controls()')
+        return {one['name']: one for one in listing}, listing
+
+    def drag(self, page, point, travel, steps=10, settle=900):
+        """Press at `point` and sweep by `travel`, a step at a time."""
+        page.mouse.move(point['x'], point['y'])
+        page.mouse.down()
+        for step in range(1, steps + 1):
+            page.mouse.move(point['x'] + travel[0] * step / steps,
+                            point['y'] + travel[1] * step / steps)
+            page.wait_for_timeout(30)
+        page.wait_for_timeout(settle)
+
+    def test_the_handle_lists_the_controls_the_document_declares(self):
+        with sync_playwright() as playwright:
+            browser = self.browser(playwright)
+            try:
+                page = browser.new_page(viewport={'width': 800,
+                                                  'height': 600})
+                self.open(page)
+                by_name, listing = self.controls(page)
+
+                self.assertEqual([one['name'] for one in listing],
+                                 list(self.document['controls']))
+                self.assertEqual([one['kind'] for one in listing],
+                                 ['button', 'button', 'turn', 'turn',
+                                  'turn', 'button'])
+                for name, control in by_name.items():
+                    declared = self.document['controls'][name]
+                    self.assertEqual(control['part'], declared['part'], name)
+                    self.assertEqual(control['joint'], declared['joint'], name)
+                    self.assertEqual(control['coordinate'],
+                                     declared['coordinate'], name)
+                    if declared['kind'] == 'button':
+                        self.assertEqual(control['instruction'],
+                                         declared['instruction'], name)
+                        self.assertNotIn('input', control)
+                    else:
+                        self.assertEqual(control['input'], declared['input'],
+                                         name)
+                        self.assertEqual(control['perUnit'], -36.0, name)
+                    # Every part is on screen, and a press reaches it.
+                    self.assertIsNotNone(control['rect'], name)
+                    self.assertIsNotNone(control['point'], name)
+                    point = control['point']
+                    rect = control['rect']
+                    self.assertGreaterEqual(point['x'], rect['x'])
+                    self.assertLessEqual(point['x'],
+                                         rect['x'] + rect['width'])
+                    self.assertGreaterEqual(point['y'], rect['y'])
+                    self.assertLessEqual(point['y'],
+                                         rect['y'] + rect['height'])
+
+                # A part the navigator is not showing reports no
+                # position, and is not touchable either.
+                page.evaluate("""() => window.__viewer.setVisible(
+                  ['units', 'input', 'dial'], false)""")
+                page.wait_for_timeout(200)
+                hidden, _ = self.controls(page)
+                self.assertIsNone(hidden['turn units']['rect'])
+                self.assertIsNone(hidden['turn units']['point'])
+                self.assertEqual(hidden['turn units']['input'], 'units_entry')
+                self.assertIsNotNone(hidden['turn tens']['point'])
+                page.mouse.move(by_name['turn units']['point']['x'],
+                                by_name['turn units']['point']['y'])
+                page.wait_for_timeout(200)
+                self.assertEqual(
+                    page.evaluate(f"() => document.querySelector("
+                                  f"'{CANVAS}').style.cursor"), '')
+                page.evaluate("""() => window.__viewer.setVisible(
+                  ['units', 'input', 'dial'], true)""")
+            finally:
+                browser.close()
+        self.assertEqual(self.errors, [],
+                         f'the page logged errors: {self.errors}')
+
+    def test_the_listing_answers_whether_or_not_the_affordance_is_shown(self):
+        with sync_playwright() as playwright:
+            browser = self.browser(playwright)
+            try:
+                page = browser.new_page(viewport={'width': 800,
+                                                  'height': 600})
+                self.open(page, '{"partControls": "none"}')
+                by_name, listing = self.controls(page)
+                # The full listing, rects and all: what a presentation
+                # choice gates is the pixels and the pointer, never the
+                # interface.
+                self.assertEqual(len(listing), 6)
+                self.assertIsNotNone(by_name['turn units']['rect'])
+                self.assertIsNotNone(by_name['turn units']['point'])
+
+                # And no part shows a cursor, a highlight or a name.
+                point = by_name['units dial']['point']
+                page.mouse.move(point['x'], point['y'])
+                page.wait_for_timeout(300)
+                self.assertEqual(
+                    page.evaluate(f"() => document.querySelector("
+                                  f"'{CANVAS}').style.cursor"), '')
+                self.assertIsNone(
+                    page.evaluate(f"() => document.querySelector("
+                                  f"'{CANVAS}').getAttribute('title')"))
+                before = page.evaluate('() => window.__viewer.view()')
+                page.mouse.down()
+                page.mouse.move(point['x'] - 120, point['y'])
+                page.mouse.up()
+                page.wait_for_timeout(300)
+                after = page.evaluate('() => window.__viewer.view()')
+                self.assertNotEqual(before['camera'], after['camera'],
+                                    'pressing a part must move the camera')
+                self.assertEqual(page.evaluate('() => window.__out'), [])
+                self.assertEqual(
+                    page.evaluate('() => window.__viewer.run()'
+                                  '.state().units_entry'), 0)
+            finally:
+                browser.close()
+        self.assertEqual(self.errors, [],
+                         f'the page logged errors: {self.errors}')
+
+    def test_a_press_on_the_dial_advances_it(self):
+        with sync_playwright() as playwright:
+            browser = self.browser(playwright)
+            try:
+                page = browser.new_page(viewport={'width': 800,
+                                                  'height': 600})
+                self.open(page)
+
+                # The dial is a 3.5-pixel stand-in cube in the whole
+                # model, so the affordance is photographed with the
+                # input assembly focused, where a highlight is something
+                # a person can see. The pair is the evidence: the same
+                # frame with the pointer away and on the dial.
+                page.evaluate(
+                    "() => window.__viewer.setRoot(['units', 'input'])")
+                page.wait_for_timeout(600)
+                close, _ = self.controls(page)
+                near = close['units dial']['point']
+                self.assertIsNotNone(near, 'the dial is not reachable close up')
+                page.mouse.move(20, 560)
+                page.wait_for_timeout(300)
+                page.screenshot(path=str(SHOTS / 'touched-dial-plain.png'))
+                page.mouse.move(near['x'], near['y'])
+                page.wait_for_timeout(300)
+                self.assertEqual(
+                    page.evaluate(f"() => document.querySelector("
+                                  f"'{CANVAS}').style.cursor"), 'pointer')
+                page.screenshot(path=str(SHOTS / 'touched-dial-hovered.png'))
+                page.evaluate('() => window.__viewer.setRoot(null)')
+                page.wait_for_timeout(600)
+
+                by_name, _ = self.controls(page)
+                point = by_name['units dial']['point']
+
+                # Hover: a pointer cursor and the display names of every
+                # control naming this part.
+                page.mouse.move(point['x'], point['y'])
+                page.wait_for_timeout(300)
+                self.assertEqual(
+                    page.evaluate(f"() => document.querySelector("
+                                  f"'{CANVAS}').style.cursor"), 'pointer')
+                self.assertEqual(
+                    page.evaluate(f"() => document.querySelector("
+                                  f"'{CANVAS}').getAttribute('title')"),
+                    'turn units · units dial')
+                page.screenshot(path=str(SHOTS / 'touched-hover.png'))
+
+                button = (f'{TOUCHED_PANEL} .run-instruction'
+                          '[data-instruction="Add one"]')
+                page.mouse.down()
+                page.screenshot(path=str(SHOTS / 'touched-press.png'))
+                page.mouse.up()
+                page.wait_for_selector(f'{button}:not([aria-busy])',
+                                       timeout=60_000)
+                page.wait_for_timeout(200)
+
+                # Reported twice through one path: beside the pointer,
+                # and on the panel's own button for that instruction.
+                self.assertEqual(page.text_content(LABEL), 'completed')
+                self.assertEqual(
+                    page.text_content(
+                        f'{TOUCHED_PANEL} .run-instruction-control'
+                        '[data-instruction="Add one"] .run-outcome'),
+                    'completed')
+                self.assertEqual(
+                    page.text_content(
+                        f'{TOUCHED_PANEL} .run-input[data-input="units_entry"]'
+                        ' .run-readout-value'), '1.0000')
+                state = page.evaluate('() => window.__viewer.run().state()')
+                self.assertEqual(state['units_entry'], 1)
+                self.assertAlmostEqual(state['units.drum.turn'], 36, places=9)
+                # Indistinguishable from the panel's own button.
+                self.assertEqual(page.evaluate('() => window.__out'),
+                                 [['completed', 1]])
+            finally:
+                browser.close()
+        self.assertEqual(self.errors, [],
+                         f'the page logged errors: {self.errors}')
+
+    def test_a_drag_against_the_ratchet_reports_blocked_and_leaves_no_backlog(
+            self):
+        with sync_playwright() as playwright:
+            browser = self.browser(playwright)
+            try:
+                page = browser.new_page(viewport={'width': 800,
+                                                  'height': 600})
+                self.open(page)
+                by_name, _ = self.controls(page)
+                point = by_name['turn units']['point']
+
+                self.drag(page, point, BLOCKED_DRAG)
+                page.screenshot(path=str(SHOTS / 'touched-blocked.png'))
+                reported = page.evaluate('() => window.__out')
+                state = page.evaluate('() => window.__viewer.run().state()')
+                self.assertEqual(reported, [['blocked', 0]])
+                self.assertEqual(page.text_content(LABEL),
+                                 'blocked after 0 digit')
+                self.assertEqual(
+                    page.text_content(
+                        f'{TOUCHED_PANEL} .run-input[data-input="units_entry"]'
+                        ' .run-outcome'), 'blocked after 0 digit')
+                self.assertEqual(state['units_entry'], 0)
+                self.assertEqual(state['units.drum.turn'], 0)
+
+                # Held there, the gesture asks for nothing more: the run
+                # goes on ticking and no second outcome arrives.
+                tick = page.evaluate('() => window.__viewer.run().tick()')
+                for step in range(8):
+                    page.mouse.move(point['x'] + step,
+                                    point['y'] + BLOCKED_DRAG[1] + step * 6)
+                    page.wait_for_timeout(60)
+                page.wait_for_timeout(600)
+                self.assertGreater(
+                    page.evaluate('() => window.__viewer.run().tick()'), tick,
+                    'the run did not advance while the drag was held')
+                self.assertEqual(page.evaluate('() => window.__out'),
+                                 [['blocked', 0]])
+                page.mouse.up()
+                page.wait_for_timeout(300)
+                self.assertEqual(
+                    page.evaluate('() => window.__viewer.run()'
+                                  '.state().units_entry'), 0)
+            finally:
+                browser.close()
+        self.assertEqual(self.errors, [],
+                         f'the page logged errors: {self.errors}')
+
+    def test_a_drag_the_other_way_enters_one_digit(self):
+        with sync_playwright() as playwright:
+            browser = self.browser(playwright)
+            try:
+                page = browser.new_page(viewport={'width': 800,
+                                                  'height': 600})
+                self.open(page)
+                by_name, _ = self.controls(page)
+                point = by_name['turn units']['point']
+
+                self.drag(page, point, FORWARD_DRAG)
+                page.mouse.up()
+                page.wait_for_timeout(400)
+                page.screenshot(
+                    path=str(SHOTS / 'touched-after-forward-drag.png'))
+
+                # One quantum of sweep, one request, one digit -- and the
+                # sweep's sign went through the RATIO: -36 degrees on
+                # `per_unit = -36` asks for +1 digit.
+                self.assertEqual(page.evaluate('() => window.__out'),
+                                 [['completed', 1]])
+                state = page.evaluate('() => window.__viewer.run().state()')
+                self.assertEqual(state['units_entry'], 1)
+                self.assertAlmostEqual(state['units.input.turn'], -36,
+                                       places=9)
+                self.assertAlmostEqual(state['units.drum.turn'], 36, places=9)
+                self.assertEqual(page.text_content(LABEL), 'completed')
+                self.assertEqual(
+                    page.text_content(
+                        f'{TOUCHED_PANEL} .run-input[data-input="units_entry"]'
+                        ' .run-readout-value'), '1.0000')
+                # The camera never moved while the gesture was engaged.
+                self.assertEqual(
+                    page.evaluate("() => document.querySelector("
+                                  f"'{CANVAS}').style.cursor"), '')
+            finally:
+                browser.close()
+        self.assertEqual(self.errors, [],
+                         f'the page logged errors: {self.errors}')
+
+    def test_a_part_the_table_does_not_name_moves_the_camera(self):
+        with sync_playwright() as playwright:
+            browser = self.browser(playwright)
+            try:
+                page = browser.new_page(viewport={'width': 800,
+                                                  'height': 600})
+                self.open(page)
+                lid = self.find_lid(page)
+
+                page.mouse.move(lid['x'], lid['y'])
+                page.wait_for_timeout(300)
+                # Nothing declares the lid, so it is not touchable.
+                self.assertEqual(
+                    page.evaluate("() => document.querySelector("
+                                  f"'{CANVAS}').style.cursor"), '')
+                self.assertIsNone(
+                    page.evaluate("() => document.querySelector("
+                                  f"'{CANVAS}').getAttribute('title')"))
+
+                before = page.evaluate('() => window.__viewer.view()')
+                state = page.evaluate('() => window.__viewer.run().state()')
+                page.mouse.down()
+                for step in range(1, 9):
+                    page.mouse.move(lid['x'] - 12 * step, lid['y'] + 6 * step)
+                    page.wait_for_timeout(30)
+                page.mouse.up()
+                page.wait_for_timeout(400)
+
+                after = page.evaluate('() => window.__viewer.view()')
+                self.assertNotEqual(
+                    before['camera'], after['camera'],
+                    'dragging an undeclared part must orbit the camera')
+                self.assertEqual(page.evaluate('() => window.__out'), [],
+                                 'no request may reach the run')
+                self.assertEqual(
+                    page.evaluate('() => window.__viewer.run().state()'),
+                    state)
+            finally:
+                browser.close()
+        self.assertEqual(self.errors, [],
+                         f'the page logged errors: {self.errors}')
+
+    def find_lid(self, page):
+        """Where a column's lid is drawn, by hiding it and looking at
+        which pixels changed. Every stand-in mesh is the same cube, so
+        the picture alone cannot say which one is the lid, and no
+        control names one.
+
+        The panel and the transport are TRANSLUCENT, so canvas pixels
+        change under them too -- and a press there lands on the panel,
+        not on the model. Their rectangles are excluded, and the three
+        columns are tried in turn until one lid is drawn somewhere a
+        pointer actually reaches the canvas."""
+        from PIL import Image, ImageChops
+        import io
+        chrome = page.evaluate("""() => [...document.querySelectorAll(
+          '#host .run-controls, #host .run-transport, #host .part-outcome')]
+          .map((element) => element.getBoundingClientRect())
+          .map((r) => [r.left, r.top, r.right, r.bottom])""")
+
+        def reachable(x, y):
+            return not any(left <= x <= right and top <= y <= bottom
+                           for left, top, right, bottom in chrome)
+
+        for column in ('units', 'tens', 'hundreds'):
+            before = Image.open(io.BytesIO(page.screenshot())).convert('RGB')
+            page.evaluate("(column) => window.__viewer.setVisible("
+                          "[column, 'lid'], false)", column)
+            page.wait_for_timeout(400)
+            after = Image.open(io.BytesIO(page.screenshot())).convert('RGB')
+            page.evaluate("(column) => window.__viewer.setVisible("
+                          "[column, 'lid'], true)", column)
+            page.wait_for_timeout(400)
+            diff = ImageChops.difference(before, after)
+            width = diff.width
+            changed = [(index % width, index // width)
+                       for index, pixel in enumerate(diff.getdata())
+                       if sum(pixel) > 24
+                       and reachable(index % width, index // width)]
+            if changed:
+                middle = changed[len(changed) // 2]
+                return {'x': middle[0] + 0.5, 'y': middle[1] + 0.5}
+        self.fail('no lid is drawn where a pointer reaches the canvas')

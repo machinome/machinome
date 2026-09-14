@@ -59,3 +59,4 @@ both repositories. Consequences:
 - [ADR-049](EXPORT/ADR-049-the-viewer-publishes-its-navigation-state.md) — The viewer publishes its assembly navigation state — **Accepted**, amends 042
 - [ADR-050](EXPORT/ADR-050-the-navigator-is-a-component-of-the-viewer.md) — The assembly navigator is a component of the viewer package — **Accepted**, amends 042
 - [ADR-051](EXPORT/ADR-051-the-bundle-ships-an-inspector-layout.md) — The bundle ships an inspector layout, and the page selects it — **Accepted**, extends 050
+- [ADR-053](EXPORT/ADR-053-a-pick-is-bound-to-a-declared-control.md) — A pick is bound to a declared control, and the part follows commits — **Accepted**, extends 048, consumes solid-node ADR-112

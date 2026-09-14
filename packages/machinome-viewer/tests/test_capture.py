@@ -32,13 +32,15 @@ class MountOptionsTest(TestCase):
         # pixels the transparent background promises are not there.
         self.assertEqual(mount_options(time=0.25),
                          {'animation': 'external', 'time': 0.25,
-                          'driverControls': 'none'})
+                          'driverControls': 'none',
+                          'partControls': 'none'})
 
     def test_a_camera_is_passed_through_verbatim(self):
         self.assertEqual(
             mount_options(view=((1, 2, 3), (0, 0, 0)), up=(0, 0, 1), fov=22.5),
             {'animation': 'external', 'time': 0.0,
              'driverControls': 'none',
+             'partControls': 'none',
              'view': {'camera': [1, 2, 3], 'target': [0, 0, 0]},
              'up': [0, 0, 1], 'fov': 22.5})
 
@@ -141,6 +143,9 @@ class StagedDocumentTest(TestCase):
         self.assertTrue((self.staging / 'solid-widget.js').is_file())
         self.assertIn("mount('#host', 'viewer.json'", page)
         self.assertIn(json.dumps(mount_options(time=0.5, fov=22.5)), page)
+        # A still photograph is the last place a hover affordance should
+        # be able to appear (OpenSpec `drive-the-run-by-touch`, D14).
+        self.assertIn('"partControls": "none"', page)
 
     def test_the_server_exposes_document_models_bundle_and_page(self):
         self.capture.add_viewer(mount_options())

@@ -28,6 +28,10 @@ SPINNER = FIXTURES / 'spinner'
 #: The Pascaline module's own published build: a version 5 document
 #: carrying a compiled mechanical program, beside stand-in meshes.
 PASCALINE = FIXTURES / 'pascaline'
+#: The same module's classes published with a `controls` table: a
+#: version 5 document whose six controls make three dials touchable,
+#: beside stand-in meshes. See its own README.
+TOUCHED = FIXTURES / 'touched'
 
 try:
     from PIL import Image, ImageChops  # noqa: F401
@@ -92,6 +96,13 @@ def published_run(target):
     """Stage the running fixture: a version 5 document carrying a
     program, already named ``viewer.json``, beside the meshes it names."""
     shutil.copytree(PASCALINE, target)
+    return Path(target)
+
+
+def published_touched(target):
+    """Stage the TOUCHABLE running fixture: the same shape as
+    :func:`published_run`, with a `controls` table beside the program."""
+    shutil.copytree(TOUCHED, target)
     return Path(target)
 
 

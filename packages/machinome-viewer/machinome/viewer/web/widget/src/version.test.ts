@@ -67,8 +67,18 @@ describe('API_VERSION', () => {
   // are capabilities a host may require rather than lay the parts out
   // itself; 10 was the bundle that carried a navigator with nowhere to
   // put it.
-  it('declares the inspector-layout API as version 11', () => {
-    expect(API_VERSION).toBe(11);
+  // Binding a pick to a declared control (OpenSpec
+  // `drive-the-run-by-touch`) is the one after that (12): a host that
+  // means to present a machine a maker DRIVES BY TOUCHING IT -- the
+  // shop floor, a gallery page -- needs to know the bundle it is about
+  // to mount reads a document's `controls` table and binds a press and
+  // a turn to it, and that `controls()` and `partControls` exist. 11
+  // is the bundle that would show the same document with no affordance
+  // at all, and no number would say so: the document versions this
+  // build reads do NOT move, because `controls` is additive within
+  // version 5 (solid-node ADR-112).
+  it('declares the part-controls API as version 12', () => {
+    expect(API_VERSION).toBe(12);
   });
 });
 

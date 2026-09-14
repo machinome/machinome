@@ -6,7 +6,8 @@
 
 import * as THREE from 'three';
 import type {
-  ViewerOptions, AnimationMode, DriverControlsMode, VectorInput,
+  ViewerOptions, AnimationMode, DriverControlsMode, PartControlsMode,
+  VectorInput,
 } from './viewer';
 import type { ViewerView } from './camera';
 import { assertSpeed } from './playback';
@@ -67,6 +68,10 @@ export interface ResolvedViewerOptions {
   baseUrl: string | null;
   animation: AnimationMode;
   driverControls: DriverControlsMode;
+  /** Whether the parts a document's controls table names are touchable
+   * (OpenSpec `drive-the-run-by-touch`, design D14). INDEPENDENT of
+   * `driverControls`: the two gate different pixels. */
+  partControls: PartControlsMode;
   time: number;
   speed: number;
   autoplay: boolean;
@@ -97,6 +102,10 @@ export function resolveOptions(
     // Presented by default, like the animation bar: a self-contained
     // export is opened by a maker with no host code behind it.
     driverControls: options.driverControls ?? 'inline',
+    // Presented by default, like the panel: a maker who opens a
+    // self-contained export of a machine its author declared controls
+    // on should be able to touch it.
+    partControls: options.partControls ?? 'inline',
     time: Math.min(Math.max(time, 0), 1),
     // Real time by default: a declared loop plays as long as it is. A
     // document without a loop ignores this and plays frames / fps.
@@ -186,6 +195,23 @@ export function showsRunControls(
   carriesProgram: boolean,
 ): boolean {
   return mode === 'inline' && carriesProgram;
+}
+
+/** Whether this mount presents the PART affordance (OpenSpec
+ * `drive-the-run-by-touch`, design D14).
+ *
+ * The same shape as the two switches above, and deliberately its OWN
+ * switch: a host that builds its own instrument panel still wants the
+ * dial pressable, and the shop floor is exactly that host. What is
+ * gated is the cursor, the highlight, the title and the pick -- never
+ * the interface: `controls()` answers and the run API is whole either
+ * way.
+ */
+export function showsPartControls(
+  mode: PartControlsMode,
+  declaresControls: boolean,
+): boolean {
+  return mode === 'inline' && declaresControls;
 }
 
 export function controlPlan(

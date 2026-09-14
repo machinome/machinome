@@ -597,3 +597,125 @@ describe('assertRenderable on a document carrying a program', () => {
       .toThrow(/units\.wheel/);
   });
 });
+
+// ---------------------------------------------------------------------
+// OpenSpec `drive-the-run-by-touch` (design D1, D2). A version 5
+// document MAY carry a `controls` table beside `instructions`; it joins
+// this same refusal surface, after the program its entries reference
+// and before the tree walk, so a table this viewer cannot resolve is
+// refused BEFORE a single thing is rendered. A document carrying no key
+// reaches exactly the code it reached before.
+// ---------------------------------------------------------------------
+
+const dial = node('dial', []);
+const joint = node('input', [['r', 'units.drum.turn', [1, 0, 0]]], [dial]);
+const column = node('units', [], [joint, node('lid', [])]);
+
+const TURN_CONTROL = {
+  kind: 'turn',
+  part: ['units', 'input', 'dial'],
+  input: 'crank',
+  per_unit: -36.0,
+  joint: ['units', 'input'],
+  coordinate: 'units.drum.turn',
+  axis: [1, 0, 0],
+  origin: [0, 0, 0],
+};
+
+const BUTTON_CONTROL = {
+  kind: 'button',
+  part: ['units', 'input', 'dial'],
+  instruction: 'Add one',
+  joint: ['units', 'input'],
+  coordinate: 'units.drum.turn',
+  axis: [1, 0, 0],
+  origin: [0, 0, 0],
+};
+
+function touchable(controls: unknown,
+                   root: ManifestNode = node('root', [], [column])): Manifest {
+  const manifest = withProgram({
+    root,
+    instructions: { 'Add one': { targets: { crank: 1 }, duration: 1 } },
+  } as Record<string, unknown>);
+  (manifest as { controls?: unknown }).controls = controls;
+  return manifest;
+}
+
+describe('assertRenderable on a document carrying controls', () => {
+  it('hands back the parsed controls, in the document\'s own key order', () => {
+    const { controls } = assertRenderable(
+      touchable({ 'units dial': BUTTON_CONTROL, 'turn units': TURN_CONTROL }),
+      '/m.json');
+    expect(controls.map((one) => one.name))
+      .toEqual(['units dial', 'turn units']);
+    expect(controls[1].perUnit).toBe(-36);
+    expect(controls[1].joint).toEqual(['units', 'input']);
+  });
+
+  it('hands back [] for a document carrying no controls key', () => {
+    expect(assertRenderable(withProgram(), '/m.json').controls).toEqual([]);
+    expect(assertRenderable(
+      document({ version: 4 as unknown as Manifest['version'] }),
+      '/m.json').controls).toEqual([]);
+  });
+
+  it('refuses a part its own tree does not contain, naming it', () => {
+    expect(() => assertRenderable(
+      touchable({ 'turn units': { ...TURN_CONTROL, part: ['units', 'knob'] } }),
+      '/m.json')).toThrow(/Unknown assembly path: units\/knob/);
+  });
+
+  it('refuses an instruction the document does not declare', () => {
+    expect(() => assertRenderable(
+      touchable({ 'units dial': { ...BUTTON_CONTROL,
+                                  instruction: 'Add two' } }),
+      '/m.json')).toThrow(/Add two.*Add one/s);
+  });
+
+  it('refuses a ratio of zero, saying the gesture has no quantum', () => {
+    expect(() => assertRenderable(
+      touchable({ 'turn units': { ...TURN_CONTROL, per_unit: 0 } }),
+      '/m.json')).toThrow(/quantum/);
+  });
+
+  it('refuses a joint whose leading operations are not the placement', () => {
+    const wrong = node('root', [], [node('units', [], [
+      node('input', [['r', 'crank', [1, 0, 0]]], [node('dial', [])]),
+    ])]);
+    expect(() => assertRenderable(
+      touchable({ 'turn units': TURN_CONTROL }, wrong), '/m.json'))
+      .toThrow(/units\/input/);
+  });
+
+  it('accepts a joint placed off its node\'s origin', () => {
+    const offset = node('root', [], [node('units', [], [
+      node('input', [['t', ['0', '-3', '0']],
+                     ['r', 'units.drum.turn', [1, 0, 0]],
+                     ['t', ['0', '3', '0']]], [node('dial', [])]),
+    ])]);
+    const { controls } = assertRenderable(
+      touchable({ 'turn units': { ...TURN_CONTROL, origin: [0, 3, 0] } },
+                offset), '/m.json');
+    expect(controls[0].origin).toEqual([0, 3, 0]);
+  });
+
+  it('refuses a controls table on a document that carries no program', () => {
+    const posed = document({
+      version: 4 as unknown as Manifest['version'],
+      root: node('root', [], [column]),
+    }) as Manifest & { controls?: unknown };
+    posed.controls = { 'turn units': TURN_CONTROL };
+    expect(() => assertRenderable(posed, '/m.json'))
+      .toThrow(/controls.*no program/s);
+  });
+
+  it('refuses the table before the tree is walked for driver ids', () => {
+    // A document that is wrong in BOTH ways: the controls refusal is
+    // the one that fires, because the table is read before the walk.
+    const bad = touchable(
+      { 'turn units': { ...TURN_CONTROL, per_unit: 0 } },
+      node('root', [['r', 'nowhere.at.all', [0, 0, 1]]], [column]));
+    expect(() => assertRenderable(bad, '/m.json')).toThrow(/quantum/);
+  });
+});

@@ -13,7 +13,7 @@ import {
 } from './assembly';
 import {
   controlPlan, resolveBaseUrl, resolveOptions, showsDriverChrome,
-  showsRunControls,
+  showsPartControls, showsRunControls,
 } from './options';
 import {
   BreadcrumbSegment, ControlLayer, controlLayer, DriverControl,
@@ -27,7 +27,8 @@ import {
   ladderFor, timelinePosition, timelineTime,
 } from './playback';
 import {
-  formatOutcome, runControlLayer, runInputControl, transportPlan,
+  DEFAULT_NUDGE, formatOutcome, runControlLayer, runInputControl,
+  transportPlan,
 } from './runControls';
 import type {
   JogPlan, NudgePlan, OutcomeReport, RunControlLayer, RunControlsInput,
@@ -49,6 +50,13 @@ import { posed, poseScope } from './run/pose';
 import { evaluatesTech, knownTechnologies, specRefusal } from './flexible';
 import { AssemblyNode, AssemblyPath, WidgetTree } from './tree';
 import { Manifest, ManifestDriver, ManifestInstruction, ManifestNode } from './types';
+import {
+  chooseMode, intersectPlane, MIN_RADIUS, normalize3, readControls,
+  sub3, sweepAngle, TurnPlanner, visibleUpTo, worldLine,
+} from './partControls';
+import type {
+  LoadedControl, Ray, SweepMode, Vec3, WorldLine,
+} from './partControls';
 import { API_VERSION } from './version';
 
 export type AnimationMode = 'inline' | 'toggle' | 'none' | 'external';
@@ -56,6 +64,13 @@ export type AnimationMode = 'inline' | 'toggle' | 'none' | 'external';
 // its own instrument panel on the driving API asks for 'none' and keeps
 // every method below (ADR-056 stage 3c, design D9).
 export type DriverControlsMode = 'inline' | 'none';
+// Whether the widget makes the parts a document's `controls` table
+// names touchable (OpenSpec `drive-the-run-by-touch`, design D14).
+// INDEPENDENT of `driverControls`, because a host that builds its own
+// instrument panel still wants the dial pressable. What it gates is the
+// cursor, the highlight, the title and the pick; `controls()` answers
+// and the run API is whole either way.
+export type PartControlsMode = 'inline' | 'none';
 export type View = ViewerView;
 export type { AssemblyNode, AssemblyPath } from './tree';
 export type { AssemblyChange, AssemblyListener, AssemblyNavigationState } from './assembly';
@@ -69,6 +84,7 @@ export interface ViewerOptions {
   baseUrl?: string;
   animation?: AnimationMode;
   driverControls?: DriverControlsMode;
+  partControls?: PartControlsMode;
   time?: number;
   /** Playback speed as a multiple of real time, for a document whose
    * `animation.loop` says what a turn is; default 1. */
@@ -130,6 +146,37 @@ export interface RunHandle {
   runsInWorker: boolean;
 }
 
+/** One declared control, as a host reads it (OpenSpec
+ * `drive-the-run-by-touch`, design D15): its declaration carried
+ * through, where its part stands on screen right now, and a point at
+ * which a press actually reaches it right now.
+ *
+ * Positions are in VIEWPORT CSS pixels -- the frame every `DOMRect`
+ * around them uses, and the frame a test's `page.mouse.click(x, y)`
+ * takes -- so a host or a test acts on them without converting. */
+export interface PartControlView {
+  /** The table's key: the control's qualified display name. */
+  name: string;
+  kind: 'button' | 'turn';
+  part: string[];
+  /** A button's instruction. */
+  instruction?: string;
+  /** A turn's input. */
+  input?: string;
+  /** A turn's published ratio. */
+  perUnit?: number;
+  joint: string[];
+  coordinate: string;
+  /** The part's on-screen bounds, or null when the part is not visible
+   * or is wholly off screen. */
+  rect: { x: number; y: number; width: number; height: number } | null;
+  /** A point a press reaches this control at right now, or null when
+   * none does. Found the way a press finds it -- by raycasting under
+   * the same nearest-visible-hit rule -- because the centre of a dial's
+   * bounding rectangle is its axle, which may be a hole. */
+  point: { x: number; y: number } | null;
+}
+
 export interface ViewerHandle {
   dispose(): void;
   view(): View;
@@ -169,6 +216,12 @@ export interface ViewerHandle {
    * carries none -- which is every document of versions 1 to 4, so a
    * host asks one question and gets a truthful answer. */
   run(): RunHandle | null;
+  /** The controls the loaded document declares (design D15), with each
+   * part's current on-screen rectangle and a point a press reaches it
+   * at. `[]` for a document that declares none, and the FULL listing
+   * even when the affordance is suppressed: what a presentation choice
+   * gates is the pixels and the pointer, never the interface. */
+  controls(): PartControlView[];
   apiVersion: number;
 }
 
@@ -307,6 +360,20 @@ export async function mount(
   // never narrows, so the digits hold still as the run grows.
   let elapsedWidth = 0;
 
+  // The PART controls (OpenSpec `drive-the-run-by-touch`). Everything
+  // here is empty and inert for a document that declares none, which is
+  // every document published before this viewer could read one.
+  //
+  // `partMeshes` is rebuilt at the three places a mesh can be replaced
+  // -- `replaceTree`, `manifestChanged` and `artifactChanged` -- rather
+  // than stamped onto meshes at construction, because a `userData`
+  // field survives into `artifactChanged`'s freshly loaded replacement
+  // only if every construction site remembers to set it (design D4).
+  let loadedControls: LoadedControl[] = [];
+  let partMeshes = new Map<THREE.Mesh, LoadedControl[]>();
+  let partOf = new Map<string, THREE.Mesh[]>();
+  const raycaster = new THREE.Raycaster();
+
   // Under a run the BANK is what poses the geometry, and the program's
   // clock name binds to elapsed simulation seconds beside it. `$t` stays
   // 0 for a version 5 document, because no expression in one reads it.
@@ -378,7 +445,8 @@ export async function mount(
    * its listeners and to a readback.
    */
   const request = (key: string, unit: string | null,
-                   issue: () => Promise<Outcome[]>): Promise<void> => {
+                   issue: () => Promise<Outcome[]>,
+                   at?: { x: number; y: number }): Promise<OutcomeReport | null> => {
     // A request into a paused run would report nothing, forever, which
     // is indistinguishable from a broken button: pressing a control is
     // asking the machine to move (design D5).
@@ -391,6 +459,14 @@ export async function mount(
     pending[key] = (pending[key] ?? 0) + 1;
     outcomes[key] = started;
     runChrome?.outcome(key, started, true);
+    // The SAME report, in a second place, when the request was made at
+    // a point on the model rather than on a panel control (design D9).
+    // One code path, two places, and `formatOutcome` is the existing
+    // function, so a press that is blocked says exactly what a nudge
+    // that is blocked says.
+    if (at !== undefined) {
+      partLabel.show(started, at);
+    }
     refreshTransport();
     return issue().then(
       (settled) => { outcomes[key] = summarise(settled, unit); },
@@ -408,7 +484,328 @@ export async function mount(
     ).then(() => {
       pending[key] = Math.max((pending[key] ?? 1) - 1, 0);
       runChrome?.outcome(key, outcomes[key], pending[key] > 0);
+      if (at !== undefined) {
+        partLabel.show(outcomes[key], at);
+      }
       refreshTransport();
+      // What it became, for the gesture's planner: a quantum that
+      // completed advances the sweep origin, and one that did not
+      // leaves it exactly where it was (design D11).
+      return outcomes[key] ?? null;
+    });
+  };
+
+  // -------------------------------------------------------------------
+  // The PART controls (OpenSpec `drive-the-run-by-touch`, design
+  // D4-D15). Everything here is three.js and the DOM: the pick, the
+  // highlight's materials, the gesture's world line and where a part
+  // stands on screen. Every DECISION is in `partControls.ts`, and the
+  // gesture's own DOM behaviour is in `partSurfaceWith` below, which
+  // this hands its collaborators to -- the seam `inspector.test.ts`
+  // already uses for `mount`, because jsdom can give no WebGL context
+  // and an untestable decision is a decision nobody checks.
+
+  /** Whether this mount PRESENTS the affordance: the cursor, the
+   * highlight, the title and the pick. `controls()` answers and the run
+   * API is whole either way (design D14). */
+  const presentsPartControls = (): boolean =>
+    showsPartControls(resolved.partControls, loadedControls.length > 0);
+
+  /** The transient report beside the pointer (design D9). */
+  const partLabel = outcomeLabelIn(container);
+
+  /** The ray through a client point, in plain tuples. */
+  const rayAt = (x: number, y: number): Ray => {
+    const bounds = renderer.domElement.getBoundingClientRect();
+    raycaster.setFromCamera(new THREE.Vector2(
+      ((x - bounds.left) / bounds.width) * 2 - 1,
+      -((y - bounds.top) / bounds.height) * 2 + 1,
+    ), camera);
+    const { origin, direction } = raycaster.ray;
+    return {
+      origin: [origin.x, origin.y, origin.z],
+      direction: [direction.x, direction.y, direction.z],
+    };
+  };
+
+  /** Where a world point lands, in viewport CSS pixels. */
+  const toClient = (world: Vec3): Point => {
+    const bounds = renderer.domElement.getBoundingClientRect();
+    const projected = new THREE.Vector3(world[0], world[1], world[2])
+      .project(camera);
+    return {
+      x: bounds.left + ((projected.x + 1) / 2) * bounds.width,
+      y: bounds.top + ((1 - projected.y) / 2) * bounds.height,
+    };
+  };
+
+  /** The nearest VISIBLE hit's mesh, and the controls naming it -- or
+   * null (design D5).
+   *
+   * The cast is against the whole tree, not against control meshes
+   * only, and the NEAREST hit decides: a part standing in front of a
+   * control is in front of it, and a dial under a closed lid is not
+   * pressed through the lid. three.js's raycaster does not consult
+   * `visible` at all in this version, so that filter is ours. */
+  const pickAt = (x: number, y: number): readonly LoadedControl[] | null => {
+    if (tree === undefined || partMeshes.size === 0) {
+      return null;
+    }
+    rayAt(x, y);
+    for (const hit of raycaster.intersectObject(scene, true)) {
+      if (!(hit.object instanceof THREE.Mesh)
+          || !visibleUpTo(hit.object, scene)) {
+        continue;
+      }
+      return partMeshes.get(hit.object) ?? null;
+    }
+    return null;
+  };
+
+  /** Lift the emissive colour of every mesh of every hovered part, and
+   * answer the function that puts it back.
+   *
+   * A node with no declared colour renders through
+   * `MeshNormalMaterial`, which HAS no `emissive`: it gets the cursor
+   * and the title and no lift, which is said out loud rather than
+   * worked around (design D7). */
+  const liftParts = (naming: readonly LoadedControl[]): (() => void) => {
+    const lifted: { emissive: THREE.Color; was: THREE.Color }[] = [];
+    for (const control of naming) {
+      for (const mesh of partOf.get(control.name) ?? []) {
+        const materials = Array.isArray(mesh.material)
+          ? mesh.material : [mesh.material];
+        for (const material of materials) {
+          const glow = (material as { emissive?: THREE.Color }).emissive;
+          if (glow instanceof THREE.Color) {
+            lifted.push({ emissive: glow, was: glow.clone() });
+            glow.setHex(HOVER_EMISSIVE);
+          }
+        }
+      }
+    }
+    return () => { lifted.forEach(({ emissive, was }) => emissive.copy(was)); };
+  };
+
+  /** The world line the control turns about, from the JOINT node's own
+   * world matrix (ADR-112 §3, design D6). */
+  const lineOf = (control: LoadedControl): WorldLine | null => {
+    if (tree === undefined) {
+      return null;
+    }
+    scene.updateMatrixWorld(true);
+    const joint = tree.requirePath(control.joint);
+    return worldLine(joint.group.matrixWorld.elements as unknown as number[],
+                     control.axis, control.origin);
+  };
+
+  /** How THIS gesture will measure its sweep, decided once from the
+   * pointerdown ray and fixed for the gesture (design D10): orbiting is
+   * suspended, so the camera cannot move and the measurement cannot
+   * change meaning half-way through. The reader carries its own
+   * previous reading, so the surface only accumulates what it returns.
+   */
+  const sweepReaderFor = (control: LoadedControl,
+                          x: number, y: number): SweepReader | null => {
+    const line = lineOf(control);
+    if (line === null) {
+      return null;
+    }
+    const choice = chooseMode(rayAt(x, y), line,
+                              [camera.position.x, camera.position.y,
+                                camera.position.z]);
+    if (choice.mode === 'plane') {
+      let reference = choice.reference;
+      return {
+        read(nextX: number, nextY: number): number {
+          const met = intersectPlane(rayAt(nextX, nextY), line);
+          if (met === null || reference === null) {
+            return 0;
+          }
+          const radius = sub3(met, line.origin);
+          if (Math.hypot(radius[0], radius[1], radius[2]) <= MIN_RADIUS) {
+            return 0;
+          }
+          const now = normalize3(radius);
+          const delta = sweepAngle(reference, now, line.axis);
+          reference = now;
+          return delta;
+        },
+      };
+    }
+    const pivot = toClient(line.origin);
+    let from: Point = { x, y };
+    return {
+      read(nextX: number, nextY: number): number {
+        const delta = turnedBy(from, { x: nextX, y: nextY }, pivot);
+        from = { x: nextX, y: nextY };
+        return delta * choice.screenSign;
+      },
+    };
+  };
+
+  /** The gesture's own DOM behaviour, given the collaborators above. */
+  const partSurface = partSurfaceWith({
+    container,
+    canvas: renderer.domElement,
+    orbit: controls,
+    pick: pickAt,
+    highlight: liftParts,
+    reader: sweepReaderFor,
+    nudge: (id: string) => nudgeSettings[id] ?? DEFAULT_NUDGE,
+    trigger: (name: string, at: Point) => {
+      const started = runtime;
+      return started === undefined
+        ? null : request(name, null, () => started.trigger(name), at);
+    },
+    move: (id: string, by: number, seconds: number, at: Point) => {
+      const started = runtime;
+      return started === undefined ? null : request(
+        id, loadedProgram?.drivers[id]?.unit ?? null,
+        () => started.move(id, { by, duration: seconds }), at);
+    },
+  });
+
+  /** Rebuild the mesh -> control map from the tree, at each of the
+   * three places a mesh can be replaced (design D4). `tree.ts` is not
+   * touched at all: `requirePath` already returns the part's subtree
+   * and refuses an unknown path by name. */
+  const rebuildPartControls = (): void => {
+    partSurface.clear();
+    partMeshes = new Map();
+    partOf = new Map();
+    if (tree !== undefined) {
+      for (const control of loadedControls) {
+        const meshes: THREE.Mesh[] = [];
+        tree.requirePath(control.part).group.traverse((object) => {
+          if (object instanceof THREE.Mesh) {
+            meshes.push(object);
+          }
+        });
+        partOf.set(control.name, meshes);
+        for (const mesh of meshes) {
+          const naming = partMeshes.get(mesh);
+          if (naming === undefined) {
+            partMeshes.set(mesh, [control]);
+          } else {
+            naming.push(control);
+          }
+        }
+      }
+    }
+    partSurface.refresh(loadedControls, presentsPartControls());
+  };
+
+  /** The part's on-screen bounds, in viewport CSS pixels, or null when
+   * it is not visible or is wholly off screen (design D15). */
+  const partRect = (control: LoadedControl): PartRect | null => {
+    const meshes = (partOf.get(control.name) ?? [])
+      .filter((mesh) => visibleUpTo(mesh, scene));
+    if (meshes.length === 0) {
+      return null;
+    }
+    const bounds = new THREE.Box3();
+    for (const mesh of meshes) {
+      if (mesh.geometry.boundingBox === null) {
+        mesh.geometry.computeBoundingBox();
+      }
+      const box = mesh.geometry.boundingBox;
+      if (box !== null) {
+        bounds.union(box.clone().applyMatrix4(mesh.matrixWorld));
+      }
+    }
+    if (bounds.isEmpty()) {
+      return null;
+    }
+    const canvas = renderer.domElement.getBoundingClientRect();
+    const corner = new THREE.Vector3();
+    let left = Infinity;
+    let right = -Infinity;
+    let top = Infinity;
+    let bottom = -Infinity;
+    let anyInFront = false;
+    for (let index = 0; index < 8; index += 1) {
+      corner.set(index & 1 ? bounds.max.x : bounds.min.x,
+                 index & 2 ? bounds.max.y : bounds.min.y,
+                 index & 4 ? bounds.max.z : bounds.min.z);
+      // Behind the camera a projection is meaningless, so such a corner
+      // is left out rather than folded back into the rectangle.
+      if (corner.clone().applyMatrix4(camera.matrixWorldInverse).z >= 0) {
+        continue;
+      }
+      anyInFront = true;
+      const projected = corner.clone().project(camera);
+      const x = canvas.left + ((projected.x + 1) / 2) * canvas.width;
+      const y = canvas.top + ((1 - projected.y) / 2) * canvas.height;
+      left = Math.min(left, x);
+      right = Math.max(right, x);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+    }
+    if (!anyInFront || right < canvas.left || left > canvas.right
+        || bottom < canvas.top || top > canvas.bottom) {
+      return null;
+    }
+    return { x: left, y: top, width: right - left, height: bottom - top };
+  };
+
+  /** A point at which a press actually REACHES this control right now,
+   * found the way a press finds it (design D15): the rect's centre
+   * first -- which on a real dial may be the axle's hole -- and then a
+   * bounded grid inside the rect, under the same nearest-visible-hit
+   * rule. `null` says honestly that nothing does. */
+  const partPoint = (control: LoadedControl,
+                     rect: PartRect): Point | null => {
+    const canvas = renderer.domElement.getBoundingClientRect();
+    const reaches = (point: Point): boolean => {
+      if (point.x < canvas.left || point.x > canvas.right
+          || point.y < canvas.top || point.y > canvas.bottom) {
+        return false;
+      }
+      return pickAt(point.x, point.y)?.includes(control) ?? false;
+    };
+    const centre = { x: rect.x + rect.width / 2,
+      y: rect.y + rect.height / 2 };
+    if (reaches(centre)) {
+      return centre;
+    }
+    for (let row = 0; row < POINT_GRID; row += 1) {
+      for (let column = 0; column < POINT_GRID; column += 1) {
+        const point = {
+          x: rect.x + (rect.width * (column + 0.5)) / POINT_GRID,
+          y: rect.y + (rect.height * (row + 0.5)) / POINT_GRID,
+        };
+        if (reaches(point)) {
+          return point;
+        }
+      }
+    }
+    return null;
+  };
+
+  const partControlViews = (): PartControlView[] => {
+    scene.updateMatrixWorld(true);
+    return loadedControls.map((control) => {
+      const rect = partRect(control);
+      const view: PartControlView = {
+        name: control.name,
+        kind: control.kind,
+        part: [...control.part],
+        joint: [...control.joint],
+        coordinate: control.coordinate,
+        rect,
+        point: rect === null ? null : partPoint(control, rect),
+      };
+      if (control.instruction !== null) {
+        view.instruction = control.instruction;
+      }
+      if (control.input !== null) {
+        view.input = control.input;
+      }
+      if (control.perUnit !== null) {
+        view.perUnit = control.perUnit;
+      }
+      return view;
     });
   };
 
@@ -513,7 +910,8 @@ export async function mount(
   };
 
   const replaceTree = async (view: View | null) => {
-    const { document, table, program } = await loadDocument(sourceUrl);
+    const { document, table, program, controls: declared } =
+      await loadDocument(sourceUrl);
     drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
     // Installed before the update that follows (design D6), in the same
     // place and order `drivers.reconcile(...)` already runs before it.
@@ -534,6 +932,9 @@ export async function mount(
     scene.add(tree.group);
     assemblyNavigation.reconcile(tree);
     applyFrame(view);
+    // One of the three places a mesh can be replaced (design D4).
+    loadedControls = declared;
+    rebuildPartControls();
 
     refreshControls(document);
     // Mount calls this before the handle exists, so no listener can be
@@ -778,6 +1179,10 @@ export async function mount(
     // them varies with the frame rate (design D4 -- this is an
     // animation, and determinism stays with the Python simulation).
     const movedDrivers = drivers.tick();
+    // At most ONE hover cast per animation frame, and none at all
+    // while a gesture is engaged or for a document that declares no
+    // control (design D5).
+    partSurface.pollHover();
     if (runtime !== undefined) {
       // The render loop drives the CADENCE and the worker owns the
       // mechanics: one advance in flight, and a committed bank poses the
@@ -811,6 +1216,13 @@ export async function mount(
       driverChrome = undefined;
       runChrome?.remove();
       runChrome = undefined;
+      // The pointer surface, the highlight and the transient label all
+      // go with the mount (design D13).
+      partSurface.dispose();
+      partLabel.remove();
+      partMeshes = new Map();
+      partOf = new Map();
+      loadedControls = [];
       // Nothing will advance the ramps again, so their promises settle
       // here rather than never.
       drivers.dispose();
@@ -828,15 +1240,20 @@ export async function mount(
       await replaceTree(captureView());
     },
     async artifactChanged(path: string) {
+      partSurface.clear();
       await tree?.artifactChanged(path, baseUrl);
       if (tree) {
         assemblyNavigation.reconcile(tree);
       }
+      // The third place a mesh can be replaced: the controls are the
+      // same, the meshes carrying them are not (design D4).
+      rebuildPartControls();
       renderer.render(scene, camera);
       notifyAssemblyChange();
     },
     async manifestChanged() {
-      const { document, table, program } = await loadDocument(sourceUrl);
+      const { document, table, program, controls: declared } =
+        await loadDocument(sourceUrl);
       drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
       // Installed before the update that follows (design D6): a
       // republish carrying a different table invalidates the free set
@@ -844,6 +1261,10 @@ export async function mount(
       // node's own operations changed.
       bindingsTable = table;
       await startRuntime(document, program, true);
+      // Cleared BEFORE the reconcile, because `setColor` replaces
+      // materials and a lifted emissive would be restored onto a
+      // material nothing is showing any more (design D7).
+      partSurface.clear();
       await tree?.reconcile(document.root, baseUrl, null, bindingsTable);
       if (tree) {
         const rootChanged = assemblyNavigation.reconcile(tree);
@@ -853,6 +1274,8 @@ export async function mount(
           applyFrame(null);
         }
       }
+      loadedControls = declared;
+      rebuildPartControls();
       renderer.render(scene, camera);
       notifyAssemblyChange();
     },
@@ -888,6 +1311,7 @@ export async function mount(
       drivers.onDriverChange(listener),
     instructions: () => drivers.instructions(),
     trigger: (name: string) => drivers.trigger(name),
+    controls: partControlViews,
     run(): RunHandle | null {
       const started = runtime;
       const program = loadedProgram;
@@ -919,6 +1343,447 @@ export async function mount(
 }
 
 const EMPTY: ReadonlySet<string> = new Set();
+
+// ---------------------------------------------------------------------
+// The part gesture's own constants and record (OpenSpec
+// `drive-the-run-by-touch`, design D7-D9, D13, D15).
+
+/** CSS pixels of travel a press is allowed. The same order as a native
+ * click's slop, and small enough that a dial's quantum -- 36 degrees of
+ * sweep -- is never reached inside it (design D8). */
+const PRESS_SLOP = 4;
+
+/** The grey a hovered part's emissive colour is lifted to.
+ *
+ * `Color.setHex` reads sRGB and stores linear, so the lift a viewer
+ * actually SEES is much smaller than the hex suggests: 0x333333
+ * measured about 10/255 on the acceptance model's own materials, which
+ * is not the "visible change" the spec asks for. 0x777777 measures
+ * about 60/255 there -- unmistakable beside the parts around it, and
+ * still a grey rather than a colour of its own. */
+const HOVER_EMISSIVE = 0x777777;
+
+/** How long a transient outcome label stays before it is taken away. */
+const OUTCOME_LINGER = 4000;
+
+/** How finely `controls()` searches a part's rectangle for a point a
+ * press reaches (design D15). Bounded on purpose: the answer is `null`
+ * rather than an unbounded hunt. */
+const POINT_GRID = 7;
+
+const PART_OUTCOME_STYLE =
+  'position:absolute;pointer-events:none;z-index:2;'
+  + 'padding:2px 6px;border-radius:3px;max-width:24em;'
+  + 'background:rgba(30,33,38,0.85);color:#fff;'
+  + 'font:12px system-ui,sans-serif;';
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface PartRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** The transient outcome label beside a pointer (design D9).
+ *
+ * Its own factory so jsdom can test its text and its lifetime without a
+ * WebGL context: the element is created on first use, moved and
+ * rewritten by each report, and taken away after `linger` milliseconds
+ * or when the mount is disposed. */
+export function outcomeLabelIn(container: HTMLElement,
+                               linger = OUTCOME_LINGER): {
+  show(report: OutcomeReport | null, at: Point): void;
+  remove(): void;
+} {
+  let element: HTMLElement | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const remove = (): void => {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      timer = undefined;
+    }
+    element?.remove();
+    element = undefined;
+  };
+  return {
+    show(report: OutcomeReport | null, at: Point) {
+      if (element === undefined) {
+        element = document.createElement('div');
+        element.className = 'part-outcome';
+        // A report a screen reader is told about once, where it was
+        // made -- the same `formatOutcome` words the panel writes.
+        element.setAttribute('role', 'status');
+        element.style.cssText = PART_OUTCOME_STYLE;
+        container.append(element);
+      }
+      const bounds = container.getBoundingClientRect();
+      element.style.left = `${Math.round(at.x - bounds.left + 12)}px`;
+      element.style.top = `${Math.round(at.y - bounds.top + 12)}px`;
+      element.textContent = formatOutcome(report);
+      if (timer !== undefined) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(remove, linger);
+    },
+    remove,
+  };
+}
+
+/** How a gesture reads its sweep. The reader carries its own previous
+ * reading, so the surface only accumulates what it returns -- which is
+ * what makes the sweep UNWRAPPED across more than half a turn. */
+export interface SweepReader {
+  /** The signed degrees this pointer position adds to the sweep. */
+  read(x: number, y: number): number;
+}
+
+/** What the part surface needs from the mount it belongs to: the
+ * three.js, the run and the DOM elements. Every one of them is a
+ * collaborator a test substitutes, which is the seam `inspector.ts`
+ * already uses -- `mount()` builds a `THREE.WebGLRenderer`, so jsdom
+ * can never call it. */
+export interface PartSurfaceHost {
+  container: HTMLElement;
+  canvas: HTMLElement;
+  /** OrbitControls, or anything carrying its `enabled` flag. */
+  orbit: { enabled: boolean };
+  /** The controls naming the nearest VISIBLE mesh at a client point. */
+  pick(x: number, y: number): readonly LoadedControl[] | null;
+  /** Lift the affordance on these controls; the returned function puts
+   * it back. */
+  highlight(controls: readonly LoadedControl[]): () => void;
+  /** How this gesture measures its sweep, or null when there is no
+   * geometry to measure with. */
+  reader(control: LoadedControl, x: number, y: number): SweepReader | null;
+  /** What one quantum of this input asks for. */
+  nudge(input: string): NudgePlan;
+  /** Submit the declared instruction; null when there is no run. */
+  trigger(name: string, at: Point): Promise<OutcomeReport | null> | null;
+  /** Ask the input to move; null when there is no run. */
+  move(input: string, by: number, seconds: number,
+       at: Point): Promise<OutcomeReport | null> | null;
+}
+
+export interface PartSurface {
+  /** A new set of controls, and whether the affordance is presented at
+   * all -- called at each of the three places a mesh can be replaced. */
+  refresh(controls: readonly LoadedControl[], present: boolean): void;
+  /** Settle at most one hover cast; the caller's animation loop is the
+   * throttle. */
+  pollHover(): void;
+  engaged(): boolean;
+  /** Clear the cursor, the title and the highlight. */
+  clear(): void;
+  dispose(): void;
+}
+
+/** One engagement on a touchable part, from `pointerdown` to whichever
+ * of the five sides ends it. */
+interface Gesture {
+  pointerId: number;
+  /** Where it came down, in client pixels: the press threshold. */
+  downX: number;
+  downY: number;
+  /** Where the pointer stands now: the label's place, and the point a
+   * quantum issued on retire is reported at. */
+  at: Point;
+  /** True once the pointer has travelled past `PRESS_SLOP`, and then
+   * true for the rest of the gesture. */
+  dragging: boolean;
+  button: LoadedControl | null;
+  turn: LoadedControl | null;
+  /** The turn's input id, hoisted so the pump needs no null dance. */
+  turnId: string | null;
+  /** The duration each quantum asks for, captured at pointerdown. */
+  seconds: number;
+  planner: TurnPlanner | null;
+  reader: SweepReader | null;
+}
+
+/** The press, the turn, the hover affordance and the five release
+ * paths (design D5, D7, D8, D12, D13), given the host's collaborators.
+ *
+ * Nothing here writes a coordinate, poses a part or measures anything:
+ * the measurement is the host's reader and every decision is the
+ * planner's. What this owns is the DOM -- listeners, the cursor, the
+ * title, the capture and the camera's suspension.
+ */
+export function partSurfaceWith(host: PartSurfaceHost): PartSurface {
+  let declared: readonly LoadedControl[] = [];
+  let presented = false;
+  let listeners: (() => void) | null = null;
+  let hovered: readonly LoadedControl[] | null = null;
+  let restore: (() => void) | null = null;
+  let hoverAt: Point | null = null;
+  let hoverDue = false;
+  let gesture: Gesture | null = null;
+
+  const clearHighlight = (): void => {
+    restore?.();
+    restore = null;
+  };
+
+  const clear = (): void => {
+    clearHighlight();
+    hovered = null;
+    host.canvas.style.cursor = '';
+    host.canvas.removeAttribute('title');
+  };
+
+  const applyHover = (naming: readonly LoadedControl[] | null): void => {
+    const same = hovered !== null && naming !== null
+      && hovered.length === naming.length
+      && hovered.every((control, index) => naming[index] === control);
+    if (same) {
+      return;
+    }
+    clearHighlight();
+    hovered = naming;
+    if (naming === null) {
+      host.canvas.style.cursor = '';
+      host.canvas.removeAttribute('title');
+      return;
+    }
+    host.canvas.style.cursor = 'pointer';
+    // The display names of EVERY control naming this part: a dial that
+    // is both pressed and turned says so.
+    host.canvas.setAttribute('title',
+                             naming.map((one) => one.name).join(' · '));
+    restore = host.highlight(naming);
+  };
+
+  /** Issue the next quantum, if the planner says there is one -- and
+   * ask again when it retires, which is how a fast drag catches up.
+   *
+   * At most ONE is ever in flight, because `Run.claim` throws when an
+   * input already has an active command: "an input has one owner at a
+   * time". */
+  const pump = (current: Gesture): void => {
+    if (current.planner === null || current.turnId === null) {
+      return;
+    }
+    const asked = current.planner.next();
+    if (asked === null) {
+      return;
+    }
+    const settling = host.move(current.turnId, asked.by, current.seconds,
+                               { ...current.at });
+    if (settling === null) {
+      // No run to ask: nothing was issued, so nothing is outstanding.
+      current.planner.retire('refused');
+      return;
+    }
+    void settling.then((report) => {
+      // A gesture that has already ended keeps neither its planner nor
+      // its right to ask again: the movement is left to retire and
+      // report on its own, and nothing follows it.
+      if (gesture !== current || current.planner === null) {
+        return;
+      }
+      current.planner.retire(
+        report === null || report.status === 'completed'
+          ? 'completed'
+          : report.status as 'blocked' | 'refused' | 'cancelled');
+      pump(current);
+    });
+  };
+
+  /** Every side a gesture can end on (design D13). Each restores the
+   * camera, releases the capture and clears the affordance. */
+  const endGesture = (): void => {
+    const current = gesture;
+    gesture = null;
+    host.orbit.enabled = true;
+    if (current !== null) {
+      try {
+        (host.canvas as Element & {
+          releasePointerCapture(id: number): void;
+        }).releasePointerCapture(current.pointerId);
+      } catch {
+        // Already released, or never captured: nothing to undo.
+      }
+    }
+    clear();
+  };
+
+  const onPointerDown = (event: PointerEvent): void => {
+    if (!presented || gesture !== null || event.button !== 0) {
+      return;
+    }
+    const naming = host.pick(event.clientX, event.clientY);
+    if (naming === null || naming.length === 0) {
+      return;
+    }
+    // Capture phase on the CONTAINER, an ancestor of the canvas, so
+    // this runs strictly before OrbitControls' own listener on the
+    // canvas whatever registration order would otherwise decide.
+    event.stopPropagation();
+    host.orbit.enabled = false;
+    try {
+      (host.canvas as Element & {
+        setPointerCapture(id: number): void;
+      }).setPointerCapture(event.pointerId);
+    } catch {
+      // A browser that cannot capture still releases on pointerup.
+    }
+    const button = naming.find((one) => one.kind === 'button') ?? null;
+    const turn = naming.find((one) => one.kind === 'turn') ?? null;
+    const turnId = turn?.input ?? null;
+    const plan = turnId === null ? DEFAULT_NUDGE : host.nudge(turnId);
+    const reader = turn === null || turn.perUnit === null
+      ? null : host.reader(turn, event.clientX, event.clientY);
+    gesture = {
+      pointerId: event.pointerId,
+      downX: event.clientX,
+      downY: event.clientY,
+      at: { x: event.clientX, y: event.clientY },
+      dragging: false,
+      button,
+      turn,
+      turnId,
+      seconds: plan.seconds,
+      // The quantum is the input's CURRENT nudge amount times the
+      // published ratio: a maker who sets the nudge to 5 digits drags
+      // in fives (design D11).
+      planner: reader === null || turn?.perUnit == null
+        ? null : new TurnPlanner(plan.amount, turn.perUnit),
+      reader,
+    };
+    applyHover(naming);
+  };
+
+  const onPointerMove = (event: PointerEvent): void => {
+    if (gesture === null) {
+      hoverAt = { x: event.clientX, y: event.clientY };
+      hoverDue = true;
+      return;
+    }
+    if (event.pointerId !== gesture.pointerId) {
+      return;
+    }
+    const current = gesture;
+    current.at = { x: event.clientX, y: event.clientY };
+    if (!current.dragging
+        && Math.hypot(event.clientX - current.downX,
+                      event.clientY - current.downY) > PRESS_SLOP) {
+      // A press until here, a drag for the rest of the gesture.
+      current.dragging = true;
+    }
+    if (current.planner !== null && current.reader !== null) {
+      current.planner.advance(current.reader.read(event.clientX,
+                                                  event.clientY));
+    }
+    if (current.dragging) {
+      pump(current);
+    }
+  };
+
+  const onPointerUp = (event: PointerEvent): void => {
+    if (gesture === null || event.pointerId !== gesture.pointerId) {
+      return;
+    }
+    const current = gesture;
+    const instruction = current.button?.instruction ?? null;
+    // A press on a part carrying only a turn does nothing and reports
+    // nothing: there is no instruction to submit, and inventing one
+    // would move the machine in a way nobody declared (design D8).
+    if (!current.dragging && instruction !== null) {
+      host.trigger(instruction, { x: event.clientX, y: event.clientY });
+    }
+    endGesture();
+  };
+
+  const onRelease = (event: PointerEvent): void => {
+    if (gesture !== null && event.pointerId === gesture.pointerId) {
+      endGesture();
+    }
+  };
+
+  const onBlur = (): void => { endGesture(); };
+  const onVisibility = (): void => {
+    if (document.hidden) {
+      endGesture();
+    }
+  };
+
+  /** Install the pointer surface -- or take it away again. Nothing of
+   * it exists for a document that declares no control, or for a host
+   * that suppressed the affordance (design D2, D14). */
+  const install = (wanted: boolean): void => {
+    if (wanted === (listeners !== null)) {
+      return;
+    }
+    if (!wanted) {
+      endGesture();
+      listeners?.();
+      listeners = null;
+      return;
+    }
+    host.container.addEventListener('pointerdown', onPointerDown, true);
+    host.canvas.addEventListener('pointermove', onPointerMove);
+    host.canvas.addEventListener('pointerup', onPointerUp);
+    host.canvas.addEventListener('pointercancel', onRelease);
+    host.canvas.addEventListener('lostpointercapture', onRelease);
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('visibilitychange', onVisibility);
+    listeners = () => {
+      host.container.removeEventListener('pointerdown', onPointerDown, true);
+      host.canvas.removeEventListener('pointermove', onPointerMove);
+      host.canvas.removeEventListener('pointerup', onPointerUp);
+      host.canvas.removeEventListener('pointercancel', onRelease);
+      host.canvas.removeEventListener('lostpointercapture', onRelease);
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  };
+
+  return {
+    refresh(controls: readonly LoadedControl[], present: boolean) {
+      declared = controls;
+      presented = present && declared.length > 0;
+      clear();
+      install(presented);
+    },
+    pollHover() {
+      if (!hoverDue) {
+        return;
+      }
+      hoverDue = false;
+      if (gesture !== null || !presented || hoverAt === null) {
+        return;
+      }
+      applyHover(host.pick(hoverAt.x, hoverAt.y));
+    },
+    engaged: () => gesture !== null,
+    clear,
+    dispose() {
+      endGesture();
+      install(false);
+      declared = [];
+      presented = false;
+    },
+  };
+}
+
+/** How far a point turned about a pivot, between two client positions,
+ * in degrees and in a y-up frame -- which is the CSS frame with `dy`
+ * negated. Wrapped into (-180, 180], because a single move is never
+ * meant to be half a turn. */
+export function turnedBy(from: Point, to: Point, pivot: Point): number {
+  const angle = (point: Point): number =>
+    Math.atan2(-(point.y - pivot.y), point.x - pivot.x) * (180 / Math.PI);
+  let delta = angle(to) - angle(from);
+  while (delta > 180) delta -= 360;
+  while (delta <= -180) delta += 360;
+  return delta;
+}
+
+
 
 function visibleBounds(root: THREE.Object3D): THREE.Box3 {
   const bounds = new THREE.Box3();
@@ -987,6 +1852,12 @@ export interface LoadedDocument {
    * every version 1 to 4 document -- so a host asks one question and
    * gets a truthful answer. */
   program: LoadedProgram | null;
+  /** The controls a version 5 document's parts carry, parsed and
+   * checked, in the document's own key order (OpenSpec
+   * `drive-the-run-by-touch`, design D1). `[]` for a document with no
+   * key, which is every document published before this viewer could
+   * read one. */
+  controls: LoadedControl[];
 }
 
 export function assertRenderable(document: Manifest,
@@ -1019,6 +1890,15 @@ export function assertRenderable(document: Manifest,
       || (document as RunDocument).program !== undefined
     ? loadProgram(document as RunDocument, sourceUrl, table)
     : null;
+  // The `controls` table, read and checked HERE (design D1): after the
+  // program its entries reference, and before the tree walk, so a table
+  // this viewer cannot resolve is refused before a single thing is
+  // rendered -- the surface an undeclared driver id, an unreadable
+  // bindings table and an inexecutable program already stand on. A
+  // document with no key gets `[]` and reaches exactly the code it
+  // reached before (D2).
+  const controls = readControls(document, sourceUrl, program);
+
   const uncomputed = program === null
     ? EMPTY : uncomputedValues(program);
 
@@ -1134,7 +2014,7 @@ export function assertRenderable(document: Manifest,
     );
   }
 
-  return { table, program };
+  return { table, program, controls };
 }
 
 async function loadDocument(
@@ -1155,8 +2035,8 @@ async function loadDocument(
   } catch (error) {
     throw new Error(`Failed to parse ${sourceUrl}: ${String(error)}`);
   }
-  const { table, program } = assertRenderable(document, sourceUrl);
-  return { document, table, program };
+  const { table, program, controls } = assertRenderable(document, sourceUrl);
+  return { document, table, program, controls };
 }
 
 function resolveContainer(target: HTMLElement | string): HTMLElement {

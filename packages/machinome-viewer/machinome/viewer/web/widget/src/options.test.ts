@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   controlPlan, resolveBaseUrl, resolveOptions, showsDriverChrome,
-  showsRunControls,
+  showsPartControls, showsRunControls,
 } from './options';
 
 describe('resolveOptions', () => {
@@ -270,5 +270,55 @@ describe('showsRunControls', () => {
   it('shows nothing for a document that carries no program', () => {
     expect(showsRunControls('inline', false)).toBe(false);
     expect(showsRunControls('none', false)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------
+// OpenSpec `drive-the-run-by-touch` (design D14). Whether the parts a
+// document's controls table names are TOUCHABLE is its own switch, and
+// it is independent of the panel's: "a host that builds its own
+// instrument panel still wants the dial pressable" -- the shop floor is
+// exactly that host. What either switch gates is pixels and pointers,
+// never an interface.
+
+describe('resolveOptions: the part affordance', () => {
+  it('presents it by default, like the panel', () => {
+    expect(resolveOptions().partControls).toBe('inline');
+  });
+
+  it('lets a host suppress it', () => {
+    expect(resolveOptions({ partControls: 'none' }).partControls).toBe('none');
+    expect(resolveOptions({ partControls: 'inline' }).partControls)
+      .toBe('inline');
+  });
+
+  it('is independent of driverControls in all four combinations', () => {
+    for (const driverControls of ['inline', 'none'] as const) {
+      for (const partControls of ['inline', 'none'] as const) {
+        const resolved = resolveOptions({ driverControls, partControls });
+        expect(resolved.driverControls).toBe(driverControls);
+        expect(resolved.partControls).toBe(partControls);
+      }
+    }
+    // And suppressing one alone leaves the other at its default.
+    expect(resolveOptions({ driverControls: 'none' }).partControls)
+      .toBe('inline');
+    expect(resolveOptions({ partControls: 'none' }).driverControls)
+      .toBe('inline');
+  });
+});
+
+describe('showsPartControls', () => {
+  it('presents the affordance for a document that declares controls', () => {
+    expect(showsPartControls('inline', true)).toBe(true);
+  });
+
+  it('presents nothing for a document that declares none', () => {
+    expect(showsPartControls('inline', false)).toBe(false);
+    expect(showsPartControls('none', false)).toBe(false);
+  });
+
+  it('presents nothing when the host asked for none', () => {
+    expect(showsPartControls('none', true)).toBe(false);
   });
 });
