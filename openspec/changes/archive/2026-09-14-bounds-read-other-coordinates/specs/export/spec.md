@@ -129,7 +129,9 @@ run's binder is restored afterwards.
   `range=(0, Bound(lambda turn, a, b: 90 * (abs(a) <= 0.05) * (abs(b) <= 0.05), reads=(p1.lift, p2.lift)))`
   on `plug.turn`
 - **THEN** `program.spans` carries `plug.turn` with `high` an expression
-  whose free names are `plug.turn`, `plug.p1.lift` and `plug.p2.lift`,
+  whose free names are drawn from `plug.turn`, `plug.p1.lift` and
+  `plug.p2.lift` -- here `plug.p1.lift` and `plug.p2.lift`, the two the
+  expression actually reads, its own coordinate not appearing in it --
   every one of them a key of `program.coordinates`, and the document's
   version is `5`
 

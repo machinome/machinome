@@ -38,9 +38,10 @@ from dataclasses import dataclass, field, replace
 from solid_node.motion.ports import RunBinder, get_coordinate
 
 from .driver import RampProgram
-from .program import (CLOCK_NAME, compile_program, qualified_coordinates,
-                      Stop, TooManyCrossings, UnsupportedLaw,
-                      _BISECTION_ROUNDS, _CROSSING_TOLERANCE, _SUBDIVISIONS)
+from .program import (CLOCK_NAME, Constraint, compile_program,
+                      qualified_coordinates, Stop, TooManyCrossings,
+                      UnsupportedLaw, _BISECTION_ROUNDS,
+                      _CROSSING_TOLERANCE, _SUBDIVISIONS)
 
 
 # Two increments agree when they are within this of each other,
@@ -526,7 +527,8 @@ class Run:
                 committed = {
                     identifier: value + deltas.get(self.keys[identifier], 0.0)
                     for identifier, value in staged.items()}
-                reached = self._reached(staged, committed, bounds)
+                reached = self._reached(staged, committed, bounds,
+                                        values, scaled)
                 if not reached:
                     _record(crossings, found, start, 1.0)
                     staged = committed
@@ -552,17 +554,34 @@ class Run:
 
                 blocked = set()
                 for _where, identifier, side, bound in event:
-                    # AT the bound, exactly. The localization's own error
-                    # is absorbed here rather than left for `set_state`
-                    # to raise on, and the group's other coordinates
-                    # stand within the tolerance the run already calls
-                    # agreement.
-                    committed[identifier] = bound
-                    group = self._group(identifier, scaled, values)
+                    if isinstance(bound, Constraint):
+                        # NOTHING to snap to -- the bound at `t*` is on
+                        # one side of a step or the other, and the
+                        # coordinate that stopped may not have moved at
+                        # all -- and nothing to snap FOR: the sample
+                        # arithmetic IS the segment arithmetic, so the
+                        # committed state satisfies the bound by
+                        # construction. Asserted below rather than
+                        # trusted.
+                        value = self._constraint_bound(bound, committed)
+                        group = self._constraint_group(bound, scaled, values,
+                                                       staged)
+                    else:
+                        # AT the bound, exactly. The localization's own
+                        # error is absorbed here rather than left for
+                        # `set_state` to raise on, and the group's other
+                        # coordinates stand within the tolerance the run
+                        # already calls agreement.
+                        committed[identifier] = bound
+                        value = bound
+                        group = self._group(identifier, scaled, values)
                     blocked.update(group)
                     if stops is not None:
-                        stops.append(Stop(tick, identifier, side, bound,
+                        stops.append(Stop(tick, identifier, side, value,
                                           boundary, tuple(sorted(group))))
+                for _where, identifier, side, bound in event:
+                    if isinstance(bound, Constraint):
+                        self._assert_inside(bound, committed, staged)
                 if not blocked:
                     raise StopInvariantError(self._runaway(reached, limit))
 
@@ -652,9 +671,11 @@ class Run:
     ##############################################
     # Stops
 
-    def _reached(self, held, committed, bounds):
+    def _reached(self, held, committed, bounds, values=None,
+                 admissions=None):
         """Every banked coordinate that ends the stretch OUTSIDE a bound
-        and FURTHER outside than it began it.
+        and FURTHER outside than it began it -- and every CONSTRAINT the
+        stretch carries outward anywhere inside it.
 
         This is cycle 1's `_check_spans` become a DETECTION: the same
         inclusive comparison, by the same committed value, costing the
@@ -668,10 +689,188 @@ class Run:
         for identifier, low, high, _unit in bounds:
             value = committed[identifier]
             was = held[identifier]
+            for side, bound in (('low', low), ('high', high)):
+                if not isinstance(bound, Constraint):
+                    continue
+                if all(committed[read] == held[read] for read in bound.reads):
+                    # Nothing the bound READS moves over this stretch, so
+                    # the bound is a NUMBER for it -- its expression at
+                    # the tick's committed own value and the reads'
+                    # standing values -- and the coordinate is stopped
+                    # or freed exactly as a bound over its own value
+                    # alone is: solved where its determiner is affine,
+                    # committed AT the bound, at the cost of one
+                    # evaluation rather than `_SUBDIVISIONS` sub-program
+                    # passes. The plug turning with the pins standing
+                    # still is the lock's own case.
+                    if value == was:
+                        continue
+                    number = self._constraint_bound(bound, held)
+                    if side == 'low' and value < number and value < was:
+                        found.append((identifier, 'low', number, None))
+                    elif side == 'high' and value > number and value > was:
+                        found.append((identifier, 'high', number, None))
+                    continue
+                located = self._constraint_reached(
+                    bound, held, committed, values, admissions)
+                if located is not None:
+                    found.append((identifier, side, bound, located))
+            if isinstance(low, Constraint) or isinstance(high, Constraint):
+                low = None if isinstance(low, Constraint) else low
+                high = None if isinstance(high, Constraint) else high
             if low is not None and value < low and value < was:
-                found.append((identifier, 'low', low))
+                found.append((identifier, 'low', low, None))
             elif high is not None and value > high and value > was:
-                found.append((identifier, 'high', high))
+                found.append((identifier, 'high', high, None))
+        return found
+
+    ##############################################
+    # A bound that reads other coordinates: the CONSTRAINT
+
+    def _constraint_reached(self, constraint, held, committed, values,
+                            admissions):
+        """The fraction of the stretch at which `constraint` is first
+        carried outward, or `None`.
+
+        DETECTION AND LOCALIZATION ARE ONE PROCEDURE, and it looks
+        INSIDE the stretch: a constraint over moving reads can be
+        violated inside a stretch and satisfied again at its end -- the
+        plug that turns while the pins align in the same tick, the key
+        that withdraws while the plug returns -- and a test at the ends
+        alone commits all of them.
+
+        A constraint is examined only when something it depends on
+        MOVES. A stretch in which the bounded coordinate and every read
+        stand still evaluates nothing at all, so a coordinate left
+        standing outside -- where the localization may leave it, within
+        the crossing tolerance -- is free until something carries it
+        further.
+        """
+        keys = (constraint.identifier,) + constraint.reads
+        if all(committed[key] == held[key] for key in keys):
+            return None
+        return self._searched_constraint(constraint, held, values,
+                                         admissions)
+
+    def _searched_constraint(self, constraint, held, values, admissions):
+        """The level sampled at `_SUBDIVISIONS` fractions of the stretch,
+        stopped at the FIRST sample carried outward, and the crossing
+        bisected to `_CROSSING_TOLERANCE`.
+
+        `t*` is the INSIDE end of the final bracket -- the last fraction
+        at which the bound is satisfied -- not its midpoint: a bound
+        that reads other coordinates carries a comparison in every
+        sighting, and a level with a jump in it is what the search is
+        for. No case is solved and no fourth tolerance is introduced.
+        """
+        own = self.bank[constraint.identifier]
+
+        def level(t):
+            return self._constraint_level(constraint, held, values,
+                                          admissions, t, own)
+
+        start = level(0.0)
+
+        def outward(here):
+            return here > 0.0 and here > start
+
+        for step in range(1, _SUBDIVISIONS + 1):
+            where = step / _SUBDIVISIONS
+            if not outward(level(where)):
+                continue
+            low, high = (step - 1) / _SUBDIVISIONS, where
+            for _round in range(_BISECTION_ROUNDS):
+                if high - low <= _CROSSING_TOLERANCE:
+                    break
+                middle = (low + high) / 2.0
+                if outward(level(middle)):
+                    high = middle
+                else:
+                    low = middle
+            return low
+        return None
+
+    def _constraint_level(self, constraint, held, values, admissions, t,
+                          own):
+        """The CONSTRAINT LEVEL at the fraction `t` of the stretch:
+        outside is positive.
+
+        One pass over the bound's SUB-PROGRAM with every admission
+        scaled by `t`, on a FRESH delta map -- never `_pass`'s, which
+        mutates and raises. The joint's own coordinate INSIDE the bound
+        takes the value it holds in the tick's committed bank, as
+        ADR-109 has it, which is what makes a ratchet's tooth the tooth
+        it started the tick on; every read takes the value it has along
+        the path.
+        """
+        deltas = self._deltas({input_id: delta * t
+                               for input_id, delta in admissions.items()})
+        for edge in constraint.edges:
+            for key, increment in edge.increments(values, deltas):
+                deltas[key] = increment
+        arguments = {constraint.identifier: own}
+        for read in constraint.reads:
+            arguments[read] = held[read] + deltas[self.keys[read]]
+        bound = constraint.graph.evaluate(arguments)
+        value = (held[constraint.identifier]
+                 + deltas[self.keys[constraint.identifier]])
+        return value - bound if constraint.side == 'high' else bound - value
+
+    def _constraint_bound(self, constraint, committed):
+        """The bound EVALUATED at the committed state: the number a
+        `Stop` records, which for a constraint is not the value the
+        coordinate now holds."""
+        arguments = {constraint.identifier: self.bank[constraint.identifier]}
+        for read in constraint.reads:
+            arguments[read] = committed[read]
+        return constraint.graph.evaluate(arguments)
+
+    def _assert_inside(self, constraint, committed, held):
+        """The committed state satisfies the bound by construction; this
+        says so out loud, so a broken invariant is a refused tick rather
+        than a picometre of penetration nobody reported."""
+        bound = self._constraint_bound(constraint, committed)
+        value = committed[constraint.identifier]
+        level = (value - bound if constraint.side == 'high'
+                 else bound - value)
+        if level > 0.0:
+            raise StopInvariantError(
+                f'{constraint.identifier} was stopped by its '
+                f'{constraint.side} bound, and at the state the segment '
+                f'commits that bound evaluates to {bound!r} while the '
+                f'coordinate holds {value!r} -- outside it by {level!r}. '
+                f'The sample that located the stop and the segment that '
+                f'committed it are the same arithmetic over the same '
+                f'edges, so this is a broken invariant of the run. The '
+                f'tick committed nothing.')
+
+    def _constraint_group(self, constraint, admissions, values, held):
+        """The inputs a constraint stops: its own candidates -- the
+        inputs reaching the bounded coordinate OR anything it reads --
+        filtered by whether their own admission alone carries the LEVEL
+        outward.
+
+        `_pushes` with the coordinate's increment replaced by the
+        constraint's, which is what makes one rule cover both
+        directions: an input moving the bounded coordinate against the
+        constraint is stopped, an input moving a read so as to make a
+        STANDING position invalid is stopped where the constraint
+        becomes active, and an input moving a read so as to RELIEVE the
+        constraint runs its full tick.
+        """
+        own = self.bank[constraint.identifier]
+        found = []
+        for candidate in constraint.candidates:
+            delta = admissions.get(candidate, 0)
+            if not delta:
+                continue
+            alone = {candidate: delta}
+            before = self._constraint_level(constraint, held, values, alone,
+                                            0.0, own)
+            after = self._constraint_level(constraint, held, values, alone,
+                                           1.0, own)
+            if after - before > 0.0:
+                found.append(candidate)
         return found
 
     def _event(self, reached, held, values, deltas):
@@ -683,9 +882,10 @@ class Run:
         ordering to get wrong.
         """
         located = sorted(
-            (self._locate(identifier, side, bound, held, values, deltas),
+            ((self._locate(identifier, side, bound, held, values, deltas)
+              if where is None else where),
              identifier, side, bound)
-            for identifier, side, bound in reached)
+            for identifier, side, bound, where in reached)
         first = located[0][0]
         return [entry for entry in located
                 if entry[0] - first <= _CROSSING_TOLERANCE]
@@ -833,7 +1033,7 @@ class Run:
                 command.status = 'blocked'
 
     def _runaway(self, reached, limit):
-        named = ', '.join(identifier for identifier, _side, _bound in reached)
+        named = ', '.join(entry[0] for entry in reached)
         return (
             f'{named} left a declared bound over this tick, and locating '
             f'the stop stopped no input that was moving -- after {limit} '
@@ -895,8 +1095,13 @@ class Run:
         because the value it reads is committed and the value it bounds
         is not yet.
         """
-        return [(identifier, self._bound(low, identifier),
-                 self._bound(high, identifier), unit)
+        constraints = self.program.constraints
+        return [(identifier,
+                 constraints.get((identifier, 'low'))
+                 or self._bound(low, identifier),
+                 constraints.get((identifier, 'high'))
+                 or self._bound(high, identifier),
+                 unit)
                 for identifier, low, high, unit in self.spans]
 
     def _bound(self, bound, identifier):

@@ -343,9 +343,30 @@ a CALLABLE of one argument, which states the bound as an expression
 over the joint's OWN COORDINATE and which the framework SHALL NOT
 resolve to a number at realization — it is applied where the bound is
 used, under the requirement "A declared range refuses a binding outside
-it". A callable given as the whole `range` and a callable given as one
-of its bounds SHALL be told apart by POSITION and SHALL keep their
-separate meanings. A site-declared
+it" — or a `Bound(expression, reads=(...))`, which states the bound as
+an expression over the joint's own coordinate AND the coordinates it
+names. `expression` SHALL be a callable applied to the joint's own
+coordinate first and then to each read in the order `reads` states
+them, so a `Bound` with no reads means exactly what the one-argument
+callable means. Each read SHALL be named as a relation's end is named
+in a class body — a joint or port that body owns, a path through child
+declarations, or a driver of the declaring class — and SHALL be
+refused at CLASS DEFINITION by the same rules: a declaration held in a
+list, a repeated child, a child whose class declares no joint or
+several, a driver read sideways, and, additionally, a read that names
+the bounded coordinate itself. Under a RUNNING root a read SHALL
+additionally be a coordinate the run banks, a read of a plain port or a
+derived coordinate being refused at simulation construction under the
+simulation requirement "A range bound may read other coordinates"; under
+every other root such a read is resolved and judged like any other. A
+`Bound`'s reads SHALL be resolved against the joint's DECLARER — the
+node itself for a class-declared joint, the declaring parent for a
+site-declared one — where the values
+are needed and never at realization: at the close of the enumeration
+that bound the coordinate untimed, and at simulation construction
+under a running root. A callable given as the whole `range` and a
+callable or `Bound` given as one of its bounds SHALL be told apart by
+POSITION and SHALL keep their separate meanings. A site-declared
 joint's callable SHALL be able to read the declaring parent's resolved
 parameters and flags and anything that parent's own `__init__` has set,
 and SHALL NOT be able to read the child's placement, which does not exist
@@ -374,9 +395,9 @@ An argument that cannot resolve SHALL fail at realization, naming the
 class, the joint and the argument: a token that is not a declared
 parameter of the class, an `axis`, `at` or `carries` that is not three
 numbers, an `axis` of zero length, or a `range` that is not a `(lo, hi)`
-pair whose bounds are each a number, `None` or a callable — the
-`lo <= hi` ordering being required where both resolve to numbers at
-realization and checked where each bound is evaluated otherwise.
+pair whose bounds are each a number, `None`, a callable or a `Bound` —
+the `lo <= hi` ordering being required where both resolve to numbers
+at realization and checked where each bound is evaluated otherwise.
 
 #### Scenario: A joint sized by a parameter
 
@@ -418,6 +439,31 @@ realization and checked where each bound is evaluated otherwise.
 - **THEN** realization succeeds, the joint's resolved range carries the
   callable and the open bound as declared, and no number was computed
   for either
+
+#### Scenario: A bound naming other coordinates is carried through realization
+
+- **WHEN** a class declares `p1 = Pin()`, `p2 = Pin()` and then
+  `turn = Revolute(axis=(0, 0, 1), range=(0, Bound(lambda turn, a, b: 90 * (abs(a) <= 0.05) * (abs(b) <= 0.05), reads=(p1.lift, p2.lift))))`
+  and the instance is realized
+- **THEN** realization succeeds, the joint's resolved range carries the
+  `Bound` as declared, no read was resolved and no number was computed
+
+#### Scenario: A bound on a site joint reads the declaring parent's subtree
+
+- **WHEN** a parent declares `key = Key()` and then
+  `plug = Plug(turn=Revolute(axis=(0, 0, 1), range=(0, Bound(lambda turn, travel: 90 * (travel >= 20), reads=(key.travel,)))))`
+- **THEN** the read `key.travel` is resolved against the realized
+  PARENT, the node that declared the site, and names that parent's
+  `key` child's coordinate
+
+#### Scenario: A read a class body cannot name is refused at class definition
+
+- **WHEN** a class body writes a `Bound` whose `reads` names a child
+  held in a list, a repeated child, a child whose class declares two
+  joints, a driver read off a child declaration, or the bounded
+  coordinate itself
+- **THEN** class definition raises naming the read and the rule it
+  breaks, exactly as the same end of a relation is refused
 
 #### Scenario: A defaulted carried point resolves at realization
 
@@ -471,6 +517,26 @@ requirement "A declared range is a physical stop located inside the
 tick"; under every other root a range refuses a binding and never
 clamps or stops.
 
+A bound stated as a `Bound` that reads other coordinates SHALL NOT be
+applied at the moment of binding, because the coordinates it reads
+are bound by the solver in an order the author does not state; the
+binding SHALL be recorded on the open enumeration and JUDGED WHEN THAT
+ENUMERATION CLOSES, after deferred relations have propagated, over the
+values then bound: the reads resolved against the declarer, the
+expression applied to the bound value and the read values, the pair
+ordered, and the value checked inclusive. A value outside the pair so
+evaluated SHALL raise the joint range error naming the node, the joint,
+the value, the unit, the evaluated bound AND every coordinate the bound
+read with the value it read. A read that holds no value or a symbolic
+one at the close SHALL NOT be judged, on the rule a symbolic binding
+already has. A coordinate a RUNNING simulation owns SHALL NOT be judged
+by the enumeration: the run located its stop and committed inside it,
+and one authority judges one binding. A binding made outside any
+enumeration SHALL place the body and SHALL NOT be judged there, no pass
+being open to record it on — exactly as a read of an unbound coordinate
+made outside an enumeration is not recorded; it SHALL be judged at the
+close of the next enumeration that binds the coordinate again.
+
 #### Scenario: An out-of-range angle is refused by name
 
 - **WHEN** a joint declaring `range=(-135, 135)` in degrees is bound to
@@ -491,13 +557,37 @@ clamps or stops.
 - **WHEN** the same joint is bound to `-135` and then to `135`
 - **THEN** both bindings succeed, the bounds being inclusive
 
-
 #### Scenario: An open bound accepts anything on its side
 
 - **WHEN** a joint declares `range=(0, None)` and is bound to `10000`,
   and then to `-1`
 - **THEN** the first binding succeeds and the second is refused naming
   the joint, `-1` and the lower bound
+
+#### Scenario: A bound reading other coordinates is judged when the enumeration closes
+
+- **WHEN** an untimed root drives `plug.turn`, whose range is
+  `(0, Bound(lambda turn, a, b: 90 * (abs(a) <= 0.05) * (abs(b) <= 0.05), reads=(p1.lift, p2.lift)))`,
+  from a `turn` driver and the two lifts from a `feed` driver, and
+  `set_state(turn=30, feed=0)` leaves a lift at `5`
+- **THEN** the enumeration's close raises the joint range error naming
+  `plug.turn`, `30`, the evaluated upper bound `0`, `p1.lift` and
+  `p2.lift` with the values they held, whatever order the solver bound
+  them in
+
+#### Scenario: A bound reading other coordinates admits a possible pose
+
+- **WHEN** the same root is bound with `set_state(turn=30, feed=20)`,
+  which leaves both lifts at `0`
+- **THEN** the enumeration closes without error and the plug's body
+  carries the 30-degree turn
+
+#### Scenario: A read holding no value is not judged
+
+- **WHEN** a coordinate whose bound reads another is bound while that
+  other coordinate is left unbound by the enumeration
+- **THEN** the binding is placed and the enumeration closes without
+  judging that bound
 
 #### Scenario: A self-referential bound is evaluated at the value being bound
 

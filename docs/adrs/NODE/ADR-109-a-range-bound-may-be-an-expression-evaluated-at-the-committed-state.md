@@ -1,6 +1,6 @@
 # ADR-109: A Range Bound May Be an Expression Evaluated at the Committed State
 
-**Status:** Accepted
+**Status:** Accepted, amended by ADR-113
 **Date:** 2026-09-13
 **Depends on:**
 - [ADR-106: One law, two readings — a relation is inspected as an expression](./ADR-106-one-law-two-readings.md)
@@ -163,7 +163,11 @@ yet.
   because the spans enter `described()`. A snapshot therefore cannot be
   restored into a machine whose stops have moved — which is the point,
   and which a root with no ranged coordinate is unaffected by.
-- **A bound may NOT name a second coordinate in this release.** The
+- **A bound may NOT name a second coordinate in this release** —
+  AMENDED by [ADR-113](./ADR-113-a-bound-may-read-other-coordinates.md),
+  which admits `Bound(expression, reads=(...))` and settles the
+  semantics the sketch below did not: reads are evaluated along the
+  tick's path and a constraint stops what carries it outward. The
   obstacle is naming, not semantics: evaluating a bound over several
   coordinates at the committed state is the same rule and the same
   evaluation, but a joint is class metadata resolved against its DECLARER

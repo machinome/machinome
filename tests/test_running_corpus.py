@@ -207,3 +207,23 @@ class CoverageGuardTest(TestCase):
                               if 'rate' not in action]
             machines.append(copy)
         self.assertIn('a rate', uncovered_features(machines))
+
+    def test_a_corpus_with_no_bound_reading_another_coordinate_is_refused(self):
+        from tools.generate_running_corpus import uncovered_features
+
+        machines = [entry for entry in corpus()['machines']
+                    if entry['name'] != 'Captured']
+        missing = uncovered_features(machines)
+        self.assertIn('a bound reading another coordinate', missing)
+
+    def test_a_corpus_with_no_stop_on_a_standing_coordinate_is_refused(self):
+        from tools.generate_running_corpus import uncovered_features
+
+        machines = []
+        for entry in corpus()['machines']:
+            copy = dict(entry)
+            copy['ticks'] = [dict(tick, stops=[]) for tick in entry['ticks']]
+            machines.append(copy)
+        missing = uncovered_features(machines)
+        self.assertIn('a stop reached by the motion of what a bound reads',
+                      missing)

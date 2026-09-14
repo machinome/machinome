@@ -67,3 +67,11 @@ class Dial(Solid2Node):
 
     def render(self):
         return cylinder(r=24, h=3)
+class Pin(Solid2Node):
+    """A pin rising and falling in its chamber: one prismatic joint on a
+    LEAF, the shape the constraint fixtures read from a bound."""
+
+    lift = Prismatic(axis=(0, 0, 1), unit='mm')
+
+    def render(self):
+        return cylinder(r=2, h=12)

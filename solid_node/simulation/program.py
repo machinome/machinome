@@ -158,13 +158,36 @@ class Crossing:
 
 
 @dataclass(frozen=True)
+class Constraint:
+    """One bound that READS other coordinates, compiled.
+
+    `graph` is the bound's expression over the bounded coordinate's own
+    id and `reads`; `edges` is the SUB-PROGRAM -- the compiled edges
+    determining the bounded coordinate and every read, in program order
+    -- and `candidates` the inputs reaching any of them. The last two
+    are projections of the program's own `edges` and `sources` with no
+    decision in them, so a document publishes neither.
+    """
+
+    identifier: str
+    side: str
+    graph: object
+    reads: tuple
+    edges: tuple
+    candidates: tuple
+
+
+@dataclass(frozen=True)
 class Stop:
     """One declared bound reached inside one tick.
 
     `bound` is `'low'` or `'high'` and `value` is that bound EVALUATED
     for this tick -- a number for a number bound, the last seated tooth
-    for a ratchet -- which is also the value the coordinate now holds,
-    exactly. `t` is the fraction of the tick at which it was reached and
+    for a ratchet. For a bound over the coordinate's own value alone it
+    is also the value the coordinate now holds, exactly; for a bound
+    that READS OTHER COORDINATES it is not, because there is nothing to
+    snap to and the coordinate that stopped may not have moved at all.
+    `t` is the fraction of the tick at which it was reached and
     `inputs` names the inputs the stop blocked, sorted.
 
     A stop is a BOUND OF A COORDINATE, which stops motion; a `Crossing`
@@ -762,7 +785,7 @@ class Program:
     """
 
     def __init__(self, root, inputs, coordinates, nodes, edges, spans=(),
-                 declared=None):
+                 declared=None, bound_reads=None):
         self.root_class = type(root)
         self.inputs = tuple(inputs)
         self.coordinates = tuple(coordinates)
@@ -793,8 +816,48 @@ class Program:
         # a program must not be refused because one was added or
         # removed.
         self.controls = ()
+        # The CONSTRAINTS: one per bound that reads other coordinates,
+        # built here because the sub-program is a filter of `self.edges`
+        # and the candidates a union over `self.sources`, both of which
+        # exist only now. Derived, with no decision in them, so a
+        # document publishes neither (ADR-110).
+        self.constraints = self._constraint_table(bound_reads or {})
         self.identity = hashlib.sha256(
             self.described().encode()).hexdigest()
+
+    def _constraint_table(self, bound_reads):
+        """`{(identifier, side): Constraint}` for every bound that reads
+        other coordinates."""
+        by_name = {node.name: key for key, node in self.nodes.items()}
+        found = {}
+        for (identifier, side), read_ids in bound_reads.items():
+            graph = next(entry[1 if side == 'low' else 2]
+                         for entry in self.spans if entry[0] == identifier)
+            keys = [by_name[identifier]]
+            keys.extend(by_name[read_id] for read_id in read_ids)
+            candidates = sorted(
+                frozenset().union(*(self.sources.get(key, frozenset())
+                                    for key in keys)))
+            found[(identifier, side)] = Constraint(
+                identifier, side, graph, tuple(read_ids),
+                self._sub_program(keys), tuple(candidates))
+        return found
+
+    def _sub_program(self, keys):
+        """The compiled edges that determine `keys` and everything they
+        need, in the program's own order: the SUB-PROGRAM a constraint's
+        level is sampled over, so the sample arithmetic is the segment
+        arithmetic, edge for edge."""
+        needed = set(keys)
+        chosen = []
+        for edge in reversed(self.edges):
+            if edge.kind == 'check':
+                continue
+            if any(key in needed for key in edge.gives):
+                chosen.append(edge)
+                needed.update(edge.needs)
+        chosen.reverse()
+        return tuple(chosen)
 
     def described(self):
         """The canonical listing the identity is taken of, and what a
@@ -1231,9 +1294,10 @@ def compile_program(root, inputs, coordinates, controls=None,
     kept = _reaching_the_bank(candidates, bank_keys)
     _refuse_opaque(kept, bank_keys, nodes)
     ordered = _ordered(kept, nodes)
+    spans, bound_reads = _compiled_spans(root, inputs, coordinates)
     program = Program(root, sorted(inputs.items()), sorted(coordinates),
-                      nodes, ordered, _compiled_spans(coordinates),
-                      _declared_coordinates(coordinates))
+                      nodes, ordered, spans,
+                      _declared_coordinates(coordinates), bound_reads)
     if controls:
         program.controls = _compiled_controls(
             root, program, coordinates, controls, instructions or {})
@@ -1472,41 +1536,95 @@ def _declared_coordinates(coordinates):
 # The span table
 
 
-def _compiled_spans(coordinates):
+def _compiled_spans(root, inputs, coordinates):
     """`(qualified id, low, high, unit)` for every banked coordinate
-    whose joint declares a range, resolved ONCE.
+    whose joint declares a range, resolved ONCE -- and, per bound that
+    READS other coordinates, the ids it reads.
 
     Each bound is a number, `None` for unbounded on that side, or an
-    expression GRAPH over the coordinate's own qualified id -- compiled
-    here exactly as a law is, and for the same two reasons: what the
-    expression cannot say is refused now rather than every tick, and a
-    graph is what cycle 4 can publish beside the coordinate table.
+    expression GRAPH over the coordinate's own qualified id and, for a
+    `Bound`, the qualified ids of what it reads -- compiled here exactly
+    as a law is, and for the same two reasons: what the expression
+    cannot say is refused now rather than every tick, and a graph is
+    what a version 5 document publishes beside the coordinate table.
+
+    `root` is here because qualifying a read's owning node means
+    `instance_path(node, root)`, the same path `_qualified` takes; the
+    bank ids a read may name are the inputs and the joint coordinates
+    together.
     """
+    from solid_node.motion.joints import Bound
+
+    bank = set(inputs) | set(coordinates)
     found = []
+    reads = {}
     for identifier, (node, name) in sorted(coordinates.items()):
         for joint in declared_joints(type(node)).values():
             if name not in joint.coordinates:
                 continue
             span = joint.arguments(node)[2]
             if span is not None:
-                found.append((identifier,
-                              _compiled_bound(span[0], identifier, node,
-                                              joint, 'lower'),
-                              _compiled_bound(span[1], identifier, node,
-                                              joint, 'upper'),
-                              joint.unit))
+                sides = []
+                for index, side in ((0, 'lower'), (1, 'upper')):
+                    bound = span[index]
+                    if isinstance(bound, Bound):
+                        read_ids = _qualified_reads(
+                            root, bank, bound, node, joint, side, identifier)
+                        reads[(identifier,
+                               'low' if side == 'lower' else 'high')] = \
+                            read_ids
+                        sides.append(_compiled_bound(
+                            bound, identifier, node, joint, side, read_ids))
+                    else:
+                        sides.append(_compiled_bound(
+                            bound, identifier, node, joint, side))
+                found.append((identifier, sides[0], sides[1], joint.unit))
             break
-    return tuple(found)
+    return tuple(found), reads
 
 
-def _compiled_bound(bound, identifier, node, joint, side):
-    """One declared bound as the run reads it: `None`, a float, or an
-    expression graph over `identifier` alone."""
+def _qualified_reads(root, bank, bound, node, joint, side, identifier):
+    """A `Bound`'s reads as the qualified ids the BANK keys by.
+
+    A read that is not a bank entry -- a plain port, a derived
+    coordinate -- is refused here, by joint and node identity: a bound
+    reads the STATE, and a port is a calculation the enumeration
+    recomputes from it.
+    """
     def refuse(detail):
         raise UnsupportedLaw(
             f"{type(node).__name__}.{joint.name}: its {side} bound -- "
             f"the range of the coordinate '{identifier}' -- {detail}")
 
+    found = []
+    for end in joint.bound_reads(node, side):
+        read_id, qualified = _qualified(root, end)
+        if not qualified or read_id not in bank:
+            refuse(f"reads '{read_id}', which the run does not bank. A "
+                   f"bound reads the STATE -- a joint coordinate or a "
+                   f"declared input -- and a plain port or a derived "
+                   f"coordinate is a calculation the enumeration "
+                   f"recomputes from it on every tick. Read the joint "
+                   f"the port follows.")
+        if read_id in found:
+            refuse(f"reads '{read_id}' twice, so one value would take "
+                   f"two positions of the expression. Name it once.")
+        found.append(read_id)
+    return tuple(found)
+
+
+def _compiled_bound(bound, identifier, node, joint, side, read_ids=None):
+    """One declared bound as the run reads it: `None`, a float, or an
+    expression graph over `identifier` and whatever it reads."""
+    from solid_node.motion.joints import Bound
+
+    def refuse(detail):
+        raise UnsupportedLaw(
+            f"{type(node).__name__}.{joint.name}: its {side} bound -- "
+            f"the range of the coordinate '{identifier}' -- {detail}")
+
+    if isinstance(bound, Bound):
+        return _compiled_reading_bound(bound, identifier, read_ids, refuse)
     if bound is None:
         return None
     if isinstance(bound, bool):
@@ -1545,15 +1663,76 @@ def _compiled_bound(bound, identifier, node, joint, side):
     names = free_names(root)
     if not names <= {identifier}:
         others = ', '.join(sorted(names - {identifier}))
-        refuse(f'reads {others}, and a bound in this release is an '
-               f"expression over the joint's OWN coordinate alone. A bound "
-               f'naming a second coordinate needs a declaration that says '
-               f'what it reads, resolved against the declarer subtree; it '
-               f'is not in this release.')
+        refuse(f'reads {others}, and a bound stated as a plain callable is '
+               f"an expression over the joint's OWN coordinate alone. A "
+               f'bound naming a second coordinate says what it reads: '
+               f'Bound(expression, reads=(...)).')
     # A JUMP is admitted and needs no plan: a bound is EVALUATED at one
     # point per tick and never integrated, so `floor` means `floor` and
     # nothing is subtracted. That asymmetry with a law is the point -- a
     # law's jump would move a part, a bound's jump is the tooth pitch.
+    return GraphValue(root)
+
+
+def _compiled_reading_bound(bound, identifier, read_ids, refuse):
+    """A `Bound` as one graph over the joint's own id and the ids it
+    reads, applied once, in declared order.
+
+    The same walk a one-argument bound takes -- raw text refused, calls
+    outside the symbolic vocabulary refused -- with the free-name check
+    widened from the own id alone to the own id and the reads. A JUMP is
+    admitted and needs no plan, for the reason it is admitted there: a
+    bound is EVALUATED at a point, never integrated.
+    """
+    tokens = [symbol(read_id) for read_id in read_ids]
+    try:
+        returned = bound.arguments(symbol(identifier), tokens)
+    except Exception as failure:
+        refuse(f'cannot be applied to symbols '
+               f'({type(failure).__name__}: {failure}). A bound is an '
+               f"expression over the joint's own coordinate and the "
+               f'coordinates it reads: it is applied once, to a token for '
+               f'each, own coordinate first and then each read in the '
+               f'order reads= states them, and the graph it builds is what '
+               f'the run evaluates along the tick. Write it with '
+               f'solid_node.math, whose primitives are symbolic.')
+    if isinstance(returned, bool):
+        refuse(f'returned {returned!r}, which is neither a number nor an '
+               f'expression.')
+    if isinstance(returned, (int, float)):
+        # A Bound that declares a read and returns a NUMBER reads
+        # nothing it declares. Refused here rather than carried as a
+        # constraint with no expression to evaluate along the tick.
+        refuse(f'declares reads=({", ".join(read_ids)}) and returns the '
+               f'number {returned!r}, so it never reads what it declares. '
+               f'A bound that reads other coordinates is an expression '
+               f'over them; a bound that is a number is written as one.')
+    if not isinstance(returned, OpenSCADConstant):
+        refuse(f'returned {returned!r}, which is neither a number nor an '
+               f'expression over the coordinates it was given.')
+    root = as_node(returned)
+    for item in postorder([root]):
+        if item.kind == 'raw':
+            refuse(f'carries the text {item.text!r}, which the framework '
+                   f'cannot evaluate.')
+        if item.kind == 'call' and item.op not in SYMBOLIC_BUILTINS:
+            refuse(f'calls {item.op!r}, which is outside the symbolic '
+                   f'vocabulary the run can evaluate.')
+    names = free_names(root)
+    allowed = {identifier} | set(read_ids)
+    if not names <= allowed:
+        others = ', '.join(sorted(names - allowed))
+        refuse(f'reads {others}, which is neither its own coordinate nor '
+               f'one of the coordinates reads= names.')
+    unused = [read_id for read_id in read_ids if read_id not in names]
+    if unused:
+        # The declaration says it reads what the expression does not: a
+        # bound is applied to every read it names, and a read the
+        # expression cannot see is a mistake in the model, not a
+        # coordinate to sample along every tick for nothing.
+        refuse(f'declares reads=({", ".join(read_ids)}) but its '
+               f'expression never reads {", ".join(unused)}. A bound reads '
+               f'every coordinate it names; drop the read, or use it.')
     return GraphValue(root)
 
 

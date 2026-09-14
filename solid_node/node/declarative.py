@@ -326,6 +326,14 @@ class ChildDeclaration:
 
     def __set_name__(self, owner, name):
         self._name = name
+        if self.site_joints:
+            # A SITE joint's `Bound` reads are resolved against the
+            # DECLARING PARENT, which is `owner` here -- and only here:
+            # the joint's own `__set_name__` fires against the
+            # specialized CHILD class, which declares neither the
+            # siblings nor the drivers a read may name.
+            for joint in self.site_joints.values():
+                joint.check_bound_reads(owner)
         if self.wiring:
             self._check_wiring(owner)
 

@@ -37,13 +37,13 @@ affine. Each has its own untimed twin for the same reason.
 import math
 
 from solid_node.math import abs, clamp01, floor, sign, sin, wrap
-from solid_node.motion.joints import Free, Prismatic, Revolute
+from solid_node.motion.joints import Bound, Free, Prismatic, Revolute
 from solid_node.motion.ports import RotationalPort, Time
 from solid_node.node import AssemblyNode
 from solid_node.parameters import Flag
 from solid_node.simulation import Button, Driver, Instruction, Turn
 
-from .parts import Arbor, Block, Dial, Slide, Wheel
+from .parts import Arbor, Block, Dial, Pin, Slide, Wheel
 
 
 def tooth_window(source, target):
@@ -1858,3 +1858,338 @@ class SmoothControl(AssemblyNode):
     controls = {
         'turn units': Turn(units.dial, crank),
     }
+# The CONSTRAINT machines: a bound that reads other coordinates
+#
+# The pin tumbler lock's shape, reduced to two pins: a key whose travel
+# lifts them over its cuts, and a plug that may only turn while every
+# lift stands inside the shear-line window. Every joint here is
+# SITE-declared, as most of this module's are, so the declarer is the
+# root -- except `ClassGateBody`'s, whose `Plug` declares its own
+# children and its own joint and is therefore the other resolution path.
+
+
+def pin_lift(knot):
+    """A key pin's lift as a LAW FACTORY, the two-argument shape `law=`
+    takes: `5` mm of lift until the key's travel reaches `knot`, none
+    from `knot + 5` on, so the `[-0.05, 0.05]` window opens at
+    `knot + 4.95`."""
+    def law(source_owner, target_owner):
+        return lambda travel: 5 - 5 * clamp01((travel - knot) / 5)
+
+    return law
+
+
+def cleared(value, window=0.05):
+    """Whether a pin's lift stands inside the shear-line window --
+    written over `solid_node.math`, so it reads a number and a symbol
+    alike."""
+    return abs(value) <= window
+
+
+class GateBody(AssemblyNode):
+    """Two pins, a plug that may only turn while both are cleared, and
+    the key that lifts them. No time base of its own: the untimed
+    control, where the bound is judged when the enumeration closes.
+
+    The children are declared in the order a `Bound` needs them: a body
+    can only read what it has already named.
+    """
+
+    feed = Driver(default=10.0, unit='mm')
+    twist = Driver(default=0.0, unit='deg')
+
+    p1 = Pin()
+    p2 = Pin()
+    plug = Arbor(turn=Revolute(
+        axis=(0, 0, 1), unit='deg',
+        range=(0, Bound(lambda turn, a, b: 90 * cleared(a) * cleared(b),
+                        reads=(p1.lift, p2.lift)))))
+    key = Slide()
+
+    feed.drives(key.travel, ratio=1.0)
+    key.travel.drives(p1.lift, law=pin_lift(10))
+    key.travel.drives(p2.lift, law=pin_lift(13))
+    twist.drives(plug.turn, ratio=1.0)
+
+    def render(self):
+        self.p2.translate([7.2, 0.0, 0.0])
+        self.plug.translate([0.0, -20.0, 0.0])
+        self.key.translate([0.0, 20.0, 0.0])
+
+
+class Gate(GateBody):
+    time = Time.running()
+
+
+class GateWideBody(AssemblyNode):
+    """`GateBody` with the window at `0.5` and nothing else changed: the
+    identity control, so a snapshot of one cannot restore into the
+    other."""
+
+    feed = Driver(default=10.0, unit='mm')
+    twist = Driver(default=0.0, unit='deg')
+
+    p1 = Pin()
+    p2 = Pin()
+    plug = Arbor(turn=Revolute(
+        axis=(0, 0, 1), unit='deg',
+        range=(0, Bound(lambda turn, a, b: (90 * cleared(a, 0.5)
+                                            * cleared(b, 0.5)),
+                        reads=(p1.lift, p2.lift)))))
+    key = Slide()
+
+    feed.drives(key.travel, ratio=1.0)
+    key.travel.drives(p1.lift, law=pin_lift(10))
+    key.travel.drives(p2.lift, law=pin_lift(13))
+    twist.drives(plug.turn, ratio=1.0)
+
+    def render(self):
+        self.p2.translate([7.2, 0.0, 0.0])
+        self.plug.translate([0.0, -20.0, 0.0])
+        self.key.translate([0.0, 20.0, 0.0])
+
+
+class GateWide(GateWideBody):
+    time = Time.running()
+
+
+class CapturedBody(AssemblyNode):
+    """`GateBody` resting SEATED -- the key at `20`, both pins cleared --
+    with the CAPTURE stated a second time on the key's own travel: while
+    the plug stands turned, the key may not come back out.
+
+    A sibling rather than a subclass: the declaration order is
+    load-bearing, and a subclass redeclaring the key would state it
+    after the plug that reads it.
+    """
+
+    feed = Driver(default=20.0, unit='mm')
+    twist = Driver(default=0.0, unit='deg')
+
+    p1 = Pin()
+    p2 = Pin()
+    plug = Arbor(turn=Revolute(
+        axis=(0, 0, 1), unit='deg',
+        range=(0, Bound(lambda turn, a, b: 90 * cleared(a) * cleared(b),
+                        reads=(p1.lift, p2.lift)))))
+    key = Slide(travel=Prismatic(
+        axis=(1, 0, 0), unit='mm',
+        range=(Bound(lambda travel, turn: 20 * (turn > 0),
+                     reads=(plug.turn,)), 20)))
+
+    feed.drives(key.travel, ratio=1.0)
+    key.travel.drives(p1.lift, law=pin_lift(10))
+    key.travel.drives(p2.lift, law=pin_lift(13))
+    twist.drives(plug.turn, ratio=1.0)
+
+    def render(self):
+        self.p2.translate([7.2, 0.0, 0.0])
+        self.plug.translate([0.0, -20.0, 0.0])
+        self.key.translate([0.0, 20.0, 0.0])
+
+
+class Captured(CapturedBody):
+    time = Time.running()
+
+
+class PawlRatchetBody(AssemblyNode):
+    """`RatchetBody`'s own bound with a PAWL in it: the last seated
+    tooth, lifted out of the way by a second coordinate.
+
+    The tooth is the COMMITTED arbor's -- that is what makes a ratchet a
+    ratchet -- and the pawl's lift is read along the tick's path, so a
+    pawl that clears before the wheel meets its tooth releases the
+    reverse and one that clears after it does not.
+    """
+
+    arbor = Driver(default=40.0, unit='deg')
+    hoist = Driver(default=0.0, unit='mm')
+
+    pawl = Pin()
+    wheel = Arbor(turn=Revolute(
+        axis=(1, 0, 0), unit='deg',
+        range=(Bound(lambda turn, lift: (36 * floor(turn / 36)
+                                         - 1000 * (lift >= 1)),
+                     reads=(pawl.lift,)), None)))
+
+    arbor.drives(wheel.turn, ratio=1.0)
+    hoist.drives(pawl.lift, ratio=1.0)
+
+    def render(self):
+        self.pawl.translate([0.0, 20.0, 0.0])
+
+
+class PawlRatchet(PawlRatchetBody):
+    time = Time.running()
+
+
+class Plug(AssemblyNode):
+    """The other resolution path: a body declaring its own children AND
+    its own class joint, whose bound reads them. The declarer is this
+    node, not the root, so the ids the reads qualify to carry the plug's
+    own segment."""
+
+    p1 = Pin()
+    p2 = Pin()
+    turn = Revolute(axis=(0, 0, 1), unit='deg',
+                    range=(0, Bound(lambda turn, a, b:
+                                    90 * cleared(a) * cleared(b),
+                                    reads=(p1.lift, p2.lift))))
+
+    def render(self):
+        self.p2.translate([7.2, 0.0, 0.0])
+
+
+class ClassGateBody(AssemblyNode):
+    """`GateBody` with the constraint declared inside the plug."""
+
+    feed = Driver(default=10.0, unit='mm')
+    twist = Driver(default=0.0, unit='deg')
+
+    plug = Plug()
+    key = Slide()
+
+    feed.drives(key.travel, ratio=1.0)
+    key.travel.drives(plug.p1.lift, law=pin_lift(10))
+    key.travel.drives(plug.p2.lift, law=pin_lift(13))
+    twist.drives(plug.turn, ratio=1.0)
+
+    def render(self):
+        self.plug.translate([0.0, -20.0, 0.0])
+        self.key.translate([0.0, 20.0, 0.0])
+
+
+class ClassGate(ClassGateBody):
+    time = Time.running()
+
+
+class PortReadBody(AssemblyNode):
+    """A bound reading a PLAIN PORT: legal to declare, and refused at
+    `Sim` construction, because a bound reads the state and a port is a
+    calculation the enumeration recomputes from it."""
+
+    feed = Driver(default=0.0, unit='deg')
+    twist = Driver(default=0.0, unit='deg')
+
+    dial = Wheel()
+    plug = Arbor(turn=Revolute(
+        axis=(0, 0, 1), unit='deg',
+        range=(0, Bound(lambda turn, angle: 90 * (angle >= 1),
+                        reads=(dial.turn,)))))
+
+    feed.drives(dial.turn, ratio=1.0)
+    twist.drives(plug.turn, ratio=1.0)
+
+    def render(self):
+        self.plug.translate([0.0, -20.0, 0.0])
+
+
+class PortRead(PortReadBody):
+    time = Time.running()
+
+
+class ConstantBoundBody(AssemblyNode):
+    """A `Bound` whose expression returns a NUMBER: it declares a read
+    and reads nothing, so it is refused at `Sim` construction rather
+    than carried as a constraint with no expression to evaluate."""
+
+    feed = Driver(default=0.0, unit='mm')
+    twist = Driver(default=0.0, unit='deg')
+
+    key = Slide()
+    p1 = Pin()
+    plug = Arbor(turn=Revolute(
+        axis=(0, 0, 1), unit='deg',
+        range=(0, Bound(lambda turn, a: 45, reads=(p1.lift,)))))
+
+    feed.drives(key.travel, ratio=1.0)
+    key.travel.drives(p1.lift, ratio=1.0)
+    twist.drives(plug.turn, ratio=1.0)
+
+    def render(self):
+        self.p1.translate([0.0, -20.0, 0.0])
+        self.plug.translate([0.0, -40.0, 0.0])
+
+
+class ConstantBound(ConstantBoundBody):
+    time = Time.running()
+
+
+class UnusedReadBody(AssemblyNode):
+    """A `Bound` declaring two reads whose expression uses only one: the
+    declaration says it reads what it does not, and is refused at `Sim`
+    construction naming the read it never uses."""
+
+    feed = Driver(default=0.0, unit='mm')
+    twist = Driver(default=0.0, unit='deg')
+
+    key = Slide()
+    p1 = Pin()
+    p2 = Pin()
+    plug = Arbor(turn=Revolute(
+        axis=(0, 0, 1), unit='deg',
+        range=(0, Bound(lambda turn, a, b: 90 * (a <= 0.05),
+                        reads=(p1.lift, p2.lift)))))
+
+    feed.drives(key.travel, ratio=1.0)
+    key.travel.drives(p1.lift, ratio=1.0)
+    key.travel.drives(p2.lift, ratio=1.0)
+    twist.drives(plug.turn, ratio=1.0)
+
+    def render(self):
+        self.p1.translate([0.0, -20.0, 0.0])
+        self.p2.translate([0.0, -30.0, 0.0])
+        self.plug.translate([0.0, -40.0, 0.0])
+
+
+class UnusedRead(UnusedReadBody):
+    time = Time.running()
+
+
+class UnreadGateBody(AssemblyNode):
+    """`GateBody` with nothing driving the pins: at the close of the
+    enumeration the reads hold NO value, so the bound is not judged."""
+
+    twist = Driver(default=0.0, unit='deg')
+
+    p1 = Pin()
+    p2 = Pin()
+    plug = Arbor(turn=Revolute(
+        axis=(0, 0, 1), unit='deg',
+        range=(0, Bound(lambda turn, a, b: 90 * cleared(a) * cleared(b),
+                        reads=(p1.lift, p2.lift)))))
+
+    twist.drives(plug.turn, ratio=1.0)
+
+    def render(self):
+        self.p2.translate([7.2, 0.0, 0.0])
+        self.plug.translate([0.0, -20.0, 0.0])
+
+
+class DriverGateBody(AssemblyNode):
+    """A `Bound` reading a DRIVER of the same class, on a CLASS-declared
+    joint of the root.
+
+    The gate stands open at `2`; the tick that closes it past `1` while
+    the push turns the spindle stops both -- the push because its own
+    motion carries the constraint outward, the gate because closing it
+    does.
+    """
+
+    push = Driver(default=0.0, unit='deg')
+    gate = Driver(default=2.0)
+
+    spin = Revolute(axis=(0, 0, 1), unit='deg',
+                    range=(None, Bound(lambda spin, gate: 90 * (gate >= 1),
+                                       reads=(gate,))))
+
+    block = Block()
+
+    push.drives(spin, ratio=1.0)
+
+    def render(self):
+        self.block.translate([0.0, 0.0, 10.0])
+
+
+class DriverGate(DriverGateBody):
+    time = Time.running()

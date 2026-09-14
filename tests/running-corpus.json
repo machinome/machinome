@@ -7308,6 +7308,645 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Captured",
+      "dt": 0.05,
+      "steps": 16,
+      "document": {
+        "format": "solid-node-export",
+        "version": 5,
+        "drivers": {
+          "feed": {
+            "default": 20.0,
+            "range": null,
+            "unit": "mm",
+            "dtype": null,
+            "scale": null
+          },
+          "twist": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "program": {
+          "identity": "293539d26179f0582a6917bdbf9800b845a9c4f9be8caa88809a2453dda9cae4",
+          "clock": "time",
+          "coordinates": {
+            "feed": {
+              "kind": "input",
+              "initial": 20.0,
+              "domain": null
+            },
+            "twist": {
+              "kind": "input",
+              "initial": 0.0,
+              "domain": null
+            },
+            "key.travel": {
+              "kind": "coordinate",
+              "initial": 20.0,
+              "unit": "mm",
+              "domain": "translational"
+            },
+            "p1.lift": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "mm",
+              "domain": "translational"
+            },
+            "p2.lift": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "mm",
+              "domain": "translational"
+            },
+            "plug.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "feed"
+              ],
+              "gives": [
+                "key.travel"
+              ],
+              "description": "feed drives key.travel",
+              "stated_by": "Captured",
+              "expressions": [
+                "feed"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "twist"
+              ],
+              "gives": [
+                "plug.turn"
+              ],
+              "description": "twist drives plug.turn",
+              "stated_by": "Captured",
+              "expressions": [
+                "twist"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "key.travel"
+              ],
+              "gives": [
+                "p1.lift"
+              ],
+              "description": "key.travel drives p1.lift",
+              "stated_by": "Captured",
+              "expressions": [
+                "(5 - (5 * min(max(((key.travel - 10) / 5), 0.0), 1.0)))"
+              ],
+              "affine": [
+                false
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "key.travel"
+              ],
+              "gives": [
+                "p2.lift"
+              ],
+              "description": "key.travel drives p2.lift",
+              "stated_by": "Captured",
+              "expressions": [
+                "(5 - (5 * min(max(((key.travel - 13) / 5), 0.0), 1.0)))"
+              ],
+              "affine": [
+                false
+              ],
+              "plans": [
+                null
+              ]
+            }
+          ],
+          "spans": {
+            "key.travel": {
+              "low": {
+                "expression": "(20 * (plug.turn > 0))"
+              },
+              "high": 20.0
+            },
+            "plug.turn": {
+              "low": 0.0,
+              "high": {
+                "expression": "((90 * (abs(p1.lift) <= 0.05)) * (abs(p2.lift) <= 0.05))"
+              }
+            }
+          },
+          "sources": {
+            "feed": [
+              "feed"
+            ],
+            "key.travel": [
+              "feed"
+            ],
+            "p1.lift": [
+              "feed"
+            ],
+            "p2.lift": [
+              "feed"
+            ],
+            "plug.turn": [
+              "twist"
+            ],
+            "twist": [
+              "twist"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          }
+        }
+      },
+      "script": [
+        {
+          "tick": 1,
+          "move": {
+            "input": "twist",
+            "by": 30.0,
+            "duration": 0.1
+          },
+          "handle": "h0"
+        },
+        {
+          "tick": 6,
+          "move": {
+            "input": "feed",
+            "by": -5.0,
+            "duration": 0.1
+          },
+          "handle": "h1"
+        },
+        {
+          "tick": 10,
+          "snapshot": "a"
+        },
+        {
+          "tick": 12,
+          "move": {
+            "input": "twist",
+            "by": -30.0,
+            "duration": 0.1
+          },
+          "handle": "h2"
+        },
+        {
+          "tick": 14,
+          "restore": "a"
+        }
+      ],
+      "ticks": [
+        {
+          "tick": 1,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 15.0,
+            "twist": 15.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "active",
+              "admitted": 15.0
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 30.0,
+            "twist": 30.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            }
+          ]
+        },
+        {
+          "tick": 3,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 30.0,
+            "twist": 30.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            }
+          ]
+        },
+        {
+          "tick": 4,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 30.0,
+            "twist": 30.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            }
+          ]
+        },
+        {
+          "tick": 5,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 30.0,
+            "twist": 30.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            }
+          ]
+        },
+        {
+          "tick": 6,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 30.0,
+            "twist": 30.0
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "key.travel",
+              "bound": "low",
+              "value": 20.0,
+              "t": 0.0,
+              "inputs": [
+                "feed"
+              ]
+            }
+          ],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            },
+            {
+              "handle": "h1",
+              "status": "blocked",
+              "admitted": 0.0
+            }
+          ]
+        },
+        {
+          "tick": 7,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 30.0,
+            "twist": 30.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            },
+            {
+              "handle": "h1",
+              "status": "blocked",
+              "admitted": 0.0
+            }
+          ]
+        },
+        {
+          "tick": 8,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 30.0,
+            "twist": 30.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            },
+            {
+              "handle": "h1",
+              "status": "blocked",
+              "admitted": 0.0
+            }
+          ]
+        },
+        {
+          "tick": 9,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 30.0,
+            "twist": 30.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            },
+            {
+              "handle": "h1",
+              "status": "blocked",
+              "admitted": 0.0
+            }
+          ]
+        },
+        {
+          "tick": 10,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 30.0,
+            "twist": 30.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            },
+            {
+              "handle": "h1",
+              "status": "blocked",
+              "admitted": 0.0
+            }
+          ]
+        },
+        {
+          "tick": 11,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 30.0,
+            "twist": 30.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            },
+            {
+              "handle": "h1",
+              "status": "blocked",
+              "admitted": 0.0
+            }
+          ]
+        },
+        {
+          "tick": 12,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 15.0,
+            "twist": 15.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            },
+            {
+              "handle": "h1",
+              "status": "blocked",
+              "admitted": 0.0
+            },
+            {
+              "handle": "h2",
+              "status": "active",
+              "admitted": -15.0
+            }
+          ]
+        },
+        {
+          "tick": 13,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 0.0,
+            "twist": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            },
+            {
+              "handle": "h1",
+              "status": "blocked",
+              "admitted": 0.0
+            },
+            {
+              "handle": "h2",
+              "status": "completed",
+              "admitted": -30.0
+            }
+          ]
+        },
+        {
+          "tick": 10,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 30.0,
+            "twist": 30.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            },
+            {
+              "handle": "h1",
+              "status": "blocked",
+              "admitted": 0.0
+            },
+            {
+              "handle": "h2",
+              "status": "completed",
+              "admitted": -30.0
+            }
+          ]
+        },
+        {
+          "tick": 11,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 30.0,
+            "twist": 30.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            },
+            {
+              "handle": "h1",
+              "status": "blocked",
+              "admitted": 0.0
+            },
+            {
+              "handle": "h2",
+              "status": "completed",
+              "admitted": -30.0
+            }
+          ]
+        },
+        {
+          "tick": 12,
+          "bank": {
+            "feed": 20.0,
+            "key.travel": 20.0,
+            "p1.lift": 0.0,
+            "p2.lift": 0.0,
+            "plug.turn": 30.0,
+            "twist": 30.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 30.0
+            },
+            {
+              "handle": "h1",
+              "status": "blocked",
+              "admitted": 0.0
+            },
+            {
+              "handle": "h2",
+              "status": "completed",
+              "admitted": -30.0
+            }
+          ]
+        }
+      ]
     }
   ]
 }

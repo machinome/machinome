@@ -2165,3 +2165,98 @@ sim.move("feed", by=1, duration=0.02)  # observed: ValueError, already owned
   PART (a leaf under the joint-bearing node) rather than the node
   carrying the driven coordinate, which is design §10's own case and
   needs no framework change.
+# Pin tumbler lock (2026-09-14, migration to `Time.running()` under `bounds-read-other-coordinates`)
+
+Recorded from the originating project's migration, run against the cycle's
+worktree (`openspec/changes/bounds-read-other-coordinates/evidence.md`, "The
+originating project"). Each entry is a finding outside the cycle's ratified
+scope; **status: filed here; triage open** unless marked otherwise. No
+framework code changed for any of them in that cycle.
+
+- **The test runner's operation checkpoints double a leaf child's joint
+  displacement under a running root.** `solid_node/manager/test.py:327`
+  snapshots each ROOT CHILD's `operations` before every test and `:368`/`:383`
+  restores them after; from the SECOND test on, the `set_keyframe(instant)`
+  at `:344` appends the joint displacement a second time. The lock's five
+  driver pins (leaves owning a `Prismatic`) then stand 0.1 mm deeper than
+  their own coordinate says (`d1.lift` reads `0.1000002`, the mesh sits at
+  `x = 12.46` instead of `12.56`), and `_prepare()`, `render()` and a
+  `set_state` round trip all leave the fifth operation in place. The same
+  tree under the project's previous UNTIMED model keeps four operations
+  through any number of cycles, so this is specific to a running root's
+  coordinate delivery; children of a sub-assembly are unaffected because the
+  runner checkpoints only the root's own children. Minimal reproduction, on
+  the lock:
+
+      a = load_node('simulation/lock.py:PinTumblerLock')
+      a.set_keyframe(0); a._prepare(); a.build_stls()
+      for _ in range(2):
+          saved = {c: list(c.operations) for c in a.children}
+          a.set_keyframe(0)
+          for c, ops in saved.items(): c.operations[:] = list(ops)
+      a.set_keyframe(0)          # -> d1 has 5 operations, not 4
+
+  Cost to the project: `assertNoSolidInterference` reported
+  `core should not interfere with d2 (intersection volume 0.103)` at ±90°
+  from the second geometry test on; its geometry tests now build a lock of
+  their own. Candidate fix: the runner's checkpoint must restore a joint's
+  placement bookkeeping with the operation list, or checkpoint through the
+  joint's own `clear`/`place` rather than the raw list. Needs its own cycle;
+  it affects every running root with a joint on a root-level leaf.
+
+- **`solid build` refuses a coordinate bound by a CHILD-declared relation
+  and read by a ROOT-declared one as doubly bound.** With
+  `key.insert.drives(p1.lift, law=…)` in `Plug`'s body and
+  `plug.p1.lift.drives(d1.lift, ratio=-1)` in the root's, the symbolic
+  publication pass (`core/serializer.py:240` → `qualified.py:311` →
+  `couplings.py:1898`) raises
+
+      DoublyBound: plug.p1.lift would be bound by the relation key.insert
+      drives p1.lift and by the relation plug.p1.lift drives d1.lift. A
+      coordinate has exactly one binder in one enumeration of the tree ...
+
+  The second relation READS `plug.p1.lift`; the message names a relation's
+  source as a binder. Every untimed pose, every `Sim` and the whole test
+  suite accept the same declarations; only the publication pass refuses
+  them, evidently by solving the root's relation backwards against a
+  symbolically bound driven end. Worked around by declaring all five lift
+  relations in the ROOT's body. Candidate fix: the publication binder's
+  symbolic binding of every coordinate must read as "bound by the run" to
+  `_step_relation` the way a `RunBinder` does, so a relation whose driven
+  end it holds is recorded as solved rather than inverted.
+
+- **A `.repeat()` child's PORT cannot be published under a running root.**
+  `Program.published()` refuses the lock's spring bank:
+
+      UnsupportedLaw: the program names 'PenSpring.height', which is a
+      FALLBACK derived from a class name rather than an instance path ...
+      Hold the node on its own attribute of its parent.
+
+  Root cause located in `solid_node/simulation/program.py`:
+  `compile_program` registers a program node for EVERY end of every candidate
+  relation (`_relation_edge` → `_register`) before `_reaching_the_bank` drops
+  the edges that reach no bank coordinate, and `Program.nodes` keeps the
+  dropped edges' ends. `_refuse_unqualified` and the published
+  `intermediates` list then see nodes nothing in the program computes — the
+  repeated springs' height ports, named by their class fallback. The run
+  itself is untouched (the edge is not compiled); only publication refuses.
+  Candidate fix, small: prune `nodes` to the bank plus the kept edges' ends
+  after `_reaching_the_bank`, with a test publishing a running root whose
+  `.repeat()` children own a port a relation drives. The lock named its
+  springs `s1`…`s5` meanwhile, and the shop's API skill says a `.repeat()`
+  child under a running root may own neither a joint nor a port a relation
+  drives.
+
+- **The sampled search of a constraint costs about a whole program pass per
+  sample.** On the lock (five `piecewise` lift laws of 8–26 knots feeding a
+  two-sided plug bound) an active tick measured 193–195 ms against 3 ms
+  idle, `_SUBDIVISIONS` samples each evaluating the five laws twice
+  (`f(start)` recomputed per sample), paid even when only the plug turned.
+  The cycle's review added the static-reads shortcut — a stretch in which no
+  read moves takes the exact self-only path — which brought the turning tick
+  to 4.7 ms and the insertion tick to 45 ms. What remains for a later
+  performance cycle: evaluate `f(start)` once per stretch per edge instead
+  of per sample, sample the sub-program once for the two sides of one
+  coordinate that read the same coordinates, and consider fewer samples with
+  a bracketed refinement when the constraint's reads are affine over the
+  stretch. Numbers in the cycle's evidence.

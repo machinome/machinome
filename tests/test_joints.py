@@ -32,15 +32,16 @@ from numpy.testing import assert_allclose
 from solid2 import cube
 
 from solid_node.math import floor
-from solid_node.motion.joints import (Free, Joint, JointRangeError, Orbit,
-                                      Prismatic, Revolute,
+from solid_node.motion.joints import (Bound, Free, Joint, JointRangeError,
+                                      Orbit, Prismatic, Revolute,
                                       declared_joints)
 from solid_node.motion.ports import (BoundPort, Port, RotationalPort,
-                                     TranslationalPort, declared_ports)
+                                     TranslationalPort, declared_ports,
+                                     get_coordinate)
 from solid_node.node import AssemblyNode, Solid2Node
 from solid_node.node import phase as _phase
 from solid_node.node.base import _compose_world_matrix
-from solid_node.node.assembly import _sweep
+from solid_node.node.assembly import _rest_children, _sweep
 from solid_node.core.serializer import serialize_node
 from solid_node.parameters import Count, Length, ParameterError
 from solid_node.simulation import Driver
@@ -50,6 +51,8 @@ from .import_probe import probe
 from .joint_project.arm import (Arbor, ArborStack, Arm, Forearm, Gantry,
                                 SiteArm, BEARING_PITCH)
 from .joint_project.parts import Carriage, Rod, Spool, Wheel
+from .running_project.machine import (ClassGateBody, GateBody,
+                                      UnreadGateBody)
 
 
 # What Thor's own placing.py computes by hand for the elbow, quoted so a
@@ -4411,3 +4414,167 @@ class SiteCarryImportCostTest(TestCase):
             self.SNIPPET
             + "import sys\nprint('numpy' in sys.modules)\n").check()
         self.assertEqual(result.stdout.strip(), 'True', result.stderr)
+
+
+##############################################
+# 8. A bound that reads other coordinates
+
+class BoundDeclarationTest(BaseNodeTest):
+    """(1.2) The four class-definition refusals.
+
+    Each is a class STATEMENT that must raise while the body runs, so it
+    is written inside the test method: a module-level one would break the
+    import of this file.
+    """
+
+    def test_a_read_held_in_a_list_is_refused(self):
+        with self.assertRaises(TypeError) as caught:
+            class Listed(AssemblyNode):
+                pins = [_BoundPin(), _BoundPin()]
+                plug = _BoundArbor(turn=Revolute(
+                    axis=(0, 0, 1), unit='deg',
+                    range=(0, Bound(lambda turn, lift: 90 * lift,
+                                    reads=(pins[0].lift,)))))
+        message = str(caught.exception)
+        self.assertIn('declaration held in a list', message)
+        self.assertIn('<attribute>-index', message)
+
+    def test_a_read_through_a_repeat_is_refused(self):
+        with self.assertRaises(TypeError) as caught:
+            class Repeated(AssemblyNode):
+                pins = _BoundPin().repeat(3)
+                plug = _BoundArbor(turn=Revolute(
+                    axis=(0, 0, 1), unit='deg',
+                    range=(0, Bound(lambda turn, lift: 90 * lift,
+                                    reads=(pins.lift,)))))
+        message = str(caught.exception)
+        self.assertIn('pins', message)
+        self.assertIn('SOURCE', message)
+
+    def test_a_read_of_a_child_declaring_two_joints_is_refused(self):
+        with self.assertRaises(TypeError) as caught:
+            class TwoJointed(AssemblyNode):
+                block = _TwoJoints()
+                plug = _BoundArbor(turn=Revolute(
+                    axis=(0, 0, 1), unit='deg',
+                    range=(0, Bound(lambda turn, lift: 90 * lift,
+                                    reads=(block,)))))
+        message = str(caught.exception)
+        self.assertIn('block', message)
+        self.assertIn('lift', message)
+        self.assertIn('spin', message)
+
+    def test_a_driver_read_sideways_off_a_child_is_refused(self):
+        with self.assertRaises(AttributeError) as caught:
+            class Sideways(AssemblyNode):
+                inner = _DriverHolder()
+                plug = _BoundArbor(turn=Revolute(
+                    axis=(0, 0, 1), unit='deg',
+                    range=(0, Bound(lambda turn, feed: 90 * feed,
+                                    reads=(inner.feed,)))))
+        self.assertIn('feed', str(caught.exception))
+
+    def test_a_read_of_the_bounded_coordinate_by_name_is_refused(self):
+        with self.assertRaises(TypeError) as caught:
+            class SelfNamed(AssemblyNode):
+                spin = Revolute(axis=(0, 0, 1), unit='deg')
+                spin.range = (0, Bound(lambda own, again: 90 * again,
+                                       reads=(spin,)))
+        message = str(caught.exception)
+        self.assertIn('spin', message)
+        self.assertIn('OWN coordinate', message)
+
+
+class BoundRealizationTest(BaseNodeTest):
+    """(1.3) Realization carries a `Bound` unevaluated, whichever way it
+    was declared."""
+
+    def test_a_site_declared_bound_survives_realization(self):
+        node = GateBody()
+        _rest_children(node)
+        joint = declared_joints(type(node.plug))['turn']
+        span = joint.arguments(node.plug)[2]
+        self.assertEqual(span[0], 0)
+        self.assertIsInstance(span[1], Bound)
+        self.assertEqual(len(span[1].reads), 2)
+        self.assertNotIn('_joint_bound_reads', node.plug.__dict__)
+
+    def test_a_class_declared_bound_survives_realization(self):
+        node = ClassGateBody()
+        _rest_children(node)
+        joint = declared_joints(type(node.plug))['turn']
+        span = joint.arguments(node.plug)[2]
+        self.assertIsInstance(span[1], Bound)
+        self.assertEqual(len(span[1].reads), 2)
+
+
+class BoundAtEnumerationCloseTest(BaseNodeTest):
+    """(1.3) A `Bound` side is judged when the enumeration CLOSES, over
+    the values then bound, whatever order the solver bound them in."""
+
+    def test_an_impossible_pose_is_refused_by_name(self):
+        for cls in (GateBody, ClassGateBody):
+            with self.subTest(cls=cls.__name__):
+                with self.assertRaises(JointRangeError) as caught:
+                    cls().set_state(twist=30, feed=0)
+                message = str(caught.exception)
+                self.assertIn('plug.turn', message)
+                self.assertIn('30', message)
+                self.assertIn('deg', message)
+                self.assertIn('p1.lift', message)
+                self.assertIn('p2.lift', message)
+                self.assertIn('5', message)
+
+    def test_a_possible_pose_is_admitted(self):
+        for cls in (GateBody, ClassGateBody):
+            with self.subTest(cls=cls.__name__):
+                node = cls()
+                node.set_state(twist=30, feed=20)
+                self.assertEqual(node.plug.turn.value, 30)
+                self.assertEqual(_lift_of(node, 'p1'), 0.0)
+                self.assertEqual(_lift_of(node, 'p2'), 0.0)
+
+    def test_a_read_left_unbound_is_not_judged(self):
+        node = UnreadGateBody()
+        node.set_state(twist=30)
+        self.assertEqual(node.plug.turn.value, 30)
+
+    def test_a_binding_outside_any_enumeration_is_not_judged(self):
+        node = GateBody()
+        _rest_children(node)
+        node.plug.turn = 30
+        self.assertEqual(node.plug.turn.value, 30)
+
+
+def _lift_of(node, name):
+    plug = node.plug if hasattr(node.plug, name) else node
+    return get_coordinate(getattr(plug, name), 'lift')._value
+
+
+class _BoundPin(Solid2Node):
+    lift = Prismatic(axis=(0, 0, 1), unit='mm')
+
+    def render(self):
+        return cube([2, 2, 2], center=True)
+
+
+class _BoundArbor(Solid2Node):
+    turn = Revolute(axis=(0, 0, 1), unit='deg')
+
+    def render(self):
+        return cube([4, 4, 4], center=True)
+
+
+class _TwoJoints(Solid2Node):
+    lift = Prismatic(axis=(0, 0, 1), unit='mm')
+    spin = Revolute(axis=(0, 0, 1), unit='deg')
+
+    def render(self):
+        return cube([4, 4, 4], center=True)
+
+
+class _DriverHolder(AssemblyNode):
+    feed = Driver(default=0.0, unit='mm')
+    pin = _BoundPin()
+
+    feed.drives(pin.lift, ratio=1.0)

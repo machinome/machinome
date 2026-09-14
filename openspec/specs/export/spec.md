@@ -12,7 +12,6 @@ Code: `solid_node/core/export.py`, `solid_node/manager/export.py`; the
 widget files come from the installed solid-node-viewer package through
 `solid_node/viewers/bundle.py`.
 ## Requirements
-
 ### Requirement: Export artifact contents
 
 The system SHALL export a node by building all STLs and writing an output
@@ -529,7 +528,9 @@ an unchanged model produces a byte-identical document.
 - `spans`: one entry per banked coordinate whose joint declares a range,
   keyed by its qualified id, carrying `low` and `high`, each `null` for
   unbounded, a number, or `{"expression": <text>}` for a bound stated as an
-  expression over that coordinate's OWN id.
+  expression over that coordinate's OWN id and, for a bound that reads
+  other coordinates, the qualified ids it reads — the same ids the
+  `coordinates` table publishes.
 - `sources`: for each bank id and each intermediate, the sorted list of
   INPUT ids that reach it through the program — the candidate table a
   stop's blocked group is filtered out of.
@@ -611,6 +612,18 @@ run's binder is restored afterwards.
   `range=(lambda turn: 36 * floor(turn / 36), None)` on a joint
 - **THEN** `program.spans` carries that coordinate with `low` an expression
   over that coordinate's own id and `high` `null`
+
+#### Scenario: A bound reading other coordinates travels as a span naming them
+
+- **WHEN** a running root declares
+  `range=(0, Bound(lambda turn, a, b: 90 * (abs(a) <= 0.05) * (abs(b) <= 0.05), reads=(p1.lift, p2.lift)))`
+  on `plug.turn`
+- **THEN** `program.spans` carries `plug.turn` with `high` an expression
+  whose free names are drawn from `plug.turn`, `plug.p1.lift` and
+  `plug.p2.lift` -- here `plug.p1.lift` and `plug.p2.lift`, the two the
+  expression actually reads, its own coordinate not appearing in it --
+  every one of them a key of `program.coordinates`, and the document's
+  version is `5`
 
 #### Scenario: The program's expressions share the document's bindings
 
@@ -849,9 +862,11 @@ it cannot manufacture a disagreement the run itself would not.
 
 The generator SHALL REFUSE to write a corpus that does not exercise each of:
 the five discontinuous primitives, a multi-source law, a stop located inside
-a tick, a bound stated as an expression, a command retired `blocked`, a
-rate, a snapshot and restore, an instruction in each of its two forms, and a
-tick carrying both a crossing and a stop. The framework's suite SHALL test
+a tick, a bound stated as an expression, a bound reading another
+coordinate, a stop reached by the motion of what a bound reads — one whose
+coordinate holds the same value before and after its tick — a command
+retired `blocked`, a rate, a snapshot and restore, an instruction in each
+of its two forms, and a tick carrying both a crossing and a stop. The framework's suite SHALL test
 that refusal directly, so the corpus's width is visible without running the
 generator.
 
@@ -883,6 +898,13 @@ cannot drift from the producer it claims to come from.
 
 - **WHEN** a fixture machine runs for forty ticks
 - **THEN** the fixture lists forty tick entries, in order, with no gaps
+
+#### Scenario: A corpus missing a bound reading another coordinate is refused
+
+- **WHEN** the generator is asked to write a corpus whose machines declare
+  no bound reading another coordinate, or record no stop whose coordinate
+  did not move
+- **THEN** it refuses naming the uncovered feature and writes nothing
 
 ### Requirement: A running document publishes the controls its parts carry
 

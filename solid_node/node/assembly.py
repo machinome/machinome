@@ -7,8 +7,9 @@ from solid_node.scad_expression import get_animation_time
 from . import phase as _phase
 from .internal import InternalNode
 from .qualified import declared_drivers_of, driver_id
-from solid_node.motion.couplings import (clear_solved, refuse_reads,
-                                         run_deferred, solve_relations)
+from solid_node.motion.couplings import (clear_solved, refuse_bounds,
+                                         refuse_reads, run_deferred,
+                                         solve_relations)
 from solid_node.motion.ports import declared_time
 
 
@@ -129,6 +130,7 @@ def _finish_enumeration(enumeration):
     bound after all -- exactly the couplings capability's own order."""
     run_deferred(enumeration)
     refuse_reads(enumeration)
+    refuse_bounds(enumeration)
 
 
 def _lifecycle_render(render):

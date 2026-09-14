@@ -76,6 +76,8 @@ REQUIRED = (
     'a multi-source law',
     'a stop located inside a tick',
     'a bound stated as an expression',
+    'a bound reading another coordinate',
+    'a stop reached by the motion of what a bound reads',
     'a command retired blocked',
     'a rate',
     'a snapshot',
@@ -175,6 +177,20 @@ CORPUS = (
         {'tick': 1, 'move': {'input': 'crank', 'by': 30.0,
                              'duration': 0.05}, 'handle': 'h0'},
     ]},
+    # A bound that READS OTHER COORDINATES, both ways round: the plug
+    # turns with the pins cleared, and the withdrawal that follows is
+    # stopped by a coordinate that does not move in the tick that stops
+    # it -- the capture.
+    {'name': 'Captured', 'dt': 0.05, 'steps': 16, 'script': [
+        {'tick': 1, 'move': {'input': 'twist', 'by': 30.0,
+                             'duration': 0.1}, 'handle': 'h0'},
+        {'tick': 6, 'move': {'input': 'feed', 'by': -5.0,
+                             'duration': 0.1}, 'handle': 'h1'},
+        {'tick': 10, 'snapshot': 'a'},
+        {'tick': 12, 'move': {'input': 'twist', 'by': -30.0,
+                              'duration': 0.1}, 'handle': 'h2'},
+        {'tick': 14, 'restore': 'a'},
+    ]},
 )
 
 
@@ -270,10 +286,17 @@ def uncovered_features(machines):
                     primitive = jump['primitive']
                     seen.add('a comparison' if primitive in COMPARISONS
                              else primitive)
-        for span in (program.get('spans') or {}).values():
+        bindings = {item['name']: item['expression']
+                    for item in entry['document'].get('bindings', ())}
+        banked = set(program.get('coordinates') or ())
+        for identifier, span in (program.get('spans') or {}).items():
             for side in ('low', 'high'):
-                if isinstance(span[side], dict):
-                    seen.add('a bound stated as an expression')
+                if not isinstance(span[side], dict):
+                    continue
+                seen.add('a bound stated as an expression')
+                names = free_names(span[side]['expression'], bindings)
+                if (names - {identifier}) & banked:
+                    seen.add('a bound reading another coordinate')
         for instruction in entry['document'].get('instructions', {}).values():
             seen.add('an absolute instruction' if 'targets' in instruction
                      else 'a relative instruction')
@@ -283,15 +306,53 @@ def uncovered_features(machines):
                                  ('restore', 'a restore')):
                 if key in action:
                     seen.add(feature)
+        previous = None
         for tick in entry['ticks']:
             if tick['stops']:
                 seen.add('a stop located inside a tick')
+            for stop in tick['stops']:
+                # A stop whose coordinate holds the SAME value before and
+                # after its tick was reached by the motion of what the
+                # bound reads, not by the coordinate's own.
+                identifier = stop['coordinate']
+                before = (previous[identifier] if previous is not None
+                          else (program.get('coordinates') or {})
+                          .get(identifier, {}).get('initial'))
+                if before is not None and before == tick['bank'].get(
+                        identifier):
+                    seen.add('a stop reached by the motion of what a '
+                             'bound reads')
             if tick['stops'] and tick['crossings']:
                 seen.add('a tick carrying both a crossing and a stop')
             for command in tick['commands']:
                 if command['status'] == 'blocked':
                     seen.add('a command retired blocked')
+            previous = tick['bank']
     return [feature for feature in REQUIRED if feature not in seen]
+
+
+def free_names(expression, bindings):
+    """Every free name `expression` reads, through the document's own
+    ordered `bindings` table."""
+    from solid_node.core.expressions import parse
+    from solid_node.expression_graph import postorder
+
+    found = set()
+    pending = [expression]
+    seen = set()
+    while pending:
+        text = pending.pop()
+        if text in seen:
+            continue
+        seen.add(text)
+        for item in postorder([parse(text)]):
+            if item.kind != 'name':
+                continue
+            if item.text in bindings:
+                pending.append(bindings[item.text])
+            else:
+                found.add(item.text)
+    return found
 
 
 def build():

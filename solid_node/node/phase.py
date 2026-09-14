@@ -114,11 +114,15 @@ class Enumeration:
     the pass.
     """
 
-    __slots__ = ('deferred', 'reads')
+    __slots__ = ('deferred', 'reads', 'bounds')
 
     def __init__(self):
         self.deferred = []
         self.reads = []
+        # Every binding of a coordinate whose range has a `Bound` side,
+        # judged at the close of this pass rather than at the moment of
+        # binding (`couplings.refuse_bounds`).
+        self.bounds = []
 
 
 _enumerations = []
@@ -160,6 +164,28 @@ def note_unbound_read(slot):
     enumeration.reads.append(
         (slot, phase.assembly, type(phase.assembly),
          frame.f_code.co_filename, frame.f_lineno))
+
+
+def note_bound_binding(node, joint, value):
+    """Report the binding of a coordinate whose declared range has a
+    `Bound` side -- one that reads OTHER coordinates.
+
+    Judged when the enumeration closes rather than here: the coordinates
+    the bound reads are bound by the solver in an order the author does
+    not state, so at the moment `value` is bound a read may hold last
+    pass's value or this pass's, and judging here would pass or fail by
+    solver order.
+
+    The shape and the silence of `note_unbound_read`: a binding made in
+    a render phase, outside a simulate phase, or with no enumeration
+    open is not recorded, there being no pass left to judge it at the
+    end of.
+    """
+    phase = current()
+    enumeration = current_enumeration()
+    if phase is None or phase.kind != SIMULATE or enumeration is None:
+        return
+    enumeration.bounds.append((node, joint, value))
 
 
 def note_read(what, name):

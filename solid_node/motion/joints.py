@@ -122,8 +122,8 @@ from solid_node.motion.ports import (BoundPort, Coordinate, Port,
                                      bind)
 
 
-__all__ = ['Free', 'Joint', 'JointRangeError', 'Orbit', 'Prismatic',
-           'Revolute', 'coordinates_of', 'declared_joints']
+__all__ = ['Bound', 'Free', 'Joint', 'JointRangeError', 'Orbit',
+           'Prismatic', 'Revolute', 'coordinates_of', 'declared_joints']
 
 
 # How close to an exact 0, 1 or -1 a normalized axis component has to be
@@ -168,6 +168,67 @@ _OWN_PLACED_ORIGIN = _OwnPlacedOrigin()
 
 class JointRangeError(ValueError):
     """A joint was bound to a number outside its declared range."""
+
+
+class Bound:
+    """One bound of a `range`, stated over the joint's OWN coordinate AND
+    the coordinates it names.
+
+    `expression` is applied to the joint's own coordinate FIRST and then
+    to each read, in the order `reads` states them -- so a `Bound` with
+    no reads means exactly what a one-argument callable bound means, and
+    the two are told apart by nothing but what they carry.
+
+    `reads` takes what a relation's end takes, through the same
+    `coordinate_ref`: a joint or port the declaring body owns, a path
+    through child declarations, or a driver of the declaring class. A
+    read IS a source, so each one's own `check('driver')` runs here, in
+    the executing class body, where a declaration held in a list and a
+    path through a repeat are refused by the very messages the same end
+    of a relation gets. The two checks that need the DECLARING CLASS --
+    that the read is declared on it, and that it does not name the
+    bounded coordinate itself -- fire where a relation's do, once the
+    class exists (`Joint.__set_name__`, and
+    `ChildDeclaration.__set_name__` for a site joint).
+
+    NOT callable, deliberately: `Joint._span` tells a whole-range
+    callable from a bound by POSITION, and its first test is
+    `callable(declared)`.
+    """
+
+    __slots__ = ('expression', 'reads')
+
+    def __init__(self, expression, reads=()):
+        from solid_node.motion import couplings
+
+        if not callable(expression):
+            raise TypeError(
+                f'Bound({expression!r}) is not callable: a bound is an '
+                f"expression over the joint's own coordinate and the "
+                f'coordinates it reads, applied to one token for each.')
+        if isinstance(reads, (str, bytes)) or not _sized_any(reads):
+            reads = (reads,)
+        self.expression = expression
+        self.reads = tuple(couplings.coordinate_ref(value, role='read')
+                           for value in reads)
+        for ref in self.reads:
+            ref.check('driver')
+
+    def described(self):
+        named = ', '.join(ref.described() for ref in self.reads)
+        return f'a bound reading ({named})' if named else 'a bound'
+
+    def arguments(self, own, values):
+        """`expression` applied to the joint's own value first and then
+        to each read, in declared order."""
+        return self.expression(own, *values)
+
+    def resolve(self, declarer):
+        """One `ResolvedEnd` per read, against the joint's DECLARER."""
+        return tuple(ref.resolve(declarer) for ref in self.reads)
+
+    def __repr__(self):
+        return f'<Bound {self.described()}>'
 
 
 def _snapped(value):
@@ -267,12 +328,91 @@ class Joint(Coordinate):
         self._refuse_shadowing(owner, name)
         self.name = name
         self.owner = owner
+        if not self._declared_at_site:
+            # The two checks that need the DECLARING CLASS. A SITE
+            # joint's own `__set_name__` cannot serve: `_specialize`
+            # fires it against the specialized CHILD class, which is not
+            # the declarer and holds neither the sibling children nor
+            # the drivers a read may name. `ChildDeclaration.__set_name__`
+            # runs them there instead, where `owner` IS the declarer.
+            self.check_bound_reads(owner)
         # The coordinate answers to the joint's own name: it is what
         # `declared_ports` reports, and what an error about the binding
         # has to be able to say.
         self.coordinate.name = name
         self.coordinate.owner = owner
         self.coordinates = {name: self.coordinate}
+
+    def declared_bounds(self):
+        """Every `Bound` in this joint's declared range, by side.
+
+        Read off the DECLARATION rather than off a resolved span: the
+        class-definition checks run before any instance exists.
+        """
+        declared = self.range
+        if declared is None or callable(declared):
+            return ()
+        if isinstance(declared, (str, bytes)) or not _sized(declared, 2):
+            # Not a pair: refused at realization, by `_span`, where the
+            # message names the class and the argument.
+            return ()
+        return tuple((side, bound) for side, bound
+                     in zip(('lower', 'upper'), declared)
+                     if isinstance(bound, Bound))
+
+    def check_bound_reads(self, owner):
+        """The class-definition checks a `Bound`'s reads need the
+        DECLARING CLASS for: that the read is declared on it, and that it
+        does not name the coordinate being bounded."""
+        for side, bound in self.declared_bounds():
+            for ref in bound.reads:
+                self._refuse_self_read(owner, ref, side)
+                ref.check_declared_on(owner, bound)
+
+    def _refuse_self_read(self, owner, ref, side):
+        from solid_node.motion.couplings import OwnRef
+
+        # Only a reference to a coordinate the DECLARING body owns can
+        # be this joint's own: a path always steps through a child, and
+        # a driver is never a joint's coordinate.
+        if not isinstance(ref, OwnRef):
+            return
+        if ref.declared is not self and ref.declared is not self.coordinate:
+            return
+        raise TypeError(
+            f"{owner.__name__}: the {side} bound of joint "
+            f"'{self.name}' reads '{ref.described()}', which is the "
+            f"joint's OWN coordinate. A bound is applied to that "
+            f"coordinate first, before every read, so naming it again "
+            f"would give one value two positions: drop it from reads=.")
+
+    def declarer_of(self, node):
+        """The instance a `Bound`'s reads resolve against: the node
+        itself for a class-declared joint, the realized declaring parent
+        for a site-declared one."""
+        if not self._declared_at_site:
+            return node
+        parent = getattr(node, '_parent', None)
+        if parent is None:
+            raise JointRangeError(
+                f"{_where(node)}: joint '{self.name}' is declared at the "
+                f"site that holds this node, so the coordinates its bound "
+                f"reads are resolved against the DECLARING PARENT -- and "
+                f"this node is not linked under one yet.")
+        return parent
+
+    def bound_reads(self, node, side):
+        """The resolved reads of this joint's `side` bound, against the
+        declarer, cached per node and per joint name in a cache OF ITS
+        OWN -- never in `_joint_arguments`, whose index 3 an `Orbit`'s
+        carried point already occupies."""
+        cache = node.__dict__.setdefault('_joint_bound_reads', {})
+        key = (self.name, side)
+        found = cache.get(key)
+        if found is None:
+            bound = self.arguments(node)[2][0 if side == 'lower' else 1]
+            found = cache[key] = bound.resolve(self.declarer_of(node))
+        return found
 
     def __get__(self, instance, owner=None):
         if instance is None:
@@ -385,13 +525,17 @@ class Joint(Coordinate):
                 node, 'range', f'{declared!r} is not a (lo, hi) pair')
         bounds = []
         for bound in declared:
-            if bound is None or callable(bound):
+            if bound is None or callable(bound) or isinstance(bound, Bound):
                 # `None` is unbounded on that side, and a CALLABLE states
                 # the bound as an expression over the joint's OWN
                 # coordinate: neither is a number now, and neither is
                 # resolved here. Both are applied where the bound is
                 # USED -- at the value being bound, and once per tick
-                # from the committed bank under a running root.
+                # from the committed bank under a running root. A
+                # `Bound` that READS other coordinates is carried
+                # through the same way and evaluated later still: at the
+                # close of the enumeration that bound the coordinate, or
+                # along the tick's path under a running root.
                 bounds.append(bound)
                 continue
             value = self._resolved(node, bound, 'range')
@@ -433,6 +577,12 @@ class Joint(Coordinate):
             # a driver token -- has no value here to judge, and an
             # unbound source is bind()'s refusal to make, not this one's.
             return
+        if isinstance(span[0], Bound) or isinstance(span[1], Bound):
+            # Judged when the enumeration that bound it CLOSES, over the
+            # values the reads then hold.
+            from solid_node.node import phase
+
+            phase.note_bound_binding(node, self, value)
         low = self._bound_at(node, span[0], value, 'lower')
         high = self._bound_at(node, span[1], value, 'upper')
         if low is not None and high is not None and low > high:
@@ -460,7 +610,17 @@ class Joint(Coordinate):
         A bound that is not satisfied at its own argument forbids every
         value, and this is where it says so by name -- there is nowhere
         earlier, because the bound is a function of what is being bound.
+
+        A `Bound` that READS other coordinates is `None` here -- the
+        DEFERRAL: the coordinates it reads are bound by the solver in an
+        order the author does not state, so judging it at the moment of
+        binding would pass or fail by solver order. The binding is
+        recorded on the open enumeration instead and judged when that
+        enumeration closes (`couplings.refuse_bounds`), and the other
+        side is judged here alone.
         """
+        if isinstance(bound, Bound):
+            return None
         if bound is None or not callable(bound):
             return bound
         try:
@@ -973,6 +1133,14 @@ class Free(Joint):
         self._refuse_shadowing(owner, name)
         self.name = name
         self.owner = owner
+        if not self._declared_at_site:
+            # The two checks that need the DECLARING CLASS. A SITE
+            # joint's own `__set_name__` cannot serve: `_specialize`
+            # fires it against the specialized CHILD class, which is not
+            # the declarer and holds neither the sibling children nor
+            # the drivers a read may name. `ChildDeclaration.__set_name__`
+            # runs them there instead, where `owner` IS the declarer.
+            self.check_bound_reads(owner)
         # The naming rule, applied where a one-coordinate joint names
         # its single coordinate after itself.
         self.coordinates = {
@@ -1119,6 +1287,16 @@ def coordinates_of(joint):
 
 def _is_number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _sized_any(value):
+    """Whether `value` is a sized sequence, so `reads=` can take one
+    reference bare as well as a tuple of them."""
+    try:
+        len(value)
+    except TypeError:
+        return False
+    return True
 
 
 def _sized(value, length):

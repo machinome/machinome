@@ -509,10 +509,14 @@ in a CLASS BODY is the body's own statement about itself, so `axis` and
 `render()` states its geometry in, one rest placement away from the
 parent's, and the frame MuJoCo's `<joint pos>` reads too — with an
 optional `(lo, hi)` `range` and a `unit`; either bound of that pair may
-be `None` for unbounded on that side, or a CALLABLE of one argument
+be `None` for unbounded on that side, a CALLABLE of one argument
 stating the bound as an expression over the joint's own coordinate
-(ADR-109), applied where the bound is used rather than resolved to a
-number at realization; an `Orbit` states one further
+(ADR-109), or a `Bound(expression, reads=(...))` stating it over the
+joint's own coordinate AND the coordinates it names (ADR-113) — reads
+named as a relation's ends are, checked at class definition, resolved
+against the joint's declarer where values are needed — each applied
+where the bound is used rather than resolved to a number at
+realization; an `Orbit` states one further
 own-frame point, `carries`; a `Free` states only `at`, with an
 `angle_unit` and a `length_unit`, and takes no axis and no range. `at`
 defaults to `(0, 0, 0)`, the body's own origin, so a joint whose line
@@ -845,7 +849,7 @@ cadence budgets assertion cost. `ScenarioTest` composes over the CAD
 `TestCase`: one class runs unchanged under pytest and the `solid
 test` runner, building STLs only when `meshes = True`.
 
-**The running mode** (ADR-105 to ADR-109) is a second branch of the same
+**The running mode** (ADR-105 to ADR-109, ADR-113) is a second branch of the same
 `Sim`, taken when `declared_time(type(node)).mode` is `'running'`, whose
 two modules — `simulation/program.py` (the compile step) and
 `simulation/run.py` (the engine, the commands, the snapshot) — are
@@ -930,6 +934,33 @@ nothing. On success the bank advances and is bound with `set_state` at
 `k*dt`, and `record=N` keeps a third bounded ring, `sim.stops`, of the
 stops located inside a tick.
 
+A bound that READS OTHER COORDINATES is a CONSTRAINT (ADR-113),
+evaluated along the stretch's path rather than frozen at the tick's
+start: the joint's own coordinate in the expression takes the tick's
+committed value (ADR-109's rule, which keeps a ratchet's tooth), and
+every read takes the value it has along the path, computed by one pass
+over the bound's SUB-PROGRAM — the compiled edges determining the
+bounded coordinate and every read, in program order — with every
+admission scaled by the fraction, so the sample arithmetic is the
+segment arithmetic. Detection and localization are one procedure that
+looks inside the stretch: whenever a READ moves, the constraint level is
+sampled at `_SUBDIVISIONS` fractions, the first sample carried outward
+(`g > 0` and `g > g(0)`) brackets the stop, and `t*` is the inside end
+of the bisected bracket; when only the bounded coordinate moves the
+bound is the number its standing reads give and the self-only path
+applies, solved and snapped; a quiet stretch evaluates nothing. The group is every input whose own admission carries
+the level outward, tested alone over the sub-program — the reads'
+inputs included, so a dependency's motion that would invalidate a
+standing coordinate is stopped where the constraint becomes active and
+the standing coordinate does not move. No snap onto the bound; the run
+asserts the level at the committed state is at most zero. Untimed, such
+a bound is recorded on the enumeration at binding and judged when the
+enumeration closes, over the values then bound, refusing by name with
+every read's value; a run-owned coordinate is not judged by the
+enumeration. `Program.constraints` carries, per such bound, the read
+ids, the sub-program and the candidate inputs, derived rather than
+published.
+
 The RUN IS A BINDER the solver recognizes rather than a second kind of
 state (`motion/ports.py::RunBinder`, recognized in `couplings`): the
 freshness clear leaves a run-bound slot alone, `ResolvedEnd.bound` reads
@@ -984,8 +1015,14 @@ Under the running mode: a crossing
 reached exactly at a tick's own boundary is integrated correctly but not
 recorded, a coordinate that leaves its range and returns within one tick
 is not stopped (impossible for an affine determiner; a smaller `dt`
-otherwise), a range bound may not name a second coordinate, and the
-evaluator is `GraphValue.evaluate` per edge per tick — measured at
+otherwise), a constraint violated and relieved inside one sub-interval
+of the search is not seen either, a constraint's pushing test is net
+over the stretch rather than local at `t*`, a constraint's reach is its
+declarer's subtree, a tick in which a constraint's READS move pays up
+to `_SUBDIVISIONS` sub-program passes for it whether or not it stops
+(measured on `Gate`: 0.36 ms quiet, 5.4 ms active, 3.3 ms blocking; on
+the lock 2.9 ms idle, 4.7 ms turning, 45 ms advancing the key), and
+the evaluator is `GraphValue.evaluate` per edge per tick — measured at
 1.05 ms/tick on the same machine against the untimed loop's 0.33 ms, a
 jump-carrying law costing 1.3x its continuous twin on a non-crossing tick
 and 1.8x on a crossing one, a blocking tick costing its own localization

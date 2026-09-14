@@ -43,6 +43,14 @@ the fraction of the tick and the inputs blocked, sorted.
 - **THEN** construction is refused by joint and node identity, naming the
   port and saying a bound reads the state
 
+#### Scenario: A read the expression never uses is refused at construction
+
+- **WHEN** a `Bound` declares `reads=(p1.lift, p2.lift)` and its
+  expression reads only the first, or returns a plain number
+- **THEN** construction is refused by joint and node identity, naming
+  the read the expression never uses, because a bound reads every
+  coordinate it names
+
 #### Scenario: A bound over other coordinates changes the identity
 
 - **WHEN** two roots differ only in the window a bound reads its pins
@@ -95,8 +103,12 @@ Such a constraint SHALL be examined on a stretch only when the bounded
 coordinate or a coordinate it reads has a nonzero increment over that
 stretch; a stretch in which nothing the bound depends on moves SHALL
 raise nothing and evaluate nothing, so a coordinate standing outside is
-free until something carries it further. When something moves, the
-level SHALL be sampled at the same fixed number of sub-intervals a jump
+free until something carries it further. On a stretch in which NO READ
+moves, the bound SHALL be the number its expression gives at the tick's
+committed own value and the reads' standing values, evaluated once, and
+the coordinate SHALL be stopped or freed exactly as a bound over its own
+value alone is — the same detection, localization and commit at the
+bound. When a read moves, the level SHALL be sampled at the same fixed number of sub-intervals a jump
 search uses — each sample one pass over the bound's sub-program with
 every admission scaled by that fraction — and the coordinate SHALL stop
 in the stretch at the FIRST sample at which the level is positive AND

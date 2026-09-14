@@ -47,10 +47,11 @@ from solid_node.simulation.program import (_BISECTION_ROUNDS,
 from solid_node.simulation.run import _TOLERANCE
 
 from .base import BaseNodeTest
-from .running_project.machine import (Clocked, ClockedBody, Columns,
-                                      ColumnsBare, Derived, Gauged,
-                                      Guarded, LoopingTrain, NotRunning,
-                                      OffCentre, OmittedControl, Ratchet,
+from .running_project.machine import (Captured, ClassGate, Clocked,
+                                      ClockedBody, Columns, ColumnsBare,
+                                      Derived, Gate, Gauged, Guarded,
+                                      LoopingTrain, NotRunning, OffCentre,
+                                      OmittedControl, Ratchet,
                                       Remainder, Sixbound, Sixfree,
                                       StoppedDifferential, Swept, ThreeCarries,
                                       Train, TrainBody, Window, Wired)
@@ -583,6 +584,30 @@ class SpansAndLimitsTest(BaseNodeTest):
             free_names_of(resolved(published,
                                    spans['wheel.turn']['low']['expression'])),
             {'wheel.turn'})
+
+    def test_a_bound_reading_other_coordinates_names_them(self):
+        for cls, expected in ((Gate, {'p1.lift', 'p2.lift'}),
+                              (ClassGate, {'plug.p1.lift', 'plug.p2.lift'})):
+            with self.subTest(cls=cls.__name__):
+                published = document(bound(cls()))
+                self.assertEqual(published['version'], 5)
+                spans = published['program']['spans']
+                span = spans['plug.turn']
+                self.assertEqual(span['low'], 0.0)
+                names = free_names_of(
+                    resolved(published, span['high']['expression']))
+                self.assertEqual(names, expected)
+                coordinates = published['program']['coordinates']
+                for name in names | {'plug.turn'}:
+                    self.assertIn(name, coordinates)
+
+    def test_a_capture_bound_publishes_the_coordinate_it_reads(self):
+        published = document(bound(Captured()))
+        spans = published['program']['spans']
+        self.assertEqual(spans['key.travel']['high'], 20.0)
+        names = free_names_of(
+            resolved(published, spans['key.travel']['low']['expression']))
+        self.assertEqual(names, {'plug.turn'})
 
     def test_a_numeric_bound_travels_as_a_number(self):
         published = document(bound(Swept()))

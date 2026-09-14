@@ -24,8 +24,6 @@ large: there a range still REFUSES a binding outside it and never clamps
 or stops.
 """
 
-from unittest import skip
-
 from pytest import approx
 
 from solid_node.motion.joints import JointRangeError
@@ -33,13 +31,16 @@ from solid_node.motion.ports import get_coordinate
 from solid_node.simulation import RunConflict, Sim, Stop
 
 from .base import BaseNodeTest
-from .running_project.machine import (Curved, CurvedBody, ImpossibleBoundBody,
-                                      LoopingTrain, OpenGate, OpenGateBody,
-                                      OpenLowBody, Ratchet, RatchetBody,
-                                      Shared, SharedBody, StopAndJump,
-                                      StopAndJumpBody, StoppedDifferential,
-                                      Swept, SweptBody, SweptWide, TwoStops,
-                                      TwoStopsBody)
+from .running_project.machine import (ConstantBound, UnusedRead,
+                                      Captured, ClassGate, Curved, CurvedBody,
+                                      DriverGate, Gate, GateWide,
+                                      ImpossibleBoundBody, LoopingTrain,
+                                      OpenGate, OpenGateBody, OpenLowBody,
+                                      PawlRatchet, PortRead, Ratchet,
+                                      RatchetBody, Shared, SharedBody,
+                                      StopAndJump, StopAndJumpBody,
+                                      StoppedDifferential, Swept, SweptBody,
+                                      SweptWide, Train, TwoStops, TwoStopsBody)
 
 
 def reads(node, qualified):
@@ -63,6 +64,18 @@ def key_of(program, name):
 def sources_of(sim, name):
     """The CANDIDATE inputs the compiled program says reach `name`."""
     return sim.program.sources[key_of(sim.program, name)]
+
+
+def span_names(sim, identifier, side):
+    """The free names a compiled bound reads, sorted."""
+    from solid_node.expression_graph import free_names
+    from solid_node.scad_expression import as_node
+
+    for entry in sim.program.spans:
+        if entry[0] == identifier:
+            graph = entry[1] if side == 'low' else entry[2]
+            return sorted(free_names(as_node(graph)))
+    raise AssertionError(f'no span for {identifier}')
 
 
 class RatchetTest(BaseNodeTest):
@@ -582,12 +595,364 @@ class UntimedControlTest(BaseNodeTest):
 
 
 class DeferredBoundTest(BaseNodeTest):
-    """Design.md section 10: a bound naming a SECOND coordinate is not in
-    this cycle."""
+    """ADR-109's deferral, closed: a bound MAY name a second coordinate.
 
-    @skip('design.md section 10: a bound over a second coordinate needs a '
-          'declaration object that names what it reads, resolved against '
-          'the declarer subtree at Sim construction. Deferred; a '
-          'one-argument callable keeps meaning what it means here.')
+    The skip this class used to carry said the feature needed "a
+    declaration object that names what it reads, resolved against the
+    declarer subtree at Sim construction". That object is `Bound`, and
+    this is the test the skip stood in for.
+    """
+
     def test_a_bound_may_name_a_second_coordinate(self):
-        raise AssertionError('not in this cycle')
+        sim = Sim(Gate(), 0.1, record=8)
+        self.assertEqual(span_names(sim, 'plug.turn', 'high'),
+                         ['p1.lift', 'p2.lift'])
+        handle = sim.move('twist', by=30.0, duration=0.1)
+        sim.run(0.1)
+        self.assertEqual(handle.status, 'blocked')
+        self.assertEqual(reads(sim.node, 'plug.turn'), 0.0)
+
+
+##############################################
+# (3) A bound that reads OTHER coordinates: the constraint
+
+class PinCrossingTest(BaseNodeTest):
+    """The lock's shape, reduced to two pins: the plug may only turn
+    while every lift stands inside the shear-line window."""
+
+    def test_the_plug_does_not_turn_while_a_pin_crosses(self):
+        sim = Sim(Gate(), 0.1, record=8)
+        handle = sim.move('twist', by=30.0, duration=0.1)
+        sim.run(0.1)
+
+        self.assertEqual(reads(sim.node, 'plug.turn'), 0.0)
+        self.assertEqual(sim.state['twist'], 0.0)
+        self.assertEqual(handle.status, 'blocked')
+        self.assertEqual(handle.admitted, 0.0)
+        self.assertEqual(sim.commands, ())
+        self.assertEqual(len(sim.stops), 1)
+        stop = sim.stops[0]
+        self.assertEqual(stop.coordinate, 'plug.turn')
+        self.assertEqual(stop.bound, 'high')
+        self.assertEqual(stop.value, 0.0)
+        self.assertEqual(stop.t, 0.0)
+        self.assertEqual(stop.inputs, ('twist',))
+
+    def test_the_plug_turns_once_every_pin_clears(self):
+        sim = Sim(Gate(), 0.1, record=8)
+        seat = sim.move('feed', to=20.0, duration=0.4)
+        sim.run(0.4)
+        self.assertEqual(seat.status, 'completed')
+        self.assertEqual(sim.stops, [])
+
+        handle = sim.move('twist', by=30.0, duration=0.1)
+        sim.run(0.1)
+        self.assertEqual(reads(sim.node, 'plug.turn'), approx(30.0))
+        self.assertEqual(handle.status, 'completed')
+        self.assertEqual(handle.admitted, approx(30.0))
+        self.assertEqual(sim.stops, [])
+
+    def test_insertion_and_turning_in_one_tick(self):
+        sim = Sim(Gate(), 0.1, record=8)
+        feed = sim.move('feed', by=10.0, duration=0.1)
+        turn = sim.move('twist', by=30.0, duration=0.1)
+        sim.run(0.1)
+
+        self.assertEqual(reads(sim.node, 'key.travel'), approx(20.0))
+        self.assertEqual(reads(sim.node, 'plug.turn'), 0.0)
+        self.assertEqual(feed.status, 'completed')
+        self.assertEqual(feed.admitted, approx(10.0))
+        self.assertEqual(turn.status, 'blocked')
+        self.assertEqual(turn.admitted, 0.0)
+
+        again = sim.move('twist', by=30.0, duration=0.1)
+        sim.run(0.1)
+        self.assertEqual(again.status, 'completed')
+        self.assertEqual(reads(sim.node, 'plug.turn'), approx(30.0))
+
+    def test_withdrawing_from_a_turned_plug_stops_the_key(self):
+        sim = Sim(Gate(), 0.1, record=8)
+        sim.move('feed', to=20.0, duration=0.4)
+        sim.run(0.4)
+        sim.move('twist', by=30.0, duration=0.1)
+        sim.run(0.1)
+        self.assertEqual(reads(sim.node, 'plug.turn'), approx(30.0))
+        seen = len(sim.stops)
+
+        handle = sim.move('feed', by=-5.0, duration=0.1)
+        sim.run(0.1)
+
+        # The plug stands where it stood; the KEY is stopped where the
+        # second pin leaves the window, inside it by at most the
+        # crossing tolerance of the tick's own travel.
+        self.assertEqual(reads(sim.node, 'plug.turn'), approx(30.0))
+        travel = reads(sim.node, 'key.travel')
+        self.assertGreaterEqual(travel, 17.95)
+        self.assertLessEqual(travel, 17.95 + 5.0 * 1e-11)
+        self.assertEqual(handle.status, 'blocked')
+        self.assertEqual(handle.admitted, approx(travel - 20.0))
+
+        stop = sim.stops[seen]
+        self.assertEqual(stop.coordinate, 'plug.turn')
+        self.assertEqual(stop.bound, 'high')
+        # The bound EVALUATED at the committed state, not the value the
+        # coordinate holds, which is 30.
+        self.assertEqual(stop.value, 90.0)
+        self.assertEqual(stop.t, approx(0.41, abs=1e-9))
+        self.assertEqual(stop.inputs, ('feed',))
+
+    def test_the_stop_admits_the_same_travel_at_any_cadence(self):
+        found = []
+        for ticks in (1, 4, 40):
+            sim = Sim(Gate(), 0.1, record=64)
+            sim.move('feed', to=20.0, duration=0.4)
+            sim.run(0.4)
+            sim.move('twist', by=30.0, duration=0.1)
+            sim.run(0.1)
+            handle = sim.move('feed', by=-5.0, duration=0.1 * ticks)
+            sim.run(0.1 * ticks)
+            found.append((reads(sim.node, 'key.travel'), handle.admitted,
+                          handle.status))
+        for travel, admitted, status in found:
+            self.assertEqual(status, 'blocked')
+            self.assertEqual(travel, approx(found[0][0], abs=1e-9))
+            self.assertEqual(admitted, approx(found[0][1], abs=1e-9))
+
+    def test_a_constraint_stop_replays_identically_from_a_snapshot(self):
+        sim = Sim(Gate(), 0.1, record=8)
+        sim.move('feed', to=20.0, duration=0.4)
+        sim.run(0.4)
+        sim.move('twist', by=30.0, duration=0.1)
+        sim.run(0.1)
+        taken = sim.snapshot()
+
+        def blocked():
+            handle = sim.move('feed', by=-5.0, duration=0.1)
+            sim.run(0.1)
+            return (reads(sim.node, 'key.travel'), handle.admitted,
+                    sim.stops[-1])
+
+        first = blocked()
+        sim.restore(taken)
+        second = blocked()
+        self.assertEqual(first[0], second[0])
+        self.assertEqual(first[1], second[1])
+        self.assertEqual(first[2].coordinate, second[2].coordinate)
+        self.assertEqual(first[2].value, second[2].value)
+        self.assertEqual(first[2].t, second[2].t)
+        self.assertEqual(first[2].inputs, second[2].inputs)
+
+
+class CaptureTest(BaseNodeTest):
+    """The capture stated the OTHER way round, on the key's own travel:
+    while the plug stands turned, the key may not come back out."""
+
+    def test_the_capture_stops_the_key_at_once(self):
+        sim = Sim(Captured(), 0.1, record=8)
+        sim.move('twist', by=30.0, duration=0.1)
+        sim.run(0.1)
+        self.assertEqual(reads(sim.node, 'plug.turn'), approx(30.0))
+        seen = len(sim.stops)
+
+        handle = sim.move('feed', by=-5.0, duration=0.1)
+        sim.run(0.1)
+
+        self.assertEqual(reads(sim.node, 'key.travel'), 20.0)
+        self.assertEqual(handle.status, 'blocked')
+        self.assertEqual(handle.admitted, 0.0)
+        stop = sim.stops[seen]
+        self.assertEqual(stop.coordinate, 'key.travel')
+        self.assertEqual(stop.bound, 'low')
+        self.assertEqual(stop.value, 20.0)
+        self.assertEqual(stop.t, 0.0)
+        self.assertEqual(stop.inputs, ('feed',))
+
+    def test_returning_the_plug_and_withdrawing_in_one_tick(self):
+        sim = Sim(Captured(), 0.1, record=8)
+        sim.move('twist', by=30.0, duration=0.1)
+        sim.run(0.1)
+
+        back = sim.move('twist', by=-30.0, duration=0.1)
+        out = sim.move('feed', by=-5.0, duration=0.1)
+        sim.run(0.1)
+
+        self.assertEqual(reads(sim.node, 'plug.turn'), approx(0.0, abs=1e-9))
+        self.assertEqual(back.status, 'completed')
+        self.assertEqual(reads(sim.node, 'key.travel'), 20.0)
+        self.assertEqual(out.status, 'blocked')
+        self.assertEqual(out.admitted, 0.0)
+
+        again = sim.move('feed', by=-5.0, duration=0.1)
+        sim.run(0.1)
+        self.assertEqual(again.status, 'completed')
+        self.assertEqual(reads(sim.node, 'key.travel'), approx(15.0))
+
+
+class PawlRatchetTest(BaseNodeTest):
+    """The committed tooth and the along-path pawl, together."""
+
+    def test_a_pawl_lifting_early_releases_the_ratchet(self):
+        sim = Sim(PawlRatchet(), 0.1, record=8)
+        arbor = sim.move('arbor', by=-10.0, duration=0.1)
+        sim.move('hoist', by=10.0 / 3.0, duration=0.1)
+        sim.run(0.1)
+
+        self.assertEqual(reads(sim.node, 'wheel.turn'), approx(30.0))
+        self.assertEqual(arbor.status, 'completed')
+        self.assertEqual(arbor.admitted, approx(-10.0))
+        self.assertEqual(sim.stops, [])
+
+    def test_a_pawl_lifting_late_does_not(self):
+        sim = Sim(PawlRatchet(), 0.1, record=8)
+        arbor = sim.move('arbor', by=-10.0, duration=0.1)
+        sim.move('hoist', by=2.0, duration=0.1)
+        sim.run(0.1)
+
+        self.assertAlmostEqual(reads(sim.node, 'wheel.turn'), 36.0, places=9)
+        self.assertEqual(arbor.status, 'blocked')
+        self.assertAlmostEqual(arbor.admitted, -4.0, places=9)
+        self.assertEqual(len(sim.stops), 1)
+        stop = sim.stops[0]
+        self.assertEqual(stop.coordinate, 'wheel.turn')
+        self.assertEqual(stop.bound, 'low')
+        self.assertEqual(stop.value, 36.0)
+        self.assertAlmostEqual(stop.t, 0.4, places=9)
+
+
+class ConstraintCompilationTest(BaseNodeTest):
+    """What a `Bound`'s reads compile to, and what they may not be."""
+
+    def test_a_class_declared_bound_qualifies_its_reads_under_the_node(self):
+        sim = Sim(ClassGate(), 0.1)
+        self.assertEqual(span_names(sim, 'plug.turn', 'high'),
+                         ['plug.p1.lift', 'plug.p2.lift'])
+        self.assertIn('plug.p1.lift', sim.state)
+        self.assertIn('plug.turn', sim.program.described())
+
+    def test_a_site_declared_bound_qualifies_its_reads_under_the_root(self):
+        sim = Sim(Gate(), 0.1)
+        # The fixture's expression ignores its own coordinate, so the
+        # graph's free names are the READS: what the check admits is
+        # `{own} | reads`, and what the graph carries is what the author
+        # wrote.
+        self.assertEqual(span_names(sim, 'plug.turn', 'high'),
+                         ['p1.lift', 'p2.lift'])
+        for name in span_names(sim, 'plug.turn', 'high'):
+            self.assertIn(name, sim.state)
+
+    def test_a_read_of_a_plain_port_is_refused_at_construction(self):
+        with self.assertRaises(ValueError) as caught:
+            Sim(PortRead(), 0.1)
+        message = str(caught.exception)
+        self.assertIn('dial.turn', message)
+        self.assertIn('turn', message)
+        self.assertIn('reads the STATE', message)
+
+    def test_a_bound_returning_a_number_is_refused_at_construction(self):
+        """A `Bound` that declares a read and returns a number reads
+        nothing it declares: refused by name, never carried as a
+        constraint with no expression to evaluate."""
+        with self.assertRaises(ValueError) as caught:
+            Sim(ConstantBound(), 0.1)
+        message = str(caught.exception)
+        self.assertIn('plug.turn', message)
+        self.assertIn('p1.lift', message)
+        self.assertIn('never reads', message)
+
+    def test_a_read_the_expression_never_uses_is_refused_at_construction(self):
+        with self.assertRaises(ValueError) as caught:
+            Sim(UnusedRead(), 0.1)
+        message = str(caught.exception)
+        self.assertIn('plug.turn', message)
+        self.assertIn('p2.lift', message)
+        self.assertNotIn("'p1.lift'", message.split('never reads')[-1])
+        self.assertIn('never reads', message)
+
+    def test_a_bound_over_other_coordinates_changes_the_identity(self):
+        narrow = Sim(Gate(), 0.1)
+        wide = Sim(GateWide(), 0.1)
+        self.assertNotEqual(narrow.program.identity, wide.program.identity)
+        taken = narrow.snapshot()
+        with self.assertRaises(ValueError):
+            wide.restore(taken)
+
+
+class DriverReadTest(BaseNodeTest):
+    """A read that is a DRIVER is an input of the bank, evaluated along
+    the path as its admission scaled by the fraction."""
+
+    def test_a_gate_closing_mid_tick_stops_the_push_and_the_gate(self):
+        sim = Sim(DriverGate(), 0.1, record=8)
+        self.assertEqual(span_names(sim, 'spin', 'high'), ['gate'])
+
+        push = sim.move('push', by=10.0, duration=0.1)
+        gate = sim.move('gate', by=-2.0, duration=0.1)
+        sim.run(0.1)
+
+        self.assertAlmostEqual(reads(sim.node, 'spin'), 5.0, places=9)
+        self.assertAlmostEqual(sim.state['gate'], 1.0, places=9)
+        self.assertEqual(push.status, 'blocked')
+        self.assertEqual(gate.status, 'blocked')
+        stop = sim.stops[0]
+        self.assertEqual(stop.coordinate, 'spin')
+        self.assertEqual(stop.bound, 'high')
+        self.assertAlmostEqual(stop.t, 0.5, places=9)
+        self.assertEqual(stop.inputs, ('gate', 'push'))
+
+
+class ConstraintCostTest(BaseNodeTest):
+    """(3.3) A machine with no bound reading other coordinates pays
+    nothing, and one that has such a bound pays only while something the
+    bound depends on moves."""
+
+    def graph_evaluations(self, sim, ticks):
+        """How many times a compiled graph is evaluated over `ticks`."""
+        import solid_node.simulation.program as program_module
+
+        original = program_module._evaluated
+        counted = [0]
+
+        def counting(graph, inputs):
+            counted[0] += 1
+            return original(graph, inputs)
+
+        program_module._evaluated = counting
+        try:
+            sim.run(sim.dt * ticks)
+        finally:
+            program_module._evaluated = original
+        return counted[0]
+
+    def test_the_train_pays_what_it_always_paid(self):
+        sim = Sim(Train(), 0.1)
+        sim.rate('crank', 90.0)
+        sim.run(0.1)
+        # 8 per tick, the number the base commit 33d8bf5 measures for
+        # the same probe: a machine declaring no bound that reads other
+        # coordinates pays nothing new.
+        self.assertEqual(self.graph_evaluations(sim, 10), 80)
+
+    def test_a_tick_moving_only_the_bounded_coordinate_is_not_sampled(self):
+        """When nothing a bound READS moves over the stretch, the bound
+        is a number for that stretch -- its expression at the committed
+        own value and the reads' standing values -- and the coordinate
+        is stopped or freed as a bound over its own value alone is, at
+        the cost of one evaluation, not `_SUBDIVISIONS` sub-program
+        passes. The plug turning with the pins standing still is the
+        lock's own case."""
+        sim = Sim(Gate(), 0.1, record=8, state={'feed': 20.0})
+        idle = self.graph_evaluations(sim, 1)
+        sim.move('twist', by=30.0, duration=0.1)
+        turning = self.graph_evaluations(sim, 1)
+        self.assertEqual(sim.state['plug.turn'], 30.0)
+        # One bound evaluation over the standing reads, and nothing
+        # else beyond an idle tick.
+        self.assertLessEqual(turning, idle + 2)
+
+    def test_a_blocking_tick_of_the_gate_is_bounded(self):
+        sim = Sim(Gate(), 0.1, record=8)
+        sim.move('twist', by=30.0, duration=0.1)
+        blocking = self.graph_evaluations(sim, 1)
+        self.assertLess(blocking, 64 * 4 + 64 * 4 + 8 * 4)
+        idle = self.graph_evaluations(sim, 1)
+        self.assertLess(idle, blocking)

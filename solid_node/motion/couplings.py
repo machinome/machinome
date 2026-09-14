@@ -1970,6 +1970,91 @@ def refuse_reads(enumeration):
             f'value early.')
 
 
+def refuse_bounds(enumeration):
+    """The `Bound` rule, judged at the end of the enumeration: a
+    coordinate whose declared range names OTHER coordinates is checked
+    against the values those coordinates hold NOW, once the pass has
+    propagated everything it is going to.
+
+    A read that holds no value, or one that is not a plain number, is
+    not judged -- the rule a symbolic binding already has, on the same
+    ground: its value is not known here. A coordinate a RUNNING
+    simulation owns is not judged either: the run located its stop,
+    committed inside it and asserted it, and one authority judges one
+    binding.
+    """
+    from solid_node.motion.joints import Bound, JointRangeError, _where
+
+    for node, joint, value in enumeration.bounds:
+        slot = joint.coordinate.__get__(node)
+        if run_owned(slot):
+            continue
+        span = joint.arguments(node)[2]
+        if span is None:
+            continue
+        read_values = {}
+        low = _bound_side(node, joint, span[0], value, 'lower', read_values)
+        high = _bound_side(node, joint, span[1], value, 'upper', read_values)
+        named = ', '.join(f'{description} = {read!r}'
+                          for description, read in read_values.items())
+        if low is not None and high is not None and low > high:
+            raise JointRangeError(
+                f"{_where(node)}: joint '{joint.name}' -- the coordinate "
+                f"{_where(node)}.{joint.name} -- declares a range "
+                f"whose bounds evaluate at {value!r}, with {named}, to "
+                f"({low}, {high}), which is reversed: a range is (lo, hi).")
+        if (low is None or low <= value) and (high is None or value <= high):
+            continue
+        raise JointRangeError(
+            f"{_where(node)}: joint '{joint.name}' -- the coordinate "
+            f"{_where(node)}.{joint.name} -- declares the range "
+            f"{'unbounded' if low is None else low} to "
+            f"{'unbounded' if high is None else high} "
+            f"{joint.unit or 'units'}, and {value!r} is outside it. The "
+            f"bound reads other coordinates and is judged when the "
+            f"enumeration closes, over the values they hold there: "
+            f"{named or 'no read held a value'}. A range refuses the "
+            f"binding rather than clamping it, because a pose outside "
+            f"the joint's travel is a mistake in what drives it.")
+
+
+def _bound_side(node, joint, bound, value, side, read_values):
+    """One side of a range as a number at the close of the enumeration:
+    a `Bound` applied to the value being bound and to the values its
+    reads hold, and anything else exactly as bind time read it.
+
+    `None` -- unbounded, so not judged -- for a `Bound` any of whose
+    reads holds no value or a value that is not a plain number.
+    """
+    from solid_node.motion.joints import Bound
+
+    if not isinstance(bound, Bound):
+        return joint._bound_at(node, bound, value, side)
+    values = []
+    for end in joint.bound_reads(node, side):
+        try:
+            read = (end.value() if end.is_driver or end.slot is not None
+                    else None)
+        except AttributeError:
+            # An unbound driver: no value to judge against, exactly as
+            # an unbound coordinate slot reads `None` below.
+            read = None
+        if isinstance(read, bool) or not isinstance(read, (int, float)):
+            return None
+        read_values[end.described()] = read
+        values.append(read)
+    evaluated = bound.arguments(value, values)
+    if isinstance(evaluated, bool) or not isinstance(evaluated, (int, float)):
+        from solid_node.motion.joints import JointRangeError, _where
+
+        raise JointRangeError(
+            f"{_where(node)}: joint '{joint.name}' states its {side} bound "
+            f"over the coordinates it reads, and at {value!r} it evaluates "
+            f"to {evaluated!r}, which is not a number. A bound states where "
+            f"the coordinate may be, in {joint.unit or 'units'}.")
+    return evaluated
+
+
 def _binder_of(slot):
     return getattr(slot, 'binder', None)
 
