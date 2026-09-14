@@ -9,12 +9,16 @@
 // side-effect free.
 
 import { mount, ViewerOptions } from './viewer';
+import { mountInspector } from './inspector';
+import { layoutChoice } from './layout';
 import { API_VERSION } from './version';
 
 export { mount } from './viewer';
 export { API_VERSION } from './version';
 export { mountNavigator } from './navigator';
 export type { NavigatorHandle, NavigatorOptions } from './navigator';
+export { mountInspector } from './inspector';
+export type { InspectorHandle, InspectorOptions } from './inspector';
 export const apiVersion = API_VERSION;
 
 function autoMount(): void {
@@ -33,7 +37,18 @@ function autoMount(): void {
       if (!sourceUrl) {
         return;
       }
-      mount(element, sourceUrl, options).catch((error) => {
+      // The layout a container asks for (design D8): no attribute and no
+      // query string mounts the plain viewer, unchanged from every page
+      // written before this capability existed.
+      const choice = layoutChoice(element.dataset, params);
+      if (typeof choice.layout === 'object') {
+        element.textContent = `solid-widget: unknown layout "${choice.layout.unknown}"`;
+        return;
+      }
+      const mounted = choice.layout === 'inspector'
+        ? mountInspector(element, sourceUrl, { ...options, sidebar: choice.sidebar })
+        : mount(element, sourceUrl, options);
+      mounted.catch((error) => {
         element.textContent = `solid-widget: ${error.message}`;
         console.error(error);
       });

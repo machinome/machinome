@@ -75,7 +75,7 @@ sees the public one.
 Design D8. The default stays the plain viewer, which is what makes every
 existing export safe.
 
-- [ ] 2.1 **Red** — `src/widget.test.ts` (new, jsdom) over the auto-mount
+- [x] 2.1 **Red** — `src/widget.test.ts` (new, jsdom) over the auto-mount
       decision. Extract the decision first if `autoMount` cannot be
       reached: a pure `layoutChoice(dataset, search) -> { layout:
       'viewer' | 'inspector' | { unknown: string }, sidebar?: 'open' |
@@ -87,13 +87,13 @@ existing export safe.
       reports itself by name.
       *Goes red: the function does not exist.*
       Command: `npx vitest run src/widget.test.ts`
-- [ ] 2.2 **Green** — that function, plus `widget.ts:20-42` calling it:
+- [x] 2.2 **Green** — that function, plus `widget.ts:20-42` calling it:
       `mount()` for `viewer`, `mountInspector()` for `inspector`, and for
       an unknown value `element.textContent = 'solid-widget: unknown
       layout "<value>"'` in the shape of `widget.ts:37`. Export
       `mountInspector` and its types on the global beside `mount` and
       `mountNavigator` (`widget.ts:14-18`).
-- [ ] 2.3 **Red** — `tests/test_widget_e2e.py`, against the real bundle
+- [x] 2.3 **Red** — `tests/test_widget_e2e.py`, against the real bundle
       and the real `index.html` (rebuild the bundle first so the red is a
       missing export, not a stale file):
       - `test_the_export_page_mounts_the_inspector`: the shipped page
@@ -113,11 +113,11 @@ existing export safe.
       Command: `PYTHONPATH="$PWD"
       /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest
       tests/test_widget_e2e.py -q -k inspector`
-- [ ] 2.4 **Green** — `widget/index.html:22` gains
+- [x] 2.4 **Green** — `widget/index.html:22` gains
       `data-solid-layout="inspector"` and nothing else; `npm run build`;
       rerun 2.3. Confirm the file's name, its `<title>`, its `<style>` and
       `data-solid-widget` are unchanged (`git diff` shows one attribute).
-- [ ] Commit: `feat(export): the standalone page mounts the inspector`.
+- [x] Commit: `feat(export): the standalone page mounts the inspector`.
 
 ## 3. The reloader, in the bundle
 

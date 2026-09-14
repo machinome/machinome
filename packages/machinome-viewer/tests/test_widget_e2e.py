@@ -13,6 +13,7 @@ because a screenshot cannot click a control or read an attribute.
 import json
 import os
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 from subprocess import run
 from unittest import TestCase
@@ -755,3 +756,98 @@ class ViewerMountApiTest(TestCase):
         self.assertFalse(result['collapsed']['barVisible'])
         self.assertEqual(result['expanded'], 'true')
         self.assertTrue(result['barVisible'])
+
+
+@needs_bundle
+@needs_playwright
+class InspectorLayoutE2ETest(TestCase):
+    """The standalone export page selects a layout (design D8): the
+    shipped `index.html` carries `data-solid-layout="inspector"`, and a
+    page written before this capability existed carries no such
+    attribute and mounts the plain viewer exactly as it always has."""
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        self.out_dir = export_with_widget(Path(self.tempdir.name) / 'export')
+        server = serve_directory(self.out_dir)
+        base = server.__enter__()
+        self.addCleanup(server.__exit__, None, None, None)
+        self.base_url = f'{base}/index.html'
+        self.dir_url = base
+
+    @contextmanager
+    def open_page(self, url=None):
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 800, 'height': 600})
+                errors = []
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.goto(url or self.base_url)
+                page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+                yield page, errors
+            finally:
+                browser.close()
+
+    def test_the_export_page_mounts_the_inspector(self):
+        with self.open_page() as (page, errors):
+            page.wait_for_selector('.solid-inspector')
+            self.assertEqual(page.locator('.solid-inspector-toggle').count(), 1)
+            # Collapsed by default (design D3): the `hidden` attribute is
+            # present on the sidebar.
+            self.assertIsNotNone(
+                page.locator('.solid-inspector-sidebar').get_attribute('hidden'))
+            self.assertEqual(errors, [])
+
+    def test_the_toggle_opens_the_sidebar_and_the_canvas_narrows(self):
+        with self.open_page() as (page, errors):
+            page.wait_for_selector('.solid-inspector-viewer canvas')
+            canvas = page.locator('.solid-inspector-viewer canvas')
+            before = canvas.bounding_box()['width']
+
+            page.locator('.solid-inspector-toggle').click()
+            page.wait_for_selector('.solid-nav-tree [role="treeitem"]')
+            self.assertIsNone(
+                page.locator('.solid-inspector-sidebar').get_attribute('hidden'))
+            opened = canvas.bounding_box()['width']
+            self.assertLess(opened, before, 'the canvas did not narrow when the sidebar opened')
+
+            page.locator('.solid-inspector-toggle').click()
+            self.assertIsNotNone(
+                page.locator('.solid-inspector-sidebar').get_attribute('hidden'))
+            closed = canvas.bounding_box()['width']
+            self.assertAlmostEqual(closed, before, delta=2,
+                                   msg='the canvas did not return to its width when closed')
+            self.assertEqual(errors, [])
+
+    def test_the_query_string_opens_the_sidebar(self):
+        with self.open_page(f'{self.base_url}?sidebar=open') as (page, errors):
+            page.wait_for_selector('.solid-inspector-sidebar')
+            self.assertIsNone(
+                page.locator('.solid-inspector-sidebar').get_attribute('hidden'),
+                'the sidebar attribute did not override the collapsed default')
+            self.assertEqual(errors, [])
+
+    def test_a_page_without_a_layout_attribute_mounts_the_plain_viewer(self):
+        # A hand-written page carrying only data-solid-widget -- the
+        # compatibility promise every already-published export keeps.
+        (self.out_dir / 'plain.html').write_text(
+            '<!doctype html><html><body>'
+            '<div id="solid-widget" data-solid-widget="manifest.json"></div>'
+            '<script src="solid-widget.js"></script></body></html>'
+        )
+        with self.open_page(f'{self.dir_url}/plain.html') as (page, errors):
+            page.wait_for_selector('#solid-widget canvas')
+            self.assertEqual(page.locator('.solid-inspector').count(), 0)
+            self.assertEqual(errors, [])
+
+    def test_an_unknown_layout_is_refused_by_name(self):
+        with self.open_page(f'{self.base_url}?layout=bogus') as (page, errors):
+            page.wait_for_function(
+                "document.getElementById('solid-widget').textContent"
+                ".includes('unknown layout')")
+            text = page.locator('#solid-widget').text_content()
+            self.assertIn('unknown layout "bogus"', text)
