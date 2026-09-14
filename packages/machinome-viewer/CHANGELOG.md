@@ -122,6 +122,39 @@ The viewer stops posing a machine and starts running one.
   its subscription — a capability a host may require, added to the
   handle.
 
+- **The bundle carries the assembly navigator itself.**
+  `SolidNodeWidget.mountNavigator(target, viewer, options?)` mounts a
+  React-free, plain-DOM tree over the state and subscription the previous
+  entry publishes: an accessible tree (roles, one tab stop, a roving
+  keyboard position), every row's label, depth and effective colour, the
+  focused viewer root and the hidden subtrees marked separately, and a
+  node invisible only because an ancestor is hidden distinguished from
+  one hidden in its own right — its visibility control still reports its
+  own setting, and its row says which ancestor hides it. It holds no copy
+  of the viewer's state: the focused root and the hidden paths come only
+  from the handle, re-read from every notification, so two navigators
+  mounted on one handle never disagree about what the viewer shows, even
+  while each keeps its own expansion and keyboard position. A maker
+  moves the viewer from it — focus a subtree, restore the document root,
+  hide or show a part — through the same operations a host calls, by
+  pointer or by the keyboard contract (`Up`/`Down`/`Left`/`Right` to
+  move, `Enter` to focus, `Space` to toggle visibility). One
+  identifiable stylesheet is injected per document, however many
+  navigators mount, behind a stable `solid-nav-*` class contract and CSS
+  custom properties a host overrides to theme it completely — the escape
+  hatch, `styles: 'none'`, skips the injection for a host under a
+  Content-Security-Policy that forbids inline style blocks. No new file
+  is published: the component and its stylesheet live inside
+  `solid-widget.js`, and `solid export` and the Sphinx directive copy the
+  same `index.html` + `solid-widget.js` as before. No layout ships in
+  this release — no sidebar, no composition with the viewer or the
+  export page — and the studio's own `AssemblyPanel` is untouched; both
+  are the next cycles. (OpenSpec change `mount-the-navigator`, ADR-050.)
+
+- **The declared API version rises to 10**, for the mountable navigator
+  itself — a capability a host may require, on top of the navigation
+  state version 9 published.
+
 - **Constrained dragging of a part is not in this release.** Picking a
   part and dragging it along a declared input's freedom, through the same
   command interface and with the same blocked-travel reporting, is the

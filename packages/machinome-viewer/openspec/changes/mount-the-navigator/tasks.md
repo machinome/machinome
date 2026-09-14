@@ -186,14 +186,14 @@ asked what the component thinks.
 
 ## 5. The records
 
-- [ ] 5.1 `README.md`: the version table's unreleased `0.2.0` row reads
+- [x] 5.1 `README.md`: the version table's unreleased `0.2.0` row reads
       `10` (a moved row, not a new one), and the `Reading and moving the
       assembly` section gains the navigator: the `mountNavigator`
       signature, the options, the handle, the class-name contract and
       the custom-property table of design D13 — the table is the
       published theming contract, so it belongs in the README and not
       only in the change.
-- [ ] 5.2 `CHANGELOG.md`: the unreleased `0.2.0` section gains an entry —
+- [x] 5.2 `CHANGELOG.md`: the unreleased `0.2.0` section gains an entry —
       the bundle now carries the assembly navigator itself, mounted into
       any element from a handle, themed by CSS custom properties; the
       API version rises to 10; no layout ships yet and the export page
@@ -202,26 +202,26 @@ asked what the component thinks.
       moves from **Proposed** to **Accepted**, and its row in
       `docs/adrs/README.md` with it. The reviewer's task: check the text
       against what was actually built before promoting it.
-- [ ] 5.4 `evidence.md`: every red output and its green counterpart, the
+- [x] 5.4 `evidence.md`: every red output and its green counterpart, the
       final counts, and the bundle size before and after. The bundle
       grows here — a module and a stylesheet — so record the number
       rather than asserting it did not.
 
 ## 6. The whole suite
 
-- [ ] 6.1 `npm run typecheck`, `npm test`, `npm run build` in
+- [x] 6.1 `npm run typecheck`, `npm test`, `npm run build` in
       `solid_node_viewer/widget`, and `PYTHONPATH="$PWD"
       /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest` at
       the repository root. Every pre-existing test passes unedited
       except the four version assertions this change deliberately moved.
-- [ ] 6.2 Confirm the published file list is unchanged: `dist/` still
+- [x] 6.2 Confirm the published file list is unchanged: `dist/` still
       carries exactly `solid-widget.js` beside the export page's
       `index.html`, so `solid export` and the Sphinx directive copy what
       they copied before and the framework needs no change. Confirm
       `index.html` itself is byte-identical.
-- [ ] 6.3 Confirm nothing outside this repository changed: the studio's
+- [x] 6.3 Confirm nothing outside this repository changed: the studio's
       `AssemblyPanel` and its CSS are untouched, and the development app
       and capture page are untouched.
-- [ ] 6.4 `openspec validate mount-the-navigator --strict` passes.
-- [ ] Commit: `docs: record the navigator cycle` (records only, if 5.x
+- [x] 6.4 `openspec validate mount-the-navigator --strict` passes.
+- [x] Commit: `docs: record the navigator cycle` (records only, if 5.x
       did not travel with their own increments).

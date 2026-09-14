@@ -84,6 +84,95 @@ redraw. A listener **observes**: nothing stops it calling `setRoot` or
 `setVisible` back into the viewer, but doing so from inside the listener
 can loop forever, and a navigator built on this bundle does not.
 
+### The bundle's own navigator
+
+`SolidNodeWidget.mountNavigator(target, viewer, options?)` mounts a
+React-free, plain-DOM tree over that same channel — a sidebar this
+package will ship, a studio panel, or a maker's own page:
+
+```js
+const viewer = await SolidNodeWidget.mount('#host', 'viewer.json', {});
+const navigator = SolidNodeWidget.mountNavigator('#navigator', viewer, {
+  label: 'Assembly',
+  fullAssembly: true,
+  className: 'my-panel',
+  styles: 'inject',
+});
+// later
+navigator.dispose();
+```
+
+It draws the whole published assembly before the call returns — no
+notification is needed for the first tree — and redraws itself from
+every `onAssemblyChange` payload: a host call, the widget's own
+breadcrumb, or a targeted update. It holds no copy of the focused root or
+the hidden paths, only its own expansion and keyboard position, so two
+navigators mounted on one handle never disagree about what the viewer is
+showing. `target` is an element or a selector; a selector matching
+nothing is refused, naming it. `options`:
+
+| option | default | what it does |
+| --- | --- | --- |
+| `label` | `'Assembly'` | the tree's accessible name |
+| `fullAssembly` | `true` | show the "show full assembly" affordance while a subtree is focused |
+| `className` | — | an extra class on the navigator's root element, for a host's own scoping |
+| `styles` | `'inject'` | `'none'` skips the injected stylesheet, for a host serving the class contract below from its own CSS (a page whose Content-Security-Policy forbids inline `<style>`) |
+
+**Keyboard contract**, while focus is on a row: `Up`/`Down` move between
+the presented rows; `Right` expands a collapsed parent, or moves into its
+first child when it is already expanded; `Left` collapses an expanded
+parent, or moves to the parent row otherwise; `Enter` focuses the row's
+node in the viewer; `Space` toggles the row's own visibility. The tree is
+one stop in the page's tab order; a row's own controls are reachable by
+pointer without a separate tab stop.
+
+**The class contract.** Every element the navigator builds carries a
+stable class under this prefix — a host may select on it, and the bundle
+publishes no other file for it:
+
+| class | element |
+| --- | --- |
+| `solid-nav` | the navigator root |
+| `solid-nav-toolbar` | the row above the tree |
+| `solid-nav-full` | the "show full assembly" button |
+| `solid-nav-tree` | the `role="tree"` container |
+| `solid-nav-row` | a `role="treeitem"`; modifiers `--root`, `--hidden`, `--obscured`, `--leaf` |
+| `solid-nav-twisty` | the expand/collapse button |
+| `solid-nav-spacer` | the twisty's width on a leaf |
+| `solid-nav-visibility` | the visibility checkbox |
+| `solid-nav-name` | the node's label |
+| `solid-nav-badge` | the `root` marker on the focused row |
+| `solid-nav-focus` | the per-row focus button |
+
+**Theming.** The default presentation is neutral — legible on a light or
+a dark page — and entirely driven by CSS custom properties declared on
+`.solid-nav`, which a host overrides from its own stylesheet, on an
+ancestor, or on `:root`, without reaching into the navigator's elements:
+
+| property | default | what it sets |
+| --- | --- | --- |
+| `--solid-nav-font` | `12px ui-monospace, SFMono-Regular, Menlo, monospace` | row type |
+| `--solid-nav-indent` | `15px` | indent per level |
+| `--solid-nav-row-padding` | `4px 5px` | row padding |
+| `--solid-nav-row-radius` | `5px` | row corner |
+| `--solid-nav-row-min-height` | `28px` | row height |
+| `--solid-nav-gap` | `6px` | gap between a row's parts |
+| `--solid-nav-chip-size` | `12px` | the visibility chip |
+| `--solid-nav-fg` | `inherit` | row text |
+| `--solid-nav-fg-strong` | `inherit` | hovered / focused-root text |
+| `--solid-nav-muted` | `rgba(128,128,128,0.95)` | buttons, badges |
+| `--solid-nav-bg` | `transparent` | the navigator's ground |
+| `--solid-nav-row-hover-bg` | `rgba(128,128,128,0.18)` | hover |
+| `--solid-nav-root-bg` | `rgba(128,128,128,0.22)` | the focused-root row |
+| `--solid-nav-root-mark` | `currentColor` | its inset rule |
+| `--solid-nav-chip-neutral` | `#9aa0a8` | a colourless visible node |
+| `--solid-nav-chip-border` | `rgba(128,128,128,0.8)` | a hidden node's outline |
+| `--solid-nav-obscured-opacity` | `0.45` | an obscured node's chip |
+| `--solid-nav-focus-ring` | `currentColor` | `:focus-visible` outline |
+
+No layout ships with this release: `mountNavigator` draws a tree into the
+element it is given and nothing composes it with the viewer for you.
+
 ## Driving a running machine
 
 A document that carries a compiled mechanical program is not posed, it is
@@ -138,7 +227,7 @@ build reads rather than infer it.
 | solid-node-viewer | viewer API | reads document versions |
 | --- | --- | --- |
 | 0.1.0 | 7 | 1, 2, 3, 4 |
-| 0.2.0 | 9 | 1, 2, 3, 4, 5 |
+| 0.2.0 | 10 | 1, 2, 3, 4, 5 |
 
 ## Working on the viewer
 

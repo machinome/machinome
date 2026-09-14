@@ -320,3 +320,100 @@ $ npm test
  Test Files  30 passed (30)
       Tests  595 passed (595)
 ```
+
+## 5. The records
+
+- `README.md`: the version table's unreleased `0.2.0` row now reads
+  `10`. `## Reading and moving the assembly` gains a `### The bundle's
+  own navigator` subsection: the `mountNavigator` signature and its
+  options table, the keyboard contract, the class-name contract and the
+  custom-property table of design D13 — published as the theming
+  contract, not only recorded in the change.
+- `CHANGELOG.md`: the unreleased `0.2.0` section gains two entries after
+  the version-9 one — the navigator itself (what it shows, what it
+  holds no copy of, the keyboard contract, the stylesheet, no new
+  published file, no layout) and the version-10 bump — before the
+  existing "constrained dragging is not in this release" closing bullet.
+- `docs/adrs/EXPORT/ADR-050-…` and its `docs/adrs/README.md` row: left as
+  **Proposed**, per instruction (task 5.3 is the reviewer's).
+
+## 6. The whole suite
+
+```
+$ cd solid_node_viewer/widget && npm run typecheck && npm test && npm run build
+> tsc --noEmit
+(no output, exit 0)
+ Test Files  30 passed (30)
+      Tests  595 passed (595)
+  dist/solid-widget.js  653.6kb
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest -q
+85 passed, 1 skipped, 11 warnings in 58.43s
+```
+
+Bundle size: 659879 bytes (baseline) → 669247 bytes (final), +9368 bytes
+— `navtree.ts`, `navigator.ts` and its injected stylesheet string, minus
+what esbuild minifies away. Published file list unchanged: `dist/` still
+carries exactly `solid-widget.js`; `solid_node_viewer/widget/index.html`
+is byte-identical to the starting commit (`git diff` against the
+planning commit shows no change to it). `viewer.ts`, `tree.ts` and
+`assembly.ts` are untouched by this change — confirmed by the same diff,
+which touches only `navtree.ts`, `navigator.ts`, their tests,
+`widget.ts`'s two added export lines, `version.test.ts`,
+`package.json`/`package-lock.json`, and the three Python test files'
+literal version assertions. The studio's `AssemblyPanel`/`styles.css`
+and the CRA development app and capture page live in other repositories
+and this change touches none of them.
+
+Final counts: `npm test` 595 passed, 0 failed, 0 skipped (30 test files:
+28 pre-existing + `navtree.test.ts` + `navigator.test.ts`). Python
+suite: 85 passed, 1 skipped (pre-existing, `test_server.py:170`, the CRA
+dev app not built), 0 failed.
+
+```
+$ openspec validate mount-the-navigator --strict
+Change 'mount-the-navigator' is valid
+```
+
+## Deviations
+
+1. **`test_a_targeted_update_reconciles_the_navigator`'s fixture is
+   flat.** Recorded in full under increment 3 above: the Spinner
+   fixture has no child with children of its own, so the e2e test
+   proves reconciliation against the document root's own expansion
+   (the only expandable row available) rather than a child's, while the
+   stronger per-child claim stays pinned at the unit and jsdom levels
+   (`navtree.test.ts`, `navigator.test.ts`). Same shape as the prior
+   cycle's own deviation 2, for the same reason.
+2. **`chipState`'s `hidingAncestor` field.** Design D3's illustrative
+   `NavigatorRow` interface lists `obscured: boolean` but not which
+   ancestor obscures a row. D5's accessible-name rule
+   ("`Visibility for <name> (hidden with <ancestor>)`") needs that name,
+   so `navtree.ts`'s `NavigatorRow` carries one more field,
+   `hidingAncestor: string | null`, computed in the same depth-first
+   walk `obscured` already needed. A small, load-bearing elaboration of
+   the design's own sketch, not a substitution for it.
+3. **A `focusin` listener was tried and reverted.** Recorded in full
+   under increment 2: an attempt to make the component itself follow
+   any DOM focus event (so a directly-`.focus()`ed row became "active")
+   fixed five test failures but broke the D10 synchronous-redraw test
+   by moving keyboard focus somewhere a checkbox click never should.
+   Reverted; the tests were the bug (positioning a keyboard scenario by
+   calling `.focus()` on a row no real Tab sequence could reach), fixed
+   by navigating the way a keyboard maker actually would.
+
+## Something worth the reviewer's attention
+
+Design D9's `reconcileLocal(assembly, previous): NavigatorLocal` is
+illustrative rather than literal: revealing a newly-moved root's
+ancestors needs to know the root the navigator last rendered, which
+`NavigatorLocal`'s documented `{ expanded, active }` shape does not
+carry. Implemented as a fourth parameter, `previousRoot: AssemblyPath |
+null`, threaded by `navigator.ts` from the navigation state it cached at
+the previous render (`currentNavigation?.root`) rather than added to
+`NavigatorLocal` itself — keeping the documented local-state shape
+exactly as written, at the cost of the reconcile function taking one
+more argument than the design's sketch shows. Worth checking against
+the design's intent: D9 says the guard compares "the new root against
+the last root the navigator rendered", which is what `previousRoot`
+is — but the design never says where that value should live.
