@@ -1,0 +1,259 @@
+================ running root ================
+  [numeric pose] clear_solved(Lock) _solver_bound=[]
+  [numeric pose] attempt push drives plug.key.insert
+      driver Lock (Lock).push = <driver, always bound>
+      driven plug.key.insert value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      -> changed=True direction='forward'
+      after  plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=Lock bound=True
+  [numeric pose] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      driven d1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      -> changed=False direction=None
+      after  d1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+  [numeric pose] attempt push drives plug.key.insert
+      driver Lock (Lock).push = <driver, always bound>
+      driven plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=Lock bound=True
+      -> changed=False direction='forward'
+      after  plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=Lock bound=True
+  [numeric pose] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      driven d1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      -> changed=False direction=None
+      after  d1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+  [numeric pose] clear_solved(Plug) _solver_bound=[]
+  [numeric pose] attempt key.insert drives p1.lift
+      driver plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=Lock bound=True
+      driven plug.p1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      -> changed=True direction='forward'
+      after  plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=Plug bound=True
+  [numeric pose] attempt key.insert drives p1.lift
+      driver plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=Lock bound=True
+      driven plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=Plug bound=True
+      -> changed=False direction='forward'
+      after  plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=Plug bound=True
+  [numeric pose] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=Plug bound=True
+      driven d1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      -> changed=True direction='forward'
+      after  d1.lift value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=None bound=True
+  [numeric pose] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=Plug bound=True
+      driven d1.lift value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=None bound=True
+      -> changed=False direction='forward'
+      after  d1.lift value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=None bound=True
+-- after the numeric pose, before publication
+     plug.key.insert: value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=Lock
+     plug.p1.lift: value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=Plug
+     d1.lift: value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c938d6b00 _bound_by=None
+  [publication] clear_solved(Lock) _solver_bound=["key.insert(value=<ExpressionNode name 'plug.key.insert'>, run_owned=True, enum=None)", "key.insert(value=<ExpressionNode name 'plug.key.insert'>, run_owned=True, enum=None)", "d1.lift(value=<ExpressionNode name 'd1.lift'>, run_owned=True, enum=None)"]
+  [publication] attempt push drives plug.key.insert
+      driver Lock (Lock).push = <driver, always bound>
+      driven plug.key.insert value=<ExpressionNode name 'plug.key.insert'> binder=<the running simulation> run_owned=True enum=None _bound_by=Lock bound=True
+      -> changed=False direction='run'
+      after  plug.key.insert value=<ExpressionNode name 'plug.key.insert'> binder=<the running simulation> run_owned=True enum=None _bound_by=Lock bound=True
+  [publication] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=<ExpressionNode name 'plug.p1.lift'> binder=<the running simulation> run_owned=True enum=None _bound_by=Plug bound=True
+      driven d1.lift value=<ExpressionNode name 'd1.lift'> binder=<the running simulation> run_owned=True enum=None _bound_by=None bound=True
+      -> changed=False direction='run'
+      after  d1.lift value=<ExpressionNode name 'd1.lift'> binder=<the running simulation> run_owned=True enum=None _bound_by=None bound=True
+  [publication] clear_solved(Plug) _solver_bound=["p1.lift(value=<ExpressionNode name 'plug.p1.lift'>, run_owned=True, enum=None)", "p1.lift(value=<ExpressionNode name 'plug.p1.lift'>, run_owned=True, enum=None)"]
+  [publication] attempt key.insert drives p1.lift
+      driver plug.key.insert value=<ExpressionNode name 'plug.key.insert'> binder=<the running simulation> run_owned=True enum=None _bound_by=Lock bound=True
+      driven plug.p1.lift value=<ExpressionNode name 'plug.p1.lift'> binder=<the running simulation> run_owned=True enum=None _bound_by=Plug bound=True
+      -> changed=False direction='run'
+      after  plug.p1.lift value=<ExpressionNode name 'plug.p1.lift'> binder=<the running simulation> run_owned=True enum=None _bound_by=Plug bound=True
+-- inside the publication
+     plug.key.insert: value=<ExpressionNode name 'plug.key.insert'> binder=<the running simulation> run_owned=True enum=None _bound_by=Lock
+     plug.p1.lift: value=<ExpressionNode name 'plug.p1.lift'> binder=<the running simulation> run_owned=True enum=None _bound_by=Plug
+     d1.lift: value=<ExpressionNode name 'd1.lift'> binder=<the running simulation> run_owned=True enum=None _bound_by=None
+     declarations: ['push']
+  [re-render (the finally block)] clear_solved(Lock) _solver_bound=[]
+  [re-render (the finally block)] attempt push drives plug.key.insert
+      driver Lock (Lock).push = <driver, always bound>
+      driven plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved not yet> run_owned=False enum=0x726c938d6b00 _bound_by=Lock bound=False
+      -> changed=True direction='forward'
+      after  plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938de4c0 _bound_by=Lock bound=True
+  [re-render (the finally block)] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved run> run_owned=False enum=0x726c938d6b00 _bound_by=Plug bound=False
+      driven d1.lift value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved not yet> run_owned=False enum=0x726c938d6b00 _bound_by=None bound=True
+      -> changed=True direction='backward'
+      after  d1.lift value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved backward> run_owned=False enum=0x726c938d6b00 _bound_by=None bound=True
+  [re-render (the finally block)] attempt push drives plug.key.insert
+      driver Lock (Lock).push = <driver, always bound>Traceback (most recent call last):
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/openspec/changes/a-read-is-not-a-binding/evidence/probe_publication.py", line 125, in run
+    with symbolic_document(node) as (declarations, instructions):
+  File "/usr/lib/python3.12/contextlib.py", line 144, in __exit__
+    next(self.gen)
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/solid_node/core/serializer.py", line 249, in symbolic_document
+    drive_tree(node, lambda target, path, name, declaration:
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/solid_node/node/qualified.py", line 311, in drive_tree
+    root.render()
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/solid_node/node/assembly.py", line 194, in wrapped
+    child.render()
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/solid_node/node/assembly.py", line 191, in wrapped
+    children = _run_phase(self, render, enumeration)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/solid_node/node/assembly.py", line 103, in _run_phase
+    solve_relations(assembly, enumeration)
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/solid_node/motion/couplings.py", line 1914, in solve_relations
+    changed = _step_relation(record, claimed, bound) or changed
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+solid_node.motion.couplings.DoublyBound: plug.p1.lift would be bound by the relation key.insert drives p1.lift and by the relation plug.p1.lift drives d1.lift. A coordinate has exactly one binder in one enumeration of the tree, and the framework does not compare two values to decide whether two statements agree: they are ordinarily symbolic expressions. Drop one of them.
+
+      driven plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938de4c0 _bound_by=Lock bound=True
+      -> changed=False direction='forward'
+      after  plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938de4c0 _bound_by=Lock bound=True
+  [re-render (the finally block)] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=0.5 binder=<relation plug.p1.lift drives d1.lift solved backward> run_owned=False enum=0x726c938de4c0 _bound_by=Lock bound=True
+      driven d1.lift value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved backward> run_owned=False enum=0x726c938d6b00 _bound_by=None bound=True
+      -> changed=False direction='backward'
+      after  d1.lift value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved backward> run_owned=False enum=0x726c938d6b00 _bound_by=None bound=True
+  [re-render (the finally block)] clear_solved(Plug) _solver_bound=[]
+  [re-render (the finally block)] attempt key.insert drives p1.lift
+      driver plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938de4c0 _bound_by=Lock bound=True
+      driven plug.p1.lift value=0.5 binder=<relation plug.p1.lift drives d1.lift solved backward> run_owned=False enum=0x726c938de4c0 _bound_by=Lock bound=True
+      -> RAISED DoublyBound: plug.p1.lift would be bound by the relation key.insert drives p1.lift and by the relation plug.p1.lift drives d1.lift. A coordinate has exactly one binder in one enumeration of the tree, and the framework does not compare two values to decide whether two statements agree: they are ordinarily symbolic expressions. Drop one of them.
+running root: REFUSED DoublyBound: plug.p1.lift would be bound by the relation key.insert drives p1.lift and by the relation plug.p1.lift drives d1.lift. A coordinate has exactly one binder in one enumeration of the tree, and the framework does not compare two values to decide whether two statements agree: they are ordinarily symbolic expressions. Drop one of them.
+
+================ untimed twin ================
+  [numeric pose] clear_solved(LockBody) _solver_bound=[]
+  [numeric pose] attempt push drives plug.key.insert
+      driver LockBody (LockBody).push = <driver, always bound>
+      driven plug.key.insert value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      -> changed=True direction='forward'
+      after  plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c91d23040 _bound_by=LockBody bound=True
+  [numeric pose] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      driven d1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      -> changed=False direction=None
+      after  d1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+  [numeric pose] attempt push drives plug.key.insert
+      driver LockBody (LockBody).push = <driver, always bound>
+      driven plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c91d23040 _bound_by=LockBody bound=True
+      -> changed=False direction='forward'
+      after  plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c91d23040 _bound_by=LockBody bound=True
+  [numeric pose] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      driven d1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      -> changed=False direction=None
+      after  d1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+  [numeric pose] clear_solved(Plug) _solver_bound=[]
+  [numeric pose] attempt key.insert drives p1.lift
+      driver plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c91d23040 _bound_by=LockBody bound=True
+      driven plug.p1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      -> changed=True direction='forward'
+      after  plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c91d23040 _bound_by=Plug bound=True
+  [numeric pose] attempt key.insert drives p1.lift
+      driver plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c91d23040 _bound_by=LockBody bound=True
+      driven plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c91d23040 _bound_by=Plug bound=True
+      -> changed=False direction='forward'
+      after  plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c91d23040 _bound_by=Plug bound=True
+  [numeric pose] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c91d23040 _bound_by=Plug bound=True
+      driven d1.lift value=None binder=None run_owned=False enum=None _bound_by=None bound=False
+      -> changed=True direction='forward'
+      after  d1.lift value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c91d23040 _bound_by=None bound=True
+  [numeric pose] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c91d23040 _bound_by=Plug bound=True
+      driven d1.lift value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c91d23040 _bound_by=None bound=True
+      -> changed=False direction='forward'
+      after  d1.lift value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c91d23040 _bound_by=None bound=True
+-- after the numeric pose, before publication
+     plug.key.insert: value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c91d23040 _bound_by=LockBody
+     plug.p1.lift: value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c91d23040 _bound_by=Plug
+     d1.lift: value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c91d23040 _bound_by=None
+  [publication] clear_solved(LockBody) _solver_bound=['key.insert(value=1.0, run_owned=False, enum=0x726c91d23040)', 'key.insert(value=1.0, run_owned=False, enum=0x726c91d23040)', 'd1.lift(value=-0.5, run_owned=False, enum=0x726c91d23040)']
+  [publication] attempt push drives plug.key.insert
+      driver LockBody (LockBody).push = <driver, always bound>
+      driven plug.key.insert value=None binder=None run_owned=False enum=0x726c91d23040 _bound_by=LockBody bound=False
+      -> changed=True direction='forward'
+      after  plug.key.insert value=<ExpressionNode name 'push'> binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=LockBody bound=True
+  [publication] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c91d23040 _bound_by=Plug bound=False
+      driven d1.lift value=None binder=None run_owned=False enum=0x726c91d23040 _bound_by=None bound=False
+      -> changed=False direction=None
+      after  d1.lift value=None binder=None run_owned=False enum=0x726c91d23040 _bound_by=None bound=False
+  [publication] attempt push drives plug.key.insert
+      driver LockBody (LockBody).push = <driver, always bound>
+      driven plug.key.insert value=<ExpressionNode name 'push'> binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=LockBody bound=True
+      -> changed=False direction='forward'
+      after  plug.key.insert value=<ExpressionNode name 'push'> binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=LockBody bound=True
+  [publication] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c91d23040 _bound_by=Plug bound=False
+      driven d1.lift value=None binder=None run_owned=False enum=0x726c91d23040 _bound_by=None bound=False
+      -> changed=False direction=None
+      after  d1.lift value=None binder=None run_owned=False enum=0x726c91d23040 _bound_by=None bound=False
+  [publication] clear_solved(Plug) _solver_bound=['p1.lift(value=0.5, run_owned=False, enum=0x726c91d23040)', 'p1.lift(value=0.5, run_owned=False, enum=0x726c91d23040)']
+  [publication] attempt key.insert drives p1.lift
+      driver plug.key.insert value=<ExpressionNode name 'push'> binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=LockBody bound=True
+      driven plug.p1.lift value=None binder=None run_owned=False enum=0x726c91d23040 _bound_by=Plug bound=False
+      -> changed=True direction='forward'
+      after  plug.p1.lift value=<ExpressionNode binop '*'> binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=Plug bound=True
+  [publication] attempt key.insert drives p1.lift
+      driver plug.key.insert value=<ExpressionNode name 'push'> binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=LockBody bound=True
+      driven plug.p1.lift value=<ExpressionNode binop '*'> binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=Plug bound=True
+      -> changed=False direction='forward'
+      after  plug.p1.lift value=<ExpressionNode binop '*'> binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=Plug bound=True
+  [publication] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=<ExpressionNode binop '*'> binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=Plug bound=True
+      driven d1.lift value=None binder=None run_owned=False enum=0x726c91d23040 _bound_by=None bound=False
+      -> changed=True direction='forward'
+      after  d1.lift value=<ExpressionNode binop '*'> binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=None bound=True
+  [publication] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=<ExpressionNode binop '*'> binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=Plug bound=True
+      driven d1.lift value=<ExpressionNode binop '*'> binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=None bound=True
+      -> changed=False direction='forward'
+      after  d1.lift value=<ExpressionNode binop '*'> binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=None bound=True
+-- inside the publication
+     plug.key.insert: value=<ExpressionNode name 'push'> binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=LockBody
+     plug.p1.lift: value=<ExpressionNode binop '*'> binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=Plug
+     d1.lift: value=<ExpressionNode binop '*'> binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=None
+     declarations: ['push']
+  [re-render (the finally block)] clear_solved(LockBody) _solver_bound=["key.insert(value=<ExpressionNode name 'push'>, run_owned=False, enum=0x726c938dfd40)", "key.insert(value=<ExpressionNode name 'push'>, run_owned=False, enum=0x726c938dfd40)", "d1.lift(value=<ExpressionNode binop '*'>, run_owned=False, enum=0x726c938dfd40)"]
+  [re-render (the finally block)] attempt push drives plug.key.insert
+      driver LockBody (LockBody).push = <driver, always bound>
+      driven plug.key.insert value=None binder=None run_owned=False enum=0x726c938dfd40 _bound_by=LockBody bound=False
+      -> changed=True direction='forward'
+      after  plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938c2400 _bound_by=LockBody bound=True
+  [re-render (the finally block)] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=<ExpressionNode binop '*'> binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=Plug bound=False
+      driven d1.lift value=None binder=None run_owned=False enum=0x726c938dfd40 _bound_by=None bound=False
+      -> changed=False direction=None
+      after  d1.lift value=None binder=None run_owned=False enum=0x726c938dfd40 _bound_by=None bound=False
+  [re-render (the finally block)] attempt push drives plug.key.insert
+      driver LockBody (LockBody).push = <driver, always bound>
+      driven plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938c2400 _bound_by=LockBody bound=True
+      -> changed=False direction='forward'
+      after  plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938c2400 _bound_by=LockBody bound=True
+  [re-render (the finally block)] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=<ExpressionNode binop '*'> binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938dfd40 _bound_by=Plug bound=False
+      driven d1.lift value=None binder=None run_owned=False enum=0x726c938dfd40 _bound_by=None bound=False
+      -> changed=False direction=None
+      after  d1.lift value=None binder=None run_owned=False enum=0x726c938dfd40 _bound_by=None bound=False
+  [re-render (the finally block)] clear_solved(Plug) _solver_bound=["p1.lift(value=<ExpressionNode binop '*'>, run_owned=False, enum=0x726c938dfd40)", "p1.lift(value=<ExpressionNode binop '*'>, run_owned=False, enum=0x726c938dfd40)"]
+  [re-render (the finally block)] attempt key.insert drives p1.lift
+      driver plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938c2400 _bound_by=LockBody bound=True
+      driven plug.p1.lift value=None binder=None run_owned=False enum=0x726c938dfd40 _bound_by=Plug bound=False
+      -> changed=True direction='forward'
+      after  plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938c2400 _bound_by=Plug bound=True
+  [re-render (the finally block)] attempt key.insert drives p1.lift
+      driver plug.key.insert value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938c2400 _bound_by=LockBody bound=True
+      driven plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938c2400 _bound_by=Plug bound=True
+      -> changed=False direction='forward'
+      after  plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938c2400 _bound_by=Plug bound=True
+  [re-render (the finally block)] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938c2400 _bound_by=Plug bound=True
+      driven d1.lift value=None binder=None run_owned=False enum=0x726c938dfd40 _bound_by=None bound=False
+      -> changed=True direction='forward'
+      after  d1.lift value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c938c2400 _bound_by=None bound=True
+  [re-render (the finally block)] attempt plug.p1.lift drives d1.lift
+      driver plug.p1.lift value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938c2400 _bound_by=Plug bound=True
+      driven d1.lift value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c938c2400 _bound_by=None bound=True
+      -> changed=False direction='forward'
+      after  d1.lift value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c938c2400 _bound_by=None bound=True
+-- after publication
+     plug.key.insert: value=1.0 binder=<relation push drives plug.key.insert solved forward> run_owned=False enum=0x726c938c2400 _bound_by=LockBody
+     plug.p1.lift: value=0.5 binder=<relation key.insert drives p1.lift solved forward> run_owned=False enum=0x726c938c2400 _bound_by=Plug
+     d1.lift: value=-0.5 binder=<relation plug.p1.lift drives d1.lift solved forward> run_owned=False enum=0x726c938c2400 _bound_by=None
+untimed twin: PUBLISHED
+
