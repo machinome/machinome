@@ -337,11 +337,13 @@ def per_unit_phase(cylinders, unit):
   fault to surface, not a zero to default.
 - **Machine inputs are drivers**, declared on the assembly that owns the
   move: `angle = Driver(default=0.0, range=(0.0, 720.0), unit='deg')`,
-  read as `self.angle` in `simulate()`. The viewer turns them into
-  sliders and `instructions` into buttons at the layer that declares
-  them, so declare a whole-machine move on the machine. `self.time` is
-  one driver among them: `$t` from 0 through 1 on the timeline, a number
-  in tests.
+  read as `self.angle` in `simulate()`. The viewer gives them controls
+  and `instructions` buttons at the layer that declares them, so declare
+  a whole-machine move on the machine. `self.time` is
+  the shared clock: `$t` from 0 through 1 without a declaration,
+  seconds with `Time(loop=...)`, and elapsed seconds under a root's
+  `Time.running()`. The latter gets command controls and retained joint
+  state, as described below and in the API skill.
 - Kinematic math imports from `solid_node.math` (`sin, cos, tan, asin,
   acos, atan, atan2, sqrt`), NEVER stdlib math: time and drivers are
   symbolic in the viewer, and these functions compute numerically on
@@ -359,6 +361,53 @@ def per_unit_phase(cylinders, unit):
 composed with every ancestor's, exactly the geometry the viewer shows.
 Placing a sub-assembly by translating the wrapper is fine — its leaves'
 meshes follow.
+
+### Machines operated over time
+
+Use `time = Time.running()` on the root for an operated machine whose
+coordinates must retain history. Import `Time` from
+`solid_node.motion.ports`. The run owns every driver and joint coordinate;
+there is no separate state declaration or mutable accumulator to add to
+`simulate()`. Read the API skill's "Running simulations" section before
+migrating a pose model.
+
+- Give moving parts joints, express their laws with `drives`, and give
+  every joint coordinate a rest value. Migrate an unconditional joint
+  assignment in `simulate()` into a relation: it conflicts with the run's
+  ownership. A guarded `if coordinate.value is None` may initialize a
+  genuinely undriven rest coordinate. Plain ports, including molejo shape
+  dimensions, continue to follow the committed joint values each tick.
+- Put user actions on machine inputs. Relative phases are
+  `Instruction(by={'input': travel}, duration=seconds)`; absolute moves
+  use `targets`. Use `Sim.move`, `rate` and `trigger`, and check their
+  admitted travel/status. A running input has one command owner, and a
+  blocked command never resumes itself when the obstruction clears.
+- Put physical limits on the appropriate **joint range**. A driver's
+  range is only control metadata. For a compression spring, derive height
+  from its seats and constrain the joint moving a seat from the spring's
+  documented operating envelope. Clamping only the displayed coil lets
+  the rest of the mechanism pass its limit. Free length, coil-bind length,
+  safe operating travel and visualization assumptions are different facts;
+  do not invent measured material limits from a drawing that lacks them.
+- State contact-following motion with a continuous law; for sampled
+  geometry use `solid_node.math.piecewise` over measured breakpoints.
+  Pure jumps such as `floor(input)` do not move a running joint: the run
+  subtracts jumps. A zero-slope region or a multi-source gate disengages
+  motion but does not by itself report the input blocked. Test the actual
+  mechanical restriction separately. A range bound can depend only on
+  its own coordinate; it cannot read other pins or a release lever.
+- Test history with scenarios on the same node: repeat an action, stop
+  midway, reverse, interleave controls, and restore/replay a snapshot.
+  Check geometry at a cadence as well as final state. Choose `dt` small
+  enough to resolve contact changes; a within-tick excursion that returns
+  inside a range can evade stop detection. There is no implicit force or
+  collision solver.
+- A successful running build publishes a version-5 `program` and joint
+  placements over bank ids. Verify it and the installed viewer's
+  `documentVersions`; current development API 8 provides nudge, jog,
+  instruction and run/pause/step/reset controls. Do not substitute raw
+  position sliders for the operating surface. A snapshot's `--drive`
+  overrides pose inputs; it does not replay an accumulated run.
 
 ## Testing
 
@@ -679,9 +728,12 @@ model is an assembly — do not report it as coverage before then.
    an ordinary directory). Read `viewer.json` there: walk from `root`
    down to the new component, confirm each `operations` entry holds the
    expected rotation/translation (symbolic `$t` or a qualified driver id
-   for animated ones), confirm every rigid leaf's `model` file exists,
+   for posed animation; banked joint ids for a running root), confirm
+   every rigid leaf's `model` file exists,
    and, for a driven machine, that its `drivers` table lists the ids you
-   declared.
+   declared. For a running root also confirm `version: 5` and the
+   `program` with its coordinates, laws and ranges; a build warning about
+   unsupported viewer versions means the browser still cannot run it.
 
    A build rebuilds only what its source tracking says is stale, and a
    current leaf is not rendered at all. If a build seems to ignore an
@@ -699,8 +751,13 @@ model is an assembly — do not report it as coverage before then.
    declaring done. Keep the default renderer; `--renderer web` is for a
    host that needs a transparent background (and needs the separately
    installed viewer package), not for your inspection. A driven machine
-   snapshots at its driver defaults; pose it through `--time` only. Do
-   not try to see a defect a snapshot cannot resolve: a gear pair that
+   snapshots at its driver defaults unless `--drive input=value` supplies
+   declared driver pose overrides in native units. `--time` is the
+   animation fraction for undeclared/looping roots. A running root
+   refuses nonzero `--time`: snapshot its rest pose at the chosen inputs
+  with `--drive`, and prove accumulated motion in scenarios. The still
+   does not reproduce command history. Do not try to see a defect a
+   snapshot cannot resolve: a gear pair that
    never touches, or a blade stopping 3mm short of its hub, is what the
    connectivity and engagement contracts are for — they fail
    deterministically, at any scale, without a framing guess. Snapshots

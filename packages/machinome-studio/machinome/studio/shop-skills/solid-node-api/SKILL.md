@@ -11,8 +11,10 @@ this document does not describe is a gap to report, not a thing to discover.
 Never guess an interface from a symbol name.
 
 This describes solid-node 0.6 plus what followed it on the framework's
-main branch: the declarative node API and the motion layer (joints,
-relations, `solid_node.motion`).
+main branch: the declarative node API, the motion layer (joints,
+relations, `solid_node.motion`), and open-run simulation through
+`publish-the-mechanical-program` (ADRs 104–110). These additions are local
+development capabilities, not a claim about the published 0.6.0 package.
 
 ## Imports
 
@@ -29,19 +31,22 @@ from solid_node.parameters import (            # what is built
     Length, Angle, Count, Ratio, Scalar, Flag, Quantity,
     declared_parameters, DimensionError, ParameterError)
 from solid_node.motion.ports import (          # a value between nodes
-    Port, RotationalPort, TranslationalPort, SignalPort,
-    declared_ports, get_coordinate, set_coordinate)
+    Port, RotationalPort, TranslationalPort, SignalPort, Time,
+    declared_ports, declared_time, get_coordinate, set_coordinate)
 from solid_node.motion.joints import (         # where a body may move
     Revolute, Prismatic, Orbit, Free, JointRangeError, declared_joints)
 from solid_node.motion.couplings import (      # a law between two coordinates
     Affine, UnreachedCoordinate, DoublyBound, NotInvertible, PrematureRead)
 from solid_node.simulation import (            # how it runs
     Driver, Instruction, Sim, ScenarioTest, RampProgram,
-    qualified_drivers, qualified_instructions)
+    qualified_drivers, qualified_instructions,
+    RunConflict, UnsupportedLaw, TooManyCrossings, Crossing, Stop)
 from solid_node.test import (
     TestCase, TestCaseMixin, testing_instant, testing_steps)
 from solid_node.math import (
-    sin, cos, tan, asin, acos, atan, atan2, sqrt)   # DEGREES
+    sin, cos, tan, asin, acos, atan, atan2, sqrt,   # DEGREES
+    abs, min, max, floor, ceil, sign,
+    clamp, clamp01, ramp, lerp, wrap, piecewise)
 ```
 
 The parameter kinds are exported by `solid_node.parameters` and by nothing
@@ -357,7 +362,10 @@ kept for good.
 `simulate()` **moves** it: run after `render()` on every instant, under
 symbolic `$t` in the build and viewer and under plain numbers in tests,
 snapshots and a stepped simulation. It is the one place drivers, time and
-ports are read and bound. Each operation it applies is motion: stated
+ports are read and bound. Under a running simulation the run binds the
+joint coordinates; `simulate()` may compute plain ports from them but
+must not overwrite them (see "Running simulations"). Each operation it
+applies is motion: stated
 absolutely for its instant, dropped before the next run, and composed
 **inside** the part's rest placement, so a part rotated in `simulate()`
 and translated in `render()` spins about its own axis and is then
@@ -430,16 +438,29 @@ driver-declaring node held in a list) fails loudly.
   (`set_state(**{'x_axis.position': 40.0})`) and reaches only that
   subtree; a bare name is valid while exactly one driver in the tree
   bears it and fails naming both ids when two do; a name no declaration
-  backs is rejected listing what is declared. `time` is global and needs
-  no declaration.
+  backs is rejected listing what is declared. Under a running root it
+  also accepts qualified joint-coordinate ids, including joints on leaves;
+  this is the run's binding path, not a command or a replacement for
+  `sim.restore()`. `time` is global and needs no declaration.
 - `clear_state(*names)` removes entries (all with no names) and
   re-simulates symbolically.
 - `set_keyframe(t)` is `set_state(time=t)`; `clear_keyframe()` is
   `clear_state('time')`. Both recurse and are no-ops on leaves and
   fusions. Nothing accumulates across cycles; rest placement is untouched.
-- `self.time` is `$t` from 0 through 1 in the build and viewer, the
-  bound number under a keyframe, and the simulation clock in seconds
-  under `Sim`. Assemblies only: leaves and fusions raise on `time`.
+- Without a declaration, `self.time` is symbolic `$t` (0 through 1 on
+  the timeline), or the bound number. A root assembly may instead declare
+  `time = Time(loop=seconds)` or `time = Time.running()`, imported from
+  `solid_node.motion.ports`. `Time()` without a base is refused. A loop
+  is positive finite seconds: unbound reads become `$t * seconds`, while
+  a bound value is already in seconds. Running time is elapsed seconds
+  that never wrap; outside a document producer its unbound preview is
+  still bare `$t`, but its version-5 document publishes the clock name
+  `time`. `Sim` binds `tick * dt` seconds under every base.
+- Declare `Time` only as `time` on the root assembly, never a leaf or a
+  linked descendant; descendants read their root's base. `Root.time.mode`
+  is `'loop'` or `'running'`, and `.loop` is the span or `None`.
+  `declared_time(cls)` returns the inherited declaration or `None`.
+  Leaves and fusions have no readable `time`.
 
 **Ports** are connection points between parts, declared as class
 attributes on any node: `RotationalPort(unit=None, out=False,
@@ -545,7 +566,26 @@ class assumed it would be.
 A numeric binding outside a declared `range` raises `JointRangeError`
 naming the node's path, the joint, the value, the range and the unit; a
 symbolic binding is not checked at bind time, because its value is not yet
-known; a joint with no declared `range` accepts any binding.
+known; a joint with no declared `range` accepts any binding. Either bound
+may be `None` (unbounded on that side) or a one-argument callable over
+that joint's own coordinate:
+
+```python
+turn = Revolute(axis=(1, 0, 0),
+                range=(lambda turn: 36 * floor(turn / 36), None))
+```
+
+That lower bound is the last seated ratchet tooth. A callable INSIDE the
+pair reads the coordinate; a callable for the WHOLE `range`,
+`range=lambda node: (lo, hi)`, reads the realized declarer as before.
+At numeric binding, a callable bound is evaluated at the proposed value.
+In a running simulation it is additionally compiled and evaluated at the
+committed value at the start of each tick, then held fixed for that tick.
+A bound may name only its own coordinate, not a second coordinate such as
+a pawl lift. An invalid/reversed evaluated pair is refused by name.
+Under a run, travel that would exceed a joint range stops the pushing
+inputs at the bound; it does not fail as an out-of-range pose. The driver's
+own range remains presentation metadata (see "Running simulations").
 
 **A joint may be declared where a child is placed (ADR-098):** a shared
 catalogue class that carries no joint of its own — a bought bearing, a
@@ -711,7 +751,8 @@ write on every run: a coordinate a relation, a wiring, or the AUTHOR'S OWN
 that assembly's NEXT phase, so the guard finds the coordinate unbound and
 rebinds and re-places the body on every enumeration rather than standing,
 from the second run on, at a stale number with no operation left to show
-for it.
+for it. Under a running simulation the run-owned slots survive this
+clear: the guard initializes the rest pose, then leaves those slots alone.
 
 **A relation may name several coordinates at each end (ADR-100).** A
 source group is written with `&`, free on every declaration that carries
@@ -755,21 +796,36 @@ joint owning several coordinates cannot be wired whole, and none of its
 dotted coordinate names is a wiring keyword.
 
 **Instructions** are declared moves, in an `instructions` dict on the
-assembly that owns the move, with targets in design units:
+assembly that owns the move, in design units:
 
 ```python
 instructions = {
     'Home': Instruction({'x_axis.position': 0.0, 'y_axis.position': 0.0},
                         duration=2.0),
+    'Advance': Instruction(by={'x_axis.position': 5.0}, duration=0.2),
 }
 ```
 
-Each becomes a viewer button and a `trigger()` in simulations; triggering
-ramps every target from its current value and lands exactly on it, and a
-new trigger replaces a running ramp. The viewer shows one slider per
-driver and one button per instruction declared at the focused assembly
-layer, with a breadcrumb into subassemblies; a root that declares nothing
-shows no controls.
+`Instruction(targets=None, duration=None, *, by=None)` requires exactly
+one mapping: `targets` states destinations, `by` states relative travel
+from the current input values. Supply a finite nonnegative duration in
+seconds; a simulation requires whole ticks. Names resolve relative to the
+declaring assembly, so a child instruction targets its own subtree.
+
+Under an undeclared or looping root, triggering ramps from the current
+values and a new trigger replaces the ramp; only absolute instructions
+publish as viewer buttons. Under a running root, both forms publish in
+version 5 and `sim.trigger(name)` returns a tuple of move handles. All
+target inputs are checked for ownership before issuing commands; an
+already-owned input refuses the instruction rather than replacing its move.
+
+The viewer scopes controls to the focused assembly, with a breadcrumb into
+subassemblies; declare a whole-machine move on the root. Versions 1–4 use
+driver sliders and absolute instruction buttons. A viewer supporting the
+running controls uses nudge, hold-to-jog and instruction buttons with
+committed readouts instead of position sliders, and run/pause/step/speed/
+elapsed-time/reset transport instead of a seekable timeline. Check the
+installed viewer's `solid viewer` report, not its package version alone.
 
 ## Instance surface
 
@@ -1000,17 +1056,23 @@ before `.mesh` is available.
 
 ### Scenario tests
 
-A driven machine is also testable in motion. `Sim(node, dt=...)` steps an
+A driven machine is also testable in motion.
+`Sim(node, dt, meshes=False, state=None, record=None)` steps an
 assembly with a fixed step whose instants are integer ticks (`sim.time`
 is `tick * dt` seconds; a non-tick instant is rejected). `sim.at(t)
 .trigger('Home')` or `.run(callable)` schedules an action (actions due at
 the current tick fire before the first step); `sim.every(period, fn,
 *args)` calls `fn` on a cadence; `sim.run(duration)` steps, binding a full
-qualified snapshot plus `time` each tick and appending to
-`sim.trajectory`. `sim.state` is the live bank by qualified id;
+qualified snapshot plus `time` each tick. Without a running time base it
+appends every tick to `sim.trajectory`; a running root records only when
+requested (below). `state=` overrides initial declared drivers by qualified
+id in native units, never joint coordinates. `sim.state` returns a fresh
+mapping of the current bank by qualified id;
 `sim.tick`, `sim.cadence_costs` and `sim.assertion_stats` report progress
-and cost. A triggered `Instruction` ramps as a `RampProgram` and lands
-exactly on target; integer drivers ramp integer-exactly.
+and cost. A triggered `Instruction` ramps as a `RampProgram` without a
+running base; under a running root it issues commands which may meet a stop.
+Integer driver ramps use native steps; a physical stop can admit fractional
+travel.
 
 ```python
 from solid_node.simulation import ScenarioTest
@@ -1031,6 +1093,187 @@ A `ScenarioTest` is a `TestCase`: as a companion test it runs under
 `solid test`, and imported into a pytest module it runs under `pytest`,
 unmodified. `dt` is part of the scenario's meaning.
 
+### Running simulations
+
+Declare `time = Time.running()` on the machine root when operation must
+retain history. This is the same `Sim` and the same `drives` laws, with a
+different reading: a continuous law moves its driven coordinate by
+`f(end) - f(start)` from where it stood. A periodic law contributes its
+continuous travel with discontinuous jumps subtracted, so a register
+retains each revolution's throw. There is no project-declared `State`,
+event/memory protocol, second running face on a law, or state accumulated
+inside `simulate()`.
+
+The run banks every driver and every joint coordinate in the linked tree,
+including joints on leaves, site-declared joints and all six coordinates
+of a `Free`. Plain ports and derived coordinates are recalculated from
+that bank each tick. Rest values come from the ordinary pose at time zero
+and the requested driver values. Every joint coordinate must be bound at
+rest, by a relation, wiring or guarded rest default:
+
+```python
+def simulate(self):
+    if self.slide.travel.value is None:
+        self.slide.travel = 4.0
+```
+
+An unconditional hand binding of a run-owned joint raises `DoublyBound` at
+construction; express its law with `drives`. Plain ports may still be fed
+in `simulate()` from owned coordinates, for example a spring's height or
+a readout. But an imperatively fed port cannot source a compiled law into
+a banked coordinate; express that input through a relation or a joint.
+A single tree has one run owner: constructing a new `Sim` over it starts
+fresh and releases the previous simulation, which then refuses to advance.
+
+This minimal travel model shows repeatable commands and a physical stop;
+replace the grouping `Carriage` with the project's actual moving assembly:
+
+```python
+from solid_node.node import AssemblyNode
+from solid_node.motion.ports import Time
+from solid_node.motion.joints import Prismatic
+from solid_node.simulation import Driver, Instruction, Sim
+
+class Carriage(AssemblyNode):
+    travel = Prismatic(axis=(1, 0, 0), range=(0, 12), unit='mm')
+
+class Feed(AssemblyNode):
+    time = Time.running()
+    feed = Driver(default=0, range=(0, 12), unit='mm')
+    carriage = Carriage()
+    feed.drives(carriage.travel)
+    instructions = {
+        'Advance': Instruction(by={'feed': 5}, duration=0.2),
+        'Home': Instruction({'feed': 0}, duration=0.2),
+    }
+
+sim = Sim(Feed(), dt=0.02, record=64)
+for _ in range(2):
+    sim.trigger('Advance')
+    sim.run(0.2)
+assert abs(sim.state['carriage.travel'] - 10) < 1e-9
+command, = sim.trigger('Advance')
+sim.run(0.2)
+assert command.status == 'blocked'
+assert abs(command.admitted - 2) < 1e-9
+assert sim.state['carriage.travel'] == 12
+saved = sim.snapshot()
+sim.trigger('Home')
+sim.run(0.2)
+sim.restore(saved)
+assert sim.state['carriage.travel'] == 12
+sim.reset()
+assert sim.state['carriage.travel'] == 0
+```
+
+**Commands and units.** `sim.move(input_id, by=travel, duration=seconds)`
+or `sim.move(input_id, to=value, duration=seconds)` takes exactly one of
+`by`/`to`. Only declared drivers are commandable, by qualified id; a joint
+coordinate is an output. Travel and destinations are design units; the
+driver bank remains native units (`scale` converts between them). Use a
+nonnegative duration in whole ticks; omitted/zero duration settles at the
+current tick without advancing time. `sim.rate(input_id, rate)` requests
+design units per simulated second until `sim.rate(input_id, 0)` releases
+that rate and marks its handle completed. A stop also terminates a rate.
+There is one command owner per input: a second move/rate refuses while
+that input is owned. Multiple inputs can run together.
+
+Move/rate handles report `status` (`active`, `completed`, `blocked`,
+`refused`, `cancelled`), `input`, `kind`, and travel `requested`, `admitted`
+and `remaining` in design units; rates have no requested total or
+remaining travel and expose `rate`. `sim.commands` is the tuple of
+currently held commands. A blocked command reports only the travel
+admitted before the stop and never resumes automatically; issue a new
+request to retry or reverse. Read the result, not just the requested target.
+
+Known Python limitation at framework commit `9238ef8`: `handle.cancel()`
+sets `status` to `cancelled` but does not release the input or suppress
+its subsequent travel. A 5 mm move over 0.2 s cancelled before the first
+0.02 s tick still moves 0.5 mm on that tick. Do not rely on it to stop or
+replace a move until the framework fixes this; `rate(input, 0)` releases
+an active rate, and restore/reset replace the run state. This is a
+measured defect, not the intended cancellation contract.
+
+**One law, two readings.** Laws are compiled once at construction by
+applying them to symbolic sources, in the direction the rest pose solved
+each relation. Use arithmetic and `solid_node.math`, not Python `math`,
+Python `if`/`and`/`or` over coordinates, or per-tick mutation. The math
+helpers keep numeric and symbolic readings:
+`clamp(x, lo, hi)`, `clamp01(x)`, `ramp(x, start, end)` (clamped 0–1),
+`lerp(a, b, u)` (unclamped), `wrap(x, period=360)` (in `(-period/2, period/2]`),
+and `piecewise(x, [(x0, y0), ...])` (continuous linear interpolation,
+holding the endpoint values outside the ordered plain-number x positions).
+Use the framework's `min`/`max`/`abs` for symbolic inputs too.
+
+`floor`, `ceil`, `sign`, `%` and comparisons may appear in a law: the run
+locates their crossings and integrates each continuous piece. A jump
+itself moves nothing. A law made only of jumps, such as `floor(turns)`,
+is refused; so is a jumping law into only plain ports/derived coordinates,
+which cannot retain its history. Put the law into the joint and let a port
+follow the joint. A group mixing banked and nonbanked driven ends is
+refused. A constant law contributes zero; an undriven joint holds.
+
+Disengagement is a zero-slope region or a gate in a multi-source law:
+
+```python
+def clutch(sources, target):
+    return lambda shaft, sleeve: -2 * shaft * (sleeve > 0.5)
+
+# shaft and sleeve are declared child nodes with these joints:
+(shaft.turn & sleeve.travel).drives(wheel.turn, law=clutch)
+```
+
+The wheel holds while disengaged and admits shaft travel only during
+engagement, including a gate crossing within a tick. A gate does not
+itself block the input command: that input may complete with its driven
+coordinate unmoved. Use a joint range to express a physical stop. Multiple
+contributions to one coordinate belong in one multi-source law, not two
+competing bindings; inputs are never back-driven.
+
+**Stops and precision.** A joint's inclusive range is a physical stop.
+Travel beyond it stops at the bound and blocks only inputs whose movement
+actually pushes that coordinate; independent or disengaged inputs keep
+moving for the rest of the tick. Landing exactly on a bound completes
+normally. A spring's plain height port has no stop of its own: bound the
+mechanical joint that compresses it and derive its height from that joint.
+Driver slider ranges and clamping a displayed flexible height do not
+constrain the machine. No mesh-contact detection, force equilibrium,
+spring stiffness or material limits are inferred by the simulation.
+
+Affine crossings are solved exactly. Nonlinear crossings are bracketed
+over 64 subdivisions and bisected; multiple turns inside one subdivision
+can be missed. More than 1000 crossings of one law in a tick is refused.
+An excursion outside a range that returns inside before the tick ends
+can escape stop detection. With nonlinear upstream laws, only the stopped
+coordinate lands exactly on its bound; related travel uses the linearized
+source path. Choose and test a smaller `dt` where these limits matter.
+`RunConflict`, `UnsupportedLaw` and `TooManyCrossings` are exported from
+`solid_node.simulation`. A refused tick commits no bank, time, pose or
+record change, and the commands that attempted travel retire `refused`.
+
+**Snapshots and evidence.** `sim.snapshot()` captures the bank, tick,
+active commands, `dt` and program identity; `sim.restore(saved)` restores
+that value and refuses a different program or step size before mutation.
+`sim.initial` is the initial snapshot and `sim.reset()` restores it.
+Restore recreates command handles and cancels the old ones; reread
+`sim.commands`. Scheduled Python callbacks/cadences are not part of the
+snapshot, so reschedule consumed actions when replaying a scenario.
+Inspecting or rendering the same bound tree advances nothing.
+
+Running simulations keep no history by default (`record=None`);
+`record=N`, a positive integer, keeps three separate bounded rings:
+`sim.trajectory` with `(tick, bank)` entries, `sim.crossings` with located
+jump events, and `sim.stops` with reached bounds and blocked inputs.
+Restore/reset clear all three. `sim.every()` can inspect every tick
+without keeping an unbounded recording. `sim.running` reports the mode;
+the command/snapshot/program surface is refused on other time bases.
+
+Use scenario tests for retained state: repeated instructions, partial
+travel, both directions at each stop, disengagement/re-engagement,
+snapshot replay, and interleaved independent controls. Assert geometry on
+the same stepped node, with `meshes=True` and a declared cadence; changing
+`--time` or rebinding a final input position does not replay that history.
+
 ## CLI
 
 ```text
@@ -1039,6 +1282,7 @@ solid build   [ref] [--set NAME=VALUE ...]
 solid test    [ref] [--set ...] [--failfast] [--exact | --faceted]
       [--volume-epsilon MM3]
 solid snapshot [ref] [--set ...] -o out.png [--time 0..1] [--autocenter]
+      [--drive NAME=VALUE ...]
       [--viewall] [--camera tx,ty,tz,rx,ry,rz,dist | ex,ey,ez,cx,cy,cz]
       [--imgsize 1920x1080] [--renderer openscad|web]
       [--projection ortho|perspective] [--colorscheme Cornfield|...]
@@ -1062,14 +1306,22 @@ exits: 0 when the model built or was already current, 66
 nonzero status when the build failed. It is the finite form of what
 `solid develop` does on every save.
 
-`solid snapshot` poses the model through `--time` (`$t` only; drivers
-render at their defaults). Leave the renderer at the default `openscad`:
+`solid snapshot --drive NAME=VALUE` sets declared drivers by qualified id,
+in native units as with `set_state`; `--set` changes build parameters
+instead. Drivers not overridden use their defaults. `--time` is the 0–1
+timeline fraction: it binds the fraction for an undeclared root or the
+fraction times the declared loop in seconds. A running root accepts only
+`--time 0` (the default); a nonzero time is refused naming `--drive`.
+Its still is the untimed rest pose at those input values, not an elapsed
+run or a saved state; verify accumulated motion on the stepped node.
+Leave the renderer at the default `openscad`:
 it is fast, needs no browser, self-wraps with `xvfb-run` when headless,
 and stays the default whatever is installed. The `web` renderer exists
 so a host can get a transparent background through headless Chromium; it
 needs the separately installed `solid-node-viewer` package with its
 browser (`pip install "solid-node[web-snapshot]"` plus `playwright install
-chromium`), rejects the OpenSCAD-only options by name, and never falls
+chromium`), rejects the OpenSCAD-only options and an unsupported document
+version by name, and never falls
 back. It is not for inspecting your own work.
 
 `solid develop` opens a live viewer that rebuilds on save: the browser
@@ -1118,14 +1370,16 @@ and are never held while watching or testing.
 Inside a publication:
 
 - `viewer.json` — `{format: "solid-node-export", version, animation:
-  {fps, frames}, drivers, instructions, bindings?, root, pieces}`.
+  {fps, frames, loop?}, drivers, instructions, bindings?, program?, root, pieces}`.
   `version` is 2; 3 when the tree holds a flexible part; 4 when the
   document carries a `bindings` table, which the serializer publishes
   whenever a subexpression repeats across the document (a shared value
   reaching two nodes is enough, so nearly every animated model is version
-  4). `bindings` is an ordered array of `{name, expression}` entries,
-  names `_b0`, `_b1`, ..., each expression naming only `$t`, declared
-  driver ids and earlier entries; an operation or flexible `params`
+  4). A root declaring `Time.running()` always publishes version **5**,
+  with `program`, even if it has no flexible or shared expressions.
+  `bindings` is an ordered array of `{name, expression}` entries,
+  names `_b0`, `_b1`, ..., each expression under versions 2–4 naming only
+  `$t`, declared driver ids and earlier entries; an operation or flexible `params`
   expression references an entry by its bare name, and an expression the
   serializer cannot read is published verbatim with a warning. A viewer
   older than API 7 refuses version 4. `drivers` and `instructions` are
@@ -1135,7 +1389,17 @@ Inside a publication:
   with its `piece` id, or a flexible leaf's `flexible` spec. Operations
   serialize as `['r', angle, axis]` / `['t', vector]` with raw
   expressions; animated values keep symbolic `$t` and qualified driver
-  ids.
+  ids under non-running roots. Under version 5, joint placements name
+  their banked coordinate ids; ports and flexible parameters read the
+  committed bank, and the clock is `program.clock` (`time`), not `$t`.
+- In version 5, `program` carries the coordinate table and rest values,
+  intermediates, ordered compiled edges and jump plans, spans, candidate
+  input sources, identity, clock name and integration constants. It is
+  the program Python `Sim` runs, not a second project-authored format.
+  Both absolute and relative instructions publish. A running root that
+  cannot construct a run cannot build/export a program either. Shared
+  expressions may additionally name bank coordinates, the clock and
+  compiler-minted branch placeholders. Do not hand-author those tables.
 - the rendered STLs at the `model` paths.
 - `errors.json` — `{error, tstamp}`, written atomically on a failed build
   and removed after the next successful one. A failed build after a
@@ -1144,10 +1408,16 @@ Inside a publication:
   the previous model.
 
 `solid viewer` prints one JSON object naming the installed bundle
-(`path`), the standalone export page (`index`), its integer `apiVersion`
-and the viewer package `version`; without the package it prints nothing
+(`path`), the standalone export page (`index`), its integer `apiVersion`,
+supported `documentVersions`, and the viewer package `version`; without
+the package it prints nothing
 on stdout, names `pip install "solid-node[viewer]"` on stderr and exits 1.
 A consumer must reject a missing or too-old bundle before opening.
+An older report without `documentVersions` means support for `[1, 2, 3, 4]`,
+not 5. Build/develop/export still publish version 5 and warn if the
+installed viewer cannot render it; a web snapshot refuses before opening
+the browser. Viewer API 8 supports version 5 and the running controls in
+the current development checkout; that does not imply a published release.
 
 ## Viewer HTTP surface
 
