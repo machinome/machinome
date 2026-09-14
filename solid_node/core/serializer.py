@@ -177,6 +177,18 @@ def symbolic_document(node):
     admitted over a run-owned slot, and every slot's value, binder and
     freshness marks are put back afterwards with its joint re-placed, so
     the run goes on as if nothing had happened.
+
+    The ENUMERATION's own record travels back with them: each assembly's
+    note of what its previous phase bound, which its next phase clears.
+    This walk's phases overwrite that note and, under a running root, put
+    nothing in it -- they bind no joint coordinate, because the delivery
+    bound them all outside the enumeration -- so a tree an enumeration
+    POSED would otherwise be left holding that pose's values with nothing
+    left that knows to clear them, and the next pass would read one
+    relation's two ends asymmetrically. The untimed path needs none of
+    this: with no delivery its own phases bind the same coordinates
+    through the relations, so the note it writes is the one the re-render
+    wants (OpenSpec change `a-read-is-not-a-binding`).
     """
     running = running_root(node)
     if not running and not tree_declares_drivers(node):
@@ -193,7 +205,9 @@ def symbolic_document(node):
 
     def remember(target):
         if id(target) not in previous:
-            previous[id(target)] = (target, dict(target._states))
+            previous[id(target)] = (target, dict(target._states),
+                                    target.__dict__.get('_solver_bound',
+                                                        _MISSING))
 
     def symbolic(target, path, name, declaration):
         remember(target)
@@ -228,11 +242,28 @@ def symbolic_document(node):
     try:
         yield declarations, instructions
     finally:
-        for target, states in previous.values():
+        for target, states, _bound in previous.values():
             target._states.clear()
             target._states.update(states)
         if delivery is not None:
             delivery.restore()
+            # And the ENUMERATION's own record, beside the coordinates it
+            # belongs to: each assembly's `_solver_bound` is what its next
+            # phase clears, and this walk's own phases overwrote it. Under
+            # a running root they had nothing to put in it -- the delivery
+            # bound every joint coordinate OUTSIDE the enumeration, so
+            # every relation into one records as solved by the run and
+            # binds nothing -- so without this the re-render below would
+            # inherit the restored pose's values with nothing left that
+            # knows to clear them, and read one relation's two ends
+            # asymmetrically (OpenSpec change `a-read-is-not-a-binding`).
+            # Absence is restored as absence: `clear_solved` POPS the
+            # record, so a node that held none must hold none again.
+            for target, _states, bound_slots in previous.values():
+                if bound_slots is _MISSING:
+                    target.__dict__.pop('_solver_bound', None)
+                else:
+                    target.__dict__['_solver_bound'] = bound_slots
             if held is _MISSING:
                 node.__dict__.pop('_run_binder', None)
             else:
@@ -244,7 +275,7 @@ def symbolic_document(node):
         # re-render it with is exactly what the unbound contract forbids.
         # Its stale operations are swept by whatever renders it next.
         if all(name in states
-               for target, states in previous.values()
+               for target, states, _bound in previous.values()
                for name in declared_drivers_of(type(target))):
             drive_tree(node, lambda target, path, name, declaration:
                        target._states[name])

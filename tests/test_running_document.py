@@ -54,9 +54,10 @@ from .running_project.machine import (Captured, ClassGate, Clocked,
                                       OmittedControl, Optional, OptionalRead,
                                       PortDrivenJoint, PortDrivenSmooth,
                                       Ratchet, Remainder, Sixbound, Sixfree,
-                                      SpringBank, StoppedDifferential, Swept,
-                                      ThreeCarries, Train, TrainBody, Window,
-                                      Wired)
+                                      SpringBank, StatedBelow, StatedBelowBody,
+                                      StatedBelowOpaque, StoppedDifferential,
+                                      Swept, ThreeCarries, Train, TrainBody,
+                                      Window, Wired)
 
 BASE_DOCUMENTS = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               'base_documents')
@@ -412,6 +413,89 @@ class LiveRunTest(BaseNodeTest):
         self.assertEqual(command.status, 'completed')
         self.assertAlmostEqual(sim.state['crank'], 20.0)
         self.assertAlmostEqual(sim.state['first.turn'], 40.0)
+
+
+class StatedBelowTest(BaseNodeTest):
+    """A relation a CHILD states and the ROOT only READS.
+
+    `a-read-is-not-a-binding`: the pin tumbler lock states "the key lifts
+    the pins inside the plug" in the plug's own body and reads those lifts
+    from the root. Every pose and every `Sim` accepts it; publication over
+    a tree an ENUMERATION posed refused it as doubly bound, naming a
+    relation's SOURCE as one of its binders, because the producer's
+    epilogue put the coordinates back without the record of what had bound
+    them.
+    """
+
+    def test_a_posed_running_tree_of_that_shape_publishes(self):
+        node = bound(StatedBelow())
+        node.set_state(push=1.0)
+
+        published = document(node)
+
+        self.assertEqual(published['version'], 5)
+        self.assertEqual(operations_of(published, 'd1')[0],
+                         ['t', ['0', '0', 'd1.lift']])
+        self.assertIn('plug.p1.lift', published['program']['coordinates'])
+
+    def test_a_law_that_does_not_invert_publishes_too(self):
+        """The root's relation then DEFERS instead of stepping backward,
+        and the enumeration's own fixpoint refused it against its own
+        previous binding: the same stale value, surfacing the other way."""
+        node = bound(StatedBelowOpaque())
+        node.set_state(push=1.0)
+
+        published = document(node)
+
+        self.assertEqual(published['version'], 5)
+        self.assertEqual(operations_of(published, 'd1')[0],
+                         ['t', ['0', '0', 'd1.lift']])
+
+    def test_a_posed_tree_poses_again_after_publication(self):
+        """The re-pose half of the promise: what the publication put back
+        has to let the NEXT enumeration clear and re-solve, not merely let
+        the tree be read."""
+        node = bound(StatedBelow())
+        node.set_state(push=1.0)
+
+        document(node)
+        node.set_state(push=2.0)
+
+        values = {name: get_coordinate(owner, coordinate)._value
+                  for name, (owner, coordinate) in _coordinates(node).items()}
+        self.assertEqual(values, {'plug.key.travel': 2.0,
+                                  'plug.p1.lift': 1.0,
+                                  'd1.lift': -1.0})
+        self.assertEqual(
+            {name: repr(get_coordinate(owner, coordinate).binder)
+             for name, (owner, coordinate) in _coordinates(node).items()},
+            {'plug.key.travel':
+                 '<relation push drives plug.key.travel solved forward>',
+             'plug.p1.lift':
+                 '<relation key.travel drives p1.lift solved forward>',
+             'd1.lift':
+                 '<relation plug.p1.lift drives d1.lift solved forward>'})
+
+    def test_the_untimed_twin_is_unchanged(self):
+        """The reference behaviour: the same declarations with no time
+        base always published, and this change moves nothing there."""
+        node = bound(StatedBelowBody())
+        node.set_state(push=1.0)
+
+        published = document(node)
+
+        self.assertEqual(published['version'], 4)
+        placement = operations_of(published, 'd1')[0]
+        self.assertEqual(placement[0], 't')
+        self.assertEqual(
+            free_names_of(resolved(published, placement[1][2])), {'push'})
+
+    def test_posed_or_not_publishes_the_same_document(self):
+        posed = bound(StatedBelow())
+        posed.set_state(push=1.0)
+
+        self.assertEqual(json.dumps(document(posed), sort_keys=True),
+                         json.dumps(document(StatedBelow()), sort_keys=True))
 
 
 class CoordinateTableTest(BaseNodeTest):

@@ -2252,11 +2252,20 @@ framework code changed for any of them in that cycle.
   `openspec/changes/checkpoint-the-joint/evidence.md`.
 
 - **`solid build` refuses a coordinate bound by a CHILD-declared relation
-  and read by a ROOT-declared one as doubly bound.** With
+  and read by a ROOT-declared one as doubly bound.** **FIXED (cycle
+  `a-read-is-not-a-binding`).** The producer's epilogue in
+  `symbolic_document` now puts each assembly's record of what its own
+  previous phase bound back beside the coordinates it restores, so the
+  re-render clears and re-solves exactly as the pose did; the lock's
+  shape publishes with its five lift relations in `Plug`'s own body,
+  measured on a copy of the project. Original filing, with two
+  corrections this cycle measured, below. With
   `key.insert.drives(p1.lift, law=…)` in `Plug`'s body and
   `plug.p1.lift.drives(d1.lift, ratio=-1)` in the root's, the symbolic
-  publication pass (`core/serializer.py:240` → `qualified.py:311` →
-  `couplings.py:1898`) raises
+  publication pass (`core/serializer.py:249` → `qualified.py:311` →
+  `couplings.py:1898`; the filing cited `serializer.py:240`, which is a
+  comment — the call is the RE-RENDER's `drive_tree` at :249, not the
+  walk's at :227) raises
 
       DoublyBound: plug.p1.lift would be bound by the relation key.insert
       drives p1.lift and by the relation plug.p1.lift drives d1.lift. A
@@ -2271,6 +2280,14 @@ framework code changed for any of them in that cycle.
   symbolic binding of every coordinate must read as "bound by the run" to
   `_step_relation` the way a `RunBinder` does, so a relation whose driven
   end it holds is recorded as solved rather than inverted.
+
+  Two corrections the cycle's evidence makes to that filing. The refusal
+  is NOT in the publication walk: that walk already records every
+  relation as solved by the run, exactly as the candidate fix asks, and
+  it is the RE-RENDER the producer runs in its `finally` that refuses.
+  And it needs a tree an ENUMERATION posed — `solid build` poses and
+  renders before it writes the viewer snapshot — so a never-posed tree of
+  the same class always published, which is why the suite never saw it.
 
 - **A `.repeat()` child's PORT cannot be published under a running root.**
   **FIXED (cycle `publish-only-what-runs`).** `Program.published()`
@@ -2329,6 +2346,29 @@ framework code changed for any of them in that cycle.
   coordinate that read the same coordinates, and consider fewer samples with
   a bracketed refinement when the constraint's reads are affine over the
   stretch. Numbers in the cycle's evidence.
+
+# a-read-is-not-a-binding (2026-09-14, the producer's restore)
+
+Findings outside that cycle's ratified scope, measured in
+`openspec/changes/a-read-is-not-a-binding/evidence.md` §6; **status: filed
+here; triage open**. No framework code changed for either.
+
+- **The enumeration's fixpoint leaves `_bound_by = None`, and a value it
+  bound therefore reads as trustworthy in a LATER enumeration where the
+  same value bound in a phase would defer.** `run_deferred` (ADR-099) runs
+  with no phase current, so `phase.note_bound` stamps nothing, and
+  `ResolvedEnd.bound()` reads that as "bound outside any enumeration;
+  nothing left will reclaim it". It is harmless while `clear_solved` drops
+  such a value at the owning assembly's next phase — the record the
+  producer was the one known thing to destroy — but whether the fixpoint
+  should bind under the stating assembly's phase at all is a couplings
+  question, and a bigger one than that defect.
+
+- **`_ran_in_enumeration` is the other assembly-level mark the
+  publication's phases overwrite, and the cycle restored only
+  `_solver_bound`.** Nothing measured depends on it: the re-render opens a
+  new enumeration, against which a stale mark compares unequal either way.
+  Left alone deliberately rather than fixed blind.
 
 # Execution plan (2026-09-14, autonomous wart fixes)
 

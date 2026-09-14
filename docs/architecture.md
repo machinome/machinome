@@ -1822,6 +1822,16 @@ the linked tree to a symbolic token of its qualified id, beside every
 driver's, through the delivery a run's own `set_state` uses, with a
 `RunBinder` installed for the duration so the solver records the
 relations as solved and a live run's slots are admitted and restored.
+What the producer puts back afterwards is not the coordinates alone: the
+walk's own phases also overwrite each assembly's record of what its
+previous phase bound — the record its NEXT phase clears — and under a
+running root they have nothing to put in it, because the delivery binds
+the joint coordinates outside the enumeration. That record is therefore
+snapshotted with the driver states and restored beside them, before the
+epilogue re-renders, so a tree an enumeration POSED clears and re-solves
+after the publication exactly as it would have if nothing had been
+published. The untimed path needs none of it: with no delivery its own
+phases bind the same coordinates through the relations.
 Every joint's placement therefore publishes as its coordinate's own id
 and every plain port, derived coordinate and flexible `params`
 expression as an expression over the bank: a consumer poses the geometry

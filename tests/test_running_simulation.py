@@ -34,9 +34,9 @@ from .base import BaseNodeTest
 from .running_project.machine import (Backwards, Differential, Follower,
                                       Guarded, HandBound, LoopingTrain,
                                       Opaque, Ranged, RangedExact, Sixfree,
-                                      SpringBank, SpringBankBody, Stdlib,
-                                      Stepped, SteppedBody, Stepper, Train,
-                                      TrainBody, Unbound)
+                                      SpringBank, SpringBankBody, StatedBelow,
+                                      Stdlib, Stepped, SteppedBody, Stepper,
+                                      Train, TrainBody, Unbound)
 
 
 def reads(node, name):
@@ -1000,3 +1000,41 @@ class OneTreeOneOwnerTest(BaseNodeTest):
             simulation.run(1.0)
             banks.append(simulation.state)
         self.assertEqual(banks[0], banks[1])
+
+
+class StatedBelowRunTest(BaseNodeTest):
+    """A LIVE run over the shape `a-read-is-not-a-binding` fixes.
+
+    The child states the relation into its own leaf's joint and the root
+    only READS it. A run accepted this all along -- the refusal was the
+    producer's epilogue over a tree an ENUMERATION posed -- so what these
+    pin is that the completed restore leaves a live run exactly where it
+    was: the bank after the publication is the bank the run computed, and
+    the next tick goes on from it.
+    """
+
+    def test_the_run_poses_both_coordinates_from_its_driver(self):
+        node = StatedBelow()
+        sim = Sim(node, 0.05)
+        sim.move('push', to=2.0, duration=0.2)
+        sim.run(0.4)
+
+        self.assertAlmostEqual(sim.state['plug.key.travel'], 2.0)
+        self.assertAlmostEqual(sim.state['plug.p1.lift'], 1.0)
+        self.assertAlmostEqual(sim.state['d1.lift'], -1.0)
+
+    def test_publishing_under_that_run_leaves_the_bank_alone(self):
+        from solid_node.core.serializer import symbolic_document
+
+        node = StatedBelow()
+        sim = Sim(node, 0.05)
+        sim.move('push', to=2.0, duration=0.2)
+        sim.run(0.4)
+        state = sim.state
+
+        with symbolic_document(node) as (_declarations, _instructions):
+            pass
+
+        self.assertEqual(sim.state, state)
+        sim.run(0.2)
+        self.assertEqual(sim.state, state)

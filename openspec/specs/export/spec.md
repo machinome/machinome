@@ -811,6 +811,23 @@ binder and its freshness marks — and SHALL re-place the joints from what
 their coordinates then hold, so a caller that held a posed tree still holds
 one. A declared range SHALL NOT judge a symbolic binding.
 
+The restore SHALL leave the tree able to be POSED again, not only read: a
+tree whose coordinates an enumeration bound before the publication SHALL,
+after the publication, clear and re-solve exactly as it would have if
+nothing had been published. Whatever record the framework keeps of which
+coordinates an enumeration bound — the record the next pass reads to decide
+what is stale — SHALL therefore be restored beside the coordinates
+themselves, because the publication's own enumeration replaces it while
+binding none of those coordinates itself.
+
+PUBLISHING SHALL REFUSE NO DECLARATION a pose accepts. In particular, a
+relation a CHILD assembly declares into its own coordinate, whose value a
+relation the ROOT declares then READS to drive another coordinate, is a
+legal shape under a running root: the tree poses, a simulation runs it, and
+its document publishes, naming that coordinate's id wherever it poses
+geometry. A relation's SOURCE SHALL NEVER be reported as one of its
+binders.
+
 #### Scenario: A joint's placement is its coordinate's name
 
 - **WHEN** a running root drives a register wheel through a carry law and
@@ -844,6 +861,24 @@ one. A declared range SHALL NOT judge a symbolic binding.
 - **WHEN** a posed running tree is serialized and the producer returns
 - **THEN** every joint coordinate holds the value, binder and placement it
   held before, and rendering it again reproduces the same pose
+
+#### Scenario: A child states the relation and the root reads it
+
+- **WHEN** a running root whose child assembly declares
+  `key.insert.drives(p1.lift, …)` and whose own body declares
+  `plug.p1.lift.drives(d1.lift, ratio=-1)` is posed and its document is
+  published
+- **THEN** the document is published, `d1`'s placement names `d1.lift`, and
+  nothing is refused — with the root's law reading forward only, as well as
+  with one that inverts
+
+#### Scenario: A posed tree re-solves after publication
+
+- **WHEN** a running tree posed by `set_state` is published and then posed
+  again
+- **THEN** every coordinate holds the value that pose computes, each bound
+  by the relation that states it, and no coordinate is reported as bound by
+  two statements
 
 ### Requirement: A running document's clock is a published name
 

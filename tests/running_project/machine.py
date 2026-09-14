@@ -2317,3 +2317,67 @@ class OptionalRead(AssemblyNode):
         self.spare.translate([20.0, 0.0, 0.0])
         if not self.fitted:
             self.spare.omit()
+
+
+def squared(source, target):
+    """A law that does not invert: the same shape, read forward only."""
+    return lambda lift: lift * lift
+
+
+class StatedPlug(AssemblyNode):
+    """The CHILD assembly, stating a relation into its OWN leaf's joint.
+
+    The sentence belongs here -- the key lifts the pin inside the plug --
+    and the root above reads the lift it produces. `a-read-is-not-a-binding`
+    is the shape: a coordinate a child binds and an ancestor only READS.
+    """
+
+    key = Slide()
+    p1 = Pin()
+
+    key.travel.drives(p1.lift, ratio=0.5)
+
+    def render(self):
+        self.p1.translate([0.0, 0.0, 10.0])
+
+
+class StatedBelowBody(AssemblyNode):
+    """The root reading what the child stated, with no time base: the
+    untimed twin, which has always published."""
+
+    push = Driver(default=0.0, unit='mm')
+
+    plug = StatedPlug()
+    d1 = Pin()
+
+    push.drives(plug.key.travel)
+    plug.p1.lift.drives(d1.lift, ratio=-1)
+
+    def render(self):
+        self.d1.translate([20.0, 0.0, 0.0])
+
+
+class StatedBelow(StatedBelowBody):
+    """The same machine, running: the tree a `solid build` poses with an
+    enumeration and then publishes."""
+
+    time = Time.running()
+
+
+class StatedBelowOpaque(AssemblyNode):
+    """`StatedBelow`'s two relations with a root law that does NOT
+    invert, so the root's relation DEFERS where the affine one steps
+    backward -- the second way one stale value surfaces."""
+
+    time = Time.running()
+
+    push = Driver(default=0.0, unit='mm')
+
+    plug = StatedPlug()
+    d1 = Pin()
+
+    push.drives(plug.key.travel)
+    plug.p1.lift.drives(d1.lift, law=squared)
+
+    def render(self):
+        self.d1.translate([20.0, 0.0, 0.0])

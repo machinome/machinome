@@ -326,3 +326,198 @@ root relation and an affine law, reproduces the refusal on its own.
    so a child-declared RELATION is the shape, as the lock states it.
    Whether some other route to a deferred root relation exists was not
    searched exhaustively.
+
+---
+
+# Implementation record
+
+Measured on this worktree, branch `fix-warts` at the planning commit
+`3519c61`, with
+
+    PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest …
+
+## 7. Baseline (task 1.1)
+
+At `3519c61`, before any edit:
+
+| file | result |
+| --- | --- |
+| `tests/test_running_document.py` | 71 passed, 83 subtests passed |
+| `tests/test_running_simulation.py` | 73 passed, 19 subtests passed |
+| `tests/test_couplings.py` | 177 passed, 170 subtests passed |
+| `tests/test_running_corpus.py` | 8 passed, 42 subtests passed |
+| the four together | `329 passed, 2 warnings, 314 subtests passed in 23.47s` |
+
+## 8. The fixtures, and the RED they produce (tasks 1.2 to 1.4)
+
+`tests/running_project/machine.py` gains `StatedPlug` (the CHILD
+assembly stating `key.travel.drives(p1.lift, ratio=0.5)` over the
+existing `Slide` and `Pin` leaves), `StatedBelowBody` (the root stating
+`push.drives(plug.key.travel)` and `plug.p1.lift.drives(d1.lift,
+ratio=-1)`), `StatedBelow` (the same, running) and `StatedBelowOpaque`
+(the running root with `law=squared`, which does not invert). It is
+`evidence/fixture.py`'s `Lock`/`OpaqueLock` in the running project's own
+vocabulary; nothing is added to `tools/generate_running_corpus.py`'s
+`CORPUS`.
+
+Measured on the fixtures before any change to the framework, the wart
+reproduces verbatim:
+
+    posed running  plug.key.travel=1.0, plug.p1.lift=0.5, d1.lift=-0.5
+    running posed  REFUSED DoublyBound plug.p1.lift would be bound by the
+                   relation key.travel drives p1.lift and by the relation
+                   plug.p1.lift drives d1.lift. …
+    posed untimed  plug.key.travel=1.0, plug.p1.lift=0.5, d1.lift=-0.5
+    untimed posed  PUBLISHED
+    posed opaque   plug.key.travel=1.0, plug.p1.lift=0.5, d1.lift=0.25
+    opaque posed   REFUSED DoublyBound d1.lift would be bound by the
+                   relation plug.p1.lift drives d1.lift and by the
+                   relation plug.p1.lift drives d1.lift. …
+    running fresh  PUBLISHED
+
+RED, `tests/test_running_document.py::StatedBelowTest`, at the planning
+commit's framework code:
+
+    $ … -m pytest tests/test_running_document.py -q -k StatedBelow
+    FAILED …::StatedBelowTest::test_a_law_that_does_not_invert_publishes_too
+    FAILED …::StatedBelowTest::test_a_posed_running_tree_of_that_shape_publishes
+    FAILED …::StatedBelowTest::test_a_posed_tree_poses_again_after_publication
+    FAILED …::StatedBelowTest::test_posed_or_not_publishes_the_same_document
+    4 failed, 1 passed, 71 deselected in 1.47s
+
+Each of the four fails with `DoublyBound` — the three affine ones naming
+`plug.p1.lift` "bound by the relation key.travel drives p1.lift and by
+the relation plug.p1.lift drives d1.lift", the opaque one naming
+`d1.lift` bound twice by one relation. The fifth,
+`test_the_untimed_twin_is_unchanged`, passes red and green: the untimed
+path is the reference behaviour, not a new one.
+
+`tests/test_running_simulation.py::StatedBelowRunTest` (task 1.4) is
+GREEN at the planning commit too, and deliberately so: a live run always
+accepted this shape (§1, §3). It is a guard that the completed restore
+does not disturb one — `2 passed, 73 deselected`.
+
+## 9. GREEN, and the mechanism (task 2)
+
+`symbolic_document`'s `remember` now snapshots each visited node's
+`_solver_bound` beside its driver states, and the `finally` puts it back
+after `delivery.restore()` and before the re-render, only when
+`delivery is not None`, restoring absence as absence (`clear_solved`
+POPS the record).
+
+    $ … -m pytest tests/test_running_document.py -q -k StatedBelow
+    5 passed, 71 deselected in 1.11s
+
+The mechanism, not just the colour: `evidence/probe_publication.py`
+re-run against the changed worktree traces the fixture's RE-RENDER
+(enumeration 3) consuming the restored record and solving every relation
+FORWARD, where §2 measured it clearing nothing and stepping backward:
+
+    [re-render (the finally block)] clear_solved(Lock) _solver_bound=[
+        'key.insert(value=1.0, run_owned=False, enum=0x…c807c0)',
+        'key.insert(value=1.0, run_owned=False, enum=0x…c807c0)',
+        'd1.lift(value=-0.5, run_owned=False, enum=0x…c807c0)']
+    attempt push drives plug.key.insert
+        driven plug.key.insert value=None binder=None … bound=False
+        -> changed=True direction='forward'
+    attempt plug.p1.lift drives d1.lift
+        driver plug.p1.lift value=0.5 … _bound_by=Plug bound=False
+        driven d1.lift       value=None binder=None … bound=False
+        -> changed=False direction=None          (deferred, as in the pose)
+    [re-render (the finally block)] clear_solved(Plug) _solver_bound=[
+        'p1.lift(value=0.5, run_owned=False, enum=0x…c807c0)',
+        'p1.lift(value=0.5, run_owned=False, enum=0x…c807c0)']
+    attempt key.insert drives p1.lift
+        driven plug.p1.lift value=None binder=None … bound=False
+        -> changed=True direction='forward'
+    attempt plug.p1.lift drives d1.lift
+        driver plug.p1.lift value=0.5 … bound=True
+        driven d1.lift      value=None … bound=False
+        -> changed=True direction='forward'
+    -- after publication
+       plug.key.insert=1.0  <relation push drives plug.key.insert solved forward>
+       plug.p1.lift=0.5     <relation key.insert drives p1.lift solved forward>
+       d1.lift=-0.5         <relation plug.p1.lift drives d1.lift solved forward>
+    running root: PUBLISHED
+
+Both records are the ones ENUMERATION 1 wrote — the slots still carry
+enumeration 1's marker (`enum=0x…c807c0`) and its values — so
+`clear_solved` drops all three coordinates (`value=None`, `binder=None`
+at each attempt), and the pass that follows is the pose's own pass, in
+the pose's own direction. The asymmetric read of §2 cannot arise,
+because neither end carries a stale value to read.
+
+Task 2.4: `solid_node/motion/couplings.py`, `solid_node/motion/ports.py`,
+`solid_node/node/phase.py` and `solid_node/node/assembly.py` are
+unchanged — read, and confirmed by `git diff --stat`, whose only source
+file is `solid_node/core/serializer.py`.
+
+## 10. The recorded documents (task 3)
+
+- `ByteIdentityTest`: `1 passed, 7 subtests passed`, and
+  `git status tests/base_documents/` is empty — no captured document
+  moved a byte.
+- `python tools/generate_running_corpus.py` rewrote
+  `tests/running-corpus.json` (14 scenarios over 12 machines, 276 ticks,
+  185444 bytes) and `git diff` on it is empty.
+
+## 11. Proof (task 4)
+
+4.1, after the change:
+
+| file | result |
+| --- | --- |
+| `tests/test_running_document.py` + `test_running_simulation.py` + `test_couplings.py` + `test_running_corpus.py` + `test_running_stops.py` + `test_running_jumps.py` | `434 passed, 2 warnings, 653 subtests passed in 30.68s` |
+| the whole suite (`pytest tests/ -q`) | `2669 passed, 4 skipped, 50 warnings, 1493 subtests passed in 328.54s` |
+
+The four baseline files of §7 went from `329 passed, 314 subtests` to
+`336 passed, 314 subtests` — the seven tests this cycle adds (five in
+`test_running_document.py`, two in `test_running_simulation.py`) and
+nothing else. No test was edited to make it pass.
+
+4.2, the probes re-run against the changed worktree (before/after):
+
+| probe | before | after |
+| --- | --- | --- |
+| `probe_publication.py`, running root | `REFUSED DoublyBound: plug.p1.lift …` | `PUBLISHED`, with the trace of §9 |
+| `probe_publication.py`, untimed twin | `PUBLISHED` | `PUBLISHED`, trace unchanged |
+| `probe_sim.py` | live run, fresh publication and hand pose: `PUBLISHED`; publication after an enumeration pose refused | all four `PUBLISHED`, bank unchanged after the publication and after one more tick |
+| `probe_candidates.py`, baseline (no patch) | `REFUSED` on both laws | `PUBLISHED` on both laws |
+| `probe_candidates.py`, candidate A | `PUBLISHED` | `PUBLISHED` — the patch is now a NO-OP, it restores what the producer already restores |
+| `probe_candidates.py`, candidate C | `REFUSED DoublyBound: d1.lift …` | `PUBLISHED` — the stale value it could not remove is gone, so its stamp no longer has one to misread |
+
+4.3, the originating project. A copy of
+`projects/Locks/Pin_tumbler_lock` was made with `tar` into the session's
+scratchpad (the project itself was never written to; `git status` there
+is clean), and its five lift relations moved back from
+`PinTumblerLock`'s body into `Plug`'s, after the `key = Key(…)`
+declaration the bound reads:
+
+    key.insert.drives(p1.lift, law=key_lift(0))
+    …
+    key.insert.drives(p5.lift, law=key_lift(4))
+
+With NO patch, against this worktree:
+
+    $ … evidence/probe_lock.py <copy>
+    posed
+      declarations: ['insertion', 'rotation']
+    PUBLISHED
+
+against `REFUSED DoublyBound: plug.p1.lift …` at the planning commit
+(§5). The lock publishes in the shape its `design.md` §5 says it wanted.
+Making that edit in the project itself stays the pilot's call.
+
+## 12. The record (task 5)
+
+- `docs/architecture.md`: the running-publication section now says what
+  the producer puts back beside the coordinates, and why the untimed path
+  needs none of it.
+- `docs/changelog.rst`: one Unreleased entry.
+- `workflow/warts.md`: the finding marked **FIXED (cycle
+  `a-read-is-not-a-binding`)**, its stale `serializer.py:240` line
+  reference corrected to the re-render's `:249` (`:240` is a comment at
+  this base; the walk's own call is `:227`), and the two corrections the
+  cycle's evidence makes to the filing recorded under it. The two
+  out-of-scope findings of §6 are filed, untriaged, in their own section.
+- No ADR (task 5.4, design.md decision 4).

@@ -8,6 +8,23 @@ Changelog
 Unreleased
 ----------
 
+**A read is not a binding: a child's relation the root only reads
+publishes.** A relation an assembly declares into its OWN leaf's joint,
+whose value a relation the ROOT declares then reads to drive another
+coordinate, was refused at publication with ``DoublyBound`` naming the
+root relation's SOURCE as one of its binders. Every pose, every ``Sim``
+and every untimed document accepted the same declarations; only
+publication over a tree an ENUMERATION had posed — which is what ``solid
+build``, ``solid export`` and ``solid snapshot`` hand the producer —
+refused. The producer's epilogue restored every coordinate's value,
+binder and freshness marks but not the enumeration's own record of
+having bound them, so its re-render inherited the pose's values with
+nothing left that knew to clear them and read one relation's two ends
+asymmetrically. That record now travels back with the coordinates, and a
+tree posed before publication poses again afterwards exactly as if
+nothing had been published. No document moves a byte, and the untimed
+and looping paths are untouched.
+
 **A running root's document publishes only the program it computes.** A
 ``.repeat()`` child's port and a part this render ``omit()``s used to
 refuse the whole document when a driver drove them: the relation reaches
