@@ -124,19 +124,19 @@ existing export safe.
 Design D12. Behaviour is held identical; the table in the design is the
 checklist.
 
-- [ ] 3.1 **Red** — `src/reloader.test.ts`: `app/src/reloader.test.ts`'s
+- [x] 3.1 **Red** — `src/reloader.test.ts`: `app/src/reloader.test.ts`'s
       nine cases ported to vitest (`vi.useFakeTimers`, `vi.fn`) under the
       jsdom pragma, plus one new case asserting the injected
       `#solid-node-reloader-style` appears once. Assert the banner's id,
       class **and** exact text.
       *Goes red at module resolution: `src/reloader.ts` does not exist.*
       Command: `npx vitest run src/reloader.test.ts`
-- [ ] 3.2 **Green** — `src/reloader.ts`: `app/src/reloader.ts` with
+- [x] 3.2 **Green** — `src/reloader.ts`: `app/src/reloader.ts` with
       `SetErrorType` replaced by `(message: string) => void` and the
       banner rule moved from `app/src/App.css` into an injected
       stylesheet. Every constant and every branch identical; diff the two
       files and record what changed in `evidence.md`.
-- [ ] Commit: `feat(reloader): carry the development reload client in the bundle`.
+- [x] Commit: `feat(reloader): carry the development reload client in the bundle`.
 
 ## 4. The development page, served
 

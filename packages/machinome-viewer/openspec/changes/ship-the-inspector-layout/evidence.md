@@ -214,3 +214,61 @@ $ npm test
  Test Files  32 passed (32)
       Tests  626 passed (626)
 ```
+
+## 3. The reloader, in the bundle
+
+Design D12. Behaviour is held identical; the table in the design is the
+checklist.
+
+**Deviation, mechanical:** the design and tasks.md both say
+`app/src/reloader.test.ts` has nine jest cases; it has eight
+(`grep -c "  it(" app/src/reloader.test.ts` → 8). All eight are ported
+unchanged in intent, plus the one new case design D12 itself asks for
+(the injected stylesheet), for nine total in `reloader.test.ts` — which
+does match the design's final count, so the discrepancy is only in
+where the design believed the extra case was coming from.
+
+### 3.1 Red
+
+`src/reloader.test.ts`: the eight existing cases ported to vitest
+(`vi.useFakeTimers`, `vi.fn`) under the jsdom pragma, asserting the
+banner's id, class **and** exact text, plus one new case for the
+injected `#solid-node-reloader-style`.
+
+```
+$ cd solid_node_viewer/widget && npx vitest run src/reloader.test.ts
+Error: Failed to resolve import "./reloader" from "src/reloader.test.ts". Does the file exist?
+ Test Files  1 failed (1)
+      Tests  no tests
+```
+Red as expected: `src/reloader.ts` did not exist.
+
+### 3.2 Green
+
+`src/reloader.ts`: `app/src/reloader.ts` with `SetErrorType` (React's
+`Dispatch<SetStateAction<string>>`) replaced by `(message: string) =>
+void`, and the banner rule moved from `app/src/App.css` into an injected
+`#solid-node-reloader-style` stylesheet.
+
+```
+$ npx vitest run src/reloader.test.ts
+ ✓ src/reloader.test.ts (9 tests) 42ms
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+
+$ npx tsc --noEmit
+(no output, exit 0)
+```
+
+`diff solid_node_viewer/app/src/reloader.ts solid_node_viewer/widget/src/reloader.ts`
+— every constant and every branch identical; the only differences are
+the `SetErrorType` → callback type change (both occurrences), the added
+`STYLE_ID`/`RELOADER_STYLESHEET`/`injectStylesheet()` and its one call
+site in the constructor, and doc comments.
+
+```
+$ npm test
+ Test Files  33 passed (33)
+      Tests  635 passed (635)
+```
+32 pre-existing files + `reloader.test.ts` = 33.
