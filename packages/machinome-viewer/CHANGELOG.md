@@ -315,6 +315,43 @@ The viewer stops posing a machine and starts running one.
   stops a drag passes through, which is a different feature from the
   report a gesture needs.
 
+- **A declared bound may read other coordinates, and the worker executes
+  it.** solid-node's ADR-113 widened a joint's range bound from a number
+  or an expression over the bounded coordinate's own value to one that
+  READS OTHER COORDINATES. Under a running root such a bound is a
+  CONSTRAINT: the bounded coordinate frozen at the step's committed
+  value, every coordinate it reads taken along the step's path by one
+  pass over that bound's sub-program, examined only when something it
+  depends on moves, located by sampling INSIDE the stretch rather than at
+  its ends, and stopping every input that carries the level outward — the
+  inputs moving what it READS included, so a dependency never overruns a
+  standing coordinate. The viewer derives what it needs from what the
+  document already publishes: the bound's reads are its expression's free
+  names CLOSED OVER the bindings table, its sub-program is a filter of
+  the published edges and its candidates a union over the published
+  reaching-input table. A bound over the bounded coordinate alone keeps
+  its meaning, its code path and its cost exactly. (ADR-054, consuming
+  solid-node ADR-113.)
+
+- **The pin tumbler lock's own published document mounts and runs in a
+  browser.** `projects/Locks/Pin_tumbler_lock`'s build was refused by
+  name until this — its plug's bound reaches five pin lifts only through
+  the document's bindings table, and its key's bound names the plug
+  directly. Driven by its own declared instructions, the plug turns its
+  whole 90° with the key seated, the key is captured while the plug
+  stands turned, and the plug will not turn at all with the key
+  withdrawn.
+
+- **The conformance corpus is the producer's regenerated one**: 14
+  scenarios over 12 machines, 276 steps, with the new `Captured` machine
+  exercising a bound that reads another coordinate and a stop reached by
+  the motion of what a bound reads. The suite's own width guard requires
+  both, so a narrower corpus copied in is refused here.
+
+- **No version moves.** `documentVersions` stays `[1, 2, 3, 4, 5]`, the
+  shape of a span is unchanged, and no public JS surface moves, so the
+  declared widget API version stays at 12.
+
 ## 0.1.0 — unreleased
 
 The viewer leaves the solid-node framework and becomes this package.

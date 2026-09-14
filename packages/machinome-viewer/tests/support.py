@@ -28,6 +28,10 @@ SPINNER = FIXTURES / 'spinner'
 #: The Pascaline module's own published build: a version 5 document
 #: carrying a compiled mechanical program, beside stand-in meshes.
 PASCALINE = FIXTURES / 'pascaline'
+#: The pin tumbler lock's own published build: a version 5 document
+#: whose spans READ OTHER COORDINATES, beside stand-in meshes. See its
+#: own README.
+LOCK = FIXTURES / 'lock'
 #: The same module's classes published with a `controls` table: a
 #: version 5 document whose six controls make three dials touchable,
 #: beside stand-in meshes. See its own README.
@@ -96,6 +100,14 @@ def published_run(target):
     """Stage the running fixture: a version 5 document carrying a
     program, already named ``viewer.json``, beside the meshes it names."""
     shutil.copytree(PASCALINE, target)
+    return Path(target)
+
+
+def published_lock(target):
+    """Stage the LOCK fixture: the lock's own published version 5
+    document, whose bounds read other coordinates, beside the stand-in
+    meshes it names."""
+    shutil.copytree(LOCK, target)
     return Path(target)
 
 

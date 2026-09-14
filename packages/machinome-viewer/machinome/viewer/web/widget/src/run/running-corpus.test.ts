@@ -15,6 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 import corpus from '../running-corpus.json';
+import { freeVariables } from '../evaluator';
 import { Engine } from './engine';
 import type { Command } from './commands';
 import type { RunDocument } from './program';
@@ -221,10 +222,10 @@ describe('the running corpus', () => {
   it('is the framework\'s own fixture, unedited', () => {
     expect(fixture.generated_by).toBe('tools/generate_running_corpus.py');
     expect(fixture.corpus).toBe('tests/running_project/machine.py');
-    expect(fixture.machines).toHaveLength(13);
-    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(11);
+    expect(fixture.machines).toHaveLength(14);
+    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(12);
     expect(fixture.machines.reduce((total, one) => total + one.ticks.length, 0))
-      .toBe(260);
+      .toBe(276);
   });
 
   fixture.machines.forEach((entry, index) => {
@@ -249,6 +250,8 @@ const REQUIRED = [
   'a multi-source law',
   'a stop located inside a tick',
   'a bound stated as an expression',
+  'a bound reading another coordinate',
+  'a stop reached by the motion of what a bound reads',
   'a command retired blocked',
   'a rate',
   'a snapshot',
@@ -258,19 +261,48 @@ const REQUIRED = [
   'a tick carrying both a crossing and a stop',
 ];
 
+/** Every free name `expression` reads, through the fixture's OWN
+ * bindings table: the generator's `free_names(expression, bindings)`,
+ * reproduced here rather than borrowed from `loadProgram`, because this
+ * guard must be red on a narrowed corpus even when the engine is
+ * broken. */
+function freeNamesOf(expression: string,
+                     bindings: Record<string, string>): Set<string> {
+  const found = new Set<string>();
+  const seen = new Set<string>();
+  const pending = [expression];
+  while (pending.length > 0) {
+    const text = pending.pop()!;
+    if (seen.has(text)) continue;
+    seen.add(text);
+    for (const name of freeVariables(text)) {
+      if (name in bindings) pending.push(bindings[name]);
+      else found.add(name);
+    }
+  }
+  return found;
+}
+
 export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
   const seen = new Set<string>();
   for (const entry of machines) {
     const document = entry.document as {
       program?: {
+        coordinates?: Record<string, { initial?: number }>;
         edges?: {
           kind: string; needs: string[];
           plans?: ({ jumps: { primitive: string }[] } | null)[];
         }[];
         spans?: Record<string, Record<string, unknown>>;
       };
+      bindings?: { name: string; expression: string }[];
       instructions?: Record<string, Record<string, unknown>>;
     };
+    const bindings: Record<string, string> = {};
+    for (const item of document.bindings ?? []) {
+      bindings[item.name] = item.expression;
+    }
+    const banked = new Set(Object.keys(document.program?.coordinates ?? {}));
     const program = document.program ?? {};
     for (const edge of program.edges ?? []) {
       if (edge.kind === 'law' && edge.needs.length > 1) {
@@ -284,10 +316,16 @@ export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
         }
       }
     }
-    for (const span of Object.values(program.spans ?? {})) {
+    for (const [identifier, span] of Object.entries(program.spans ?? {})) {
       for (const side of ['low', 'high']) {
-        if (span[side] !== null && typeof span[side] === 'object') {
-          seen.add('a bound stated as an expression');
+        const bound = span[side];
+        if (bound === null || typeof bound !== 'object') continue;
+        seen.add('a bound stated as an expression');
+        const names = freeNamesOf(
+          (bound as { expression: string }).expression, bindings);
+        names.delete(identifier);
+        for (const name of names) {
+          if (banked.has(name)) seen.add('a bound reading another coordinate');
         }
       }
     }
@@ -300,14 +338,27 @@ export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
       if (action.snapshot !== undefined) seen.add('a snapshot');
       if (action.restore !== undefined) seen.add('a restore');
     }
+    let previous: Record<string, number> | null = null;
     for (const tick of entry.ticks) {
       if (tick.stops.length > 0) seen.add('a stop located inside a tick');
+      for (const stop of tick.stops) {
+        // A stop whose coordinate holds the SAME value before and after
+        // its tick was reached by the motion of what the bound READS,
+        // not by the coordinate's own.
+        const before = previous !== null
+          ? previous[stop.coordinate]
+          : (program.coordinates ?? {})[stop.coordinate]?.initial;
+        if (before !== undefined && before === tick.bank[stop.coordinate]) {
+          seen.add('a stop reached by the motion of what a bound reads');
+        }
+      }
       if (tick.stops.length > 0 && tick.crossings.length > 0) {
         seen.add('a tick carrying both a crossing and a stop');
       }
       for (const command of tick.commands) {
         if (command.status === 'blocked') seen.add('a command retired blocked');
       }
+      previous = tick.bank;
     }
   }
   return REQUIRED.filter((feature) => !seen.has(feature));
@@ -327,5 +378,9 @@ describe('the corpus\'s width', () => {
     expect(uncoveredFeatures(trimmed).length).toBeGreaterThan(0);
     expect(uncoveredFeatures(trimmed)).toContain('floor');
     expect(uncoveredFeatures(trimmed)).toContain('a stop located inside a tick');
+    expect(uncoveredFeatures(trimmed)).toContain(
+      'a bound reading another coordinate');
+    expect(uncoveredFeatures(trimmed)).toContain(
+      'a stop reached by the motion of what a bound reads');
   });
 });

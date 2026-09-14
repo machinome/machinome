@@ -146,6 +146,29 @@ export interface Determination {
   index: number;
 }
 
+/** One bound that READS OTHER COORDINATES, compiled (design D1) --
+ * `simulation/program.py`'s `Constraint` dataclass, derived here rather
+ * than published, because the sub-program is a filter of `edges` and the
+ * candidates a union over `sources`, with no decision in either
+ * (ADR-110). */
+export interface Constraint {
+  identifier: string;
+  side: 'low' | 'high';
+  /** The bound's own expression, over the bounded coordinate's id and
+   * `reads`. */
+  expression: string;
+  /** The bindings CLOSURE of the expression's free names, minus the own
+   * id, sorted (design D2). */
+  reads: readonly string[];
+  /** The published edges determining the bounded coordinate and every
+   * read, and what those need, in the program's own order; never a
+   * check. */
+  edges: readonly ProgramEdge[];
+  /** The sorted union of `sources` over the bounded coordinate and every
+   * read. */
+  candidates: readonly string[];
+}
+
 export interface LoadedProgram {
   identity: string;
   clock: string;
@@ -161,6 +184,11 @@ export interface LoadedProgram {
   sources: Readonly<Record<string, readonly string[]>>;
   limits: ProgramLimits;
   determiner: ReadonlyMap<string, Determination>;
+  /** One entry per bound that reads other coordinates, keyed
+   * `` `${identifier}:${side}` `` (design D1). A side that is `null`, a
+   * number, or an expression naming the bounded coordinate alone makes
+   * no entry. */
+  constraints: ReadonlyMap<string, Constraint>;
   /** Every branch placeholder, and the plan that binds it. */
   placeholders: ReadonlyMap<string, ProgramPlan>;
   drivers: Readonly<Record<string, ManifestDriver>>;
@@ -708,12 +736,66 @@ export function loadProgram(
       }
     });
   }
-  for (const [id, span] of Object.entries(spans)) {
-    for (const bound of [span.low, span.high]) {
-      if (bound !== null && typeof bound === 'object') {
-        check(bound.expression, new Set([id]),
-              `the bound declared on "${id}"`);
+  // 11 (continued). What a bound may read: the bounded coordinate's own
+  // id together with every coordinate of the bank (design D3). An
+  // intermediate, the clock, a branch placeholder or an unknown name is
+  // still refused, by name, here.
+  //
+  // The SUB-PROGRAM of a constraint: the published edges determining
+  // `keys` and everything they need, in the program's own order --
+  // `Program._sub_program` reproduced, walked in reverse and reversed
+  // again, a check never among them.
+  const subProgram = (keys: readonly string[]): ProgramEdge[] => {
+    const needed = new Set(keys);
+    const chosen: ProgramEdge[] = [];
+    for (let at = edges.length - 1; at >= 0; at -= 1) {
+      const edge = edges[at];
+      if (edge.kind === 'check') continue;
+      if (edge.gives.some((key) => needed.has(key))) {
+        chosen.push(edge);
+        for (const key of edge.needs) needed.add(key);
       }
+    }
+    chosen.reverse();
+    return chosen;
+  };
+
+  const intermediateSet = new Set(intermediates);
+  const constraints = new Map<string, Constraint>();
+  for (const [id, span] of Object.entries(spans)) {
+    for (const side of ['low', 'high'] as const) {
+      const bound = span[side];
+      if (bound === null || typeof bound !== 'object') continue;
+      const names = namesOf(bound.expression);
+      for (const name of names) {
+        if (name === id || bank.has(name)) continue;
+        const why = intermediateSet.has(name)
+          ? ': that name is a published computed value, not a coordinate '
+            + 'of the bank, and a bound reads the STATE -- read the joint '
+            + 'the port follows.'
+          : '.';
+        refuse(
+          `the bound declared on "${id}" names "${name}", which it may ` +
+          `not read${why} It may read: ${id} and any of the program's ` +
+          `${order.length} coordinates. Quoting the expression: ` +
+          `${quoted(bound.expression)}.`);
+      }
+      // D2: the reads are the CLOSURE minus the own id, sorted. A bound
+      // naming no coordinate but its own is not a constraint: its
+      // meaning, its path and its cost stay exactly what they are.
+      const reads = [...names].filter((name) => name !== id).sort();
+      if (reads.length === 0) continue;
+      const keys = [id, ...reads];
+      const candidates = [...new Set(
+        keys.flatMap((key) => sources[key] ?? []))].sort();
+      constraints.set(`${id}:${side}`, {
+        identifier: id,
+        side,
+        expression: bound.expression,
+        reads,
+        edges: subProgram(keys),
+        candidates,
+      });
     }
   }
 
@@ -732,6 +814,7 @@ export function loadProgram(
     sources,
     limits,
     determiner,
+    constraints,
     placeholders,
     drivers: document.drivers ?? {},
     instructions: document.instructions ?? {},

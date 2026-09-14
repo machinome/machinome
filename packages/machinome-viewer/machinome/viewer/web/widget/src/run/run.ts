@@ -27,7 +27,7 @@ import { Command, CommandRecord } from './commands';
 import { edgeCuts, edgeIncrements, edgeValues, predictsOf } from './edges';
 import { CrossingRecord } from './jumps';
 import {
-  evaluateExpression, ProgramBound, ProgramEdge, RunConflict,
+  Constraint, evaluateExpression, ProgramBound, ProgramEdge, RunConflict,
   StopInvariantError, TooManyCrossings, UnsupportedLaw,
 } from './program';
 import type { LoadedProgram } from './program';
@@ -69,8 +69,20 @@ export interface MoveRequest {
   duration?: number;
 }
 
-type Reached = [string, 'low' | 'high', number];
-type Located = [number, string, 'low' | 'high', number];
+/** One bound this stretch reaches: the coordinate, the side, the bound
+ * itself -- a NUMBER, or the `Constraint` for a bound that reads other
+ * coordinates -- and, for a constraint, the fraction the search already
+ * located, which `eventOf` uses instead of calling `locate`. */
+type Reached = [string, 'low' | 'high', number | Constraint, number | null];
+type Located = [number, string, 'low' | 'high', number | Constraint];
+
+type Bounds = [string, number | Constraint | null,
+               number | Constraint | null][];
+
+function isConstraint(bound: number | Constraint | null):
+bound is Constraint {
+  return bound !== null && typeof bound === 'object';
+}
 
 /** A bounded ring of the most recent entries, or nothing at all. */
 class Ring<T> {
@@ -370,7 +382,8 @@ export class Run {
         for (const id of Object.keys(staged)) {
           committed[id] = staged[id] + (deltas[id] ?? 0);
         }
-        const reached = this.reachedBounds(staged, committed, bounds);
+        const reached = this.reachedBounds(staged, committed, bounds,
+                                           values, scaled);
         if (reached.length === 0) {
           record(crossings, found, start, 1);
           staged = committed;
@@ -402,17 +415,38 @@ export class Run {
 
         const blocked = new Set<string>();
         for (const [, identifier, side, bound] of event) {
-          // AT the bound, exactly. The localization's own error is
-          // absorbed here rather than left to raise later.
-          committed[identifier] = bound;
-          const group = this.groupOf(identifier, scaled, values);
+          let value: number;
+          let group: string[];
+          if (isConstraint(bound)) {
+            // NOTHING to snap to -- the bound at `t*` is on one side of
+            // a step or the other, and the coordinate that stopped may
+            // not have moved at all -- and nothing to snap FOR: the
+            // sample arithmetic IS the segment arithmetic, so the
+            // committed state satisfies the bound by construction.
+            // Asserted below rather than trusted.
+            value = this.constraintBound(bound, committed);
+            group = this.constraintGroup(bound, scaled, values, staged);
+          } else {
+            // AT the bound, exactly. The localization's own error is
+            // absorbed here rather than left to raise later.
+            committed[identifier] = bound;
+            value = bound;
+            group = this.groupOf(identifier, scaled, values);
+          }
           for (const inputId of group) blocked.add(inputId);
           if (stops !== null) {
             stops.push({
-              tick, coordinate: identifier, bound: side, value: bound,
+              tick, coordinate: identifier, bound: side, value,
               t: boundary, inputs: [...group].sort(),
             });
           }
+        }
+        // A SECOND loop, after every entry's group and record: a
+        // numeric snap on another entry of the same event mutates
+        // `committed`, and the assertion must see the state the segment
+        // actually commits (design D6).
+        for (const [, , , bound] of event) {
+          if (isConstraint(bound)) this.assertInside(bound, committed);
         }
         if (blocked.size === 0) {
           throw new StopInvariantError(this.runaway(reached, limit));
@@ -549,17 +583,200 @@ export class Run {
    * all is free. */
   private reachedBounds(held: Record<string, number>,
                         committed: Record<string, number>,
-                        bounds: [string, number | null, number | null][]):
-  Reached[] {
+                        bounds: Bounds,
+                        values: Record<string, number>,
+                        admissions: Record<string, number>): Reached[] {
     const found: Reached[] = [];
     for (const [identifier, low, high] of bounds) {
       const value = committed[identifier];
       const was = held[identifier];
-      if (low !== null && value < low && value < was) {
-        found.push([identifier, 'low', low]);
-      } else if (high !== null && value > high && value > was) {
-        found.push([identifier, 'high', high]);
+      for (const [side, bound] of
+        [['low', low], ['high', high]] as [('low' | 'high'),
+                                           number | Constraint | null][]) {
+        if (!isConstraint(bound)) continue;
+        if (bound.reads.every((read) => committed[read] === held[read])) {
+          // Nothing the bound READS moves over this stretch, so the
+          // bound is a NUMBER for it -- its expression at the tick's
+          // committed own value and the reads' standing values -- and
+          // the coordinate is stopped or freed exactly as a bound over
+          // its own value alone is, at the cost of one evaluation
+          // rather than `subdivisions` sub-program passes.
+          if (value === was) continue;
+          const number = this.constraintBound(bound, held);
+          if (side === 'low' && value < number && value < was) {
+            found.push([identifier, 'low', number, null]);
+          } else if (side === 'high' && value > number && value > was) {
+            found.push([identifier, 'high', number, null]);
+          }
+          continue;
+        }
+        const located = this.constraintReached(
+          bound, held, committed, values, admissions);
+        if (located !== null) found.push([identifier, side, bound, located]);
       }
+      const plainLow = isConstraint(low) ? null : low;
+      const plainHigh = isConstraint(high) ? null : high;
+      if (plainLow !== null && value < plainLow && value < was) {
+        found.push([identifier, 'low', plainLow, null]);
+      } else if (plainHigh !== null && value > plainHigh && value > was) {
+        found.push([identifier, 'high', plainHigh, null]);
+      }
+    }
+    return found;
+  }
+
+  // ------------------------------------------------------------------
+  // A bound that reads other coordinates: the CONSTRAINT (design D4-D6)
+
+  /** The fraction of the stretch at which `constraint` is first carried
+   * outward, or `null`.
+   *
+   * DETECTION AND LOCALIZATION ARE ONE PROCEDURE, and it looks INSIDE
+   * the stretch: a constraint over moving reads can be violated inside
+   * a stretch and satisfied again at its end, and a test at the ends
+   * alone commits all of them.
+   *
+   * A constraint is examined only when something it depends on MOVES, so
+   * a stretch in which the bounded coordinate and every read stand still
+   * evaluates nothing at all. */
+  private constraintReached(constraint: Constraint,
+                            held: Record<string, number>,
+                            committed: Record<string, number>,
+                            values: Record<string, number>,
+                            admissions: Record<string, number>): number | null {
+    const keys = [constraint.identifier, ...constraint.reads];
+    if (keys.every((key) => committed[key] === held[key])) return null;
+    return this.searchedConstraint(constraint, held, values, admissions);
+  }
+
+  /** The level sampled at `subdivisions` fractions of the stretch,
+   * stopped at the FIRST sample carried outward, and the crossing
+   * bisected to `crossingTolerance`.
+   *
+   * `t*` is the INSIDE end of the final bracket -- the last fraction at
+   * which the bound is satisfied -- not its midpoint: a bound that reads
+   * other coordinates carries a comparison in every sighting, and a
+   * level with a jump in it is what the search is for. */
+  private searchedConstraint(constraint: Constraint,
+                             held: Record<string, number>,
+                             values: Record<string, number>,
+                             admissions: Record<string, number>):
+  number | null {
+    const own = this.bank[constraint.identifier];
+    const level = (t: number): number => this.constraintLevel(
+      constraint, held, values, admissions, t, own);
+    const start = level(0);
+    const outward = (here: number): boolean => here > 0 && here > start;
+    const subdivisions = this.program.limits.subdivisions;
+    for (let step = 1; step <= subdivisions; step += 1) {
+      const where = step / subdivisions;
+      if (!outward(level(where))) continue;
+      let low = (step - 1) / subdivisions;
+      let high = where;
+      for (let round = 0; round < this.program.limits.bisectionRounds;
+        round += 1) {
+        if (high - low <= this.program.limits.crossingTolerance) break;
+        const middle = (low + high) / 2;
+        if (outward(level(middle))) high = middle;
+        else low = middle;
+      }
+      return low;
+    }
+    return null;
+  }
+
+  /** The CONSTRAINT LEVEL at the fraction `t` of the stretch: outside is
+   * positive.
+   *
+   * One pass over the bound's SUB-PROGRAM with every admission scaled by
+   * `t`, on a FRESH delta map -- never `pass`'s, which mutates and
+   * raises. The joint's own coordinate INSIDE the bound takes the value
+   * it holds in the tick's COMMITTED bank, which is what makes a
+   * ratchet's tooth the tooth it started the tick on; every read takes
+   * the value it has along the path. */
+  private constraintLevel(constraint: Constraint,
+                          held: Record<string, number>,
+                          values: Record<string, number>,
+                          admissions: Record<string, number>,
+                          t: number, own: number): number {
+    const scaled: Record<string, number> = {};
+    for (const inputId of Object.keys(admissions)) {
+      scaled[inputId] = admissions[inputId] * t;
+    }
+    const deltas = this.deltasOf(scaled);
+    for (const edge of constraint.edges) {
+      for (const [key, increment] of edgeIncrements(
+        this.program, edge, values, deltas, null, 0)) {
+        deltas[key] = increment;
+      }
+    }
+    const scope: Record<string, number> = { [constraint.identifier]: own };
+    for (const read of constraint.reads) {
+      scope[read] = held[read] + deltas[read];
+    }
+    const bound = evaluateExpression(
+      this.program, constraint.expression, scope);
+    const value = held[constraint.identifier]
+      + deltas[constraint.identifier];
+    return constraint.side === 'high' ? value - bound : bound - value;
+  }
+
+  /** The bound EVALUATED at the committed state: the number a stop
+   * records, which for a constraint is not the value the coordinate now
+   * holds. The own coordinate is still the TICK's committed bank. */
+  private constraintBound(constraint: Constraint,
+                          committed: Record<string, number>): number {
+    const scope: Record<string, number> = {
+      [constraint.identifier]: this.bank[constraint.identifier],
+    };
+    for (const read of constraint.reads) scope[read] = committed[read];
+    return evaluateExpression(this.program, constraint.expression, scope);
+  }
+
+  /** The committed state satisfies the bound by construction; this says
+   * so out loud, so a broken invariant is a refused tick rather than a
+   * picometre of penetration nobody reported. */
+  private assertInside(constraint: Constraint,
+                       committed: Record<string, number>): void {
+    const bound = this.constraintBound(constraint, committed);
+    const value = committed[constraint.identifier];
+    const level = constraint.side === 'high' ? value - bound : bound - value;
+    if (level > 0) {
+      throw new StopInvariantError(
+        `${constraint.identifier} was stopped by its ${constraint.side} ` +
+        `bound, and at the state the segment commits that bound evaluates ` +
+        `to ${bound} while the coordinate holds ${value} -- outside it by ` +
+        `${level}. The sample that located the stop and the segment that ` +
+        'committed it are the same arithmetic over the same edges, so ' +
+        'this is a broken invariant of the run. The tick committed ' +
+        'nothing.');
+    }
+  }
+
+  /** The inputs a constraint stops: its own candidates -- the inputs
+   * reaching the bounded coordinate OR anything it reads -- filtered by
+   * whether their own admission ALONE carries the LEVEL outward.
+   *
+   * One rule covers both directions: an input moving the bounded
+   * coordinate against the constraint is stopped, an input moving a read
+   * so as to make a STANDING position invalid is stopped where the
+   * constraint becomes active, and an input moving a read so as to
+   * RELIEVE it runs its full tick. */
+  private constraintGroup(constraint: Constraint,
+                          admissions: Record<string, number>,
+                          values: Record<string, number>,
+                          held: Record<string, number>): string[] {
+    const own = this.bank[constraint.identifier];
+    const found: string[] = [];
+    for (const candidate of constraint.candidates) {
+      const delta = admissions[candidate] ?? 0;
+      if (!delta) continue;
+      const alone = { [candidate]: delta };
+      const before = this.constraintLevel(
+        constraint, held, values, alone, 0, own);
+      const after = this.constraintLevel(
+        constraint, held, values, alone, 1, own);
+      if (after - before > 0) found.push(candidate);
     }
     return found;
   }
@@ -571,10 +788,14 @@ export class Run {
   private eventOf(reached: Reached[], held: Record<string, number>,
                   values: Record<string, number>,
                   deltas: Record<string, number>): Located[] {
-    const located: Located[] = reached.map(([identifier, side, bound]) => [
-      this.locate(identifier, side, bound, held, values, deltas),
-      identifier, side, bound,
-    ]);
+    const located: Located[] = reached.map(
+      ([identifier, side, bound, where]) => [
+        where === null
+          ? this.locate(identifier, side, bound as number, held, values,
+                        deltas)
+          : where,
+        identifier, side, bound,
+      ]);
     located.sort((a, b) => (a[0] - b[0])
       || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0)
       || (a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0));
@@ -783,10 +1004,13 @@ export class Run {
   /** Each declared bound as a NUMBER for this tick: evaluated once, at
    * the tick's start, from the committed bank, so every segment of one
    * tick is measured against the same number. */
-  private boundsNow(): [string, number | null, number | null][] {
+  private boundsNow(): Bounds {
     return this.spans.map(([identifier, low, high]) => [
-      identifier, this.boundOf(low, identifier),
-      this.boundOf(high, identifier),
+      identifier,
+      this.program.constraints.get(`${identifier}:low`)
+        ?? this.boundOf(low, identifier),
+      this.program.constraints.get(`${identifier}:high`)
+        ?? this.boundOf(high, identifier),
     ]);
   }
 

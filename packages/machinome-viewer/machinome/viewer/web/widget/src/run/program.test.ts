@@ -13,6 +13,7 @@ import { EXPRESSION_LIMITS, expressionGeneration, prepare } from '../expressions
 import { loadProgram, uncomputedValues } from './program';
 import type { RunDocument } from './program';
 import acceptance from '../../../../tests/fixtures/pascaline/viewer.json';
+import lockDocument from '../../../../tests/fixtures/lock/viewer.json';
 
 const SOURCE = 'http://example.test/viewer.json';
 
@@ -367,14 +368,14 @@ describe('loadProgram refuses what it cannot execute (design §4)', () => {
     expect(message).toContain('_j9');
   });
 
-  it('10. a bound reading anything but its own coordinate', () => {
+  it('10. a bound reading a name the program never declares', () => {
     const message = refusal(document({
       spans: {
-        'first.turn': { low: { expression: '(36 * floor((crank / 36)))' },
+        'first.turn': { low: { expression: '(36 * floor((nowhere / 36)))' },
                         high: null },
       },
     }));
-    expect(message).toContain('crank');
+    expect(message).toContain('nowhere');
     expect(message).toContain('first.turn');
   });
 
@@ -534,5 +535,288 @@ describe('the held node ids are generation-guarded (design D12)', () => {
     expect(after).toBe(prepare('(2.0 * crank)'));
     // And it still evaluates to the same number, which is the point.
     expect(before).not.toBe(undefined);
+  });
+});
+
+// ---------------------------------------------------------------------
+// A bound that READS OTHER COORDINATES (design D1-D3).
+// ---------------------------------------------------------------------
+
+/** A two-input bench whose `gate.lift` is driven by `lift` and whose
+ * `first.turn` is driven by `crank`, plus one published computed value
+ * an edge determines. Every constraint case below is this with one
+ * span. */
+function reading(program: Overrides = {},
+                 extra: Overrides = {}): RunDocument {
+  return {
+    format: 'solid-node-export',
+    version: 5,
+    drivers: {
+      crank: { default: 0, range: null, unit: 'deg', dtype: null, scale: null },
+      lift: { default: 0, range: null, unit: 'mm', dtype: null, scale: null },
+    },
+    instructions: {},
+    program: {
+      identity: 'abc',
+      clock: 'time',
+      coordinates: {
+        crank: { kind: 'input', initial: 0, domain: null },
+        lift: { kind: 'input', initial: 0, domain: null },
+        'first.turn': {
+          kind: 'coordinate', initial: 0, unit: 'deg', domain: 'rotational',
+        },
+        'gate.lift': {
+          kind: 'coordinate', initial: 0, unit: 'mm', domain: 'linear',
+        },
+      },
+      intermediates: ['port.angle'],
+      edges: [
+        {
+          kind: 'law', needs: ['crank'], gives: ['first.turn'],
+          description: 'crank drives first.turn', stated_by: 'Bench',
+          expressions: ['(2.0 * crank)'], affine: [true], plans: [null],
+        },
+        {
+          kind: 'law', needs: ['lift'], gives: ['gate.lift'],
+          description: 'lift drives gate.lift', stated_by: 'Bench',
+          expressions: ['(1.0 * lift)'], affine: [true], plans: [null],
+        },
+        {
+          kind: 'law', needs: ['first.turn'], gives: ['port.angle'],
+          description: 'first.turn drives port.angle', stated_by: 'Bench',
+          expressions: ['(1.0 * first.turn)'], affine: [true], plans: [null],
+        },
+      ],
+      spans: {},
+      sources: {
+        crank: ['crank'], lift: ['lift'],
+        'first.turn': ['crank'], 'gate.lift': ['lift'],
+        'port.angle': ['crank'],
+      },
+      limits: { ...LIMITS },
+      ...program,
+    },
+    ...extra,
+  } as RunDocument;
+}
+
+describe('a bound may read other coordinates (design D1-D3)', () => {
+  it('loads a bound naming a second bank coordinate', () => {
+    const loaded = loadProgram(reading({
+      spans: {
+        'first.turn': {
+          low: null,
+          high: { expression: '(90 * (abs(gate.lift) <= 0.05))' },
+        },
+      },
+    }), SOURCE);
+    const entry = loaded.constraints.get('first.turn:high')!;
+    expect(entry).toBeDefined();
+    expect(entry.identifier).toBe('first.turn');
+    expect(entry.side).toBe('high');
+    expect(entry.reads).toEqual(['gate.lift']);
+  });
+
+  it('loads a bound reaching its read ONLY through the bindings table',
+     () => {
+    // The lock's own shape: the expression names `_b0` and nothing
+    // else, and the coordinate is reached only through the table.
+    const loaded = loadProgram(reading({
+      spans: {
+        'first.turn': { low: null, high: { expression: '(90 * _b1)' } },
+      },
+    }, {
+      bindings: [
+        { name: '_b0', expression: '(gate.lift <= 0.05)' },
+        { name: '_b1', expression: '(_b0 * 1.0)' },
+      ],
+    }), SOURCE);
+    const entry = loaded.constraints.get('first.turn:high')!;
+    expect(entry.reads).toEqual(['gate.lift']);
+  });
+
+  it('sorts the reads, and never holds the own coordinate', () => {
+    const loaded = loadProgram(reading({
+      spans: {
+        'first.turn': {
+          low: null,
+          high: { expression: '((first.turn * 0) + (gate.lift + lift))' },
+        },
+      },
+    }), SOURCE);
+    expect(loaded.constraints.get('first.turn:high')!.reads)
+      .toEqual(['gate.lift', 'lift']);
+  });
+
+  it('derives the sub-program: the determining edges, in published '
+     + 'order, and never a check', () => {
+    const loaded = loadProgram(reading({
+      spans: {
+        'first.turn': {
+          low: null, high: { expression: '(90 * (gate.lift <= 0.05))' },
+        },
+      },
+      edges: [
+        ...(reading().program as { edges: unknown[] }).edges,
+        {
+          kind: 'check', needs: ['crank'], gives: [],
+          description: 'a check on first.turn', stated_by: 'Bench',
+          slot: 'first.turn', factors: [2.0], constant: 0,
+        },
+      ],
+    }), SOURCE);
+    const entry = loaded.constraints.get('first.turn:high')!;
+    // The `port.angle` edge determines nothing either needs, and the
+    // check determines nothing at all.
+    expect(entry.edges.map((edge) => edge.description)).toEqual([
+      'crank drives first.turn', 'lift drives gate.lift',
+    ]);
+  });
+
+  it('derives the candidates: the union of the reaching-input lists',
+     () => {
+    const loaded = loadProgram(reading({
+      spans: {
+        'first.turn': {
+          low: null, high: { expression: '(90 * (gate.lift <= 0.05))' },
+        },
+      },
+    }), SOURCE);
+    expect(loaded.constraints.get('first.turn:high')!.candidates)
+      .toEqual(['crank', 'lift']);
+  });
+
+  it('makes no entry for a self-only bound, a number or an absent side',
+     () => {
+    const loaded = loadProgram(reading({
+      spans: {
+        'first.turn': { low: 0, high: { expression: '(36 * first.turn)' } },
+        'gate.lift': { low: null, high: null },
+      },
+    }), SOURCE);
+    expect(loaded.constraints.size).toBe(0);
+  });
+
+  it('refuses a bound naming a published computed value, saying so',
+     () => {
+    const message = refusal(reading({
+      spans: {
+        'first.turn': { low: null, high: { expression: '(90 * port.angle)' } },
+      },
+    }));
+    expect(message).toContain('port.angle');
+    expect(message).toContain('a published computed value');
+    expect(message).toContain('read the joint the port follows');
+    expect(message).toContain('(90 * port.angle)');
+  });
+
+  it('refuses a bound naming the clock', () => {
+    const message = refusal(reading({
+      spans: {
+        'first.turn': { low: null, high: { expression: '(90 * time)' } },
+      },
+    }));
+    expect(message).toContain('time');
+    expect(message).toContain('may not read');
+  });
+
+  it('refuses a bound naming an unknown id', () => {
+    const message = refusal(reading({
+      spans: {
+        'first.turn': { low: null, high: { expression: '(90 * nowhere)' } },
+      },
+    }));
+    expect(message).toContain('nowhere');
+  });
+
+  it('refuses a bound naming a jump plan\'s branch placeholder', () => {
+    const message = refusal(reading({
+      spans: {
+        'first.turn': { low: null, high: { expression: '(90 * _j0)' } },
+      },
+      edges: [
+        {
+          kind: 'law', needs: ['crank'], gives: ['first.turn'],
+          description: 'crank drives first.turn', stated_by: 'Bench',
+          expressions: ['(2.0 * crank)'], affine: [true],
+          plans: [{
+            skeleton: '(36.0 * _j0)',
+            jumps: [{
+              name: '_j0', primitive: 'floor', level: 'crank', affine: true,
+            }],
+          }],
+        },
+        ...(reading().program as { edges: unknown[] }).edges.slice(1),
+      ],
+    }));
+    expect(message).toContain('_j0');
+    expect(message).toContain('may not read');
+  });
+});
+
+// ---------------------------------------------------------------------
+// The lock's own published document (design D8): the guard against a
+// wrong closure, because the corpus's `Captured` machine carries no
+// bindings at all and cannot catch it.
+// ---------------------------------------------------------------------
+
+describe('the pin tumbler lock\'s published document', () => {
+  const loaded = loadProgram(lockDocument as unknown as RunDocument,
+                             'tests/fixtures/lock/viewer.json');
+
+  it('loads: what was refused before this cycle', () => {
+    expect(loaded.identity).toBe(
+      'b45402a563493d03462a51b456059300c74c75c61f74bc206a7f38cc7746c867');
+    expect(loaded.order).toHaveLength(16);
+    expect(loaded.edges).toHaveLength(14);
+  });
+
+  it('derives three constraints: both sides of the plug and the '
+     + 'key\'s capture', () => {
+    expect([...loaded.constraints.keys()].sort()).toEqual([
+      'plug.key.insert:low', 'plug.turn:high', 'plug.turn:low',
+    ]);
+  });
+
+  it('reads the five pin lifts THROUGH the bindings table', () => {
+    for (const side of ['low', 'high']) {
+      const entry = loaded.constraints.get(`plug.turn:${side}`)!;
+      // The expression itself names only `_b10 … _b22`; the CLOSURE is
+      // the five lifts.
+      expect(entry.expression).toContain('_b10');
+      expect(entry.expression).not.toContain('plug.p1.lift');
+      expect(entry.reads).toEqual([
+        'plug.p1.lift', 'plug.p2.lift', 'plug.p3.lift', 'plug.p4.lift',
+        'plug.p5.lift',
+      ]);
+      expect(entry.edges.map((edge) => edge.description)).toEqual([
+        'insertion drives plug.key.insert',
+        'rotation drives plug.turn',
+        'plug.key.insert drives plug.p1.lift',
+        'plug.key.insert drives plug.p2.lift',
+        'plug.key.insert drives plug.p3.lift',
+        'plug.key.insert drives plug.p4.lift',
+        'plug.key.insert drives plug.p5.lift',
+      ]);
+      expect(entry.candidates).toEqual(['insertion', 'rotation']);
+    }
+  });
+
+  it('reads the plug directly on the key\'s own low bound', () => {
+    const entry = loaded.constraints.get('plug.key.insert:low')!;
+    expect(entry.reads).toEqual(['plug.turn']);
+    expect(entry.edges.map((edge) => edge.description)).toEqual([
+      'insertion drives plug.key.insert', 'rotation drives plug.turn',
+    ]);
+    expect(entry.candidates).toEqual(['insertion', 'rotation']);
+  });
+
+  it('leaves the five numeric driver-pin spans alone', () => {
+    for (const id of ['d1.lift', 'd2.lift', 'd3.lift', 'd4.lift',
+                      'd5.lift']) {
+      expect(loaded.spans[id]).toEqual({ low: -6.9, high: 6.1 });
+      expect(loaded.constraints.has(`${id}:low`)).toBe(false);
+      expect(loaded.constraints.has(`${id}:high`)).toBe(false);
+    }
   });
 });
