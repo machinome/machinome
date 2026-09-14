@@ -299,6 +299,36 @@ class SnapshotTest(BaseNodeTest):
         self.assertEqual(handle.status, 'cancelled')
         self.assertEqual(handle.admitted, 5.0)
 
+    def test_a_snapshot_after_a_cancel_carries_no_command(self):
+        sim = Sim(Train(), 0.1)
+        handle = sim.move('crank', by=10.0, duration=1.0)
+        sim.run(0.2)
+        handle.cancel()
+        snapshot = sim.snapshot()
+        self.assertEqual(snapshot.commands, ())
+        sim.run(0.3)
+        sim.restore(snapshot)
+        self.assertEqual(sim.commands, ())
+        bank = dict(sim.state)
+        sim.run(0.2)
+        self.assertEqual(sim.state, bank)
+
+    def test_a_snapshot_before_a_cancel_reissues_the_command(self):
+        sim = Sim(Train(), 0.1)
+        handle = sim.move('crank', by=10.0, duration=1.0)
+        sim.run(0.2)
+        saved = sim.snapshot()
+        sim.run(0.1)
+        handle.cancel()
+        sim.restore(saved)
+        self.assertEqual(handle.status, 'cancelled')
+        self.assertEqual(handle.admitted, 3.0)
+        fresh, = sim.commands
+        self.assertIsNot(fresh, handle)
+        self.assertEqual(fresh.status, 'active')
+        sim.run(0.1)
+        self.assertEqual(sim.state['crank'], 3.0)
+
 
 class InstructionTest(BaseNodeTest):
     """(10) Instructions under a running root are moves; `by=` is
@@ -466,6 +496,126 @@ class CommandTest(BaseNodeTest):
         self.assertEqual(reads(node.first, 'turn'), 20.0)
         self.assertEqual(handle.status, 'completed')
         self.assertEqual(sim.commands, ())
+
+
+class CancelTest(BaseNodeTest):
+    """`cancel()` RETIRES the command: the input is free at once, the
+    handle keeps reporting what it admitted, and nothing else moves."""
+
+    def test_cancel_before_the_first_tick_moves_nothing(self):
+        sim = Sim(Train(), 0.1)
+        before = dict(sim.state)
+        handle = sim.move('crank', by=10.0, duration=1.0)
+        handle.cancel()
+        sim.run(0.1)
+        self.assertEqual(handle.status, 'cancelled')
+        self.assertEqual(handle.admitted, 0.0)
+        self.assertEqual(sim.state, before)
+        self.assertEqual(sim.commands, ())
+
+    def test_cancel_midway_keeps_the_travel_it_made(self):
+        sim = Sim(Train(), 0.1)
+        handle = sim.move('crank', by=10.0, duration=1.0)
+        sim.run(0.3)
+        handle.cancel()
+        self.assertEqual(handle.status, 'cancelled')
+        self.assertEqual(handle.admitted, 3.0)
+        bank = dict(sim.state)
+        sim.run(0.7)
+        self.assertEqual(sim.state, bank)
+        self.assertEqual(handle.admitted, 3.0)
+        self.assertEqual(sim.commands, ())
+
+    def test_a_cancelled_rate_stops(self):
+        sim = Sim(Train(), 0.1)
+        handle = sim.rate('crank', 90.0)
+        sim.run(0.3)
+        handle.cancel()
+        self.assertEqual(handle.status, 'cancelled')
+        self.assertEqual(handle.admitted, 27.0)
+        self.assertIsNone(handle.remaining)
+        bank = dict(sim.state)
+        sim.run(0.3)
+        self.assertEqual(sim.state, bank)
+        self.assertEqual(sim.commands, ())
+
+    def test_a_replacement_is_accepted_at_once(self):
+        sim = Sim(Train(), 0.1)
+        handle = sim.move('crank', by=10.0, duration=1.0)
+        sim.run(0.3)
+        handle.cancel()
+        replacement = sim.move('crank', by=5.0, duration=0.5)
+        self.assertEqual(sim.commands, (replacement,))
+        sim.run(0.5)
+        self.assertEqual(replacement.status, 'completed')
+        self.assertEqual(sim.state['crank'], 8.0)
+        self.assertEqual(sim.state['first.turn'], 16.0)
+
+    def test_cancelling_twice_is_cancelling_once(self):
+        sim = Sim(Train(), 0.1)
+        first = sim.move('crank', by=10.0, duration=1.0)
+        sim.run(0.3)
+        first.cancel()
+        replacement = sim.move('crank', by=5.0, duration=0.5)
+        first.cancel()
+        self.assertEqual(first.status, 'cancelled')
+        self.assertEqual(first.admitted, 3.0)
+        self.assertEqual(replacement.status, 'active')
+        self.assertEqual(sim.commands, (replacement,))
+        sim.run(0.1)
+        self.assertEqual(replacement.status, 'active')
+        self.assertEqual(replacement.admitted, 1.0)
+
+    def test_cancel_on_a_retired_handle_does_nothing(self):
+        completed_sim = Sim(Train(), 0.1)
+        completed = completed_sim.move('crank', by=10.0, duration=1.0)
+        completed_sim.run(1.0)
+        completed.cancel()
+        self.assertEqual(completed.status, 'completed')
+        self.assertEqual(completed.admitted, 10.0)
+        self.assertEqual(completed_sim.commands, ())
+
+        blocked_sim = Sim(Ranged(), 0.1)
+        blocked = blocked_sim.move('crank', by=50.0, duration=0.5)
+        blocked_sim.run(0.5)
+        blocked.cancel()
+        self.assertEqual(blocked.status, 'blocked')
+        self.assertEqual(blocked.admitted, 45.0)
+        self.assertEqual(blocked_sim.commands, ())
+
+        refused_sim = Sim(Differential(), 0.1)
+        refused = refused_sim.move('wrist_in', by=10.0, duration=1.0)
+        with self.assertRaises(RunConflict):
+            refused_sim.run(0.1)
+        refused.cancel()
+        self.assertEqual(refused.status, 'refused')
+        self.assertEqual(refused.admitted, 0.0)
+        self.assertEqual(refused_sim.commands, ())
+
+    def test_cancelling_one_command_leaves_the_other_running(self):
+        sim = Sim(Train(), 0.1)
+        crank_handle, lever_handle = sim.trigger('Wind')
+        crank_handle.cancel()
+        self.assertEqual(crank_handle.status, 'cancelled')
+        self.assertEqual(sim.commands, (lever_handle,))
+        sim.run(0.5)
+        self.assertEqual(crank_handle.status, 'cancelled')
+        self.assertEqual(crank_handle.admitted, 0.0)
+        self.assertEqual(lever_handle.status, 'completed')
+        self.assertEqual(lever_handle.admitted, 5.0)
+
+    def test_a_cancelled_run_replays_identically(self):
+        def script():
+            sim = Sim(Train(), 0.1)
+            handle = sim.move('crank', by=10.0, duration=1.0)
+            sim.run(0.3)
+            handle.cancel()
+            sim.run(0.4)
+            return (sim.state, sim.tick, handle.status, handle.admitted)
+
+        first = script()
+        second = script()
+        self.assertEqual(first, second)
 
 
 class PurityTest(BaseNodeTest):

@@ -2024,8 +2024,12 @@ Recorded at the pilot's request while preparing
 `projects/Locks/Pin_tumbler_lock` for `Time.running()` and updating the
 shop's public API skill. Found in a minimal API probe before changing the
 lock; this is not a failure observed in the lock's existing browser demo.
-**Status: filed here; triage open.** No external issue opened, interface
-ratification or implementation authorized by this entry.
+**Status: FIXED (cycle `cancel-stops-the-command`).** `cancel()` now
+retires the command at once — status set, the entry removed from
+`Run.active`, its reference to the run dropped — instead of only setting
+its status: the input is free the moment `cancel()` returns, so a
+replacement is accepted the same tick, and a cancelled command no longer
+survives into a snapshot.
 
 - **Symptom.** A Python running command's `cancel()` changes its status to
   `cancelled`, but the command continues moving its input and keeps owning

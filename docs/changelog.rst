@@ -8,6 +8,19 @@ Changelog
 Unreleased
 ----------
 
+**``handle.cancel()`` now stops the command.** It used to set the
+handle's status to ``cancelled`` and nothing else: the command kept
+admitting travel every tick, kept owning its input, and a replacement
+was refused with a message telling the caller to cancel the command it
+had already cancelled. A cancelled command is now retired exactly as a
+blocked or a refused one is: it stops where it stands, keeping the
+travel it had actually admitted; its input is free the moment
+``cancel()`` returns, so a replacement is accepted the same tick; and it
+is no longer among ``sim.commands`` or in a snapshot taken after the
+cancel. Nothing else moves — cancelling one command leaves every other
+command running, and cancelling a command already retired keeps what it
+reported.
+
 **A control says which part a person presses and which part a person
 turns.** An assembly declares ``controls`` beside ``instructions``:
 ``Button(part, instruction)`` is a press on that part submitting the

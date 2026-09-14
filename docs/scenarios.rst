@@ -191,6 +191,26 @@ finishes, so a long run accumulates none. ``duration`` is a whole number
 of ticks, zero included — a zero-duration move settles at the current
 tick without advancing the clock.
 
+``handle.cancel()`` stops a command where it stands: it is retired at
+once reporting ``cancelled`` with the travel it had actually admitted,
+its input is free from the moment ``cancel()`` returns, and it admits
+nothing more. A replacement is accepted the same tick, with no tick
+passing in between:
+
+.. code-block:: python
+
+        turn = sim.move('crank', by=10.0, duration=1.0)
+        sim.run(0.3)
+        turn.cancel()
+        turn.status                     # 'cancelled'
+        turn.admitted                   # 3.0, what it made before the cancel
+
+        sim.move('crank', by=5.0, duration=0.5)   # accepted at once
+
+Cancelling a command already retired — ``completed``, ``blocked``,
+``refused`` or ``cancelled`` — keeps what it reported and does nothing
+else, so cancelling twice is cancelling once.
+
 An instruction works the same way, and now states either where its
 drivers land or how far they travel:
 

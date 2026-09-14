@@ -144,6 +144,16 @@ differs before touching live state; recording is explicit and bounded.
   cost what every tick already paid for drivers: measured at 1.16 ms per
   tick against the untimed loop's 0.36 ms on the same machine, with
   memory flat under a bounded ring.
+- A command is retired **from the active table the moment it is
+  cancelled, too**, exactly as it is the tick it completes, blocks or is
+  refused (cycle `cancel-stops-the-command`): `handle.cancel()` frees the
+  input at once rather than merely changing the handle's reported
+  status, so `sim.commands`, `_claim` and `snapshot()` agree on
+  `cancelled` the way they already agreed on the other three outcomes.
+  The handle retires itself through a reference back to its run, held
+  only while the command is active and dropped at retirement — a cycle
+  with the run's own active table, which already holds the command, so
+  it adds no lifetime the table did not already create.
 
 ## Amendment, 2026-09-13 (`publish-the-mechanical-program`)
 

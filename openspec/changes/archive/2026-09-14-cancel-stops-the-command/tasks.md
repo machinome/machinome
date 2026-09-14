@@ -1,11 +1,11 @@
 ## 1. Red first: what cancellation must do
 
-- [ ] 1.1 Record the baseline in `evidence.md`: run
+- [x] 1.1 Record the baseline in `evidence.md`: run
       `tests/test_running_simulation.py tests/test_running_stops.py
       tests/test_running_jumps.py tests/test_running_document.py
       tests/test_running_corpus.py` against this worktree and paste the
       counts, so the "green unchanged" of 2.5 has something to mean.
-- [ ] 1.2 In `tests/test_running_simulation.py`, a `CancelTest` beside
+- [x] 1.2 In `tests/test_running_simulation.py`, a `CancelTest` beside
       `CommandTest`, over the existing `Train` fixture (`crank`, `lever`,
       the two-input `Wind` instruction) and `Ranged` for the blocked
       case — no new machine. One test per spec scenario:
@@ -36,7 +36,7 @@
         all its travel;
       - the same script twice (issue, step, cancel, step): equal bank,
         equal tick, equal status and admitted travel at every step.
-- [ ] 1.3 In `SnapshotTest` of the same file, the two snapshot
+- [x] 1.3 In `SnapshotTest` of the same file, the two snapshot
       scenarios: a snapshot taken AFTER a cancel carries no command
       (`snapshot.commands == ()`), restores to an empty `sim.commands`
       and moves that input on no later tick; a snapshot taken BEFORE a
@@ -44,7 +44,7 @@
       `cancelled` with what it had admitted while `sim.commands` holds a
       fresh `active` command for that input that continues from the
       recorded progress on the next tick.
-- [ ] 1.4 Run the new tests and record them RED in `evidence.md` with
+- [x] 1.4 Run the new tests and record them RED in `evidence.md` with
       the actual failures — the first one failing with travel admitted
       after a cancel and the replacement raising `'crank' is already
       owned by <move crank cancelled: ...>`, which is the wart's own
@@ -52,12 +52,12 @@
 
 ## 2. The retirement
 
-- [ ] 2.1 `solid_node/simulation/run.py`: `Command.__slots__` gains the
+- [x] 2.1 `solid_node/simulation/run.py`: `Command.__slots__` gains the
       slot holding its run, set to `None` in `__init__` (a command not
       yet in `active` owns nothing), and `Command.record()` is left
       exactly as it is — eight fields, no run — so `RunSnapshot`
       equality and `restore` are untouched.
-- [ ] 2.2 `solid_node/simulation/run.py`: `Run._retire(command, status)`
+- [x] 2.2 `solid_node/simulation/run.py`: `Run._retire(command, status)`
       — set the status, remove the entry from `active` only when it IS
       this command (`self.active.get(command.input) is command`), and
       drop the command's reference to the run. Every existing retirement
@@ -67,17 +67,17 @@
       `restore` with `'cancelled'` over a LIST of the active commands,
       since it retires while emptying the dict. No status word changes,
       and no retirement changes when it happens.
-- [ ] 2.3 `solid_node/simulation/run.py`: `move`, `rate` and the
+- [x] 2.3 `solid_node/simulation/run.py`: `move`, `rate` and the
       reconstruction loop in `restore` set the new command's run as they
       put it into `active`, so a restored command is cancellable through
       `sim.commands` exactly as an issued one is through its handle.
-- [ ] 2.4 `solid_node/simulation/run.py`: `Command.cancel()` retires
+- [x] 2.4 `solid_node/simulation/run.py`: `Command.cancel()` retires
       itself through its run when its status is `active` and its run is
       set, and returns the handle in every case. It does NOT call
       `Run._owns()` (design decision 5) and it touches no coordinate.
       Its docstring keeps its promise and now states the release and the
       idempotence.
-- [ ] 2.5 Section 1 green, and `tests/test_running_simulation.py`,
+- [x] 2.5 Section 1 green, and `tests/test_running_simulation.py`,
       `tests/test_running_stops.py`, `tests/test_running_jumps.py`,
       `tests/test_running_document.py` and
       `tests/test_running_corpus.py` green UNCHANGED against the counts
@@ -88,27 +88,27 @@
 
 ## 3. Records
 
-- [ ] 3.1 `docs/architecture.md`, the running-simulation synthesis: the
+- [x] 3.1 `docs/architecture.md`, the running-simulation synthesis: the
       sentence listing what retires a command from `sim.commands` ("the
       tick it completes, blocks or is refused") names cancellation too,
       and says the input is free at once.
-- [ ] 3.2 `docs/scenarios.rst`: the running-commands passage, which
+- [x] 3.2 `docs/scenarios.rst`: the running-commands passage, which
       lists the five statuses and says a completed command leaves
       `sim.commands`, states what `cancel()` does and shows the
       replacement.
-- [ ] 3.3 `docs/changelog.rst`, Unreleased: what changed, in the
+- [x] 3.3 `docs/changelog.rst`, Unreleased: what changed, in the
       pilot's register — a cancelled command stops, frees its input and
       keeps its travel; nothing else moves.
-- [ ] 3.4 `evidence.md`: the green runs, the reproduction from
+- [x] 3.4 `evidence.md`: the green runs, the reproduction from
       `workflow/warts.md` re-run against the fixed worktree (it must now
       print no travel, no owner and accept the replacement), and the
       probe of `evidence/probe_scenarios.py` re-run so the before and
       after stand side by side.
-- [ ] 3.5 `workflow/warts.md`: the "Pin tumbler lock (2026-09-14,
+- [x] 3.5 `workflow/warts.md`: the "Pin tumbler lock (2026-09-14,
       running-command cancellation)" entry's status line records the
       fix and names this change, in the form the log's other fixed
       entries use.
-- [ ] 3.6 ADR disposition: confirm after implementation that no new ADR
+- [x] 3.6 ADR disposition: confirm after implementation that no new ADR
       is owed — ADR-105 already states the handle contract and names
       `cancelled` — and add the sentence to ADR-105's consequences if
       the implemented shape warrants it. Do not write an ADR for a

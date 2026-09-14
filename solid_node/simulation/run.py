@@ -109,7 +109,7 @@ class Command:
 
     __slots__ = ('input', 'kind', 'status', 'declaration', 'native',
                  'native_rate', 'ticks', 'started', 'admitted_native',
-                 '_program')
+                 '_program', '_run')
 
     def __init__(self, input_id, kind, declaration, started,
                  native=None, native_rate=None, ticks=None, value=None):
@@ -125,6 +125,13 @@ class Command:
         self._program = (
             RampProgram(value, value + native, ticks, declaration.dtype)
             if kind == 'move' and ticks else None)
+        # The run that holds this command in `active`, so `cancel()` can
+        # retire itself through it -- set wherever a command ENTERS
+        # `active` (`Run.move`, `Run.rate`, `Run.restore`'s
+        # reconstruction) and dropped by `Run._retire` the moment it
+        # leaves, whatever retires it. `None` until then, and again once
+        # retired: a command not (or no longer) active owns no run.
+        self._run = None
 
     ##############################################
     # What the caller reads
@@ -156,10 +163,14 @@ class Command:
         return _design(self.declaration, self.native_rate)
 
     def cancel(self):
-        """Stop this command where it stands. A command already retired
-        keeps whatever it reported."""
-        if self.status == 'active':
-            self.status = 'cancelled'
+        """Stop this command where it stands: RETIRED at once, reporting
+        `cancelled` with the travel it had actually admitted, its input
+        free the moment this returns. A command already retired --
+        `completed`, `blocked`, `refused` or already `cancelled` -- keeps
+        whatever it reported, and cancelling it again does nothing.
+        Returns the handle either way."""
+        if self.status == 'active' and self._run is not None:
+            self._run._retire(self, 'cancelled')
         return self
 
     def __repr__(self):
@@ -395,6 +406,7 @@ class Run:
         self._claim(input_id)
         command = Command(input_id, 'move', declaration, self.sim.tick,
                           native=native, ticks=ticks, value=value)
+        command._run = self
         self.active[input_id] = command
         if not ticks:
             # A zero-duration move settles at the CURRENT tick, without
@@ -409,14 +421,14 @@ class Run:
             running = self.active.get(input_id)
             if running is None or running.kind != 'rate':
                 return None
-            running.status = 'completed'
-            del self.active[input_id]
+            self._retire(running, 'completed')
             return running
         self._claim(input_id)
         native_rate = (rate if declaration.scale is None
                        else rate / declaration.scale)
         command = Command(input_id, 'rate', declaration, self.sim.tick,
                           native_rate=native_rate)
+        command._run = self
         self.active[input_id] = command
         return command
 
@@ -449,6 +461,24 @@ class Run:
                 f"'{input_id}' is already owned by {owner!r}. An input has "
                 f'one owner at a time: cancel that command, or release the '
                 f'rate with rate(input, 0), before asking for another.')
+
+    def _retire(self, command, status):
+        """Retire `command` reporting `status`: the two steps every
+        retirement performs, whatever retires it and whatever word it
+        uses -- `completed`, `blocked`, `refused` or `cancelled`.
+
+        The entry is removed from `active` only when it IS this command
+        (`self.active.get(command.input) is command`), never by input id
+        alone: between two retirements of one handle a REPLACEMENT may
+        already be the entry for that input, and popping by input id
+        would retire the innocent replacement instead. The command's own
+        reference to this run is dropped either way, so a retired command
+        holds nothing this run does not already hold through `active`.
+        """
+        command.status = status
+        if self.active.get(command.input) is command:
+            del self.active[command.input]
+        command._run = None
 
     def _input(self, input_id):
         state = self.sim.drivers.get(input_id)
@@ -612,8 +642,7 @@ class Run:
                 # not been admitted in it.
                 continue
             if command.finished(tick):
-                command.status = 'completed'
-                del self.active[input_id]
+                self._retire(command, 'completed')
         self.bind()
         if self.ring is not None:
             self.ring.append((self.sim.tick, dict(self.bank)))
@@ -1028,9 +1057,9 @@ class Run:
         Nothing remembers the travel it did not make.
         """
         for input_id in sorted(stopped):
-            command = self.active.pop(input_id, None)
+            command = self.active.get(input_id)
             if command is not None:
-                command.status = 'blocked'
+                self._retire(command, 'blocked')
 
     def _runaway(self, reached, limit):
         named = ', '.join(entry[0] for entry in reached)
@@ -1057,8 +1086,7 @@ class Run:
         moved an input in it is retired reporting `refused` with the
         travel it had admitted before."""
         for command in moved:
-            command.status = 'refused'
-            self.active.pop(command.input, None)
+            self._retire(command, 'refused')
 
     def _conflict(self, edge, predicted, received):
         coordinate = self.program.nodes[edge.slot_key].name
@@ -1136,9 +1164,8 @@ class Run:
                 f'simulation steps at dt={self.dt}. A command admits its '
                 f'travel per tick, so a bank restored across two step '
                 f'sizes would replay a different movement.')
-        for command in self.active.values():
-            command.status = 'cancelled'
-        self.active = {}
+        for command in list(self.active.values()):
+            self._retire(command, 'cancelled')
         for record in snapshot.commands:
             (input_id, kind, native, native_rate, ticks, started,
              admitted, status) = record
@@ -1149,6 +1176,7 @@ class Run:
                 value=dict(snapshot.bank)[input_id] - admitted)
             command.admitted_native = admitted
             command.status = status
+            command._run = self
             self.active[input_id] = command
         self.bank = dict(snapshot.bank)
         self.sim.tick = snapshot.tick

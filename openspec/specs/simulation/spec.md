@@ -957,8 +957,30 @@ itself and no instruction-level summary SHALL be owed: an instruction
 one of whose inputs is stopped reports that handle `blocked` and the
 others by their own outcome.
 
+`cancel()` on a handle SHALL STOP that command where it stands. The
+command SHALL be RETIRED at once, reporting `cancelled` with the travel
+it had actually admitted; its input SHALL be free from the moment
+`cancel()` returns, so a move or a rate on that input SHALL be accepted
+at the same tick with no tick passing in between; and it SHALL admit
+nothing further — every tick from the next one on admits nothing for it,
+and no travel it did not make is remembered anywhere, the rule a
+`blocked` command already states. This SHALL hold wherever the command
+stands: before its first tick, part way through a move, and on a rate,
+which has no end of its own. `cancel()` SHALL return the handle.
+`cancel()` on a command ALREADY RETIRED — `completed`, `blocked`,
+`refused` or `cancelled` — SHALL preserve what that handle reported and
+SHALL NOT touch whatever command owns its input now, so cancelling twice
+is cancelling once. Cancelling one command SHALL leave every other
+command running, the sibling commands of one instruction included.
+Cancellation is a caller's action AT A TICK and never a wall-clock
+event: per-tick admission stays a pure function of the tick count since
+the command started, so a script replayed with the same requests,
+cancellations and steps in the same order SHALL admit exactly the same
+travel.
+
 `sim.commands` SHALL be the active handles; a command SHALL be RETIRED
-from them the tick it completes, blocks or is refused, so a long run
+from them the tick it completes, blocks or is refused, and the moment it
+is cancelled, so a long run
 accumulates no finished
 commands, while the handle the caller holds keeps reporting.
 
@@ -1028,6 +1050,67 @@ commands, while the handle the caller holds keeps reporting.
   that tick, `sim.commands` no longer holds it, and the run continues from
   the last committed bank once a consistent command is issued
 
+#### Scenario: A move cancelled before its first tick moves nothing
+
+- **WHEN** `move('feed', by=5, duration=0.2)` is cancelled at the tick it
+  was issued on, at `dt=0.02`, and the simulation is then stepped one
+  tick
+- **THEN** the handle reports `cancelled` with `0` admitted, the input
+  and every coordinate it drives stand where they stood, and
+  `sim.commands` is empty
+
+#### Scenario: A move cancelled part way keeps the travel it made
+
+- **WHEN** a ten-tick `move('feed', by=5, duration=0.2)` is stepped three
+  ticks, cancelled, and the simulation is stepped seven more
+- **THEN** the handle reports `cancelled` with the travel of those three
+  ticks, the bank stands at that travel through all seven remaining
+  ticks, and `sim.commands` is empty
+
+#### Scenario: A cancelled rate stops
+
+- **WHEN** `rate('feed', 10)` is stepped three ticks, cancelled, and the
+  simulation is stepped three more
+- **THEN** the handle reports `cancelled` with the travel of those three
+  ticks and the input does not move again
+
+#### Scenario: A cancelled command's input takes a replacement at once
+
+- **WHEN** a move is cancelled and a new `move` on the same input is
+  requested before any tick is stepped
+- **THEN** the request is accepted, the new handle is the input's only
+  entry in `sim.commands`, and it runs from the bank as the cancelled
+  command left it
+
+#### Scenario: Cancelling twice is cancelling once
+
+- **WHEN** a handle is cancelled, a replacement command is issued on the
+  same input, and the first handle is cancelled again
+- **THEN** the first handle still reports `cancelled` with what it had
+  admitted, and the replacement is still active, still owns the input
+  and goes on running
+
+#### Scenario: A retired handle keeps what it reported
+
+- **WHEN** `cancel()` is called on a handle that already reports
+  `completed`, `blocked` or `refused`
+- **THEN** the handle keeps that status and its admitted travel, and
+  `sim.commands` is unchanged
+
+#### Scenario: Cancelling one command leaves the others running
+
+- **WHEN** an instruction issues commands on two inputs over the same
+  duration and one of the two handles is cancelled
+- **THEN** that input stops where it stands and the other command runs
+  to `completed` with all of its own travel admitted
+
+#### Scenario: A cancelled run replays identically
+
+- **WHEN** the same machine is stepped twice with the same requests,
+  cancellations and steps in the same order
+- **THEN** the bank, the tick and every handle's status and admitted
+  travel are equal at every step
+
 ### Requirement: Snapshot, restore and reset act on the run's bank
 
 Under a running root `sim.snapshot()` SHALL return a VALUE OBJECT holding
@@ -1063,6 +1146,22 @@ construction and `sim.reset()` SHALL be `restore(sim.initial)`.
 - **WHEN** a simulation has run and `reset()` is called
 - **THEN** `sim.snapshot() == sim.initial`, the tick is zero, the bank is
   the rest pose, no command is active and the recording is empty
+
+#### Scenario: A cancelled command is not in the snapshot
+
+- **WHEN** a move is stepped two ticks, cancelled, and a snapshot is then
+  taken and restored after further ticks
+- **THEN** the snapshot carries no command, the restore leaves
+  `sim.commands` empty, and no further tick moves that input
+
+#### Scenario: A snapshot taken before a cancel re-issues the command
+
+- **WHEN** a snapshot is taken part way through a move, the move is
+  cancelled, and the snapshot is restored
+- **THEN** the cancelled handle still reports `cancelled` with what it
+  had admitted, `sim.commands` holds a fresh active command for that
+  input continuing from the recorded progress, and stepping on moves the
+  input again
 
 ### Requirement: Recording is explicit and bounded under a running root
 
@@ -1672,3 +1771,4 @@ find in the model:
 - **WHEN** a node class declares `controls = {'speed': 3}`
 - **THEN** class definition raises naming the entry and saying
   `controls` names the machine's controls on a node class
+

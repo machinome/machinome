@@ -983,11 +983,14 @@ Requests replace bindings: `move(input, by=|to=, duration=)`,
 rule, only a declared driver being movable and one owner at a time, each
 returning a handle reporting `active`/`completed`/`blocked`/`refused`/
 `cancelled` and the travel admitted in design units, retired from
-`sim.commands` the tick it completes, blocks or is refused. A reverse
-request — a negative `by`, a `to` below the committed value, a negative
-rate — is ordinary and meets a stop exactly as a forward one does. A
-blocked command never resumes: nothing remembers the travel it did not
-make, and the caller issues a new one. `Instruction(by=...)` is the
+`sim.commands` the tick it completes, blocks or is refused, and the
+moment it is cancelled — `handle.cancel()` retires the command at once,
+freeing its input immediately, so a replacement is accepted the same
+tick with no tick passing in between. A reverse request — a negative
+`by`, a `to` below the committed value, a negative rate — is ordinary
+and meets a stop exactly as a forward one does. A blocked command never
+resumes: nothing remembers the travel it did not make, and the caller
+issues a new one. `Instruction(by=...)` is the
 relative form, ramping relatively under every base and becoming a
 relative move under a running one; the serializer omits a relative
 instruction from the document's table below version 5 and publishes both
