@@ -47,6 +47,12 @@ _EXPORTS = {
     'qualified_drivers': 'enumeration',
     'qualified_instructions': 'enumeration',
     'Instruction': 'instruction',
+    # The two control kinds: which part a person presses, and which
+    # part a person turns. Lazy like every export here -- a model that
+    # declares no control never imports the module, and a model that
+    # does names them in its class body, which is the first access.
+    'Button': 'control',
+    'Turn': 'control',
     'ScenarioTest': 'scenario',
     'Sim': 'sim',
     # The running mode's error kinds, and the entries its crossing and

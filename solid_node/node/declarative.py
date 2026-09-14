@@ -813,7 +813,51 @@ class NodeMeta(type):
                 # belongs to some other class is refused here rather
                 # than resolving to a slot nothing ever binds.
                 relation.check_declared_on(cls)
+        if 'controls' in namespace:
+            _validate_controls(cls, name, namespace['controls'])
         return cls
+
+
+def _validate_controls(cls, name, table):
+    """Validate a `controls` declaration where it is written, for the
+    reason a relation is validated here: the class exists NOW, so its
+    own children and drivers can be enumerated, and a part or an input
+    belonging to some other class is refused at the line that wrote it
+    rather than at a render.
+
+    A control is recognized by its own `control_kind`, duck-typed --
+    the same style that recognizes a coordinate by "it IS a port
+    declaration" and a joint by "it OWNS one". That is what keeps
+    `solid_node/node/` importing nothing from `solid_node/simulation/`,
+    which is the invariant `DriverDeclaration` exists to preserve.
+
+    `controls` is therefore a RESERVED class-body name on a node class:
+    a mistyped control table is refused rather than left silently
+    inert. `cls._declares_controls` records the class's OWN table, so a
+    subclass that empties it reads False and one that assigns nothing
+    inherits its base's flag along with its base's table.
+    """
+    if not isinstance(table, dict):
+        raise TypeError(
+            f'{name}.controls is {table!r}. On a node class `controls` '
+            f'names the machine\'s CONTROLS -- a mapping of display name '
+            f'to Button(part, instruction) or Turn(part, input), beside '
+            f'`instructions` -- so the name is reserved; rename the '
+            f'attribute.')
+    for entry_name, control in table.items():
+        if not isinstance(entry_name, str):
+            raise TypeError(
+                f'{name}.controls is keyed by the DISPLAY NAME a control '
+                f'is shown under, and {entry_name!r} is not a string.')
+        if getattr(control, 'control_kind', None) is None:
+            raise TypeError(
+                f"{name}.controls['{entry_name}'] is {control!r}, which is "
+                f"not a control. On a node class `controls` names the "
+                f"machine's CONTROLS -- Button(part, instruction) or "
+                f"Turn(part, input) -- so the name is reserved; rename the "
+                f"attribute.")
+        control.check_declared_on(cls, entry_name)
+    cls._declares_controls = bool(table)
 
 
 ##############################################

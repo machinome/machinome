@@ -1,0 +1,307 @@
+{
+  "format": "solid-node-export",
+  "version": 5,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "crank": {
+      "default": 0.0,
+      "range": null,
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    },
+    "lever": {
+      "default": 100.0,
+      "range": [
+        100,
+        140
+      ],
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {
+    "Advance": {
+      "by": {
+        "crank": 10.0
+      },
+      "duration": 0.5
+    },
+    "Park": {
+      "targets": {
+        "crank": 40.0
+      },
+      "duration": 0.5
+    },
+    "Wind": {
+      "by": {
+        "crank": 10.0,
+        "lever": 5.0
+      },
+      "duration": 0.5
+    }
+  },
+  "program": {
+    "identity": "2e6bc694e025b77c3a80210d59e399a6ce1ca033ea7bb998fc32945524eb1d1f",
+    "clock": "time",
+    "coordinates": {
+      "crank": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "lever": {
+        "kind": "input",
+        "initial": 100.0,
+        "domain": null
+      },
+      "first.turn": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "second.turn": {
+        "kind": "coordinate",
+        "initial": -0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "slide.travel": {
+        "kind": "coordinate",
+        "initial": 4.0,
+        "unit": "mm",
+        "domain": "translational"
+      },
+      "spindle": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      }
+    },
+    "intermediates": [
+      "wheel.turn"
+    ],
+    "edges": [
+      {
+        "kind": "law",
+        "needs": [
+          "crank"
+        ],
+        "gives": [
+          "first.turn"
+        ],
+        "description": "crank drives first.turn",
+        "stated_by": "Train",
+        "expressions": [
+          "(2.0 * crank)"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          null
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "lever"
+        ],
+        "gives": [
+          "slide.travel"
+        ],
+        "description": "lever drives slide.travel",
+        "stated_by": "Train",
+        "expressions": [
+          "(4 + (72 * min(max(((lever - 113.5) / 11.25), 0.0), 1.0)))"
+        ],
+        "affine": [
+          false
+        ],
+        "plans": [
+          null
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "crank"
+        ],
+        "gives": [
+          "spindle"
+        ],
+        "description": "crank drives spindle",
+        "stated_by": "Train",
+        "expressions": [
+          "crank"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          null
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "first.turn"
+        ],
+        "gives": [
+          "second.turn"
+        ],
+        "description": "first.turn drives second.turn",
+        "stated_by": "Train",
+        "expressions": [
+          "(-1.5 * first.turn)"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          null
+        ]
+      }
+    ],
+    "spans": {},
+    "sources": {
+      "crank": [
+        "crank"
+      ],
+      "first.turn": [
+        "crank"
+      ],
+      "lever": [
+        "lever"
+      ],
+      "second.turn": [
+        "crank"
+      ],
+      "slide.travel": [
+        "lever"
+      ],
+      "spindle": [
+        "crank"
+      ],
+      "wheel.turn": []
+    },
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "subdivisions": 64,
+      "bisection_rounds": 64,
+      "max_crossings": 1000,
+      "agreement": 1e-09
+    }
+  },
+  "root": {
+    "name": "Train",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": null,
+    "operations": [
+      [
+        "r",
+        "spindle",
+        [
+          0,
+          0,
+          1
+        ]
+      ]
+    ],
+    "children": [
+      {
+        "name": "first",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": null,
+        "operations": [
+          [
+            "r",
+            "first.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "model": "first"
+      },
+      {
+        "name": "second",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": null,
+        "operations": [
+          [
+            "r",
+            "second.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "30.0",
+              "0.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "second"
+      },
+      {
+        "name": "slide",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": null,
+        "operations": [
+          [
+            "t",
+            [
+              "slide.travel",
+              "0",
+              "0"
+            ]
+          ],
+          [
+            "t",
+            [
+              "0.0",
+              "40.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "slide"
+      },
+      {
+        "name": "wheel",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": null,
+        "operations": [
+          [
+            "t",
+            [
+              "0.0",
+              "-40.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "wheel"
+      }
+    ]
+  }
+}

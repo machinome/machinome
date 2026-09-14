@@ -8,6 +8,37 @@ Changelog
 Unreleased
 ----------
 
+**A control says which part a person presses and which part a person
+turns.** An assembly declares ``controls`` beside ``instructions``:
+``Button(part, instruction)`` is a press on that part submitting the
+named instruction, and ``Turn(part, input)`` is a drag on that part,
+about the rotational coordinate it rides, issued as relative moves on
+that input. A control moves nothing itself — ownership, admission, stops
+and outcomes stay exactly what ``trigger``, ``move`` and ``rate`` state.
+
+The framework never guesses the binding, because it cannot: on a
+Pascaline the tens dial is moved by its own entry *and* by the carry
+from the column below, and the number drum turns with an input a hand
+may not touch at all. It does derive everything else. The gesture's
+coordinate is the one owned by the nearest ancestor-or-self of the part
+whose joint the run banks; the axis and the point it turns about are the
+values that joint's own placement used; and ``per_unit``, how far the
+input travels per unit of the part, is *measured* from the compiled
+program at the rest bank in both directions rather than declared, so
+there is no second number to drift. Every mistake is refused with the
+facts — at class definition where the classes are known, at compile
+where the program is known, at publication where the rest bank is.
+
+A version 5 document gains a top-level ``controls`` table beside
+``instructions``, **additively**: the version does not move, because a
+consumer that ignores the table still drives the machine from the panel
+and still renders the truth, and a document that declares no control
+omits the key and is byte-identical to the one published before this
+existed. The compiled program, its ``identity`` and the conformance
+corpus are untouched. ``controls`` is now a reserved class-body name on a
+node class. What a viewer *does* with the table is the browser viewer's
+own release.
+
 **A running root's document publishes the compiled program, under schema
 version 5.** Cycles one to three built a machine that runs in Python and
 nothing of it reached the browser: a running root's document was

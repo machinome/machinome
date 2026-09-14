@@ -24,7 +24,8 @@ import shutil
 
 from solid_node._artifact import ArtifactChanged
 from .serializer import (
-    DOCUMENT_FORMAT, DOCUMENT_VERSION, compiled_program, document_body,
+    DOCUMENT_FORMAT, DOCUMENT_VERSION, compiled_controls, compiled_program,
+    document_body,
     drivers_table, instructions_table, serialize_node, symbolic_document,
 )
 from .builder import get_build_dir, project_build_lock
@@ -123,8 +124,9 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True):
                     events = instructions_table(
                         instructions, running=program is not None)
 
-                manifest = document_body(node, root, drivers, events,
-                                         program, initial, fps, frames)
+                manifest = document_body(
+                    node, root, drivers, events, program, initial, fps,
+                    frames, controls=compiled_controls(program, initial))
                 manifest['root'] = root
                 manifest['pieces'] = inventory.pieces()
                 _warn_unreadable(manifest['version'])

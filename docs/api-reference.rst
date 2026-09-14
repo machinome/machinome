@@ -321,6 +321,10 @@ scenario tests.
 
 .. autoclass:: solid_node.simulation.Instruction
 
+.. autoclass:: solid_node.simulation.Button
+
+.. autoclass:: solid_node.simulation.Turn
+
 .. autoclass:: solid_node.simulation.RampProgram
 
 .. autoclass:: solid_node.simulation.Sim

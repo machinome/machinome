@@ -62,7 +62,8 @@ from solid_node.motion.couplings import (_solved_formulas, _wirings,
                                          CouplingError)
 from solid_node.motion.joints import coordinates_of, declared_joints
 from solid_node.motion.ports import CLOCK_NAME
-from solid_node.node.qualified import driver_id, instance_path
+from solid_node.node.qualified import (driver_id, instance_path,
+                                       DriverIdError)
 from solid_node.scad_expression import GraphValue, as_node, symbol
 
 
@@ -778,6 +779,20 @@ class Program:
         # coordinate's own id.
         self.spans = tuple(spans)
         self.sources = _reaching_inputs(self.nodes, self.edges)
+        # The bank's own ids, both ways. `Run` kept these; they moved
+        # here with `values_of`/`deltas_of`, so the tick and the control
+        # measurement address the program through one mapping.
+        self.keys = {node.name: key for key, node in self.nodes.items()
+                     if node.kind in ('input', 'bank')}
+        self.bank_keys = frozenset(self.keys.values())
+        # The compiled controls, in qualified-name order. Assigned by
+        # `compile_program` after this constructor, because a control's
+        # admission is checked against `sources`, which is computed
+        # here. DELIBERATELY absent from `described()` below: a control
+        # changes nothing the run computes, so a snapshot taken against
+        # a program must not be refused because one was added or
+        # removed.
+        self.controls = ()
         self.identity = hashlib.sha256(
             self.described().encode()).hexdigest()
 
@@ -811,7 +826,162 @@ class Program:
         return '\n'.join(lines)
 
     ##############################################
+    # The arithmetic the tick and the measurement share
+
+    def values_of(self, bank):
+        """The bank, plus every INTERMEDIATE this program computes from
+        it: a plain port or a derived coordinate a compiled edge
+        determines, recomputed here rather than stored.
+
+        `Run._values`' own body, moved here so the tick and the control
+        measurement have ONE implementation of "the bank plus the
+        intermediates" rather than two to keep in step. The corpus
+        replay is what proves the move changed nothing.
+        """
+        values = {self.keys[identifier]: value
+                  for identifier, value in bank.items()}
+        for edge in self.edges:
+            if all(key in self.bank_keys for key in edge.gives):
+                # Nothing this edge computes is an intermediate, so its
+                # values were computed here and discarded. Skipping it is
+                # behaviour-neutral and removes one graph evaluation per
+                # law per tick -- and, with the refusal of a jumping law
+                # that drives no owned coordinate, it means a jump graph
+                # is never evaluated absolutely at all.
+                continue
+            for key, value in edge.values(values):
+                if key not in self.bank_keys:
+                    values[key] = value
+        return values
+
+    def deltas_of(self, admissions):
+        """One displacement per input, zero everywhere else."""
+        deltas = {key: 0.0 for key in self.nodes}
+        for input_id, delta in admissions.items():
+            if delta:
+                deltas[self.keys[input_id]] = delta
+        return deltas
+
+    def response(self, bank, input_id, epsilon):
+        """What every banked coordinate moves by when `input_id` alone
+        is displaced by `epsilon` at `bank`.
+
+        The tick's own propagation with NO command, no stop, no staging
+        and no record: `values_of`, seeded with one displacement, then
+        ONE ordered pass over `edge.increments`. A probe on the
+        originating worktree measured it against the run itself and the
+        two agree BIT FOR BIT with what
+        `sim.move(input_id, by=epsilon, duration=0)` commits on a fresh
+        simulation.
+
+        Pure arithmetic over the compiled program, off the tree
+        entirely, which is what the ratio measurement needs:
+        `program_of` asks a LIVE run for its program rather than
+        constructing one, because publication must leave a running
+        simulation's ownership, bank and ability to advance intact, and
+        constructing a `Sim` releases whatever run owns the tree.
+
+        A CHECK edge determines nothing and is skipped; the conflict
+        detection and the messages a failed TICK needs stay on
+        `Run._pass`, which a measurement does not have and must not
+        borrow.
+        """
+        values = self.values_of(bank)
+        deltas = self.deltas_of({input_id: epsilon})
+        for edge in self.edges:
+            if edge.kind == 'check':
+                continue
+            for key, delta in edge.increments(values, deltas):
+                deltas[key] = delta
+        return {identifier: deltas[key]
+                for identifier, key in self.keys.items()}
+
+    ##############################################
     # Publication
+
+    def published_controls(self, initial):
+        """The version 5 document's `controls` table, keyed and ORDERED
+        by qualified control name, each entry's fields in a fixed order,
+        so republishing an unchanged model is byte-identical.
+
+        `initial` is the REST BANK, the same one `published` takes, and
+        the only thing the ratio is measured at.
+        """
+        table = {}
+        for control in self.controls:
+            entry = {'kind': control.kind, 'part': list(control.part)}
+            if control.kind == 'button':
+                entry['instruction'] = control.instruction
+            else:
+                entry['input'] = control.input
+                entry['per_unit'] = self._per_unit(initial, control)
+            entry['joint'] = list(control.joint)
+            entry['coordinate'] = control.coordinate
+            entry['axis'] = [float(component) for component in control.axis]
+            entry['origin'] = [float(component)
+                               for component in control.origin]
+            table[control.name] = entry
+        return table
+
+    def _per_unit(self, initial, control):
+        """The coordinate units the part moves per DESIGN unit the input
+        travels, measured at the rest bank in BOTH directions.
+
+        The displacement is seeded in the BANK's own units -- native,
+        which for an integer driver is one whole step, because
+        `Driver.native` rounds a design-unit displacement to whole
+        native units ONCE and a displacement below half a step is no
+        displacement at all -- and divided by what that displacement is
+        worth in design units. For the ordinary unscaled driver the two
+        are the same number, `2**-20`: a power of two, so the division
+        is exact and an affine chain publishes `-36.0` rather than a
+        rounded neighbour of it.
+
+        Both directions are read because one number is what a gesture is
+        scaled by: a law with a kink at the rest value has two, and a
+        drag scaled by the other direction's would be wrong in one
+        direction. The window is this module's own `_CONTROL_AGREEMENT`
+        and NOT the program's `agreement`: that one is the window inside
+        which two increments of ONE movement are called equal, while
+        this is a two-sided finite difference over a law that is allowed
+        to curve, and `1e-9` would refuse every smooth non-affine law.
+
+        The published number is the FORWARD reading. A mean would be a
+        number neither direction produced.
+        """
+        declaration = dict(self.inputs)[control.input]
+        native, design = _control_displacement(declaration)
+        forward = self.response(
+            initial, control.input, native)[control.coordinate] / design
+        backward = self.response(
+            initial, control.input, -native)[control.coordinate] / -design
+        if forward == 0.0 and backward == 0.0:
+            raise ControlError(
+                f"the control '{control.name}' turns "
+                f"{'.'.join(control.part)} with the input "
+                f"'{control.input}', and at the rest bank that part does "
+                f"not move with that input at all: displacing "
+                f"'{control.input}' moves the coordinate "
+                f"'{control.coordinate}' by nothing in either direction. "
+                f"Reaching a coordinate through the program is necessary "
+                f"and not sufficient -- an input coupled only through a "
+                f"law that is disengaged at rest reaches it and moves it "
+                f"not at all -- so there is no scale for the gesture.")
+        window = _CONTROL_AGREEMENT * max(abs(forward), abs(backward))
+        if abs(forward - backward) > window:
+            raise ControlError(
+                f"the control '{control.name}' turns the coordinate "
+                f"'{control.coordinate}' with the input '{control.input}', "
+                f"and the two directions do not agree at the rest bank: "
+                f"forward reads {forward!r} and backward {backward!r} "
+                f"coordinate units per design unit. A law whose response "
+                f"at rest is not one number gives the gesture no single "
+                f"scale, and a drag scaled by one of them would be wrong "
+                f"in the other direction. A law that merely CURVES agrees "
+                f"well inside the window of "
+                f"{_CONTROL_AGREEMENT!r} relative; this is a kink, a jump "
+                f"or a one-way law at the value the part rests at.")
+        return forward
 
     def published(self, initial):
         """The projection a version 5 document carries: what COMPILE
@@ -1015,11 +1185,20 @@ class _Node:
 # Compiling
 
 
-def compile_program(root, inputs, coordinates):
+def compile_program(root, inputs, coordinates, controls=None,
+                    instructions=None):
     """The program of `root`, read off what the REST RENDER solved.
 
     `inputs` is `{qualified id: Driver}` and `coordinates` is
     `{qualified id: (node, name)}`; together they are the bank.
+
+    `controls` and `instructions` are the enumerations `Sim` already
+    holds -- `{qualified name: (node, path, declaration)}` each. The
+    controls are compiled to the coordinate, joint, axis and origin they
+    name, AFTER the program exists, because a `Turn`'s admission is
+    checked against `sources`, which the program computes. Nothing about
+    the program itself changes: `described()` and therefore `identity`
+    never learn that a control exists.
     """
     nodes = {}
     for identifier, _declaration in inputs.items():
@@ -1052,9 +1231,227 @@ def compile_program(root, inputs, coordinates):
     kept = _reaching_the_bank(candidates, bank_keys)
     _refuse_opaque(kept, bank_keys, nodes)
     ordered = _ordered(kept, nodes)
-    return Program(root, sorted(inputs.items()), sorted(coordinates),
-                   nodes, ordered, _compiled_spans(coordinates),
-                   _declared_coordinates(coordinates))
+    program = Program(root, sorted(inputs.items()), sorted(coordinates),
+                      nodes, ordered, _compiled_spans(coordinates),
+                      _declared_coordinates(coordinates))
+    if controls:
+        program.controls = _compiled_controls(
+            root, program, coordinates, controls, instructions or {})
+    return program
+
+
+##############################################
+# The control table
+
+
+# The window inside which the two directions of the ratio measurement
+# are called one number, RELATIVE. Deliberately not the program's own
+# `agreement`: that is the window inside which two increments of one
+# movement are equal, and this is a two-sided finite difference over a
+# law the authority explicitly permits to curve. `1e-3` catches a kink,
+# a jump and a one-way law at rest, and admits curvature.
+_CONTROL_AGREEMENT = 1e-3
+
+# The displacement a ratio is measured with, in the BANK's own units. A
+# power of two, so the division by it is exact and a composed affine
+# chain publishes the exact product rather than a rounded neighbour.
+_CONTROL_DISPLACEMENT = 2.0 ** -20
+
+
+def _control_displacement(declaration):
+    """`(native, design)`: how far to displace this input in the bank's
+    own units, and what that displacement is worth in design units.
+
+    An INTEGER driver counts whole native units, so it is displaced by
+    one of them; anything smaller rounds to nothing and would read as a
+    part that does not move. Everything else takes the power-of-two
+    displacement.
+    """
+    native = 1.0 if declaration.dtype is int else _CONTROL_DISPLACEMENT
+    design = native if declaration.scale is None \
+        else native * declaration.scale
+    return native, design
+
+
+class _Control:
+    """One control, compiled: what a consumer needs to draw the
+    gesture and to issue the request.
+
+    `part` and `joint` are TUPLES OF NODE NAMES from the document's own
+    root down, because a node name is not always a legal identifier and
+    a consumer walks the document's tree by name anyway; `coordinate`
+    and `input` are dotted qualified ids, because they are expression
+    names and must be. `axis` and `origin` are in the JOINT NODE's own
+    frame, being exactly the values `Joint.place` built the placement
+    from, so a consumer computes the world line as `matrixWorld . axis`
+    and `matrixWorld . origin` with no case analysis.
+    """
+
+    __slots__ = ('kind', 'name', 'part', 'joint', 'coordinate', 'axis',
+                 'origin', 'instruction', 'input')
+
+    def __init__(self, kind, name, part, joint, coordinate, axis, origin,
+                 instruction=None, input=None):
+        self.kind = kind
+        self.name = name
+        self.part = part
+        self.joint = joint
+        self.coordinate = coordinate
+        self.axis = axis
+        self.origin = origin
+        self.instruction = instruction
+        self.input = input
+
+    def __repr__(self):
+        return (f'<{self.kind} {self.name!r} on {".".join(self.part)} '
+                f'about {self.coordinate}>')
+
+
+class ControlError(ValueError):
+    """A control the compiled program cannot resolve."""
+
+
+def _compiled_controls(root, program, coordinates, controls, instructions):
+    """Every declared control, compiled, in QUALIFIED NAME order.
+
+    A control whose part THIS RENDER OMITTED is left out rather than
+    refused: `omit()` leaves a node "not linked, built, exported, fused
+    or serialized", so the document genuinely does not contain that part
+    and `--set covers=false` on a machine with a control on the lid must
+    still build. Every OTHER way a part could fail to resolve was
+    already refused at class definition, so this cannot hide a
+    misdeclaration.
+    """
+    owners = {}
+    for identifier, (node, name) in coordinates.items():
+        owners.setdefault(id(node), {})[name] = identifier
+    found = []
+    for name in sorted(controls):
+        declaring, path, control = controls[name]
+        part_node = control.part._walk(declaring)
+        try:
+            part_path = instance_path(part_node, root)
+        except DriverIdError:
+            # Not linked under the root: this render omitted it.
+            continue
+        joint_node, joint = _posing_joint(part_node, root, owners, name,
+                                          control)
+        coordinate = owners[id(joint_node)][coordinates_of(joint)[0]]
+        axis, origin = _placed_geometry(joint_node, joint)
+        entry = dict(
+            kind=control.control_kind, name=name, part=part_path,
+            joint=instance_path(joint_node, root), coordinate=coordinate,
+            axis=axis, origin=origin)
+        if control.control_kind == 'button':
+            entry['instruction'] = _checked_instruction(
+                name, path, control, instructions)
+        else:
+            entry['input'] = _checked_input(
+                name, path, control, declaring, program, coordinate)
+        found.append(_Control(**entry))
+    return tuple(found)
+
+
+def _posing_joint(part_node, root, owners, name, control):
+    """The nearest ancestor-or-self of the part whose joint the run
+    banks, and that joint.
+
+    A part moved only by an author's own `render()` arithmetic over a
+    plain port is refused here deliberately: a control's gesture is a
+    JOINT's motion, and a hand-written rotation is not one.
+    """
+    current = part_node
+    while True:
+        owned = owners.get(id(current))
+        if owned is not None:
+            break
+        parent = getattr(current, '_parent', None)
+        if current is root or parent is None:
+            raise ControlError(
+                f"the control '{name}' is on "
+                f"{type(part_node).__name__} '{part_node.name}' "
+                f"({control.part.written}), and nothing the run owns moves "
+                f"that part: no ancestor of it, and not the part itself, "
+                f"declares a joint whose coordinate the run banks. A "
+                f"control's gesture is a joint's motion -- a part posed by "
+                f"a plain port an author's own render() turns is not one.")
+        current = parent
+    joints = declared_joints(type(current))
+    if len(joints) > 1:
+        raise ControlError(
+            f"the control '{name}' is on a part posed by "
+            f"{type(current).__name__} '{current.name}', which declares "
+            f"{len(joints)} joints -- {', '.join(joints)} -- that compose "
+            f"one motion between them. A control names ONE coordinate, and "
+            f"neither of those is it. Declare the control on a part posed "
+            f"by a single joint.")
+    joint = next(iter(joints.values()))
+    owned = coordinates_of(joint)
+    if len(owned) > 1:
+        raise ControlError(
+            f"the control '{name}' is on a part posed by the joint "
+            f"'{joint.name}' of {type(current).__name__} "
+            f"'{current.name}', which owns {len(owned)} coordinates -- "
+            f"{', '.join(owned)}. A control names ONE coordinate, and a "
+            f"free body's six are not one gesture.")
+    return current, joint
+
+
+def _placed_geometry(node, joint):
+    """The axis and the point `Joint.place` turned the node about,
+    both in the node's OWN frame.
+
+    Exactly `place`'s own two lines, including the SITE carry: a joint
+    stated by the declaring parent has its axis and anchor carried
+    through the inverse of the node's rest placement before the
+    placement is built, so publishing what the site WROTE would give a
+    consumer the wrong line.
+    """
+    anchor = joint.arguments(node)[1]
+    axes = joint.axes(node)
+    points = joint.carried_points(node, anchor)
+    if joint._declared_at_site:
+        axes, points = joint._carry(node, axes, points)
+    return tuple(axes[0]), tuple(points[0])
+
+
+def _checked_instruction(name, path, control, instructions):
+    """A button's instruction, qualified through the DECLARING node's
+    own path -- the rule `instructions_table` already applies to a
+    target name, applied to a name."""
+    qualified = '.'.join(path + (control.instruction,))
+    if qualified in instructions:
+        return qualified
+    known = ', '.join(sorted(instructions)) or 'none'
+    raise ControlError(
+        f"the control '{name}' is a button for the instruction "
+        f"'{qualified}', which nothing in this tree declares. A button "
+        f"references an instruction and never repeats its definition; the "
+        f"declared instructions are: {known}.")
+
+
+def _checked_input(name, path, control, declaring, program, coordinate):
+    """A turn's input, qualified through the declaring node's path,
+    with the two things a DRAG needs of it checked: the coordinate
+    turns, and this input reaches it."""
+    unit, domain = program.declared.get(coordinate, (None, None))
+    if domain != 'rotational':
+        raise ControlError(
+            f"the control '{name}' is a Turn on the coordinate "
+            f"'{coordinate}', whose domain is {domain!r} and not "
+            f"'rotational'. A turn is a drag about a rotational "
+            f"coordinate; Slide, for a prismatic one, is not in this "
+            f"release.")
+    identifier = driver_id(path, control.local_input_of(type(declaring)))
+    reaching = program.sources.get(program.keys[coordinate], frozenset())
+    if identifier not in reaching:
+        reach = ', '.join(sorted(reaching)) or 'no input at all'
+        raise ControlError(
+            f"the control '{name}' turns the coordinate '{coordinate}' "
+            f"with the input '{identifier}', which does not reach it "
+            f"through the compiled program. The inputs that DO reach "
+            f"'{coordinate}' are: {reach}.")
+    return identifier
 
 
 def _declared_coordinates(coordinates):

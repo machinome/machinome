@@ -971,6 +971,96 @@ Declare machine-level moves on the machine, not on its parts: `Home`
 above belongs to the `Plotter`, because homing is something the whole
 machine does.
 
+.. _controls-on-parts:
+
+Controls: pressing and turning the part itself
+==============================================
+
+An instruction becomes a button on a panel beside the model. A
+**control** puts the same request on the *part*: click the dial, and the
+dial advances. Declared in a ``controls`` dict beside ``instructions``,
+on a root that declares `Time.running()`:
+
+.. code-block:: python
+
+    class Pascaline(AssemblyNode):
+        time = Time.running()
+        units_entry = Driver(default=0.0, unit='digit')
+        units = DecimalModule()
+
+        instructions = {
+            'Add one': Instruction(by={'units_entry': 1.0}, duration=1.0),
+        }
+        controls = {
+            'units dial': Button(units.input.dial, 'Add one'),
+            'turn units': Turn(units.input.dial, units_entry),
+        }
+
+``Button(part, instruction)`` is a press on `part` submitting the named
+instruction — the panel's button, moved onto the part, carrying no
+movement of its own. ``Turn(part, input)`` is a drag on `part`, about
+the rotational coordinate that part rides, issued as a sequence of
+relative moves on `input`. ``Slide``, for a prismatic coordinate, is the
+obvious sibling and is not in this release.
+
+A control **moves nothing itself**. It names a request the run already
+accepts, so ownership, admission, stops and outcomes are exactly what
+`trigger`, `move` and `rate` state, and a blocked drag reports blocked
+and leaves no hidden backlog.
+
+The part is named the way a relation's path ends already are —
+``units.input.dial``, a declared child or a path of declared children
+through one — and the instruction and the input qualify through the
+declaring node's own path, exactly as an instruction's targets do. A
+`Turn`'s input is the ``Driver`` *declaration*, never a qualified id
+string; a driver of a child is named by declaring the control on the
+child.
+
+**The framework never guesses which part a hand means.** On a Pascaline,
+the tens dial is moved by the tens entry *and* by the carry from the
+column below, so nothing in the document can say which one a hand on it
+means; and the number drum turns with an input, yet a hand may not turn
+it, because the ratchet is on the input arbor and the drum sits under
+the lid. Only the author knows, so the binding is declared.
+
+**The geometry is not declared, and neither is the ratio.** The
+gesture's coordinate is the one owned by the nearest ancestor-or-self of
+the part whose joint the run banks; its axis and the point it turns
+about are read off the tree, being exactly the values the joint's own
+placement used. How far the input travels per unit of the part —
+``per_unit`` in the published document — is **measured** from the
+compiled program at the rest bank, with that input displaced a little in
+each direction and nothing else moved. Stating that number in the class
+body would only repeat a relation the program already holds, and a
+number stated twice is a number that drifts.
+
+The reading is taken **at rest**. A law whose response to that input
+changes with state makes a pointer built on it lead or lag the part; the
+part still moves exactly what the run commits, so nothing is ever wrong,
+only less tight.
+
+Every mistake is refused with the facts, as early as the facts exist. At
+class definition, where the classes are known: a part the declaring
+class does not hold, a coordinate or a driver written where a part
+belongs, a repeated child, a misspelt path segment, a `Turn` over a
+driver the class does not declare, and a ``controls`` attribute that is
+not a table of controls — ``controls`` is a reserved name on a node
+class, so a mistyped table is never silently inert. At compile, where
+the program is known: a part no run-owned coordinate poses, a posing
+node declaring several joints or a joint owning several coordinates, a
+`Turn` over a coordinate that is not rotational, a `Turn` whose input
+does not reach the coordinate (naming the inputs that do), a `Button`
+naming no declared instruction, and a control under a root that does not
+declare `Time.running()`. At publication: a `Turn` whose input moves the
+part by nothing at rest, and one whose two directions disagree.
+
+A version 5 document publishes the table beside ``instructions``,
+additively — a document that declares no control omits the key and is
+byte-identical to the one the framework published before controls
+existed. What a viewer *does* with the table — the hover affordance, the
+pick, the drag plane, the quantum — is the browser viewer's own release,
+not the framework's.
+
 Driving it in the viewer
 ========================
 

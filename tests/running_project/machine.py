@@ -40,9 +40,10 @@ from solid_node.math import abs, clamp01, floor, sign, sin, wrap
 from solid_node.motion.joints import Free, Prismatic, Revolute
 from solid_node.motion.ports import RotationalPort, Time
 from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, Instruction
+from solid_node.parameters import Flag
+from solid_node.simulation import Button, Driver, Instruction, Turn
 
-from .parts import Arbor, Block, Slide, Wheel
+from .parts import Arbor, Block, Dial, Slide, Wheel
 
 
 def tooth_window(source, target):
@@ -182,6 +183,15 @@ def crowded(source, target):
     """A sawtooth whose period is ONE unit: a coarse enough tick crosses
     more surfaces than the run admits."""
     return lambda a: clamp01(a - floor(a)) * 0.5
+
+
+def swinging(source, target):
+    """A SMOOTH non-affine law: its partial in the input changes with
+    state, so a two-sided reading of it disagrees -- by far more than
+    the program's own `agreement` and by far less than the window the
+    control measurement states. The pointer leads or lags the part and
+    nothing is ever wrong, which is why `1e-3` admits it."""
+    return lambda angle: 90 * sin(angle)
 
 
 def stdlib_law(source, target):
@@ -1299,3 +1309,552 @@ class GaugedBody(AssemblyNode):
 
 class Gauged(GaugedBody):
     time = Time.running()
+
+
+##############################################
+# The CONTROL machines: OpenSpec change `declare-controls-on-parts`.
+#
+# `Columns` is the Pascaline module's own tree shape -- a dial at depth
+# under the arbor that turns it, a second column two inputs reach -- and
+# is what the whole cycle is answerable to. `ColumnsBare` is its
+# control-free twin, so the identity a snapshot is checked against can
+# be shown not to have moved. The rest is one machine per refusal, per
+# geometry case, and per rule the design states.
+
+
+class DialArbor(AssemblyNode):
+    """The Pascaline's own shape: the joint at depth, the touchable leaf
+    beneath it.
+
+    `Arbor` is a LEAF and can hold nothing, so no existing fixture has
+    the shape every control in the module has -- a body a hand touches,
+    hanging under the node whose joint poses it.
+    """
+
+    turn = Revolute(axis=(1, 0, 0), unit='deg')
+
+    dial = Dial()
+
+
+class Columns(AssemblyNode):
+    """Two Pascaline columns: `units.turn` is reached by one input and
+    `tens.turn` by BOTH, which is the ambiguity a viewer cannot resolve
+    and the author therefore declares.
+
+    Time, the children and the controls are declared on ONE class on
+    purpose: a control names a class-body declaration, and splitting the
+    body off into a base would only make every reference read
+    `ColumnsBody.units.dial`.
+    """
+
+    time = Time.running()
+
+    units_entry = Driver(default=0.0, unit='digit')
+    tens_entry = Driver(default=0.0, unit='digit')
+
+    units = DialArbor()
+    tens = DialArbor()
+    frame = Block()
+
+    units_entry.drives(units.turn, ratio=-36.0)
+    (tens_entry & units.turn).drives(tens.turn, law=carried_column)
+
+    instructions = {
+        'Add one': Instruction(by={'units_entry': 1.0}, duration=1.0),
+        'Add ten': Instruction(by={'tens_entry': 1.0}, duration=1.0),
+    }
+    controls = {
+        'units dial': Button(units.dial, 'Add one'),
+        'tens dial': Button(tens.dial, 'Add ten'),
+        'turn units': Turn(units.dial, units_entry),
+        'turn tens': Turn(tens.dial, tens_entry),
+    }
+
+    def render(self):
+        self.tens.translate([60.0, 0.0, 0.0])
+        self.frame.translate([0.0, -60.0, 0.0])
+
+
+class ColumnsBare(AssemblyNode):
+    """`Columns` to the last character, minus the controls: what the
+    compiled program, the bank and the identity must be unchanged
+    against."""
+
+    time = Time.running()
+
+    units_entry = Driver(default=0.0, unit='digit')
+    tens_entry = Driver(default=0.0, unit='digit')
+
+    units = DialArbor()
+    tens = DialArbor()
+    frame = Block()
+
+    units_entry.drives(units.turn, ratio=-36.0)
+    (tens_entry & units.turn).drives(tens.turn, law=carried_column)
+
+    instructions = {
+        'Add one': Instruction(by={'units_entry': 1.0}, duration=1.0),
+        'Add ten': Instruction(by={'tens_entry': 1.0}, duration=1.0),
+    }
+
+    def render(self):
+        self.tens.translate([60.0, 0.0, 0.0])
+        self.frame.translate([0.0, -60.0, 0.0])
+
+
+class OffCentreArbor(AssemblyNode):
+    """A dial on a joint whose line does NOT run through the node's own
+    placed origin."""
+
+    turn = Revolute(axis=(1, 0, 0), at=(0, 3, 0), unit='deg')
+
+    dial = Dial()
+
+
+class OffCentre(AssemblyNode):
+    """Design section 8: the point the joint turns about reaches the
+    document only as two translations, so the entry publishes it."""
+
+    time = Time.running()
+
+    units_entry = Driver(default=0.0, unit='digit')
+
+    units = OffCentreArbor()
+
+    units_entry.drives(units.turn, ratio=-36.0)
+
+    instructions = {
+        'Add one': Instruction(by={'units_entry': 1.0}, duration=1.0),
+    }
+    controls = {
+        'units dial': Button(units.dial, 'Add one'),
+        'turn units': Turn(units.dial, units_entry),
+    }
+
+
+class PlainDial(AssemblyNode):
+    """A body carrying a dial and declaring no joint of its own: the
+    declaration SITE gives it one."""
+
+    dial = Dial()
+
+
+class SiteTurned(AssemblyNode):
+    """The joint stated by the PARENT at the declaration site.
+
+    `place` carries a site joint's axis and anchor into the child's own
+    frame by inverting the child's rest placement, so the published
+    `axis` and `origin` are the CARRIED values and not the ones written
+    here -- the case a naive implementation gets wrong.
+    """
+
+    time = Time.running()
+
+    entry = Driver(default=0.0, unit='digit')
+
+    holder = PlainDial(turn=Revolute(axis=(0, 0, 1), at=(0, 6, 0),
+                                     unit='deg'))
+
+    entry.drives(holder.turn, ratio=-36.0)
+
+    instructions = {
+        'Add one': Instruction(by={'entry': 1.0}, duration=1.0),
+    }
+    controls = {
+        'turn holder': Turn(holder.dial, entry),
+    }
+
+    def render(self):
+        self.holder.rotate(90, [1, 0, 0])
+        self.holder.translate([0.0, 20.0, 0.0])
+
+
+class DialHolder(AssemblyNode):
+    """An assembly between the joint and the part that declares nothing
+    at all: the walk up passes straight through it."""
+
+    dial = Dial()
+
+
+class DeepArbor(AssemblyNode):
+    turn = Revolute(axis=(1, 0, 0), unit='deg')
+
+    holder = DialHolder()
+
+
+class DeepColumn(AssemblyNode):
+    """Three deep: root, the arbor that declares the joint, the holder
+    that declares nothing, the dial."""
+
+    time = Time.running()
+
+    entry = Driver(default=0.0, unit='digit')
+
+    deep = DeepArbor()
+
+    entry.drives(deep.turn, ratio=-36.0)
+
+    instructions = {
+        'Add one': Instruction(by={'entry': 1.0}, duration=1.0),
+    }
+    controls = {
+        'deep dial': Button(deep.holder.dial, 'Add one'),
+        'turn deep': Turn(deep.holder.dial, entry),
+    }
+
+
+class Column(AssemblyNode):
+    """A CHILD that declares its own driver, instruction and controls:
+    everything about it qualifies through its instance path."""
+
+    entry = Driver(default=0.0, unit='digit')
+
+    arbor = DialArbor()
+
+    entry.drives(arbor.turn, ratio=-36.0)
+
+    instructions = {
+        'Add one': Instruction(by={'entry': 1.0}, duration=1.0),
+    }
+    controls = {
+        'dial': Button(arbor.dial, 'Add one'),
+        'turn': Turn(arbor.dial, entry),
+    }
+
+
+class ColumnStack(AssemblyNode):
+    """A running root that declares no control of its own and holds one
+    that does."""
+
+    time = Time.running()
+
+    column = Column()
+
+
+class Unposed(AssemblyNode):
+    """A control on a leaf no run-owned coordinate poses."""
+
+    time = Time.running()
+
+    units_entry = Driver(default=0.0, unit='digit')
+
+    units = DialArbor()
+    frame = Block()
+
+    units_entry.drives(units.turn, ratio=-36.0)
+
+    instructions = {
+        'Add one': Instruction(by={'units_entry': 1.0}, duration=1.0),
+    }
+    controls = {
+        'press frame': Button(frame, 'Add one'),
+    }
+
+    def render(self):
+        self.frame.translate([0.0, -60.0, 0.0])
+
+
+class SlideDial(AssemblyNode):
+    travel = Prismatic(axis=(1, 0, 0), unit='mm')
+
+    plate = Dial()
+
+
+class Sliding(AssemblyNode):
+    """A `Turn` over a TRANSLATIONAL coordinate: `Slide` is not in this
+    release."""
+
+    time = Time.running()
+
+    feed = Driver(default=0.0, unit='mm')
+
+    carriage = SlideDial()
+
+    feed.drives(carriage.travel, ratio=1.0)
+
+    instructions = {
+        'Feed': Instruction(by={'feed': 1.0}, duration=1.0),
+    }
+    controls = {
+        'turn carriage': Turn(carriage.plate, feed),
+    }
+
+
+class Unreached(AssemblyNode):
+    """`Columns`' shape with the WRONG input named: `tens_entry` does
+    not reach `units.turn` at all."""
+
+    time = Time.running()
+
+    units_entry = Driver(default=0.0, unit='digit')
+    tens_entry = Driver(default=0.0, unit='digit')
+
+    units = DialArbor()
+    tens = DialArbor()
+
+    units_entry.drives(units.turn, ratio=-36.0)
+    (tens_entry & units.turn).drives(tens.turn, law=carried_column)
+
+    instructions = {
+        'Add one': Instruction(by={'units_entry': 1.0}, duration=1.0),
+    }
+    controls = {
+        'turn units': Turn(units.dial, tens_entry),
+    }
+
+    def render(self):
+        self.tens.translate([60.0, 0.0, 0.0])
+
+
+class Unmoved(AssemblyNode):
+    """`Columns`' shape with an input that REACHES the coordinate and
+    moves it by nothing at rest: `units_entry`'s partial in `tens.turn`
+    is zero where the carry cam is between its ramps."""
+
+    time = Time.running()
+
+    units_entry = Driver(default=0.0, unit='digit')
+    tens_entry = Driver(default=0.0, unit='digit')
+
+    units = DialArbor()
+    tens = DialArbor()
+
+    units_entry.drives(units.turn, ratio=-36.0)
+    (tens_entry & units.turn).drives(tens.turn, law=carried_column)
+
+    instructions = {
+        'Add one': Instruction(by={'units_entry': 1.0}, duration=1.0),
+    }
+    controls = {
+        'turn tens': Turn(tens.dial, units_entry),
+    }
+
+    def render(self):
+        self.tens.translate([60.0, 0.0, 0.0])
+
+
+class Unnamed(AssemblyNode):
+    """A `Button` naming an instruction nothing declares."""
+
+    time = Time.running()
+
+    units_entry = Driver(default=0.0, unit='digit')
+
+    units = DialArbor()
+
+    units_entry.drives(units.turn, ratio=-36.0)
+
+    instructions = {
+        'Add one': Instruction(by={'units_entry': 1.0}, duration=1.0),
+    }
+    controls = {
+        'units dial': Button(units.dial, 'Add two'),
+    }
+
+
+class TwoJointed(AssemblyNode):
+    """A body two joints compose one motion for."""
+
+    swing = Revolute(axis=(1, 0, 0), unit='deg')
+    lift = Revolute(axis=(0, 1, 0), unit='deg')
+
+    dial = Dial()
+
+
+class TwoJoints(AssemblyNode):
+    """A control on a part whose nearest posing node declares TWO
+    joints: neither is "the" coordinate."""
+
+    time = Time.running()
+
+    entry = Driver(default=0.0, unit='digit')
+    elevation = Driver(default=0.0, unit='deg')
+
+    stack = TwoJointed()
+
+    entry.drives(stack.swing, ratio=-36.0)
+    elevation.drives(stack.lift, ratio=1.0)
+
+    instructions = {
+        'Add one': Instruction(by={'entry': 1.0}, duration=1.0),
+    }
+    controls = {
+        'turn stack': Turn(stack.dial, entry),
+    }
+
+
+class FreeDial(AssemblyNode):
+    """A dial on a body floating against the world."""
+
+    pose = Free(at=(0, 0, 0))
+
+    dial = Dial()
+
+
+class FreePosed(AssemblyNode):
+    """A control on a part posed by a joint owning SIX coordinates."""
+
+    time = Time.running()
+
+    lift = Driver(default=0.0, unit='mm')
+    surge = Driver(default=0.0, unit='mm')
+    sway = Driver(default=0.0, unit='mm')
+    heading = Driver(default=0.0, unit='deg')
+    pitching = Driver(default=0.0, unit='deg')
+    rolling = Driver(default=0.0, unit='deg')
+
+    floating = FreeDial()
+
+    lift.drives(floating.pose.z)
+    surge.drives(floating.pose.x)
+    sway.drives(floating.pose.y)
+    heading.drives(floating.pose.yaw)
+    pitching.drives(floating.pose.pitch)
+    rolling.drives(floating.pose.roll)
+
+    instructions = {
+        'Turn about': Instruction(by={'heading': 1.0}, duration=1.0),
+    }
+    controls = {
+        'turn floating': Turn(floating.dial, heading),
+    }
+
+
+class NotRunning(AssemblyNode):
+    """The same controls under NO time base."""
+
+    units_entry = Driver(default=0.0, unit='digit')
+
+    units = DialArbor()
+
+    units_entry.drives(units.turn, ratio=-36.0)
+
+    instructions = {
+        'Park': Instruction({'units_entry': 0.0}, duration=0.5),
+    }
+    controls = {
+        'units dial': Button(units.dial, 'Park'),
+    }
+
+
+class LoopingControls(NotRunning):
+    """The same controls under a LOOPING base, inheriting the table and
+    the flag from its own base."""
+
+    time = Time(loop=2.0)
+
+
+class OmittableArbor(AssemblyNode):
+    """An arbor whose dial a parameter may leave off the machine.
+
+    The PART goes and the joint stays, which is the shape design section
+    10 is about: a machine whose lid carries a control still builds with
+    `--set covers=false`.
+    """
+
+    fitted = Flag(True)
+
+    turn = Revolute(axis=(1, 0, 0), unit='deg')
+
+    dial = Dial()
+
+    def render(self):
+        if not self.fitted:
+            self.dial.omit()
+
+
+class OmittedControl(AssemblyNode):
+    """Design section 10: a part THIS render omits drops its control
+    rather than refusing the build."""
+
+    time = Time.running()
+
+    fitted = Flag(True)
+
+    units_entry = Driver(default=0.0, unit='digit')
+
+    units = DialArbor()
+    spare = OmittableArbor(fitted=fitted)
+
+    units_entry.drives(units.turn, ratio=-36.0)
+    units_entry.drives(spare.turn, ratio=-36.0)
+
+    instructions = {
+        'Add one': Instruction(by={'units_entry': 1.0}, duration=1.0),
+    }
+    controls = {
+        'spare dial': Button(spare.dial, 'Add one'),
+        'units dial': Button(units.dial, 'Add one'),
+        'turn units': Turn(units.dial, units_entry),
+    }
+
+    def render(self):
+        self.spare.translate([60.0, 0.0, 0.0])
+
+
+class Stepping(AssemblyNode):
+    """An INTEGER input: the measurement displaces by one NATIVE unit,
+    because `Driver.native` rounds a design-unit displacement to whole
+    native units once and anything below half a step is no step at
+    all."""
+
+    time = Time.running()
+
+    feed = Driver(default=0, dtype=int, scale=0.0125, unit='mm')
+
+    units = DialArbor()
+
+    feed.drives(units.turn, ratio=-36.0)
+
+    instructions = {
+        'Step': Instruction(by={'feed': 0.0125}, duration=1.0),
+    }
+    controls = {
+        'turn units': Turn(units.dial, feed),
+    }
+
+
+class KinkedControl(AssemblyNode):
+    """A `Turn` over a law with a KINK exactly at the rest value.
+
+    `kinked` is `5 * abs(x - 50)` and the crank rests at 50, so the
+    forward reading is `+5` and the backward `-5`: no single number
+    scales the gesture, and a drag scaled by one of them would be wrong
+    in the other direction.
+    """
+
+    time = Time.running()
+
+    crank = Driver(default=50.0, unit='deg')
+
+    units = DialArbor()
+
+    crank.drives(units.turn, law=kinked)
+
+    instructions = {
+        'Nudge': Instruction(by={'crank': 1.0}, duration=1.0),
+    }
+    controls = {
+        'turn units': Turn(units.dial, crank),
+    }
+
+
+class SmoothControl(AssemblyNode):
+    """The same shape over a SMOOTH non-affine law, at a state where its
+    curvature is at its most awkward: admitted, because a law that
+    curves still moves the part exactly what the run commits."""
+
+    time = Time.running()
+
+    crank = Driver(default=89.0, unit='deg')
+
+    units = DialArbor()
+
+    crank.drives(units.turn, law=swinging)
+
+    instructions = {
+        'Nudge': Instruction(by={'crank': 1.0}, duration=1.0),
+    }
+    controls = {
+        'turn units': Turn(units.dial, crank),
+    }

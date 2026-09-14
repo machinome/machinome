@@ -1,10 +1,46 @@
 # Controls on parts: pressing and turning the machine itself
 
-**Status: provisional plan, 2026-09-14.** Nothing here is ratified. It is
-the working document three OpenSpec cycles would be cut from — one in the
+**Status: superseded for the framework half, 2026-09-14.** This is the
+working document three OpenSpec cycles are cut from — one in the
 framework, one in the viewer, one in the Pascaline module — and where it
-and a baseline spec or an accepted ADR disagree, the spec and the ADR are
-right and this note is stale. It claims no interface exists.
+and a baseline spec or an accepted ADR disagree, the spec and the ADR
+are right and this note is stale.
+
+**§3 and §4 are no longer the record.** The framework cycle
+`openspec/changes/declare-controls-on-parts` is the ratified plan and
+its `specs/` the behaviour; read those, not this, for the declaration,
+the refusals, the derived ratio and the document table. This note stays
+as the reasoning the cycle was cut from, and for §5 (the viewer) and §6
+(the module), which are still provisional.
+
+The cycle departs from this note in three places, each recorded in its
+`design.md` with the reason:
+
+1. **§4's entry gains `origin`** (design §8). Publishing `joint`,
+   `coordinate` and `axis` alone is enough only where the joint's line
+   runs through the node's placed origin — the Pascaline's case, and
+   only that case. `Revolute(axis, at=)` composes a centring pair around
+   the rotation, so the anchor reaches the document as two translations
+   a consumer would have to recognize and subtract. The entry carries
+   the point the joint turns about, in the joint node's own frame,
+   being exactly the anchor `Joint.place` used. It is an ADDITION: an
+   entry with `origin` is a superset of the one §4 describes.
+2. **Not every producer publishes the table** (design §9). The build's
+   `viewer.json` and the export's `manifest.json` do; the headless
+   `solid snapshot --renderer web` capture does NOT. That capture bakes
+   one instant, holds numbers rather than expressions, and already
+   publishes an empty instructions table — so a button naming an
+   instruction its own document does not list would be inconsistent, and
+   a still capture offers no run for a press to reach.
+3. **An omitted part drops its control rather than refusing the build**
+   (design §10). `omit()` leaves a node unlinked and absent from the
+   document's tree, so `--set covers=false` on a machine with a control
+   on the lid must still build; the control is left out of the published
+   table, deterministically and without an error. Every other way a part
+   could fail to resolve is refused at class definition, so the rule
+   cannot hide a misdeclaration.
+
+It claims no interface exists beyond what that cycle's specs state.
 
 ---
 
@@ -235,7 +271,7 @@ versions 1 to 4 reaches exactly the code it always did.
 
 | Cycle | Repository | Base | Depends on |
 | --- | --- | --- | --- |
-| `declare-controls-on-parts` | solid-node, worktree `WTs/controls-on-parts` | main `00398f4` | nothing |
+| `declare-controls-on-parts` (planned and implemented; base `33d8bf5`) | solid-node, worktree `WTs/controls-on-parts` | main `33d8bf5` | nothing |
 | `drive-the-run-by-touch` | solid-node-viewer | the `viewer-navigator` branch head `644b504` (cycle 3 archived, API 11 → 12), or main once the pilot integrates that branch | the framework cycle's document |
 | `turn-the-dials` | Pascaline-module | its main | both |
 
@@ -244,10 +280,12 @@ behaviour; its e2e fake widget is API 4 and untouched.
 
 For the pilot:
 
-1. the spellings `Button` and `Turn` (the 2026-09-12 sketch's `Button`,
-   plus one word for the drag);
-2. derived `per_unit` (recommended) or a declared `per_turn=` the
-   framework checks;
-3. additive under version 5 (recommended) or a version 6 bump;
+1. ~~the spellings `Button` and `Turn`~~ — answered 2026-09-14: `Button`
+   and `Turn`;
+2. ~~derived `per_unit` or a declared `per_turn=`~~ — answered
+   2026-09-14: derived, measured at the rest bank in both directions;
+3. ~~additive under version 5 or a version 6 bump~~ — answered
+   2026-09-14: additive under version 5, the viewer's API version being
+   the capability gate;
 4. whether the viewer cycle waits for the navigator campaign's cycle 4 or
-   branches from its cycle 3 head now.
+   branches from its cycle 3 head now — **still open**.

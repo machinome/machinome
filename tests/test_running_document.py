@@ -47,8 +47,10 @@ from solid_node.simulation.program import (_BISECTION_ROUNDS,
 from solid_node.simulation.run import _TOLERANCE
 
 from .base import BaseNodeTest
-from .running_project.machine import (Clocked, ClockedBody, Derived, Gauged,
-                                      Guarded, LoopingTrain, Ratchet,
+from .running_project.machine import (Clocked, ClockedBody, Columns,
+                                      ColumnsBare, Derived, Gauged,
+                                      Guarded, LoopingTrain, NotRunning,
+                                      OffCentre, OmittedControl, Ratchet,
                                       Remainder, Sixbound, Sixfree,
                                       StoppedDifferential, Swept, ThreeCarries,
                                       Train, TrainBody, Window, Wired)
@@ -64,7 +66,8 @@ def document(node):
     The sequence is `export_node`'s and `_write_viewer_snapshot`'s, called
     here directly so the schema can be read without building an artifact.
     """
-    from solid_node.core.serializer import compiled_program, document_body
+    from solid_node.core.serializer import (compiled_controls,
+                                            compiled_program, document_body)
 
     program, initial = compiled_program(node)
     with symbolic_document(node) as (declarations, instructions):
@@ -72,7 +75,8 @@ def document(node):
                               graph_values=True)
         drivers = drivers_table(declarations)
         events = instructions_table(instructions, running=program is not None)
-    body = document_body(node, root, drivers, events, program, initial)
+    body = document_body(node, root, drivers, events, program, initial,
+                         controls=compiled_controls(program, initial))
     body['root'] = root
     return body
 
@@ -239,6 +243,11 @@ class ByteIdentityTest(BaseNodeTest):
         'sharing': 'tests.expression_project.sharing:SharedValueTree',
         'looping': 'tests.running_project.machine:LoopingTrain',
         'untimed_train': 'tests.running_project.machine:TrainBody',
+        # A RUNNING tree too, captured at the base of the
+        # `declare-controls-on-parts` cycle: a version 5 document whose
+        # tree declares no control must stay byte-identical, which is
+        # what makes "the table is ADDITIVE" true by construction.
+        'running_train': 'tests.running_project.machine:Train',
     }
 
     def factory(self, reference):
@@ -252,7 +261,7 @@ class ByteIdentityTest(BaseNodeTest):
             self.normalized(child)
         return root
 
-    def test_every_untimed_document_is_unchanged_in_every_byte(self):
+    def test_every_document_with_no_control_is_unchanged_in_every_byte(self):
         for name, reference in sorted(self.trees.items()):
             with self.subTest(tree=name):
                 node = self.factory(reference)()
@@ -735,3 +744,233 @@ class AcceptanceShapeTest(BaseNodeTest):
                          ['tens_entry', 'units_entry'])
         self.assertEqual(sources['hundreds.turn'],
                          ['hundreds_entry', 'tens_entry', 'units_entry'])
+
+
+class ControlsTableTest(BaseNodeTest):
+    """(7) The version 5 document publishes the controls its parts carry.
+
+    OpenSpec change ``declare-controls-on-parts``. The table is
+    top-level, beside ``instructions``, ADDITIVE within version 5, and
+    absent when empty -- so a document that declares no control is the
+    document the producer published before it existed, byte for byte.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.temporary = tempfile.mkdtemp(prefix='solid-controls-document-')
+        self.addCleanup(shutil.rmtree, self.temporary, ignore_errors=True)
+        self.published = document(bound(Columns()))
+
+    def exported(self, node):
+        bind_declared_defaults(node)
+        output = os.path.join(self.temporary, 'export')
+        export_node(node, output, widget=False)
+        with open(os.path.join(output, 'manifest.json')) as handle:
+            return json.load(handle)
+
+    def built(self, node):
+        bind_declared_defaults(node)
+        build_dir = os.path.join(self.temporary, 'build')
+        os.makedirs(build_dir, exist_ok=True)
+        node.assemble()
+        node.build_stls()
+        builder = Builder('model.py', build_dir=build_dir, watch=False)
+        builder.node = node
+        builder._write_viewer_snapshot()
+        with open(os.path.join(build_dir, 'viewer.json')) as handle:
+            return json.load(handle)
+
+    def walk(self, document, path):
+        """The node `path` names, walked from the document's own tree by
+        `name` -- the walk a consumer performs."""
+        node = document['root']
+        for name in path:
+            found = [child for child in node.get('children', ())
+                     if child['name'] == name]
+            self.assertEqual(len(found), 1,
+                             f'{name} of {node["name"]} in {path}')
+            node = found[0]
+        return node
+
+    def test_both_producers_publish_the_table(self):
+        for label, produced in (('built', self.built(Columns())),
+                                ('exported', self.exported(Columns()))):
+            with self.subTest(producer=label):
+                self.assertEqual(sorted(produced['controls']),
+                                 ['tens dial', 'turn tens', 'turn units',
+                                  'units dial'])
+
+    def test_the_table_sits_beside_the_instructions(self):
+        keys = list(self.published)
+        self.assertEqual(keys[keys.index('instructions') + 1], 'controls')
+        self.assertLess(keys.index('controls'), keys.index('program'))
+
+    def test_each_entrys_fields_are_in_the_specs_order(self):
+        table = self.published['controls']
+        self.assertEqual(list(table['units dial']),
+                         ['kind', 'part', 'instruction', 'joint',
+                          'coordinate', 'axis', 'origin'])
+        self.assertEqual(list(table['turn units']),
+                         ['kind', 'part', 'input', 'per_unit', 'joint',
+                          'coordinate', 'axis', 'origin'])
+
+    def test_a_button_names_a_key_of_its_own_instructions_table(self):
+        table = self.published['controls']
+        for name, instruction in (('units dial', 'Add one'),
+                                  ('tens dial', 'Add ten')):
+            with self.subTest(control=name):
+                self.assertEqual(table[name]['kind'], 'button')
+                self.assertEqual(table[name]['instruction'], instruction)
+                self.assertIn(instruction, self.published['instructions'])
+
+    def test_a_turn_names_a_key_of_its_own_drivers_table(self):
+        table = self.published['controls']
+        for name, driver, ratio in (('turn units', 'units_entry', -36.0),
+                                    ('turn tens', 'tens_entry', 36.0)):
+            with self.subTest(control=name):
+                self.assertEqual(table[name]['kind'], 'turn')
+                self.assertEqual(table[name]['input'], driver)
+                self.assertIn(driver, self.published['drivers'])
+                self.assertEqual(table[name]['per_unit'], ratio)
+
+    def test_every_coordinate_is_a_key_of_the_program(self):
+        coordinates = self.published['program']['coordinates']
+        for name, entry in self.published['controls'].items():
+            with self.subTest(control=name):
+                self.assertIn(entry['coordinate'], coordinates)
+                self.assertEqual(
+                    coordinates[entry['coordinate']]['domain'], 'rotational')
+                self.assertNotIn('domain', entry)
+                self.assertNotIn('unit', entry)
+
+    def test_the_part_and_joint_paths_resolve_by_walking_the_tree(self):
+        """The walk a viewer will follow, performed here on the same
+        document: `part` and `joint` are node-NAME paths from the
+        document's own root."""
+        for name, entry in self.published['controls'].items():
+            with self.subTest(control=name):
+                part = self.walk(self.published, entry['part'])
+                self.assertEqual(part['name'], entry['part'][-1])
+                joint = self.walk(self.published, entry['joint'])
+                self.assertEqual(joint['operations'][0],
+                                 ['r', entry['coordinate'], [1, 0, 0]])
+
+    def test_the_geometry_is_the_joints_own(self):
+        table = self.published['controls']
+        self.assertEqual(table['turn units']['axis'], [1.0, 0.0, 0.0])
+        self.assertEqual(table['turn units']['origin'], [0.0, 0.0, 0.0])
+        self.assertEqual(table['turn units']['joint'], ['units'])
+        self.assertEqual(table['turn units']['part'], ['units', 'dial'])
+
+    def test_an_off_centre_joint_publishes_the_point_it_turns_about(self):
+        table = document(bound(OffCentre()))['controls']
+        self.assertEqual(table['turn units']['origin'], [0.0, 3.0, 0.0])
+        self.assertEqual(table['turn units']['axis'], [1.0, 0.0, 0.0])
+
+    def test_a_part_two_inputs_reach_publishes_the_declared_one(self):
+        """`tens.turn` is reached by both entries. The entry names the
+        one the author declared, and `per_unit` is measured against that
+        input ALONE — the other's contribution held at zero, which is
+        why the tens dial reads the same `36.0` the units dial reads
+        `-36.0`, rather than a number the carry has leaked into."""
+        sources = self.published['program']['sources']
+        self.assertEqual(sources['tens.turn'],
+                         ['tens_entry', 'units_entry'])
+        entry = self.published['controls']['turn tens']
+        self.assertEqual(entry['input'], 'tens_entry')
+        self.assertEqual(entry['per_unit'], 36.0)
+
+        program = Sim(Columns(), 0.1).program
+        rest = dict(Sim(Columns(), 0.1).initial.bank)
+        held = program.response(rest, 'tens_entry', 2.0 ** -20)
+        self.assertEqual(held['units_entry'], 0.0)
+        self.assertEqual(held['tens.turn'] / 2.0 ** -20, entry['per_unit'])
+
+    def test_publication_is_refused_when_the_part_does_not_move(self):
+        """The export delta's refusal, at the door a build goes
+        through."""
+        from .running_project.machine import Unmoved
+
+        with self.assertRaises(ValueError) as raised:
+            document(bound(Unmoved()))
+        message = str(raised.exception)
+        self.assertIn('tens.dial', message)
+        self.assertIn('units_entry', message)
+        self.assertIn('tens.turn', message)
+
+    def test_a_document_with_no_control_omits_the_key(self):
+        for factory in (Train, TrainBody, LoopingTrain, ColumnsBare):
+            with self.subTest(root=factory.__name__):
+                self.assertNotIn('controls', document(bound(factory())))
+
+    def test_the_version_does_not_move(self):
+        self.assertEqual(self.published['version'], 5)
+        self.assertEqual(document(bound(ColumnsBare()))['version'], 5)
+        self.assertEqual(self.built(Columns())['version'], 5)
+        self.assertEqual(self.exported(Columns())['version'], 5)
+
+    def test_a_control_under_a_non_running_root_is_refused_at_publication(self):
+        with self.assertRaises(TypeError) as raised:
+            document(bound(NotRunning()))
+        message = str(raised.exception)
+        self.assertIn('NotRunning', message)
+        self.assertIn('units dial', message)
+        self.assertIn('Time.running()', message)
+
+    def test_the_program_is_unchanged_by_the_presence_of_a_control(self):
+        """`ColumnsBare` is `Columns` minus the controls, so the two
+        programs differ only where the ROOT CLASS's own name is
+        published: each edge's `stated_by`, and `identity`, whose first
+        described line names the class. Align that one name and
+        everything else is equal, key by key."""
+        bare = document(bound(ColumnsBare()))
+        for key in ('coordinates', 'spans', 'sources', 'limits',
+                    'intermediates', 'clock'):
+            with self.subTest(key=key):
+                self.assertEqual(self.published['program'][key],
+                                 bare['program'][key])
+        renamed = [dict(edge, stated_by='Columns')
+                   for edge in bare['program']['edges']]
+        self.assertEqual(self.published['program']['edges'], renamed)
+
+    def test_republishing_is_byte_identical(self):
+        first = json.dumps(document(bound(Columns())))
+        second = json.dumps(document(bound(Columns())))
+        self.assertEqual(first, second)
+        self.assertEqual(list(first), list(second))
+
+    def test_the_bindings_table_is_the_same_with_and_without_controls(self):
+        bare = document(bound(ColumnsBare()))
+        self.assertEqual(self.published.get('bindings'), bare.get('bindings'))
+
+    def test_no_control_expression_enters_the_binding_pass(self):
+        text = json.dumps(self.published['controls'])
+        for entry in self.published.get('bindings', ()):
+            self.assertNotIn(entry['name'], text)
+
+    def spare_children(self, published):
+        return [child['name']
+                for child in self.walk(published, ['spare'])
+                .get('children', ())]
+
+    def test_an_omitted_part_drops_its_control(self):
+        fitted = document(bound(OmittedControl(fitted=True)))
+        self.assertEqual(sorted(fitted['controls']),
+                         ['spare dial', 'turn units', 'units dial'])
+        self.assertEqual(self.spare_children(fitted), ['dial'])
+
+        dropped = document(bound(OmittedControl(fitted=False)))
+        # The document genuinely does not contain that part.
+        self.assertEqual(self.spare_children(dropped), [])
+        self.assertEqual(sorted(dropped['controls']),
+                         ['turn units', 'units dial'])
+        # ... and the other entries are published unchanged.
+        for name in ('units dial', 'turn units'):
+            self.assertEqual(dropped['controls'][name],
+                             fitted['controls'][name])
+
+    def test_an_omitted_part_does_not_refuse_the_build(self):
+        published = self.built(OmittedControl(fitted=False))
+        self.assertEqual(published['version'], 5)
+        self.assertEqual(sorted(published['controls']),
+                         ['turn units', 'units dial'])

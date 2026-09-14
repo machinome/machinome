@@ -55,6 +55,12 @@ EXPECTED_EXPORTS = {
     'qualified_drivers': 'solid_node.simulation.enumeration',
     'qualified_instructions': 'solid_node.simulation.enumeration',
     'Instruction': 'solid_node.simulation.instruction',
+    # The two control kinds, added with the `controls` declaration
+    # (OpenSpec change ``declare-controls-on-parts``). Lazy like the
+    # rest: a model declaring no control never imports the module, and
+    # one that does names them in its own class body.
+    'Button': 'solid_node.simulation.control',
+    'Turn': 'solid_node.simulation.control',
     'ScenarioTest': 'solid_node.simulation.scenario',
     'Sim': 'solid_node.simulation.sim',
     # The running mode's error kinds, added with the running time base
@@ -316,8 +322,8 @@ class SimulationPackageExports(TestCase):
 
     def test_importing_the_package_imports_no_submodule(self):
         result = ran('import solid_node.simulation\n')
-        for name in ('driver', 'enumeration', 'instruction', 'scenario',
-                     'sim'):
+        for name in ('control', 'driver', 'enumeration', 'instruction',
+                     'scenario', 'sim'):
             with self.subTest(submodule=name):
                 self.assertFalse(
                     result.imported(f'solid_node.simulation.{name}'),
@@ -630,3 +636,41 @@ PATCH_AFTER_USE = 'import solid_node.test as t\n' + _PATCH + '''
 resolved = 'RESOLVED' if t.solid_count(FakeShape()) == 0 else 'UNRESOLVED'
 print(resolved, patched_verdict())
 '''
+
+
+class NodeLayerImportsNothingOfTheSimulationTest(TestCase):
+    """`solid_node/node/` imports nothing from `solid_node/simulation/`.
+
+    The one-way rule the whole layering rests on, and the reason
+    `DriverDeclaration` is a node-layer marker the simulation layer
+    subclasses. `NodeMeta.__new__` now validates a `controls`
+    declaration too, and does it DUCK-TYPED on the control's own
+    `control_kind` for exactly this reason: a node class that declares a
+    control must not drag the simulation layer into the node layer's
+    import graph.
+    """
+
+    def test_the_declarative_module_names_no_simulation_import(self):
+        import ast
+        import solid_node.node.declarative as module
+
+        with open(module.__file__) as handle:
+            tree = ast.parse(handle.read())
+        imported = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.extend(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imported.append(node.module)
+        offending = [name for name in imported
+                     if name == 'solid_node.simulation'
+                     or name.startswith('solid_node.simulation.')]
+        self.assertEqual(offending, [], f'imports: {sorted(set(imported))}')
+
+    def test_importing_the_node_package_imports_no_simulation_module(self):
+        result = ran('import solid_node.node.declarative\n')
+        for name in ('control', 'driver', 'program', 'run', 'sim'):
+            with self.subTest(submodule=name):
+                self.assertFalse(
+                    result.imported(f'solid_node.simulation.{name}'),
+                    f'the node layer imported solid_node.simulation.{name}')

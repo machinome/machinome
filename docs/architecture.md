@@ -802,9 +802,23 @@ Everything that names a driver reads it: the `Sim` bank,
 instruction-target resolution, the loader's opening snapshot, and the
 serialized document's driver table — so the id in the document and the
 key in the bank are the same string by construction rather than by two
-implementations agreeing. `qualified_instructions(root)` does the same
-for instructions, which are declared with class-local target names and
-qualify by their declaring node's path.
+implementations agreeing. `qualified_declarations(root)` does the same
+for instructions AND controls in one walk, both declared with
+class-local names and qualified by their declaring node's path;
+`qualified_instructions` and `qualified_controls` are its thin faces.
+A **control** (`simulation/control.py`) says how a person issues a
+request by touching the machine rather than a panel beside it —
+`Button(part, instruction)` is a press and `Turn(part, input)` a drag
+about the rotational coordinate the part rides — declared in a
+`controls` dict beside `instructions` on a root that declares
+`Time.running()`, validated where it is written by `NodeMeta` (duck-typed
+on the control's own `control_kind`, so the node layer still imports
+nothing from this one), and compiled by `compile_program` to the
+coordinate, joint node, axis and origin the tree already carries, with
+the gesture's ratio MEASURED off the compiled program at rest rather
+than declared. A control moves nothing itself and changes nothing the
+run computes: `Program.described()`, and therefore the program identity,
+never learns that one exists.
 
 `Sim` is the fixed-`dt` loop: instants become integer tick counts the
 moment they are stated (rejected if not whole — the ADR-050 reasoning
@@ -1486,6 +1500,19 @@ Hosts may supply camera position/target, an up direction, and field of view;
 the latter two retain Z-up/50° defaults when absent. OpenSCAD camera conversion
 is isolated as pure math and supplies the browser renderer with eye, target,
 up, and OpenSCAD's 22.5° perspective field of view (ADR-041).
+
+A version 5 document whose tree declares at least one control also
+carries a top-level `controls` table beside `instructions`: each entry's
+kind, the part's node-name path, the instruction or the input it names
+with the measured `per_unit`, and the gesture's geometry read off the
+tree — the joint node's path, the coordinate's qualified id, the joint's
+axis and the point it turns about, both in the joint node's own frame.
+The table is ADDITIVE within version 5 (a consumer that ignores it still
+drives the machine from the panel and still renders the truth), absent
+when empty, and carries no expression, so it never enters the `bindings`
+pass. The build's `viewer.json` and the export's `manifest.json` publish
+it; the headless browser-snapshot capture does not, because it bakes one
+instant and already publishes an empty `instructions` table.
 
 **The handle also drives the document** (ADR-056 stage 3b). A document
 whose `drivers` table is non-empty loads and renders at the pose its

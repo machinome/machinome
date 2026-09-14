@@ -33,7 +33,7 @@ from collections import namedtuple
 from solid_node.motion.ports import declared_time
 
 from .driver import DriverState
-from .enumeration import qualified_drivers, qualified_instructions
+from .enumeration import qualified_declarations, qualified_drivers
 from .timebase import finite_seconds
 
 
@@ -129,15 +129,21 @@ class Sim:
         self.drivers = {identifier: DriverState(identifier, declaration)
                         for identifier, declaration
                         in qualified_drivers(node).items()}
-        # After the instruction walk, not before: `qualified_instructions`
+        # After the declaration walk, not before: `qualified_declarations`
         # is another `drive_tree`, and it rebinds every declared default
         # as it descends. The rest render below has to be the LAST thing
         # that poses the tree before the run reads its coordinates off it.
-        self.instructions = qualified_instructions(node)
+        # ONE walk returns both tables, because this is the caller that
+        # needs both and `drive_tree`'s `visit` exists to save the second
+        # descent.
+        self.instructions, self.controls = qualified_declarations(node)
         self._trajectory = []
         self._at = {}
         self._every = []
         base = declared_time(type(node))
+        if self.controls and not (base is not None
+                                  and base.mode == 'running'):
+            _refuse_control_without_a_run(node, self.controls)
         if base is not None and base.mode == 'running':
             # ONE simulation owns a tree at a time, and the NEWEST takes
             # it. A previous run's claim is released BEFORE the rest
@@ -460,3 +466,25 @@ class Sim:
                            f"'{name}', which nothing in "
                            f'{type(self.node).__name__} declares; declared: '
                            f'{known}') from None
+
+
+def _refuse_control_without_a_run(node, controls):
+    """A control belongs to a RUNNING root, refused by name.
+
+    A control issues a movement request, and `trigger`, `move` and
+    `rate` -- the three the run accepts -- exist only under
+    `Time.running()`. An untimed root's `trigger` exists too, but posing
+    the pressed part from a target ramp is a different chrome and is out
+    of scope in this release, so the declaration is refused rather than
+    published as something a consumer cannot act on. The other place
+    this is refused is `serializer.symbolic_document`'s own walk, which
+    every publication passes through.
+    """
+    name = sorted(controls)[0]
+    declaring, _path, _control = controls[name]
+    raise TypeError(
+        f"{type(declaring).__name__} declares the control '{name}', and "
+        f"{type(node).__name__} declares no running time base. A control "
+        f"is how a person issues a movement request, and only a running "
+        f"simulation takes one: declare time = Time.running() on the root, "
+        f"or drop the control.")

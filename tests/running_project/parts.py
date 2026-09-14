@@ -9,7 +9,9 @@ joint on a leaf (`Arbor`), a translational joint on a leaf (`Slide`),
 and a PLAIN port on a leaf (`Wheel`), which the run never owns and the
 ordinary enumeration recomputes from a run-bound source on every tick.
 `Block` is geometry with nothing that moves, for an assembly that needs
-a body to place.
+a body to place, and `Dial` is the same thing under a different name:
+the part a HAND touches, so a fixture declaring a control reads as what
+it is rather than as one more block.
 """
 
 from solid2 import cube, cylinder
@@ -52,3 +54,16 @@ class Block(Solid2Node):
 
     def render(self):
         return cube([10, 10, 10], center=True)
+
+
+class Dial(Solid2Node):
+    """Geometry a hand touches, and no coordinate of its own.
+
+    The part a control names. It declares nothing: what MOVES it is the
+    joint of the nearest ancestor that declares one, which is exactly
+    the shape the Pascaline module has -- the ratchet is on the input
+    arbor and the dial is a body bolted to it.
+    """
+
+    def render(self):
+        return cylinder(r=24, h=3)

@@ -329,7 +329,7 @@ class UnreadableDocumentRefusalTest(TestCase):
     def setUp(self):
         from tests.base import BUILD_DIR
         from solid_node.simulation.enumeration import bind_declared_defaults
-        from tests.running_project.machine import Train, TrainBody
+        from tests.running_project.machine import Columns, Train, TrainBody
 
         if os.path.exists(BUILD_DIR):
             shutil.rmtree(BUILD_DIR)
@@ -382,6 +382,35 @@ class UnreadableDocumentRefusalTest(TestCase):
         with open(os.path.join(staging, 'viewer.json')) as handle:
             document = json.load(handle)
         self.assertEqual(document['version'], 5)
+
+    def test_a_baked_capture_publishes_no_controls(self):
+        """A capture BAKES one instant: its tree holds numbers rather
+        than expressions, it publishes an EMPTY instructions table for
+        that reason, and a button naming an instruction that document
+        does not list would be inconsistent. So the capture publishes no
+        `controls` key, and is otherwise the document it always was
+        (OpenSpec change `declare-controls-on-parts`, design section 9).
+        """
+        from solid_node.simulation.enumeration import bind_declared_defaults
+        from tests.running_project.machine import Columns
+
+        controlled = Columns()
+        bind_declared_defaults(controlled)
+        controlled.assemble()
+        controlled.build_stls()
+        with patch.object(browser_module.viewer_bundle, 'has_bundle',
+                          return_value=True), \
+             patch.object(browser_module.viewer_bundle, 'document_versions',
+                          return_value=[1, 2, 3, 4, 5]):
+            staging = self.renderer.stage(controlled, self.build_dir)
+        self.addCleanup(self.renderer.remove_stage, staging)
+        with open(os.path.join(staging, 'viewer.json')) as handle:
+            document = json.load(handle)
+
+        self.assertNotIn('controls', document)
+        self.assertEqual(document['instructions'], {})
+        self.assertEqual(document['version'], 5)
+        self.assertIn('program', document)
 
     def test_an_untimed_model_is_unaffected(self):
         with patch.object(browser_module.viewer_bundle, 'has_bundle',

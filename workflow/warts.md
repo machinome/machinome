@@ -2089,3 +2089,79 @@ print(command.status, command.admitted, sim.state, len(sim.commands))
 # Expected after cancellation before the first tick: no travel, no owner.
 sim.move("feed", by=1, duration=0.02)  # observed: ValueError, already owned
 ```
+
+# declare-controls-on-parts (2026-09-14)
+
+- **A relation onto a coordinate the render OMITS makes a running root's
+  document unpublishable.** Met while building the cycle's
+  `OmittedControl` fixture; it involves no control and is entirely
+  pre-existing. `omit()` leaves a node "not linked, built, exported,
+  fused or serialized", so `qualified_coordinates` never sees the
+  omitted child and `instance_path` cannot qualify it — but the RELATION
+  the parent's class body states is still compiled, and
+  `compile_program` gives its driven end the `<ClassName>.<name>`
+  fallback. `Program.published()._refuse_unqualified` then refuses the
+  whole document. The practical shape: a machine with an optional
+  subassembly whose joint a driver reaches cannot build at all with that
+  option off, under a running root, even though the part is simply
+  absent.
+- **Evidence.** Reproduced at `33d8bf5` on 2026-09-14 with the workspace
+  Python environment, on a fixture carrying no control:
+
+  ```python
+  # probe.py, beside a pyproject.toml with
+  # [tool.solid-node] / model = "probe:Machine"
+  from solid2 import cylinder
+
+  from solid_node.motion.joints import Revolute
+  from solid_node.motion.ports import Time
+  from solid_node.node import AssemblyNode, Solid2Node
+  from solid_node.parameters import Flag
+  from solid_node.simulation import Driver
+
+
+  class Arbor(Solid2Node):
+      turn = Revolute(axis=(0, 0, 1), unit='deg')
+
+      def render(self):
+          return cylinder(r=5, h=2)
+
+
+  class Machine(AssemblyNode):
+      time = Time.running()
+      fitted = Flag(True)
+
+      crank = Driver(default=0.0, unit='deg')
+
+      first = Arbor()
+      spare = Arbor()
+
+      crank.drives(first.turn, ratio=2.0)
+      crank.drives(spare.turn, ratio=3.0)
+
+      def render(self):
+          self.spare.translate([20.0, 0.0, 0.0])
+          if not self.fitted:
+              self.spare.omit()
+  ```
+
+  Publishing `Machine(fitted=True)` succeeds. Publishing
+  `Machine(fitted=False)` raises `UnsupportedLaw`: *"the program names
+  'Arbor.turn', which is a FALLBACK derived from a class name rather
+  than an instance path: the node it belongs to is not linked under the
+  root ... Hold the node on its own attribute of its parent."* The
+  advice is inapplicable — the node IS held on its own attribute; it is
+  simply omitted.
+- **Candidate correction, not ratified, and out of this cycle's scope.**
+  `compile_program` could drop a relation whose end resolves to an
+  omitted node, the way `declare-controls-on-parts` drops a control
+  whose part this render omitted (its design §10): structure may vary
+  with parameters, so a relation into a part that is not in the machine
+  states nothing about the machine that is. The alternative — refusing
+  at relation resolution with a message that says "omitted" rather than
+  "not linked" — is worse, because it would still refuse a build the
+  parameter legitimately asks for.
+- **Not blocking.** The cycle's own fixture was reshaped to omit the
+  PART (a leaf under the joint-bearing node) rather than the node
+  carrying the driven coordinate, which is design §10's own case and
+  needs no framework change.

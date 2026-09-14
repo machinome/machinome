@@ -423,6 +423,14 @@ Both instruction forms travel under version 5 — ``targets`` and ``by``,
 each entry carrying exactly one of them — where versions 2 to 4 publish
 only the absolute form.
 
+A tree that declares :ref:`controls <controls-on-parts>` carries a
+``controls`` table beside ``instructions``: which part a person presses
+and which part a person turns, with the coordinate, the joint node, the
+axis, the point it turns about and the measured ``per_unit`` of each
+gesture. It is additive within version 5, and a tree that declares none
+omits the key and publishes the document it always did. See
+:doc:`Driving a machine <driving>`.
+
 The bump is not additive, and a consumer that cannot read version 5
 refuses the document by name rather than rendering part of a machine it
 does not understand. ``solid build``, ``solid develop`` and ``solid

@@ -203,6 +203,15 @@ def symbolic_document(node):
         for name, instruction in getattr(target, 'instructions', {}).items():
             instructions['.'.join(path + (name,))] = (path, instruction)
         if delivery is None:
+            # Not a running root. A control issues a movement request
+            # and only a running simulation takes one, so a tree that
+            # declares one and is published untimed is refused by name.
+            # `_declares_controls` is the class's OWN table, set by
+            # `NodeMeta`, so this walk recognizes a control without
+            # importing the simulation layer -- and a subclass that
+            # empties the table reads False.
+            if getattr(type(target), '_declares_controls', False):
+                _refuse_control_without_a_run(node, target)
             return
         remember(target)
         # `time` is global by contract and propagates flat, so every node
@@ -239,6 +248,22 @@ def symbolic_document(node):
                for name in declared_drivers_of(type(target))):
             drive_tree(node, lambda target, path, name, declaration:
                        target._states[name])
+
+
+def _refuse_control_without_a_run(root, target):
+    """The publication half of the refusal ``Sim.__init__`` makes.
+
+    Both are passed through by every real project: a simulation is
+    constructed before any run, and a document is published by every
+    build and every export.
+    """
+    name = sorted(getattr(target, 'controls', {}))[0]
+    raise TypeError(
+        f"{type(target).__name__} declares the control '{name}', and "
+        f"{type(root).__name__} declares no running time base. A control "
+        f"is how a person issues a movement request, and only a running "
+        f"simulation takes one: declare time = Time.running() on the root, "
+        f"or drop the control.")
 
 
 def _coordinate_publication(node):
@@ -511,7 +536,7 @@ def program_block(program, initial):
 
 
 def document_body(node, root, drivers, instructions, program=None,
-                  initial=None, fps=30, frames=360):
+                  initial=None, fps=30, frames=360, controls=None):
     """Everything a published document carries except the two keys a
     producer owns -- the model paths it resolves in ``root``, and
     ``pieces``.
@@ -519,6 +544,17 @@ def document_body(node, root, drivers, instructions, program=None,
     One place, so the three producers that share this walk cannot
     disagree about what they just emitted. ``root``'s expressions are
     rewritten in place by the binding pass.
+
+    ``controls`` is the table ``Program.published_controls`` compiled,
+    published beside ``instructions`` and ADDITIVELY: the key is absent
+    when the table is empty, exactly as ``bindings`` is, which is what
+    makes "every document that declares no control is unchanged in every
+    byte" true by construction rather than by inspection. It carries no
+    EXPRESSION, so it never enters ``bind_document`` and cannot change
+    the ``bindings`` table, and it does not move the version -- a
+    consumer that ignores it still drives the machine from the
+    declarations the document already published and still renders the
+    truth.
     """
     block = None if program is None else program_block(program, initial)
     identifiers = set(drivers)
@@ -532,11 +568,29 @@ def document_body(node, root, drivers, instructions, program=None,
         'drivers': drivers,
         'instructions': instructions,
     }
+    if controls:
+        body['controls'] = controls
     if bindings:
         body['bindings'] = bindings
     if block is not None:
         body['program'] = block
     return body
+
+
+def compiled_controls(program, initial):
+    """The document's ``controls`` table, or ``{}`` where there is no
+    program to measure the gestures against.
+
+    Called by the producers that publish the model's OWN declarations --
+    the build's ``viewer.json`` and the export's ``manifest.json``. The
+    headless browser-snapshot capture calls neither this nor
+    ``instructions_table``: it BAKES one instant, its tree holds numbers
+    rather than expressions, and a button naming an instruction that
+    document does not list would be an inconsistent document.
+    """
+    if program is None:
+        return {}
+    return program.published_controls(initial)
 
 
 def serialize_node(node, model_path, piece_id=None, *, graph_values=False):

@@ -19,7 +19,7 @@ from watchdog.events import FileSystemEventHandler
 from .loader import (ProjectManifestError, load_node,
                      project_root, project_source_generation, read_project)
 from .serializer import (
-    compiled_program, document_body,
+    compiled_controls, compiled_program, document_body,
     DOCUMENT_FORMAT, drivers_table, instructions_table,
     serialize_node, symbolic_document,
 )
@@ -665,7 +665,8 @@ class Builder(FileSystemEventHandler):
         # correct: rebuilding an unchanged model must not republish
         # merely because a name was minted differently.
         snapshot = document_body(self.node, root, drivers, events,
-                                 program, initial)
+                                 program, initial,
+                                 controls=compiled_controls(program, initial))
         snapshot['root'] = root
         snapshot['pieces'] = inventory.pieces()
         _warn_unreadable(snapshot['version'])

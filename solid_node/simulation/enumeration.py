@@ -42,6 +42,39 @@ def qualified_drivers(root):
         root, lambda node, path, name, declaration: declaration.default)
 
 
+def qualified_declarations(root):
+    """Every INSTRUCTION and every CONTROL declared in `root`'s tree,
+    from ONE walk: `(instructions, controls)`.
+
+    Both are `{qualified_name: (node, path, declaration)}`, keyed by the
+    declaring node's instance path joined with the declared name -- a
+    root-declared one keeping its bare name, exactly as a root-declared
+    driver does. That is what makes a `Button`'s instruction reference
+    equal a key of the instructions table by CONSTRUCTION: the two names
+    are qualified through the same path, by the same rule, in the same
+    pass.
+
+    One walk rather than two because `drive_tree`'s `visit` exists for
+    exactly this -- "a caller that also needs something else declared
+    per node pays for one walk rather than two" -- and `Sim.__init__`
+    needs both tables. `qualified_instructions` and `qualified_controls`
+    are thin faces over it.
+    """
+    instructions = {}
+    controls = {}
+
+    def visit(node, path, _children):
+        for name, instruction in getattr(node, 'instructions', {}).items():
+            instructions['.'.join(path + (name,))] = (node, path, instruction)
+        for name, control in getattr(node, 'controls', {}).items():
+            controls['.'.join(path + (name,))] = (node, path, control)
+
+    drive_tree(
+        root, lambda node, path, name, declaration: declaration.default,
+        visit)
+    return instructions, controls
+
+
 def qualified_instructions(root):
     """Every instruction declared in `root`'s tree, by qualified name.
 
@@ -51,16 +84,16 @@ def qualified_instructions(root):
     `x_axis.motor`; a root-declared instruction keeps its bare name,
     exactly as a root-declared driver does.
     """
-    found = {}
+    return qualified_declarations(root)[0]
 
-    def visit(node, path, _children):
-        for name, instruction in getattr(node, 'instructions', {}).items():
-            found['.'.join(path + (name,))] = (node, path, instruction)
 
-    drive_tree(
-        root, lambda node, path, name, declaration: declaration.default,
-        visit)
-    return found
+def qualified_controls(root):
+    """Every control declared in `root`'s tree, by qualified name.
+
+    `{qualified_name: (node, path, control)}`, the instruction table's
+    twin and the other half of one walk.
+    """
+    return qualified_declarations(root)[1]
 
 
 def bind_declared_defaults(root):

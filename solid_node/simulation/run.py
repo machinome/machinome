@@ -291,7 +291,8 @@ class Run:
                 f'stands: drive it with a relation, or bind it in '
                 f'simulate() under a guard that finds it unbound.')
 
-        self.program = compile_program(sim.node, inputs, coordinates)
+        self.program = compile_program(sim.node, inputs, coordinates,
+                                       sim.controls, sim.instructions)
         self.keys = {identifier: ('input', identifier) for identifier in inputs}
         for identifier, (node, name) in coordinates.items():
             self.keys[identifier] = ('slot', id(get_coordinate(node, name)))
@@ -641,11 +642,12 @@ class Run:
         return found
 
     def _deltas(self, admissions):
-        deltas = {key: 0.0 for key in self.program.nodes}
-        for input_id, delta in admissions.items():
-            if delta:
-                deltas[self.keys[input_id]] = delta
-        return deltas
+        """One displacement per input: the PROGRAM's, delegated.
+
+        It lives on `Program` so the control measurement and the tick
+        seed a propagation the same way rather than twice.
+        """
+        return self.program.deltas_of(admissions)
 
     ##############################################
     # Stops
@@ -841,24 +843,14 @@ class Run:
             f'nothing.')
 
     def _values(self, bank):
-        """The bank, plus every INTERMEDIATE the program computes from
-        it: a plain port or a derived coordinate a compiled edge
-        determines, recomputed here rather than stored."""
-        values = {self.keys[identifier]: value
-                  for identifier, value in bank.items()}
-        for edge in self.program.edges:
-            if all(key in self.bank_keys for key in edge.gives):
-                # Nothing this edge computes is an intermediate, so its
-                # values were computed here and discarded. Skipping it is
-                # behaviour-neutral and removes one graph evaluation per
-                # law per tick -- and, with the refusal of a jumping law
-                # that drives no owned coordinate, it means a jump graph
-                # is never evaluated absolutely at all.
-                continue
-            for key, value in edge.values(values):
-                if key not in self.bank_keys:
-                    values[key] = value
-        return values
+        """The bank plus every intermediate: the PROGRAM's, delegated.
+
+        The body moved to `Program.values_of` so the tick and the
+        control measurement recompute the intermediates the same way
+        rather than twice; the corpus replay is the guard that the move
+        changed nothing.
+        """
+        return self.program.values_of(bank)
 
     def _refuse(self, moved):
         """A tick that fails commits nothing, and every command that
