@@ -10,12 +10,31 @@ import {
   WidgetTree,
 } from './tree';
 
+/** The navigation state a host reads: the focused root, or `null` for
+ * the published document root -- the same `null` `setRoot` accepts, so a
+ * reported root is always a value it can be handed back -- and the
+ * explicitly hidden paths, each root-relative (design D1-D3). Both
+ * fields are copies: a caller holds a value, not a window into the
+ * widget. */
+export interface AssemblyNavigationState {
+  root: string[] | null;
+  hidden: string[][];
+}
+
 export class AssemblyNavigation {
   private focusedPath: string[] | null = null;
   private hiddenPaths = new Map<string, string[]>();
 
   root(): string[] | null {
     return this.focusedPath === null ? null : [...this.focusedPath];
+  }
+
+  /** The whole inspection state, as a copy (design D1). */
+  state(): AssemblyNavigationState {
+    return {
+      root: this.root(),
+      hidden: [...this.hiddenPaths.values()].map((path) => [...path]),
+    };
   }
 
   isVisible(path: AssemblyPath): boolean {

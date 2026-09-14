@@ -1,16 +1,16 @@
 ## 0. Before anything else
 
-- [ ] 0.1 Confirm the worktree: `git rev-parse --show-toplevel` names
+- [x] 0.1 Confirm the worktree: `git rev-parse --show-toplevel` names
       `solid-node-viewer/WTs/viewer-navigator` and the branch is
       `viewer-navigator`. Record the head this change starts from.
-- [ ] 0.2 Record the baseline in `evidence.md`: `npm run typecheck`,
+- [x] 0.2 Record the baseline in `evidence.md`: `npm run typecheck`,
       `npm test`, `npm run build` in `solid_node_viewer/widget`, and the
       Python suite with the workspace venv and `PYTHONPATH="$PWD"` —
       counts, bundle size, and what it skips and why.
 
 ## 1. The state, where vitest reaches it
 
-- [ ] 1.1 **Red** — `src/assembly.test.ts`: `AssemblyNavigation` reports
+- [x] 1.1 **Red** — `src/assembly.test.ts`: `AssemblyNavigation` reports
       the state a host will read. `state()` (or `root()` + `hidden()`,
       whichever the implementation settles on) gives `root: null` at the
       document root and the focused path after `setRoot(tree, ['left'])`;
@@ -23,10 +23,10 @@
       `isVisible()`, now made through the published state.
       *Goes red because `AssemblyNavigation` publishes no hidden list and
       no state snapshot today (`assembly.ts:13-62`).*
-- [ ] 1.2 **Green** — `src/assembly.ts`: the state read, copying both
+- [x] 1.2 **Green** — `src/assembly.ts`: the state read, copying both
       fields. No other behaviour changes; `applyVisibility` and
       `reconcile` are untouched.
-- [ ] Commit: `feat(assembly): publish focus and hidden paths as state`.
+- [x] Commit: `feat(assembly): publish focus and hidden paths as state`.
 
 ## 2. The notifier, where vitest reaches it
 
