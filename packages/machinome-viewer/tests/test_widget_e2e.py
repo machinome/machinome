@@ -184,10 +184,10 @@ class ViewerMountApiTest(TestCase):
         }""")
         self.assertEqual(result['bundle'], api_version())
         self.assertEqual(result['bundle'], result['handle'])
-        # OpenSpec `observe-assembly-navigation`: publishing the
-        # navigation state and a change subscription is a capability a
-        # host may require, so the declared version moves.
-        self.assertEqual(result['bundle'], 9)
+        # OpenSpec `mount-the-navigator`: mounting the assembly navigator
+        # itself is a capability a host may require, so the declared
+        # version moves.
+        self.assertEqual(result['bundle'], 10)
         # And a document carrying no program has no run, which is what a
         # host asking one question is answered with.
         self.assertIsNone(result['run'])

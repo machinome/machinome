@@ -54,8 +54,13 @@ describe('API_VERSION', () => {
   // `onAssemblyChange()` to exist before it can be mounted at all, which
   // is exactly the capability a host may require this number exists to
   // answer.
-  it('declares the assembly-navigation API as version 9', () => {
-    expect(API_VERSION).toBe(9);
+  // Mounting the assembly navigator itself (OpenSpec `mount-the-navigator`,
+  // ADR-050) is the one after that (10): `SolidNodeWidget.mountNavigator`
+  // is a capability a host may require -- rather than build its own tree
+  // over the state version 9 published -- and this is the number that
+  // tells it whether the bundle carries one.
+  it('declares the mountable-navigator API as version 10', () => {
+    expect(API_VERSION).toBe(10);
   });
 });
 

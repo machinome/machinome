@@ -169,7 +169,7 @@ asked what the component thinks.
 
 ## 4. The declared version
 
-- [ ] 4.1 **Red** — `src/version.test.ts:57-59` expects 10, its comment
+- [x] 4.1 **Red** — `src/version.test.ts:57-59` expects 10, its comment
       extending the capability history with the reason (the bundle now
       carries a navigator a host may require, and 9 is the bundle that
       publishes the state without one); `tests/test_widget_e2e.py:188`,
@@ -179,10 +179,10 @@ asked what the component thinks.
       *Red against `package.json:4`, which says 9.*
       Commands: `npx vitest run src/version.test.ts` and
       `PYTHONPATH="$PWD" … -m pytest tests/test_bundle.py -q -k version`
-- [ ] 4.2 **Green** — `solid_node_viewer/widget/package.json`:
+- [x] 4.2 **Green** — `solid_node_viewer/widget/package.json`:
       `solidNodeViewerApi: 10`. Nothing else declares it
       (`bundle.py:54` reads that file).
-- [ ] Commit: `feat(viewer): declare API version 10`.
+- [x] Commit: `feat(viewer): declare API version 10`.
 
 ## 5. The records
 

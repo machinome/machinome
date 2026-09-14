@@ -266,3 +266,57 @@ a CHILD's own expansion surviving reconciliation -- needs real nesting
 and is already pinned at the unit level in `navtree.test.ts`'s
 `reconcileLocal` block (increment 1) and exercised through the DOM in
 `navigator.test.ts`'s "reconciles a pruned tree" test (increment 2).
+
+## 4. The declared version
+
+### 4.1 Red
+
+`src/version.test.ts`'s comment gains the capability-history entry for
+10 (mounting the navigator itself, OpenSpec `mount-the-navigator`,
+ADR-050), and its assertion moves to 10;
+`tests/test_widget_e2e.py:190`, `tests/test_running_document.py:146` and
+`tests/test_bundle.py` (`test_declares_api_version_nine` renamed to
+`test_declares_api_version_ten`, asserting 10) follow.
+
+```
+$ npx vitest run src/version.test.ts
+ FAIL  src/version.test.ts > API_VERSION > declares the mountable-navigator API as version 10
+AssertionError: expected 9 to be 10
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest tests/test_bundle.py -q -k version
+FAILED tests/test_bundle.py::BundleLookupTest::test_declares_api_version_ten
+  AssertionError: 9 != 10
+1 failed, 3 passed, 5 deselected
+```
+Red as expected against `package.json:4`, which still said 9.
+
+### 4.2 Green
+
+`solid_node_viewer/widget/package.json`: `solidNodeViewerApi: 10`.
+
+```
+$ npx tsc --noEmit
+(no output, exit 0)
+
+$ npx vitest run src/version.test.ts
+ ✓ src/version.test.ts (6 tests) 6ms
+
+$ npm run build
+  dist/solid-widget.js  653.6kb
+```
+`dist/solid-widget.js` size: 669247 bytes.
+
+```
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest tests/test_bundle.py -q -k version
+....
+4 passed, 5 deselected
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest -q
+85 passed, 1 skipped, 11 warnings in 58.41s
+
+$ npm test
+ Test Files  30 passed (30)
+      Tests  595 passed (595)
+```
