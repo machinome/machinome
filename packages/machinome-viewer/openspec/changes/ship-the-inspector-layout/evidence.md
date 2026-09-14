@@ -724,3 +724,146 @@ second full-suite run passed clean (`95 passed`). Consistent with
 `--use-angle=swiftshader` software-rendering timing variance under a
 loaded suite (`bounding_box()` read racing a still-resizing canvas), not
 a defect this change introduces — no code changed between the two runs.
+
+## 7. The records
+
+**7.1 README.md**: the version table's `0.2.0` row now reads `11`; the
+top bullet list loses "development app" and names the development page
+and the inspector layout; `## Reading and moving the assembly` gains
+`### The inspector layout` (the `mountInspector` signature, its options
+table, the class contract, the custom-property table) and `### The
+standalone page's layout selection` (the `data-solid-layout`/
+`?layout=`/`?sidebar=` table); `## Working on the viewer` drops the CRA
+build line and paragraph, and says the development page is served
+directly with the three old frontend flags accepted and ignored. The
+navigator section's own "a sidebar this package will ship" (written
+before this cycle existed) is corrected to point at the inspector
+section that now exists.
+
+**7.2 CHANGELOG.md**: the unreleased `0.2.0` section gains entries after
+the version-10 one, in order — the inspector layout (the composed
+sidebar/navigator/viewer, the resize-through-the-viewer's-own-observer
+claim, the remembers-nothing sidebar, the refused-mount-leaves-nothing
+guarantee, one stylesheet), the page's layout selection (default the
+plain viewer), the development page becoming static with the ported
+reloader and the deliberate build-error-pane-over-a-mounted-viewer
+change, React/CRA leaving and the frontend flags staying as no-ops, and
+the version-11 bump — before the existing "constrained dragging" closing
+bullet. The reloader's test count is stated as eight ported (not nine,
+matching increment 3's own correction) plus one new.
+
+**7.3 ADR status** — left at **Proposed**, per instruction; this is the
+reviewer's task.
+
+**7.4 evidence.md** — this file: every red output and its green
+counterpart is recorded under its own increment above, the `reloader.ts`
+diff (design D12's table) under increment 3, the deliberate-break check
+under increment 4.5/4.6, and the wheel listing under 5.5.
+
+Final counts and bundle size:
+
+```
+$ cd solid_node_viewer/widget && npx tsc --noEmit && npm test
+(no output, exit 0)
+ Test Files  34 passed (34)
+      Tests  642 passed (642)
+
+$ ls -la dist/solid-widget.js
+676040 bytes
+```
+Bundle size: 669594 bytes (baseline, section 0) → 676040 bytes (final),
++6446 bytes — `inspector.ts`, `layout.ts`, `reloader.ts`, `develop.ts`
+and their injected stylesheets, minus what esbuild minifies away.
+
+```
+$ PYTHONPATH="$PWD" … -m pytest -q
+95 passed, 24 warnings in 67.95s
+```
+Python suite: baseline was 85 passed + 1 skipped = 86 collected. This
+cycle adds 9 net new test cases (5 in `InspectorLayoutE2ETest`, +1 net
+in `BundleRoutesTest`, 1 `DevelopmentPageReloadTest`, +1 net in
+`test_packaging.py`, 1 in `test_cli.py`); the one pre-existing skip
+(`DevelopmentAppBrowserTest`) is not new, it now simply passes instead
+of skipping. 86 + 9 = 95 passed, 0 failed, 0 skipped — matches the run
+above exactly.
+
+**7.5** — the baseline `openspec/specs/development-server/spec.md`
+header and `openspec/config.yaml`'s context paragraph both still name
+`solid_node_viewer/app`; left uncorrected, per instruction — the
+reviewer's task at archive time.
+
+## 8. The whole suite, and what must not have moved
+
+**8.1**
+
+```
+$ cd solid_node_viewer/widget && npm run typecheck && npm test && npm run build
+(no output, exit 0)
+ Test Files  34 passed (34)
+      Tests  642 passed (642)
+  dist/solid-widget.js  660.2kb
+
+$ PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest -q
+95 passed, 24 warnings in 67.95s
+```
+Every pre-existing test passes unedited except: the four version
+literals (increment 6), the packaging and CLI tests this change
+deliberately moved (increment 5.1), and the server tests it rewrote
+(increment 4.3). **Zero skips from a missing built frontend** — the one
+skip recorded in section 0 is gone.
+
+**8.2 Capture untouched**:
+```
+$ git diff --stat solid_node_viewer/capture.py tests/test_capture.py
+(no output -- no change)
+$ grep -n 'driverControls.*none\|SolidNodeWidget.mount(' solid_node_viewer/capture.py
+83:               "driverControls": "none"}
+160:SolidNodeWidget.mount('#host', '{DOCUMENT}', {payload}).then((viewer) => {{
+$ PYTHONPATH="$PWD" … -m pytest tests/test_capture.py -q
+17 passed, 5 warnings in 3.99s
+```
+`capture.py` still mounts with `driverControls: 'none'` and still calls
+`SolidNodeWidget.mount` — never the inspector.
+
+**8.3 Navigator untouched**:
+```
+$ git diff --stat solid_node_viewer/widget/src/navigator.ts \
+    solid_node_viewer/widget/src/navtree.ts \
+    solid_node_viewer/widget/src/navigator.test.ts \
+    solid_node_viewer/widget/src/navtree.test.ts
+(no output -- no change)
+```
+
+**8.4 The published file list**:
+```
+$ ls solid_node_viewer/widget/dist/
+solid-widget.js
+
+$ python3 -c "... export_with_widget(...) ..."
+['index.html', 'manifest.json', 'solid-widget.js']
+```
+`dist/` carries exactly `solid-widget.js`; the export directory carries
+exactly `index.html` + `solid-widget.js` beside the document.
+`tests/support.py`'s `export_with_widget` never references
+`develop.html`; `grep -n develop tests/support.py` shows only an
+unrelated comment about republishing between two fetches.
+
+**8.5 The framework needs no change**, restated as a check:
+```
+$ PYTHONPATH="$PWD" … -m pytest tests/test_cli.py::ServeCommandTest -q
+3 passed, 1 warning in 0.35s
+```
+(`test_the_frontend_flags_are_accepted_and_do_nothing` proves `serve
+--build-dir X --start-frontend` starts and reaches `WebViewer`.) Read,
+not edited: `solid_node/manager/develop.py`'s `web_viewer_command`
+still appends `--start-frontend` only under its own `web_dev` argument
+(`develop.py:42-51`); `solid_node/sphinx.py:50`'s `WIDGET_FILES =
+('index.html', 'solid-widget.js')` and `core/export.py:176`'s
+`viewer_bundle.bundle_path()`/`index_path()` copies are both unchanged
+in name, count and location.
+
+**8.6**:
+```
+$ npx openspec validate ship-the-inspector-layout --strict
+Change 'ship-the-inspector-layout' is valid
+```

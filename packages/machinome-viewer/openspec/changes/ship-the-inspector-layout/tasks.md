@@ -1,10 +1,10 @@
 ## 0. Before anything else
 
-- [ ] 0.1 Confirm the worktree: `git rev-parse --show-toplevel` names
+- [x] 0.1 Confirm the worktree: `git rev-parse --show-toplevel` names
       `solid-node-viewer/WTs/viewer-navigator` and the branch is
       `viewer-navigator`. Record the head this change starts from
       (`2b0de85` plus this change's own planning commit).
-- [ ] 0.2 Record the baseline in `evidence.md`: `npm run typecheck`,
+- [x] 0.2 Record the baseline in `evidence.md`: `npm run typecheck`,
       `npm test`, `npm run build` in `solid_node_viewer/widget`, and
       `PYTHONPATH="$PWD" /home/asa/devel/libresolid-studio/.venv/bin/python
       -m pytest` at the repository root — counts, bundle size in bytes,
@@ -259,7 +259,7 @@ Only now, with a green served page behind it.
 
 ## 7. The records
 
-- [ ] 7.1 `README.md`: the version table's unreleased `0.2.0` row reads
+- [x] 7.1 `README.md`: the version table's unreleased `0.2.0` row reads
       `11`; the bullet list at the top loses "the development app" and
       names the development page; `## Reading and moving the assembly`
       gains the inspector — the `mountInspector` signature, its options,
@@ -271,7 +271,7 @@ Only now, with a green served page behind it.
       build)` and the Create React App paragraph, and says instead that
       `solid-node-viewer serve` serves the static development page and
       that the old frontend flags are accepted and ignored.
-- [ ] 7.2 `CHANGELOG.md`: the unreleased `0.2.0` section gains entries —
+- [x] 7.2 `CHANGELOG.md`: the unreleased `0.2.0` section gains entries —
       the inspector layout and the page's layout selection (with the
       plain viewer as the default); the development page becoming a
       static file with the reloader in the bundle, and the build error no
@@ -285,7 +285,7 @@ Only now, with a green served page behind it.
       **Superseded** by 052 and ADR-036's row gains "amended by 052", in
       the file and in the index. **The reviewer's task**: check both texts
       against what was actually built before promoting them.
-- [ ] 7.4 `evidence.md`: every red output and its green counterpart, the
+- [x] 7.4 `evidence.md`: every red output and its green counterpart, the
       final counts, and the bundle size before and after. Record the
       `reloader.ts` diff (design D12's table), the deliberate-break check
       of 4.6, and the wheel listing of 5.5.
@@ -301,7 +301,7 @@ Only now, with a green served page behind it.
 
 ## 8. The whole suite, and what must not have moved
 
-- [ ] 8.1 `npm run typecheck`, `npm test`, `npm run build` in
+- [x] 8.1 `npm run typecheck`, `npm test`, `npm run build` in
       `solid_node_viewer/widget`, and `PYTHONPATH="$PWD"
       /home/asa/devel/libresolid-studio/.venv/bin/python -m pytest` at the
       repository root. Every pre-existing test passes unedited except the
@@ -309,25 +309,25 @@ Only now, with a green served page behind it.
       deliberately moved, and the server tests it rewrote. **The Python
       suite reports zero skips from a missing built frontend** — the skip
       recorded in 0.2 is gone, which is one of this cycle's outcomes.
-- [ ] 8.2 The capture is untouched: `git diff` shows no change to
+- [x] 8.2 The capture is untouched: `git diff` shows no change to
       `solid_node_viewer/capture.py` or `tests/test_capture.py`, and
       `capture.py:82-83` still mounts with `driverControls: 'none'` and
       `capture.py:151-174` still calls `SolidNodeWidget.mount` — not the
       inspector. Run `pytest tests/test_capture.py -q` and record it.
-- [ ] 8.3 The navigator is untouched: `git diff` shows no change to
+- [x] 8.3 The navigator is untouched: `git diff` shows no change to
       `src/navigator.ts`, `src/navtree.ts` or their tests.
-- [ ] 8.4 The published file list: `dist/` still carries exactly
+- [x] 8.4 The published file list: `dist/` still carries exactly
       `solid-widget.js`; the export directory an e2e test builds still
       carries exactly `index.html` + `solid-widget.js` beside the document
       and models; `develop.html` is served, never copied by
       `export_with_widget` (`tests/support.py:74-80`).
-- [ ] 8.5 The framework needs no change, restated as a check rather than a
+- [x] 8.5 The framework needs no change, restated as a check rather than a
       claim: `solid-node-viewer serve --build-dir X --start-frontend`
       starts and serves (5.1's test), and
       `/home/asa/devel/libresolid-studio/solid-node/solid_node/sphinx.py:50`
       and `core/export.py:176-178` still name exactly the two files this
       package still publishes under those names. Read them; do not edit
       them, and do not touch the framework worktree.
-- [ ] 8.6 `openspec validate ship-the-inspector-layout --strict` passes.
-- [ ] Commit: `docs: record the inspector layout cycle` (records only, if
+- [x] 8.6 `openspec validate ship-the-inspector-layout --strict` passes.
+- [x] Commit: `docs: record the inspector layout cycle` (records only, if
       7.x did not travel with their own increments).

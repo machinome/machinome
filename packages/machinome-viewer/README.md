@@ -18,10 +18,14 @@ something a person can look at in a browser:
   screen by nudge, hold-to-jog and instruction controls over a transport
   of run, pause, step, speed, elapsed time and reset**, and the
   `SolidNodeWidget.mount()` API a host page drives it through;
-- the **standalone export page** a `solid export` directory ships with;
+- the **standalone export page** a `solid export` directory ships with,
+  and the **inspector layout** (`SolidNodeWidget.mountInspector`) it can
+  select — the viewer beside a collapsible assembly sidebar, composed
+  from the widget's own navigator, in one host element;
 - the **development server** that `solid develop` launches beside its
-  builder to serve a published build to the development app, with the
-  reload channel and the build-error surface;
+  builder, serving a static **development page** this package carries —
+  the inspector mounted on the published build, with the reload channel
+  and the build-error surface;
 - the **headless capture** behind `solid snapshot --renderer web`, which
   photographs a staged document through the widget with a transparent
   background.
@@ -87,8 +91,9 @@ can loop forever, and a navigator built on this bundle does not.
 ### The bundle's own navigator
 
 `SolidNodeWidget.mountNavigator(target, viewer, options?)` mounts a
-React-free, plain-DOM tree over that same channel — a sidebar this
-package will ship, a studio panel, or a maker's own page:
+React-free, plain-DOM tree over that same channel — into the sidebar
+the inspector layout below composes, a studio panel, or a maker's own
+page:
 
 ```js
 const viewer = await SolidNodeWidget.mount('#host', 'viewer.json', {});
@@ -170,8 +175,94 @@ ancestor, or on `:root`, without reaching into the navigator's elements:
 | `--solid-nav-obscured-opacity` | `0.45` | an obscured node's chip |
 | `--solid-nav-focus-ring` | `currentColor` | `:focus-visible` outline |
 
-No layout ships with this release: `mountNavigator` draws a tree into the
-element it is given and nothing composes it with the viewer for you.
+### The inspector layout
+
+`SolidNodeWidget.mountInspector(target, sourceUrl, options?)` composes,
+inside one host element, a collapsible assembly sidebar holding the
+bundle's own navigator and the viewer with its own on-screen chrome —
+the layout `mountNavigator` above says nothing ships with:
+
+```js
+const inspector = await SolidNodeWidget.mountInspector('#host', 'viewer.json', {
+  sidebar: 'collapsed',
+  navigator: { label: 'Assembly', fullAssembly: true },
+  styles: 'inject',
+});
+inspector.viewer;      // the whole ViewerHandle, exposed rather than wrapped
+inspector.navigator;   // the whole NavigatorHandle
+inspector.sidebarOpen();
+inspector.setSidebar(true);
+// later
+inspector.dispose();   // disposes the navigator, then the viewer, then empties the target
+```
+
+It takes everything `mount` takes, plus:
+
+| option | default | what it does |
+| --- | --- | --- |
+| `sidebar` | `'collapsed'` | the sidebar's initial state |
+| `navigator` | — | the navigator's own options (`label`, `fullAssembly`, `className`, `styles`), passed through untouched; `navigator.styles` defaults to the layout's own `styles` |
+| `styles` | `'inject'` | `'none'` skips the layout's injected stylesheet (and defaults the navigator's to `'none'` too) |
+
+The viewer is given a pane of its own inside the target, never the
+target itself, so the viewer's own teardown (`replaceChildren()` on its
+container) cannot remove the sidebar. Collapsing removes the sidebar
+from layout and from assistive technology — it is never an overlay — and
+the viewer's pane grows into the space; that resize is entirely the
+viewer's own `ResizeObserver`, already installed by `mount()`, so the
+layout adds no resize code of its own. A rejected mount (an unreadable
+document, an unevaluable technology, an undeclared driver id) leaves the
+target empty and rethrows the viewer's own error unchanged — no sidebar
+is left around a viewer that never existed. The sidebar remembers
+nothing: no `localStorage`, no cookie, no URL rewriting, so a page
+reloaded shows exactly the state its own options declare.
+
+**The class contract**, under its own prefix, distinct from the
+navigator's:
+
+| class | element |
+| --- | --- |
+| `solid-inspector` | the layout root, the target's only child |
+| `solid-inspector-rail` | always present, in both states; holds the toggle |
+| `solid-inspector-toggle` | the disclosure button; `aria-expanded`, `aria-controls` naming the sidebar |
+| `solid-inspector-sidebar` | the navigator's host; `hidden` while collapsed |
+| `solid-inspector-viewer` | `mount()`'s own container |
+
+**Theming**, CSS custom properties on `.solid-inspector`:
+
+| property | default | what it sets |
+| --- | --- | --- |
+| `--solid-inspector-sidebar-width` | `260px` | the sidebar's width |
+| `--solid-inspector-rail-width` | `32px` | the rail's width |
+| `--solid-inspector-bg` | `transparent` | the layout's ground |
+| `--solid-inspector-fg` | `inherit` | text |
+| `--solid-inspector-border` | `rgba(128,128,128,0.35)` | the rail/sidebar divider |
+| `--solid-inspector-toggle-bg` | `rgba(128,128,128,0.12)` | the toggle |
+| `--solid-inspector-toggle-hover-bg` | `rgba(128,128,128,0.24)` | the toggle, hovered |
+| `--solid-inspector-focus-ring` | `currentColor` | `:focus-visible` outline |
+
+### The standalone page's layout selection
+
+`widget/index.html`'s published container attribute,
+`data-solid-widget`, gains a sibling that chooses between the plain
+viewer and the inspector — on the same container, and as a query-string
+twin that overrides it:
+
+| source | value | effect |
+| --- | --- | --- |
+| no attribute, no query | — | `mount()` — unchanged from every page written before this capability existed |
+| `data-solid-layout="inspector"` | | `mountInspector()` |
+| `?layout=inspector` / `?layout=viewer` | | overrides the attribute |
+| `data-solid-sidebar="open"` \| `"collapsed"` | | the inspector's initial sidebar |
+| `?sidebar=open` \| `?sidebar=collapsed` | | overrides the attribute |
+
+An unrecognised layout value is written into the element by name
+(`solid-widget: unknown layout "<value>"`), never silently ignored. The
+page this package ships selects the inspector, collapsed.
+
+No layout ships for a mount whose host wants neither: `mount()` and
+`mountNavigator()` still compose nothing for you, and the studio keeps
+its own layout on this same bundle.
 
 ## Driving a running machine
 
@@ -227,7 +318,7 @@ build reads rather than infer it.
 | solid-node-viewer | viewer API | reads document versions |
 | --- | --- | --- |
 | 0.1.0 | 7 | 1, 2, 3, 4 |
-| 0.2.0 | 10 | 1, 2, 3, 4, 5 |
+| 0.2.0 | 11 | 1, 2, 3, 4, 5 |
 
 ## Working on the viewer
 
@@ -237,7 +328,6 @@ cd solid-node-viewer
 python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/playwright install chromium
 (cd solid_node_viewer/widget && npm ci && npm run build)
-(cd solid_node_viewer/app && npm ci && npm run build)
 .venv/bin/python -m pytest
 (cd solid_node_viewer/widget && npm run typecheck && npm test)
 ```
@@ -248,10 +338,15 @@ a producer-generated parity fixture against the shipped expression
 evaluator; that fixture is regenerated by the framework's own tool and
 copied here, because the numbers in it are the framework's, not ours.
 
-The development app is a Create React App shell. To work on it with hot
-reloading, run `solid-node-viewer serve --build-dir <project>/_build
---start-frontend`, which starts the npm dev server and proxies the page
-to it.
+The development page is a static file this package carries
+(`solid_node_viewer/widget/develop.html`), served directly by
+`solid-node-viewer serve --build-dir <project>/_build` — there is no
+second frontend process, no npm dev server and nothing to proxy. The
+command still accepts `--dev`, `--start-frontend` and `--frontend-port`,
+changing nothing and logging one notice per flag given: a released
+solid-node's `solid develop --web-dev` passes `--start-frontend`, and
+this keeps it working rather than turning it into an argparse error on a
+flag the maker never typed.
 
 `scripts/check-dist` builds the source distribution and the wheel, installs
 the wheel into a throwaway environment outside the repository and runs the

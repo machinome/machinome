@@ -155,6 +155,67 @@ The viewer stops posing a machine and starts running one.
   itself — a capability a host may require, on top of the navigation
   state version 9 published.
 
+- **The bundle composes the navigator, the sidebar and the viewer into
+  one inspector layout.** `SolidNodeWidget.mountInspector(target,
+  sourceUrl, options?)` builds a collapsible assembly sidebar and the
+  viewer with its own chrome inside one host element, gives the viewer a
+  pane of its own so its teardown cannot remove the sidebar, and
+  resolves to a handle that exposes the whole viewer handle and the
+  whole navigator handle. A labelled, keyboard-operable toggle stays in
+  the DOM in both states, so opening and closing the sidebar never loses
+  keyboard focus; collapsing removes the sidebar from layout rather than
+  overlaying it, and the viewer's own `ResizeObserver` — already
+  installed by `mount()` — resizes the canvas with no code of this
+  layout's own. The sidebar remembers nothing across a reload: no
+  storage, no cookie, no URL rewriting. A refused mount leaves the
+  target empty and rethrows the viewer's own error, rather than
+  presenting a sidebar around a viewer that never existed. One
+  identifiable stylesheet, a `solid-inspector-*` class contract and
+  `--solid-inspector-*` custom properties follow the navigator's own
+  pattern, and `styles: 'none'` also defaults the navigator's own
+  stylesheet off. No new file is published.
+
+- **The standalone export page selects the inspector.**
+  `widget/index.html` gains `data-solid-layout="inspector"` beside its
+  existing `data-solid-widget`, with `?layout=`/`?sidebar=` query-string
+  twins that override it. **A container carrying no layout selection
+  mounts the plain viewer**, exactly as it did before this capability
+  existed, so every hand-written page and every already-published export
+  is untouched; an unrecognised layout value is written into the
+  container by name, never silently ignored. The page this package ships
+  selects the inspector, collapsed.
+
+- **The development page becomes a static file this package carries,
+  and React leaves the package.** `solid_node_viewer/widget/develop.html`
+  is served by `solid-node-viewer serve` at `/`: it checks the bundle's
+  own availability, loads it, and calls the published
+  `SolidNodeWidget.mountDevelopment(target, options?)`, which mounts the
+  **inspector** on the published build with inline animation and
+  autoplay and the sidebar **open** — collapsible by `?sidebar=` for a
+  link that wants the model alone — names the tab from the model, and
+  runs the reload client. The reload client itself is ported into the
+  bundle unchanged in behaviour (the same `/ws/reload` socket, the same
+  2 s retry and two-attempt grace, the same banner id, class and text),
+  its eight jest tests becoming nine vitest tests (one new, for the
+  injected stylesheet). Partial reload is
+  untouched: every reload still ends in the handle's own
+  `manifestChanged()`. **One deliberate behaviour change:** a build error
+  is now shown in an error pane over a viewer that stays mounted, rather
+  than replacing it — a failed save no longer discards the camera or a
+  live run the next save would fix. `solid_node_viewer/app/` — Create
+  React App, React, `react-scripts`, the 688 kB lockfile, the second
+  frontend build, the httpx proxy and the second dev server — is deleted
+  whole; a wheel now needs one npm build. `serve` goes on accepting
+  `--dev`, `--start-frontend` and `--frontend-port` as no-ops, logging
+  one notice per flag given, because a released solid-node's `solid
+  develop --web-dev` passes `--start-frontend` and must keep working.
+  (OpenSpec change `ship-the-inspector-layout`, ADR-051, ADR-052;
+  supersedes ADR-013, amends ADR-036.)
+
+- **The declared API version rises to 11**, for the inspector layout and
+  the development page's own mount built on it — capabilities a host may
+  require, on top of the mountable navigator version 10 published.
+
 - **Constrained dragging of a part is not in this release.** Picking a
   part and dragging it along a declared input's freedom, through the same
   command interface and with the same blocked-travel reporting, is the
