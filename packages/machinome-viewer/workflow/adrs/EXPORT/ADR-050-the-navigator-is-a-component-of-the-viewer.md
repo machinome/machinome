@@ -1,6 +1,6 @@
 # ADR-050: The assembly navigator is a component of the viewer package
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Date:** 2026-09-14
 

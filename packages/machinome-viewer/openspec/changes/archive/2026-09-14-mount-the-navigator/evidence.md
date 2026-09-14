@@ -417,3 +417,14 @@ more argument than the design's sketch shows. Worth checking against
 the design's intent: D9 says the guard compares "the new root against
 the last root the navigator rendered", which is what `previousRoot`
 is — but the design never says where that value should live.
+
+## Review (2026-09-14)
+
+Reviewer finding: the keydown handler acted on the navigator's remembered
+active row rather than the row holding DOM focus, and intercepted Space on
+a pointer-focused checkbox. Fixed in `0165817` ("act on the row that holds
+keyboard focus"): a row receiving focus by any route becomes the tab stop
+without a rebuild; only a row answers the keyboard contract, a control keeps
+its native keys. Two jsdom tests added, shown red against the pre-fix
+component (2 failed | 23 passed) and green after (25 passed). Widget suite
+597 tests, 30 files; bundle 653.9 kB; e2e navigator tests green.

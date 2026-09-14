@@ -56,4 +56,4 @@ both repositories. Consequences:
 - [ADR-047](EXPORT/ADR-047-the-corpus-makes-the-two-runtimes-one-algorithm.md) — The corpus is what makes the two runtimes one algorithm — **Accepted**
 - [ADR-048](EXPORT/ADR-048-running-controls-submit-requests.md) — Running controls submit requests; nothing binds back — **Accepted**
 - [ADR-049](EXPORT/ADR-049-the-viewer-publishes-its-navigation-state.md) — The viewer publishes its assembly navigation state — **Accepted**, amends 042
-- [ADR-050](EXPORT/ADR-050-the-navigator-is-a-component-of-the-viewer.md) — The assembly navigator is a component of the viewer package — **Proposed**, amends 042
+- [ADR-050](EXPORT/ADR-050-the-navigator-is-a-component-of-the-viewer.md) — The assembly navigator is a component of the viewer package — **Accepted**, amends 042
