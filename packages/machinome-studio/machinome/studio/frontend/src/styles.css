@@ -189,6 +189,10 @@ a.workspace-title:hover, .workspace-home:hover { color: #e0a350; }
 .assembly-root-label { color: #4fb6b8; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
 .assembly-focus { color: #e0a350; opacity: 0; pointer-events: none; }
 .assembly-row:hover .assembly-focus, .assembly-row:focus-visible > .assembly-focus, .assembly-focus:focus-visible { opacity: 1; pointer-events: auto; }
+.assembly-navigator-host { margin-top: 10px; }
+.assembly-panel .solid-nav { --solid-nav-font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; --solid-nav-indent: 15px; --solid-nav-row-padding: 4px 5px; --solid-nav-row-radius: 5px; --solid-nav-row-min-height: 28px; --solid-nav-gap: 6px; --solid-nav-chip-size: 12px; --solid-nav-fg: #c3c8d1; --solid-nav-fg-strong: #e6e8ec; --solid-nav-muted: #8b929e; --solid-nav-bg: transparent; --solid-nav-row-hover-bg: #1c2128; --solid-nav-root-bg: #1c2128; --solid-nav-root-mark: #4fb6b8; --solid-nav-chip-neutral: #6b7280; --solid-nav-chip-border: #6b7280; --solid-nav-obscured-opacity: 0.45; --solid-nav-focus-ring: #e0a350; }
+.assembly-panel .solid-nav-badge { color: #4fb6b8; }
+.assembly-panel .solid-nav-focus { color: #e0a350; }
 .empty { color: #8b929e; font-size: 12px; line-height: 1.5; }
 .agent-roster { list-style: none; margin: 12px 0 0; padding: 0; }
 .agent-roster li { align-items: center; background: #171b21; border-radius: 6px; color: #e6e8ec; display: grid; font-size: 12.5px; gap: 7px; grid-template-columns: 7px minmax(0, 1fr) auto; margin: 6px 0; padding: 8px; }
