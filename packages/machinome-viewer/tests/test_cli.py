@@ -121,6 +121,22 @@ class ServeCommandTest(TestCase):
         viewer.assert_called_once_with('/some/_build', dev=False, port=8123, frontend=None)
         viewer.return_value.start.assert_called_once_with()
 
+    def test_the_frontend_flags_are_accepted_and_do_nothing(self):
+        # A released solid-node's `solid develop --web-dev` passes
+        # `--start-frontend` (development-server spec's compatibility
+        # promise): the command must keep parsing and working, starting
+        # no second process.
+        with patch('multiprocessing.Process') as process, \
+             patch('solid_node_viewer.server.WebViewer') as viewer:
+            status = cli.main([
+                'serve', '--build-dir', '/some/_build', '--start-frontend',
+                '--dev', '--frontend-port', '3123',
+            ])
+        self.assertEqual(status, 0)
+        process.assert_not_called()
+        viewer.assert_called_once_with('/some/_build', dev=True, port=None, frontend=3123)
+        viewer.return_value.start.assert_called_once_with()
+
 
 class ModuleEntryTest(TestCase):
 

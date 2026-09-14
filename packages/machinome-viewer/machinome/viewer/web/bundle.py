@@ -16,7 +16,6 @@ from pathlib import Path
 
 PACKAGE_DIR = Path(__file__).parent
 WIDGET_DIR = PACKAGE_DIR / 'widget'
-APP_DIR = PACKAGE_DIR / 'app'
 PACKAGE_JSON = WIDGET_DIR / 'package.json'
 BUNDLE_NAME = 'solid-widget.js'
 INDEX_NAME = 'index.html'
@@ -41,11 +40,6 @@ def develop_page_path():
     drift from it (design D9).
     """
     return WIDGET_DIR / 'develop.html'
-
-
-def app_build_path():
-    """Return the built development app directory."""
-    return APP_DIR / 'build'
 
 
 def has_bundle():

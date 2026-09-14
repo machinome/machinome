@@ -31,7 +31,6 @@ keywords = ["solid-node", "cad", "viewer", "three.js"]
 dependencies = [
     "fastapi>=0.111,<1",
     "uvicorn>=0.30,<1",
-    "httpx>=0.27,<1",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +44,10 @@ dev = [
     "pillow>=10",
     "build>=1.2",
     "twine>=5",
+    # Served only `_proxy` (server.py, gone with the development app's npm
+    # dev server); kept here for `fastapi.testclient.TestClient`, which
+    # needs it in the test environment.
+    "httpx>=0.27,<1",
     "playwright",
 ]
 

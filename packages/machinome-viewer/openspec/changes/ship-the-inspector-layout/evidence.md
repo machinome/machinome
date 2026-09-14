@@ -506,3 +506,146 @@ routing table. Worth the pilot's attention as a candidate follow-up
 (sending `Cache-Control: no-store` from `_setup_build_snapshot`, or
 `viewer.ts` cache-busting its own fetches) — out of scope for this
 cycle, and not fixed here.
+
+## 5. React and Create React App leave
+
+Only now, with a green served page behind it (increment 4).
+
+### 5.1 Red
+
+`tests/test_packaging.py`: `test_source_distribution_builds_both_frontends`
+becomes `test_source_distribution_builds_the_one_frontend` asserting
+`[call(packaging.WIDGET)]`; the wheel test drops `DEVELOPMENT_APP` (and
+gains a sibling case: nothing is built when the widget's own output
+already exists). `tests/test_cli.py`'s `ServeCommandTest` gains
+`test_the_frontend_flags_are_accepted_and_do_nothing`: `serve --build-dir
+X --start-frontend --dev --frontend-port 3123` parses, starts **no**
+second process (`multiprocessing.Process` patched and asserted never
+constructed), and reaches `WebViewer`.
+
+```
+$ PYTHONPATH="$PWD" … -m pytest tests/test_packaging.py tests/test_cli.py -q
+FAILED …test_source_distribution_builds_the_one_frontend
+  AssertionError: Expected 'build_frontend' to be called once. Called 2 times.
+FAILED …test_wheel_builds_nothing_when_the_widget_is_already_built
+FAILED …test_wheel_builds_the_widget_only_when_its_output_is_missing
+FAILED …ServeCommandTest::test_the_frontend_flags_are_accepted_and_do_nothing
+  AssertionError: Expected 'Process' to not have been called. Called 1 times.
+4 failed, 11 passed, 1 warning in 0.68s
+```
+Red as expected against `packaging.py`'s `FRONTENDS = (WIDGET,
+DEVELOPMENT_APP)` and `cli.py`'s `run_serve` still constructing a
+`multiprocessing.Process` under `--start-frontend`.
+
+### 5.2 Green
+
+`packaging.py`: `FRONTENDS = (WIDGET,)`, `DEVELOPMENT_APP` deleted.
+`cli.py`: the three flags kept with deprecated help text; `run_serve`
+drops the `multiprocessing.Process`/`WebDevServer` machinery entirely and
+logs one notice per flag given (`FRONTEND_FLAG_NOTICE`, naming the flag),
+then constructs `WebViewer` only. `server.py`: `WebDevServer`,
+`_setup_proxy_server`, `_proxy` and the `httpx` import deleted;
+`DEFAULT_FRONTEND_PORT`, `frontend_port()` and the `dev`/`frontend`
+parameters kept (design D13, D14) so `test_server.py`'s
+`test_ports_default_from_the_environment` keeps its meaning; the now-dead
+`app_build_path`/`StaticFiles` imports dropped too (not referenced by
+anything server.py still calls).
+
+```
+$ PYTHONPATH="$PWD" … -m pytest tests/test_packaging.py tests/test_cli.py -q
+15 passed, 1 warning in 0.59s
+```
+
+### 5.3 Green — the deletion
+
+`git rm -r solid_node_viewer/app` (23 files: `App.tsx`, `App.css`,
+`index.tsx`, `index.css`, `viewerShell.ts(+test)`, `reloader.ts(+test)`,
+`public/`, `tsconfig.json`, `package.json`, the 688 kB
+`package-lock.json`, `README.md`). `bundle.py`: `APP_DIR` and
+`app_build_path()` deleted. `MANIFEST.in`'s two `solid_node_viewer/app`
+lines deleted. `.gitignore`'s matching two stale entries
+(`/solid_node_viewer/app/node_modules`, `/solid_node_viewer/app/build`)
+removed too — a mechanical follow-on of the same deletion, not a
+separate task. `tests/test_bundle.py`'s `app_build_path()` assertion
+becomes a `develop_page_path()` one.
+
+```
+$ grep -rn "app_build_path\|APP_DIR\|solid_node_viewer/app" \
+    --include='*.py' --include='*.in' --include='*.toml' .
+(no output)
+```
+Clean for every file the task names. The same grep including `*.md`
+still finds `solid_node_viewer/app` in: `README.md` (task 7.1's own job,
+not this one), this change's own planning artifacts
+(`proposal.md`/`design.md`/`tasks.md`/`evidence.md`, which correctly
+describe what this change did), two ARCHIVED prior changes and ADR-052
+(historical record of a past decision), and the baseline
+`openspec/specs/development-server/spec.md` header (task 7.5's, the
+reviewer's, explicitly deferred). None of those are code, and the task's
+own instruction — "returns nothing outside the changelog" — is read here
+as "outside code and outside a document whose job is to record history",
+since `CHANGELOG.md` itself has no accumulated entry yet (task 7.2 is
+still ahead).
+
+```
+$ PYTHONPATH="$PWD" … -m pytest -q
+95 passed, 24 warnings in 69.31s
+```
+
+### 5.4 pyproject.toml
+
+`httpx` moves from `dependencies` to the `dev` extra, with a comment
+naming why it stays (`fastapi.testclient.TestClient`). The workspace venv
+already has it installed (`httpx 0.27.2` confirmed), so the test client
+keeps working with no `pip install`.
+
+```
+$ PYTHONPATH="$PWD" … -m pytest -q
+95 passed, 24 warnings in 68.62s
+```
+
+### 5.5 The wheel needs one npm build and no app
+
+```
+$ rm -rf dist && /home/asa/devel/libresolid-studio/.venv/bin/python -m build --wheel
+Successfully built solid_node_viewer-0.2.0-py3-none-any.whl
+
+$ unzip -l dist/*.whl | grep -E "widget/(dist|index\.html|develop\.html)|solid_node_viewer/app"
+  2249  solid_node_viewer/widget/develop.html
+   817  solid_node_viewer/widget/index.html
+676040  solid_node_viewer/widget/dist/solid-widget.js
+
+$ unzip -l dist/*.whl | grep -c "solid_node_viewer/app/"
+0
+```
+`widget/dist/solid-widget.js`, `widget/index.html`, `widget/develop.html`
+present; no `app/` anywhere in the wheel.
+
+`scripts/check-dist` (needed `pip install build` in the workspace venv;
+network available, recorded rather than skipped):
+
+```
+$ PYTHON=.../python3 bash scripts/check-dist
+Successfully built solid_node_viewer-0.2.0.tar.gz and solid_node_viewer-0.2.0-py3-none-any.whl
+{"path": ".../solid_node_viewer/widget/dist/solid-widget.js",
+ "index": ".../solid_node_viewer/widget/index.html",
+ "apiVersion": 10, "documentVersions": [1, 2, 3, 4, 5], "version": "0.2.0"}
+check-dist: wheel installs clean and carries the bundle (API 10, version 0.2.0).
+check-dist: uploads nothing. Publishing waits for the maintainer's explicit go.
+```
+`apiVersion` is still 10 here — increment 6 raises it to 11. The sdist
+step (`python -m build` builds both) ran `npm ci && npm run build` for
+real in `solid_node_viewer/widget`, reinstalling `node_modules` from the
+committed lockfile and rebuilding the bundle in place; confirmed the
+widget suite still passes afterward and cleaned up `dist/`/`build/`
+(gitignored, nothing to commit).
+
+```
+$ cd solid_node_viewer/widget && npx tsc --noEmit && npm test
+(no output, exit 0)
+ Test Files  34 passed (34)
+      Tests  642 passed (642)
+
+$ PYTHONPATH="$PWD" … -m pytest -q
+95 passed, 24 warnings in 68.09s
+```

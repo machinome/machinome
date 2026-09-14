@@ -16,17 +16,15 @@ socket while the maker fixes their code.
 import json
 import logging
 import os
-import subprocess
 from pathlib import Path
 
-import httpx
 import uvicorn
-from fastapi import FastAPI, HTTPException, Response, WebSocket
+from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.websockets import WebSocketDisconnect
 
 from solid_node_viewer.bundle import (
-    APP_DIR, api_version, bundle_path, develop_page_path, has_bundle,
+    api_version, bundle_path, develop_page_path, has_bundle,
     missing_bundle_remedy,
 )
 
@@ -69,25 +67,6 @@ def backend_port():
 def frontend_port():
     """The npm dev server port: ``SOLID_NODE_FRONTEND_PORT`` or 3000."""
     return int(os.environ.get('SOLID_NODE_FRONTEND_PORT', DEFAULT_FRONTEND_PORT))
-
-
-class WebDevServer:
-    """Run the development app's own npm server, proxied by :class:`WebViewer`.
-
-    Only a source checkout has the app's sources and ``node_modules``; this is
-    for working on the viewer itself, not for viewing a project.
-    """
-
-    def __init__(self, port=None):
-        self.port = port if port is not None else frontend_port()
-        self.app_dir = str(APP_DIR)
-
-    def start(self):
-        proc = subprocess.Popen(
-            ['npm', 'run', 'start'], cwd=self.app_dir,
-            env=dict(os.environ, PORT=str(self.port)),
-        )
-        proc.communicate()
 
 
 class WebViewer:
@@ -187,19 +166,3 @@ class WebViewer:
                               'installation is missing a package file.',
                 }, status_code=503)
             return FileResponse(page)
-
-    def _setup_proxy_server(self):
-        @self.app.get('/')
-        async def proxy_root():
-            return await self._proxy('/')
-
-        @self.app.get('/{path:path}')
-        async def proxy_path(path: str):
-            return await self._proxy('/' + path)
-
-    async def _proxy(self, path: str):
-        async with httpx.AsyncClient() as client:
-            response = await client.request(
-                'GET', f'http://localhost:{self.frontend}{path}')
-        return Response(content=response.content,
-                        media_type=response.headers.get('content-type'))

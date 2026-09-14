@@ -27,15 +27,15 @@ class Frontend:
 
 
 PACKAGE = Path(__file__).parent
-DEVELOPMENT_APP = Frontend(
-    PACKAGE / 'app',
-    PACKAGE / 'app' / 'build' / 'index.html',
-)
 WIDGET = Frontend(
     PACKAGE / 'widget',
     PACKAGE / 'widget' / 'dist' / 'solid-widget.js',
 )
-FRONTENDS = (WIDGET, DEVELOPMENT_APP)
+# The bundle is the only built frontend now: the development page is a
+# plain file the widget directory already carries (`develop.html`,
+# `MANIFEST.in`'s `recursive-include solid_node_viewer/widget *`), not a
+# second npm project to build.
+FRONTENDS = (WIDGET,)
 
 
 def build_frontend(frontend):

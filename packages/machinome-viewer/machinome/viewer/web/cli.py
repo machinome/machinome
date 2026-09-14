@@ -13,9 +13,25 @@ that would rather not import anything; ``serve`` is the process
 
 import argparse
 import json
+import logging
 import sys
 
 from solid_node_viewer.bundle import BundleMissing, describe
+
+logger = logging.getLogger('viewer.cli')
+
+# The development page is a static file this package carries; there is
+# no second frontend process to start or proxy any more (design D13,
+# D14). A released solid-node's `solid develop --web-dev` still passes
+# `--start-frontend` (`solid_node/manager/develop.py:49-51`), so these
+# three flags go on being ACCEPTED, changing nothing, so that command
+# keeps working rather than turning into an argparse error on a flag the
+# maker never typed. This is a compatibility promise, not an oversight:
+# a later change must not remove them as unused.
+FRONTEND_FLAG_NOTICE = (
+    '%s no longer does anything: the development page is served '
+    'directly, with no separate frontend process.'
+)
 
 
 def _triple(text):
@@ -62,13 +78,14 @@ def build_parser():
     serve.add_argument('--port', type=int, default=None,
                        help='Port to listen on (default: SOLID_NODE_PORT or 8000)')
     serve.add_argument('--dev', action='store_true',
-                       help='Proxy the page to the app\'s npm dev server instead of '
-                            'serving the built app (for working on the viewer)')
+                       help='Deprecated, accepted and ignored: the development page is '
+                            'served directly, with no npm dev server to proxy to')
     serve.add_argument('--frontend-port', type=int, default=None,
-                       help='The npm dev server port proxied by --dev '
-                            '(default: SOLID_NODE_FRONTEND_PORT or 3000)')
+                       help='Deprecated, accepted and ignored: there is no frontend '
+                            'process left to configure')
     serve.add_argument('--start-frontend', action='store_true',
-                       help='Also start the npm dev server (implies --dev)')
+                       help='Deprecated, accepted and ignored: there is no npm dev '
+                            'server left to start')
 
     capture = commands.add_parser(
         'capture',
@@ -100,21 +117,17 @@ def run_describe(args):
 
 
 def run_serve(args):
-    from multiprocessing import Process
-    from solid_node_viewer.server import WebDevServer, WebViewer
+    from solid_node_viewer.server import WebViewer
 
-    dev = args.dev or args.start_frontend
-    frontend = None
-    if args.start_frontend:
-        frontend = Process(target=WebDevServer(port=args.frontend_port).start)
-        frontend.start()
-    try:
-        WebViewer(args.build_dir, dev=dev, port=args.port,
-                  frontend=args.frontend_port).start()
-    finally:
-        if frontend is not None:
-            frontend.terminate()
-            frontend.join()
+    for flag, given in (
+        ('--dev', args.dev),
+        ('--start-frontend', args.start_frontend),
+        ('--frontend-port', args.frontend_port is not None),
+    ):
+        if given:
+            logger.warning(FRONTEND_FLAG_NOTICE, flag)
+    WebViewer(args.build_dir, dev=args.dev, port=args.port,
+              frontend=args.frontend_port).start()
     return 0
 
 

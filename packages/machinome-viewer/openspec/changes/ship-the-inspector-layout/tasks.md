@@ -200,7 +200,7 @@ the app is still there if the page is wrong (design risk 1).
 
 Only now, with a green served page behind it.
 
-- [ ] 5.1 **Red** — `tests/test_packaging.py`:
+- [x] 5.1 **Red** — `tests/test_packaging.py`:
       `test_source_distribution_builds_both_frontends` becomes
       `test_source_distribution_builds_the_one_frontend` asserting
       `[call(packaging.WIDGET)]`, and the wheel test drops
@@ -210,7 +210,7 @@ Only now, with a green served page behind it.
       starts **no** second process (patch `multiprocessing.Process` and
       assert it was never constructed), and reaches `WebViewer`.
       *Red against `packaging.py:38` and `cli.py:102-118`.*
-- [ ] 5.2 **Green** — `packaging.py`: `FRONTENDS = (WIDGET,)`,
+- [x] 5.2 **Green** — `packaging.py`: `FRONTENDS = (WIDGET,)`,
       `DEVELOPMENT_APP` deleted. `cli.py`: the three flags kept with
       deprecated help text; `run_serve` logs one notice per flag given and
       constructs `WebViewer` only. `server.py`: `WebDevServer`,
@@ -218,7 +218,7 @@ Only now, with a green served page behind it.
       `DEFAULT_FRONTEND_PORT`, `frontend_port()` and the `dev`/`frontend`
       parameters **kept** (design D13, D14) so
       `test_server.py:83-89` keeps its meaning.
-- [ ] 5.3 **Green** — delete `solid_node_viewer/app/` entirely (`git rm
+- [x] 5.3 **Green** — delete `solid_node_viewer/app/` entirely (`git rm
       -r`): CRA, React, `react-scripts`, `App.tsx`, `App.css`,
       `index.tsx`, `index.css`, `viewerShell.ts(+test)`,
       `reloader.ts(+test)`, `public/`, `tsconfig.json`, `package.json`
@@ -227,17 +227,17 @@ Only now, with a green served page behind it.
       committing, `grep -rn "app_build_path\|APP_DIR\|solid_node_viewer/app"
       --include='*.py' --include='*.in' --include='*.toml' --include='*.md' .`
       returns nothing outside the changelog.
-- [ ] 5.4 `pyproject.toml`: move `httpx` from `dependencies` to the `dev`
+- [x] 5.4 `pyproject.toml`: move `httpx` from `dependencies` to the `dev`
       extra (it served `_proxy` alone; `fastapi.testclient` needs it in
       the test environment). **Its own step on purpose** — reverting it is
       one line if the reviewer would rather not narrow a released
       dependency set (design §5).
-- [ ] 5.5 Confirm the wheel needs one npm build and no app: build a wheel
+- [x] 5.5 Confirm the wheel needs one npm build and no app: build a wheel
       into a temporary directory and list its contents — `widget/dist/
       solid-widget.js`, `widget/index.html`, `widget/develop.html`
       present; no `app/`. `scripts/check-dist` is the existing tool; run
       it if the environment allows and record what it did.
-- [ ] Commit: `refactor(viewer): drop Create React App and the development app`.
+- [x] Commit: `refactor(viewer): drop Create React App and the development app`.
 
 ## 6. The declared version
 

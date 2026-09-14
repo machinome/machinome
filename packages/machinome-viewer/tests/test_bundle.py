@@ -34,7 +34,7 @@ class BundleLookupTest(TestCase):
     def test_paths_and_remedy_share_one_source(self):
         self.assertTrue(str(bundle.bundle_path()).endswith('widget/dist/solid-widget.js'))
         self.assertTrue(str(bundle.index_path()).endswith('widget/index.html'))
-        self.assertTrue(str(bundle.app_build_path()).endswith('app/build'))
+        self.assertTrue(str(bundle.develop_page_path()).endswith('widget/develop.html'))
         remedy = bundle.missing_bundle_remedy()
         self.assertIn('npm', remedy)
         self.assertIn('PyPI', remedy)
