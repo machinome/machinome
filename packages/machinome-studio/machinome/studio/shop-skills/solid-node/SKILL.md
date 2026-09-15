@@ -394,8 +394,12 @@ migrating a pose model.
   Pure jumps such as `floor(input)` do not move a running joint: the run
   subtracts jumps. A zero-slope region or a multi-source gate disengages
   motion but does not by itself report the input blocked. Test the actual
-  mechanical restriction separately. A range bound can depend only on
-  its own coordinate; it cannot read other pins or a release lever.
+  mechanical restriction separately. A range bound may also read OTHER
+  coordinates — `Bound(expr, reads=(...))`, naming the reads as a
+  relation's ends are — and then it is a constraint the run stops at
+  along the tick's path, so a plug bounded by its pins' lifts stops the
+  key that would lift them. Keep the laws it reads small; see the API
+  skill for the declaration and stop rules.
 - Test history with scenarios on the same node: repeat an action, stop
   midway, reverse, interleave controls, and restore/replay a snapshot.
   Check geometry at a cadence as well as final state. Choose `dt` small
@@ -404,10 +408,20 @@ migrating a pose model.
   collision solver.
 - A successful running build publishes a version-5 `program` and joint
   placements over bank ids. Verify it and the installed viewer's
-  `documentVersions`; current development API 8 provides nudge, jog,
+  `documentVersions`; current development API 12 provides nudge, jog,
   instruction and run/pause/step/reset controls. Do not substitute raw
   position sliders for the operating surface. A snapshot's `--drive`
   overrides pose inputs; it does not replay an accumulated run.
+- **Put the request on the part where the maker would touch it.** Under a
+  running root a `controls` table beside `instructions` declares
+  `Button(part, 'instruction')` to press a part and `Turn(part, input)` to
+  drag it round the coordinate it rides; nothing about the gesture is
+  declared, the ratio being measured from the compiled program at rest. A
+  control issues a request the run already accepts, so a blocked drag
+  reports blocked. Prefer one over a panel button whenever the real
+  machine is operated by handling that piece, and exercise it in the
+  viewer as evidence. See the API skill for parts, refusals and the
+  published table.
 
 ## Testing
 

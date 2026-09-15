@@ -1383,9 +1383,9 @@ idle, 4.7 ms turning, 45 ms advancing the key). Keep the laws a bound
 reads small, and declare one bound per coordinate side that needs it. A violation that begins
 and ends inside one of the 64 sub-intervals is missed, and the pushing
 test is net over the tick. A published document carries the bound's
-expression over the ids it reads under the same version 5; the shipped
-viewer worker refuses such a document by name until the viewer's own
-cycle executes it.
+expression over the ids it reads under the same version 5; a viewer from
+API 12 executes it against the same committed values, and an older worker
+refuses such a document by name.
 
 **Naming under a running root.** `set_state` records every joint
 coordinate under its bare name beside the drivers, so a root driver named
@@ -1572,8 +1572,9 @@ A consumer must reject a missing or too-old bundle before opening.
 An older report without `documentVersions` means support for `[1, 2, 3, 4]`,
 not 5. Build/develop/export still publish version 5 and warn if the
 installed viewer cannot render it; a web snapshot refuses before opening
-the browser. Viewer API 8 supports version 5 and the running controls in
-the current development checkout; that does not imply a published release.
+the browser. Viewer API 12 supports version 5, the running controls,
+the `controls` table and bounds that read other coordinates, in the
+current development checkout; that does not imply a published release.
 
 ## Viewer HTTP surface
 
