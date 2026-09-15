@@ -1,0 +1,254 @@
+{
+  "format": "solid-node-export",
+  "version": 5,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "angle": {
+      "default": 0.0,
+      "range": null,
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    },
+    "reach": {
+      "default": 0.0,
+      "range": null,
+      "unit": "mm",
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {
+    "Swing": {
+      "by": {
+        "angle": 1.0
+      },
+      "duration": 1.0
+    }
+  },
+  "controls": {
+    "shift stack": {
+      "kind": "slide",
+      "part": [
+        "stack",
+        "plate"
+      ],
+      "input": "reach",
+      "per_unit": -2.5,
+      "joint": [
+        "stack"
+      ],
+      "coordinate": "stack.shift",
+      "axis": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "operation_span": [
+        1,
+        2
+      ]
+    },
+    "swing stack": {
+      "kind": "turn",
+      "part": [
+        "stack",
+        "plate"
+      ],
+      "input": "angle",
+      "per_unit": 1.0,
+      "joint": [
+        "stack"
+      ],
+      "coordinate": "stack.swing",
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "operation_span": [
+        0,
+        1
+      ]
+    }
+  },
+  "program": {
+    "identity": "a6347311675e95149a991d203f2b06cae5d1401d7b60d47b015b6ab6e4a8707e",
+    "clock": "time",
+    "coordinates": {
+      "angle": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "reach": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "stack.shift": {
+        "kind": "coordinate",
+        "initial": -0.0,
+        "unit": "mm",
+        "domain": "translational"
+      },
+      "stack.swing": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      }
+    },
+    "intermediates": [],
+    "edges": [
+      {
+        "kind": "law",
+        "needs": [
+          "angle"
+        ],
+        "gives": [
+          "stack.swing"
+        ],
+        "description": "angle drives stack.swing",
+        "stated_by": "Tilted",
+        "expressions": [
+          "angle"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          null
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "reach"
+        ],
+        "gives": [
+          "stack.shift"
+        ],
+        "description": "reach drives stack.shift",
+        "stated_by": "Tilted",
+        "expressions": [
+          "(-2.5 * reach)"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          null
+        ]
+      }
+    ],
+    "spans": {},
+    "sources": {
+      "angle": [
+        "angle"
+      ],
+      "reach": [
+        "reach"
+      ],
+      "stack.shift": [
+        "reach"
+      ],
+      "stack.swing": [
+        "angle"
+      ]
+    },
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "subdivisions": 64,
+      "bisection_rounds": 64,
+      "max_crossings": 1000,
+      "agreement": 1e-09
+    }
+  },
+  "root": {
+    "name": "Tilted",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1789467080.9858892,
+    "operations": [],
+    "children": [
+      {
+        "name": "stack",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": 1789467080.9858892,
+        "operations": [
+          [
+            "r",
+            "stack.swing",
+            [
+              1,
+              0,
+              0
+            ]
+          ],
+          [
+            "t",
+            [
+              "0",
+              "stack.shift",
+              "0"
+            ]
+          ],
+          [
+            "t",
+            [
+              "0.0",
+              "0.0",
+              "15.0"
+            ]
+          ]
+        ],
+        "children": [
+          {
+            "name": "plate",
+            "type": "LeafNode",
+            "color": null,
+            "mtime": 1789467080.9858892,
+            "operations": [],
+            "model": "models/running_project/parts-Dial-9f2c3557d753.stl",
+            "piece": "bea480af5d27"
+          }
+        ]
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "bea480af5d27",
+      "name": "Dial",
+      "sources": [
+        "running_project/parts.py"
+      ],
+      "models": [
+        "models/running_project/parts-Dial-9f2c3557d753.stl"
+      ],
+      "count": 1,
+      "size": [
+        48.0,
+        47.7370491027832,
+        3.0
+      ],
+      "volume": 5389.0709211860885,
+      "watertight": true
+    }
+  ]
+}

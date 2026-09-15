@@ -124,9 +124,9 @@ describe('readControls refuses a table it cannot resolve (D1)', () => {
   });
 
   it('refuses a kind that is neither a press nor a turn', () => {
-    const message = refusal(one({ kind: 'slide' }));
+    const message = refusal(one({ kind: 'unknown' }));
     expect(message).toContain('turn units');
-    expect(message).toContain('slide');
+    expect(message).toContain('unknown');
     expect(message).toContain('button');
   });
 

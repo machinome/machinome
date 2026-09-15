@@ -26,7 +26,7 @@ class BundleLookupTest(TestCase):
                         froms)
 
     def test_declares_api_version_eleven(self):
-        self.assertEqual(bundle.api_version(), 12)
+        self.assertEqual(bundle.api_version(), 13)
 
     def test_declares_the_document_versions_this_build_reads(self):
         self.assertEqual(bundle.document_versions(), [1, 2, 3, 4, 5])

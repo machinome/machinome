@@ -77,8 +77,8 @@ describe('API_VERSION', () => {
   // at all, and no number would say so: the document versions this
   // build reads do NOT move, because `controls` is additive within
   // version 5 (solid-node ADR-112).
-  it('declares the part-controls API as version 12', () => {
-    expect(API_VERSION).toBe(12);
+  it('declares direct sliding and independent freedoms as API 13', () => {
+    expect(API_VERSION).toBe(13);
   });
 });
 

@@ -192,7 +192,7 @@ class RunningDocumentTest(TestCase):
                              'the handle reported no run')
         self.assertEqual(result['identity'],
                          self.document['program']['identity'])
-        self.assertEqual(result['apiVersion'], 12)
+        self.assertEqual(result['apiVersion'], 13)
         self.assertEqual(result['controls'], [])
         self.assertAlmostEqual(result['dt'], 1 / 240, places=12)
 

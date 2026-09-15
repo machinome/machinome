@@ -1,0 +1,192 @@
+{
+  "format": "solid-node-export",
+  "version": 5,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "setting": {
+      "default": 0.0,
+      "range": null,
+      "unit": "step",
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {
+    "One detent": {
+      "by": {
+        "setting": 1.0
+      },
+      "duration": 1.0
+    }
+  },
+  "controls": {
+    "press selector": {
+      "kind": "button",
+      "part": [
+        "selector",
+        "knob"
+      ],
+      "instruction": "One detent",
+      "joint": [
+        "selector"
+      ],
+      "coordinate": "selector.travel",
+      "axis": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "operation_span": [
+        0,
+        1
+      ]
+    },
+    "slide selector": {
+      "kind": "slide",
+      "part": [
+        "selector",
+        "knob"
+      ],
+      "input": "setting",
+      "per_unit": 6.0,
+      "joint": [
+        "selector"
+      ],
+      "coordinate": "selector.travel",
+      "axis": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "operation_span": [
+        0,
+        1
+      ]
+    }
+  },
+  "program": {
+    "identity": "7adbe5262da1bd230cd0a2276d11658dd86f02f9f96f1c5b30e03127e9bd26a5",
+    "clock": "time",
+    "coordinates": {
+      "setting": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "selector.travel": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "mm",
+        "domain": "translational"
+      }
+    },
+    "intermediates": [],
+    "edges": [
+      {
+        "kind": "law",
+        "needs": [
+          "setting"
+        ],
+        "gives": [
+          "selector.travel"
+        ],
+        "description": "setting drives selector.travel",
+        "stated_by": "Selector",
+        "expressions": [
+          "(6.0 * setting)"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          null
+        ]
+      }
+    ],
+    "spans": {},
+    "sources": {
+      "selector.travel": [
+        "setting"
+      ],
+      "setting": [
+        "setting"
+      ]
+    },
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "subdivisions": 64,
+      "bisection_rounds": 64,
+      "max_crossings": 1000,
+      "agreement": 1e-09
+    }
+  },
+  "root": {
+    "name": "Selector",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1789467080.9858892,
+    "operations": [],
+    "children": [
+      {
+        "name": "selector",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": 1789467080.9858892,
+        "operations": [
+          [
+            "t",
+            [
+              "0",
+              "selector.travel",
+              "0"
+            ]
+          ]
+        ],
+        "children": [
+          {
+            "name": "knob",
+            "type": "LeafNode",
+            "color": null,
+            "mtime": 1789467080.9858892,
+            "operations": [],
+            "model": "models/running_project/parts-Dial-9f2c3557d753.stl",
+            "piece": "bea480af5d27"
+          }
+        ]
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "bea480af5d27",
+      "name": "Dial",
+      "sources": [
+        "running_project/parts.py"
+      ],
+      "models": [
+        "models/running_project/parts-Dial-9f2c3557d753.stl"
+      ],
+      "count": 1,
+      "size": [
+        48.0,
+        47.7370491027832,
+        3.0
+      ],
+      "volume": 5389.0709211860885,
+      "watertight": true
+    }
+  ]
+}

@@ -161,7 +161,7 @@ function stubs(options: { delta?: number; reader?: boolean } = {}) {
   const surface = partSurfaceWith(host);
   surfaces.push(surface);
   return {
-    container, canvas, orbit, captured, released, picks, highlighted,
+    host, container, canvas, orbit, captured, released, picks, highlighted,
     restored, triggers, moves, pending, surface,
     show(controls: readonly LoadedControl[]) { under = controls; },
     silence() { noRun = true; },
@@ -170,6 +170,70 @@ function stubs(options: { delta?: number; reader?: boolean } = {}) {
 
 beforeEach(() => {
   document.body.replaceChildren();
+});
+
+describe('a hand chooses one physical freedom', () => {
+  const SLIDE: LoadedControl = { ...TURN, name: 'lift crank', kind: 'slide',
+    input: 'lift', perUnit: 1, coordinate: 'units.input.lift' };
+
+  it('drags an ordinary sliding part directly', () => {
+    const bench = stubs({ delta: 2 });
+    bench.surface.refresh([SLIDE], true);
+    bench.show([SLIDE]);
+    bench.canvas.dispatchEvent(pointer('pointerdown'));
+    bench.canvas.dispatchEvent(pointer('pointermove', { clientX: 10 }));
+    expect(bench.moves).toEqual([{ input: 'lift', by: 1, seconds: 0.2,
+      at: { x: 10, y: 0 } }]);
+  });
+
+  it('does not guess a freedom on an ambiguous body drag', () => {
+    const bench = stubs({ delta: -40 });
+    bench.surface.refresh([BUTTON, TURN, SLIDE], true);
+    bench.show([BUTTON, TURN, SLIDE]);
+    bench.canvas.dispatchEvent(pointer('pointerdown'));
+    bench.canvas.dispatchEvent(pointer('pointermove', { clientX: 100 }));
+    expect(bench.moves).toEqual([]);
+  });
+
+  it('makes both handles reachable after a touch selection; a handle never presses the body', () => {
+    const bench = stubs({ delta: 2 });
+    bench.host.point = () => ({ x: 100, y: 100 });
+    bench.surface.refresh([BUTTON, TURN, SLIDE], true);
+    bench.show([BUTTON, TURN, SLIDE]);
+    bench.canvas.dispatchEvent(pointer('pointerdown'));
+    bench.canvas.dispatchEvent(pointer('pointerup'));
+    expect(bench.triggers).toHaveLength(1);
+    const handles = bench.container.querySelectorAll<HTMLButtonElement>('.part-gesture-handle');
+    expect(handles).toHaveLength(2);
+    const slide = Array.from(handles).find(one => one.dataset.control === SLIDE.name)!;
+    slide.dispatchEvent(pointer('pointerdown'));
+    bench.canvas.dispatchEvent(pointer('pointermove', { clientX: 20 }));
+    bench.canvas.dispatchEvent(pointer('pointerup', { clientX: 20 }));
+    expect(bench.moves[0].input).toBe('lift');
+    expect(bench.triggers).toHaveLength(1);
+  });
+
+  it('ends a held gesture when the document is replaced', () => {
+    const bench = stubs();
+    bench.surface.refresh([TURN], true);
+    bench.show([TURN]);
+    bench.canvas.dispatchEvent(pointer('pointerdown'));
+    bench.surface.refresh([SLIDE], true);
+    expect(bench.surface.engaged()).toBe(false);
+    expect(bench.orbit.enabled).toBe(true);
+  });
+
+  it('does not pick through a panel button into the machine', () => {
+    const bench = stubs();
+    bench.surface.refresh([BUTTON], true);
+    bench.show([BUTTON]);
+    const panel = document.createElement('button');
+    bench.container.append(panel);
+    panel.dispatchEvent(pointer('pointerdown'));
+    panel.dispatchEvent(pointer('pointerup'));
+    expect(bench.triggers).toEqual([]);
+    expect(bench.orbit.enabled).toBe(true);
+  });
 });
 
 afterEach(() => {

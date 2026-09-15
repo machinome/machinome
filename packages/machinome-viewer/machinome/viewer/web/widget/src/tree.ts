@@ -465,7 +465,7 @@ function uniqueDataByName(children: ManifestNode[]): Set<string> {
 
 // Operations listed [op1, op2, ...] apply to the solid in order:
 // v' = opN(...(op1(v))), i.e. matrix = M_opN * ... * M_op1
-function operationsMatrix(ops: RawOperation[], scope: EvalScope): THREE.Matrix4 {
+export function operationsMatrix(ops: RawOperation[], scope: EvalScope): THREE.Matrix4 {
   const matrix = new THREE.Matrix4();
   const step = new THREE.Matrix4();
   const axis = new THREE.Vector3();
