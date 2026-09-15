@@ -849,17 +849,25 @@ class-local names and qualified by their declaring node's path;
 `qualified_instructions` and `qualified_controls` are its thin faces.
 A **control** (`simulation/control.py`) says how a person issues a
 request by touching the machine rather than a panel beside it —
-`Button(part, instruction)` is a press and `Turn(part, input)` a drag
-about the rotational coordinate the part rides — declared in a
+`Button(part, instruction)` is a press, `Turn(part, input)` a drag ABOUT
+the rotational coordinate the part rides and `Slide(part, input)` a drag
+ALONG the translational one — declared in a
 `controls` dict beside `instructions` on a root that declares
 `Time.running()`, validated where it is written by `NodeMeta` (duck-typed
 on the control's own `control_kind`, so the node layer still imports
 nothing from this one), and compiled by `compile_program` to the
 coordinate, joint node, axis and origin the tree already carries, with
 the gesture's ratio MEASURED off the compiled program at rest rather
-than declared. A control moves nothing itself and changes nothing the
-run computes: `Program.described()`, and therefore the program identity,
-never learns that one exists.
+than declared. The coordinate is the one owned by the nearest
+ancestor-or-self of the part whose joint the run banks, and a body
+with TWO freedoms — a crank that lifts and turns — has no nearest
+joint: the keyword-only `coordinate=` names one existing
+single-coordinate joint declaration instead, by the same path a
+relation's end is written, required to pose the part or an ancestor
+of it in the same tree and never to reach sideways (ADR-117). A
+control moves nothing itself and changes nothing the run computes:
+`Program.described()`, and therefore the program identity, never
+learns that one exists.
 
 `Sim` is the fixed-`dt` loop: instants become integer tick counts the
 moment they are stated (rejected if not whole — the ADR-050 reasoning
@@ -1613,6 +1621,17 @@ kind, the part's node-name path, the instruction or the input it names
 with the measured `per_unit`, and the gesture's geometry read off the
 tree — the joint node's path, the coordinate's qualified id, the joint's
 axis and the point it turns about, both in the joint node's own frame.
+A TRANSLATIONAL or explicitly selected entry carries `operation_span`
+last: the half-open pair of indices identifying that coordinate's own
+placement inside the joint node's `operations`, derived from the slot
+mark every placed operation carries (ADR-093, ADR-114) rather than from
+searching an expression. The gesture's frame is then the joint node's
+parent's current world matrix composed with the operations AFTER that
+block, so an inner joint's motion never turns an outer joint's line and
+a sliding pivot travels with its rail; an entry inferred over a single
+rotational joint carries no span and is byte-identical to the entry
+published before spans existed, because a rotation carries its own axis
+and its own pivot into themselves (ADR-117).
 The table is ADDITIVE within version 5 (a consumer that ignores it still
 drives the machine from the panel and still renders the truth), absent
 when empty, and carries no expression, so it never enters the `bindings`

@@ -38,8 +38,9 @@ from solid_node.core.serializer import (
     symbolic_document,
 )
 from solid_node.expression_graph import postorder
-from solid_node.motion.ports import get_coordinate
-from solid_node.simulation import Sim
+from solid_node.motion.ports import Time, get_coordinate
+from solid_node.node import AssemblyNode
+from solid_node.simulation import Driver, Instruction, Sim, Slide
 from solid_node.simulation.enumeration import bind_declared_defaults
 from solid_node.simulation.program import (_BISECTION_ROUNDS,
                                            _CROSSING_TOLERANCE,
@@ -49,15 +50,16 @@ from solid_node.simulation.run import _TOLERANCE
 from .base import BaseNodeTest
 from .running_project.machine import (Captured, ClassGate, Clocked,
                                       ClockedBody, Columns, ColumnsBare,
-                                      Derived, Gate, Gauged, Guarded,
+                                      Crank, Derived, Gate, Gauged, Guarded,
                                       LoopingTrain, NotRunning, OffCentre,
                                       OmittedControl, Optional, OptionalRead,
                                       PortDrivenJoint, PortDrivenSmooth,
-                                      Ratchet, Remainder, Sixbound, Sixfree,
-                                      SpringBank, StatedBelow, StatedBelowBody,
+                                      Ratchet, Register, Remainder, Selector,
+                                      Sixbound, Sixfree, SlideKnob, SpringBank,
+                                      StatedBelow, StatedBelowBody,
                                       StatedBelowOpaque, StoppedDifferential,
-                                      Swept, ThreeCarries, Train, TrainBody,
-                                      Window, Wired)
+                                      Swept, ThreeCarries, Tilted, Train,
+                                      TrainBody, Window, Wired)
 
 BASE_DOCUMENTS = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               'base_documents')
@@ -1180,3 +1182,228 @@ class ControlsTableTest(BaseNodeTest):
         self.assertEqual(published['version'], 5)
         self.assertEqual(sorted(published['controls']),
                          ['turn units', 'units dial'])
+
+
+class SelectedPlacementTest(BaseNodeTest):
+    """(2.1, 2.2) A sliding control, and a control that says which
+    placement its gesture belongs to.
+
+    OpenSpec change ``direct-part-motion``. Where inference over a
+    single rotational joint published the joint node's own frame and
+    nothing else, a translational or explicitly selected coordinate
+    publishes `operation_span` too: the half-open pair of indices into
+    the joint node's own `operations` identifying the COMPLETE block
+    that coordinate placed. Everything outside and after that block
+    carries the gesture's frame into the world; nothing inside it, and
+    nothing before it, does.
+    """
+
+    def controls(self, factory):
+        return document(bound(factory()))['controls']
+
+    def node_of(self, published, path):
+        node = published['root']
+        for name in path:
+            found = [child for child in node.get('children', ())
+                     if child['name'] == name]
+            self.assertEqual(len(found), 1, name)
+            node = found[0]
+        return node
+
+    def block(self, published, entry):
+        """The operations the entry's span selects, read out of the
+        document's own tree exactly as a consumer reads them."""
+        start, end = entry['operation_span']
+        return self.node_of(published, entry['joint'])['operations'][start:end]
+
+    ##############################################
+    # A sliding selector
+
+    def test_a_sliding_selector_publishes_its_physical_direction(self):
+        entry = self.controls(Selector)['slide selector']
+        self.assertEqual(entry['kind'], 'slide')
+        self.assertEqual(entry['input'], 'setting')
+        self.assertEqual(entry['per_unit'], 6.0)
+        self.assertEqual(entry['coordinate'], 'selector.travel')
+        self.assertEqual(entry['axis'], [0.0, 1.0, 0.0])
+
+    def test_a_slide_entrys_fields_are_in_the_specs_order(self):
+        table = self.controls(Selector)
+        self.assertEqual(list(table['slide selector']),
+                         ['kind', 'part', 'input', 'per_unit', 'joint',
+                          'coordinate', 'axis', 'origin', 'operation_span'])
+        self.assertEqual(list(table['press selector']),
+                         ['kind', 'part', 'instruction', 'joint',
+                          'coordinate', 'axis', 'origin', 'operation_span'])
+
+    def test_a_slides_span_selects_the_actual_prismatic_placement(self):
+        published = document(bound(Selector()))
+        entry = published['controls']['slide selector']
+        self.assertEqual(entry['operation_span'], [0, 1])
+        self.assertEqual(self.block(published, entry),
+                         [['t', ['0', 'selector.travel', '0']]])
+
+    def test_a_press_on_a_prismatic_part_needs_no_rotation(self):
+        published = document(bound(Selector()))
+        entry = published['controls']['press selector']
+        self.assertEqual(entry['instruction'], 'One detent')
+        self.assertEqual(entry['operation_span'],
+                         published['controls']['slide selector']
+                         ['operation_span'])
+        self.assertEqual(self.block(published, entry)[0][0], 't')
+
+    def test_the_domain_stays_the_programs_to_publish(self):
+        published = document(bound(Selector()))
+        coordinates = published['program']['coordinates']
+        for name, entry in published['controls'].items():
+            with self.subTest(control=name):
+                self.assertEqual(
+                    coordinates[entry['coordinate']]['domain'],
+                    'translational')
+                self.assertNotIn('domain', entry)
+                self.assertNotIn('unit', entry)
+
+    ##############################################
+    # Two placements on one body
+
+    def test_two_controls_identify_two_placements_on_one_body(self):
+        published = document(bound(Crank()))
+        lift = published['controls']['lift crank']
+        rotate = published['controls']['rotate crank']
+        self.assertEqual(lift['part'], rotate['part'])
+        self.assertEqual(lift['joint'], rotate['joint'])
+        self.assertNotEqual(lift['coordinate'], rotate['coordinate'])
+        self.assertNotEqual(lift['operation_span'],
+                            rotate['operation_span'])
+
+    def test_each_span_is_the_complete_block_of_its_own_coordinate(self):
+        """The crank's pivot is off its own origin, so the turn's block
+        is the two centring translations with the rotation between
+        them -- one unit, at one slot, and the slide's own translation
+        outside it."""
+        published = document(bound(Crank()))
+        turn = published['controls']['rotate crank']
+        lift = published['controls']['lift crank']
+        self.assertEqual(turn['operation_span'], [0, 3])
+        self.assertEqual(self.block(published, turn),
+                         [['t', ['-0.0', '-12.0', '-0.0']],
+                          ['r', 'crank.turn', [0, 0, 1]],
+                          ['t', ['0.0', '12.0', '0.0']]])
+        self.assertEqual(lift['operation_span'], [3, 4])
+        self.assertEqual(self.block(published, lift),
+                         [['t', ['0', '0', 'crank.lift']]])
+
+    def test_the_pivot_the_turn_names_is_the_one_it_turns_about(self):
+        turn = self.controls(Crank)['rotate crank']
+        self.assertEqual(turn['axis'], [0.0, 0.0, 1.0])
+        self.assertEqual(turn['origin'], [0.0, 12.0, 0.0])
+
+    def test_a_selected_button_carries_the_span_of_what_it_names(self):
+        table = self.controls(Crank)
+        self.assertEqual(table['turn crank']['operation_span'],
+                         table['rotate crank']['operation_span'])
+        self.assertEqual(table['turn crank']['coordinate'], 'crank.turn')
+
+    def test_an_inner_motion_does_not_rotate_an_outer_joints_axis(self):
+        """`swing` is inner and turns about X; `shift` is outer and
+        slides along Y. The document distinguishes the two blocks, so
+        the outer axis is never carried through the inner rotation --
+        which is exactly what the whole body's world matrix would do.
+        """
+        published = document(bound(Tilted()))
+        swing = published['controls']['swing stack']
+        shift = published['controls']['shift stack']
+        self.assertEqual(swing['axis'], [1.0, 0.0, 0.0])
+        self.assertEqual(shift['axis'], [0.0, 1.0, 0.0])
+        self.assertEqual(swing['operation_span'], [0, 1])
+        self.assertEqual(shift['operation_span'], [1, 2])
+        self.assertEqual(self.block(published, swing),
+                         [['r', 'stack.swing', [1, 0, 0]]])
+        self.assertEqual(self.block(published, shift),
+                         [['t', ['0', 'stack.shift', '0']]])
+        # The operations after the SHIFT block are the rest placement
+        # alone: the outer joint's frame is its parent's, and no joint
+        # of its own body stands between them.
+        operations = self.node_of(published, shift['joint'])['operations']
+        self.assertEqual(operations[shift['operation_span'][1]:],
+                         [['t', ['0.0', '0.0', '15.0']]])
+
+    def test_an_ancestors_placement_is_the_one_a_selection_names(self):
+        published = document(bound(Register()))
+        shift = published['controls']['shift register']
+        self.assertEqual(shift['joint'], ['register'])
+        self.assertEqual(self.block(published, shift),
+                         [['t', ['register.travel', '0', '0']]])
+        turn = published['controls']['turn marker']
+        self.assertEqual(turn['joint'], ['register', 'marker'])
+        self.assertEqual(self.block(published, turn),
+                         [['r', 'register.marker.turn', [0, 0, 1]]])
+
+    ##############################################
+    # What does not move
+
+    def test_an_inferred_rotational_entry_gains_no_field(self):
+        for name, entry in document(bound(Columns()))['controls'].items():
+            with self.subTest(control=name):
+                self.assertNotIn('operation_span', entry)
+
+    def test_the_inferred_document_is_the_one_published_at_the_base(self):
+        """`touched_columns.json` is `Columns`' whole document as the
+        producer published it before this change: the controls table,
+        the program and every other byte."""
+        published = document(bound(Columns()))
+
+        def normalized(root):
+            root['mtime'] = None
+            for child in root.get('children', ()):
+                normalized(child)
+
+        normalized(published['root'])
+        with open(os.path.join(BASE_DOCUMENTS,
+                               'touched_columns.json')) as handle:
+            expected = handle.read()
+        self.assertEqual(json.dumps(published, indent=2) + '\n', expected)
+
+    def test_the_version_does_not_move_for_a_span(self):
+        for factory in (Selector, Crank, Tilted, Register):
+            with self.subTest(root=factory.__name__):
+                self.assertEqual(document(bound(factory()))['version'], 5)
+
+    def test_a_span_carries_no_expression_into_the_bindings(self):
+        published = document(bound(Crank()))
+        text = json.dumps(published['controls'])
+        for entry in published.get('bindings', ()):
+            self.assertNotIn(entry['name'], text)
+
+    def test_republishing_a_selected_document_is_byte_identical(self):
+        self.assertEqual(json.dumps(document(bound(Crank()))),
+                         json.dumps(document(bound(Crank()))))
+
+    def test_a_signed_slide_ratio_keeps_its_sign(self):
+        """`reach` drives the outer slide at `-2.5`: a gesture scaled by
+        a signed number carries the sign, or a drag runs backwards."""
+        table = self.controls(Tilted)
+        self.assertEqual(table['shift stack']['per_unit'], -2.5)
+        self.assertEqual(table['shift stack']['input'], 'reach')
+
+    def test_a_slide_that_does_not_move_its_part_is_refused(self):
+        """The export delta's refusal, reached through a SLIDE."""
+        class Disengaged(AssemblyNode):
+            time = Time.running()
+            setting = Driver(default=0.0, unit='step')
+            spare = Driver(default=0.0, unit='step')
+            selector = SlideKnob()
+            (setting & spare).drives(selector.travel,
+                                     law=lambda source, target:
+                                     lambda a, b: 6.0 * a)
+            instructions = {
+                'One detent': Instruction(by={'setting': 1.0}, duration=1.0),
+            }
+            controls = {'slide selector': Slide(selector.knob, spare)}
+
+        with self.assertRaises(ValueError) as raised:
+            document(bound(Disengaged()))
+        message = str(raised.exception)
+        self.assertIn('slide selector', message)
+        self.assertIn('spare', message)
+        self.assertIn('does not move', message)

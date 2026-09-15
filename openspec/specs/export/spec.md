@@ -996,23 +996,36 @@ unchanged model produces a byte-identical document.
 
 Each entry SHALL carry, in this order:
 
-- `kind`: `"button"` or `"turn"`.
+- `kind`: `"button"`, `"turn"` or `"slide"`.
 - `part`: the LIST of node names, from the document's root down, of the
   node a person touches — the names the document's own tree publishes,
   so a consumer walks to it without parsing a dotted string.
 - for a button, `instruction`: the QUALIFIED instruction name, which
   SHALL be a key of the same document's `instructions` table.
-- for a turn, `input`: the qualified driver id, which SHALL be a key of
+- for a turn or slide, `input`: the qualified driver id, which SHALL be a key of
   the same document's `drivers` table; and `per_unit`, defined below.
 - `joint`: the LIST of node names of the node the control's coordinate
   poses.
 - `coordinate`: that coordinate's qualified id, which SHALL be a key of
   `program.coordinates`.
-- `axis`: the joint's axis, as three numbers in the joint node's OWN
-  frame.
-- `origin`: the point the joint moves the part about, as three numbers
-  in the joint node's own frame — `[0, 0, 0]` where the line runs
-  through that node's placed origin.
+- `axis`: the selected joint's axis, as three numbers in its interaction frame.
+- `origin`: a point on the selected joint's axis, as three numbers in that
+  same frame, including the actual pivot of an off-centre rotational joint.
+- when needed for a translational or explicitly selected coordinate,
+  `operation_span`: the half-open pair of operation indices identifying
+  the selected joint's complete placement in the named node.
+
+For an entry with an operation span, the interaction frame SHALL be carried
+into the world by the joint node's parent and the node operations outside
+and after the selected block, evaluated at the current committed state.
+The producer SHALL derive the selected block from the actual placement's
+ownership, not an independently authored axis or a search for expression
+text. The selected coordinate SHALL pose exactly the identified block.
+
+Existing inferred rotational entries SHALL omit the span and retain their
+existing axis and origin values in the joint node's own frame, their field
+order and their byte-identical publication. No expression SHALL be added
+to the controls table for recovering a current interaction frame.
 
 The entry SHALL NOT repeat the coordinate's `domain` or `unit`, which
 `program.coordinates` publishes under the same id, and SHALL carry no
@@ -1104,7 +1117,7 @@ inconsistent.
 
 #### Scenario: A part does not move with its input at rest
 
-- **WHEN** a `Turn` names an input whose displacement at the rest bank
+- **WHEN** a `Turn` or `Slide` names an input whose displacement at the rest bank
   moves the control's coordinate by nothing
 - **THEN** publication is refused naming the part, the input and the
   coordinate, and saying the part does not move with that input at rest
@@ -1130,4 +1143,47 @@ inconsistent.
 - **THEN** that document carries no `controls` key, exactly as it
   carries an empty `instructions` table, and is otherwise the document
   the capture published before this change
+
+#### Scenario: A sliding selector publishes its physical direction
+
+- **WHEN** a selector's prismatic coordinate moves by six millimetres per
+  design unit of the Slide's named input
+- **THEN** its exported entry names kind slide, that input and coordinate,
+  a per-unit ratio of six and the actual prismatic placement block
+
+#### Scenario: Two controls identify two placements on one body
+
+- **WHEN** a crank that both lifts and turns is exported with explicitly
+  selected Slide and Turn controls
+- **THEN** their part and joint-node paths agree, their selected coordinate
+  ids and placement spans differ, and each span identifies the placement of
+  the coordinate it names
+
+#### Scenario: An inner motion does not rotate an outer joint's axis
+
+- **WHEN** a body has non-parallel inner and outer joint placements and
+  both are separately selected by controls
+- **THEN** the published blocks distinguish the joints so their axis frames
+  can be recovered at every committed pose without applying the inner
+  joint's motion to the outer joint's axis
+
+#### Scenario: A press on a prismatic coordinate is publishable
+
+- **WHEN** a Button names a selector posed by a prismatic joint
+- **THEN** its entry carries the instruction and the prismatic placement
+  span without requiring or inventing a rotational placement
+
+#### Scenario: Unsupported joint placement is not guessed
+
+- **WHEN** a selected control coordinate cannot be associated with exactly
+  its complete block of actual placement operations
+- **THEN** publication refuses the control naming its coordinate and joint
+  rather than publishing an invented or ambiguous interaction frame
+
+#### Scenario: Existing inferred turn publication does not change
+
+- **WHEN** an existing single-joint model with inferred Button and Turn
+  controls is exported after this change
+- **THEN** its controls and program are byte-identical to the previous
+  export, and no operation-span field is added to those entries
 

@@ -22,6 +22,45 @@ source removed after its node was constructed is unaffected: that is
 still a currency question, answered by ``mtime_ns`` exactly as before.
 Originating project: ``Internal-Cycloidal-Actuator``.
 
+**A part that slides is operated along its rail, and a body with two
+freedoms is operated along each of them.** ``Slide(part, input)`` joins
+``Button`` and ``Turn``: a drag *along* the translational coordinate the
+part rides, declared exactly as a turn is and deriving its axis, its
+origin and its ratio from the same places. A ``Button`` now names a
+sliding part as readily as a turning one — a press has no direction.
+
+A body whose parts ride two joints — the Curta's crank, which lifts and
+turns about the same line, and its register carriage, which does the
+same — had no control at all, because a control inferred the nearest
+posing joint and refused a node declaring two. Such a control now says
+which coordinate it means: ``coordinate=crank.lift`` names an existing
+joint declaration, by the same path a relation's end is written. The
+selected joint must pose the part or one of its ancestors in the same
+tree, own exactly one coordinate and be one the run banks; it may be
+further from the part than the nearest joint, and it may never reach
+sideways to another mechanism. Without a selection, inference and its
+ambiguity refusal are exactly what they were.
+
+The document gains one field, on the entries that need it: a
+translational or explicitly selected control publishes
+``operation_span``, the half-open pair of indices identifying that
+coordinate's own placement inside the joint node's ``operations``, read
+off the slot mark every placed operation already carries. A consumer
+builds the gesture's frame from the operations *outside* that block, so
+an inner joint's motion is never applied to an outer joint's line and a
+sliding pivot travels with its rail. An entry inferred over a single
+rotational joint carries no span and is byte-identical to the one
+published before this existed; a document with no control, the compiled
+program, its ``identity`` and the conformance corpus are all untouched,
+and the document version does not move. Operating a sliding part or
+choosing between the two freedoms of one body in the browser needs a
+viewer of API 13 or later.
+
+Nothing about the run changes. A control still moves nothing itself: a
+sliding request is the ``move`` the panel would have issued, a stop that
+belongs to a second mechanism stops it exactly as it stops that move,
+and releasing a gesture rewinds nothing.
+
 **A read is not a binding: a child's relation the root only reads
 publishes.** A relation an assembly declares into its OWN leaf's joint,
 whose value a relation the ROOT declares then reads to drive another

@@ -1625,11 +1625,12 @@ The system SHALL let an assembly declare a `controls` mapping beside
 `instructions`, of display name to CONTROL, stating how a person issues
 a movement request by touching a part of the machine:
 
-- `Button(part, instruction)` — a press on `part` submits the named
-  instruction; and
-- `Turn(part, input)` — a drag on `part`, about the rotational
-  coordinate that part rides, is a sequence of relative moves on
-  `input`.
+- `Button(part, instruction, *, coordinate=None)` — a press on `part`
+  submits the named instruction;
+- `Turn(part, input, *, coordinate=None)` — a drag about the selected
+  rotational coordinate is a sequence of relative moves on `input`; and
+- `Slide(part, input, *, coordinate=None)` — a drag along the selected
+  translational coordinate is a sequence of relative moves on `input`.
 
 A control SHALL move nothing itself. It names a request the run already
 accepts, and every rule about ownership, admission, stops and outcomes
@@ -1638,7 +1639,7 @@ SHALL carry no state and SHALL NOT repeat an instruction's definition.
 
 `part` SHALL be a NODE, named in the class body the way a relation's
 path ends are named — a declared child, or a path of declared children
-and child declarations through one (`units.input.dial`). `Turn`'s
+and child declarations through one (`units.input.dial`). A `Turn` or `Slide` control's
 `input` SHALL be a `Driver` declared on the class that declares the
 control; a driver of a child is named by declaring the control on the
 child, exactly as an instruction over a child's driver is.
@@ -1649,10 +1650,19 @@ declared name, a root-declared control keeping its bare name — and a
 `Button`'s instruction reference SHALL qualify through that same path,
 so it equals a key of the tree's instruction table by construction.
 
-A control's COORDINATE SHALL be the one owned by the nearest
-ancestor-or-self of the part that declares a joint whose coordinate the
-run banks, and the joint's declaring node SHALL be the node that
+Without explicit selection, a control's COORDINATE SHALL be the one owned
+by the nearest ancestor-or-self of the part that declares a joint whose
+coordinate the run banks. The joint's declaring node SHALL be the node that
 coordinate poses.
+
+An explicit `coordinate` SHALL name one existing single-coordinate joint,
+using its declaration or a declaration path from the class declaring the
+control. The joint SHALL pose the touched part or one of its ancestors in
+that same tree, and its coordinate SHALL be run-banked. Selection SHALL
+permit independently controlled sliding and turning joints on the same
+body without changing the body, its placement, or the run program.
+`Button` SHALL accept either a translational or rotational selected joint.
+Omitting selection SHALL preserve the existing ambiguity refusal.
 
 Each of the following SHALL be REFUSED, naming the facts a reader can
 find in the model:
@@ -1666,7 +1676,7 @@ find in the model:
 - a `part` whose first segment is not a child the DECLARING class
   declares — refused at class definition, naming the class and the
   control;
-- a `Turn` whose `input` is not a `Driver` declared on the declaring
+- a `Turn` or `Slide` whose `input` is not a `Driver` declared on the declaring
   class — refused at class definition, listing the drivers that class
   declares;
 - a `Button` whose instruction is not a declared instruction — refused
@@ -1674,12 +1684,16 @@ find in the model:
   names;
 - a part no run-owned coordinate poses — refused naming the part and
   saying nothing the run owns moves it;
-- a part whose nearest posing node declares MORE THAN ONE joint, or
-  whose joint owns MORE THAN ONE coordinate — refused naming them and
-  saying a control names one coordinate;
-- a `Turn` whose coordinate's domain is not `rotational` — refused
-  naming the domain;
-- a `Turn` whose `input` is not among the inputs that reach its
+- a control without explicit selection whose nearest posing node declares
+  MORE THAN ONE joint, or any selected joint owning MORE THAN ONE coordinate
+  — refused naming them and saying a control names one coordinate;
+- an explicit coordinate that is not a joint declaration/reference, is not
+  run-banked, or does not pose this part or an ancestor in this tree —
+  refused naming the control, part and selected reference;
+- a `Turn` whose coordinate's domain is not `rotational`, or a `Slide`
+  whose coordinate's domain is not `translational` — refused naming the
+  actual and required domains;
+- a `Turn` or `Slide` whose `input` is not among the inputs that reach its
   coordinate through the compiled program — refused naming the
   coordinate and the inputs that DO reach it;
 - a control under a root that does not declare `Time.running()` —
@@ -1796,4 +1810,61 @@ find in the model:
 - **WHEN** a node class declares `controls = {'speed': 3}`
 - **THEN** class definition raises naming the entry and saying
   `controls` names the machine's controls on a node class
+
+#### Scenario: A selector is handled along its sliding joint
+
+- **WHEN** a running root declares `Slide(selector.knob, setting)` and
+  setting reaches the selector's single prismatic joint
+- **THEN** construction admits the control with that coordinate and input,
+  and the control neither moves the part nor changes the program's identity
+
+#### Scenario: One body can be lifted and turned independently
+
+- **WHEN** a crank declares single-coordinate revolute and prismatic joints
+  and its controls explicitly select turn for a Turn and lift for a Slide
+- **THEN** both controls are admitted on the same body, each resolving to its
+  selected coordinate and the input that reaches it
+
+#### Scenario: Ambiguity is not resolved by guessing
+
+- **WHEN** the same two-joint crank declares a control without selection
+- **THEN** construction is refused naming both joints and the ambiguous control
+
+#### Scenario: A press can request movement of a sliding part
+
+- **WHEN** a Button names a selector with one prismatic joint and a declared
+  instruction requesting one detent
+- **THEN** construction admits it and the instruction is the same request
+  the run accepts through its normal instruction interface
+
+#### Scenario: Selection cannot reach sideways
+
+- **WHEN** a control on a crank explicitly selects a carriage joint that
+  poses neither the crank nor any ancestor of it
+- **THEN** construction refuses the control naming the part and selected joint
+
+#### Scenario: An explicit ancestor coordinate remains reachable
+
+- **WHEN** a touched knob sits beneath a jointed child on a carriage, and
+  its Slide explicitly selects the carriage's prismatic joint
+- **THEN** construction admits that ancestral coordinate instead of
+  silently selecting the nearer child's different joint
+
+#### Scenario: Selecting a joint does not unpack a multi-coordinate joint
+
+- **WHEN** a control explicitly selects a Free joint
+- **THEN** construction refuses it naming the joint and its multiple coordinates
+
+#### Scenario: A slide cannot masquerade as a turn
+
+- **WHEN** a Slide selects a rotational joint
+- **THEN** construction is refused naming the coordinate's rotational domain
+  and the required translational domain
+
+#### Scenario: Sliding cannot bypass a stop or change another control
+
+- **WHEN** a request submitted through a sliding control meets a declared bound
+  dependent on a second mechanism
+- **THEN** the run admits exactly the movement the same ordinary move request
+  admits, reports the same outcome, and does not reposition that second mechanism
 

@@ -55,11 +55,13 @@ EXPECTED_EXPORTS = {
     'qualified_drivers': 'solid_node.simulation.enumeration',
     'qualified_instructions': 'solid_node.simulation.enumeration',
     'Instruction': 'solid_node.simulation.instruction',
-    # The two control kinds, added with the `controls` declaration
-    # (OpenSpec change ``declare-controls-on-parts``). Lazy like the
-    # rest: a model declaring no control never imports the module, and
-    # one that does names them in its own class body.
+    # The control kinds, added with the `controls` declaration
+    # (OpenSpec change ``declare-controls-on-parts``) and completed with
+    # the sliding one (``direct-part-motion``). Lazy like the rest: a
+    # model declaring no control never imports the module, and one that
+    # does names them in its own class body.
     'Button': 'solid_node.simulation.control',
+    'Slide': 'solid_node.simulation.control',
     'Turn': 'solid_node.simulation.control',
     'ScenarioTest': 'solid_node.simulation.scenario',
     'Sim': 'solid_node.simulation.sim',

@@ -5,14 +5,14 @@
 """Leaves for the running fixtures.
 
 Three kinds of coordinate, so one machine exercises all of them: a
-joint on a leaf (`Arbor`), a translational joint on a leaf (`Slide`),
-and a PLAIN port on a leaf (`Wheel`), which the run never owns and the
-ordinary enumeration recomputes from a run-bound source on every tick.
-`PenSpring` is a second plain-port leaf, translational rather than
-rotational, for the shape only a REPEATED leaf needs -- the pin tumbler
-lock's spring bank, where a `.repeat()` child owns the port a driver
-drives. `Block` is geometry with nothing that moves, for an assembly
-that needs a body to place, and `Dial` is the same thing under a
+joint on a leaf (`Arbor`), a translational joint on a leaf
+(`Carriage`), and a PLAIN port on a leaf (`Wheel`), which the run never
+owns and the ordinary enumeration recomputes from a run-bound source on
+every tick. `PenSpring` is a second plain-port leaf, translational
+rather than rotational, for the shape only a REPEATED leaf needs -- the
+pin tumbler lock's spring bank, where a `.repeat()` child owns the port
+a driver drives. `Block` is geometry with nothing that moves, for an
+assembly that needs a body to place, and `Dial` is the same thing under a
 different name: the part a HAND touches, so a fixture declaring a
 control reads as what it is rather than as one more block.
 """
@@ -33,7 +33,7 @@ class Arbor(Solid2Node):
         return cylinder(r=10, h=4)
 
 
-class Slide(Solid2Node):
+class Carriage(Solid2Node):
     """A carriage travelling along one line."""
 
     travel = Prismatic(axis=(1, 0, 0), unit='mm')
