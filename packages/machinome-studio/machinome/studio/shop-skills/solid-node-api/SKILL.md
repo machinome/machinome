@@ -1546,9 +1546,10 @@ to hold. A crossing of such a gate is a crossing, never a stop; a joint
 range on the same coordinate still stops it. A `clamp01` station window
 in the same law makes the law's skeleton non-affine, so every crossing is
 searched rather than solved (measured about thirty times slower per
-tick). A document whose program carries such a law declares version 6,
-which the installed viewer (document versions 1-5) refuses until its own
-cycle lands.
+tick). A document whose program carries such a law declares version 6;
+the viewer executes it from API 15 (document versions 1-6, viewer
+ADR-057) with the same walk and landing, and refuses it by name below
+that.
 
 **Stops and precision.** A joint's inclusive range is a physical stop.
 Travel beyond it stops at the bound and blocks only inputs whose movement
