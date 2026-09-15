@@ -1092,7 +1092,7 @@ closure, so an edit to it invalidates and reloads the active node.
 
 A project has one model, `model = "package.module:Class"`, or several
 declared by name in `[tool.solid-node.models]`, with `model` then naming
-the default by its key (ADR-073). A name is one word, so it is never
+the default by its key (ADR-119). A name is one word, so it is never
 mistaken for a qualifier or a path, and it may not equal a directory at
 the project root. The **build root** is `$SOLID_BUILD_DIR` (default
 `_build`, resolved against the discovered project root rather than the
@@ -1284,7 +1284,7 @@ duck-typed registry naming where each lives: `build`, `develop`, `test`,
 `models` lists a project's models from the manifest and their build
 directories alone — `unbuilt`, `published` or `failed` — as text or
 `--json`, importing no project code; `build --all` and `test --all` walk
-every declared model in order and never stop at a failing one (ADR-073).
+every declared model in order and never stop at a failing one (ADR-119).
 Every command
 that loads a node takes `--set name=value`, registered once beside the
 shared reference positional: the loader parses each value by the root's

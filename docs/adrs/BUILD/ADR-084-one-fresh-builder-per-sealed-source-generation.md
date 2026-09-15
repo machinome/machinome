@@ -10,7 +10,7 @@
 - [ADR-081: Per-Contributor Metadata Guards Aggregate-Mtime Currency](../NODE/ADR-081-per-contributor-metadata-guards-aggregate-mtime-currency.md)
 **Related to:**
 - [ADR-005: Path-Based Dynamic Module Loading](ADR-005-path-based-dynamic-module-loading.md)
-- [ADR-073: Named Project Models and Per-Model Build Directories](ADR-073-named-project-models-and-per-model-build-directories.md)
+- [ADR-119: Named Project Models and Per-Model Build Directories](ADR-119-named-project-models-and-per-model-build-directories.md)
 
 ## Context and Problem Statement
 

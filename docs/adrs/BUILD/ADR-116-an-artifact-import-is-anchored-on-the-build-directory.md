@@ -4,7 +4,7 @@
 **Date:** 2026-09-15
 **Change:** `import-the-artifact-by-path`
 **Extends:**
-- [ADR-073: Named Project Models and Per-Model Build Directories](ADR-073-named-project-models-and-per-model-build-directories.md)
+- [ADR-119: Named Project Models and Per-Model Build Directories](ADR-119-named-project-models-and-per-model-build-directories.md)
 **Cites:**
 - [ADR-086: State-Dependent SCAD Publishes at Assembly Phase Completion](ADR-086-state-dependent-scad-publishes-at-assembly-phase-completion.md)
 
@@ -82,7 +82,7 @@ TO.
    wearing the other hat, and still unstatable as a rule.
 5. **Anchor on the project root instead of the build directory.**
    Identical for a project with no declared models; wrong for a declared
-   model (ADR-073), whose artifacts live under `_build/<model>/` rather
+   model (ADR-119), whose artifacts live under `_build/<model>/` rather
    than mirroring the project root directly.
 6. **Rewrite the `.scad` TEXT with a regular expression when writing it.**
    No solid2 privates, and rejected: an `OpenScadNode` embeds a project's
@@ -99,7 +99,7 @@ TO.
 Every framework-emitted artifact import is built relative to the BUILD
 DIRECTORY of the build (`get_build_dir(self.src)` — the directory the
 artifact layout mirrors the source tree under, `_build/` or
-`_build/<model>/`, ADR-073) — the same anchor the published document
+`_build/<model>/`, ADR-119) — the same anchor the published document
 (`viewer.json`) already uses for its `model` entries. A leaf in `sim/` is
 therefore spelled `sim/parts-RigidLeaf-….stl` inside the assembled tree,
 whichever node is the root and whichever node later inlines it.

@@ -92,23 +92,23 @@ that way.
 - [ADR-117](NODE/ADR-117-a-control-may-name-the-freedom-it-means.md) — A control may name the freedom it means, and the document says which placement that freedom is: `Slide(part, input)` beside `Button` and `Turn`, a keyword-only `coordinate=` selecting one existing single-coordinate joint that poses the part or an ancestor, and `operation_span` publishing that coordinate's own placement block for a translational or selected entry, so an inner joint's motion never turns an outer joint's line — **Accepted**, supersedes 112 in part, depends on 093/114, cites 110/111 and viewer `slide-and-turn-parts`
 
 ### BUILD — loading, watching, CLI
-- [ADR-005](BUILD/ADR-005-path-based-dynamic-module-loading.md) — Path-based dynamic module loading — **Accepted**, amended by 073
+- [ADR-005](BUILD/ADR-005-path-based-dynamic-module-loading.md) — Path-based dynamic module loading — **Accepted**, amended by 119
 - [ADR-007](BUILD/ADR-007-watchdog-library-filesystem-monitoring.md) — Watchdog filesystem monitoring — **Accepted**
 - [ADR-021](BUILD/ADR-021-snapshot-cli-command-for-agent-autonomy.md) — Snapshot CLI command — **Accepted**, amended by 041
-- [ADR-024](BUILD/ADR-024-command-first-cli-grammar-and-duck-typed-command-registry.md) — Command-first CLI grammar — **Accepted**, amended by 073
+- [ADR-024](BUILD/ADR-024-command-first-cli-grammar-and-duck-typed-command-registry.md) — Command-first CLI grammar — **Accepted**, amended by 119
 - [ADR-030](BUILD/ADR-030-complete-build-publication-boundary.md) — Complete-build publication boundary — **Reversed** by 038
 - [ADR-031](BUILD/ADR-031-published-viewer-snapshot.md) — Published viewer snapshot — **Accepted**, amended by 034
 - [ADR-032](BUILD/ADR-032-symlink-swap-build-publication.md) — Symlink-swap build publication — **Superseded** by 038
-- [ADR-038](BUILD/ADR-038-per-artifact-atomic-build-publication.md) — Per-artifact atomic build publication — **Accepted**, amended by 073, extended by 086
+- [ADR-038](BUILD/ADR-038-per-artifact-atomic-build-publication.md) — Per-artifact atomic build publication — **Accepted**, amended by 119, extended by 086
 - [ADR-041](BUILD/ADR-041-browser-rendered-transparent-snapshots.md) — Browser-rendered transparent snapshots — **Accepted**
 - [ADR-059](BUILD/ADR-059-import-at-the-point-of-use.md) — Import at the point of use — **Accepted**, extends 024, extended by 069
 - [ADR-067](BUILD/ADR-067-fresh-interpreter-build-subprocesses.md) — Fresh-interpreter build subprocesses — **Accepted**, amended by 084
 - [ADR-069](BUILD/ADR-069-deferred-callables-for-a-modules-own-call-sites.md) — Deferred callables for a module's own call sites — **Accepted**, extends 059
-- [ADR-073](BUILD/ADR-073-named-project-models-and-per-model-build-directories.md) — Named project models and per-model build directories — **Accepted**, amends 005, 024, 038, extended by 116
 - [ADR-084](BUILD/ADR-084-one-fresh-builder-per-sealed-source-generation.md) — One fresh builder per sealed source generation — **Accepted**, amends 067
 - [ADR-086](BUILD/ADR-086-state-dependent-scad-publishes-at-assembly-phase-completion.md) — State-dependent SCAD publishes at assembly phase completion — **Accepted**, extends 038
 - [ADR-103](BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md) — The browser is the only interactive development viewer — **Accepted**, amends 046/068/102
-- [ADR-116](BUILD/ADR-116-an-artifact-import-is-anchored-on-the-build-directory.md) — An artifact import is anchored on the build directory — **Accepted**, extends 073, cites 086
+- [ADR-116](BUILD/ADR-116-an-artifact-import-is-anchored-on-the-build-directory.md) — An artifact import is anchored on the build directory — **Accepted**, extends 119, cites 086
+- [ADR-119](BUILD/ADR-119-named-project-models-and-per-model-build-directories.md) — Named project models and per-model build directories — **Accepted**, amends 005, 024, 038, extended by 116 (renumbered 2026-09-15 from 073)
 
 ### IPC — inter-process communication
 - [ADR-015](IPC/ADR-015-fastapi-unified-stack-for-http-services.md) — FastAPI + Uvicorn HTTP stack — **Accepted, amended** (broker consumer removed)

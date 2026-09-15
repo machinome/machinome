@@ -1226,7 +1226,7 @@ sweeps another. ``solid models`` lists them with their state, as text or
 ``solid test --all`` walk every declared model and never stop at a
 failing one. Born of ``3DPrintedClocks``: one repository, one shared
 library, one model per clock. (OpenSpec change ``named-project-models``;
-ADR-073.)
+ADR-119 (numbered 073 at the time).)
 
 **A test run chooses its comparison kernel.** ``solid test`` compares on
 the exact boundary-representation kernel by default, exactly as before,

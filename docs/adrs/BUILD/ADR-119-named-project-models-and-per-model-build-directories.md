@@ -1,7 +1,9 @@
-# ADR-073: Named Project Models and Per-Model Build Directories
+# ADR-119: Named Project Models and Per-Model Build Directories
 
 **Status:** Accepted
 **Date:** 2026-09-05
+**Renumbered:** 2026-09-15, from ADR-073, which it shared with the TEST-FRAMEWORK ADR
+accepted the same day; records written before that date cite this decision as ADR-073.
 **Amends:**
 - [ADR-005: Path-Based Dynamic Module Loading](./ADR-005-path-based-dynamic-module-loading.md)
 - [ADR-024: Command-First CLI Grammar and Duck-Typed Command Registry](./ADR-024-command-first-cli-grammar-and-duck-typed-command-registry.md)
