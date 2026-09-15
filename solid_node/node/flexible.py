@@ -62,7 +62,7 @@ import hashlib
 import json
 import os
 
-from solid2 import import_stl, union
+from solid2 import union
 from solid_node.scad_expression import depends_on_time, scalar
 
 from solid_node.node.base import (_atomic_write_bytes, _canonical_serialization,
@@ -321,7 +321,7 @@ class FlexibleNode(LeafNode):
                                 self.mtime_ns, self.source_digest,
                                 self.source_fingerprint)
         self.snapshot_file = snapshot
-        return import_stl(self.local_snapshot_stl(values))
+        return self.artifact_import(self.local_snapshot_stl(values))
 
     ##############################################
     # Geometry for tests and assertions

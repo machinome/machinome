@@ -2,7 +2,6 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-from solid2 import import_stl
 from solid_node.exact import (cached_shape, deflections, shape_from_rendered,
                               write_brep, write_stl)
 from solid_node.node.leaf import LeafNode
@@ -96,4 +95,4 @@ class ExactLeafNode(LeafNode):
         """Present the canonical native artifact to SCAD."""
         if not self._up_to_date(self.stl_file):
             self.materialize(rendered)
-        return import_stl(self.local_stl)
+        return self.artifact_import(self.local_stl)

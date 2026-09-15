@@ -5,6 +5,7 @@
 import os
 import io
 import re
+import copy
 import time
 import inspect
 import hashlib
@@ -84,6 +85,46 @@ def _publish_scad(path, content, mtime_ns, digest, fingerprint):
         generation.remember_scad_artifact(
             path, (mtime_ns, digest, fingerprint))
     logger.info('%s generated with %s!', path, _seconds(mtime_ns))
+
+
+class _ArtifactImport(import_stl):
+    """An `import()` of a build artifact the framework itself emitted.
+
+    `import_stl.__init__` passes the OpenSCAD call name `'import'` to its
+    base (`solid2.core.builtins.openscad_primitives`), so this subclass
+    renders byte-identically to a plain `import_stl` -- the marker exists
+    only in Python, never in the SCAD text. It is what lets
+    `_reanchor_artifact_imports` tell a path THIS layer is free to
+    re-anchor from a path a project wrote itself in its own `render()`,
+    which must be left exactly as written (verified against the installed
+    solid2 in `evidence/probe_reanchor.py`; a `str` subclass on `file`
+    does NOT survive -- `import_stl` normalises it through
+    `_Path(file).as_posix()`, which returns a plain `str`).
+
+    Its path is anchored on the build directory of the whole build
+    (`get_build_dir`, see `AbstractBaseNode.artifact_import`) until a node
+    writes its OWN `.scad`, at which point `_reanchor_artifact_imports`
+    rewrites it onto that file's directory (`_model_for_own_scad`).
+    """
+
+
+def _reanchor_artifact_imports(node, build_dir, own_build_dir):
+    """Rewrite every `_ArtifactImport` under `node` from its build-wide
+    anchor onto `own_build_dir`, the directory of the `.scad` about to
+    hold it.
+
+    Walks solid2 privates (`_children`, `_params`) -- confined to this one
+    helper so a solid2 upgrade that renames them fails loudly here rather
+    than silently emitting a bad path elsewhere. The caller passes a
+    `copy.deepcopy` of the tree being re-anchored, so a parent's own
+    inlined copy of the same child is untouched (ADR-116).
+    """
+    if isinstance(node, _ArtifactImport):
+        anchored = node._params['file']
+        node._params['file'] = os.path.relpath(
+            os.path.join(build_dir, anchored), own_build_dir)
+    for child in node._children:
+        _reanchor_artifact_imports(child, build_dir, own_build_dir)
 
 
 def _atomic_write_bytes(path, content, mtime_ns, digest=None,
@@ -818,7 +859,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
             # imports it instead; self.model stays unset and is
             # rendered lazily if something actually asks for the scad.
             if self.model is None:
-                self.model = import_stl(self.local_stl)
+                self.model = self.artifact_import(self.local_stl)
             self.generate_scad()
             assembled = self.import_optimized()
         else:
@@ -905,12 +946,57 @@ class AbstractBaseNode(metaclass=NodeMeta):
                 self.model = self._colorize(self.model)
         return self.model
 
+    def artifact_import(self, local_path):
+        """Build the anchored import of one of THIS node's own artifact
+        files -- `local_path` relative to `self.build_dir`, as every
+        caller already spells it (`self.local_stl`,
+        `self.local_snapshot_stl(values)`).
+
+        Anchored on `get_build_dir(self.src)`, the build directory of the
+        whole build -- the same anchor the published document already
+        names artifacts relative to (design.md) -- never on
+        `self.build_dir`, this node's own subdirectory mirroring its
+        package. A parent inlines this path UNCHANGED when it assembles
+        this node (`InternalNode.as_scad` -> `child.assemble()`); only
+        `_model_for_own_scad`, when a node writes its OWN `.scad`,
+        re-anchors it onto that file's directory (ADR-116).
+        """
+        # Local import avoids the loader -> node.base import cycle (see
+        # the same import in __init__).
+        from solid_node.core.builder import get_build_dir
+        build_dir = get_build_dir(self.src)
+        anchored = os.path.relpath(
+            os.path.join(self.build_dir, local_path), build_dir)
+        return _ArtifactImport(anchored)
+
+    def _model_for_own_scad(self):
+        """This node's own model, with every framework artifact import
+        re-anchored from the build-wide anchor onto THIS node's own
+        build directory -- the directory the `.scad` about to hold it
+        will actually sit in (ADR-116).
+
+        A no-op copy when this node's build directory already IS the
+        build-wide anchor (a root declared at the top of the source
+        tree): `os.path.relpath` of a path against itself is `'.'`, so
+        re-anchoring would rewrite nothing, and skipping it avoids
+        `copy.deepcopy`-ing a tree for no reason. Every other node --
+        every real project, whose models live under a package such as
+        `simulation/` -- pays one deep copy per `.scad` write; task 2.9
+        measures it, and it is not free (reviewer's note).
+        """
+        model = self._require_model()
+        from solid_node.core.builder import get_build_dir
+        build_dir = os.path.normpath(get_build_dir(self.src))
+        own_build_dir = os.path.normpath(self.build_dir)
+        if build_dir == own_build_dir:
+            return model
+        reanchored = copy.deepcopy(model)
+        _reanchor_artifact_imports(reanchored, build_dir, own_build_dir)
+        return reanchored
+
     def import_optimized(self):
         if self.rigid and self._up_to_date(self.stl_file):
-            basedir = os.path.relpath(self.basedir, self.root)
-            local_stl = os.path.join(basedir, self.local_stl)
-            imported_stl = import_stl(local_stl)
-            return self._colorize(imported_stl)
+            return self._colorize(self.artifact_import(self.local_stl))
         return self._colorize(self.model)
 
     def _colorize(self, scad_code):
@@ -1017,7 +1103,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
 
     @property
     def scad_code(self):
-        code = scad_render(self._require_model())
+        code = scad_render(self._model_for_own_scad())
         if self.fn:
             code = f'$fn = {self.fn};\n\n{code}'
         return code

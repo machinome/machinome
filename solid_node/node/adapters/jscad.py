@@ -6,7 +6,6 @@ import os
 import sys
 import tempfile
 import time
-from solid2 import import_stl
 from subprocess import CalledProcessError, Popen
 from solid_node import currency
 from solid_node.node.leaf import LeafNode
@@ -91,4 +90,4 @@ class JScadNode(LeafNode):
     def as_scad(self, rendered):
         if not self._up_to_date(self.stl_file):
             JScadNode.materialize(self, rendered)
-        return import_stl(self.local_stl)
+        return self.artifact_import(self.local_stl)

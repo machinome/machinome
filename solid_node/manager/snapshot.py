@@ -2,13 +2,14 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 import sys
 import logging
 from subprocess import run, CalledProcessError
 from solid_node.core.loader import ProjectManifestError, load_node, select_model
 from solid_node.motion.ports import declared_time
 from solid_node.core.builder import project_build_lock
-from solid_node.viewers.openscad import OpenScadRenderer
+from solid_node.viewers.openscad import OpenScadImportError, OpenScadRenderer
 from solid_node.openscad import OpenScadUnavailable
 
 
@@ -214,6 +215,14 @@ class Snapshot:
         try:
             OPENSCAD_RENDERER.render(node, args, self.output, run)
             print(f"Snapshot saved to {self.output}")
+        except OpenScadImportError as error:
+            # OpenSCAD itself already wrote whatever it could render --
+            # the picture with the missing part -- straight to self.output;
+            # the spec is that a failed snapshot leaves no image behind.
+            if os.path.exists(self.output):
+                os.remove(self.output)
+            sys.stderr.write(f"Error: {error}\n")
+            sys.exit(1)
         except CalledProcessError as e:
             sys.stderr.write(f"OpenSCAD rendering failed:\n{e.stderr}\n")
             sys.exit(1)

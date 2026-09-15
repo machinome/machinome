@@ -403,6 +403,7 @@ class JScadGenerationGuardTest(TestCase):
             source_digest='new-digest',
             source_fingerprint='new-fingerprint',
             _up_to_date=lambda path: False,
+            artifact_import=mock.Mock(),
         )
 
     def test_source_replacement_after_renderer_preserves_old_artifact(self):
@@ -425,8 +426,7 @@ class JScadGenerationGuardTest(TestCase):
 
         with SourceGeneration(self.root) as generation, \
              mock.patch('solid_node.node.adapters.jscad.Popen',
-                        side_effect=launch), \
-             mock.patch('solid_node.node.adapters.jscad.import_stl'):
+                        side_effect=launch):
             with self.assertRaises(SourceChanged):
                 with generation.phase([self.source], label='assembly'):
                     JScadNode.as_scad(self.node(), None)
@@ -447,8 +447,7 @@ class JScadGenerationGuardTest(TestCase):
             return process
 
         with mock.patch('solid_node.node.adapters.jscad.Popen',
-                        side_effect=launch), \
-             mock.patch('solid_node.node.adapters.jscad.import_stl'):
+                        side_effect=launch):
             with self.assertRaises(CalledProcessError):
                 JScadNode.as_scad(self.node(), None)
 

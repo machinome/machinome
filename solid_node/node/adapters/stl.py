@@ -35,7 +35,6 @@ import tempfile
 import time
 
 import trimesh
-from solid2 import import_stl
 
 from solid_node import currency
 from solid_node.node.leaf import LeafNode
@@ -198,7 +197,7 @@ class StlNode(LeafNode):
     def as_scad(self, rendered):
         if not self._up_to_date(self.stl_file):
             self.materialize(rendered)
-        return import_stl(self.local_stl)
+        return self.artifact_import(self.local_stl)
 
     ##############################################
     # Materialization

@@ -6,6 +6,7 @@ import io
 import os
 import sys
 import shutil
+import logging
 import argparse
 import tempfile
 from unittest import TestCase
@@ -478,6 +479,188 @@ class SnapshotErrorHandlingTest(TestCase):
             self.snapshot.handle(args)
 
         self.assertEqual(cm.exception.code, 1)
+
+    def _output_path(self, name):
+        path = os.path.join(tempfile.gettempdir(), name)
+        self.addCleanup(lambda: os.path.exists(path) and os.remove(path))
+        return path
+
+    def test_unopenable_import_stops_the_image(self):
+        """OpenSCAD reports it could not open a file the design
+        imports: the command exits non-zero, names the file and the
+        `.scad`, and leaves no image behind -- even a stale one from an
+        earlier, successful run (import-the-artifact-by-path)."""
+        output_path = self._output_path(
+            'solid_node_test_missing_import.png')
+        with open(output_path, 'wb') as handle:
+            handle.write(b'stale')
+        args = self._make_args(output=output_path)
+
+        with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
+            mock_node = Mock()
+            mock_node.scad_file = '/tmp/test_missing_import.scad'
+            mock_load.return_value = mock_node
+
+            stdout = ("WARNING: Can't open import file "
+                      "'/tmp/does-not-exist.stl', import() at line 3\n"
+                      "Compiling design (CSG Products normalization)...\n")
+
+            with patch('solid_node.manager.snapshot.run') as mock_run:
+                mock_run.return_value = Mock(
+                    returncode=0, stdout=stdout, stderr='')
+
+                with patch('sys.stderr', new_callable=io.StringIO) as stderr:
+                    with self.assertRaises(SystemExit) as cm:
+                        self.snapshot.handle(args)
+
+        self.assertEqual(cm.exception.code, 1)
+        self.assertIn('does-not-exist.stl', stderr.getvalue())
+        self.assertIn('test_missing_import.scad', stderr.getvalue())
+        self.assertFalse(os.path.exists(output_path))
+
+    def test_clean_render_still_succeeds_and_writes_image(self):
+        """A render with nothing to report still writes the image and
+        reports success, exactly as before."""
+        output_path = self._output_path('solid_node_test_clean_render.png')
+        args = self._make_args(output=output_path)
+
+        with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
+            mock_node = Mock()
+            mock_node.scad_file = '/tmp/test_clean.scad'
+            mock_load.return_value = mock_node
+
+            stdout = ("Compiling design (CSG Products normalization)...\n"
+                      "Geometries in cache: 2\n")
+
+            def _fake_run(command, **kwargs):
+                with open(output_path, 'wb') as handle:
+                    handle.write(b'\x89PNG\r\n\x1a\n')
+                return Mock(returncode=0, stdout=stdout, stderr='')
+
+            with patch('solid_node.manager.snapshot.run',
+                      side_effect=_fake_run):
+                self.snapshot.handle(args)
+
+        self.assertTrue(os.path.exists(output_path))
+
+    def test_unrelated_warning_is_logged_without_failing(self):
+        """A warning OpenSCAD reports that is not an unopenable import
+        reaches the operator's log; the render still succeeds."""
+        output_path = self._output_path(
+            'solid_node_test_unrelated_warning.png')
+        args = self._make_args(output=output_path)
+
+        with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
+            mock_node = Mock()
+            mock_node.scad_file = '/tmp/test_warn.scad'
+            mock_load.return_value = mock_node
+
+            stdout = "WARNING: Ignoring unknown module 'nonexistent'\n"
+
+            def _fake_run(command, **kwargs):
+                with open(output_path, 'wb') as handle:
+                    handle.write(b'\x89PNG\r\n\x1a\n')
+                return Mock(returncode=0, stdout=stdout, stderr='')
+
+            with patch('solid_node.manager.snapshot.run',
+                      side_effect=_fake_run):
+                with self.assertLogs('viewers.openscad',
+                                     level='WARNING') as logs:
+                    self.snapshot.handle(args)
+
+        self.assertTrue(any('nonexistent' in message
+                            for message in logs.output))
+        self.assertTrue(os.path.exists(output_path))
+
+
+class OpenScadRendererDiagnosticsTest(TestCase):
+    """The renderer's own contract, beneath `solid snapshot`: promote
+    what OpenSCAD reports on either stream to a level a normal run
+    shows, and raise a named error when a line reports a file it could
+    not open (import-the-artifact-by-path)."""
+
+    def setUp(self):
+        self.renderer = OpenScadRenderer()
+        self.node = Mock()
+        self.node.scad_file = '/tmp/diagnostics.scad'
+
+    def _args(self):
+        return argparse.Namespace(
+            camera=None, autocenter=False, viewall=False,
+            imgsize='800x600', projection='perspective',
+            colorscheme='Cornfield', preview=False, view=None)
+
+    def test_unopenable_import_raises_named_error(self):
+        from solid_node.viewers.openscad import OpenScadImportError
+
+        def runner(command, **kwargs):
+            return Mock(
+                returncode=0,
+                stdout=("WARNING: Can't open import file "
+                        "'/tmp/missing-part.stl', import() at line 5\n"),
+                stderr='')
+
+        with self.assertRaises(OpenScadImportError) as cm:
+            self.renderer.render(self.node, self._args(), 'out.png', runner)
+
+        self.assertEqual(cm.exception.missing_file, '/tmp/missing-part.stl')
+        self.assertEqual(cm.exception.scad_file, '/tmp/diagnostics.scad')
+
+    def test_missing_import_on_stderr_is_caught_too(self):
+        """The renderer inspects BOTH captured streams -- a future
+        OpenSCAD build that writes this warning to stderr must not go
+        unnoticed."""
+        from solid_node.viewers.openscad import OpenScadImportError
+
+        def runner(command, **kwargs):
+            return Mock(
+                returncode=0, stdout='',
+                stderr=("WARNING: Can't open import file "
+                        "'/tmp/missing-part.stl', import() at line 5\n"))
+
+        with self.assertRaises(OpenScadImportError):
+            self.renderer.render(self.node, self._args(), 'out.png', runner)
+
+    def test_clean_render_raises_nothing(self):
+        def runner(command, **kwargs):
+            return Mock(
+                returncode=0,
+                stdout="Compiling design (CSG Products normalization)...\n",
+                stderr='')
+
+        self.renderer.render(self.node, self._args(), 'out.png', runner)
+
+    def test_unrelated_warning_is_promoted_to_warning_level(self):
+        def runner(command, **kwargs):
+            return Mock(
+                returncode=0,
+                stdout="WARNING: Ignoring unknown module 'nonexistent'\n",
+                stderr='')
+
+        with self.assertLogs('viewers.openscad', level='WARNING') as logs:
+            self.renderer.render(self.node, self._args(), 'out.png', runner)
+
+        self.assertTrue(any('nonexistent' in m for m in logs.output))
+
+    def test_progress_output_stays_at_debug(self):
+        """Plain progress -- not a WARNING/ERROR/DEPRECATED line -- is
+        still logged (so a caller asking for debug output sees it), but
+        never promoted to a level a normal run shows."""
+        def runner(command, **kwargs):
+            return Mock(
+                returncode=0, stdout="Geometries in cache: 2\n", stderr='')
+
+        with self.assertLogs('viewers.openscad', level='DEBUG') as logs:
+            self.renderer.render(self.node, self._args(), 'out.png', runner)
+
+        self.assertTrue(
+            all(record.levelno < logging.WARNING for record in logs.records),
+            logs.output)
+        self.assertTrue(
+            any(record.levelno == logging.DEBUG
+                and 'Geometries in cache' in record.getMessage()
+                for record in logs.records),
+            logs.output)
 
 
 class SnapshotArgumentParsingTest(TestCase):

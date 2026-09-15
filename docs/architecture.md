@@ -1098,6 +1098,18 @@ and the directory it owns, anchored for the process and inherited by the
 fresh interpreters it starts. Within a build directory artifacts mirror
 the source layout, basename `<script>-<uniq_id>`.
 
+Every `import(file = …)` the framework writes into a generated `.scad` is
+anchored on that same build directory — the directory the artifact layout
+mirrors the source tree under, whichever node ends up importing it — so a
+leaf declared in `sim/` is always spelled `sim/parts-Leaf-….stl` inside the
+assembled tree, agreeing with how the published document already names
+that artifact. A node re-anchors that path onto its OWN build directory
+only when it writes its OWN `.scad`, since one assembled child tree is
+inlined into more than one `.scad` file at more than one depth and no
+single string is correct in two directories; a parent's `.scad` therefore
+always resolves the artifact it imports, whatever package it is declared
+in relative to the part it places (ADR-116).
+
 Loading a node also **binds its declared driver defaults** across the
 tree by qualified id, before the first render (ADR-056 stage 3a), so a
 driver-declaring project builds, tests, and serves through the CLI
@@ -1298,7 +1310,14 @@ photograph it in sandboxed headless Chromium to produce a true-alpha PNG.
 Unsupported renderer-specific options are rejected rather than ignored or
 substituted. If the default OpenSCAD renderer is unavailable, the command
 names `--renderer web` but does not select it silently; if the viewer is
-not installed, `--renderer web` names the `viewer` extra. `./.env` is read with
+not installed, `--renderer web` names the `viewer` extra. Under
+`--renderer openscad`, every warning, error or deprecation line OpenSCAD
+reports on either stream reaches the operator's log rather than only the
+debug stream, and a line reporting it could not open an imported file
+fails the command — naming the missing file and the `.scad` that imported
+it, exiting non-zero, and leaving no image behind — rather than reporting
+success over a picture with the part silently missing (ADR-116). `./.env`
+is read with
 `setdefault` semantics (real environment wins), carrying
 `SOLID_NODE_PORT` / `SOLID_NODE_FRONTEND_PORT` / `SOLID_BUILD_DIR`.
 

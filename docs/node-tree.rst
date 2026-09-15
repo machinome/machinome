@@ -93,7 +93,12 @@ Solid Node caches every generated artifact in the build directory
 line reference <cli>`): the SCAD and STL of OpenSCAD-family parts, a
 `.brep` with the exact geometry beside the STL of OCCT-backed parts,
 and a `.dxf` cut profile beside each sheet part — and rebuilds a part
-only when its source or its parameters change.
+only when its source or its parameters change. Within that one build
+directory, artifacts mirror the project's own package layout, so an
+assembly may live in any package relative to the parts it places —
+in a helper package below them, a sibling package beside them, or an
+ancestor package above them — and its generated SCAD still resolves
+every part it imports.
 
 "Changed" is decided by stamps, exactly. Source modification times are
 read as integer nanoseconds and artifacts are stamped with the very

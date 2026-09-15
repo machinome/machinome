@@ -76,6 +76,6 @@ class OpenScadNode(LeafNode):
     @property
     def scad_code(self):
         """The contents of the code, plus a module call"""
-        rendered = scad_render(self._require_model())
+        rendered = scad_render(self._model_for_own_scad())
         module_call = rendered.strip().split('\n')[-1]
         return f'{self.openscad_code}\n\n{module_call}'

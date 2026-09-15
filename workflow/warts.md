@@ -632,9 +632,10 @@ the project rather than fixed there.
   `solid.name` is `gt2x40_pulley_1` and this machine has two. Same gap as
   the 3DPrintedClocks entry above, from the other side.
 
-- **A leaf's artifact is imported into its parent's `.scad` by bare
-  filename, so an assembly in a different Python package renders it as
-  nothing — silently.** Artifacts live under `_build/<package path>/`. An
+- **FIXED (cycle `import-the-artifact-by-path`, ADR-116). A leaf's
+  artifact is imported into its parent's `.scad` by bare filename, so an
+  assembly in a different Python package renders it as nothing —
+  silently.** Artifacts live under `_build/<package path>/`. An
   assembly in `simulation/tools/` holding a `MolejoNode` declared in
   `simulation/` emitted
 
@@ -654,6 +655,17 @@ the project rather than fixed there.
   children include a node class defined in `simulation/`, and snapshot it.
   Moving the assembly beside the leaf fixes it, which is why
   `projects/Robots/Thor` has no belt-viewing helper under `tools/`.
+
+  **What shipped.** Every framework-emitted import is now anchored on the
+  build directory and re-anchored onto a node's own build directory only
+  when that node writes its own `.scad` (ADR-116) — the same rule for
+  every leaf kind, not only the flexible one this finding observed.
+  Measuring it surfaced the same bug from the other side: an
+  intermediate assembly several packages below the root held a path
+  anchored on the ROOT's build directory, not its own, and was fixed by
+  the same change. `projects/Robots/Thor` can put its belt-viewing
+  helper back under `tools/`, though no project source change is
+  required.
 
 ## Environment
 
@@ -2499,3 +2511,25 @@ pushed by this plan.
   (YouCanBuildDog, Thor): `_routes_exact` in `solid_node/test.py`.
 - Stale author-bound joint values (v8-engine): `whole-tree-fixpoint`.
 - Negative faceted volume in the ASSEMBLY check: `voron-faceted-contact`.
+
+# import-the-artifact-by-path (2026-09-15, found while fixing)
+
+Findings outside that cycle's ratified scope, measured in
+`openspec/changes/import-the-artifact-by-path/evidence.md` ("Noticed and
+left out of scope"); **status: filed here; triage open**. No framework
+code changed for either.
+
+- **A rigid leaf's own `.scad` stops describing its geometry after the
+  first build: it becomes a self-import of the STL it exists to
+  regenerate.** Build 1 writes it as the leaf's own geometry (e.g.
+  `cube(size = [10, 10, 10]);`); once the STL is current, `assemble()`'s
+  up-to-date branch sets `self.model = self.artifact_import(self.local_stl)`
+  (`base.py:862-863`) and then calls `generate_scad()`, so the file that is
+  supposed to be able to rebuild the STL from scratch merely imports it.
+  It resolves (same directory), so it is not this change's bug.
+  `FusionNode`'s own `.scad` is written the same self-importing way, but
+  harmlessly: its STL is produced natively (OCCT or manifold3d), never by
+  OpenSCAD from that `.scad`.
+- **`self.mesh_scad_file` / `self.mesh_stl_file` are vestigial.** Nothing
+  in `solid_node/` writes or reads them beyond the assignment at
+  `base.py:711-712`.
