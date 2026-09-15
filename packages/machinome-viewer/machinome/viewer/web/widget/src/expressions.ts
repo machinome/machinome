@@ -853,3 +853,66 @@ export function freeNames(id: NodeId): ReadonlySet<string> {
   freeMemo[id] = result;
   return result;
 }
+
+// ---------------------------------------------------------------------
+// A READ-ONLY STRUCTURAL VIEW of the store (design D1.5 of
+// `execute-the-selection`).
+//
+// The block's FOLD needs to know an expression's SHAPE -- which node is
+// a multiplication, which child is the literal zero -- and not its
+// value. It is a view of the store this module already holds, never a
+// second parser and never a tree to build: a copy would drift from the
+// one the evaluator uses at the first correction either received.
+//
+// `children` are exactly the ids `computeFree` walks, in that order, so
+// a generic node's names are the union of its children's.
+// ---------------------------------------------------------------------
+
+export interface ExpressionStructure {
+  /** `const`, `name`, `unary`, `binary`, `call`, `member`, `index`,
+   * `ternary`, `array` or `object`. */
+  readonly kind: string;
+  /** A unary's or a binary's operator; `null` for every other kind. */
+  readonly op: string | null;
+  /** A `const` node's literal value; `undefined` for every other kind. */
+  readonly value: unknown;
+  /** A `name` node's whole dotted name; `null` for every other kind. */
+  readonly name: string | null;
+  readonly children: readonly NodeId[];
+}
+
+export function structureOf(id: NodeId): ExpressionStructure {
+  const node = nodes[id];
+  const blank = { op: null, value: undefined, name: null } as const;
+  switch (node.kind) {
+    case 'const':
+      return { ...blank, kind: 'const', value: node.value, children: [] };
+    case 'name':
+      return { ...blank, kind: 'name', name: node.name, children: [] };
+    case 'unary':
+      return { ...blank, kind: 'unary', op: node.op, children: [node.target] };
+    case 'binary':
+      return {
+        ...blank, kind: 'binary', op: node.op,
+        children: [node.left, node.right],
+      };
+    case 'call':
+      // The callee is never a variable (D11): only the arguments.
+      return { ...blank, kind: 'call', children: node.args };
+    case 'member':
+      return { ...blank, kind: 'member', children: [node.owner] };
+    case 'index':
+      return { ...blank, kind: 'index', children: [node.owner, node.key] };
+    case 'ternary':
+      return {
+        ...blank, kind: 'ternary',
+        children: [node.predicate, node.whenTrue, node.whenFalse],
+      };
+    case 'array':
+      return { ...blank, kind: 'array', children: node.items };
+    case 'object':
+      return { ...blank, kind: 'object', children: node.values };
+    default:
+      throw new Error(`Unsupported node kind ${(node as Node).kind}`);
+  }
+}

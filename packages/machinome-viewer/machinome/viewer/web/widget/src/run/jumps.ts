@@ -24,7 +24,21 @@ import {
   evaluateExpression, JumpPrimitive, LandingInvariantError, ProgramJump,
   ProgramLimits, ProgramPlan, TooManyCrossings, UnsupportedLaw,
 } from './program';
-import type { LoadedProgram, RetainedReading } from './program';
+import type {
+  BlockMember, LoadedProgram, ProgramBlock, RetainedReading,
+} from './program';
+
+/** A SELECTOR's placeholder bound to the branch the block read at its
+ * piece's midpoint (design D3). A forced node is a CONSTANT on the
+ * piece: its crossings were located over the whole stretch and are not
+ * located again, and every reading of its branch is the number the block
+ * substituted. */
+export type Forced = Record<string, number> | null;
+
+function isForced(forced: Forced, name: string): boolean {
+  return forced !== null
+    && Object.prototype.hasOwnProperty.call(forced, name);
+}
 
 /** One jump surface met inside one tick. `level` is the surface value in
  * the LEVEL QUANTITY's own units and `t` is the fraction of the tick at
@@ -288,13 +302,18 @@ function levelOf(program: LoadedProgram, plan: ProgramPlan, jump: ProgramJump,
 function branchesAt(program: LoadedProgram, plan: ProgramPlan,
                     start: Record<string, number>,
                     delta: Record<string, number>, t: number, count: number,
-                    described: string,
-                    coordinate: string): Record<string, number> {
+                    described: string, coordinate: string,
+                    forced: Forced = null): Record<string, number> {
   const values = along(start, delta, t);
   const found: Record<string, number> = {};
   for (const jump of plan.jumps.slice(0, count)) {
-    const level = levelOf(program, plan, jump, values, described, coordinate);
-    const branch = branchOf(jump.primitive, level);
+    // A node the caller FORCED reads the branch it was given and its
+    // level is never evaluated: one of the two places a block's selector
+    // is read (design D3).
+    const branch = isForced(forced, jump.name)
+      ? (forced as Record<string, number>)[jump.name]
+      : branchOf(jump.primitive,
+                 levelOf(program, plan, jump, values, described, coordinate));
     found[jump.name] = branch;
     values[jump.name] = branch;
   }
@@ -400,18 +419,22 @@ function partition(program: LoadedProgram, plan: ProgramPlan,
                    start: Record<string, number>,
                    delta: Record<string, number>, described: string,
                    coordinate: string, crossings: CrossingRecord[] | null,
-                   tick: number): number[] {
+                   tick: number, forced: Forced = null): number[] {
   const limits = program.limits;
   let cuts = [0, 1];
   const located: [number, number, string, number][] = [];
   plan.jumps.forEach((jump, index) => {
+    // The block located this node's crossings over the WHOLE stretch
+    // already, and its branch is a constant on this piece: re-locating
+    // it here is the second reading this design exists to remove.
+    if (isForced(forced, jump.name)) return;
     let found: [number, number][] = [];
     for (let at = 0; at < cuts.length - 1; at += 1) {
       const left = cuts[at];
       const right = cuts[at + 1];
       const inner = branchesAt(program, plan, start, delta,
                                (left + right) / 2, index, described,
-                               coordinate);
+                               coordinate, forced);
       found = found.concat(crossingsOf(program, plan, jump, start, delta,
                                        inner, left, right, described,
                                        coordinate));
@@ -449,7 +472,7 @@ function partition(program: LoadedProgram, plan: ProgramPlan,
 export function planIncrement(
   program: LoadedProgram, plan: ProgramPlan, start: Record<string, number>,
   delta: Record<string, number>, described: string, coordinate: string,
-  crossings: CrossingRecord[] | null, tick: number,
+  crossings: CrossingRecord[] | null, tick: number, forced: Forced = null,
 ): number {
   if (!Object.values(delta).some((value) => value !== 0)) {
     // A zero-length path contributes zero without evaluating anything --
@@ -458,14 +481,14 @@ export function planIncrement(
     return 0;
   }
   const cuts = partition(program, plan, start, delta, described, coordinate,
-                         crossings, tick);
+                         crossings, tick, forced);
   let total = 0;
   for (let at = 0; at < cuts.length - 1; at += 1) {
     const left = cuts[at];
     const right = cuts[at + 1];
     const branches = branchesAt(program, plan, start, delta,
                                 (left + right) / 2, plan.jumps.length,
-                                described, coordinate);
+                                described, coordinate, forced);
     total += substituted(program, plan, start, delta, right, branches)
       - substituted(program, plan, start, delta, left, branches);
   }
@@ -522,7 +545,13 @@ class Walk {
               private readonly start: Record<string, number>,
               delta: Record<string, number>,
               private readonly described: string,
-              private readonly coordinate: string) {
+              private readonly coordinate: string,
+              // A SELECTOR's level reads no coordinate the block
+              // determines -- the driven end included -- so a forced
+              // node is always an INDEPENDENT one in ADR-057's split,
+              // and forcing reaches the whole walk through layer one
+              // alone (design D3).
+              private readonly forced: Forced = null) {
     this.delta = { ...delta };
     // The driven coordinate's own source moves by NOTHING along the
     // path: what it holds on a piece is what the pieces before it
@@ -562,9 +591,16 @@ class Walk {
         const from = ownLeft;
         /** The driven coordinate's own path on this piece -- one
          * ordinary evaluation, because the substituted skeleton does not
-         * name it. */
+         * name it.
+         *
+         * The skeleton's CHANGE is taken FIRST. Left to right,
+         * `(from + S) - base` rounds whenever `|S|` is comparable to
+         * `|from|`, so a piece whose skeleton does not move would still
+         * shift the coordinate by an ulp; taken this way an unchanged
+         * skeleton adds a true zero and the coordinate keeps the exact
+         * float it held. */
         const ownAt = (s: number): number =>
-          from + this.skeletonAt(s, branches) - base;
+          from + (this.skeletonAt(s, branches) - base);
         const cut = this.firstCut(t, right, ownLeft, branches, ownAt);
         if (cut === null) {
           ownLeft = ownAt(right);
@@ -610,14 +646,15 @@ class Walk {
                     tick: number): number[] {
     if (this.reading.outer.jumps.length === 0) return [0, 1];
     return partition(this.program, this.reading.outer, this.start, this.delta,
-                     this.described, this.coordinate, crossings, tick);
+                     this.described, this.coordinate, crossings, tick,
+                     this.forced);
   }
 
   private outerBranches(left: number, right: number): Record<string, number> {
     if (this.reading.outer.jumps.length === 0) return {};
     return branchesAt(this.program, this.reading.outer, this.start, this.delta,
                       (left + right) / 2, this.reading.outer.jumps.length,
-                      this.described, this.coordinate);
+                      this.described, this.coordinate, this.forced);
   }
 
   // ------------------------------------------------------------------
@@ -697,7 +734,8 @@ class Walk {
     const subdivisions = this.program.limits.subdivisions;
     for (let step = 1; step <= subdivisions; step += 1) {
       const s = t + (right - t) * step / subdivisions;
-      const own = ownLeft + this.skeletonAt(s, branches) - base;
+      // The skeleton's change taken FIRST, as `ownAt` takes it.
+      const own = ownLeft + (this.skeletonAt(s, branches) - base);
       const level = this.levelOfJump(jump, s, own, branches);
       if (level !== surface) return level;
     }
@@ -965,9 +1003,10 @@ export function retainedIncrement(
   program: LoadedProgram, reading: RetainedReading,
   start: Record<string, number>, delta: Record<string, number>,
   described: string, coordinate: string,
-  crossings: CrossingRecord[] | null, tick: number,
+  crossings: CrossingRecord[] | null, tick: number, forced: Forced = null,
 ): { increment: number; landing: number | null } {
-  const walk = new Walk(program, reading, start, delta, described, coordinate);
+  const walk = new Walk(program, reading, start, delta, described, coordinate,
+                        forced);
   const { increment, landing } = walk.run(crossings, tick);
   return { increment, landing };
 }
@@ -977,9 +1016,10 @@ export function retainedIncrement(
 export function retainedCuts(
   program: LoadedProgram, reading: RetainedReading,
   start: Record<string, number>, delta: Record<string, number>,
-  described: string, coordinate: string,
+  described: string, coordinate: string, forced: Forced = null,
 ): number[] {
-  const walk = new Walk(program, reading, start, delta, described, coordinate);
+  const walk = new Walk(program, reading, start, delta, described, coordinate,
+                        forced);
   return walk.run(null, 0).cuts;
 }
 
@@ -992,7 +1032,288 @@ export function retainedCuts(
 export function planCuts(
   program: LoadedProgram, plan: ProgramPlan, start: Record<string, number>,
   delta: Record<string, number>, described: string, coordinate: string,
+  forced: Forced = null,
 ): number[] {
   if (!Object.values(delta).some((value) => value !== 0)) return [0, 1];
-  return partition(program, plan, start, delta, described, coordinate, null, 0);
+  return partition(program, plan, start, delta, described, coordinate, null, 0,
+                   forced);
+}
+
+// ---------------------------------------------------------------------
+// A BLOCK, ordered PER PIECE (`_Block.increments`, `_Block._partition`,
+// `_Block._forced`, `_Block._order`, `_Block._refused`, `_Block.cuts`
+// and `_integrated`, design D2). Reuses `partition`, `branchesAt` and
+// `merged` above rather than a second copy of any of them, for the same
+// reason the walk reuses them.
+// ---------------------------------------------------------------------
+
+/** Each member's sources at the stretch's start, and their travel over
+ * it. */
+function sourcesOfBlock(block: ProgramBlock, values: Record<string, number>,
+                        deltas: Record<string, number>):
+{ starts: Record<string, number>[]; steps: Record<string, number>[] } {
+  const starts: Record<string, number>[] = [];
+  const steps: Record<string, number>[] = [];
+  for (const member of block.members) {
+    const start: Record<string, number> = {};
+    const step: Record<string, number> = {};
+    for (const key of member.edge.needs) {
+      start[key] = values[key];
+      step[key] = deltas[key];
+    }
+    starts.push(start);
+    steps.push(step);
+  }
+  return { starts, steps };
+}
+
+/** The stretch cut at every crossing of every SELECTOR of every member,
+ * in the members' own order and each member's postorder
+ * (`_Block._partition`).
+ *
+ * Every selector's level reads only coordinates the block does not give,
+ * so its path over the stretch is the linearisation `values + deltas·t`
+ * that `along` already builds: nothing new locates anything. */
+function blockPartition(program: LoadedProgram, block: ProgramBlock,
+                        starts: Record<string, number>[],
+                        steps: Record<string, number>[],
+                        crossings: CrossingRecord[] | null,
+                        tick: number): number[] {
+  let cuts = [0, 1];
+  block.members.forEach((member, index) => {
+    const plan = member.selectorPlan;
+    if (plan === null || plan.jumps.length === 0) return;
+    const found: CrossingRecord[] | null = crossings === null ? null : [];
+    const located = partition(program, plan, starts[index], steps[index],
+                              member.edge.description, member.own, found, tick);
+    if (found !== null && found.length > 0) {
+      for (const entry of found) crossings!.push(entry);
+    }
+    if (located.length > 2) {
+      cuts = merged(cuts, located.slice(1, -1),
+                    program.limits.crossingTolerance);
+    }
+  });
+  return cuts;
+}
+
+/** Every selector's branch, read at one point of the stretch
+ * (`_Block._forced`). */
+function blockBranches(program: LoadedProgram, block: ProgramBlock,
+                       starts: Record<string, number>[],
+                       steps: Record<string, number>[],
+                       where: number): Record<string, number>[] {
+  return block.members.map((member, index) => {
+    const plan = member.selectorPlan;
+    if (plan === null || plan.jumps.length === 0) return {};
+    return branchesAt(program, plan, starts[index], steps[index], where,
+                      plan.jumps.length, member.edge.description, member.own);
+  });
+}
+
+/** The refusal a still-cyclic piece makes, word for word
+ * (`_Block._refused`). The WORDS are the producer's; the FLOATS are
+ * spelled by each runtime -- Python's `repr` writes `1.0` where
+ * JavaScript's `String` writes `1` -- and neither runtime ever sees the
+ * other's message, because a refusal is not corpus state. */
+function blockRefused(block: ProgramBlock, remaining: readonly number[],
+                      forced: Record<string, number>[], left: number,
+                      right: number): string {
+  const branches: string[] = [];
+  for (const index of remaining) {
+    for (const jump of block.members[index].selectors) {
+      branches.push(`${block.gives[index]}: ${jump.primitive} on `
+                    + `${jump.level} reads ${forced[index][jump.name]}`);
+    }
+  }
+  const stuck = remaining.map(
+    (index) => block.members[index].edge.description).join(', ');
+  return (
+    `over the piece [${left}, ${right}] of this tick the relations ` +
+    `${stuck} form a cycle the run cannot order: each waits on a ` +
+    'coordinate another determines, and the selection this piece was read ' +
+    'under leaves every dependency on this cycle active. The selectors ' +
+    `read ${branches.join('; ') || 'nothing'}. The tick committed nothing: ` +
+    'the bank, the tick count and the tree stand as they were.');
+}
+
+/** The members of this piece, ordered over the dependencies its own
+ * selection leaves ACTIVE (`_Block._order`). */
+function blockOrder(block: ProgramBlock, forced: Record<string, number>[],
+                    left: number, right: number): number[] {
+  const active = block.members.map(
+    (_member, index) => block.activeReads(index, forced[index]));
+  let remaining = block.members.map((_member, index) => index);
+  const resolved = new Set<string>();
+  const order: number[] = [];
+  while (remaining.length > 0) {
+    const ready = remaining.filter((index) => [...active[index]].every(
+      (key) => key === block.gives[index] || resolved.has(key)));
+    if (ready.length === 0) {
+      throw new UnsupportedLaw(
+        blockRefused(block, remaining, forced, left, right));
+    }
+    for (const index of ready) {
+      order.push(index);
+      resolved.add(block.gives[index]);
+    }
+    remaining = remaining.filter((index) => !ready.includes(index));
+  }
+  return order;
+}
+
+/** One block member over one piece: `(increment, landing)`, by the
+ * machinery that already governs it -- ADR-107's partition and ADR-121's
+ * walk -- with its selectors FORCED (`_integrated`). */
+function memberIncrement(program: LoadedProgram, member: BlockMember,
+                         start: Record<string, number>,
+                         delta: Record<string, number>,
+                         crossings: CrossingRecord[] | null, tick: number,
+                         forced: Forced):
+{ increment: number; landing: number | null } {
+  const edge = member.edge;
+  const plan = member.plan;
+  if (plan === null) {
+    const expression = edge.expressions.length > 0 ? edge.expressions[0] : null;
+    if (expression === null) return { increment: 0, landing: null };
+    const end: Record<string, number> = {};
+    for (const key in start) {
+      if (Object.prototype.hasOwnProperty.call(start, key)) {
+        end[key] = start[key] + delta[key];
+      }
+    }
+    return {
+      increment: evaluateExpression(program, expression, end)
+        - evaluateExpression(program, expression, start),
+      landing: null,
+    };
+  }
+  const reading = edge.retained.length > 0 ? edge.retained[0] : null;
+  if (reading === null) {
+    return {
+      increment: planIncrement(program, plan, start, delta, edge.description,
+                               member.own, crossings, tick, forced),
+      landing: null,
+    };
+  }
+  return retainedIncrement(program, reading, start, delta, edge.description,
+                           member.own, crossings, tick, forced);
+}
+
+/** The block's contribution to each of its coordinates over one stretch:
+ * the selectors located FIRST over the whole stretch, and then the
+ * members run PIECE BY PIECE in the order each piece's own selection
+ * gives (`_Block.increments`, design D2).
+ *
+ * Complete and side-effect-free with `crossings`, `tick` and `landings`
+ * absent -- `Run.along` and `Run.pushes` call it that way -- and still
+ * refusing a genuinely cyclic piece under the SAME midpoint reading and
+ * the SAME ordering the tick uses (design D2.7). */
+export function blockIncrements(
+  program: LoadedProgram, block: ProgramBlock,
+  values: Record<string, number>, deltas: Record<string, number>,
+  crossings: CrossingRecord[] | null, tick: number,
+  landings: Record<string, number> | null,
+): [string, number][] {
+  const { starts, steps } = sourcesOfBlock(block, values, deltas);
+  const located: CrossingRecord[] | null = crossings === null ? null : [];
+  const cuts = blockPartition(program, block, starts, steps, located, tick);
+  const advanced: Record<string, number> = {};
+  const total: Record<string, number> = {};
+  for (const key of block.gives) {
+    advanced[key] = values[key];
+    total[key] = 0;
+  }
+  const landed = new Set<string>();
+  const orders = new Map<string, number[]>();
+  for (let at = 0; at < cuts.length - 1; at += 1) {
+    const left = cuts[at];
+    const right = cuts[at + 1];
+    const forced = blockBranches(program, block, starts, steps,
+                                 (left + right) / 2);
+    // Keyed by the vector of actual branch VALUES and not of booleans:
+    // `branchOf` answers an integer for `floor`, `ceil` and `%`, so a
+    // crank passing three tooth windows in one tick gives three keys.
+    // `whole()` has already normalised `-0` to `0`, so the two zeros
+    // cannot key two entries.
+    const vector = forced.map((entry) => Object.keys(entry).sort().map(
+      (name) => `${name}=${entry[name]}`).join(',')).join('|');
+    let order = orders.get(vector);
+    if (order === undefined) {
+      order = blockOrder(block, forced, left, right);
+      orders.set(vector, order);
+    }
+    const held: Record<string, number> = { ...advanced };
+    const piece: Record<string, number> = {};
+    for (const index of order) {
+      const member = block.members[index];
+      const own = member.own;
+      const start: Record<string, number> = {};
+      const delta: Record<string, number> = {};
+      for (const key of member.edge.needs) {
+        if (Object.prototype.hasOwnProperty.call(held, key)) {
+          // A key the block DOES give: the BLOCK-ADVANCED value it holds
+          // at this piece's start, moving by the increment computed for
+          // it ON THIS PIECE -- zero where this piece's order has not
+          // reached it yet.
+          start[key] = held[key];
+          delta[key] = Object.prototype.hasOwnProperty.call(piece, key)
+            ? piece[key] : 0;
+        } else {
+          start[key] = values[key] + deltas[key] * left;
+          delta[key] = deltas[key] * (right - left);
+        }
+      }
+      const found: CrossingRecord[] | null = located === null ? null : [];
+      const { increment, landing } = memberIncrement(
+        program, member, start, delta, found, tick, forced[index]);
+      piece[own] = increment;
+      total[own] += increment;
+      if (landing === null) advanced[own] = advanced[own] + increment;
+      else {
+        advanced[own] = landing;
+        landed.add(own);
+      }
+      if (found !== null && found.length > 0) {
+        const width = right - left;
+        for (const entry of found) {
+          located!.push({ ...entry, t: left + entry.t * width });
+        }
+      }
+    }
+  }
+  if (located !== null && located.length > 0) {
+    // In the order the path meets them, as ADR-107's own partition
+    // reports a law's: a selector's crossing is located over the whole
+    // stretch and a member's own is rescaled out of its piece, and the
+    // listing must not depend on which of the two was computed first.
+    located.sort((a, b) => a.t - b.t);
+    for (const entry of located) crossings!.push(entry);
+  }
+  if (landings !== null) {
+    for (const key of landed) {
+      // What the block reports is the ABSOLUTE value it has advanced the
+      // coordinate to by the stretch's END -- the landing plus every
+      // later piece's increment -- because `Run.landed` commits a
+      // reported landing absolutely and would otherwise discard the
+      // motion after it (design D4.1).
+      landings[key] = advanced[key];
+    }
+  }
+  return block.gives.map((key) => [key, total[key]]);
+}
+
+/** The breakpoints a block puts on the path for one of its coordinates:
+ * the SELECTOR partition (`_Block.cuts`).
+ *
+ * `Run.locate` reaches this only through the AFFINE path and a block's
+ * gives are never affine, so nothing calls it today. It is defined
+ * rather than left to throw because `piecewise` becomes meaningful over
+ * it the day a later cycle classifies a block give as affine under a
+ * fixed branch vector (design D4.3). */
+export function blockCuts(program: LoadedProgram, block: ProgramBlock,
+                          values: Record<string, number>,
+                          deltas: Record<string, number>): number[] {
+  const { starts, steps } = sourcesOfBlock(block, values, deltas);
+  return blockPartition(program, block, starts, steps, null, 0);
 }

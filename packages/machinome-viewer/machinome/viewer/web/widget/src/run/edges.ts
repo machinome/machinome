@@ -16,7 +16,8 @@
 import { evaluateExpression, ProgramEdge } from './program';
 import type { LoadedProgram } from './program';
 import {
-  CrossingRecord, planCuts, planIncrement, retainedCuts, retainedIncrement,
+  blockCuts, blockIncrements, CrossingRecord, planCuts, planIncrement,
+  retainedCuts, retainedIncrement,
 } from './jumps';
 
 /** The graph's free names bound to the values its sources hold,
@@ -91,6 +92,11 @@ export function edgeValues(program: LoadedProgram, edge: ProgramEdge,
     return edge.gives.map((key, index) =>
       [key, evaluated(program, edge.expressions[index], inputs)]);
   }
+  // A BLOCK computes nothing outside the bank -- every one of its gives
+  // is a coordinate the run banks (design D1.7's third refusal) -- and
+  // `Run.valuesOf` skips an edge all of whose gives are bank keys, so it
+  // is never asked. It answers nothing here as `Program.values_of` does
+  // (design D4.4), through the fall-through below.
   if (edge.kind === 'wiring') {
     return [[edge.gives[0], values[edge.needs[0]] * edge.factor]];
   }
@@ -154,6 +160,10 @@ export function edgeIncrements(
       return [key, increment];
     });
   }
+  if (edge.kind === 'block') {
+    return blockIncrements(program, edge.block!, values, deltas, crossings,
+                           tick, landings);
+  }
   if (edge.kind === 'wiring') {
     return [[edge.gives[0], deltas[edge.needs[0]] * edge.factor]];
   }
@@ -169,6 +179,9 @@ export function edgeCuts(program: LoadedProgram, edge: ProgramEdge,
                          values: Record<string, number>,
                          deltas: Record<string, number>,
                          index: number): number[] {
+  if (edge.kind === 'block') {
+    return blockCuts(program, edge.block!, values, deltas);
+  }
   if (edge.kind !== 'law') return [];
   const plan = edge.plans[index];
   if (plan === null) return [];

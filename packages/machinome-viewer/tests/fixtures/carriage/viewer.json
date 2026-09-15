@@ -1,0 +1,1353 @@
+{
+  "format": "solid-node-export",
+  "version": 7,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "clearing": {
+      "default": 0.0,
+      "range": null,
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    },
+    "crank": {
+      "default": 0.0,
+      "range": null,
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    },
+    "lift": {
+      "default": 0.0,
+      "range": null,
+      "unit": null,
+      "dtype": null,
+      "scale": null
+    },
+    "position": {
+      "default": 0.0,
+      "range": null,
+      "unit": null,
+      "dtype": null,
+      "scale": null
+    },
+    "reset": {
+      "default": 0.0,
+      "range": null,
+      "unit": null,
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {},
+  "bindings": [
+    {
+      "name": "_b0",
+      "expression": "(seat / 20.0)"
+    },
+    {
+      "name": "_b1",
+      "expression": "(_b0 >= -0.5)"
+    },
+    {
+      "name": "_b2",
+      "expression": "(_b0 < 0.5)"
+    },
+    {
+      "name": "_b3",
+      "expression": "(_b1 * _b2)"
+    },
+    {
+      "name": "_b4",
+      "expression": "(_b0 >= 0.5)"
+    },
+    {
+      "name": "_b5",
+      "expression": "(_b0 < 1.5)"
+    },
+    {
+      "name": "_b6",
+      "expression": "(_b4 * _b5)"
+    },
+    {
+      "name": "_b7",
+      "expression": "(_b0 >= 1.5)"
+    },
+    {
+      "name": "_b8",
+      "expression": "(_b0 < 2.5)"
+    },
+    {
+      "name": "_b9",
+      "expression": "(_b7 * _b8)"
+    },
+    {
+      "name": "_b10",
+      "expression": "(hoist < 0.5)"
+    },
+    {
+      "name": "_b11",
+      "expression": "(hoist >= 0.5)"
+    },
+    {
+      "name": "_b12",
+      "expression": "(_b0 - -0.5)"
+    },
+    {
+      "name": "_b13",
+      "expression": "(_b0 - 0.5)"
+    },
+    {
+      "name": "_b14",
+      "expression": "(_b0 - 1.5)"
+    },
+    {
+      "name": "_b15",
+      "expression": "(_b0 - 2.5)"
+    },
+    {
+      "name": "_b16",
+      "expression": "(hoist - 0.5)"
+    },
+    {
+      "name": "_b17",
+      "expression": "(_b0 >= -1.5)"
+    },
+    {
+      "name": "_b18",
+      "expression": "(_b0 < -0.5)"
+    },
+    {
+      "name": "_b19",
+      "expression": "(_b17 * _b18)"
+    },
+    {
+      "name": "_b20",
+      "expression": "(_b0 - -1.5)"
+    },
+    {
+      "name": "_b21",
+      "expression": "(_b0 >= -2.5)"
+    },
+    {
+      "name": "_b22",
+      "expression": "(_b0 < -1.5)"
+    },
+    {
+      "name": "_b23",
+      "expression": "(_b21 * _b22)"
+    },
+    {
+      "name": "_b24",
+      "expression": "(_b0 - -2.5)"
+    },
+    {
+      "name": "_b25",
+      "expression": "(36.0 * lever0.travel)"
+    },
+    {
+      "name": "_b26",
+      "expression": "(36.0 * lever1.travel)"
+    },
+    {
+      "name": "_b27",
+      "expression": "(36.0 * lever2.travel)"
+    },
+    {
+      "name": "_b28",
+      "expression": "(dial0.turn / 360.0)"
+    },
+    {
+      "name": "_b29",
+      "expression": "(dial1.turn / 360.0)"
+    },
+    {
+      "name": "_b30",
+      "expression": "(dial2.turn / 360.0)"
+    },
+    {
+      "name": "_b31",
+      "expression": "(dial3.turn / 360.0)"
+    },
+    {
+      "name": "_b32",
+      "expression": "floor(_b0)"
+    },
+    {
+      "name": "_b33",
+      "expression": "(20.0 * _b32)"
+    },
+    {
+      "name": "_b34",
+      "expression": "(80.0 * _b11)"
+    }
+  ],
+  "program": {
+    "identity": "917094ae7e0629ed26e139086cca7c55f4777258e80f8b003f8cf0c4afa89572",
+    "clock": "time",
+    "coordinates": {
+      "clearing": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "crank": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "lift": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "position": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "reset": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "dial0.turn": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "dial1.turn": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "dial2.turn": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "dial3.turn": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "hoist": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "mm",
+        "domain": "translational"
+      },
+      "lever0.travel": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "mm",
+        "domain": "translational"
+      },
+      "lever1.travel": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "mm",
+        "domain": "translational"
+      },
+      "lever2.travel": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "mm",
+        "domain": "translational"
+      },
+      "seat": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      }
+    },
+    "intermediates": [],
+    "edges": [
+      {
+        "kind": "law",
+        "needs": [
+          "lift"
+        ],
+        "gives": [
+          "hoist"
+        ],
+        "description": "lift drives hoist",
+        "stated_by": "CurtaCarriage",
+        "expressions": [
+          "lift"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          null
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "position"
+        ],
+        "gives": [
+          "seat"
+        ],
+        "description": "position drives seat",
+        "stated_by": "CurtaCarriage",
+        "expressions": [
+          "(20.0 * position)"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          null
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "seat",
+          "hoist",
+          "reset",
+          "dial0.turn",
+          "dial1.turn",
+          "dial2.turn",
+          "dial3.turn",
+          "lever0.travel"
+        ],
+        "gives": [
+          "lever0.travel"
+        ],
+        "description": "(seat, hoist, reset, dial0.turn, dial1.turn, dial2.turn, dial3.turn, lever0.travel) drives lever0.travel",
+        "stated_by": "CurtaCarriage",
+        "expressions": [
+          "(((((((0.0 + (dial0.turn * _b3)) + (dial1.turn * _b6)) + (dial2.turn * _b9)) + (dial3.turn * ((_b0 >= 2.5) * (_b0 < 3.5)))) * _b10) * (lever0.travel < 1.0)) - ((reset * (lever0.travel > 0.0)) * _b11))"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          {
+            "skeleton": "(((((((0.0 + (dial0.turn * (_j0 * _j1))) + (dial1.turn * (_j2 * _j3))) + (dial2.turn * (_j4 * _j5))) + (dial3.turn * (_j6 * _j7))) * _j8) * _j9) - ((reset * _j10) * _j11))",
+            "jumps": [
+              {
+                "name": "_j0",
+                "primitive": ">=",
+                "level": "_b12",
+                "affine": true
+              },
+              {
+                "name": "_j1",
+                "primitive": "<",
+                "level": "_b13",
+                "affine": true
+              },
+              {
+                "name": "_j2",
+                "primitive": ">=",
+                "level": "_b13",
+                "affine": true
+              },
+              {
+                "name": "_j3",
+                "primitive": "<",
+                "level": "_b14",
+                "affine": true
+              },
+              {
+                "name": "_j4",
+                "primitive": ">=",
+                "level": "_b14",
+                "affine": true
+              },
+              {
+                "name": "_j5",
+                "primitive": "<",
+                "level": "_b15",
+                "affine": true
+              },
+              {
+                "name": "_j6",
+                "primitive": ">=",
+                "level": "_b15",
+                "affine": true
+              },
+              {
+                "name": "_j7",
+                "primitive": "<",
+                "level": "(_b0 - 3.5)",
+                "affine": true
+              },
+              {
+                "name": "_j8",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j9",
+                "primitive": "<",
+                "level": "(lever0.travel - 1.0)",
+                "affine": true
+              },
+              {
+                "name": "_j10",
+                "primitive": ">",
+                "level": "(lever0.travel - 0.0)",
+                "affine": true
+              },
+              {
+                "name": "_j11",
+                "primitive": ">=",
+                "level": "_b16",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "seat",
+          "hoist",
+          "reset",
+          "dial0.turn",
+          "dial1.turn",
+          "dial2.turn",
+          "dial3.turn",
+          "lever1.travel"
+        ],
+        "gives": [
+          "lever1.travel"
+        ],
+        "description": "(seat, hoist, reset, dial0.turn, dial1.turn, dial2.turn, dial3.turn, lever1.travel) drives lever1.travel",
+        "stated_by": "CurtaCarriage",
+        "expressions": [
+          "(((((((0.0 + (dial0.turn * _b19)) + (dial1.turn * _b3)) + (dial2.turn * _b6)) + (dial3.turn * _b9)) * _b10) * (lever1.travel < 1.0)) - ((reset * (lever1.travel > 0.0)) * _b11))"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          {
+            "skeleton": "(((((((0.0 + (dial0.turn * (_j12 * _j13))) + (dial1.turn * (_j14 * _j15))) + (dial2.turn * (_j16 * _j17))) + (dial3.turn * (_j18 * _j19))) * _j20) * _j21) - ((reset * _j22) * _j23))",
+            "jumps": [
+              {
+                "name": "_j12",
+                "primitive": ">=",
+                "level": "_b20",
+                "affine": true
+              },
+              {
+                "name": "_j13",
+                "primitive": "<",
+                "level": "_b12",
+                "affine": true
+              },
+              {
+                "name": "_j14",
+                "primitive": ">=",
+                "level": "_b12",
+                "affine": true
+              },
+              {
+                "name": "_j15",
+                "primitive": "<",
+                "level": "_b13",
+                "affine": true
+              },
+              {
+                "name": "_j16",
+                "primitive": ">=",
+                "level": "_b13",
+                "affine": true
+              },
+              {
+                "name": "_j17",
+                "primitive": "<",
+                "level": "_b14",
+                "affine": true
+              },
+              {
+                "name": "_j18",
+                "primitive": ">=",
+                "level": "_b14",
+                "affine": true
+              },
+              {
+                "name": "_j19",
+                "primitive": "<",
+                "level": "_b15",
+                "affine": true
+              },
+              {
+                "name": "_j20",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j21",
+                "primitive": "<",
+                "level": "(lever1.travel - 1.0)",
+                "affine": true
+              },
+              {
+                "name": "_j22",
+                "primitive": ">",
+                "level": "(lever1.travel - 0.0)",
+                "affine": true
+              },
+              {
+                "name": "_j23",
+                "primitive": ">=",
+                "level": "_b16",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "seat",
+          "hoist",
+          "reset",
+          "dial0.turn",
+          "dial1.turn",
+          "dial2.turn",
+          "dial3.turn",
+          "lever2.travel"
+        ],
+        "gives": [
+          "lever2.travel"
+        ],
+        "description": "(seat, hoist, reset, dial0.turn, dial1.turn, dial2.turn, dial3.turn, lever2.travel) drives lever2.travel",
+        "stated_by": "CurtaCarriage",
+        "expressions": [
+          "(((((((0.0 + (dial0.turn * _b23)) + (dial1.turn * _b19)) + (dial2.turn * _b3)) + (dial3.turn * _b6)) * _b10) * (lever2.travel < 1.0)) - ((reset * (lever2.travel > 0.0)) * _b11))"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          {
+            "skeleton": "(((((((0.0 + (dial0.turn * (_j24 * _j25))) + (dial1.turn * (_j26 * _j27))) + (dial2.turn * (_j28 * _j29))) + (dial3.turn * (_j30 * _j31))) * _j32) * _j33) - ((reset * _j34) * _j35))",
+            "jumps": [
+              {
+                "name": "_j24",
+                "primitive": ">=",
+                "level": "_b24",
+                "affine": true
+              },
+              {
+                "name": "_j25",
+                "primitive": "<",
+                "level": "_b20",
+                "affine": true
+              },
+              {
+                "name": "_j26",
+                "primitive": ">=",
+                "level": "_b20",
+                "affine": true
+              },
+              {
+                "name": "_j27",
+                "primitive": "<",
+                "level": "_b12",
+                "affine": true
+              },
+              {
+                "name": "_j28",
+                "primitive": ">=",
+                "level": "_b12",
+                "affine": true
+              },
+              {
+                "name": "_j29",
+                "primitive": "<",
+                "level": "_b13",
+                "affine": true
+              },
+              {
+                "name": "_j30",
+                "primitive": ">=",
+                "level": "_b13",
+                "affine": true
+              },
+              {
+                "name": "_j31",
+                "primitive": "<",
+                "level": "_b14",
+                "affine": true
+              },
+              {
+                "name": "_j32",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j33",
+                "primitive": "<",
+                "level": "(lever2.travel - 1.0)",
+                "affine": true
+              },
+              {
+                "name": "_j34",
+                "primitive": ">",
+                "level": "(lever2.travel - 0.0)",
+                "affine": true
+              },
+              {
+                "name": "_j35",
+                "primitive": ">=",
+                "level": "_b16",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "crank",
+          "seat",
+          "hoist",
+          "clearing",
+          "lever0.travel",
+          "lever1.travel",
+          "lever2.travel",
+          "dial0.turn"
+        ],
+        "gives": [
+          "dial0.turn"
+        ],
+        "description": "(crank, seat, hoist, clearing, lever0.travel, lever1.travel, lever2.travel, dial0.turn) drives dial0.turn",
+        "stated_by": "CurtaCarriage",
+        "expressions": [
+          "((((crank + ((_b25 * _b19) * _b10)) + ((_b26 * _b23) * _b10)) + ((_b27 * ((_b0 >= -3.5) * (_b0 < -2.5))) * _b10)) + (clearing * ((dial0.turn - (360.0 * floor(_b28))) >= 1.0)))"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          {
+            "skeleton": "((((crank + ((_b25 * (_j36 * _j37)) * _j38)) + ((_b26 * (_j39 * _j40)) * _j41)) + ((_b27 * (_j42 * _j43)) * _j44)) + (clearing * _j46))",
+            "jumps": [
+              {
+                "name": "_j36",
+                "primitive": ">=",
+                "level": "_b20",
+                "affine": true
+              },
+              {
+                "name": "_j37",
+                "primitive": "<",
+                "level": "_b12",
+                "affine": true
+              },
+              {
+                "name": "_j38",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j39",
+                "primitive": ">=",
+                "level": "_b24",
+                "affine": true
+              },
+              {
+                "name": "_j40",
+                "primitive": "<",
+                "level": "_b20",
+                "affine": true
+              },
+              {
+                "name": "_j41",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j42",
+                "primitive": ">=",
+                "level": "(_b0 - -3.5)",
+                "affine": true
+              },
+              {
+                "name": "_j43",
+                "primitive": "<",
+                "level": "_b24",
+                "affine": true
+              },
+              {
+                "name": "_j44",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j45",
+                "primitive": "floor",
+                "level": "_b28",
+                "affine": true
+              },
+              {
+                "name": "_j46",
+                "primitive": ">=",
+                "level": "((dial0.turn - (360.0 * _j45)) - 1.0)",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "crank",
+          "seat",
+          "hoist",
+          "clearing",
+          "lever0.travel",
+          "lever1.travel",
+          "lever2.travel",
+          "dial1.turn"
+        ],
+        "gives": [
+          "dial1.turn"
+        ],
+        "description": "(crank, seat, hoist, clearing, lever0.travel, lever1.travel, lever2.travel, dial1.turn) drives dial1.turn",
+        "stated_by": "CurtaCarriage",
+        "expressions": [
+          "((((crank + ((_b25 * _b3) * _b10)) + ((_b26 * _b19) * _b10)) + ((_b27 * _b23) * _b10)) + (clearing * ((dial1.turn - (360.0 * floor(_b29))) >= 1.0)))"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          {
+            "skeleton": "((((crank + ((_b25 * (_j47 * _j48)) * _j49)) + ((_b26 * (_j50 * _j51)) * _j52)) + ((_b27 * (_j53 * _j54)) * _j55)) + (clearing * _j57))",
+            "jumps": [
+              {
+                "name": "_j47",
+                "primitive": ">=",
+                "level": "_b12",
+                "affine": true
+              },
+              {
+                "name": "_j48",
+                "primitive": "<",
+                "level": "_b13",
+                "affine": true
+              },
+              {
+                "name": "_j49",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j50",
+                "primitive": ">=",
+                "level": "_b20",
+                "affine": true
+              },
+              {
+                "name": "_j51",
+                "primitive": "<",
+                "level": "_b12",
+                "affine": true
+              },
+              {
+                "name": "_j52",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j53",
+                "primitive": ">=",
+                "level": "_b24",
+                "affine": true
+              },
+              {
+                "name": "_j54",
+                "primitive": "<",
+                "level": "_b20",
+                "affine": true
+              },
+              {
+                "name": "_j55",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j56",
+                "primitive": "floor",
+                "level": "_b29",
+                "affine": true
+              },
+              {
+                "name": "_j57",
+                "primitive": ">=",
+                "level": "((dial1.turn - (360.0 * _j56)) - 1.0)",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "crank",
+          "seat",
+          "hoist",
+          "clearing",
+          "lever0.travel",
+          "lever1.travel",
+          "lever2.travel",
+          "dial2.turn"
+        ],
+        "gives": [
+          "dial2.turn"
+        ],
+        "description": "(crank, seat, hoist, clearing, lever0.travel, lever1.travel, lever2.travel, dial2.turn) drives dial2.turn",
+        "stated_by": "CurtaCarriage",
+        "expressions": [
+          "((((crank + ((_b25 * _b6) * _b10)) + ((_b26 * _b3) * _b10)) + ((_b27 * _b19) * _b10)) + (clearing * ((dial2.turn - (360.0 * floor(_b30))) >= 1.0)))"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          {
+            "skeleton": "((((crank + ((_b25 * (_j58 * _j59)) * _j60)) + ((_b26 * (_j61 * _j62)) * _j63)) + ((_b27 * (_j64 * _j65)) * _j66)) + (clearing * _j68))",
+            "jumps": [
+              {
+                "name": "_j58",
+                "primitive": ">=",
+                "level": "_b13",
+                "affine": true
+              },
+              {
+                "name": "_j59",
+                "primitive": "<",
+                "level": "_b14",
+                "affine": true
+              },
+              {
+                "name": "_j60",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j61",
+                "primitive": ">=",
+                "level": "_b12",
+                "affine": true
+              },
+              {
+                "name": "_j62",
+                "primitive": "<",
+                "level": "_b13",
+                "affine": true
+              },
+              {
+                "name": "_j63",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j64",
+                "primitive": ">=",
+                "level": "_b20",
+                "affine": true
+              },
+              {
+                "name": "_j65",
+                "primitive": "<",
+                "level": "_b12",
+                "affine": true
+              },
+              {
+                "name": "_j66",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j67",
+                "primitive": "floor",
+                "level": "_b30",
+                "affine": true
+              },
+              {
+                "name": "_j68",
+                "primitive": ">=",
+                "level": "((dial2.turn - (360.0 * _j67)) - 1.0)",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "crank",
+          "seat",
+          "hoist",
+          "clearing",
+          "lever0.travel",
+          "lever1.travel",
+          "lever2.travel",
+          "dial3.turn"
+        ],
+        "gives": [
+          "dial3.turn"
+        ],
+        "description": "(crank, seat, hoist, clearing, lever0.travel, lever1.travel, lever2.travel, dial3.turn) drives dial3.turn",
+        "stated_by": "CurtaCarriage",
+        "expressions": [
+          "((((crank + ((_b25 * _b9) * _b10)) + ((_b26 * _b6) * _b10)) + ((_b27 * _b3) * _b10)) + (clearing * ((dial3.turn - (360.0 * floor(_b31))) >= 1.0)))"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          {
+            "skeleton": "((((crank + ((_b25 * (_j69 * _j70)) * _j71)) + ((_b26 * (_j72 * _j73)) * _j74)) + ((_b27 * (_j75 * _j76)) * _j77)) + (clearing * _j79))",
+            "jumps": [
+              {
+                "name": "_j69",
+                "primitive": ">=",
+                "level": "_b14",
+                "affine": true
+              },
+              {
+                "name": "_j70",
+                "primitive": "<",
+                "level": "_b15",
+                "affine": true
+              },
+              {
+                "name": "_j71",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j72",
+                "primitive": ">=",
+                "level": "_b13",
+                "affine": true
+              },
+              {
+                "name": "_j73",
+                "primitive": "<",
+                "level": "_b14",
+                "affine": true
+              },
+              {
+                "name": "_j74",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j75",
+                "primitive": ">=",
+                "level": "_b12",
+                "affine": true
+              },
+              {
+                "name": "_j76",
+                "primitive": "<",
+                "level": "_b13",
+                "affine": true
+              },
+              {
+                "name": "_j77",
+                "primitive": "<",
+                "level": "_b16",
+                "affine": true
+              },
+              {
+                "name": "_j78",
+                "primitive": "floor",
+                "level": "_b31",
+                "affine": true
+              },
+              {
+                "name": "_j79",
+                "primitive": ">=",
+                "level": "((dial3.turn - (360.0 * _j78)) - 1.0)",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "spans": {
+      "seat": {
+        "low": {
+          "expression": "(_b33 - _b34)"
+        },
+        "high": {
+          "expression": "(_b33 + _b34)"
+        }
+      }
+    },
+    "sources": {
+      "clearing": [
+        "clearing"
+      ],
+      "crank": [
+        "crank"
+      ],
+      "dial0.turn": [
+        "clearing",
+        "crank",
+        "lift",
+        "position",
+        "reset"
+      ],
+      "dial1.turn": [
+        "clearing",
+        "crank",
+        "lift",
+        "position",
+        "reset"
+      ],
+      "dial2.turn": [
+        "clearing",
+        "crank",
+        "lift",
+        "position",
+        "reset"
+      ],
+      "dial3.turn": [
+        "clearing",
+        "crank",
+        "lift",
+        "position",
+        "reset"
+      ],
+      "hoist": [
+        "lift"
+      ],
+      "lever0.travel": [
+        "clearing",
+        "crank",
+        "lift",
+        "position",
+        "reset"
+      ],
+      "lever1.travel": [
+        "clearing",
+        "crank",
+        "lift",
+        "position",
+        "reset"
+      ],
+      "lever2.travel": [
+        "clearing",
+        "crank",
+        "lift",
+        "position",
+        "reset"
+      ],
+      "lift": [
+        "lift"
+      ],
+      "position": [
+        "position"
+      ],
+      "reset": [
+        "reset"
+      ],
+      "seat": [
+        "position"
+      ]
+    },
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "subdivisions": 64,
+      "bisection_rounds": 64,
+      "max_crossings": 1000,
+      "agreement": 1e-09
+    }
+  },
+  "root": {
+    "name": "CurtaCarriage",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1789511367.7116747,
+    "operations": [
+      [
+        "t",
+        [
+          "0",
+          "0",
+          "hoist"
+        ]
+      ],
+      [
+        "r",
+        "seat",
+        [
+          0,
+          0,
+          1
+        ]
+      ]
+    ],
+    "children": [
+      {
+        "name": "dial0",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789510288.0,
+        "operations": [
+          [
+            "r",
+            "dial0.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "0.0",
+              "0.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "models/running_project/parts-Arbor-ff269d604af9.stl",
+        "piece": "f3f90312fcda"
+      },
+      {
+        "name": "dial1",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789510288.0,
+        "operations": [
+          [
+            "r",
+            "dial1.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "25.0",
+              "0.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "models/running_project/parts-Arbor-ff269d604af9.stl",
+        "piece": "f3f90312fcda"
+      },
+      {
+        "name": "dial2",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789510288.0,
+        "operations": [
+          [
+            "r",
+            "dial2.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "50.0",
+              "0.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "models/running_project/parts-Arbor-ff269d604af9.stl",
+        "piece": "f3f90312fcda"
+      },
+      {
+        "name": "dial3",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789510288.0,
+        "operations": [
+          [
+            "r",
+            "dial3.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "75.0",
+              "0.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "models/running_project/parts-Arbor-ff269d604af9.stl",
+        "piece": "f3f90312fcda"
+      },
+      {
+        "name": "lever0",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789510288.0,
+        "operations": [
+          [
+            "t",
+            [
+              "lever0.travel",
+              "0",
+              "0"
+            ]
+          ],
+          [
+            "t",
+            [
+              "12.5",
+              "20.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "models/running_project/parts-Carriage-047f12d8000c.stl",
+        "piece": "7b37025f2e28"
+      },
+      {
+        "name": "lever1",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789510288.0,
+        "operations": [
+          [
+            "t",
+            [
+              "lever1.travel",
+              "0",
+              "0"
+            ]
+          ],
+          [
+            "t",
+            [
+              "37.5",
+              "20.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "models/running_project/parts-Carriage-047f12d8000c.stl",
+        "piece": "7b37025f2e28"
+      },
+      {
+        "name": "lever2",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789510288.0,
+        "operations": [
+          [
+            "t",
+            [
+              "lever2.travel",
+              "0",
+              "0"
+            ]
+          ],
+          [
+            "t",
+            [
+              "62.5",
+              "20.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "models/running_project/parts-Carriage-047f12d8000c.stl",
+        "piece": "7b37025f2e28"
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "f3f90312fcda",
+      "name": "Arbor",
+      "sources": [
+        "running_project/parts.py"
+      ],
+      "models": [
+        "models/running_project/parts-Arbor-ff269d604af9.stl"
+      ],
+      "count": 4,
+      "size": [
+        20.0,
+        19.890438079833984,
+        4.0
+      ],
+      "volume": 1247.4701422871512,
+      "watertight": true
+    },
+    {
+      "id": "7b37025f2e28",
+      "name": "Carriage",
+      "sources": [
+        "running_project/parts.py"
+      ],
+      "models": [
+        "models/running_project/parts-Carriage-047f12d8000c.stl"
+      ],
+      "count": 3,
+      "size": [
+        20.0,
+        6.0,
+        6.0
+      ],
+      "volume": 720.0,
+      "watertight": true
+    }
+  ]
+}

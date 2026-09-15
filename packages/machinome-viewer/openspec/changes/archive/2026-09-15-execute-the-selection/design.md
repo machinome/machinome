@@ -728,6 +728,19 @@ membership and selectorhood from `needs`, `gives` and the published
 listing, verifies the listing is one, and forces a selector's branch into
 the member's plan at the producer's own two points.
 
+### Implementation notes (2026-09-15, after review)
+
+One placement stated in D1.5 was found imprecise against `program.py`
+while applying, and the implementation is what ADR-058 describes: the
+fold resolves a BINDING name INSIDE the traversal rather than closing the
+folded names through the bindings table afterwards. A published binding
+may carry a placeholder (`CarryLead`'s `_b6 = (360.0 * _j0)`), and closing
+afterwards would leave that zero unpropagated and over-approximate a
+member's reads; walking into the binding is what `_reads_under` does on
+the producer's inlined graph. Recorded here rather than rewritten above,
+so the ratified text and what changed against it are both visible
+(`evidence.md`, "Deviations from the design, and why").
+
 ## Risks / Trade-offs
 
 1. **The corpus does not discriminate the ordering.** `ShiftedCarry`

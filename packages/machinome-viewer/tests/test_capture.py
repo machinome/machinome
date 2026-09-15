@@ -234,7 +234,12 @@ class RunningStagedDocumentTest(TestCase):
 
         self.assertTrue(carries_program({"version": 6}))
         self.assertTrue(carries_program({"version": 5}))
+        # Version 7 -- a program carrying a BLOCK -- is now one this
+        # build RENDERS, and the floor admits it exactly as it always
+        # did: the gate did not move with the version, which is what a
+        # floor is for.
         self.assertTrue(carries_program({"version": 7}))
+        self.assertTrue(carries_program({"version": 8}))
         self.assertFalse(carries_program({"version": 4}))
         self.assertTrue(carries_program({"version": 4, "program": {}}))
         self.assertFalse(carries_program("not a document"))

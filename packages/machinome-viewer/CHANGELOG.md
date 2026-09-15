@@ -7,6 +7,65 @@ it carries release together and share one version.
 
 The viewer stops posing a machine and starts running one.
 
+- **The worker ORDERS A BLOCK PER PIECE of a tick.** solid-node's ADR-122
+  lets a machine's dependencies be SELECTED by where one of its own parts
+  stands. The Curta's carry levers belong to the FIXED frame and its
+  number dials ride on the CARRIAGE, so the same lever is tripped by dial
+  `s` and advances dial `s + 1`, where `s` is the carriage position the
+  maker chose. At any one position the active dependencies are a chain
+  and acyclic; their UNION over the working positions is CYCLIC, and the
+  union is what the compiled program orders. The producer compiles such a
+  union as a **block** — the nontrivial strongly connected components of
+  the dependency graph over the edges' `needs` and `gives`, each
+  contracted to one entry — and publishes it as a **version 7** document
+  with **no new key**, in which the published order of a block's members
+  is a **LISTING and not an execution order**. This viewer therefore
+  re-derives the block from the published edges themselves, and each
+  member's SELECTORS from the `level` expressions its plan publishes: a
+  selector is a jump whose level reads nothing the block determines, and
+  a source is SWITCHED when folding that jump to zero removes it from the
+  law. Over one step the selectors' crossings are located first over the
+  whole stretch, the stretch is cut there, and on each piece the branches
+  read at the MIDPOINT are forced into every member's own plan while the
+  members are ordered over what the run-time fold leaves active — with
+  each in-block coordinate advanced between pieces, and the ABSOLUTE
+  value the block advanced it to reported for any it landed. A shape the
+  producer refuses at construction — a wiring or a formula on a cycle, a
+  member driving a group, a member whose driven end is not a bank
+  coordinate, a cycle no selection can break — is refused HERE, when the
+  document loads, in the producer's own words; a piece a selection leaves
+  genuinely cyclic refuses the step transactionally, and the step commits
+  nothing. A program with no block pays one `kind` test per edge per step
+  and nothing else. (OpenSpec change `execute-the-selection`, on top of
+  solid-node's ADR-122.)
+
+- **The Curta's own carriage mounts, shifts and carries in a browser.**
+  The framework's own `CurtaCarriage` — four number dials on the
+  carriage, three carry levers on the frame, the lift, and an interlock
+  stated as a bound that READS the lift — is exported verbatim as a
+  version 7 document and mounted in Chromium at the framework's own
+  `0.02` s step. Lifted, shifted to position 1, dropped and cranked by
+  36, its dials read `36, 36, 72, 72` and its first lever stands at
+  exactly `1.0`; lifted, shifted again and dropped, **every coordinate
+  but the carriage's own is BIT-IDENTICAL** to what it was; lifted,
+  reset and dropped, the levers return and the dials hold; cranked
+  again, each lever now acts on the wheel it FACES and the dials read
+  `108` and `144`. With the carriage DOWN and a lever standing set the
+  same shift retires BLOCKED with nothing admitted and nothing else
+  moves, which is the interlock. A machine whose selection leaves a
+  genuine cycle reports its refusal in the page and commits nothing.
+
+- **A piece whose law does not move leaves its coordinate at the EXACT
+  float it held.** The walk that integrates a self-read law took the
+  driven coordinate's own path as `(own + S) − base`, which rounds
+  whenever the skeleton's value is comparable to the coordinate's, so a
+  step that moved nothing still shifted it by one ulp. It now takes the
+  skeleton's CHANGE first, `own + (S − base)`, as the producer's own walk
+  does — which is what makes "a selection change alone moves nothing" a
+  bit-for-bit promise rather than an approximate one. A correction for
+  every version 6 document too, and the conformance corpus is unchanged
+  by it: the producer regenerated the corpus after the same fix.
+
 - **The worker executes a law that READS THE COORDINATE IT DRIVES.**
   solid-node's ADR-121 gave a law the one thing every law it admitted
   before was forbidden: the coordinate a law determines may appear among
@@ -50,20 +109,22 @@ The viewer stops posing a machine and starts running one.
   is a searched one: it runs correctly at the viewer's default `1/240` s
   step and, on the development bench, at about 0.79× real time.
 
-- **The conformance corpus is the producer's regenerated one** — 17
-  scenarios over 14 machines, 328 ticks, including `Clearing` at two step
-  sizes and `StoppedClearing` — replayed here through the shipped engine
-  and compared tick by tick. The width guard gains the producer's three
-  new required features, so a narrower corpus copied in is loud here
-  without anyone running the generator.
+- **The conformance corpus is the producer's regenerated one** — 19
+  scenarios over 16 machines, 356 ticks, including `Clearing` at two step
+  sizes, `StoppedClearing`, and the two selection machines `ShiftedCarry`
+  and `RangedBlock` — replayed here through the shipped engine and
+  compared tick by tick. The width guard gains the producer's six new
+  required features across the two cycles, so a narrower corpus copied in
+  is loud here without anyone running the generator.
 
-- **`documentVersions` becomes `[1, 2, 3, 4, 5, 6]` and the declared API
-  version rises to 15.** Executing a version 6 document is a capability a
-  host may require BEFORE it mounts, because unlike a `controls` table or
-  a `markings` list it is not additive: a build at the previous version
-  refuses such a document by name and renders nothing at all.
-  `bundle.py`'s released-versions floor does not move — it is what a
-  viewer that predates the declaration is entitled to be assumed to read.
+- **`documentVersions` becomes `[1, 2, 3, 4, 5, 6, 7]` and the declared
+  API version rises to 16.** Executing a version 6 document, and then a
+  version 7 one, is each a capability a host may require BEFORE it
+  mounts, because unlike a `controls` table or a `markings` list neither
+  is additive: a build at the previous version refuses such a document by
+  name and renders nothing at all. `bundle.py`'s released-versions floor
+  does not move — it is what a viewer that predates the declaration is
+  entitled to be assumed to read.
 
 - **A document that carries a compiled mechanical program is executed.**
   solid-node's version 5 document is a version 4 one plus a `program`

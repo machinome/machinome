@@ -144,7 +144,7 @@ later update. The viewer SHALL fetch replacements before it removes any node.
 
 The viewer SHALL render either portable `manifest.json` or normal-build
 `viewer.json`, reading their shared fields. It SHALL render document
-versions 1, 2, 3, 4, 5 and 6, and SHALL refuse any other version naming
+versions 1, 2, 3, 4, 5, 6 and 7, and SHALL refuse any other version naming
 it and the versions it renders. A document whose `drivers`
 table is empty SHALL render exactly as a version 1 document. A document
 whose `drivers` table is non-empty SHALL load and render at the pose its
@@ -167,7 +167,15 @@ it drives; it carries NO further key, its shape is otherwise identical,
 and the viewer SHALL load, validate and execute it exactly as it does a
 version 5 one. A version 6 document whose program carries no such edge
 SHALL NOT be refused for that: the version is a property of the content
-the producer published, and this viewer judges the content. A version 5 document MAY also carry a `controls`
+the producer published, and this viewer judges the content. A version 7
+document is a version 6 one whose compiled program carries a cycle of
+edges every one of whose in-cycle dependencies some selection switches;
+it too carries NO further key and its shape is otherwise identical, and
+the viewer SHALL load, validate and execute it under the requirement
+"The worker orders a block per piece". A version 7 document whose program
+carries no such cycle SHALL NOT be refused for that either, and SHALL
+load, pose and run exactly as the same document declared at version 5 or
+6 would. A version 5 document MAY also carry a `controls`
 table, which the viewer SHALL read and validate under the control
 requirements above; the table is additive and does not move the document's
 version, a document carrying none SHALL be read exactly as it was before
@@ -242,7 +250,7 @@ document and the reason.
 
 #### Scenario: A version beyond the ones it reads is refused
 
-- **WHEN** a host mounts a document declaring version 7
+- **WHEN** a host mounts a document declaring version 8
 - **THEN** mounting fails naming that version and the versions the viewer
   renders
 
@@ -261,6 +269,21 @@ document and the reason.
   carries no law edge reading a coordinate it drives
 - **THEN** it loads, poses and runs exactly as the same document declared
   at version 5 would
+
+#### Scenario: A document whose program carries a block is rendered
+
+- **WHEN** a host mounts a document declaring version 7, whose program's
+  edges carry a cycle over what they read and determine
+- **THEN** it renders at the pose the program's published rest values
+  evaluate to, its run is available on the handle, and nothing about the
+  document's shape differs from a version 6 one
+
+#### Scenario: A version 7 document with no such cycle is rendered too
+
+- **WHEN** a host mounts a document declaring version 7 whose program's
+  edges carry no cycle at all
+- **THEN** it loads, poses and runs exactly as the same document declared
+  at version 5 or 6 would
 
 #### Scenario: Older documents are untouched
 
@@ -432,13 +455,13 @@ the canvas. Absent a host choice, it SHALL add no such attributes.
 The package SHALL declare one API version, expose it on every mount handle and
 the browser global, and make it readable without executing the bundle. It SHALL
 be raised whenever the mount interface or handle changes incompatibly, and when
-a capability a host may require is added. The declared version SHALL be 15,
-reflecting the execution of a document whose compiled program carries a law
-that reads the coordinate it drives — the version 6 document a build at the
-previous version refuses by name — on top of the drawing of the markings a
-document's parts carry, part controls, the inspector layout, the mountable
-assembly navigator, the published assembly-navigation state and its change
-subscription.
+a capability a host may require is added. The declared version SHALL be 16,
+reflecting the ordering of a block of the compiled program once per piece of a
+step — the version 7 document a build at the previous version refuses by name —
+on top of the execution of a law that reads the coordinate it drives, the
+drawing of the markings a document's parts carry, part controls, the inspector
+layout, the mountable assembly navigator, the published assembly-navigation
+state and its change subscription.
 
 The package SHALL also declare, in the same one place, the document schema
 versions this build reads, and SHALL report them beside the API version
@@ -1571,7 +1594,12 @@ For each step the viewer SHALL take the movement each active command
 admits for that step — a pure function of the number of steps since the
 command started, so a replayed run admits exactly the same travel — and
 propagate it over the edges in the published order, producing one
-increment per determined value and committing them together.
+increment per determined value and committing them together. Where the
+published edges carry a cycle, the entries propagated over are the edges
+with each such cycle contracted to ONE entry, ordered under the
+requirement "The worker orders a block per piece"; a program with no
+cycle is propagated over exactly as it was before the viewer knew of
+blocks.
 
 - A **continuous law** SHALL contribute the difference of its expression
   evaluated at the end of the step's path and at its start.
@@ -1594,6 +1622,14 @@ increment per determined value and committing them together.
   it, the ABSOLUTE value that end holds at the end of the step, and the
   step SHALL commit that value rather than the coordinate's starting
   value plus its increment.
+- A **BLOCK** — a cycle of edges contracted to one entry — SHALL
+  contribute, for each value it determines, the sum of that value's
+  increments over the pieces its selectors cut the step into, each piece
+  ordered and run under the requirement "The worker orders a block per
+  piece"; and SHALL additionally report, for a value at least one of
+  those pieces placed, the ABSOLUTE value it has advanced that value to
+  by the END of the step, which the step SHALL commit in place of the
+  starting value plus the increment.
 - A **wiring** SHALL contribute its source's increment times its published
   factor; a **derived coordinate** SHALL contribute its published linear
   combination, forward or solved backward into its one term, with the
@@ -1619,9 +1655,9 @@ be stopped. A bound that reads the bounded coordinate alone SHALL be
 evaluated once per step from the committed bank, so every segment of one
 step is measured against the same number.
 
-An absolute value reported by a law that reads the coordinate it drives
-SHALL be applied to the segment's committed state BEFORE any bound is
-examined, so that the bounds are judged against the value the step will
+An absolute value reported by a law that reads the coordinate it drives,
+or by a block, SHALL be applied to the segment's committed state BEFORE
+any bound is examined, so that the bounds are judged against the value the step will
 actually commit; and where a declared bound stops the same coordinate in
 the same segment, the BOUND SHALL win, the coordinate being committed
 exactly at it. Such a report SHALL NOT be a stop: it stops no input,
@@ -1804,6 +1840,14 @@ the inputs blocked for a stop.
 - **THEN** that bound is not evaluated, nothing is stopped by it, and a
   coordinate standing outside it stays where it is
 
+#### Scenario: A block's values are committed together with the rest
+
+- **WHEN** a step propagates over a program whose edges carry a cycle
+- **THEN** the values that cycle determines are committed in the same
+  bank as every other value of that step, a conflict between two routes
+  is judged by the same agreement window, and a step that fails commits
+  none of them
+
 ### Requirement: A program the viewer cannot execute is refused by name
 
 A document whose published program the viewer cannot execute SHALL be
@@ -1844,6 +1888,24 @@ node that is piecewise constant in the coordinate and that a remainder
 alone is not one, because with its quotient fixed a remainder still
 carries the coordinate's slope. Each refusal SHALL name the edge, the
 coordinate and the document.
+
+For a BLOCK — a cycle of the published edges over what they read and
+determine, a value an edge itself determines excluded — the refusal SHALL
+also cover: a published listing of the edges that is not an order in
+which every entry's sources are determined before it runs once each such
+cycle is contracted, naming the two edges and the value; a wiring or a
+derived coordinate on such a cycle, saying that it carries no jump node
+so no selection can switch what it reads; a member of such a cycle that
+determines more than one value, saying that what a selection switches is
+decided per driven end while a group's ends are bound together; a member
+whose driven value is a published computed value rather than a coordinate
+of the bank, saying that a block advances its values piece by piece and
+only a coordinate the run banks keeps that; and a cycle whose members'
+UNCONDITIONAL dependencies — what each still reads with every foldable
+selector at its zero branch — are themselves cyclic, saying that such a
+cycle is present on every piece and that a dependency inside a cycle is
+admitted only where some selection switches it. Each refusal SHALL name
+the edge, the class that stated it, and every relation on the cycle.
 
 A bound's free names SHALL be judged after the document's bindings table
 has been closed over, so a name reached only through a shared
@@ -1924,6 +1986,36 @@ that value is computed from.
 - **THEN** the document loads, its run is created at the published rest
   values, and the bound is executed as a constraint
 
+#### Scenario: A cycle no selection can break
+
+- **WHEN** a loaded program's edges carry a cycle one of whose in-cycle
+  dependencies survives folding every foldable selector of its member to
+  zero
+- **THEN** loading fails naming every relation on the cycle and saying
+  that a dependency inside a cycle is admitted only where a selection
+  switches it, and no frame is rendered
+
+#### Scenario: A wiring on a cycle
+
+- **WHEN** a loaded program's cycle passes through a wiring or a derived
+  coordinate
+- **THEN** loading fails naming it and the cycle, saying that it carries
+  no jump node and that no selection can switch what it reads
+
+#### Scenario: A block member that is not a banked coordinate
+
+- **WHEN** a loaded program's cycle determines a published computed value
+- **THEN** loading fails naming that edge and that value, saying that
+  only a coordinate the run banks keeps the history a block advances
+  piece by piece
+
+#### Scenario: A published listing that is not an order
+
+- **WHEN** a loaded program publishes an edge that reads a value another
+  edge determines LATER in the listing, once every cycle is contracted
+- **THEN** loading fails naming both edges and the value, rather than
+  re-sorting the published edges
+
 ### Requirement: A committed bank poses the geometry
 
 For a document carrying a program, the viewer SHALL pose the model from
@@ -1998,12 +2090,23 @@ the same value before and after its step), a command retired blocked, a
 rate, a run state taken and restored, both instruction forms, a step
 carrying both a crossing and a stop, A LAW THAT READS THE COORDINATE IT
 DRIVES, a self-read coordinate that HOLDS at its gate over a step in
-which an input reaching it goes on moving, and a step carrying both a
-self-read crossing and a stop — so that a narrower corpus copied in
+which an input reaching it goes on moving, a step carrying both a
+self-read crossing and a stop, A SWITCHED SOURCE — a published edge on a
+cycle that reads a value the cycle determines — a SELECTION CROSSING
+inside a step, and a step carrying both a selection crossing and a stop —
+so that a narrower corpus copied in
 is refused here without anyone running the producer's generator. A bound
 reading another coordinate SHALL be recognised through the corpus's own
 bindings table, so a corpus whose bound reaches its reads through a
-shared subexpression counts as covering it.
+shared subexpression counts as covering it. A block and its selectors
+SHALL be re-derived for this assertion FROM THE CORPUS'S OWN DOCUMENTS
+and tick logs, by the same reading a consumer of the document makes and
+not by asking the run engine, so that the assertion is red on a narrowed
+corpus even when the engine is broken; and a crossing SHALL count as a
+SELECTION crossing only where its primitive belongs to a selector of the
+member that determines its coordinate and to no other jump of that
+member, so that a gate which happens to share an operator is not
+mistaken for one.
 
 #### Scenario: Every scenario of the corpus replays
 
@@ -2030,6 +2133,14 @@ shared subexpression counts as covering it.
 - **WHEN** the committed corpus is replaced by one none of whose machines
   states a law reading the coordinate it drives, or none of whose steps
   holds such a coordinate at its gate while an input reaching it moves on
+- **THEN** the suite fails naming the feature no longer covered
+
+#### Scenario: A corpus with no selection is refused
+
+- **WHEN** the committed corpus is replaced by one none of whose machines
+  publishes a cycle of edges with a switched source, or none of whose
+  steps carries a selection crossing, or none of whose steps carries both
+  a selection crossing and a stop
 - **THEN** the suite fails naming the feature no longer covered
 
 #### Scenario: A drifted engine is caught, not tolerated
@@ -2553,6 +2664,21 @@ step naming the relation, the coordinate and the primitive, as a broken
 invariant of the run rather than a step size that is too coarse, and
 SHALL commit nothing.
 
+The driven coordinate's own value along a piece SHALL be computed by
+adding to the value it holds at the piece's left end the CHANGE of the
+substituted law over the piece — the change taken FIRST — so that a piece
+whose substituted law does not move adds a true zero and the coordinate
+keeps the exact float it held. Computed in the other association the sum
+rounds whenever the law's magnitude is comparable to the coordinate's,
+and a coordinate nothing moved would still shift by one unit in the last
+place.
+
+Where such a law is a member of a block, every SELECTOR of its plan SHALL
+hold, through the whole of this walk, the branch the block read at the
+piece's midpoint — in the partition over the independent nodes, in every
+branch reading, in every probe, in every cut and in the far-side landing
+— and that node's crossings SHALL NOT be located again inside the piece.
+
 A coordinate held at its gate SHALL therefore read the same branch on
 every later step, whatever its sources do, SHALL be unmoved by a further
 step in the same direction BIT FOR BIT, and SHALL survive a run state
@@ -2634,10 +2760,208 @@ coordinate itself.
   in the crossing record at its fraction of the step, and the inputs
   that pushed it are retired blocked
 
+#### Scenario: A coordinate no piece moved keeps its exact float
+
+- **WHEN** a step moves a source of a self-read law whose substituted law
+  does not change over the piece, and the driven coordinate stands at a
+  value of a magnitude comparable to that law's
+- **THEN** the coordinate holds the float it held, bit for bit, rather
+  than shifting by one unit in the last place
+
 #### Scenario: A law that reads nothing of its own is untouched
 
 - **WHEN** a document whose every law edge reads only values it does not
   determine is run
 - **THEN** every step is the partition, the midpoint branches and the sum
   it always was, and the run takes the same path at the same cost
+
+### Requirement: The worker orders a block per piece
+
+A published program's dependency graph — edge A before edge B when B
+reads a value A determines, with a value an edge itself determines
+EXCLUDED — MAY carry a cycle. Every nontrivial strongly connected
+component of it is a **BLOCK**, and the viewer SHALL recognise a block
+from what the document already carries, requiring no further key for it.
+A program with no such component SHALL be executed exactly as it is
+today, by the same code, at the same cost.
+
+**The published order of a block's members is a LISTING and not an
+execution order.** The viewer SHALL NOT execute a block's members in the
+order they are published. It SHALL contract each block to ONE entry of
+the program, at the position of the block's first published member, every
+other edge keeping its published position and the edges their relative
+order; and it SHALL verify that the result is an order in which every
+entry's sources are determined before it runs, refusing the document
+naming the two edges and the value otherwise. A consumer that re-sorted
+the published edges would be inventing an ordering decision the producer
+already made.
+
+A **SELECTOR** of a block member is a jump node of that member's plan
+whose published level quantity, closed over the document's own bindings
+table and resolved transitively through the branch placeholders it names,
+reads no value the block determines. A selector's branch is therefore
+known before the block runs. A node whose level reads the member's own
+driven end is NOT a selector and SHALL stay in the walked layer of the
+requirement "The worker executes a law that reads the coordinate it
+drives".
+
+A source of a member is **SWITCHED** when setting a selector's branch to
+ZERO removes it from that member's law. The viewer SHALL decide this by
+folding the member's published skeleton with `x*0`, `0*x` and `0/x`
+taken as zero, `0+y`, `y+0`, `y−0` as the surviving operand and `0−y` as
+its negation, and reading what the folded skeleton then names, following
+every surviving placeholder into its own folded level quantity. A branch
+SHALL be admitted as foldable only where its primitive holds that branch
+over an INTERVAL of its level quantity — a floor, a ceiling, a remainder
+or a comparison — and never where it holds it at a single point, which
+is the case of a sign. ONE fold per member with every foldable selector
+at zero SHALL decide both what that member reads unconditionally and what
+a selection can switch; the value a member reads of its OWN driven end is
+neither.
+
+A shape that can never be ordered SHALL be refused when the document is
+loaded, under the requirement "A program the viewer cannot execute is
+refused by name". The check is deliberately NECESSARY and not SUFFICIENT:
+which branch vectors a machine can actually reach is arithmetic about its
+inputs rather than structure, so a particular piece that is still cyclic
+is refused when it is met.
+
+**Over one step a block SHALL be run PIECE BY PIECE.**
+
+- Every member's SELECTOR crossings SHALL be located over the WHOLE
+  stretch, by the partition any other law's path is cut by, over a plan
+  of that member's selectors alone; they SHALL be merged into one cut
+  list in the members' own order and each member's published jump order,
+  under the published crossing tolerance and crossing limit; and they
+  SHALL be recorded as crossings of the member whose plan states them.
+- On each piece every selector's branch SHALL be read at the piece's
+  MIDPOINT, and each member's ACTIVE sources SHALL be what its skeleton
+  still reads with those actual branch values substituted. The members
+  SHALL be ordered over the in-block ones, a member's own driven end
+  ignored, and that order SHALL be reused for any later piece whose
+  selectors read the same branch VALUES.
+- A piece whose active dependencies are still cyclic SHALL refuse the
+  step, naming the piece, the relations on the cycle, and each selector
+  with its primitive, its level quantity and the value it read. The step
+  SHALL commit nothing.
+- The members SHALL then run over the piece in that order, each by the
+  machinery that already governs it. A source the block does not
+  determine SHALL be taken at its value at the piece's left end, moving
+  by its share of the stretch. A source the block DOES determine SHALL be
+  taken at the value the block has advanced it to by the piece's start,
+  moving by the increment computed for it ON THIS PIECE — and by ZERO
+  where this piece's order has not determined it, which is safe because
+  every term reading it is multiplied by a branch the block forced to
+  zero.
+- **Every selector SHALL be a CONSTANT for every member on that piece**:
+  the branch the block read SHALL be substituted into the member's own
+  plan rather than re-derived inside the piece. A forced node's crossings
+  SHALL NOT be located again, and every reading of its branch — in either
+  layer of a self-read walk, in a probe, in a cut and in a far-side
+  landing — SHALL be the value the block substituted.
+
+**What a block reports.** For each value it determines it SHALL report
+the sum of that value's increments over the pieces. For a value at least
+one piece PLACED, it SHALL additionally report the ABSOLUTE value it has
+advanced that value to by the END of the stretch — the placement plus
+every later piece's increment — and the step SHALL commit that, because a
+reported absolute replaces the starting value plus the increment and
+would otherwise discard the motion after it. A value no piece placed
+SHALL be reported as an increment only.
+
+Every crossing a member reports inside a piece SHALL be rescaled to its
+fraction of the whole stretch, and the whole list — the selectors'
+crossings located over the stretch and the members' own rescaled out of
+their pieces — SHALL be sorted by that fraction before it is recorded, so
+the listing does not depend on which was computed first.
+
+**A declared bound on a value a block determines SHALL be SEARCHED and
+never solved**, whatever affinity the member that determines it
+publishes: a block's value is piecewise in the selector partition and
+re-ordered across it.
+
+A block SHALL be complete and side-effect-free when it is asked for
+increments alone — as the probe that decides which inputs a stop blocks
+asks — recording no crossing, reporting no placement and mutating
+nothing, and SHALL refuse a cyclic piece there under the same midpoint
+reading and the same ordering it uses inside the step, so that a probe
+and the step it is probing for cannot disagree about whether the machine
+can be ordered. The inputs a stop on a block's value blocks SHALL be
+decided by displacing each candidate alone and running the WHOLE block
+under that displacement, so an input that reaches the stopped value only
+through a selection that is inactive at that moment SHALL NOT be blocked.
+
+#### Scenario: A carry that follows the carriage runs
+
+- **WHEN** a document is mounted whose program carries two laws each
+  reading what the other determines, one gated on a carriage position
+  below a detent and the other above it, and the carriage is left below
+  the detent while the crank is turned
+- **THEN** the run commits the values the producer commits for the same
+  machine, the carry reaching the wheel in the step it was made rather
+  than a step later or not at all
+
+#### Scenario: The published listing is not the execution order
+
+- **WHEN** a block's members are published in an order in which one reads
+  what a later one determines, which is what the producer's listing does
+- **THEN** the step orders them by the dependencies the piece's own
+  selection leaves active, and the committed bank does not depend on the
+  order the members were listed in
+
+#### Scenario: A selection crossing cuts the step
+
+- **WHEN** one step carries the selecting input across the value at which
+  a block's selection changes
+- **THEN** the stretch is cut there, each piece is ordered under the
+  branches read at its own midpoint, the members run over each piece with
+  their in-block values carried forward, and the crossing is recorded at
+  its fraction of the step
+
+#### Scenario: A selection change alone moves nothing
+
+- **WHEN** the selecting input is moved from one side of a selection to
+  the other and back, with nothing else moving
+- **THEN** every value the block determines holds the float it held,
+  bit for bit
+
+#### Scenario: A value placed in one piece and moved in a later one
+
+- **WHEN** one step places a block's value at a gate in one piece and
+  another source drives it further in a later piece of the same step
+- **THEN** the committed bank holds the value the block advanced it to by
+  the end of the step, not the value the placement left it at
+
+#### Scenario: A piece that cannot be ordered refuses the step
+
+- **WHEN** a step reads a selection under which every dependency of a
+  block's cycle is active
+- **THEN** the step commits nothing, the bank, the step count and the
+  pose stand, the commands that moved are retired reporting that the step
+  did not happen, and the report names the piece, the relations on the
+  cycle and what each selector read
+
+#### Scenario: A stop on a block's value is searched
+
+- **WHEN** a step drives a value a block determines into a declared bound
+- **THEN** the fraction at which it reaches the bound is found by
+  sampling and bisection over the whole block rather than solved from the
+  member's published affinity, and the value is committed exactly at its
+  bound
+
+#### Scenario: An inactive selection blocks nothing
+
+- **WHEN** a value a block determines reaches a declared bound while an
+  input that reaches it only through a selection that is currently
+  inactive is running
+- **THEN** that input is not blocked and its command completes its whole
+  travel, while the input that does push the value retires blocked
+
+#### Scenario: A program with no cycle is untouched
+
+- **WHEN** a document whose program's dependency graph has no cycle is
+  run
+- **THEN** every step propagates over the published edges in the
+  published order exactly as it did before the viewer knew of blocks, at
+  the same cost, and the committed bank is the same float for float
 

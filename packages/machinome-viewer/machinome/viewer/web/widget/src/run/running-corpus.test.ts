@@ -222,10 +222,10 @@ describe('the running corpus', () => {
   it('is the framework\'s own fixture, unedited', () => {
     expect(fixture.generated_by).toBe('tools/generate_running_corpus.py');
     expect(fixture.corpus).toBe('tests/running_project/machine.py');
-    expect(fixture.machines).toHaveLength(17);
-    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(14);
+    expect(fixture.machines).toHaveLength(19);
+    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(16);
     expect(fixture.machines.reduce((total, one) => total + one.ticks.length, 0))
-      .toBe(328);
+      .toBe(356);
   });
 
   fixture.machines.forEach((entry, index) => {
@@ -262,6 +262,9 @@ const REQUIRED = [
   'a law that reads the coordinate it drives',
   'a self-read coordinate holding at its gate while its input moves on',
   'a tick carrying both a self-read crossing and a stop',
+  'a switched source',
+  'a selection crossing inside a tick',
+  'a tick carrying both a selection crossing and a stop',
 ];
 
 /** Every free name `expression` reads, through the fixture's OWN
@@ -286,16 +289,110 @@ function freeNamesOf(expression: string,
   return found;
 }
 
+/** One published edge, as this guard reads it. */
+interface GuardEdge {
+  kind: string;
+  needs: string[];
+  gives?: string[];
+  plans?: ({ jumps: { name: string; primitive: string; level: string }[] }
+           | null)[];
+}
+
+/** The index of the edge determining `coordinate`, or `-1` --
+ * `tools/generate_running_corpus.py`'s `_member_of`, over the published
+ * edges INCLUDING the checks, exactly as the generator indexes them. */
+function memberOf(edges: GuardEdge[], coordinate: string): number {
+  for (let index = 0; index < edges.length; index += 1) {
+    if ((edges[index].gives ?? []).includes(coordinate)) return index;
+  }
+  return -1;
+}
+
+/** What the BLOCKS give, and each member's SELECTOR primitives --
+ * `tools/generate_running_corpus.py`'s `_selection`, mirrored here and
+ * never taken from `loadProgram`: this guard must be red on a narrowed
+ * corpus even when the engine is broken.
+ *
+ * A block is a strongly connected component of the graph over the edges'
+ * own `needs` and `gives` with a need the edge itself gives excluded; a
+ * selector is a jump of a member's plan whose `level` -- placeholders
+ * resolved transitively into their own jumps' levels, every name closed
+ * over the document's bindings table -- names no id the block gives. The
+ * primitives reported are the ones a selector of that member has and no
+ * OTHER jump of it has, so a crossing carrying one is a selection
+ * crossing and not a gate that happens to share an operator. */
+function selectionOf(edges: GuardEdge[], bindings: Record<string, string>):
+{ gives: Set<string>; selectors: Map<number, Set<string>> } {
+  const kept = edges.filter((edge) => edge.kind !== 'check');
+  const determiner = new Map<string, number>();
+  kept.forEach((edge, index) => {
+    for (const name of edge.gives ?? []) determiner.set(name, index);
+  });
+  const after = kept.map((edge) => {
+    const own = new Set(edge.gives ?? []);
+    const found = new Set<number>();
+    for (const name of edge.needs ?? []) {
+      if (own.has(name)) continue;
+      const source = determiner.get(name);
+      if (source !== undefined) found.add(source);
+    }
+    return found;
+  });
+  const members = new Set<number>();
+  for (let start = 0; start < kept.length; start += 1) {
+    const seen = new Set<number>();
+    const pending = [...after[start]];
+    while (pending.length > 0) {
+      const node = pending.pop()!;
+      if (seen.has(node)) continue;
+      seen.add(node);
+      pending.push(...after[node]);
+    }
+    if (seen.has(start)) members.add(start);
+  }
+  const gives = new Set<string>();
+  for (const index of members) {
+    for (const name of kept[index].gives ?? []) gives.add(name);
+  }
+  const selectors = new Map<number, Set<string>>();
+  for (const index of members) {
+    const found = new Set<string>();
+    const other = new Set<string>();
+    for (const plan of kept[index].plans ?? []) {
+      if (plan === null || plan === undefined) continue;
+      const levels = new Map<string, string>();
+      for (const jump of plan.jumps) levels.set(jump.name, jump.level);
+      for (const jump of plan.jumps) {
+        const names = new Set<string>();
+        const pending = [jump.level];
+        while (pending.length > 0) {
+          const text = pending.pop()!;
+          for (const name of freeNamesOf(text, bindings)) {
+            const inner = levels.get(name);
+            if (inner !== undefined) pending.push(inner);
+            else names.add(name);
+          }
+        }
+        if ([...names].some((name) => gives.has(name))) {
+          other.add(jump.primitive);
+        } else {
+          found.add(jump.primitive);
+        }
+      }
+    }
+    selectors.set(index, new Set(
+      [...found].filter((primitive) => !other.has(primitive))));
+  }
+  return { gives, selectors };
+}
+
 export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
   const seen = new Set<string>();
   for (const entry of machines) {
     const document = entry.document as {
       program?: {
         coordinates?: Record<string, { initial?: number }>;
-        edges?: {
-          kind: string; needs: string[]; gives?: string[];
-          plans?: ({ jumps: { primitive: string }[] } | null)[];
-        }[];
+        edges?: GuardEdge[];
         spans?: Record<string, Record<string, unknown>>;
         sources?: Record<string, string[]>;
       };
@@ -353,6 +450,15 @@ export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
       }
     }
     if (reads.size > 0) seen.add('a law that reads the coordinate it drives');
+    // The BLOCK and its SELECTORS, re-derived from the published edges
+    // exactly as a consumer must: no key carries either.
+    const { gives: blockGives, selectors } =
+      selectionOf(program.edges ?? [], bindings);
+    if ((program.edges ?? []).some(
+      (edge, index) => selectors.has(index)
+        && edge.needs.some((name) => blockGives.has(name)))) {
+      seen.add('a switched source');
+    }
     const sources = program.sources ?? {};
     let previous: Record<string, number> | null = null;
     for (const tick of entry.ticks) {
@@ -381,6 +487,17 @@ export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
           : (program.coordinates ?? {})[stop.coordinate]?.initial;
         if (before !== undefined && before === tick.bank[stop.coordinate]) {
           seen.add('a stop reached by the motion of what a bound reads');
+        }
+      }
+      const selection = tick.crossings.filter((one) => {
+        const found = selectors.get(
+          memberOf(program.edges ?? [], one.coordinate));
+        return found !== undefined && found.has(one.primitive);
+      });
+      if (selection.length > 0) {
+        seen.add('a selection crossing inside a tick');
+        if (tick.stops.length > 0) {
+          seen.add('a tick carrying both a selection crossing and a stop');
         }
       }
       if (tick.stops.length > 0 && tick.crossings.length > 0) {
@@ -421,5 +538,9 @@ describe('the corpus\'s width', () => {
       'a self-read coordinate holding at its gate while its input moves on');
     expect(uncoveredFeatures(trimmed)).toContain(
       'a tick carrying both a self-read crossing and a stop');
+    // And one of the three the selection added: `Train`'s edges hold no
+    // cycle at all, so it has no block and no selector.
+    expect(uncoveredFeatures(trimmed)).toContain(
+      'a selection crossing inside a tick');
   });
 });

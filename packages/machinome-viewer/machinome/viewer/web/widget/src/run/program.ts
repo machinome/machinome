@@ -27,7 +27,7 @@
 import { BindingTable, bindingTable } from '../bindings';
 import { freeVariables } from '../evaluator';
 import {
-  expressionGeneration, NodeId, prepare, valueOf,
+  expressionGeneration, NodeId, prepare, structureOf, valueOf,
 } from '../expressions';
 import {
   Manifest, ManifestBinding, ManifestDriver, ManifestInstruction,
@@ -101,7 +101,11 @@ export const JUMP_PRIMITIVES = [
 
 export type JumpPrimitive = typeof JUMP_PRIMITIVES[number];
 
-export type EdgeKind = 'law' | 'wiring' | 'formula' | 'check';
+/** `block` is DERIVED by the loader and never published: a document
+ * declaring `kind: "block"` is refused as an unknown kind exactly as it
+ * always was, because `EDGE_KINDS` -- which validates the PUBLISHED kind
+ * -- does not carry it (design D1.3). */
+export type EdgeKind = 'law' | 'wiring' | 'formula' | 'check' | 'block';
 
 const EDGE_KINDS: readonly EdgeKind[] = ['law', 'wiring', 'formula', 'check'];
 
@@ -181,6 +185,50 @@ export interface ProgramEdge {
   factors: number[];
   constant: number;
   slot: string | null;
+  /** The `_Block` reading for a compound BLOCK edge, and `null` for
+   * every other kind: a block is ONE entry of the program, so the
+   * loader contracts the cycle and `run.ts` meets it through the edge
+   * interface it already calls (design D1.3, D6). */
+  block: ProgramBlock | null;
+}
+
+/** One member of a block: an ordinary law edge, its SELECTORS, and what
+ * a selection can and cannot switch off what it reads (design D1.4-D1.6,
+ * `simulation/program.py`'s `_Block.__init__`). */
+export interface BlockMember {
+  readonly edge: ProgramEdge;
+  /** The member's single driven end, which is `edge.gives[0]`. */
+  readonly own: string;
+  /** The member's own published plan, or `null` for a law with no jump
+   * in it at all. */
+  readonly plan: ProgramPlan | null;
+  /** The jumps of that plan whose LEVEL reads no id the block gives. */
+  readonly selectors: readonly ProgramJump[];
+  /** A plan of the member's SELECTORS ALONE over its own published
+   * skeleton -- a well formed plan, because selectorhood is upward
+   * closed along the nesting. `null` where the member carries no plan. */
+  readonly selectorPlan: ProgramPlan | null;
+  /** The block's ids this member reads under the ALL-ZERO fold, its own
+   * driven end excluded: what no selection can switch off. */
+  readonly unconditional: ReadonlySet<string>;
+  /** What it reads unfolded BEYOND that: what a selection switches. */
+  readonly switched: ReadonlySet<string>;
+}
+
+/** A nontrivial strongly connected component of the program's dependency
+ * graph, re-derived at LOAD from the published edges' own `needs` and
+ * `gives` (design D1). */
+export interface ProgramBlock {
+  readonly members: readonly BlockMember[];
+  /** Each member's single driven end, in the members' own order. */
+  readonly gives: readonly string[];
+  /** The block's ids `members[index]` still READS with `forced`'s
+   * placeholders holding the branches it names -- the RUN-TIME fold
+   * (`_Block._order`). A member's own driven end may be in it; the
+   * ordering skips it, because a read of one's own end is ADR-121's
+   * self-read and not a wait on anything else. */
+  activeReads(index: number, forced: Record<string, number>):
+  ReadonlySet<string>;
 }
 
 export interface ProgramLimits {
@@ -316,6 +364,282 @@ export function evaluateExpression(
     bindings: program.bindings.roots(),
   });
   return typeof value === 'number' ? value : Number(value);
+}
+
+// ---------------------------------------------------------------------
+// A SELECTION: the block, its selectors and the fold (design D1;
+// `simulation/program.py`'s `_FOLDABLE`, `_folded`, `_reads_under`,
+// `_selectors`, `_components` and `_strongly_connected`, reproduced
+// function for function).
+// ---------------------------------------------------------------------
+
+/** The jump primitives whose ZERO BRANCH is held over an INTERVAL of the
+ * level quantity, and which can therefore make a source SWITCHED:
+ * `floor` over `[0, 1)`, `ceil` over `(-1, 0]`, a remainder's quotient
+ * over `(-1, 1)` and a comparison over the whole of its false side.
+ *
+ * `sign` is the one that does NOT qualify -- `branchOf` answers `0` for
+ * it only where the level is EXACTLY zero, one point and not an interval
+ * -- so a `sign`-gated source is never switched, and a cycle whose only
+ * gate is a `sign` is refused at LOAD rather than at the first tick. */
+const FOLDABLE: readonly string[] =
+  ['floor', 'ceil', '%', '<', '<=', '>', '>=', '==', '!='];
+
+interface Folded {
+  readonly zero: boolean;
+  readonly names: ReadonlySet<string>;
+}
+
+const NO_NAMES: ReadonlySet<string> = new Set<string>();
+const ZERO_FOLD: Folded = { zero: true, names: NO_NAMES };
+
+function unionNames(parts: readonly ReadonlySet<string>[]): ReadonlySet<string> {
+  if (parts.length === 0) return NO_NAMES;
+  if (parts.length === 1) return parts[0];
+  const found = new Set<string>();
+  for (const part of parts) {
+    for (const name of part) found.add(name);
+  }
+  return found;
+}
+
+/** One node of the shared DAG under one substitution, as the pair
+ * `(is it the literal zero, what names does it still read)` -- the
+ * producer's `_folded` read for its effect on NAMES (design D1.5).
+ *
+ * The viewer needs only the names, never the folded tree, so the rules
+ * are applied in ONE bottom-up pass over the hash-consed DAG rather than
+ * by minting nodes for a value nothing evaluates.
+ *
+ * Two rows are deliberately NOT zero-propagating, because the producer's
+ * `is_zero` is true only of a NUMERIC LITERAL: `0 - y` becomes a UNARY
+ * node, never a literal, and a unary minus over a zero stays a unary
+ * node for the same reason.
+ *
+ * A BINDING name is walked INTO rather than reported: it stands for
+ * exactly the subexpression the publication extracted, which is the
+ * expression the producer folds. A binding carrying a placeholder is a
+ * shape the producer really emits (`CarryLead`'s `_b6 = (360.0 * _j0)`),
+ * and stopping the fold at the name would leave that zero unpropagated. */
+function foldedNames(root: NodeId, substitution: Record<string, number>,
+                     bindings: ReadonlyMap<string, NodeId> | undefined,
+                     memo: Map<NodeId, Folded>): Folded {
+  const cached = memo.get(root);
+  if (cached !== undefined) return cached;
+  const node = structureOf(root);
+  let found: Folded;
+  if (node.kind === 'name') {
+    const name = node.name as string;
+    if (Object.prototype.hasOwnProperty.call(substitution, name)) {
+      // The producer replaces a substituted placeholder with a numeric
+      // literal, so it contributes no name whatever its value.
+      found = { zero: substitution[name] === 0, names: NO_NAMES };
+    } else {
+      const binding = bindings === undefined ? undefined : bindings.get(name);
+      found = binding === undefined
+        ? { zero: false, names: new Set([name]) }
+        : foldedNames(binding, substitution, bindings, memo);
+    }
+  } else if (node.kind === 'const') {
+    // `float(text) == 0.0`: a literal whose numeric value is zero in any
+    // spelling (`0`, `0.0`, `-0.0`).
+    found = typeof node.value === 'number' && node.value === 0
+      ? ZERO_FOLD
+      : { zero: false, names: NO_NAMES };
+  } else if (node.kind === 'binary' && node.op !== null
+             && ['*', '/', '+', '-'].includes(node.op)) {
+    const left = foldedNames(node.children[0], substitution, bindings, memo);
+    const right = foldedNames(node.children[1], substitution, bindings, memo);
+    const both = () => ({
+      zero: false, names: unionNames([left.names, right.names]),
+    });
+    if (node.op === '*') {
+      found = (left.zero || right.zero) ? ZERO_FOLD : both();
+    } else if (node.op === '/') {
+      found = left.zero ? ZERO_FOLD : both();
+    } else if (node.op === '+') {
+      if (left.zero) found = right;
+      else if (right.zero) found = left;
+      else found = both();
+    } else if (right.zero) {
+      found = left;
+    } else if (left.zero) {
+      found = { zero: false, names: right.names };
+    } else {
+      found = both();
+    }
+  } else {
+    found = {
+      zero: false,
+      names: unionNames(node.children.map(
+        (child) => foldedNames(child, substitution, bindings, memo).names)),
+    };
+  }
+  memo.set(root, found);
+  return found;
+}
+
+/** Every coordinate a law still READS with `substitution`'s placeholders
+ * holding the branches it names: the folded skeleton's free names, with
+ * every SURVIVING placeholder followed into its own folded level
+ * quantity, transitively -- `_reads_under`. */
+export function readsUnder(plan: ProgramPlan,
+                           substitution: Record<string, number>,
+                           nodeOf: (expression: string) => NodeId,
+                           bindings: ReadonlyMap<string, NodeId> | undefined):
+ReadonlySet<string> {
+  const byName = new Map<string, ProgramJump>();
+  for (const jump of plan.jumps) byName.set(jump.name, jump);
+  const memo = new Map<NodeId, Folded>();
+  const pending = [...foldedNames(nodeOf(plan.skeleton), substitution,
+                                  bindings, memo).names];
+  const seen = new Set<string>();
+  const found = new Set<string>();
+  while (pending.length > 0) {
+    const name = pending.pop() as string;
+    if (seen.has(name)) continue;
+    seen.add(name);
+    const jump = byName.get(name);
+    if (jump === undefined) {
+      found.add(name);
+      continue;
+    }
+    for (const inner of foldedNames(nodeOf(jump.level), substitution,
+                                    bindings, memo).names) {
+      pending.push(inner);
+    }
+  }
+  return found;
+}
+
+/** A plan's SELECTORS: the jump nodes whose LEVEL QUANTITY reads no id in
+ * `determined` -- a placeholder standing in that level resolved into the
+ * jump it replaced, transitively, and every name closed over the
+ * document's own bindings table (`_selectors`).
+ *
+ * Upward closed along the nesting for `_dependence`'s own reason: a
+ * placeholder stands for exactly the subtree it replaced, and the plan
+ * lists its jumps in POSTORDER, so an inner node is decided before the
+ * node it sits in. */
+function selectorsOf(plan: ProgramPlan, determined: ReadonlySet<string>,
+                     namesOf: (expression: string) => ReadonlySet<string>):
+ProgramJump[] {
+  const reaches = new Map<string, boolean>();
+  const found: ProgramJump[] = [];
+  for (const jump of plan.jumps) {
+    let touches = false;
+    for (const name of namesOf(jump.level)) {
+      if (determined.has(name) || reaches.get(name) === true) {
+        touches = true;
+        break;
+      }
+    }
+    reaches.set(jump.name, touches);
+    if (!touches) found.push(jump);
+  }
+  return found;
+}
+
+/** Tarjan over an adjacency list, ITERATIVELY -- a deep chain must not
+ * exhaust the JavaScript stack any more than it may exhaust the
+ * interpreter's -- with the components and their members in the list's
+ * own order (`_strongly_connected`). */
+export function stronglyConnected(
+  after: readonly (readonly number[])[],
+): number[][] {
+  const indexOf = new Map<number, number>();
+  const low = new Map<number, number>();
+  const onStack = new Set<number>();
+  const stack: number[] = [];
+  const found: number[][] = [];
+  let counter = 0;
+  for (let root = 0; root < after.length; root += 1) {
+    if (indexOf.has(root)) continue;
+    const work: [number, number][] = [[root, 0]];
+    while (work.length > 0) {
+      const frame = work[work.length - 1];
+      const node = frame[0];
+      const step = frame[1];
+      if (step === 0) {
+        indexOf.set(node, counter);
+        low.set(node, counter);
+        counter += 1;
+        stack.push(node);
+        onStack.add(node);
+      }
+      if (step < after[node].length) {
+        frame[1] = step + 1;
+        const child = after[node][step];
+        if (!indexOf.has(child)) {
+          work.push([child, 0]);
+        } else if (onStack.has(child)) {
+          low.set(node, Math.min(low.get(node) as number,
+                                 indexOf.get(child) as number));
+        }
+        continue;
+      }
+      work.pop();
+      if (work.length > 0) {
+        const parent = work[work.length - 1][0];
+        low.set(parent, Math.min(low.get(parent) as number,
+                                 low.get(node) as number));
+      }
+      if (low.get(node) === indexOf.get(node)) {
+        const component: number[] = [];
+        for (;;) {
+          const other = stack.pop() as number;
+          onStack.delete(other);
+          component.push(other);
+          if (other === node) break;
+        }
+        component.sort((a, b) => a - b);
+        found.push(component);
+      }
+    }
+  }
+  found.sort((a, b) => a[0] - b[0]);
+  return found;
+}
+
+/** The strongly connected components of the program's DEPENDENCY GRAPH,
+ * in the published order: edge A precedes edge B when B reads a
+ * coordinate A determines, with a coordinate an edge itself determines
+ * EXCLUDED -- that is the self-read, which is not a wait on anything
+ * else (`_components`).
+ *
+ * A `check` determines nothing, so nothing ever waits on it and it can
+ * never be in a component; it is left exactly where it is published. */
+export function componentsOf(list: readonly ProgramEdge[]): number[][] {
+  const determines = new Map<string, number>();
+  list.forEach((edge, index) => {
+    for (const key of edge.gives) determines.set(key, index);
+  });
+  const after = list.map((edge) => {
+    const own = new Set(edge.gives);
+    const found: number[] = [];
+    for (const key of edge.needs) {
+      if (own.has(key)) continue;
+      const source = determines.get(key);
+      if (source !== undefined && !found.includes(source)) found.push(source);
+    }
+    return found;
+  });
+  return stronglyConnected(after);
+}
+
+/** The refusal a cycle no selection breaks has always had, with one
+ * sentence saying what a switch would be (`_cycle_message`). */
+function cycleMessage(stuck: readonly ProgramEdge[]): string {
+  return (
+    `the relations ${stuck.map((edge) => edge.description).join(', ')} form ` +
+    'a cycle the run cannot order: each waits on a coordinate another ' +
+    'determines. A running program is acyclic, because the rest render ' +
+    'solved every relation in one direction. A dependency inside a cycle ' +
+    'is admitted only where it is SWITCHED: a source that folding a jump ' +
+    "node to zero removes from the law, where that node's level reads no " +
+    'coordinate the cycle determines and its zero branch is one the node ' +
+    'holds over an INTERVAL of that level -- floor, ceil, a remainder or a ' +
+    'comparison, and not sign, whose zero is a single point.');
 }
 
 export function loadProgram(
@@ -522,6 +846,7 @@ export function loadProgram(
       factors: [],
       constant: 0,
       slot: null,
+      block: null,
     };
 
     if (kind === 'law') {
@@ -879,6 +1204,239 @@ export function loadProgram(
     edge.retained = edge.gives.map(
       (_key, at) => (at === index ? reading : null));
   }
+  // The BLOCK, re-derived HERE, once, at load (design D1).
+  //
+  // A version 7 document carries NO NEW KEY: `Program.published` emits a
+  // block's members as ordinary law edges in the producer's own
+  // deterministic order, and that order is a LISTING and not an
+  // execution order. Membership and selectorhood are FUNCTIONS of the
+  // published edges, so a consumer derives them -- ADR-110's line, the
+  // same one that makes `determiner` derived and `sources` published.
+  //
+  // Nothing here tests the version number: a version 7 document whose
+  // edges hold no nontrivial component produces no block and takes
+  // exactly the path a version 5 or 6 one takes.
+
+  /** What cannot be a block member, refused by relation identity
+   * (`_refuse_unselectable`). */
+  const refuseUnselectable = (members: readonly ProgramEdge[]): void => {
+    const listed = members.map((other) => other.description).join(', ');
+    for (const edge of members) {
+      if (edge.kind === 'wiring' || edge.kind === 'formula') {
+        refuse(
+          `${edge.description}, stated by ${edge.statedBy}: it is on a ` +
+          `dependency cycle -- ${listed} -- and it carries no jump node, ` +
+          'so no selection can switch what it reads. A cycle is admitted ' +
+          'only where every dependency inside it is gated by a jump node ' +
+          'whose level reads no coordinate the cycle determines. State the ' +
+          'value as a relation whose law carries the gate.');
+      }
+    }
+    for (const edge of members) {
+      if (edge.gives.length !== 1) {
+        refuse(
+          `${edge.description}, stated by ${edge.statedBy}: it drives a ` +
+          `GROUP and it is on a dependency cycle -- ${listed}. A member of ` +
+          'a block drives ONE coordinate, because what a selection ' +
+          "switches is decided per driven end off that end's own " +
+          "expression, while a group's ends are claimed and bound " +
+          'together. State each end as a relation of its own.');
+      }
+    }
+    for (const edge of members) {
+      if (!bank.has(edge.gives[0])) {
+        refuse(
+          `${edge.description}, stated by ${edge.statedBy}: it drives ` +
+          `${edge.gives[0]}, which the running simulation does not own, ` +
+          `and it is on a dependency cycle -- ${listed}. A block advances ` +
+          'its coordinates PIECE BY PIECE inside a tick, and only a ' +
+          'coordinate the run owns keeps that history -- a plain port and ' +
+          'a derived coordinate are calculations the ordinary enumeration ' +
+          'recomputes from the bank on every tick. State the relation into ' +
+          'the joint coordinate and let the port follow it.');
+      }
+    }
+  };
+
+  /** One component read as a block: its selectors, its fold, and what a
+   * selection can switch (`_Block.__init__`). */
+  const blockOf = (members: readonly ProgramEdge[]): ProgramBlock => {
+    const gives = members.map((member) => member.gives[0]);
+    const determined: ReadonlySet<string> = new Set(gives);
+    const built: BlockMember[] = members.map((member) => {
+      const own = member.gives[0];
+      const plan = member.plans.length > 0 ? member.plans[0] : null;
+      if (plan === null) {
+        // A law with no jump in it carries no selector at all, so
+        // everything it reads in the block is unconditional.
+        return {
+          edge: member,
+          own,
+          plan: null,
+          selectors: [],
+          selectorPlan: null,
+          unconditional: new Set(member.needs.filter(
+            (key) => determined.has(key) && key !== own)),
+          switched: new Set<string>(),
+        };
+      }
+      const selectors = selectorsOf(plan, determined, namesOf);
+      // ONE all-zero fold answers both questions the load asks, because
+      // the fold is MONOTONE in the set of names sent to zero and the
+      // all-zero assignment is therefore the minimum over every
+      // assignment. A search over 2^n selector assignments would invite
+      // 2^n folds per member and leave the load's cost undefined.
+      const zero: Record<string, number> = {};
+      for (const jump of selectors) {
+        if (FOLDABLE.includes(jump.primitive)) zero[jump.name] = 0;
+      }
+      const inBlock = (keys: ReadonlySet<string>): Set<string> => new Set(
+        [...keys].filter((key) => determined.has(key) && key !== own));
+      // A read of the member's OWN driven end is ADR-121's self-read,
+      // not a wait on anything else, and is excluded from both sets
+      // exactly as the dependency graph excludes it.
+      const whole = inBlock(readsUnder(plan, {}, nodeOf, table.roots()));
+      const least = inBlock(readsUnder(plan, zero, nodeOf, table.roots()));
+      return {
+        edge: member,
+        own,
+        plan,
+        selectors,
+        selectorPlan: { skeleton: plan.skeleton, jumps: selectors },
+        unconditional: least,
+        switched: new Set([...whole].filter((key) => !least.has(key))),
+      };
+    });
+    return {
+      members: built,
+      gives,
+      activeReads: (index, forced) => {
+        const member = built[index];
+        if (member.plan === null) return member.unconditional;
+        const reads = readsUnder(member.plan, forced, nodeOf, table.roots());
+        return new Set([...reads].filter((key) => determined.has(key)));
+      },
+    };
+  };
+
+  /** The members whose UNCONDITIONAL dependencies still form a cycle, or
+   * `[]` (`_Block.unconditional_cycle`). Present on every piece, so it
+   * is refused at LOAD with the message a plain cycle of two ordinary
+   * laws has always had. */
+  const unconditionalCycle = (block: ProgramBlock): ProgramEdge[] => {
+    let remaining = block.members.map((_member, index) => index);
+    const resolved = new Set<string>();
+    while (remaining.length > 0) {
+      const ready = remaining.filter((index) => [
+        ...block.members[index].unconditional,
+      ].every((key) => key === block.gives[index] || resolved.has(key)));
+      if (ready.length === 0) {
+        return remaining.map((index) => block.members[index].edge);
+      }
+      for (const index of ready) resolved.add(block.gives[index]);
+      remaining = remaining.filter((index) => !ready.includes(index));
+    }
+    return [];
+  };
+
+  /** One block as the single edge the program carries (`_block_edge`). */
+  const blockEdge = (block: ProgramBlock): ProgramEdge => {
+    const needs: string[] = [];
+    const statedBy: string[] = [];
+    for (const member of block.members) {
+      for (const key of member.edge.needs) {
+        if (!needs.includes(key)) needs.push(key);
+      }
+      if (!statedBy.includes(member.edge.statedBy)) {
+        statedBy.push(member.edge.statedBy);
+      }
+    }
+    return {
+      kind: 'block',
+      needs,
+      gives: [...block.gives],
+      description: block.members.map(
+        (member) => member.edge.description).join('; '),
+      statedBy: statedBy.join(', '),
+      expressions: [],
+      // A block's value is piecewise in the SELECTOR partition AND
+      // re-ordered across it, so a stop on one of its coordinates is
+      // SEARCHED, never solved (design D4.2).
+      affine: block.gives.map(() => false),
+      plans: block.gives.map(() => null),
+      retained: [],
+      factor: 0,
+      factors: [],
+      constant: 0,
+      slot: null,
+      block,
+    };
+  };
+
+  // `_blocked`: every nontrivial component contracted to ONE compound
+  // entry at the index of its FIRST member, every other edge keeping its
+  // published position and its relative order.
+  let executed: ProgramEdge[] = edges;
+  const components = componentsOf(edges);
+  const made = new Map<number, ProgramEdge>();
+  const taken = new Set<number>();
+  for (const component of components) {
+    if (component.length < 2) continue;
+    const members = component.map((index) => edges[index]);
+    refuseUnselectable(members);
+    const block = blockOf(members);
+    const stuck = unconditionalCycle(block);
+    if (stuck.length > 0) refuse(cycleMessage(stuck));
+    made.set(component[0], blockEdge(block));
+    for (const index of component) taken.add(index);
+  }
+  if (made.size > 0) {
+    executed = [];
+    edges.forEach((edge, index) => {
+      const found = made.get(index);
+      if (found !== undefined) executed.push(found);
+      else if (!taken.has(index)) executed.push(edge);
+    });
+  }
+
+  // The contracted sequence VERIFIED to be a topological order of the
+  // contracted graph, and never re-sorted (design D1.2). Kahn-ordering
+  // it here -- which is what the producer does at construction -- would
+  // silently accept a document whose published listing disagrees with
+  // its own content, which is precisely the failure version 7 exists to
+  // make loud. This viewer reads the order compile time decided
+  // (ADR-047) and checks it.
+  const determinedBy = new Map<string, number>();
+  executed.forEach((edge, index) => {
+    for (const key of edge.gives) determinedBy.set(key, index);
+  });
+  executed.forEach((edge, index) => {
+    const own = new Set(edge.gives);
+    for (const key of edge.needs) {
+      if (own.has(key)) continue;
+      const source = determinedBy.get(key);
+      if (source !== undefined && source > index) {
+        refuse(
+          'its published edges are not in an order this engine can ' +
+          `execute: ${edge.description} reads "${key}", which ` +
+          `${executed[source].description} determines LATER in the ` +
+          "published listing. The published order of a program's edges is " +
+          "the order it runs in, with a block's members contracted to one " +
+          'entry; a consumer that re-sorted them would be inventing an ' +
+          'ordering decision the producer already made.');
+      }
+    }
+  });
+
+  // The inversion of `gives`, over the edges the engine EXECUTES: a
+  // block give is determined by the block, at that give's position in
+  // the block's own `gives` -- which is what `Run.locate` reads
+  // `affine[index]` and `edgeCuts(..., index)` by (design D4.5).
+  determiner.clear();
+  executed.forEach((edge) => {
+    edge.gives.forEach((id, index) => determiner.set(id, { edge, index }));
+  });
+
   // 11 (continued). What a bound may read: the bounded coordinate's own
   // id together with every coordinate of the bank (design D3). An
   // intermediate, the clock, a branch placeholder or an unknown name is
@@ -891,8 +1449,8 @@ export function loadProgram(
   const subProgram = (keys: readonly string[]): ProgramEdge[] => {
     const needed = new Set(keys);
     const chosen: ProgramEdge[] = [];
-    for (let at = edges.length - 1; at >= 0; at -= 1) {
-      const edge = edges[at];
+    for (let at = executed.length - 1; at >= 0; at -= 1) {
+      const edge = executed[at];
       if (edge.kind === 'check') continue;
       if (edge.gives.some((key) => needed.has(key))) {
         chosen.push(edge);
@@ -952,7 +1510,7 @@ export function loadProgram(
     coordinates,
     initial,
     intermediates,
-    edges,
+    edges: executed,
     spans,
     sources,
     limits,

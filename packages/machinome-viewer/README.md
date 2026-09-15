@@ -450,7 +450,7 @@ build reads rather than infer it.
 | solid-node-viewer | viewer API | reads document versions |
 | --- | --- | --- |
 | 0.1.0 | 7 | 1, 2, 3, 4 |
-| 0.2.0 | 15 | 1, 2, 3, 4, 5, 6 |
+| 0.2.0 | 16 | 1, 2, 3, 4, 5, 6, 7 |
 
 (13 is skipped deliberately: the in-flight `slide-and-turn-parts`
 cycle claims it, and integration reconciles this row.)

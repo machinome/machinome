@@ -10,8 +10,11 @@
 
 import { describe, expect, it } from 'vitest';
 import { EXPRESSION_LIMITS, expressionGeneration, prepare } from '../expressions';
-import { loadProgram, uncomputedValues } from './program';
-import type { RunDocument } from './program';
+import {
+  componentsOf, loadProgram, readsUnder, stronglyConnected, uncomputedValues,
+} from './program';
+import type { BlockMember, LoadedProgram, RunDocument } from './program';
+import { structureOf } from '../expressions';
 import acceptance from '../../../../tests/fixtures/pascaline/viewer.json';
 import lockDocument from '../../../../tests/fixtures/lock/viewer.json';
 import corpus from '../running-corpus.json';
@@ -1139,5 +1142,587 @@ describe('the Curta\'s clearing interface, as published', () => {
       expect(edge.affine[0]).toBe(false);
       expect(edge.retained[0]!.affine).toBe(false);
     }
+  });
+});
+
+// ---------------------------------------------------------------------
+// A SELECTION: the BLOCK, re-derived at load (design D1, tasks 3-5)
+// ---------------------------------------------------------------------
+
+/** One corpus machine's published document, by name: the framework's
+ * own, never written here. */
+function machine(name: string): RunDocument {
+  const found = (corpus as unknown as {
+    machines: { name: string; document: RunDocument }[];
+  }).machines.find((one) => one.name === name);
+  return found!.document;
+}
+
+const blockLimits = { ...LIMITS };
+
+/** The Curta's carry shape reduced to two members and one selector each:
+ * `higher.turn` is driven by the crank BELOW the detent and by the carry
+ * ABOVE it, and `carry.travel` by `higher.turn` BELOW it -- so the pair
+ * is a cycle whose active direction FLIPS with `shift`. */
+function blockDocument(overrides: Overrides = {},
+                       extra: Overrides = {}): RunDocument {
+  return {
+    format: 'solid-node-export',
+    version: 7,
+    drivers: {
+      crank: { default: 0, range: null, unit: null, dtype: null, scale: null },
+      shift: { default: 0, range: null, unit: null, dtype: null, scale: null },
+    },
+    instructions: {},
+    program: {
+      identity: 'block',
+      clock: 'time',
+      coordinates: {
+        crank: { kind: 'input', initial: 0, domain: null },
+        shift: { kind: 'input', initial: 0, domain: null },
+        'higher.turn': {
+          kind: 'coordinate', initial: 0, unit: 'deg', domain: 'rotational',
+        },
+        'carry.travel': {
+          kind: 'coordinate', initial: 0, unit: 'mm', domain: 'translational',
+        },
+      },
+      intermediates: [],
+      edges: [
+        {
+          kind: 'law',
+          needs: ['crank', 'shift', 'carry.travel'],
+          gives: ['higher.turn'],
+          description: 'the crank drives higher.turn',
+          stated_by: 'Bench',
+          expressions: [
+            '((crank * (shift < 0.5)) + (carry.travel * (shift >= 0.5)))',
+          ],
+          affine: [true],
+          plans: [{
+            skeleton: '((crank * _j0) + (carry.travel * _j1))',
+            jumps: [
+              { name: '_j0', primitive: '<', level: '(shift - 0.5)',
+                affine: true },
+              { name: '_j1', primitive: '>=', level: '(shift - 0.5)',
+                affine: true },
+            ],
+          }],
+        },
+        {
+          kind: 'law',
+          needs: ['higher.turn', 'shift'],
+          gives: ['carry.travel'],
+          description: 'higher.turn drives carry.travel',
+          stated_by: 'Bench',
+          expressions: ['(higher.turn * (shift < 0.5))'],
+          affine: [true],
+          plans: [{
+            skeleton: '(higher.turn * _j2)',
+            jumps: [
+              { name: '_j2', primitive: '<', level: '(shift - 0.5)',
+                affine: true },
+            ],
+          }],
+        },
+      ],
+      spans: {},
+      sources: {
+        crank: ['crank'], shift: ['shift'],
+        'higher.turn': ['crank', 'shift'],
+        'carry.travel': ['crank', 'shift'],
+      },
+      limits: { ...blockLimits },
+      ...overrides,
+    },
+    ...extra,
+  } as unknown as RunDocument;
+}
+
+/** `blockDocument` with its second member replaced. */
+function withSecond(edge: Overrides, extra: Overrides = {}): RunDocument {
+  const base = blockDocument();
+  const program = (base as unknown as { program: { edges: unknown[] } }).program;
+  program.edges[1] = { ...(program.edges[1] as Overrides), ...edge };
+  Object.assign(program, extra);
+  return base;
+}
+
+/** The same cycle with its FIRST member a plain law reading
+ * `carry.travel` unconditionally and its second gated by `primitive`:
+ * the shape that turns on whether the gate's zero branch is held over an
+ * INTERVAL of its level. */
+function gatedCycle(primitive: string, written?: string): RunDocument {
+  const base = blockDocument();
+  const program = (base as unknown as { program: { edges: unknown[] } })
+    .program;
+  program.edges[0] = {
+    kind: 'law', needs: ['crank', 'carry.travel'], gives: ['higher.turn'],
+    description: 'the crank drives higher.turn', stated_by: 'Bench',
+    expressions: ['(crank + carry.travel)'], affine: [true], plans: [null],
+  };
+  program.edges[1] = {
+    kind: 'law', needs: ['higher.turn', 'shift'], gives: ['carry.travel'],
+    description: 'higher.turn drives carry.travel', stated_by: 'Bench',
+    expressions: [written ?? `(higher.turn * (shift ${primitive} 0.5))`],
+    affine: [true],
+    plans: [{
+      skeleton: '(higher.turn * _j2)',
+      jumps: [{
+        name: '_j2', primitive, level: '(shift - 0.5)', affine: true,
+      }],
+    }],
+  };
+  return base;
+}
+
+/** Two ORDINARY laws on a cycle: nothing to switch anywhere. */
+function plainCycle(): RunDocument {
+  const base = gatedCycle('<');
+  const program = (base as unknown as { program: { edges: Overrides[] } })
+    .program;
+  program.edges[1] = {
+    ...program.edges[1], expressions: ['higher.turn'], plans: [null],
+  };
+  return base;
+}
+
+describe('the block is re-derived at LOAD (design D1.1-D1.3, tasks 3)', () => {
+  it('3.1 a document PUBLISHING `kind: "block"` is refused as an unknown '
+     + 'kind: the kind is derived and never read', () => {
+    const message = refusal(document({
+      edges: [{
+        kind: 'block',
+        needs: ['crank'],
+        gives: ['first.turn'],
+        description: 'a published block',
+        stated_by: 'Bench',
+      }],
+    }));
+    expect(message).toContain('declares kind "block"');
+    expect(message).toContain('law, wiring, formula, check');
+  });
+
+  it('3.2 a program with no cycle produces no component of more than one',
+     () => {
+    const loaded = loadProgram(document(), SOURCE);
+    expect(componentsOf(loaded.edges)).toEqual([[0]]);
+    expect(loaded.edges.every((edge) => edge.kind !== 'block')).toBe(true);
+  });
+
+  it('3.2 a SELF-READ edge alone is not a component: a need the edge '
+     + 'itself gives is excluded from the graph', () => {
+    const loaded = loadProgram(selfRead(), SOURCE);
+    expect(componentsOf(loaded.edges)).toEqual([[0]]);
+    expect(loaded.edges[0].kind).toBe('law');
+  });
+
+  it('3.2 a CHECK edge is never in a component: it determines nothing, so '
+     + 'nothing ever waits on it, and it is left where it is published',
+     () => {
+    const base = blockDocument();
+    const program = (base as unknown as { program: { edges: unknown[] } })
+      .program;
+    // A check over the block's own coordinate, published AFTER both
+    // members: it reads what the block gives and gives nothing.
+    program.edges.push({
+      kind: 'check', needs: ['carry.travel', 'higher.turn'], gives: [],
+      description: 'carry.travel is checked against higher.turn',
+      stated_by: 'Bench', slot: 'carry.travel', factors: [1.0, 0.0],
+      constant: 0.0,
+    });
+    const loaded = loadProgram(base, SOURCE);
+    const checks = loaded.edges.filter((edge) => edge.kind === 'check');
+    expect(checks).toHaveLength(1);
+    // Two members contract to one block; the check stays beside it.
+    expect(loaded.edges.map((edge) => edge.kind)).toEqual(['block', 'check']);
+    // And the check is in no component of more than one.
+    const published = (base as unknown as {
+      program: { edges: unknown[] };
+    }).program.edges;
+    expect(published).toHaveLength(3);
+    for (const component of componentsOf(
+      loadProgram(blockDocument(), SOURCE).edges)) {
+      expect(component).toHaveLength(1);
+    }
+  });
+
+  it('3.2 `ShiftedCarry` and `RangedBlock` each produce exactly the pair '
+     + 'ADR-122 names: {higher.turn, carry.travel}', () => {
+    for (const name of ['ShiftedCarry', 'RangedBlock']) {
+      const loaded = loadProgram(machine(name), `corpus://${name}`);
+      const blocks = loaded.edges.filter((edge) => edge.kind === 'block');
+      expect(blocks).toHaveLength(1);
+      expect([...blocks[0].gives].sort())
+        .toEqual(['carry.travel', 'higher.turn']);
+      expect(blocks[0].block!.members).toHaveLength(2);
+    }
+  });
+
+  it('3.2 Tarjan is ITERATIVE: a chain and a cycle 2,000 deep do not '
+     + 'exhaust the JavaScript stack', () => {
+    const chain: number[][] = [];
+    for (let at = 0; at < 2000; at += 1) chain.push(at === 0 ? [] : [at - 1]);
+    const singles = stronglyConnected(chain);
+    expect(singles).toHaveLength(2000);
+    expect(singles.every((one) => one.length === 1)).toBe(true);
+
+    const ring = chain.map((after, at) => (at === 0 ? [1999] : after));
+    const whole = stronglyConnected(ring);
+    expect(whole).toHaveLength(1);
+    expect(whole[0]).toHaveLength(2000);
+    expect(whole[0][0]).toBe(0);
+  });
+
+  it('3.3 the component is contracted IN PLACE at its first member: needs '
+     + 'united in first-seen order, gives, description, statedBy and an '
+     + '`affine` that is FALSE on every end', () => {
+    const loaded = loadProgram(machine('ShiftedCarry'),
+                               'corpus://ShiftedCarry');
+    // Three published law edges become two entries: the lower wheel's
+    // own law, then the block at the index its first member held.
+    expect(loaded.edges).toHaveLength(2);
+    expect(loaded.edges[0].gives).toEqual(['lower.turn']);
+    const block = loaded.edges[1];
+    expect(block.kind).toBe('block');
+    expect(block.gives).toEqual(['higher.turn', 'carry.travel']);
+    expect(block.needs).toEqual([
+      'crank', 'shift', 'clearing', 'carry.travel', 'higher.turn',
+      'lower.turn',
+    ]);
+    expect(block.description).toBe(
+      '(crank, shift, clearing, carry.travel, higher.turn) drives '
+      + 'higher.turn; (lower.turn, higher.turn, shift, carry.travel) drives '
+      + 'carry.travel');
+    // De-duplicated in order: both members are stated by one class.
+    expect(block.statedBy).toBe('ShiftedCarry');
+    expect(block.affine).toEqual([false, false]);
+    expect(block.plans).toEqual([null, null]);
+    expect(block.expressions).toEqual([]);
+
+    // `determiner` maps each give to the BLOCK, at that give's position
+    // in the block's own `gives`.
+    expect(loaded.determiner.get('higher.turn')).toEqual({
+      edge: block, index: 0,
+    });
+    expect(loaded.determiner.get('carry.travel')).toEqual({
+      edge: block, index: 1,
+    });
+  });
+
+  it('3.4 the published order is VERIFIED and never re-sorted: two '
+     + 'independent laws published the wrong way round are refused, '
+     + 'naming both edges and the value', () => {
+    const message = refusal(document({
+      coordinates: {
+        crank: { kind: 'input', initial: 0, domain: null },
+        'first.turn': {
+          kind: 'coordinate', initial: 0, unit: 'deg', domain: 'rotational',
+        },
+        'second.turn': {
+          kind: 'coordinate', initial: 0, unit: 'deg', domain: 'rotational',
+        },
+      },
+      edges: [
+        {
+          kind: 'law', needs: ['first.turn'], gives: ['second.turn'],
+          description: 'first drives second', stated_by: 'Bench',
+          expressions: ['first.turn'], affine: [true], plans: [null],
+        },
+        {
+          kind: 'law', needs: ['crank'], gives: ['first.turn'],
+          description: 'crank drives first', stated_by: 'Bench',
+          expressions: ['crank'], affine: [true], plans: [null],
+        },
+      ],
+      sources: {
+        crank: ['crank'], 'first.turn': ['crank'], 'second.turn': ['crank'],
+      },
+    }));
+    expect(message).toContain('not in an order this engine can execute');
+    expect(message).toContain('first drives second reads "first.turn"');
+    expect(message).toContain(
+      'crank drives first determines LATER in the published listing');
+    expect(message).toContain('would be inventing an ordering decision the '
+                              + 'producer already made');
+  });
+
+  it('3.5 a block whose members are published NON-CONTIGUOUSLY, in a '
+     + 'valid order, loads and is contracted at the first member\'s '
+     + 'index', () => {
+    const base = blockDocument();
+    const program = (base as unknown as {
+      program: { edges: unknown[]; coordinates: Overrides;
+                 sources: Overrides };
+    }).program;
+    program.coordinates['idle.turn'] = {
+      kind: 'coordinate', initial: 0, unit: 'deg', domain: 'rotational',
+    };
+    program.sources['idle.turn'] = ['crank'];
+    // An unrelated law published BETWEEN the two members.
+    program.edges.splice(1, 0, {
+      kind: 'law', needs: ['crank'], gives: ['idle.turn'],
+      description: 'the crank drives idle', stated_by: 'Bench',
+      expressions: ['crank'], affine: [true], plans: [null],
+    });
+    const loaded = loadProgram(base, SOURCE);
+    expect(loaded.edges).toHaveLength(2);
+    expect(loaded.edges[0].kind).toBe('block');
+    expect(loaded.edges[0].gives).toEqual(['higher.turn', 'carry.travel']);
+    expect(loaded.edges[1].gives).toEqual(['idle.turn']);
+  });
+});
+
+describe('the selectors and the fold (design D1.4-D1.6, tasks 4)', () => {
+  it('4.1 the structural accessor is a view of the store the evaluator '
+     + 'owns, not a second parser', () => {
+    const root = prepare('((a * 0.0) + b)');
+    const node = structureOf(root);
+    expect(node.kind).toBe('binary');
+    expect(node.op).toBe('+');
+    expect(node.children).toHaveLength(2);
+    const left = structureOf(node.children[0]);
+    expect(left.kind).toBe('binary');
+    expect(left.op).toBe('*');
+    expect(structureOf(left.children[0]).name).toBe('a');
+    expect(structureOf(left.children[1]).value).toBe(0);
+    expect(structureOf(node.children[1]).kind).toBe('name');
+    expect(structureOf(node.children[1]).name).toBe('b');
+  });
+
+  it('4.2 the fold, on the corpus\'s OWN `ShiftedCarry` document: what '
+     + 'each member reads unfolded, and what a selector at zero '
+     + 'removes', () => {
+    const loaded = loadProgram(machine('ShiftedCarry'),
+                               'corpus://ShiftedCarry');
+    const block = loaded.edges[1].block!;
+    const [wheel, lever] = block.members;
+    expect(wheel.own).toBe('higher.turn');
+    expect(lever.own).toBe('carry.travel');
+
+    // The lever, with NOTHING folded: every source its law names.
+    expect([...block.activeReads(1, {})].sort())
+      .toEqual(['carry.travel', 'higher.turn']);
+    expect([...readsOf(loaded, lever, {})].sort()).toEqual(
+      ['carry.travel', 'higher.turn', 'lower.turn', 'shift']);
+
+    // With its `shift >= 0.5` selector at zero it no longer reads
+    // `higher.turn` at all.
+    expect([...readsOf(loaded, lever, { _j7: 0 })].sort()).toEqual(
+      ['carry.travel', 'lower.turn', 'shift']);
+
+    // And the wheel drops `carry.travel` under the complementary
+    // comparison, `_j3`'s `shift < 0.5`.
+    expect([...readsOf(loaded, wheel, {})].sort()).toEqual(
+      ['carry.travel', 'clearing', 'crank', 'higher.turn', 'shift']);
+    expect([...readsOf(loaded, wheel, { _j3: 0 })].sort()).toEqual(
+      ['clearing', 'crank', 'higher.turn', 'shift']);
+  });
+
+  it('4.3 the fold is MONOTONE: the reads under the all-zero fold are a '
+     + 'SUBSET of the reads under each single zero', () => {
+    const loaded = loadProgram(machine('ShiftedCarry'),
+                               'corpus://ShiftedCarry');
+    const block = loaded.edges[1].block!;
+    for (const member of block.members) {
+      const all: Record<string, number> = {};
+      for (const jump of member.selectors) all[jump.name] = 0;
+      const least = readsOf(loaded, member, all);
+      for (const jump of member.selectors) {
+        const single = readsOf(loaded, member, { [jump.name]: 0 });
+        for (const name of least) expect(single.has(name)).toBe(true);
+      }
+      // And the all-zero fold is what `unconditional` was taken from.
+      for (const key of member.unconditional) expect(least.has(key)).toBe(true);
+    }
+  });
+
+  it('4.4 a selector is a jump whose LEVEL reads nothing the block '
+     + 'gives, with the level closed over the BINDINGS table, and a node '
+     + 'reading the member\'s own driven end is NOT one', () => {
+    const loaded = loadProgram(machine('ShiftedCarry'),
+                               'corpus://ShiftedCarry');
+    const block = loaded.edges[1].block!;
+    const [wheel, lever] = block.members;
+    // Every selector's level is `_b2`, a BINDING for `(shift - 0.5)`: a
+    // viewer reading `freeVariables` alone would never see `shift`.
+    expect(wheel.selectors.map((jump) => jump.name)).toEqual(['_j2', '_j3']);
+    expect(wheel.selectors.map((jump) => jump.level)).toEqual(['_b2', '_b2']);
+    expect(lever.selectors.map((jump) => jump.name)).toEqual(['_j6', '_j7']);
+    // `_j4` reads `carry.travel` and `_j5` the wheel's OWN driven end:
+    // neither is a selector, and `_j5` stays exactly where ADR-057 put
+    // it, in the walked layer inside the piece.
+    expect(wheel.plan!.jumps.map((jump) => jump.name))
+      .toEqual(['_j2', '_j3', '_j4', '_j5']);
+    expect(wheel.edge.retained[0]!.dependent.map((jump) => jump.name))
+      .toEqual(['_j5']);
+    expect(lever.selectors.map((jump) => jump.level)).toEqual(['_b2', '_b2']);
+    expect(lever.plan!.jumps.map((jump) => jump.name))
+      .toEqual(['_j6', '_j7', '_j8']);
+    // The selector-only plan carries the member's OWN published skeleton.
+    expect(wheel.selectorPlan!.skeleton).toBe(wheel.plan!.skeleton);
+    expect(wheel.selectorPlan!.jumps).toEqual(wheel.selectors);
+  });
+
+  it('4.5 `unconditional` and `switched`, own give excluded from both',
+     () => {
+    const loaded = loadProgram(machine('ShiftedCarry'),
+                               'corpus://ShiftedCarry');
+    const [wheel, lever] = loaded.edges[1].block!.members;
+    expect([...wheel.unconditional]).toEqual([]);
+    expect([...wheel.switched]).toEqual(['carry.travel']);
+    expect([...lever.unconditional]).toEqual([]);
+    expect([...lever.switched]).toEqual(['higher.turn']);
+  });
+
+  it('4.5 a member with NO plan carries no selector at all, so its '
+     + 'in-block needs minus its own are all UNCONDITIONAL', () => {
+    const loaded = loadProgram(gatedCycle('<'), SOURCE);
+    const [crank, lever] = loaded.edges[0].block!.members;
+    expect(crank.plan).toBe(null);
+    expect(crank.selectors).toEqual([]);
+    expect(crank.selectorPlan).toBe(null);
+    expect([...crank.unconditional]).toEqual(['carry.travel']);
+    expect([...crank.switched]).toEqual([]);
+    // And the gated one is switchable, which is why this block loads.
+    expect([...lever.unconditional]).toEqual([]);
+    expect([...lever.switched]).toEqual(['higher.turn']);
+  });
+
+  it('4.5 `sign` is NOT foldable: a `sign`-gated in-block source is not '
+     + 'counted switched, so such a block is refused at load where the '
+     + 'same shape gated by a COMPARISON loads', () => {
+    // The comparison holds its zero branch over an INTERVAL of the
+    // level, so the dependency is switched and the cycle breaks.
+    expect(loadProgram(gatedCycle('<'), SOURCE).edges[0].kind).toBe('block');
+    // `sign`'s zero is the single point where the level is exactly zero,
+    // so counting it switched would admit at load a machine every tick
+    // refuses.
+    const message = refusal(
+      gatedCycle('sign', '(higher.turn * sign(shift - 0.5))'));
+    expect(message).toContain('form a cycle the run cannot order');
+    expect(message).toContain('and not sign, whose zero is a single point');
+  });
+});
+
+/** EVERY coordinate one member still reads under one substitution --
+ * the loader's own `_reads_under`, asked directly, where `activeReads`
+ * answers only the ids the block determines. */
+function readsOf(program: LoadedProgram, member: BlockMember,
+                 substitution: Record<string, number>): ReadonlySet<string> {
+  return readsUnder(member.plan!, substitution, program.nodeOf,
+                    program.bindings.roots());
+}
+
+describe('the load-time refusals (design D1.7, tasks 5)', () => {
+  it('5.1 a WIRING on a cycle is refused, naming the edge, its statedBy '
+     + 'and every member', () => {
+    const message = refusal(withSecond({
+      kind: 'wiring', factor: 1.0, needs: ['higher.turn'],
+      description: 'higher.turn is wired to carry.travel',
+    }));
+    expect(message).toContain(
+      'higher.turn is wired to carry.travel, stated by Bench');
+    expect(message).toContain('it is on a dependency cycle');
+    expect(message).toContain('the crank drives higher.turn');
+    expect(message).toContain('it carries no jump node, so no selection can '
+                              + 'switch what it reads');
+    expect(message).toContain('State the value as a relation whose law '
+                              + 'carries the gate.');
+  });
+
+  it('5.1 a FORMULA on a cycle is refused the same way', () => {
+    const message = refusal(withSecond({
+      kind: 'formula', slot: 'carry.travel', factors: [1.0], constant: 0.0,
+      needs: ['higher.turn'],
+      description: 'carry.travel is stated as a formula',
+    }));
+    expect(message).toContain(
+      'carry.travel is stated as a formula, stated by Bench');
+    expect(message).toContain('it carries no jump node');
+  });
+
+  it('5.2 a member driving a GROUP is refused', () => {
+    const base = blockDocument();
+    const program = (base as unknown as {
+      program: { edges: Overrides[]; coordinates: Overrides;
+                 sources: Overrides };
+    }).program;
+    program.coordinates['carry.lift'] = {
+      kind: 'coordinate', initial: 0, unit: 'mm', domain: 'translational',
+    };
+    program.sources['carry.lift'] = ['crank', 'shift'];
+    program.edges[1] = {
+      ...program.edges[1],
+      gives: ['carry.travel', 'carry.lift'],
+      expressions: ['(higher.turn * (shift < 0.5))', 'higher.turn'],
+      affine: [true, true],
+      plans: [(program.edges[1].plans as unknown[])[0], null],
+    };
+    const message = refusal(base);
+    expect(message).toContain('higher.turn drives carry.travel, stated by '
+                              + 'Bench');
+    expect(message).toContain('it drives a GROUP and it is on a dependency '
+                              + 'cycle');
+    expect(message).toContain('A member of a block drives ONE coordinate');
+    expect(message).toContain('State each end as a relation of its own.');
+  });
+
+  it('5.3 a member whose give is NOT a bank coordinate is refused', () => {
+    const base = blockDocument();
+    const program = (base as unknown as {
+      program: {
+        edges: Overrides[]; coordinates: Overrides; sources: Overrides;
+        intermediates: string[];
+      };
+    }).program;
+    delete program.coordinates['carry.travel'];
+    program.intermediates = ['carry.travel'];
+    const message = refusal(base);
+    expect(message).toContain('higher.turn drives carry.travel, stated by '
+                              + 'Bench');
+    expect(message).toContain('it drives carry.travel, which the running '
+                              + 'simulation does not own');
+    expect(message).toContain('A block advances its coordinates PIECE BY '
+                              + 'PIECE inside a tick');
+    expect(message).toContain('State the relation into the joint coordinate '
+                              + 'and let the port follow it.');
+  });
+
+  it('5.4 a cycle NO selection can break is refused with the message a '
+     + 'plain cycle of two ordinary laws has always had', () => {
+    const message = refusal(plainCycle());
+    expect(message).toContain(
+      'the relations the crank drives higher.turn, higher.turn drives '
+      + 'carry.travel form a cycle the run cannot order');
+    expect(message).toContain('each waits on a coordinate another '
+                              + 'determines');
+    expect(message).toContain('A running program is acyclic, because the '
+                              + 'rest render solved every relation in one '
+                              + 'direction');
+    expect(message).toContain('A dependency inside a cycle is admitted only '
+                              + 'where it is SWITCHED');
+    expect(message).toContain('floor, ceil, a remainder or a comparison, and '
+                              + 'not sign, whose zero is a single point.');
+  });
+
+  it('5.5 each of the four is refused at LOAD, quoting the document, with '
+     + 'nothing rendered and no tick taken', () => {
+    const documents = [
+      withSecond({ kind: 'wiring', factor: 1.0, needs: ['higher.turn'] }),
+      plainCycle(),
+    ];
+    for (const doc of documents) {
+      const message = refusal(doc);
+      expect(message).toContain(SOURCE);
+      expect(message).toContain('declares document version 7');
+      expect(message).toContain('The document is malformed: refusing it '
+                                + 'rather than running a machine this viewer '
+                                + 'cannot execute.');
+    }
+    // And the VALID one loads, with the block contracted.
+    const loaded = loadProgram(blockDocument(), SOURCE);
+    expect(loaded.edges).toHaveLength(1);
+    expect(loaded.edges[0].kind).toBe('block');
   });
 });

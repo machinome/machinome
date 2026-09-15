@@ -101,15 +101,26 @@ describe('API_VERSION', () => {
   // the in-flight cycle `slide-and-turn-parts` claims it, and taking 14
   // and then 15 here means the numbers cannot collide whatever order
   // they integrate in.
-  it('declares the self-read API as version 15', () => {
-    expect(API_VERSION).toBe(15);
+  // Executing a version 7 document -- a compiled program some of whose
+  // law edges form a BLOCK, a cycle every selection breaks, which the
+  // consumer must ORDER PER PIECE of a tick rather than run in the
+  // published listing -- is the one after that (16). Like 15 and unlike
+  // `controls` and `markings`, it is NOT additive: a bundle at 15
+  // refuses the Curta's own carriage BY NAME and renders nothing at
+  // all, and executing it wrongly would be worse -- the published order
+  // of a block's members is a LISTING, so a consumer that ran it would
+  // commit a different machine silently. A host that means to present
+  // such a machine has to be able to ask before it mounts. 13 stays
+  // SKIPPED: the in-flight cycle `slide-and-turn-parts` claims it.
+  it('declares the selection API as version 16', () => {
+    expect(API_VERSION).toBe(16);
   });
 });
 
 describe('DOCUMENT_VERSIONS', () => {
   it('is declared in package.json, where a Python caller can read it', () => {
     expect(Array.isArray(pkg.solidNodeDocumentVersions)).toBe(true);
-    expect(pkg.solidNodeDocumentVersions).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(pkg.solidNodeDocumentVersions).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 
   it('is the list the package declares, not a second copy', () => {

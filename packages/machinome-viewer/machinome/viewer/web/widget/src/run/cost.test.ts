@@ -20,6 +20,7 @@ import corpus from '../running-corpus.json';
 import acceptance from '../../../../tests/fixtures/pascaline/viewer.json';
 import lock from '../../../../tests/fixtures/lock/viewer.json';
 import clearing from '../../../../tests/fixtures/clearing/viewer.json';
+import carriage from '../../../../tests/fixtures/carriage/viewer.json';
 import { Engine } from './engine';
 import type { RunDocument } from './program';
 
@@ -37,6 +38,74 @@ function ticksPerSecond(label: string, engine: Engine, ticks: number): number {
   console.log(`  ${label}: ${ticks} ticks in ${seconds.toFixed(3)} s ` +
               `= ${rate} ticks/s`);
   return rate;
+}
+
+/** Ticks per second where each tick needs something done first. */
+function drivenPerSecond(label: string, engine: Engine, ticks: number,
+                         before: (tick: number) => void): number {
+  const started = performance.now();
+  for (let tick = 0; tick < ticks; tick += 1) {
+    before(tick);
+    engine.advance(1);
+  }
+  const seconds = (performance.now() - started) / 1000;
+  const rate = Math.round(ticks / seconds);
+  // eslint-disable-next-line no-console
+  console.log(`  ${label}: ${ticks} ticks in ${seconds.toFixed(3)} s ` +
+              `= ${rate} ticks/s`);
+  return rate;
+}
+
+/** `ShiftedCarry` with its CARRIAGE FROZEN at position zero: every
+ * selector's branch substituted for the value it holds at `shift = 0`,
+ * and the need a switched-out term named removed with it.
+ *
+ * The honest baseline design D9 asks for -- THE SAME LAWS as three
+ * separate edges, with no block anywhere -- built from the producer's
+ * own published document rather than written here. `_j2`, `_j3`, `_j6`
+ * and `_j7` are the four selectors (levels `_b2`, the binding for
+ * `(shift - 0.5)`); `_j0` is the lower wheel's own. */
+function frozenTwin(document: unknown): RunDocument {
+  const frozen = JSON.parse(JSON.stringify(document));
+  const branches: Record<string, string> = {
+    _j0: '1', _j2: '0', _j3: '1', _j6: '1', _j7: '0',
+  };
+  for (const edge of frozen.program.edges) {
+    for (const plan of edge.plans ?? []) {
+      if (!plan) continue;
+      for (const [name, value] of Object.entries(branches)) {
+        plan.skeleton = plan.skeleton.split(name).join(value);
+      }
+      plan.jumps = plan.jumps.filter(
+        (jump: { name: string }) => !(jump.name in branches));
+    }
+  }
+  // With the carriage frozen the lever reads the LOWER wheel only, so
+  // the edge no longer waits on the higher one and the cycle is gone.
+  // Its published expression is restated for the same reason: it is the
+  // SAME LAW with `shift` frozen at the literal 0, which is exactly the
+  // producer's `FixedZero`.
+  for (const edge of frozen.program.edges) {
+    if (edge.gives[0] === 'carry.travel') {
+      edge.needs = edge.needs.filter((key: string) => key !== 'higher.turn');
+      edge.expressions = [
+        '((lower.turn * 1.0) * (carry.travel < 1.0))',
+      ];
+      // `(x + (higher.turn * 0))` folded, which is exactly what the
+      // producer's own compiler leaves when the term is not stated.
+      edge.plans[0].skeleton = '((lower.turn * 1) * _j8)';
+    }
+  }
+  // And the twin is PUBLISHED in the order it runs in, as the producer
+  // publishes `FixedZero`: with the carriage frozen the lever waits on
+  // the lower wheel and the higher wheel waits on the lever, so the
+  // cycle's own listing order is no longer a topological one -- which
+  // the loader refuses by name, as it should.
+  const order = ['lower.turn', 'carry.travel', 'higher.turn'];
+  frozen.program.edges.sort(
+    (a: { gives: string[] }, b: { gives: string[] }) =>
+      order.indexOf(a.gives[0]) - order.indexOf(b.gives[0]));
+  return frozen as RunDocument;
 }
 
 describe('the cost of a tick', () => {
@@ -138,6 +207,93 @@ describe('the cost of a tick', () => {
     engine.move('clearing', { by: 1, duration: 10 });
     expect(ticksPerSecond('the Curta fixture at dt = 1/240', engine, 2400))
       .toBeGreaterThan(10);
+  }, 240_000);
+
+  // -------------------------------------------------------------------
+  // What a BLOCK costs (design D9, tasks 13). The absolute numbers are
+  // this host's; the RATIOS are what this cycle records, against the
+  // producer's own 1.6x a frozen twin, 2.0x on a crossing tick and 22x
+  // for a searched stop.
+  // -------------------------------------------------------------------
+
+  const shifted = machines.find((one) => one.name === 'ShiftedCarry')!;
+
+  it('costs about what its members cost, against a FROZEN TWIN and a '
+     + 'tick that crosses the detent', () => {
+    const quietEngine = Engine.load(shifted.document as RunDocument,
+                                    { dt: shifted.dt, record: null });
+    quietEngine.move('crank', { by: 20000, duration: shifted.dt * 20000 });
+    const quiet = ticksPerSecond('ShiftedCarry, a quiet block tick',
+                                 quietEngine, 20000);
+
+    const twinEngine = Engine.load(frozenTwin(shifted.document),
+                                   { dt: shifted.dt, record: null });
+    twinEngine.move('crank', { by: 20000, duration: shifted.dt * 20000 });
+    const twin = ticksPerSecond('ShiftedCarry, the frozen twin',
+                                twinEngine, 20000);
+
+    // The carriage driven across its detent and back, one tick each
+    // way, so EVERY tick is a two-piece tick with two Kahn orders.
+    const crossingEngine = Engine.load(shifted.document as RunDocument,
+                                       { dt: shifted.dt, record: null });
+    crossingEngine.move('crank', { by: 4000, duration: shifted.dt * 4000 });
+    const crossing = drivenPerSecond(
+      'ShiftedCarry, a crossing tick', crossingEngine, 4000,
+      (tick) => crossingEngine.move('shift', {
+        by: tick % 2 === 0 ? 1 : -1, duration: shifted.dt,
+      }));
+
+    // eslint-disable-next-line no-console
+    console.log(`  a quiet block tick costs ${(twin / quiet).toFixed(1)}x `
+                + 'the same laws with the carriage frozen, and a crossing '
+                + `tick ${(quiet / crossing).toFixed(1)}x a quiet one `
+                + "(the producer measured 1.6x and 2.0x)");
+    expect(quiet).toBeGreaterThan(1000);
+    expect(twin).toBeGreaterThan(quiet);
+    expect(crossing).toBeGreaterThan(200);
+  }, 240_000);
+
+  it('runs the Curta carriage: ONE BLOCK OF SEVEN', () => {
+    // Four dials and three levers contracted into one entry, at the
+    // framework's own step.
+    const engine = Engine.load(carriage as unknown as RunDocument,
+                               { dt: 0.02, record: null });
+    engine.move('crank', { by: 36000, duration: 0.02 * 2000 });
+    expect(ticksPerSecond('the Curta carriage at dt = 0.02', engine, 2000))
+      .toBeGreaterThan(10);
+  }, 240_000);
+
+  it('SEARCHES a stop on a block coordinate -- the expensive case', () => {
+    // `affine` is FALSE on every give of a block, so a stop on one of
+    // them is up to `subdivisions` samples plus `bisectionRounds`, each
+    // of which re-locates the selector partition and re-runs the whole
+    // block.
+    //
+    // The corpus's own first tick of `RangedBlock` is that tick: the
+    // lever is driven INTO its range and the stop is located inside it.
+    // It is replayed from a snapshot of the rest state so every tick
+    // measured is the same one, and the QUIET control below is measured
+    // through the same restore, so the ratio is the stop's alone.
+    const ranged = machines.find((one) => one.name === 'RangedBlock')!;
+    const engine = Engine.load(ranged.document as RunDocument,
+                               { dt: ranged.dt, record: null });
+    const rest = engine.snapshot();
+    const quiet = drivenPerSecond(
+      'RangedBlock, a quiet tick (restored)', engine, 400, () => {
+        engine.restore(rest as never);
+        engine.move('spin', { by: 0.1, duration: ranged.dt });
+      });
+    const stopped = drivenPerSecond(
+      'RangedBlock, a SEARCHED stop (restored)', engine, 400, () => {
+        engine.restore(rest as never);
+        engine.move('spin', { by: 2, duration: ranged.dt });
+        engine.move('shift', { by: 1, duration: ranged.dt });
+      });
+    // eslint-disable-next-line no-console
+    console.log(`  a searched stop costs ${(quiet / stopped).toFixed(1)}x a `
+                + 'quiet tick of the same machine');
+    expect(stopped).toBeGreaterThan(5);
+    expect(quiet).toBeGreaterThan(stopped);
   }, 240_000);
 
   it('runs the acceptance machine far faster than real time', () => {

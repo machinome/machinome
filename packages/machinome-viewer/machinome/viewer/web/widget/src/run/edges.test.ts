@@ -395,3 +395,88 @@ describe('edgeIncrements reports a landing (design D4)', () => {
     expect(cuts.length).toBeGreaterThan(3);
   });
 });
+
+// ---------------------------------------------------------------------
+// A BLOCK edge (design D2.1, D4.3, D4.4, tasks 6.1 and 8.3)
+// ---------------------------------------------------------------------
+
+/** The detent bench: two members whose active direction flips with
+ * `shift`, contracted by the loader into ONE block entry. */
+function detentBlock(): LoadedProgram {
+  return bench({
+    coordinates: {
+      crank: input(0), shift: input(0),
+      'higher.turn': coordinate(0), 'carry.travel': coordinate(0),
+    },
+    edges: [
+      {
+        kind: 'law',
+        needs: ['crank', 'shift', 'carry.travel'],
+        gives: ['higher.turn'],
+        description: 'the crank drives higher.turn',
+        stated_by: 'Bench',
+        expressions: [
+          '((crank * (shift < 0.5)) + (carry.travel * (shift >= 0.5)))',
+        ],
+        affine: [true],
+        plans: [{
+          skeleton: '((crank * _j0) + (carry.travel * _j1))',
+          jumps: [
+            { name: '_j0', primitive: '<', level: '(shift - 0.5)',
+              affine: true },
+            { name: '_j1', primitive: '>=', level: '(shift - 0.5)',
+              affine: true },
+          ],
+        }],
+      },
+      {
+        kind: 'law',
+        needs: ['higher.turn', 'shift'],
+        gives: ['carry.travel'],
+        description: 'higher.turn drives carry.travel',
+        stated_by: 'Bench',
+        expressions: ['(higher.turn * (shift < 0.5))'],
+        affine: [true],
+        plans: [{
+          skeleton: '(higher.turn * _j2)',
+          jumps: [
+            { name: '_j2', primitive: '<', level: '(shift - 0.5)',
+              affine: true },
+          ],
+        }],
+      },
+    ],
+  });
+}
+
+describe('a block edge', () => {
+  const program = detentBlock();
+  const edge = program.edges[0];
+  const values = { crank: 0, shift: 0, 'higher.turn': 0, 'carry.travel': 0 };
+  const deltas = { crank: 2, shift: 1, 'higher.turn': 0, 'carry.travel': 0 };
+
+  it('6.1 is what the loader hands the run, and `edgeIncrements` routes '
+     + 'to the block on `kind === "block"`', () => {
+    expect(program.edges).toHaveLength(1);
+    expect(edge.kind).toBe('block');
+    expect(edge.block).not.toBe(null);
+    expect(edgeIncrements(program, edge, values, deltas, null, 0, null))
+      .toEqual([['higher.turn', 1], ['carry.travel', 1]]);
+  });
+
+  it('8.3 `edgeCuts` on a block is the SELECTOR partition, for either '
+     + 'of its ends', () => {
+    expect(edgeCuts(program, edge, values, deltas, 0)).toEqual([0, 0.5, 1]);
+    expect(edgeCuts(program, edge, values, deltas, 1)).toEqual([0, 0.5, 1]);
+    // A stretch no selector crosses is one piece.
+    expect(edgeCuts(program, edge, values,
+                    { ...deltas, shift: 0 }, 0)).toEqual([0, 1]);
+  });
+
+  it('8.3 `edgeValues` returns NOTHING for a block, and `Run.valuesOf` '
+     + 'never asks: every give of a block is a bank key', () => {
+    expect(edgeValues(program, edge, values)).toEqual([]);
+    const bank = new Set(program.order);
+    expect(edge.gives.every((key) => bank.has(key))).toBe(true);
+  });
+});

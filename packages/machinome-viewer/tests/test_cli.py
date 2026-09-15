@@ -151,4 +151,5 @@ class ModuleEntryTest(TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         reported = json.loads(result.stdout)
         self.assertIn('apiVersion', reported)
-        self.assertEqual(reported['documentVersions'], [1, 2, 3, 4, 5, 6])
+        self.assertEqual(reported['documentVersions'],
+                         [1, 2, 3, 4, 5, 6, 7])

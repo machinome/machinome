@@ -242,7 +242,7 @@ class LockInABrowserTest(TestCase):
         self.assertIsNotNone(result.get('mounted'), 'the handle reported no run')
         self.assertEqual(mounted['identity'],
                          self.document['program']['identity'])
-        self.assertEqual(result['apiVersion'], 15)
+        self.assertEqual(result['apiVersion'], 16)
         self.assertAlmostEqual(mounted['dt'], 1 / 240, places=12)
         # No step taken, at the published rest values.
         self.assertEqual(mounted['tick'], 0)

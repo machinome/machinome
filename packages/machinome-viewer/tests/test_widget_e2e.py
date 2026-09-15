@@ -194,8 +194,13 @@ class ViewerMountApiTest(TestCase):
         # version 6 document -- a law that reads the coordinate it
         # drives -- is the next such capability, and unlike `controls`
         # and `markings` it is not additive, so this moves to 15 and the
-        # document list moves with it.
-        self.assertEqual(result['bundle'], 15)
+        # document list moves with it. OpenSpec `execute-the-selection`:
+        # executing a version 7 document -- a compiled program some of
+        # whose law edges form a BLOCK, ordered per PIECE of a tick from
+        # the published edges rather than run in the published listing --
+        # is the one after that, and it is not additive either, so this
+        # moves to 16 and the document list moves with it again.
+        self.assertEqual(result['bundle'], 16)
         # And a document carrying no program has no run, which is what a
         # host asking one question is answered with.
         self.assertIsNone(result['run'])

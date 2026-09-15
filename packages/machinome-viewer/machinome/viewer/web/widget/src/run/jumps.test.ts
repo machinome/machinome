@@ -13,12 +13,18 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  along, branchOf, copySign, CrossingRecord, deduplicated, fromOrdinal,
-  merged, nextAfter, onSurface, ordinalOf, planCuts, planIncrement,
-  retainedCuts, retainedIncrement, surfacesOf, ulpOf, unlanded,
+  along, blockCuts, blockIncrements, branchOf, copySign, CrossingRecord,
+  deduplicated, fromOrdinal, merged, nextAfter, onSurface, ordinalOf, planCuts,
+  planIncrement, retainedCuts, retainedIncrement, surfacesOf, ulpOf, unlanded,
 } from './jumps';
-import { LandingInvariantError, loadProgram } from './program';
-import type { LoadedProgram, ProgramPlan, RunDocument } from './program';
+import { edgeIncrements } from './edges';
+import {
+  LandingInvariantError, loadProgram, refusalKind, UnsupportedLaw,
+} from './program';
+import type {
+  LoadedProgram, ProgramBlock, ProgramPlan, RunDocument,
+} from './program';
+import corpus from '../running-corpus.json';
 
 const LIMITS = {
   crossing_tolerance: 1e-12, subdivisions: 64, bisection_rounds: 64,
@@ -803,5 +809,814 @@ describe('the first cut (design D2, tasks 4.6-4.7)', () => {
     expect(error.message).toContain('broken invariant of the run rather than '
                                     + 'a dt that is too coarse');
     expect(error.message).toContain('The tick committed nothing');
+  });
+});
+
+// ---------------------------------------------------------------------
+// The walk's own arithmetic (design D5). The producer's `HeldAngle`:
+// a self-read dial whose law is `setter + ring * (wheel > 0.5) *
+// (lift < 0.5)`, with the setter standing at 72, the ring at zero and
+// only the LIFT moving. The lift's comparison is an OUTER node and the
+// dial's own is a DEPENDENT one, so moving the lift alone re-partitions
+// the tick while every term of the substituted law stands exactly where
+// it stood -- and a piece whose skeleton does not move must leave the
+// coordinate at the EXACT float it held.
+//
+// A version 6 document with no block anywhere: this is a correction to
+// the walk, not to the block.
+// ---------------------------------------------------------------------
+
+/** `HeldAngle`, loadable: rest `71.99999999999996`, setter `72`. */
+function heldAngle(rest = 71.99999999999996): LoadedProgram {
+  return loadProgram({
+    format: 'solid-node-export',
+    version: 6,
+    drivers: {
+      setter: {
+        default: 72, range: null, unit: 'deg', dtype: null, scale: null,
+      },
+      lift: { default: 0, range: null, unit: 'mm', dtype: null, scale: null },
+      ring: { default: 0, range: null, unit: 'deg', dtype: null, scale: null },
+    },
+    instructions: {},
+    program: {
+      identity: 'held-angle',
+      clock: 'time',
+      coordinates: {
+        setter: { kind: 'input', initial: 72, domain: null },
+        lift: { kind: 'input', initial: 0, domain: null },
+        ring: { kind: 'input', initial: 0, domain: null },
+        'wheel.turn': {
+          kind: 'coordinate', initial: rest, unit: 'deg', domain: 'rotational',
+        },
+      },
+      intermediates: [],
+      edges: [{
+        kind: 'law',
+        needs: ['setter', 'lift', 'ring', 'wheel.turn'],
+        gives: ['wheel.turn'],
+        description: '(setter, lift, ring, wheel.turn) drives wheel.turn',
+        stated_by: 'HeldAngle',
+        expressions: [
+          '(setter + ((ring * (wheel.turn > 0.5)) * (lift < 0.5)))',
+        ],
+        affine: [true],
+        plans: [{
+          skeleton: '(setter + ((ring * _j0) * _j1))',
+          jumps: [
+            {
+              name: '_j0', primitive: '>', level: '(wheel.turn - 0.5)',
+              affine: true,
+            },
+            {
+              name: '_j1', primitive: '<', level: '(lift - 0.5)',
+              affine: true,
+            },
+          ],
+        }],
+      }],
+      spans: {},
+      sources: {
+        setter: ['setter'], lift: ['lift'], ring: ['ring'],
+        'wheel.turn': ['setter', 'lift', 'ring'],
+      },
+      limits: { ...LIMITS },
+    },
+  } as unknown as RunDocument, 'bench://held-angle');
+}
+
+describe('the walk\'s own arithmetic (design D5, tasks 2)', () => {
+  it('2.1 a piece whose SKELETON does not move leaves the coordinate at '
+     + 'the exact float it held', () => {
+    const program = heldAngle();
+    const held = 71.99999999999996;
+    const reading = program.edges[0].retained[0]!;
+    // The dial's own comparison is the DEPENDENT node and the lift's is
+    // the independent one, which is the shape that makes this visible.
+    expect(reading.dependent.map((jump) => jump.name)).toEqual(['_j0']);
+    expect(reading.outer.jumps.map((jump) => jump.name)).toEqual(['_j1']);
+
+    const { increment, landing } = retainedIncrement(
+      program, reading,
+      { setter: 72, lift: 0, ring: 0, 'wheel.turn': held },
+      { setter: 0, lift: 0.2, ring: 0, 'wheel.turn': 0 },
+      program.edges[0].description, 'wheel.turn', null, 1);
+
+    // A TRUE zero, not an ulp: `own_left + (S - base)`, the difference
+    // taken first. Read the other way round the dial lands on
+    // 71.99999999999994, two ulps below where it stood, for no
+    // mechanical reason at all.
+    expect(landing).toBe(null);
+    expect(Object.is(increment, 0)).toBe(true);
+    expect(held + increment).toBe(held);
+    expect(held + increment).not.toBe(71.99999999999994);
+  });
+});
+
+// ---------------------------------------------------------------------
+// A BLOCK, ordered PIECE BY PIECE (design D2-D4, tasks 6-9). The bench
+// is the Curta's carry reduced to two members and one selector each:
+// `higher.turn` is driven by the crank BELOW the detent and by the carry
+// ABOVE it, and `carry.travel` by `higher.turn` BELOW it -- so the pair
+// is a cycle whose active direction FLIPS with `shift`.
+// ---------------------------------------------------------------------
+
+/** One corpus machine's published document, by name. */
+function machine(name: string): RunDocument {
+  const found = (corpus as unknown as {
+    machines: { name: string; document: RunDocument }[];
+  }).machines.find((one) => one.name === name);
+  return found!.document;
+}
+
+function blockBench(coordinates: Record<string, unknown>,
+                    edges: unknown[]): LoadedProgram {
+  const ids = Object.keys(coordinates);
+  const inputs = ids.filter(
+    (id) => (coordinates[id] as { kind: string }).kind === 'input');
+  return loadProgram({
+    format: 'solid-node-export',
+    version: 7,
+    drivers: Object.fromEntries(inputs.map((id) => [id, {
+      default: 0, range: null, unit: null, dtype: null, scale: null,
+    }])),
+    instructions: {},
+    program: {
+      identity: 'block-bench',
+      clock: 'time',
+      coordinates,
+      intermediates: [],
+      edges,
+      spans: {},
+      sources: Object.fromEntries(
+        ids.map((id) => [id, inputs.includes(id) ? [id] : inputs])),
+      limits: { ...LIMITS },
+    },
+  } as unknown as RunDocument, 'bench://block');
+}
+
+const blockInput = (initial: number) =>
+  ({ kind: 'input', initial, domain: null });
+const blockCoordinate = (initial: number) =>
+  ({ kind: 'coordinate', initial, unit: null, domain: null });
+
+/** The two-member detent bench. */
+function detent(higher = 0, carry = 0): LoadedProgram {
+  return blockBench({
+    crank: blockInput(0),
+    shift: blockInput(0),
+    'higher.turn': blockCoordinate(higher),
+    'carry.travel': blockCoordinate(carry),
+  }, [
+    {
+      kind: 'law',
+      needs: ['crank', 'shift', 'carry.travel'],
+      gives: ['higher.turn'],
+      description: 'the crank drives higher.turn',
+      stated_by: 'Bench',
+      expressions: [
+        '((crank * (shift < 0.5)) + (carry.travel * (shift >= 0.5)))',
+      ],
+      affine: [true],
+      plans: [{
+        skeleton: '((crank * _j0) + (carry.travel * _j1))',
+        jumps: [
+          { name: '_j0', primitive: '<', level: '(shift - 0.5)',
+            affine: true },
+          { name: '_j1', primitive: '>=', level: '(shift - 0.5)',
+            affine: true },
+        ],
+      }],
+    },
+    {
+      kind: 'law',
+      needs: ['higher.turn', 'shift'],
+      gives: ['carry.travel'],
+      description: 'higher.turn drives carry.travel',
+      stated_by: 'Bench',
+      expressions: ['(higher.turn * (shift < 0.5))'],
+      affine: [true],
+      plans: [{
+        skeleton: '(higher.turn * _j2)',
+        jumps: [
+          { name: '_j2', primitive: '<', level: '(shift - 0.5)',
+            affine: true },
+        ],
+      }],
+    },
+  ]);
+}
+
+/** `LandedCarry`'s shape: the lever is pushed by the lower wheel while
+ * the carriage is below the detent and only until it is HOME -- an
+ * ADR-121 read of its own travel, which cuts the path and LANDS it --
+ * and by the higher wheel above the detent, with no gate at all, so a
+ * later piece of the same tick moves it on. */
+function landedCarry(): LoadedProgram {
+  return blockBench({
+    crank: blockInput(0),
+    shift: blockInput(0),
+    'lower.turn': blockCoordinate(0),
+    'higher.turn': blockCoordinate(0),
+    'carry.travel': blockCoordinate(0),
+  }, [
+    {
+      kind: 'wiring', needs: ['crank'], gives: ['lower.turn'], factor: 1.0,
+      description: 'the crank is wired to lower.turn', stated_by: 'Bench',
+    },
+    {
+      kind: 'law',
+      needs: ['crank', 'shift', 'carry.travel'],
+      gives: ['higher.turn'],
+      description: '(crank, shift, carry.travel) drives higher.turn',
+      stated_by: 'Bench',
+      expressions: [
+        '(((crank * (shift < 0.5)) * (carry.travel >= 0.5)) '
+        + '+ (crank * (shift >= 0.5)))',
+      ],
+      affine: [true],
+      plans: [{
+        skeleton: '(((crank * _j0) * _j1) + (crank * _j2))',
+        jumps: [
+          { name: '_j0', primitive: '<', level: '(shift - 0.5)',
+            affine: true },
+          { name: '_j1', primitive: '>=', level: '(carry.travel - 0.5)',
+            affine: true },
+          { name: '_j2', primitive: '>=', level: '(shift - 0.5)',
+            affine: true },
+        ],
+      }],
+    },
+    {
+      kind: 'law',
+      needs: ['lower.turn', 'higher.turn', 'shift', 'carry.travel'],
+      gives: ['carry.travel'],
+      description: '(lower.turn, higher.turn, shift, carry.travel) drives '
+        + 'carry.travel',
+      stated_by: 'Bench',
+      expressions: [
+        '(((lower.turn * (shift < 0.5)) * (carry.travel < 1.0)) '
+        + '+ (higher.turn * (shift >= 0.5)))',
+      ],
+      affine: [true],
+      plans: [{
+        skeleton: '(((lower.turn * _j3) * _j4) + (higher.turn * _j5))',
+        jumps: [
+          { name: '_j3', primitive: '<', level: '(shift - 0.5)',
+            affine: true },
+          { name: '_j4', primitive: '<', level: '(carry.travel - 1.0)',
+            affine: true },
+          { name: '_j5', primitive: '>=', level: '(shift - 0.5)',
+            affine: true },
+        ],
+      }],
+    },
+  ]);
+}
+
+/** The block of a loaded bench, and a spy that records every branch
+ * vector the ordering was asked for. */
+function watched(block: ProgramBlock) {
+  const asked: Record<string, number>[] = [];
+  const spied: ProgramBlock = {
+    members: block.members,
+    gives: block.gives,
+    activeReads: (index, forced) => {
+      asked.push(forced);
+      return block.activeReads(index, forced);
+    },
+  };
+  return { spied, asked };
+}
+
+describe('a block is ordered PIECE BY PIECE (design D2, tasks 6)', () => {
+  it('6.2 the SELECTOR partition is located over the WHOLE stretch, in '
+     + 'the members\' order and each member\'s postorder', () => {
+    const program = detent();
+    const block = program.edges[0].block!;
+    const crossings: CrossingRecord[] = [];
+    blockIncrements(program, block,
+                    { crank: 0, shift: 0, 'higher.turn': 0,
+                      'carry.travel': 0 },
+                    { crank: 2, shift: 1, 'higher.turn': 0,
+                      'carry.travel': 0 },
+                    crossings, 7, {});
+    // `shift` sweeps its detent at exactly half the stretch, and the
+    // selectors are located there -- in the members' own order, each
+    // under that member's description and driven coordinate.
+    //
+    // TWO crossings and not three: the first member's `>=` reads the
+    // SAME surface as its `<`, and once the `<` has cut the path at 0.5
+    // the `>=` is asked over `[0, 0.5]` and `[0.5, 1]`, where
+    // `surfacesOf(..., inclusive = false)` does not count a surface a
+    // piece begins or ends on. That is ADR-107's own partition, reached
+    // here unchanged.
+    const selectors = crossings.filter((one) => one.t === 0.5);
+    expect(selectors).toHaveLength(2);
+    expect(selectors.map((one) => one.primitive)).toEqual(['<', '<']);
+    expect(selectors.map((one) => one.coordinate)).toEqual(
+      ['higher.turn', 'carry.travel']);
+    expect(selectors.map((one) => one.relation)).toEqual([
+      'the crank drives higher.turn', 'higher.turn drives carry.travel',
+    ]);
+    expect(selectors.every((one) => one.tick === 7)).toBe(true);
+    // And the partition itself is what `edgeCuts` answers for a block.
+    expect(blockCuts(program, block,
+                     { crank: 0, shift: 0, 'higher.turn': 0,
+                       'carry.travel': 0 },
+                     { crank: 2, shift: 1, 'higher.turn': 0,
+                       'carry.travel': 0 })).toEqual([0, 0.5, 1]);
+  });
+
+  it('6.3 the order is memoised by the branch VALUE vector: a `floor` '
+     + 'selector passing three windows makes FOUR keys and not one', () => {
+    const program = blockBench({
+      crank: blockInput(0),
+      index: blockInput(0),
+      'a.turn': blockCoordinate(0),
+      'b.travel': blockCoordinate(0),
+    }, [
+      {
+        kind: 'law',
+        needs: ['crank', 'index', 'b.travel'],
+        gives: ['a.turn'],
+        description: 'the crank drives a.turn',
+        stated_by: 'Bench',
+        expressions: ['((crank * floor(index)) + (b.travel * (index >= 10.0)))'],
+        affine: [true],
+        plans: [{
+          skeleton: '((crank * _j0) + (b.travel * _j1))',
+          jumps: [
+            { name: '_j0', primitive: 'floor', level: 'index', affine: true },
+            { name: '_j1', primitive: '>=', level: '(index - 10.0)',
+              affine: true },
+          ],
+        }],
+      },
+      {
+        kind: 'law',
+        needs: ['a.turn', 'index'],
+        gives: ['b.travel'],
+        description: 'a.turn drives b.travel',
+        stated_by: 'Bench',
+        expressions: ['(a.turn * (index >= 10.0))'],
+        affine: [true],
+        plans: [{
+          skeleton: '(a.turn * _j2)',
+          jumps: [
+            { name: '_j2', primitive: '>=', level: '(index - 10.0)',
+              affine: true },
+          ],
+        }],
+      },
+    ]);
+    const { spied, asked } = watched(program.edges[0].block!);
+    blockIncrements(program, spied,
+                    { crank: 0, index: 0, 'a.turn': 0, 'b.travel': 0 },
+                    { crank: 1, index: 3.5, 'a.turn': 0, 'b.travel': 0 },
+                    null, 0, null);
+    // Four pieces, four DISTINCT keys, two members asked per key.
+    expect(asked).toHaveLength(8);
+    const windows = asked.filter((entry) => '_j0' in entry)
+      .map((entry) => entry._j0);
+    expect(windows).toEqual([0, 1, 2, 3]);
+    // Keyed by the VALUE and not by a boolean: four keys, not one.
+    const keys = new Set(asked.map((entry) => JSON.stringify(entry)));
+    expect(keys.size).toBe(4 + 1);
+  });
+
+  it('6.4 a still-cyclic piece REFUSES the tick, word for word, with the '
+     + 'piece bounds, the relations and each selector\'s primitive, level '
+     + 'and value', () => {
+    // The producer's `BothActive`: two laws each gated `shift >= 0.5`,
+    // orderable below the detent and cyclic above it.
+    const program = blockBench({
+      crank: blockInput(0),
+      shift: blockInput(0),
+      'lower.turn': blockCoordinate(0),
+      'higher.turn': blockCoordinate(0),
+    }, [
+      {
+        kind: 'law',
+        needs: ['crank', 'shift', 'higher.turn'],
+        gives: ['lower.turn'],
+        description: '(crank, shift, higher.turn) drives lower.turn',
+        stated_by: 'BothActive',
+        expressions: ['(crank + (higher.turn * (shift >= 0.5)))'],
+        affine: [true],
+        plans: [{
+          skeleton: '(crank + (higher.turn * _j0))',
+          jumps: [{ name: '_j0', primitive: '>=', level: '(shift - 0.5)',
+                    affine: true }],
+        }],
+      },
+      {
+        kind: 'law',
+        needs: ['crank', 'shift', 'lower.turn'],
+        gives: ['higher.turn'],
+        description: '(crank, shift, lower.turn) drives higher.turn',
+        stated_by: 'BothActive',
+        expressions: ['(crank + (lower.turn * (shift >= 0.5)))'],
+        affine: [true],
+        plans: [{
+          skeleton: '(crank + (lower.turn * _j1))',
+          jumps: [{ name: '_j1', primitive: '>=', level: '(shift - 0.5)',
+                    affine: true }],
+        }],
+      },
+    ]);
+    const block = program.edges[0].block!;
+    const values = { crank: 0, shift: 0, 'lower.turn': 0, 'higher.turn': 0 };
+    // BELOW the detent the whole stretch orders.
+    expect(blockIncrements(program, block, values,
+                           { crank: 1, shift: 0, 'lower.turn': 0,
+                             'higher.turn': 0 }, null, 0, null))
+      .toEqual([['lower.turn', 1], ['higher.turn', 1]]);
+    // Driven PAST it, the piece above the detent is refused.
+    let error: unknown = null;
+    try {
+      blockIncrements(program, block, values,
+                      { crank: 1, shift: 1, 'lower.turn': 0,
+                        'higher.turn': 0 }, null, 0, null);
+    } catch (thrown) {
+      error = thrown;
+    }
+    expect(error).toBeInstanceOf(UnsupportedLaw);
+    const message = String((error as Error).message);
+    expect(message).toContain('over the piece [0.5, 1] of this tick the '
+                              + 'relations');
+    expect(message).toContain('(crank, shift, higher.turn) drives '
+                              + 'lower.turn, (crank, shift, lower.turn) '
+                              + 'drives higher.turn');
+    expect(message).toContain('form a cycle the run cannot order: each '
+                              + 'waits on a coordinate another determines');
+    expect(message).toContain('the selection this piece was read under '
+                              + 'leaves every dependency on this cycle '
+                              + 'active');
+    expect(message).toContain(
+      'The selectors read lower.turn: >= on (shift - 0.5) reads 1; '
+      + 'higher.turn: >= on (shift - 0.5) reads 1.');
+    expect(message).toContain('The tick committed nothing: the bank, the '
+                              + 'tick count and the tree stand as they '
+                              + 'were.');
+    // It is an `UnsupportedLaw`, so `RefusalKind` gains nothing.
+    expect(refusalKind(error)).toBe('law');
+  });
+
+  it('6.5 a member reading a coordinate the block gives is handed what '
+     + 'THIS piece advanced it to, not zero', () => {
+    const program = detent();
+    const block = program.edges[0].block!;
+    // Below the detent the crank drives `higher.turn`, which drives
+    // `carry.travel` IN THE SAME PIECE: the second member must see the
+    // first member's own increment.
+    expect(blockIncrements(program, block,
+                           { crank: 0, shift: 0, 'higher.turn': 0,
+                             'carry.travel': 0 },
+                           { crank: 2, shift: 0, 'higher.turn': 0,
+                             'carry.travel': 0 }, null, 0, null))
+      .toEqual([['higher.turn', 2], ['carry.travel', 2]]);
+  });
+
+  it('6.5 the ORDER flips with the selection, and a source the block '
+     + 'does not give moves by `deltas * (right - left)` on its piece',
+     () => {
+    const program = detent();
+    const { spied, asked } = watched(program.edges[0].block!);
+    const found = blockIncrements(program, spied,
+                                  { crank: 0, shift: 0, 'higher.turn': 0,
+                                    'carry.travel': 0 },
+                                  { crank: 2, shift: 1, 'higher.turn': 0,
+                                    'carry.travel': 0 }, null, 0, null);
+    // Piece one, below the detent: the crank turns the wheel by its own
+    // travel over HALF the stretch, and the wheel carries the lever.
+    // Piece two, above it: the wheel reads the lever and the lever
+    // reads nothing, so the lever runs FIRST and moves by nothing.
+    expect(found).toEqual([['higher.turn', 1], ['carry.travel', 1]]);
+    expect(asked.map((entry) => JSON.stringify(entry))).toEqual([
+      '{"_j0":1,"_j1":0}', '{"_j2":1}',
+      '{"_j0":0,"_j1":1}', '{"_j2":0}',
+    ]);
+  });
+
+  it('6.6 the in-block value is ADVANCED between pieces: the producer\'s '
+     + 'own negative control, which sums to 2.0 rather than 1.0', () => {
+    // `spikes/pieces.py`: the lever edge `(lower.turn, carry.travel)
+    // drives carry.travel`, law `lo * (own < 1)`, over a stretch in
+    // which `lower.turn` sweeps 0 -> 2 from `carry.travel == 0`.
+    const program = blockBench({
+      'lower.turn': blockInput(0),
+      'carry.travel': blockCoordinate(0),
+    }, [{
+      kind: 'law',
+      needs: ['lower.turn', 'carry.travel'],
+      gives: ['carry.travel'],
+      description: '(lower.turn, carry.travel) drives carry.travel',
+      stated_by: 'FixedZero',
+      expressions: ['(lower.turn * (carry.travel < 1.0))'],
+      affine: [true],
+      plans: [{
+        skeleton: '(lower.turn * _j0)',
+        jumps: [{ name: '_j0', primitive: '<', level: '(carry.travel - 1.0)',
+                  affine: true }],
+      }],
+    }]);
+    const edge = program.edges[0];
+    const over = (left: number, right: number, own: number) => {
+      const values = { 'lower.turn': 0 + 2 * left, 'carry.travel': own };
+      const deltas = { 'lower.turn': 2 * (right - left), 'carry.travel': 0 };
+      const found: CrossingRecord[] = [];
+      const landings: Record<string, number> = {};
+      const got = Object.fromEntries(edgeIncrements(
+        program, edge, values, deltas, found, 0, landings));
+      return { increment: got['carry.travel'], landings, found };
+    };
+
+    const whole = over(0, 1, 0);
+    expect(whole.increment).toBe(1);
+    expect(whole.landings['carry.travel']).toBe(1);
+    expect(whole.found.map((one) => [one.primitive, one.level, one.t]))
+      .toEqual([['<', 0, 0.5]]);
+
+    // Piece by piece, cut at 0.25 and 0.6, the in-block coordinate
+    // ADVANCED.
+    const pieces: [number, number][] = [[0, 0.25], [0.25, 0.6], [0.6, 1]];
+    let own = 0;
+    let total = 0;
+    let landing: number | null = null;
+    const rescaled: number[] = [];
+    for (const [left, right] of pieces) {
+      const piece = over(left, right, own);
+      total += piece.increment;
+      const found = piece.landings['carry.travel'];
+      own = found === undefined ? own + piece.increment : found;
+      if (found !== undefined) landing = own;
+      for (const one of piece.found) {
+        rescaled.push(left + one.t * (right - left));
+      }
+    }
+    expect(total).toBe(1);
+    expect(landing).toBe(1);
+    expect(own).toBe(1);
+    // The crossing rescales to exactly the fraction the whole-stretch
+    // run reported.
+    expect(rescaled).toEqual([0.5]);
+
+    // THE NEGATIVE CONTROL: the same three pieces with the in-block
+    // value NOT advanced. This is the one thing the implementation must
+    // not get wrong, and the producer measured it rather than asserting
+    // it.
+    let unadvanced = 0;
+    for (const [left, right] of pieces) unadvanced += over(left, right, 0).increment;
+    expect(unadvanced).toBe(2);
+  });
+
+  it('6.7 a member\'s own crossings are rescaled out of their piece and '
+     + 'the WHOLE located list is sorted by fraction', () => {
+    const program = landedCarry();
+    const block = program.edges[1].block!;
+    const crossings: CrossingRecord[] = [];
+    blockIncrements(program, block,
+                    { crank: 0, shift: 0, 'lower.turn': 0, 'higher.turn': 0,
+                      'carry.travel': 0 },
+                    { crank: 4, shift: 1, 'lower.turn': 4, 'higher.turn': 0,
+                      'carry.travel': 0 },
+                    crossings, 3, {});
+    // Sorted by the fraction of the stretch, whichever was computed
+    // first.
+    const fractions = crossings.map((one) => one.t);
+    expect([...fractions].sort((a, b) => a - b)).toEqual(fractions);
+    expect(crossings.map((one) => [one.coordinate, one.primitive, one.t]))
+      .toEqual([
+        // The lever's OWN gate, cut strictly inside the first piece and
+        // rescaled out of it, and the wheel's own latch on the lever
+        // reaching its set point -- both before the detent.
+        ['carry.travel', '<', 0.25],
+        ['higher.turn', '>=', 0.25],
+        // Then the two selectors, located over the WHOLE stretch.
+        ['higher.turn', '<', 0.5],
+        ['carry.travel', '<', 0.5],
+      ]);
+  });
+
+  it('8.1 what a block REPORTS for a coordinate a piece landed is the '
+     + 'ADVANCED ABSOLUTE at the stretch\'s end, not the landing', () => {
+    const program = landedCarry();
+    const block = program.edges[1].block!;
+    const values = { crank: 0, shift: 0, 'lower.turn': 0, 'higher.turn': 0,
+                     'carry.travel': 0 };
+    const landings: Record<string, number> = {};
+    const found = blockIncrements(program, block, values,
+                                  { crank: 4, shift: 1, 'lower.turn': 4,
+                                    'higher.turn': 0, 'carry.travel': 0 },
+                                  null, 0, landings);
+    // The lever lands at its gate in the first piece and the higher
+    // wheel drives it further in the second.
+    expect(found).toEqual([['higher.turn', 3], ['carry.travel', 3]]);
+    expect(landings['carry.travel']).toBe(3);
+    // `Run.landed` OVERWRITES `value + delta` with a reported landing,
+    // so the advanced absolute is what must be reported: it is
+    // `values + total`, and it is NOT the landing itself.
+    expect(landings['carry.travel'])
+      .toBe(values['carry.travel'] + found[1][1]);
+
+    // The landing itself, measured: the SAME stretch truncated at the
+    // detent, where the lever lands and nothing moves it after. Three is
+    // not one -- the producer measured exactly this, `1.0 != 3.0`, by
+    // reverting to the other rule.
+    const truncated: Record<string, number> = {};
+    blockIncrements(program, block, values,
+                    { crank: 2, shift: 0.5, 'lower.turn': 2,
+                      'higher.turn': 0, 'carry.travel': 0 },
+                    null, 0, truncated);
+    expect(truncated['carry.travel']).toBe(1);
+    expect(landings['carry.travel']).not.toBe(truncated['carry.travel']);
+  });
+
+  it('8.1 a coordinate NO piece landed is reported as an increment only',
+     () => {
+    const program = detent();
+    const landings: Record<string, number> = {};
+    blockIncrements(program, program.edges[0].block!,
+                    { crank: 0, shift: 0, 'higher.turn': 0,
+                      'carry.travel': 0 },
+                    { crank: 2, shift: 1, 'higher.turn': 0,
+                      'carry.travel': 0 }, null, 0, landings);
+    expect(landings).toEqual({});
+  });
+
+  it('6.8 the two-argument call shape: complete, side-effect-free and '
+     + 'recording nothing -- and still refusing a cyclic piece', () => {
+    const program = detent();
+    const block = program.edges[0].block!;
+    const values = { crank: 0, shift: 0, 'higher.turn': 0,
+                     'carry.travel': 0 };
+    const deltas = { crank: 2, shift: 1, 'higher.turn': 0,
+                     'carry.travel': 0 };
+    const crossings: CrossingRecord[] = [];
+    const landings: Record<string, number> = {};
+    const recorded = blockIncrements(program, block, { ...values },
+                                     { ...deltas }, crossings, 1, landings);
+    const quiet = blockIncrements(program, block, { ...values },
+                                  { ...deltas }, null, 0, null);
+    expect(quiet).toEqual(recorded);
+    expect(crossings.length).toBeGreaterThan(0);
+    // Nothing the caller passed was mutated.
+    expect(values).toEqual({ crank: 0, shift: 0, 'higher.turn': 0,
+                            'carry.travel': 0 });
+    expect(deltas).toEqual({ crank: 2, shift: 1, 'higher.turn': 0,
+                            'carry.travel': 0 });
+  });
+});
+
+describe('the forced branch, threaded (design D3, tasks 7)', () => {
+  /** `LandedCarry`'s lever: its two SELECTORS sit in ADR-057's
+   * independent layer and its LATCH -- a read of its own travel -- in
+   * the dependent one. */
+  const lever = () => {
+    const program = landedCarry();
+    // The two members are contracted into ONE block entry, so the
+    // member's own edge is reached through the block.
+    const member = program.edges[1].block!.members[1];
+    return { program, edge: member.edge, reading: member.edge.retained[0]! };
+  };
+
+  it('7.1 a selector is always an INDEPENDENT node in ADR-057\'s split, '
+     + 'which is a consequence and not an assumption', () => {
+    const { reading } = lever();
+    expect(reading.outer.jumps.map((jump) => jump.name))
+      .toEqual(['_j3', '_j5']);
+    expect(reading.dependent.map((jump) => jump.name)).toEqual(['_j4']);
+  });
+
+  it('7.2 the forced branch is held through the WHOLE walk, the far-side '
+     + 'landing included, and flipping it CHANGES THE ANSWER', () => {
+    const { program, edge, reading } = lever();
+    const start = { 'lower.turn': 0, 'higher.turn': 0, shift: 0,
+                    'carry.travel': 0 };
+    const delta = { 'lower.turn': 1, 'higher.turn': 0, shift: 0,
+                    'carry.travel': 0 };
+    const under = (forced: Record<string, number>) => retainedIncrement(
+      program, reading, start, delta, edge.description, 'carry.travel',
+      null, 0, forced);
+    // Below the detent the lower wheel pushes the lever.
+    expect(under({ _j3: 1, _j5: 0 }).increment).toBe(1);
+    // Above it the lever reads the HIGHER wheel, which is not moving:
+    // the producer's own reverted-forcing measurement, `0.0 != 1.0`.
+    expect(under({ _j3: 0, _j5: 1 }).increment).toBe(0);
+
+    // And with the lower wheel driven past the latch's surface the walk
+    // CUTS and lands, still under the branch the block forced.
+    const landed = retainedIncrement(
+      program, reading, start,
+      { ...delta, 'lower.turn': 2 }, edge.description, 'carry.travel',
+      null, 0, { _j3: 1, _j5: 0 });
+    expect(landed.landing).not.toBe(null);
+    expect(landed.landing).toBeCloseTo(1, 12);
+    expect(landed.increment).toBe(landed.landing);
+  });
+
+  it('7.4 a FORCED node\'s crossings are NOT located inside the piece: '
+     + 'the block located them over the whole stretch already', () => {
+    const { program, edge, reading } = lever();
+    const start = { 'lower.turn': 0, 'higher.turn': 0, shift: 0,
+                    'carry.travel': 0 };
+    const delta = { 'lower.turn': 1, 'higher.turn': 0, shift: 1,
+                    'carry.travel': 0 };
+    const unforced: CrossingRecord[] = [];
+    retainedIncrement(program, reading, start, delta, edge.description,
+                      'carry.travel', unforced, 0);
+    // The selector's own surface, located by the member itself.
+    expect(unforced.map((one) => [one.primitive, one.level, one.t]))
+      .toEqual([['<', 0, 0.5]]);
+
+    const forced: CrossingRecord[] = [];
+    retainedIncrement(program, reading, start, delta, edge.description,
+                      'carry.travel', forced, 0, { _j3: 1, _j5: 0 });
+    expect(forced).toEqual([]);
+  });
+
+  it('7.4 `partition` skips a forced node and `branchesAt` returns the '
+     + 'forced value: the ONLY two places forcing is read', () => {
+    const { program, edge } = lever();
+    const plan = edge.plans[0]!;
+    const start = { 'lower.turn': 0, 'higher.turn': 0, shift: 0,
+                    'carry.travel': 0 };
+    const delta = { 'lower.turn': 1, 'higher.turn': 0, shift: 1,
+                    'carry.travel': 0 };
+    // Unforced, the selector cuts the path at the detent.
+    expect(planCuts(program, plan, start, delta, edge.description,
+                    'carry.travel')).toEqual([0, 0.5, 1]);
+    // Forced, it does not.
+    expect(planCuts(program, plan, start, delta, edge.description,
+                    'carry.travel', { _j3: 1, _j5: 0 })).toEqual([0, 1]);
+    // And the branch the caller forced is the one the increment runs
+    // under, whatever the level would have said.
+    expect(planIncrement(program, plan, start, delta, edge.description,
+                         'carry.travel', null, 0, { _j3: 0, _j5: 1 }))
+      .toBe(0);
+  });
+
+  it('7.5 a law with NO block pays exactly one optional argument: every '
+     + 'call with `forced` omitted is the call with `forced` null', () => {
+    const program = clearing();
+    const reading = readingOf(program);
+    const start = { setter: 0, ring: 0, 'wheel.turn': 108 };
+    const delta = { setter: 0, ring: 600, 'wheel.turn': 0 };
+    const plain = retainedIncrement(program, reading, start, delta,
+                                    'described', 'wheel.turn', null, 0);
+    const explicit = retainedIncrement(program, reading, start, delta,
+                                       'described', 'wheel.turn', null, 0,
+                                       null);
+    expect(explicit).toEqual(plain);
+    expect(retainedCuts(program, reading, start, delta, 'described',
+                        'wheel.turn', null))
+      .toEqual(retainedCuts(program, reading, start, delta, 'described',
+                            'wheel.turn'));
+    const sawtoothPlan = planOf(sawtooth());
+    const sawtoothProgram = sawtooth();
+    expect(planIncrement(sawtoothProgram, sawtoothPlan, { crank: 0 },
+                         { crank: 2.5 }, 'd', 'wheel.turn', null, 0, null))
+      .toBe(planIncrement(sawtoothProgram, sawtoothPlan, { crank: 0 },
+                          { crank: 2.5 }, 'd', 'wheel.turn', null, 0));
+  });
+});
+
+describe('the framework\'s own numbers, mirrored (tasks 9)', () => {
+  /** The corpus's own `ShiftedCarry` document, loaded. */
+  const shifted = (swap = false) => {
+    const source = JSON.parse(JSON.stringify(machine('ShiftedCarry')));
+    if (swap) {
+      const edges = source.program.edges;
+      [edges[1], edges[2]] = [edges[2], edges[1]];
+    }
+    return loadProgram(source as RunDocument, 'corpus://ShiftedCarry');
+  };
+
+  it('9.1 one tick at dt = 1.0 cranked by 2.0: `lower.turn 2.0`, '
+     + '`higher.turn 1.0`, `carry.travel 1.0` -- whatever order the two '
+     + 'members are published in', () => {
+    for (const swap of [false, true]) {
+      const program = shifted(swap);
+      const values: Record<string, number> = {
+        clearing: 0, crank: 0, shift: 0, 'carry.travel': 0,
+        'higher.turn': 0, 'lower.turn': 0,
+      };
+      const deltas: Record<string, number> = {
+        clearing: 0, crank: 2, shift: 0, 'carry.travel': 0,
+        'higher.turn': 0, 'lower.turn': 0,
+      };
+      const found: Record<string, number> = {};
+      for (const edge of program.edges) {
+        for (const [key, increment] of edgeIncrements(
+          program, edge, values, deltas, null, 0, null)) {
+          deltas[key] = increment;
+          found[key] = increment;
+        }
+      }
+      expect(found['lower.turn']).toBe(2);
+      expect(found['higher.turn']).toBe(1);
+      expect(found['carry.travel']).toBe(1);
+    }
   });
 });

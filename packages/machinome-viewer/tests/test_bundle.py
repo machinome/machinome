@@ -35,10 +35,14 @@ class BundleLookupTest(TestCase):
         # drives -- is the next such capability, and unlike `controls`
         # and `markings` it is NOT additive, so the document list moves
         # with it.
-        self.assertEqual(bundle.api_version(), 15)
+        # Executing a version 7 document -- a compiled program some of
+        # whose law edges form a BLOCK, ordered per PIECE of a tick from
+        # the published edges rather than run in the published listing --
+        # is the one after that, and it is not additive either.
+        self.assertEqual(bundle.api_version(), 16)
 
     def test_declares_the_document_versions_this_build_reads(self):
-        self.assertEqual(bundle.document_versions(), [1, 2, 3, 4, 5, 6])
+        self.assertEqual(bundle.document_versions(), [1, 2, 3, 4, 5, 6, 7])
 
     def test_the_released_floor_does_not_move_with_the_build(self):
         # `RELEASED_DOCUMENT_VERSIONS` is what a viewer that PREDATES
@@ -48,6 +52,17 @@ class BundleLookupTest(TestCase):
         self.assertEqual(bundle.RELEASED_DOCUMENT_VERSIONS, [1, 2, 3, 4])
         self.assertNotEqual(bundle.RELEASED_DOCUMENT_VERSIONS,
                             bundle.document_versions())
+
+    def test_describe_reports_the_packages_own_document_versions(self):
+        # `describe()` reads the package's ONE declaration, so a
+        # framework asking this build what it renders is told the list
+        # the bundle actually refuses by -- version 7 included.
+        described = bundle.describe()
+        self.assertEqual(described['documentVersions'],
+                         bundle.document_versions())
+        self.assertEqual(described['documentVersions'],
+                         [1, 2, 3, 4, 5, 6, 7])
+        self.assertEqual(described['apiVersion'], bundle.api_version())
 
     def test_paths_and_remedy_share_one_source(self):
         self.assertTrue(str(bundle.bundle_path()).endswith('widget/dist/solid-widget.js'))

@@ -17,6 +17,7 @@ import {
 } from './program';
 import type { LoadedProgram, RunDocument } from './program';
 import { nextAfter } from './jumps';
+import corpus from '../running-corpus.json';
 
 /** The next representable float below `value`. */
 const nextDown = (value: number): number => nextAfter(value, -Infinity);
@@ -1257,5 +1258,130 @@ describe('what the run does with a landing (design D4, D5, tasks 5)', () => {
       expect(one.t).toBeGreaterThanOrEqual(0);
       expect(one.t).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+// ---------------------------------------------------------------------
+// A BLOCK in the run (design D4, D6, tasks 8-9). The documents are the
+// framework's own, out of the conformance corpus: the numbers below are
+// the producer's and are never recomputed a second way here.
+// ---------------------------------------------------------------------
+
+/** One corpus machine's published document, by name, with the bank's
+ * rest values optionally overridden -- `Sim(klass, state={...})`. */
+function corpusRun(name: string, dt: number,
+                   state: Record<string, number> = {}): Run {
+  const found = (corpus as unknown as {
+    machines: { name: string; document: unknown }[];
+  }).machines.find((one) => one.name === name)!;
+  const document = JSON.parse(JSON.stringify(found.document));
+  for (const [id, value] of Object.entries(state)) {
+    document.program.coordinates[id].initial = value;
+    if (document.drivers[id] !== undefined) {
+      document.drivers[id].default = value;
+    }
+  }
+  return new Run(loadProgram(document as RunDocument, `corpus://${name}`),
+                 dt, 16);
+}
+
+describe('a block in the run (design D4, D6, tasks 8-9)', () => {
+  it('9.2 the selected machine equals its FROZEN TWIN: `ShiftedCarry` '
+     + 'cranked by 2.0 over 12 ticks of dt = 1/12', () => {
+    // The producer's own numbers for THIS document, measured at
+    // solid-node `0b0f02a`:
+    //   Sim(ShiftedCarry(), dt=1/12, state={'shift': s});
+    //   move('crank', by=2.0, duration=1.0); run(1/12) x 12
+    //   s = 0 -> carry.travel 1.0, crank 2.0, higher.turn 1.5,
+    //            lower.turn 2.0
+    //   s = 1 -> carry.travel 1.0, crank 2.0, higher.turn 2.0,
+    //            lower.turn 0.0
+    // The selected machine is its frozen twin: at position 0 the lever
+    // is what advances the higher wheel, and it does so for three
+    // quarters of the crank's travel; at position 1 the crank turns the
+    // higher wheel itself and the lower one does not move at all.
+    for (const [shift, expected] of [
+      [0, { 'lower.turn': 2.0, 'higher.turn': 1.5, 'carry.travel': 1.0 }],
+      [1, { 'lower.turn': 0.0, 'higher.turn': 2.0, 'carry.travel': 1.0 }],
+    ] as [number, Record<string, number>][]) {
+      const run = corpusRun('ShiftedCarry', 1 / 12, { shift });
+      run.move('crank', { by: 2, duration: 1.0 });
+      for (let tick = 0; tick < 12; tick += 1) run.advance();
+      const state = run.state();
+      expect(state.shift).toBe(shift);
+      expect(state.crank).toBe(2);
+      for (const [id, value] of Object.entries(expected)) {
+        expect(state[id]).toBe(value);
+      }
+    }
+  });
+
+  it('9.3 a SELECTION CHANGE ALONE moves nothing -- exactly the number '
+     + 'zero, bit for bit', () => {
+    const run = corpusRun('ShiftedCarry', 0.05);
+    run.move('crank', { by: 2, duration: 0.2 });
+    for (let tick = 0; tick < 8; tick += 1) run.advance();
+    const before = { ...run.state() };
+    // The carriage alone, across its detent and back.
+    run.move('shift', { by: 1, duration: 0.2 });
+    for (let tick = 0; tick < 8; tick += 1) run.advance();
+    run.move('shift', { by: -1, duration: 0.2 });
+    for (let tick = 0; tick < 8; tick += 1) run.advance();
+    const after = run.state();
+    for (const id of ['lower.turn', 'higher.turn', 'carry.travel']) {
+      expect(Object.is(after[id], before[id])).toBe(true);
+    }
+  });
+
+  it('8.2 `affine` is FALSE on every give of a block, so a stop on one of '
+     + 'its coordinates is SEARCHED: `RangedBlock`\'s own numbers', () => {
+    const run = corpusRun('RangedBlock', 0.05);
+    const spin = run.move('spin', { by: 2, duration: 0.05 });
+    run.move('shift', { by: 1, duration: 0.05 });
+    run.advance();
+    // The producer's floats, which the piecewise path -- taken because
+    // the MEMBER publishes `affine: [true]` -- commits as 0.6 and 0.3.
+    const stops = run.stops();
+    expect(stops).toHaveLength(1);
+    expect(stops[0].coordinate).toBe('carry.travel');
+    expect(stops[0].t).toBe(0.29999999999972715);
+    expect(stops[0].inputs).toEqual(['spin']);
+    expect(run.state()['lower.turn']).toBe(0.5999999999994543);
+    expect(run.state().spin).toBe(0.5999999999994543);
+    expect(spin.status).toBe('blocked');
+    expect(spin.admitted).toBe(0.5999999999994543);
+    // And the determination really is the block, with `affine` false.
+    const program = (run as unknown as { program: LoadedProgram }).program;
+    const where = program.determiner.get('carry.travel')!;
+    expect(where.edge.kind).toBe('block');
+    expect(where.edge.affine[where.index]).toBe(false);
+  });
+
+  it('8.4 an input reaching a stopped block coordinate only through an '
+     + 'INACTIVE selection is not stopped and completes its whole '
+     + 'travel, while the pushing input retires blocked', () => {
+    // The carriage stands ABOVE the detent, where the lever reads the
+    // HIGHER wheel, and the lever is already at its bound.
+    const run = corpusRun('RangedBlock', 0.05,
+                          { shift: 1, 'carry.travel': 0.6 });
+    // `spin` reaches the lever only through `lower.turn`, which the
+    // selection has switched out: it is not stopped by it.
+    const spin = run.move('spin', { by: 2, duration: 0.05 });
+    run.advance();
+    expect(spin.status).toBe('completed');
+    expect(run.state().spin).toBe(2);
+    expect(run.state()['lower.turn']).toBe(2);
+    expect(run.state()['carry.travel']).toBe(0.6);
+    expect(run.stops()).toEqual([]);
+
+    // `crank` reaches it through the term the selection leaves ACTIVE,
+    // so it is stopped at once and retires blocked with nothing
+    // admitted.
+    const crank = run.move('crank', { by: 1, duration: 0.05 });
+    run.advance();
+    expect(crank.status).toBe('blocked');
+    expect(crank.admitted).toBe(0);
+    expect(run.stops().map((one) => one.inputs)).toEqual([['crank']]);
+    expect(run.state()['carry.travel']).toBe(0.6);
   });
 });

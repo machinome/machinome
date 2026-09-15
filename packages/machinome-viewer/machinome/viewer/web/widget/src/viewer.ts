@@ -1813,15 +1813,19 @@ function visibleBounds(root: THREE.Object3D): THREE.Box3 {
 // OpenSpec `read-expression-bindings`: version 4 (a document carrying a
 // shared-subexpression `bindings` table) joins it. OpenSpec
 // `run-in-the-worker`: version 5 (a document carrying a compiled
-// mechanical `program`) joins it too, and a version 6 document is
-// refused by name and by list -- the same sentence a version 5 document
-// got from every viewer released so far.
+// mechanical `program`) joins it too; `execute-the-self-read` added
+// version 6 (a law that reads the coordinate it drives); and
+// `execute-the-selection` adds version 7 (a program some of whose law
+// edges form a BLOCK, ordered per piece of a tick from the published
+// edges rather than run in the published listing). A version 8 document
+// is refused by name and by list -- the same sentence a version 5
+// document got from every viewer released so far.
 //
 // Exported so `version.test.ts` can pin it against the ONE declaration
 // the bundle and `bundle.py` both read (`solidNodeDocumentVersions` in
 // package.json): the number this viewer reports and the versions it
 // refuses by must not be able to drift apart.
-export const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6];
+export const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7];
 
 // The document schema this viewer evaluates. Version 2 added the
 // `drivers` table, and since ADR-056 stage 3b this viewer EVALUATES
