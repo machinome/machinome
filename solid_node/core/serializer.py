@@ -113,6 +113,17 @@ BINDINGS_DOCUMENT_VERSION = 4
 #: consumer that cannot read version 5 must refuse it by name.
 RUNNING_DOCUMENT_VERSION = 5
 
+#: The version a running root's document declares when its compiled
+#: program carries at least one LAW edge naming one of its own ``gives``
+#: among its ``needs`` -- a law that READS the coordinate it drives
+#: (OpenSpec change ``read-the-driven-coordinate``). A property of the
+#: CONTENT again: a program with no such edge publishes byte-identically
+#: at 5. The bump is not additive and it is not cosmetic -- a version 5
+#: consumer evaluates a law edge as the difference of its two endpoint
+#: evaluations, which with the read at BOTH ends freezes the branch it
+#: selects and moves the part by a different mechanism without saying so.
+SELF_READ_DOCUMENT_VERSION = 6
+
 
 _MISSING = object()
 
@@ -441,13 +452,33 @@ def document_version(root, bindings=(), program=None):
     ladder that is NOT read off the content: a compiled program is a
     property of the ROOT'S DECLARATION, and a running root with nothing
     shared and no flexible leaf is still a machine a version 4 consumer
-    would animate wrongly.
+    would animate wrongly. Within it the CONTENT decides once more: a
+    program one of whose law edges reads the coordinate it drives is a
+    version 6 document, and one with none is the byte-identical version
+    5 it always was.
     """
     if program is not None:
-        return RUNNING_DOCUMENT_VERSION
+        return (SELF_READ_DOCUMENT_VERSION if _reads_its_own(program)
+                else RUNNING_DOCUMENT_VERSION)
     if bindings:
         return BINDINGS_DOCUMENT_VERSION
     return _tree_version(root)
+
+
+def _reads_its_own(program):
+    """Whether a published program carries a LAW edge that reads the
+    coordinate it drives.
+
+    Read off the document, like every other step of the ladder: the
+    self-read is ``needs`` intersected with ``gives`` and no key was
+    added for it, so this is the same question a consumer asks.
+    """
+    for edge in program.get('edges', ()):
+        if edge.get('kind') != 'law':
+            continue
+        if set(edge.get('needs', ())) & set(edge.get('gives', ())):
+            return True
+    return False
 
 
 def _tree_version(root):

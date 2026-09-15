@@ -31,7 +31,7 @@ from solid_node.motion.couplings import (Affine, CouplingError,
                                          declared_relations)
 from solid_node.motion.joints import (Free, JointRangeError, Orbit, Prismatic,
                                       Revolute, declared_joints)
-from solid_node.motion.ports import (RotationalPort, SignalPort,
+from solid_node.motion.ports import (RotationalPort, SignalPort, Time,
                                      TranslationalPort, declared_ports)
 from solid_node.node import AssemblyNode, Solid2Node
 from solid_node.node.declarative import SidewaysReadError
@@ -1113,6 +1113,11 @@ class GroupRefusalTest(BaseNodeTest):
         self.assertIn('once', message)
 
     def test_a_coordinate_on_both_sides_of_a_group_relation_is_refused(self):
+        # A coordinate on both sides is now a READ of the driven end
+        # (OpenSpec change `read-the-driven-coordinate`), and a relation
+        # that reads its own driven end drives ONE coordinate -- so this
+        # shape, whose driven end is a GROUP, is still refused, and says
+        # so.
         def body():
             class Bad(AssemblyNode):
                 a = SignalPort()
@@ -1124,7 +1129,7 @@ class GroupRefusalTest(BaseNodeTest):
         message = self._class_body(body)
         self.assertIn('source', message)
         self.assertIn('driven', message)
-        self.assertIn('not both', message)
+        self.assertIn('ONE coordinate', message)
 
     def test_a_group_as_a_term_of_a_formula_is_refused(self):
         def body():
@@ -3664,3 +3669,129 @@ class RunBinderTest(BaseNodeTest):
         self.assertIn('first.turn', message)
         self.assertIn('running simulation', message)
         self.assertIn("author's simulate()", message)
+
+
+##############################################
+# A law may read the coordinate it drives
+
+
+class SelfReadTest(BaseNodeTest):
+    """A coordinate named on BOTH sides of a relation naming several
+    ends is a READ of that relation's own driven end.
+
+    OpenSpec change `read-the-driven-coordinate`. The originating
+    mechanism is the Curta's clearing ring: a rack turns a dial only
+    while its teeth reach it AND the dial is not already standing at its
+    missing-tooth zero, so the law that moves the dial has to read where
+    the dial stands. What the run does with the read is
+    `tests/test_running_reads.py`; here is only the sentence, its
+    resolution and the four refusals around it.
+    """
+
+    def _class_body(self, body):
+        with self.assertRaises(TypeError) as raised:
+            body()
+        return str(raised.exception)
+
+    @staticmethod
+    def gate(sources, target):
+        return lambda rack, wheel: rack * (wheel % 360 > 0)
+
+    def test_a_coordinate_on_both_sides_is_read_not_refused(self):
+        class Clearing(AssemblyNode):
+            rack = Driver(default=0.0, unit='deg')
+            wheel = Arbor(index=0)
+
+            clearing = (rack & wheel.turn).drives(wheel.turn,
+                                                  law=SelfReadTest.gate)
+
+        relation = declared_relations(Clearing)[0]
+        self.assertEqual(relation.self_read, 1)
+        self.assertEqual(relation.driver.refs[1].key(),
+                         relation.driven.key())
+
+    def test_a_driven_group_with_a_self_read_is_refused(self):
+        def own_form():
+            class Bad(AssemblyNode):
+                crank = SignalPort()
+                child = GroupRod()
+
+                (crank & child.spin & child.lean).drives(
+                    (child.spin, child.lean),
+                    law=lambda *x: ForwardOnly(lambda *v: v))
+
+        def sibling_form():
+            class Bad(AssemblyNode):
+                crank = SignalPort()
+                child = GroupRod()
+
+                (crank & child.spin).drives(
+                    (child.lean, child.spin),
+                    law=lambda *x: ForwardOnly(lambda *v: v))
+
+        for form in (own_form, sibling_form):
+            with self.subTest(form=form.__name__):
+                message = self._class_body(form)
+                self.assertIn('spin', message)
+                self.assertIn('ONE coordinate', message)
+
+    def test_each_copy_of_a_broadcast_reads_itself(self):
+        seen = []
+
+        def gate(sources, target):
+            seen.append((sources, target))
+            return lambda ring, wheel: ring * (wheel % 360 > 0)
+
+        class Register(AssemblyNode):
+            time = Time.running()
+            ring = Driver(default=0.0, unit='deg')
+            wheels = Bead().repeat(4)
+
+            clearing = (ring & wheels.travel).drives(wheels.travel, law=gate)
+
+        register = Register()
+        records = register.clearing
+
+        self.assertEqual(len(records), 4)
+        for index, record in enumerate(records):
+            with self.subTest(copy=index):
+                self.assertIs(record.driver_ends[1].slot,
+                              record.driven_ends[0].slot)
+                self.assertIs(record.driver_ends[0].node, register)
+        slots = {id(record.driven_ends[0].slot) for record in records}
+        self.assertEqual(len(slots), 4)
+        self.assertEqual([owners[1] for owners, _target in seen],
+                         list(register.wheels))
+
+    def test_a_coordinate_named_twice_in_one_group_is_still_refused(self):
+        def body():
+            class Bad(AssemblyNode):
+                rack = SignalPort()
+                child = GroupRod()
+
+                (rack & child.spin & child.spin).drives(
+                    child.spin, law=lambda *x: ForwardOnly(lambda *v: v))
+
+        message = self._class_body(body)
+        self.assertIn('once', message)
+
+    def test_a_self_read_under_no_running_root_is_refused(self):
+        class Untimed(AssemblyNode):
+            rack = Driver(default=0.0, unit='deg')
+            wheel = Arbor(index=0)
+
+            (rack & wheel.turn).drives(wheel.turn, law=SelfReadTest.gate)
+
+        class Looping(Untimed):
+            time = Time(loop=4)
+
+        for root_class in (Untimed, Looping):
+            with self.subTest(root=root_class.__name__):
+                node = root_class()
+                with self.assertRaises(CouplingError) as caught:
+                    node.set_state()
+                message = str(caught.exception)
+                self.assertIn('wheel.turn', message)
+                self.assertIn(root_class.__name__, message)
+                self.assertIn('INCREMENTS', message)
+                self.assertIn('Time.running()', message)

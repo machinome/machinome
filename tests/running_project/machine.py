@@ -40,7 +40,7 @@ from solid_node.math import abs, clamp01, floor, sign, sin, wrap
 from solid_node.motion.joints import Bound, Free, Prismatic, Revolute
 from solid_node.motion.ports import RotationalPort, Time
 from solid_node.node import AssemblyNode
-from solid_node.parameters import Flag
+from solid_node.parameters import Angle, Flag
 from solid_node.simulation import Button, Driver, Instruction, Slide, Turn
 
 from .parts import (Arbor, Block, Carriage, Dial, Floater, PenSpring, Pin,
@@ -2736,3 +2736,458 @@ class StatedBelowOpaque(AssemblyNode):
 
     def render(self):
         self.d1.translate([20.0, 0.0, 0.0])
+
+
+##############################################
+# A law that reads the coordinate it drives
+
+
+#: The clearing gear's own clearance, as the reduced fixture states it.
+#: The dial is disengaged over a BAND of this half-width about every
+#: multiple of 360 -- entered from either side, so the dial stops at
+#: whichever edge of the gap the rack carried it to. One degree wide, so
+#: the arithmetic below is readable.
+GAP = 0.5
+
+#: Where the rack's station reaches the dial: the ring angles over which
+#: its teeth are in mesh at all. A jump over the RING alone, in the same
+#: law as the gate, so ONE fixture carries both layers of the partition.
+STATION = (100.0, 500.0)
+
+
+def missing_tooth(sources, target):
+    """The Curta's clearing rack, reduced to one dial.
+
+    The setter turns the dial directly -- an affine term, so the law
+    carries slope wherever the gate stands. The ring turns it only while
+    the rack's station reaches it AND the dial is not already standing in
+    its missing-tooth gap: nine teeth, one gap, and the gap is what lets
+    the ring go on sweeping past a dial that has finished while it still
+    clears the dials beyond it.
+
+    The gate reads the dial's OWN retained angle. `solid_node.math` has
+    no `modulo`, so the band is written with `floor`.
+    """
+    def law(setter, ring, wheel):
+        shifted = wheel + GAP
+        engaged = shifted - 360.0 * floor(shifted / 360.0) >= 2 * GAP
+        station = floor(
+            (ring - STATION[0]) / (STATION[1] - STATION[0])) == 0
+        return setter + ring * station * engaged
+
+    return law
+
+
+def continuous_read(sources, target):
+    """A read that survives the skeleton: the relation is a differential
+    equation, and `f(end) - f(start)` does not define one."""
+    return lambda ring, wheel: ring * wheel
+
+
+def remainder_read(sources, target):
+    """A read through a bare remainder, which is NOT a switch: with the
+    quotient fixed the node reads `a - q * b`, which still carries the
+    coordinate's slope."""
+    return lambda ring, wheel: ring * (wheel % 360)
+
+
+def missing_tooth_pair(sources, target):
+    """The same gate over ONE source and the read -- the shape a plain
+    port and a broadcast copy both take."""
+    def law(ring, wheel):
+        shifted = wheel + GAP
+        return ring * (shifted - 360.0 * floor(shifted / 360.0) >= 2 * GAP)
+
+    return law
+
+
+def knife_edge(sources, target):
+    """A gate whose DISENGAGED state is a single value of the coordinate
+    rather than a band -- a gap with no width. Documented in
+    `docs/scenarios.rst` and tested for what the framework actually
+    promises, never as a requirement scenario."""
+    return lambda ring, wheel: ring * (wheel - 360.0 * floor(wheel / 360.0)
+                                       > 0)
+
+
+class ClearingBody(AssemblyNode):
+    """A clearing ring, a setter and one register dial.
+
+    It declares NO time base, and unlike every other `...Body` here it
+    poses at rest in no other mode: a relation that reads its own driven
+    end states increments, which only a run integrates, so this class is
+    the fixture for that refusal as well as the base of `Clearing`.
+    """
+
+    digit = Angle(108.0)
+
+    setter = Driver(default=0.0, unit='deg')
+    ring = Driver(default=0.0, unit='deg')
+    wheel = Arbor()
+
+    (setter & ring & wheel.turn).drives(wheel.turn, law=missing_tooth)
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = self.digit
+
+
+class Clearing(ClearingBody):
+    """The same machine, running."""
+
+    time = Time.running()
+
+
+def plain_tooth(sources, target):
+    """`missing_tooth` with the gate over the RING's own phase instead of
+    the dial's retained angle -- `evidence.md`'s route B, which loses the
+    dial's history. Here it is the twin whose program identity must
+    differ from `Clearing`'s by the read alone."""
+    def law(setter, ring):
+        shifted = ring + GAP
+        engaged = shifted - 360.0 * floor(shifted / 360.0) >= 2 * GAP
+        station = floor(
+            (ring - STATION[0]) / (STATION[1] - STATION[0])) == 0
+        return setter + ring * station * engaged
+
+    return law
+
+
+class PlainClearing(AssemblyNode):
+    """`Clearing` with the same bank and the same shape of law, gated on
+    the RING instead of the dial: the identity twin."""
+
+    time = Time.running()
+
+    setter = Driver(default=0.0, unit='deg')
+    ring = Driver(default=0.0, unit='deg')
+    wheel = Arbor()
+
+    (setter & ring).drives(wheel.turn, law=plain_tooth)
+
+
+class LoopingClearing(ClearingBody):
+    """A self-read under a LOOPING base: refused for the same reason an
+    undeclared one is."""
+
+    time = Time(loop=4)
+
+
+class UnrestedClearing(AssemblyNode):
+    """The same relation over a dial with NO rest default: the run needs
+    a rest value for every joint coordinate, and the self-read relation
+    binds none."""
+
+    time = Time.running()
+
+    setter = Driver(default=0.0, unit='deg')
+    ring = Driver(default=0.0, unit='deg')
+    wheel = Arbor()
+
+    (setter & ring & wheel.turn).drives(wheel.turn, law=missing_tooth)
+
+
+class ContinuousRead(AssemblyNode):
+    """A law whose skeleton still names the coordinate it drives."""
+
+    time = Time.running()
+
+    ring = Driver(default=0.0, unit='deg')
+    wheel = Arbor()
+
+    (ring & wheel.turn).drives(wheel.turn, law=continuous_read)
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = 108.0
+
+
+class RemainderRead(AssemblyNode):
+    """The same, read through a bare `%`."""
+
+    time = Time.running()
+
+    ring = Driver(default=0.0, unit='deg')
+    wheel = Arbor()
+
+    (ring & wheel.turn).drives(wheel.turn, law=remainder_read)
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = 108.0
+
+
+class PortSelfRead(AssemblyNode):
+    """A self-read whose driven end is a PLAIN PORT: a retained value is
+    a history, and only a coordinate the run owns keeps one."""
+
+    time = Time.running()
+
+    ring = Driver(default=0.0, unit='deg')
+    wheel = Wheel()
+
+    (ring & wheel.turn).drives(wheel.turn, law=missing_tooth_pair)
+
+
+class KnifeEdge(AssemblyNode):
+    """A gate with no width, for the documentation test."""
+
+    time = Time.running()
+
+    digit = Angle(108.0)
+
+    ring = Driver(default=0.0, unit='deg')
+    wheel = Arbor()
+
+    (ring & wheel.turn).drives(wheel.turn, law=knife_edge)
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = self.digit
+
+
+def stationed_tooth(start, width):
+    """One dial's rack term: the ring reaches THIS dial only over its
+    own station, and turns it there only while it is not already in its
+    gap. The shape a register of several dials has -- one relation per
+    dial, each with its own self-read and its own walk."""
+    def make(sources, target):
+        def law(ring, wheel):
+            shifted = wheel + GAP
+            engaged = shifted - 360.0 * floor(shifted / 360.0) >= 2 * GAP
+            station = floor((ring - start) / width) == 0
+            return ring * station * engaged
+
+        return law
+
+    return make
+
+
+def crowded_gate(sources, target):
+    """A gate whose read changes the dial's RATE rather than stopping
+    it: two units of wheel per unit of ring over the first half of every
+    tooth and one over the second -- a two-speed mechanism, a lever that
+    keeps moving after it trips.
+
+    Its shape is the Curta's: a `clamp01` window, whose SKELETON is not
+    affine, so every crossing falls to the sampled search. Nothing here
+    ever HOLDS the dial, so no piece stands still on the surface it was
+    landed at, and the walk must locate two surfaces per unit of the
+    dial's own travel. A tick coarse enough to cut the path more times
+    than one law is admitted is refused.
+    """
+    def law(ring, wheel):
+        window = clamp01((ring + 1000.0) / 100.0)
+        return ring * window * (2 - (wheel - 1.0 * floor(wheel / 1.0)
+                                     >= 0.5))
+
+    return law
+
+
+def sliding_gate(sources, target):
+    """Each branch carries the level back across the surface: a sliding
+    mode, refused rather than integrated."""
+    return lambda ring, wheel: ring * (1 - 2 * (wheel >= 0))
+
+
+class ClearingRow(AssemblyNode):
+    """Four dials cleared by ONE ring, each over its OWN station: the
+    requirement's "several wheels from one input"."""
+
+    time = Time.running()
+
+    ring = Driver(default=0.0, unit='deg')
+
+    first = Arbor()
+    second = Arbor()
+    third = Arbor()
+    fourth = Arbor()
+
+    (ring & first.turn).drives(first.turn,
+                               law=stationed_tooth(0.0, 400.0))
+    (ring & second.turn).drives(second.turn,
+                                law=stationed_tooth(400.0, 400.0))
+    (ring & third.turn).drives(third.turn,
+                               law=stationed_tooth(800.0, 400.0))
+    (ring & fourth.turn).drives(fourth.turn,
+                                law=stationed_tooth(1200.0, 400.0))
+
+    def render(self):
+        self.second.translate([30.0, 0.0, 0.0])
+        self.third.translate([60.0, 0.0, 0.0])
+        self.fourth.translate([90.0, 0.0, 0.0])
+
+    def simulate(self):
+        for dial, digit in ((self.first, 0.0), (self.second, 108.0),
+                            (self.third, 252.0), (self.fourth, 324.0)):
+            if dial.turn.value is None:
+                dial.turn = digit
+
+
+class CrowdedClearing(AssemblyNode):
+    """A self-read law that goes on cutting its own path: the same sweep
+    at two cadences must agree, and a sweep that really crosses more
+    surfaces than one law is admitted in a tick must refuse.
+    """
+
+    time = Time.running()
+
+    ring = Driver(default=0.0, unit='deg')
+    wheel = Arbor()
+
+    (ring & wheel.turn).drives(wheel.turn, law=crowded_gate)
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = 0.0
+
+
+class SlidingRead(AssemblyNode):
+    """A dial standing exactly on its gate's surface, where each branch
+    carries the level back across it."""
+
+    time = Time.running()
+
+    ring = Driver(default=0.0, unit='deg')
+    wheel = Arbor()
+
+    (ring & wheel.turn).drives(wheel.turn, law=sliding_gate)
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = 0.0
+
+
+class LatchedClearing(AssemblyNode):
+    """A declared range whose bound READS a coordinate whose own law
+    reads IT: the bound's sub-program carries the self-read edge and is
+    sampled over the same two-layer partition."""
+
+    time = Time.running()
+
+    setter = Driver(default=0.0, unit='deg')
+    ring = Driver(default=0.0, unit='deg')
+    push = Driver(default=0.0, unit='mm')
+
+    wheel = Arbor()
+
+    latch = Prismatic(axis=(1, 0, 0), unit='mm',
+                      range=(None, Bound(lambda travel, angle:
+                                         20.0 * (angle < 180.0),
+                                         reads=(wheel.turn,))))
+
+    (setter & ring & wheel.turn).drives(wheel.turn, law=missing_tooth)
+    push.drives(latch, ratio=1.0)
+
+    block = Block()
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = 108.0
+
+
+class RefusedClearing(AssemblyNode):
+    """A self-read cut and a CONFLICT in one tick: the conflict refuses
+    the whole tick, and the landing the cut placed is discarded with
+    everything else the segment staged."""
+
+    time = Time.running()
+
+    setter = Driver(default=0.0, unit='deg')
+    ring = Driver(default=0.0, unit='deg')
+    wrist_in = Driver(default=0.0, unit='deg')
+    sum_in = Driver(default=0.0, unit='deg')
+
+    wheel = Arbor()
+
+    wrist = Revolute(axis=(0, 0, 1), unit='deg')
+    tool = Revolute(axis=(0, 1, 0), unit='deg')
+
+    left = wrist + 2 * tool
+
+    (setter & ring & wheel.turn).drives(wheel.turn, law=missing_tooth)
+    wrist_in.drives(wrist)
+    wrist.drives(tool, ratio=1.0)
+    sum_in.drives(left)
+
+    block = Block()
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = 108.0
+
+
+class RangedClearing(AssemblyNode):
+    """A DECLARED RANGE on the dial the self-read law drives: a physical
+    stop beside the gate, located over the SAME two-layer partition and
+    committed AT its bound exactly."""
+
+    time = Time.running()
+
+    setter = Driver(default=0.0, unit='deg')
+    ring = Driver(default=0.0, unit='deg')
+
+    wheel = Arbor(turn=Revolute(axis=(0, 0, 1), range=(None, 300.0),
+                                unit='deg'))
+
+    (setter & ring & wheel.turn).drives(wheel.turn, law=missing_tooth)
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = 108.0
+
+
+class BlockedRing(AssemblyNode):
+    """A declared range on the RING's own coordinate, which stops as its
+    own physical stop and blocks the inputs that push it, while the dial
+    clears only as far as the admitted sweep carried its rack."""
+
+    time = Time.running()
+
+    crank = Driver(default=0.0, unit='deg')
+
+    ring = Arbor(turn=Revolute(axis=(0, 0, 1), range=(None, 200.0),
+                               unit='deg'))
+    wheel = Arbor()
+
+    crank.drives(ring.turn, ratio=1.0)
+    (ring.turn & wheel.turn).drives(wheel.turn, law=missing_tooth_pair)
+
+    def render(self):
+        self.wheel.translate([30.0, 0.0, 0.0])
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = 108.0
+
+
+class StoppedClearing(AssemblyNode):
+    """A self-read crossing and a STOP in one tick.
+
+    The dial's own coordinate declares a range the SETTER drives it into
+    after the gate has already cut the tick -- so one segment reports
+    both a landing and a bound, and the bound wins. The gauge is an
+    unrelated ranged coordinate, driven by an input that reaches nothing
+    else, so its stop falls at its own fraction of the same tick.
+    """
+
+    time = Time.running()
+
+    setter = Driver(default=0.0, unit='deg')
+    ring = Driver(default=0.0, unit='deg')
+    gauge_in = Driver(default=0.0, unit='deg')
+
+    wheel = Arbor(turn=Revolute(axis=(0, 0, 1), range=(None, 400.0),
+                                unit='deg'))
+    gauge = Arbor(turn=Revolute(axis=(0, 0, 1), range=(None, 40.0),
+                                unit='deg'))
+
+    (setter & ring & wheel.turn).drives(wheel.turn, law=missing_tooth)
+    gauge_in.drives(gauge.turn, ratio=1.0)
+
+    def render(self):
+        self.gauge.translate([30.0, 0.0, 0.0])
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = 108.0

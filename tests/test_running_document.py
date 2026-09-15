@@ -29,6 +29,7 @@ import json
 import os
 import shutil
 import tempfile
+from unittest.mock import patch
 
 from solid_node.core.builder import Builder
 from solid_node.core.export import export_node
@@ -48,11 +49,12 @@ from solid_node.simulation.program import (_BISECTION_ROUNDS,
 from solid_node.simulation.run import _TOLERANCE
 
 from .base import BaseNodeTest
-from .running_project.machine import (Captured, ClassGate, Clocked,
+from .running_project.machine import (Captured, ClassGate, Clearing, Clocked,
                                       ClockedBody, Columns, ColumnsBare,
                                       Crank, Derived, Gate, Gauged, Guarded,
                                       LoopingTrain, NotRunning, OffCentre,
                                       OmittedControl, Optional, OptionalRead,
+                                      PlainClearing,
                                       PortDrivenJoint, PortDrivenSmooth,
                                       Ratchet, Register, Remainder, Selector,
                                       Sixbound, Sixfree, SlideKnob, SpringBank,
@@ -1407,3 +1409,84 @@ class SelectedPlacementTest(BaseNodeTest):
         self.assertIn('slide selector', message)
         self.assertIn('spare', message)
         self.assertIn('does not move', message)
+
+
+class SelfReadDocumentTest(BaseNodeTest):
+    """Schema v6: a program carrying a law that reads the coordinate it
+    drives.
+
+    OpenSpec change ``read-the-driven-coordinate``. The shape of the
+    document does not change: the self-read is ``needs`` intersected with
+    ``gives``, no key is added for it, and a law edge's expressions still
+    read exactly the ids in ``needs``. The VERSION changes, because a
+    version 5 consumer would evaluate such an edge as the difference of
+    its two endpoint evaluations, freeze the branch that reading selects
+    and move the part by a different mechanism in silence.
+    """
+
+    def clearing(self):
+        return document(bound(Clearing()))
+
+    def law_edge(self, published, coordinate):
+        for entry in published['program']['edges']:
+            if entry['kind'] == 'law' and coordinate in entry['gives']:
+                return entry
+        raise AssertionError(f'no law edge gives {coordinate}')
+
+    def test_a_program_with_a_self_read_law_is_a_version_6_document(self):
+        published = self.clearing()
+
+        self.assertEqual(published['version'], 6)
+        edge = self.law_edge(published, 'wheel.turn')
+        self.assertEqual(edge['needs'], ['setter', 'ring', 'wheel.turn'])
+        self.assertEqual(edge['gives'], ['wheel.turn'])
+
+    def test_the_expressions_free_names_are_exactly_the_needs(self):
+        published = self.clearing()
+        edge = self.law_edge(published, 'wheel.turn')
+
+        names = free_names_of(resolved(published, edge['expressions'][0]))
+        self.assertEqual(names, set(edge['needs']))
+
+    def test_no_key_was_added_to_the_program_for_the_read(self):
+        reading = self.clearing()['program']
+        plain = document(bound(PlainClearing()))['program']
+
+        self.assertEqual(sorted(reading), sorted(plain))
+        self.assertEqual(sorted(reading['edges'][0]),
+                         sorted(plain['edges'][0]))
+
+    def test_the_plan_skeleton_does_not_name_the_driven_coordinate(self):
+        published = self.clearing()
+        edge = self.law_edge(published, 'wheel.turn')
+        plan = edge['plans'][0]
+
+        skeleton = free_names_of(resolved(published, plan['skeleton']))
+        self.assertNotIn('wheel.turn', skeleton)
+        levels = [free_names_of(resolved(published, jump['level']))
+                  for jump in plan['jumps']]
+        self.assertTrue(any('wheel.turn' in names for names in levels))
+
+    def test_a_program_with_no_self_read_law_is_still_version_5(self):
+        self.assertEqual(document(bound(PlainClearing()))['version'], 5)
+        self.assertEqual(document(bound(Train()))['version'], 5)
+
+    def test_the_document_is_the_committed_version_6_fixture(self):
+        published = self.clearing()
+        published['root']['mtime'] = None
+        for child in published['root'].get('children', ()):
+            child['mtime'] = None
+        with open(os.path.join(BASE_DOCUMENTS, 'clearing.json')) as handle:
+            expected = handle.read()
+        self.assertEqual(json.dumps(published, indent=2) + '\n', expected)
+
+    def test_the_viewer_warning_names_the_version_written(self):
+        from solid_node.viewers import bundle
+
+        with patch.object(bundle, 'describe',
+                          return_value={'documentVersions': [1, 2, 3, 4, 5],
+                                        'version': '0.1.0'}):
+            message = bundle.unreadable_document(6)
+        self.assertIn('version 6', message)
+        self.assertIn('1, 2, 3, 4, 5', message)
+        self.assertIn('solid-node-viewer 0.1.0', message)

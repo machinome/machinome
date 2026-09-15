@@ -23,9 +23,10 @@ The machines are the fixtures cycles 1 to 3 already built
 answerable for: an affine chain with a kink and a wiring, each jump
 primitive, a multi-source law with a gate, the Pascaline-shaped carry, a
 ratchet whose bound is an expression over its own coordinate, a stop on
-one group while another runs, two stops in one tick, and a fold and a
-stop in one tick. Their scripts move, rate, trigger both instruction
-forms, and take and restore a snapshot.
+one group while another runs, two stops in one tick, a fold and a stop in
+one tick, and a law that READS THE COORDINATE IT DRIVES, whose dial holds
+at its gap while the ring sweeps past it. Their scripts move, rate,
+trigger both instruction forms, and take and restore a snapshot.
 
 `uncovered_features` REFUSES to write a corpus that misses any of the
 features the export capability lists, so the corpus's width is a
@@ -85,6 +86,9 @@ REQUIRED = (
     'a relative instruction',
     'an absolute instruction',
     'a tick carrying both a crossing and a stop',
+    'a law that reads the coordinate it drives',
+    'a self-read coordinate holding at its gate while its input moves on',
+    'a tick carrying both a self-read crossing and a stop',
 )
 
 COMPARISONS = ('<', '<=', '>', '>=', '==', '!=')
@@ -176,6 +180,36 @@ CORPUS = (
     {'name': 'StopAndJump', 'dt': 0.05, 'steps': 12, 'script': [
         {'tick': 1, 'move': {'input': 'crank', 'by': 30.0,
                              'duration': 0.05}, 'handle': 'h0'},
+    ]},
+    # A law that READS THE COORDINATE IT DRIVES: the Curta's clearing
+    # rack, reduced. The dial clears to its gap and HOLDS there, bit for
+    # bit, while the ring goes on sweeping past it -- which is the one
+    # thing a version 5 consumer cannot reproduce, and what the far-side
+    # landing is pinned by.
+    {'name': 'Clearing', 'dt': 0.05, 'steps': 24, 'script': [
+        {'tick': 1, 'move': {'input': 'ring', 'by': 600.0,
+                             'duration': 0.6}, 'handle': 'h0'},
+        {'tick': 16, 'move': {'input': 'ring', 'by': 300.0,
+                              'duration': 0.3}, 'handle': 'h1'},
+    ]},
+    # The same law at a coarser step, swept BACKWARD from inside the
+    # station, so the dial lands on the band's other edge.
+    {'name': 'Clearing', 'dt': 0.1, 'steps': 12, 'script': [
+        {'tick': 1, 'move': {'input': 'ring', 'to': 480.0,
+                             'duration': 0.2}, 'handle': 'h0'},
+        {'tick': 4, 'move': {'input': 'ring', 'by': -600.0,
+                             'duration': 0.6}, 'handle': 'h1'},
+    ]},
+    # A self-read crossing and a STOP in one tick, and a declared range
+    # the setter drives the dial into after the gate has cut: the bound
+    # wins over the landing the same segment reported.
+    {'name': 'StoppedClearing', 'dt': 0.05, 'steps': 16, 'script': [
+        {'tick': 1, 'move': {'input': 'ring', 'by': 600.0,
+                             'duration': 0.25}, 'handle': 'h0'},
+        {'tick': 1, 'move': {'input': 'gauge_in', 'by': 100.0,
+                             'duration': 0.25}, 'handle': 'h1'},
+        {'tick': 1, 'move': {'input': 'setter', 'by': 100.0,
+                             'duration': 0.25}, 'handle': 'h2'},
     ]},
     # A bound that READS OTHER COORDINATES, both ways round: the plug
     # turns with the pins cleared, and the withdrawal that follows is
@@ -306,10 +340,35 @@ def uncovered_features(machines):
                                  ('restore', 'a restore')):
                 if key in action:
                     seen.add(feature)
+        # The driven ends a law of this machine READS: `needs` met with
+        # `gives`, which is where the self-read is published and the one
+        # thing a version 5 consumer reads as something else.
+        reads = set()
+        for edge in program.get('edges', ()):
+            if edge['kind'] != 'law':
+                continue
+            reads |= set(edge['needs']) & set(edge['gives'])
+        if reads:
+            seen.add('a law that reads the coordinate it drives')
+        sources = program.get('sources') or {}
         previous = None
         for tick in entry['ticks']:
             if tick['stops']:
                 seen.add('a stop located inside a tick')
+            for identifier in reads:
+                if previous is None:
+                    continue
+                held = previous[identifier] == tick['bank'][identifier]
+                moved = any(previous[reaching] != tick['bank'][reaching]
+                            for reaching in sources.get(identifier, ())
+                            if reaching in tick['bank'])
+                if held and moved:
+                    seen.add('a self-read coordinate holding at its gate '
+                             'while its input moves on')
+            if tick['stops'] and any(one['coordinate'] in reads
+                                     for one in tick['crossings']):
+                seen.add('a tick carrying both a self-read crossing and '
+                         'a stop')
             for stop in tick['stops']:
                 # A stop whose coordinate holds the SAME value before and
                 # after its tick was reached by the motion of what the

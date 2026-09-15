@@ -962,6 +962,44 @@ or meeting a `%` whose divisor is zero, refuses the tick and commits
 nothing, exactly as a conflict does; `record=N` keeps a second bounded
 ring of the crossings located inside a tick.
 
+A law may READ THE COORDINATE IT DRIVES (ADR-121), which is how a
+mechanism whose engagement depends on where the driven part itself
+stands — the Curta's missing-tooth clearing rack — states itself: a
+coordinate named in a relation's source group AND as its one driven end
+is a read of that end, recognized where the old shared-coordinate
+refusal stood (`_self_read_index`), handed to the law exactly as any
+source's owner is, and refused where the driven end is a group. The read
+must be a SWITCH: with the skeleton substituted the law must no longer
+name it, or the relation is a differential equation and is refused by
+relation identity at compile; so must the driven end be a coordinate the
+run BANKS, because a retained value is a history. Under a running root
+such a relation binds NOTHING at rest — the dial's rest value is the
+author's own guarded default — and under any other time base it is
+refused by name at the close of the enumeration.
+
+Its tick is integrated in TWO LAYERS (`_Retained`, decided once at
+compile, and `_Walk`, which runs it). Layer one is ADR-107's own
+`_partition`, unchanged, over the jump nodes that do NOT depend on the
+driven coordinate — a well posed plan of its own, because dependence is
+upward closed along the argument subtrees. Inside each of its pieces the
+DEPENDENT nodes are walked: their branches are read at the piece's LEFT
+END with the coordinate at its retained value and every other source at
+that same fraction (a node sitting exactly on a surface takes its
+operator's branch and is FLIPPED once if the level then leaves the
+surface, a second flip refusing the tick as a sliding mode); the
+substituted skeleton gives the coordinate's own path; and the piece is
+cut at the FIRST surface any dependent level reaches. After a cut the
+coordinate is placed at the nearest representable value on the FAR SIDE
+of the surface — bracketed by a doubling stride from one ulp and
+bisected in float space, no tolerance anywhere — and `Edge.increments`
+REPORTS that absolute value beside its increment so `Run.integrate`
+commits it where it already commits a stop at its bound, a stop on the
+same coordinate in the same segment winning. The self-read id is a
+`needs` of the edge that is also one of its `gives`, so `_ordered`
+ignores a need an edge itself gives and a consumer identifies the read
+as `needs ∩ gives` with no new document key. A law with no self-read
+takes ADR-107's path on one boolean test, at the same evaluation count.
+
 The compile step also carries the SPAN TABLE and the CANDIDATE table.
 Every banked coordinate's declared range is resolved once, each bound a
 number, `None`, or — where the declaration states it as a callable of the
@@ -2210,6 +2248,20 @@ The short list that changes must not silently break:
 - **Sequential STL rendering**: `build_stls` renders one STL at a
   time; cold builds could parallelize `openscad` jobs
   (`docs/performance-improvement.md` §4–5, unscheduled).
+- **A self-read gate with no WIDTH is silently wrong** (ADR-121): the
+  framework cannot tell a knife-edge gate — one whose disengaged state
+  is a single value of the coordinate — from a band, because the
+  distinction is numeric rather than syntactic. It is documented in
+  `docs/scenarios.rst` and tested for what the framework promises, not
+  refused.
+- **A driven GROUP with a self-read is refused** (ADR-121): a member
+  reading a sibling would need that sibling's path while the sibling's
+  own walk is cutting it — a joint walk over several plans that no
+  mechanism has asked for yet.
+- **A kinked but piecewise-affine skeleton falls to the search**
+  (ADR-121): `clamp01` is two kinks and its pieces are affine, yet
+  `_affine_in_sources` calls it non-affine, so the Curta's own shape
+  pays 64 samples per piece where an exact path exists.
 
 ## Map
 
@@ -2218,8 +2270,8 @@ The short list that changes must not silently break:
 | Node model | `solid_node/node/`, `solid_node/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115 |
 | Build parameters | `solid_node/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104 |
-| Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105 |
-| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106 |
+| Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121 |
+| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121 |
 | Mechanisms | `solid_node/mechanisms/` | `mechanisms` | 022, 076 |
 | Build pipeline | `solid_node/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `solid_node/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |

@@ -666,3 +666,143 @@ pieces are affine) would remove it — a follow-up, not scope.
 4. **A joint walk for a driven group with a self-read** (§1). Refused in
    this cycle; the shape that would need it — several driven ends whose
    laws read each other — has no mechanism behind it yet.
+
+## Implementation notes (2026-09-15)
+
+Written after the adversarial review of the implementation, and recording
+only what implementation found. Nothing above this heading is revised:
+the decisions stand as ratified, and each note below is a correction to a
+piece of PROSE or an account of a defect in the code that realized them.
+
+**§10's "a self-read under `.repeat()`" is unattainable, and the
+requirement it was evidence for is met another way.** A repeated child's
+JOINT coordinate has no qualified id the run can bank it under —
+`DriverIdError` on the base tree, before any self-read is in sight — so no
+running corpus machine can carry one. That is a pre-existing limitation,
+recorded in `workflow/warts.md` under the fix-warts campaign, and not
+this cycle's to lift. The couplings resolution rule §10 leaned on is
+implemented and tested directly (`SelfReadTest::
+test_each_copy_of_a_broadcast_reads_itself`: four records, each copy
+reading its own slot), and the export spec's generator list never named
+`.repeat()`, so the ratified contract is met. Only that clause of §10's
+prose is not, and `evidence.md` §17 carries the measurement.
+
+**§4's "a knife-edge gate runs on when arriving from above" did not
+survive implementation.** It does not run on in any case probed. The
+reason is the landing's own shape rather than luck with the arithmetic:
+`_land` walks the crossed nodes in the graph's postorder and judges each
+with the OTHER nodes at the piece's NEAR-SIDE branches, so where a
+`floor` surface and a comparison surface are coincident in the
+coordinate — which is what a knife edge IS — the floor's far-side walk
+lands the coordinate exactly ON the surface, and there the comparison's
+operator reads disengaged. The gate holds from both sides. The width
+obligation stands as documentation, because it is a statement about the
+MODEL and not about this arithmetic: a single float is not a gap, and
+nothing guarantees another model's numbers land on it rather than past
+it. `KnifeEdgeTest` asserts only what holds — the disengaged set is ONE
+float, and the dial holds where the far side of the surface is
+disengaged — and `docs/scenarios.rst` promises neither the failure nor
+the hold. Open question 1 stands unchanged.
+
+**The searched walk reported a PHANTOM crossing and jumped a whole
+surface (blocking; closed).** `_Walk._searched` asked
+`_surfaces(previous, level, inclusive=True)` over each sub-interval and
+took `found[0]`. After a cut the far-side landing very often puts a
+`floor` node's level EXACTLY on the integer it was landed at, so at the
+next sub-interval `previous` IS a surface, the inclusive search returns
+it, and `_bisect` starts from a `below` of zero — never negative, so
+every round takes the `else` arm and the bracket collapses onto the
+sub-interval's RIGHT end. That was returned as a crossing strictly
+inside the piece, and `_land`, walking outward from a value already on
+the near side, carried the coordinate to the NEXT surface: a whole unit
+per phantom, a thousand of them, and then a refusal. It was invisible on
+a gate that HOLDS the part after landing (there `level == previous` for
+the whole piece and the sub-interval is skipped), and fatal on any gate
+whose read changes the RATE — a two-speed mechanism, a lever that keeps
+moving after it trips. The rule now, with no tolerance in it: a surface
+EQUAL to the level at a sub-interval's LEFT sample is not a crossing of
+that sub-interval (at the piece's left end it is rule (c)'s, and at an
+interior sample it was reached in the sub-interval before and reported
+there); the surface the path reaches first is the one NEAREST that left
+sample, not the lowest, because `_surfaces` counts upward and a
+DESCENDING level crosses them in the other order; and a right sample
+EXACTLY on a surface is the crossing at that sample, as ADR-107's own
+`_searched` already treats it. `_bisect` is then bracketing a `below`
+that can no longer be zero, which is what its sign test needs.
+
+**The same gate's rule (c) flipped a node to the wrong branch (closed
+with it).** `_decide` read the branch to flip to off the level at the
+probe sample — "the first of the `_SUBDIVISIONS` samples that differs",
+which §3 states as the test for whether the level LEAVES the surface. It
+is the right test for that question and the wrong value to take a branch
+from: for `floor` and `ceil` there are many other branches, and a sample
+a whole tooth away names one the piece never enters. On the two-speed
+gate the flip chose a branch that changed the rate, the next probe
+wanted a third, and the tick was refused as a sliding mode. The branch
+a flipped node takes is now the branch of the region IMMEDIATELY on the
+side the level departs to — `_branch_of(nextafter(surface, probe))` —
+which is unchanged for a comparison or `sign`, whose two regions are the
+only ones there are. §3's rule (c) is unaltered; this is how "the OTHER
+branch's region" is read for a primitive with more than two.
+
+**A genuine crossing a hair inside a piece's left end was dropped
+(blocking; closed).** `_searched` returned a crossing only
+`if where > t + _CROSSING_TOLERANCE`, on the reasoning that rule (c) had
+already answered anything nearer by flipping. Rule (c) flips a level
+EXACTLY on a surface, and float equality is the whole of that test: a
+coordinate a hair SHORT of one — where a rest default, a restore or a
+bound a stop committed can leave it — is not on it, is not flipped, and
+its crossing at `t*` of the order of `1e-16` was thrown away, so the
+piece integrated under the near-side branch and the part drove through
+its gap. That is exactly what rule (d) forbids, and the solved path
+never did it, because `_crossing` returns every crossing strictly inside
+the piece. With the exclusion above in place that filter has no job
+left: every crossing with `where > t` is returned. A crossing that
+bisects to exactly `t` is a zero-length piece whose landing moves the
+coordinate to the far side and lets the walk re-decide, bounded by
+`_MAX_CROSSINGS` like everything else.
+
+**An unlanded landing is now loud (closed).** `_Walk._far_side` returned
+the segment's own `own_star` unchanged when no bracket was found within
+`_WALK_STRIDES` doublings — committing, in silence, the one value §4
+says is never committed. It raises `LandingInvariantError` instead,
+naming the relation, the coordinate and the primitive, and the run
+refuses the tick with it as it refuses a broken stop invariant. No test
+can reach it by construction: a cut exists because the level crossed the
+surface, so the branch differs somewhere on either side of it, and 200
+doublings of a ulp cover every distance a double expresses. The code
+says so where it raises.
+
+**§6's account of the new `Edge` field is not the field the code
+carries.** It describes "the set of `gives` indices whose graph reads
+their own id". `Edge.retained` is not a set of indices: it is a TUPLE
+PARALLEL TO `gives`, holding for each driven end either the two-layer
+`_Retained` reading of that end's jump plan or `None`, and it is EMPTY
+where no driven end reads itself at all. The parallel shape is what lets
+`increments` and `cuts` index it beside `gives` with no lookup, and the
+emptiness is what §6's sentence was really about: the one test that keeps
+a law with no self-read on ADR-107's unchanged path is `if retained`, not
+a membership test on a set. The decision §6 states -- one derived field on
+the edge, the id staying in `needs`, nothing new published -- is
+unaltered; only its description of the field's shape is corrected here.
+
+**The compile no longer decides for itself WHICH end is read.**
+`_relation_edge` originally re-derived the self-read from the resolved
+slots (`gives` whose key is also a `needs`), which made two definitions of
+one thing: `_self_read_index` recognizes it at class definition by
+DECLARATION identity, records it as `Relation.self_read`, and the rest
+rule and the non-running refusal both key on that attribute -- and only
+that recognition refuses a driven GROUP. The compile now reads
+`record.relation.self_read` (an index into the source group, `None` for
+every other relation, shared by every copy of a broadcast) and keeps the
+slot comparison as a single CONSISTENCY CHECK: where the relation declares
+a self-read the resolved source at that index must be the resolved one
+driven end, and where it declares none no source may resolve to a driven
+slot. A disagreement is a coordinate spelled two ways -- the child
+standing for its one joint on one side, the coordinate on the other --
+and is refused by relation identity as `UnsupportedLaw`. The check is a
+BACKSTOP for the invariant rather than a path a running machine takes: the
+class definition sees no self-read in that spelling, so the rest rule does
+not apply and the rest render refuses the relation first
+(`SelfReadRestTest::test_naming_the_driven_coordinate_two_ways_is_refused`
+measures it: `DoublyBound` against the author's own guard).

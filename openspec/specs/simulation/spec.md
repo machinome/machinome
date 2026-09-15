@@ -429,7 +429,9 @@ The initial bank SHALL be the untimed rest pose at the requested driver
 values: construction SHALL bind the driver values (the declared defaults,
 overridden by `state=`) with `time` at zero, enumerate the tree once
 exactly as an untimed root is enumerated — the author's `simulate()` and
-every relation solving as they do today — and read every joint coordinate
+every relation solving as they do today, except a relation that reads its
+own driven end, which binds NOTHING at rest under the requirement "A law
+may read the coordinate it drives" — and read every joint coordinate
 off the tree. A joint coordinate that rest render leaves unbound SHALL be
 refused at construction naming the node path and the coordinate and
 saying that the run owns every joint coordinate and needs a rest value for
@@ -551,6 +553,22 @@ overwritten.
 - **WHEN** a running root declares a driver whose qualified id is `time`
 - **THEN** construction is refused naming the id and saying `time` is
   reserved for the simulation clock
+
+#### Scenario: A rest default under a self-read relation is the bank's value
+
+- **WHEN** a running root states
+  `(rack & wheel.turn).drives(wheel.turn, law=missing_tooth)` and the
+  wheel's own `simulate()` binds `108.0` under `if ... is None`
+- **THEN** construction succeeds, the initial bank reads
+  `wheel.turn == 108.0`, the relation bound nothing at rest, and nothing
+  is refused as doubly bound
+
+#### Scenario: A self-read relation with no rest default is refused
+
+- **WHEN** the same root's wheel declares no rest default, so the rest
+  render leaves `wheel.turn` unbound
+- **THEN** construction is refused naming that qualified id and saying
+  the run needs a rest value for every joint coordinate
 
 ### Requirement: A continuous law is integrated over a tick and increments propagate
 
@@ -795,7 +813,11 @@ BRANCH — the integer for `floor` and `ceil`, `-1`, `0` or `+1` for
 `sign`, the integer quotient for `%` so that the node reads `a − q·b`,
 and `1` or `0` for a comparison — determined by evaluating its level
 quantity at the MIDPOINT of that piece, in the graph's postorder so
-that a jump nested inside another's argument is determined first. The
+that a jump nested inside another's argument is determined first — with
+the one amendment the requirement "A law may read the coordinate it
+drives" states for a node that DEPENDS on the law's own driven
+coordinate, whose value at a midpoint is a consequence of the branch
+being asked for. The
 law with those branches substituted SHALL be continuous on the closed
 piece, and the increment SHALL be the sum, over the pieces, of that
 substituted law's value at the piece's end minus its value at the
@@ -814,7 +836,14 @@ bracketed crossing located by bisection to a stated tolerance, with the
 limit of that search documented. Two crossings closer than the
 tolerance SHALL be one cut, and several jump nodes crossing at one
 fraction SHALL be one cut whose midpoint sample fixes every branch at
-once.
+once. For a law that reads its own driven coordinate THIS partition SHALL be
+built over the jump nodes that do NOT depend on that coordinate, and the
+nodes that DO SHALL be walked piece by piece INSIDE each of its pieces,
+under the requirement "A law may read the coordinate it drives", because
+the path of that coordinate on one piece is a consequence of the
+branches of the piece before it. Merging two crossings closer than the
+tolerance into one cut belongs to THIS partition and SHALL NOT be
+applied in that walk.
 
 A tick that would cut one law's path more than a stated maximum number
 of times SHALL be refused naming the relation, the driven coordinate,
@@ -1867,4 +1896,260 @@ find in the model:
   dependent on a second mechanism
 - **THEN** the run admits exactly the movement the same ordinary move request
   admits, reports the same outcome, and does not reposition that second mechanism
+
+### Requirement: A law may read the coordinate it drives
+
+Under a running root a relation whose source group names its own DRIVEN
+end SHALL be integrated so that the law reads, on each piece of the tick,
+the value that coordinate HELD at the piece's start — its RETAINED value
+— and never a value the same piece is computing.
+
+Such a relation SHALL drive exactly ONE coordinate. A relation whose
+driven end is a GROUP and whose source group names any member of that
+group SHALL be REFUSED at class definition, naming the relation and the
+coordinate, and saying that a relation reading its own driven end drives
+one coordinate — whether the member reads ITSELF or a SIBLING driven end.
+
+**The read SHALL be a SWITCH.** The system SHALL REFUSE, at construction
+and by relation identity — naming the relation as written and the class
+that stated it — a law whose SKELETON, the expression with every jump
+node replaced by its branch, still names the driven coordinate it reads.
+A read that survives the skeleton enters the law continuously, which
+makes the relation a differential equation that the difference of two
+evaluations does not define. The message SHALL say that a read must pass
+through a node that is piecewise constant in it — `floor`, `ceil`,
+`sign` or a comparison — and that a remainder alone is not one, because
+a fixed quotient leaves `a − q·b`, which still carries the coordinate's
+slope.
+
+The system SHALL likewise REFUSE, at construction and by relation
+identity, a relation reading a driven end the run does not BANK — a
+plain port or a derived coordinate — saying that a retained value is a
+history and only a coordinate the run owns keeps one.
+
+**Over one tick such a law SHALL be integrated PIECE BY PIECE.** A jump
+node DEPENDS on the driven coordinate when that coordinate is among the
+free names of the node's argument subtree. The tick's path SHALL first
+be partitioned by the jump nodes that do NOT depend on it, exactly as any
+other law's path is, their branches read at that partition's midpoints;
+INSIDE each of its pieces the dependent nodes SHALL then be walked:
+
+- At the walk's left end the driven coordinate holds a known value: the
+  tick's committed value at the start, and the value the cuts already
+  taken placed it at afterwards.
+- Every dependent node's branch SHALL be determined in the graph's
+  postorder, with the driven coordinate at that retained value and every
+  OTHER source at the piece's LEFT END — not at its midpoint, because a
+  level quantity naming both the driven coordinate and a source may cross
+  inside the piece by the source's motion alone, and the branch read past
+  that crossing is not the branch the piece begins under.
+- A dependent node whose level sits EXACTLY on a surface at that left end
+  SHALL take the branch its operator gives; if the level then LEAVES the
+  surface into the other branch's region, that node SHALL be flipped to
+  the other branch at the left end and every branch decided again. If the
+  flipped branch carries the level back across as well, the tick SHALL be
+  REFUSED naming the relation, the coordinate and the primitive, and
+  SHALL commit nothing.
+- With those branches fixed the substituted law SHALL be continuous on
+  the piece and SHALL NOT name the driven coordinate, so that
+  coordinate's own value along the piece is one ordinary evaluation.
+- Each dependent node's level quantity SHALL be followed along the piece
+  — through the driven coordinate's own path and through the sources —
+  and the piece SHALL be CUT at the FIRST surface any of them reaches
+  strictly inside it: SOLVED exactly where that level is affine along the
+  path, otherwise sampled at the same fixed number of sub-intervals and
+  bisected to the same tolerance a jump search already uses. No further
+  tolerance SHALL be introduced, and a crossing found within that
+  tolerance of the piece's left end SHALL NOT be merged into it.
+- The piece's contribution SHALL be the substituted law's change over it,
+  and the next piece SHALL be decided the same way.
+
+A tick whose path is cut more times than the stated maximum SHALL be
+refused exactly as any other over-crossed tick is.
+
+**After a cut the driven coordinate SHALL be committed AT THE FAR SIDE OF
+THE SURFACE, at the nearest representable value.** Where the piece moved
+it, the coordinate SHALL be placed at the representable value NEAREST the
+surface among those at which the crossing node's level — evaluated with
+the driven coordinate at that value and every other source at the
+crossing's own fraction — reads the branch on the side the level was
+moving TOWARD. That value SHALL be what the next piece starts from, and a
+tick in which at least one cut placed the coordinate SHALL COMMIT the
+value the walk left it at — the last landing and whatever the pieces
+after it contributed — rather than its starting value plus the
+increment, exactly as a stopped coordinate is committed at its bound. Where the piece did NOT move the coordinate, it SHALL stand where
+it stood. A coordinate held at a gate SHALL therefore read the same
+branch on every later tick, whatever its sources do, and SHALL survive a
+snapshot and a restore bit for bit.
+
+A model SHALL state a gate whose DISENGAGED state has WIDTH — the
+mechanism's own clearance — because a gate whose disengaged state is a
+single value of the coordinate reads engaged on one side of it and cannot
+hold when the coordinate arrives from that side. The width is the
+model's to state and the system SHALL NOT require any particular one: a
+band of any positive width holds from both directions.
+
+**A self-read crossing is NOT a stop.** It SHALL stop no input, retire
+no command and appear in the crossing record rather than the stop
+record. A declared range on the driven coordinate SHALL stop it exactly
+as it stops any other, located over this same partition, and SHALL be
+committed at its bound even where a cut of the same segment placed it
+elsewhere.
+
+**At rest such a relation SHALL bind nothing.** It SHALL be recorded
+solved FORWARD, its law unapplied, so the rest render poses the tree from
+the author's own rest default and the run refuses by name when there is
+none. Binding the whole bank again, rendering, or inspecting the tree
+SHALL advance it by nothing: the relation moves its coordinate only
+through a tick.
+
+#### Scenario: A wheel clears to its gap and the ring runs on
+
+- **WHEN** a running root states
+  `(ring & wheel.turn).drives(wheel.turn, law=missing_tooth)`, whose gate
+  is disengaged over a band of half-width `g` about every multiple of
+  `360`, the wheel rests at `108`, and `move('ring', by=500, duration=1)`
+  is run at `dt = 0.1`
+- **THEN** the tick sequence commits with `ring` at `500` and its handle
+  `completed`, `wheel.turn` at the band's lower edge — within `g` of
+  `360`, at the nearest representable value on the disengaged side — and
+  the crossing at which the wheel reached its gap recorded in
+  `sim.crossings` and not in `sim.stops`
+
+#### Scenario: Sweeping an already-cleared wheel moves it by nothing
+
+- **WHEN** the same root is swept a second time by another
+  `move('ring', by=500, duration=1)`, and a third
+- **THEN** `ring` reads `1500`, `wheel.turn` holds the SAME float it
+  landed on, bit for bit, after each of them, and every handle reports
+  `completed`
+
+#### Scenario: Swept backward, a digit clears to zero the short way
+
+- **WHEN** the wheel rests at `108` and the ring is swept BACKWARD far
+  enough to carry it past zero
+- **THEN** the wheel ends at the band's UPPER edge — within `g` above
+  `0`, at the nearest representable value on the disengaged side — having
+  turned three teeth and no more, and it does not move on a further
+  backward sweep
+
+#### Scenario: Every digit clears and no digit overruns
+
+- **WHEN** the same root is constructed ten times, its wheel resting at
+  each of `0, 36, 72, … 324`, and each is given a sweep long enough to
+  reach the gap
+- **THEN** each wheel ends within `g` of the next multiple of `360` in
+  the sweep's direction — the one it already stood on for the wheel that
+  rested at `0`, which does not move at all
+
+#### Scenario: A wheel standing exactly on a band edge is not driven through it
+
+- **WHEN** a wheel is placed exactly at the value its own gate's surface
+  sits on — the float a previous sweep landed it at — and the ring is
+  swept, first in the direction that carries the level INTO the gate's
+  engaged region and then in the direction that carries it away
+- **THEN** it holds in the direction that would take it deeper into the
+  band, turns in the direction that leaves it, and in neither case is it
+  carried through the band by a piece integrated under the wrong branch
+
+#### Scenario: A partial sweep is retained and resumes
+
+- **WHEN** the wheel rests at `108`, `move('ring', by=120, duration=1)`
+  completes, the caller then reads `sim.state`, renders the tree, takes a
+  snapshot and restores it, and only then requests another
+  `move('ring', by=380, duration=1)`
+- **THEN** the wheel stands at `228` after the first move and unchanged
+  through every inspection, and at the band's edge after the second — no
+  starting register having been supplied by the caller
+
+#### Scenario: The same sweep at three cadences agrees
+
+- **WHEN** one running simulation takes the whole sweep in a single
+  tick, another in twelve and another in two hundred and forty, and a
+  fourth takes it as four partial commands with the ring released
+  between them
+- **THEN** all four leave the wheel and the ring at the same values
+  within the run's agreement window, no tick records a stop, no command
+  is retired `blocked`, and the total travel admitted is the same
+
+#### Scenario: A continuous read is refused
+
+- **WHEN** a running root states
+  `(ring & wheel.turn).drives(wheel.turn, law=...)` whose law is
+  `ring * wheel`, or `ring * (wheel % 360)`
+- **THEN** construction is refused naming the relation and the class that
+  stated it, and saying the read must pass through a node that is
+  piecewise constant in it and that a remainder alone is not one
+
+#### Scenario: A self-read of a coordinate the run does not bank is refused
+
+- **WHEN** a running root states a self-read relation whose driven end is
+  a plain port rather than a joint coordinate
+- **THEN** construction is refused naming the relation and the port, and
+  saying that a retained value is a history and only a coordinate the run
+  owns keeps one
+
+#### Scenario: A driven group with a self-read is refused
+
+- **WHEN** a class states
+  `(crank & lever.swing & pawl.turn).drives((lever.swing, pawl.turn), law=...)`
+- **THEN** class definition is refused naming the relation and the
+  coordinate read, and saying that a relation reading its own driven end
+  drives one coordinate
+
+#### Scenario: Several wheels clear independently from one ring
+
+- **WHEN** a running root drives four wheels resting at `0`, `108`, `252`
+  and `324` from one `ring` input, each by its own self-read relation
+  whose rack term opens over that wheel's own station, and the ring is
+  swept through the first three stations only
+- **THEN** the first wheel does not move, the second and third each end
+  at their band's edge, the fourth is untouched, and the ring's handle
+  reports `completed` with its whole travel admitted
+
+#### Scenario: A declared range on the ring still blocks
+
+- **WHEN** the ring's own coordinate declares `range=(None, 400)` and a
+  sweep of `500` is requested
+- **THEN** the ring stops at exactly `400`, its command retires
+  `blocked`, `sim.stops` names the ring's coordinate, and the wheels
+  cleared only as far as the admitted sweep carried their racks
+
+#### Scenario: Reversal inside the gap moves nothing
+
+- **WHEN** a wheel standing INSIDE its band is swept backwards and then
+  forwards again
+- **THEN** it does not move in either direction, both handles report
+  `completed`, and no stop is recorded
+
+#### Scenario: Reversal while engaged backs the wheel up
+
+- **WHEN** a sweep carries a wheel from `108` part way toward its gap and
+  the ring is then swept back the same distance
+- **THEN** the wheel returns to `108` within the run's agreement window,
+  the two increments having been the same law read in both directions
+
+#### Scenario: A stop and a self-read crossing in one tick
+
+- **WHEN** one tick would carry a wheel through its gap at one fraction
+  and take an unrelated ranged coordinate past its bound at another
+- **THEN** the ranged coordinate stops at its bound exactly, the wheel
+  holds at its gap, the crossing is recorded at its fraction OF THE TICK
+  rather than of the segment, and `sim.stops` names only the ranged
+  coordinate
+
+#### Scenario: A self-read law's identity names what it reads
+
+- **WHEN** two running roots differ only in whether their law reads the
+  driven coordinate
+- **THEN** the program's described listing differs, their identities
+  differ, and a snapshot of one is refused by the other
+
+#### Scenario: A tick that fails after a self-read cut commits nothing
+
+- **WHEN** a segment after a self-read cut meets a conflict
+- **THEN** the bank, the tick count and the tree stand as before the
+  whole tick, no crossing is recorded, the coordinate is NOT left at the
+  value the cut placed it at, and the commands that moved retire
+  `refused`
 

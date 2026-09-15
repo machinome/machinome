@@ -5,6 +5,42 @@ History
 Unreleased
 ----------
 
+* A law may **read the coordinate it drives**. A coordinate named in a
+  relation's source group AND as its one driven end is a READ of that
+  end — ``(ring & wheel.turn).drives(wheel.turn, law=missing_tooth)`` —
+  and what the law sees there is the value the coordinate HOLDS, never a
+  value the same application is about to give it. That is the Curta's
+  missing-tooth clearing rack: a rack turns a register dial only while
+  its teeth reach it AND the dial is not already standing at its gap, so
+  a dial clears from any digit, the ring sweeps on past a dial that has
+  finished, a released ring keeps the partial clearing and an
+  already-cleared dial is not turned again. The read must be a SWITCH —
+  with every jump node replaced by its branch the law must no longer name
+  the coordinate, and a bare ``%`` is not one — and the driven end must be
+  a coordinate the run banks; both are refused at construction by
+  relation identity. Over a tick such a law is integrated PIECE BY PIECE:
+  the jump nodes that do not depend on the driven coordinate partition
+  the path as they always did, and inside each of their pieces the ones
+  that do are walked, their branches read at the piece's left end from
+  the value the coordinate retains there. After a cut the coordinate is
+  committed at the nearest representable value on the FAR SIDE of the
+  surface, and the run commits that float — so a dial that reached its
+  gap reads the same branch on every later tick and survives a snapshot
+  and a restore bit for bit. A gate's disengaged state must therefore
+  have WIDTH, the mechanism's own clearance, stated as a band about the
+  zero and entered from either side. Such a relation drives ONE
+  coordinate (a driven group naming one of its own members is refused; a
+  broadcast is admitted, each copy reading itself), binds NOTHING at rest
+  so the dial's rest value is the author's own guarded default, and is
+  refused by name under any time base but ``Time.running()``. A self-read
+  crossing is a crossing and not a stop; a declared range on the same
+  coordinate still stops it and wins where both fall in one segment.
+  **BREAKING for consumers:** a document whose program carries such a law
+  declares ``version: 6``, because a runtime evaluating a law edge as the
+  difference of its two endpoint evaluations would read it at both ends
+  and move the part by a different mechanism in silence. A program with
+  no self-read publishes the byte-identical version 5 document it always
+  did, and a law with no self-read takes the same path at the same cost.
 * A **marking**: what a rigid part carries on its surface, declared in
   its class body as ``digits = Marking(Svg('dial.svg'), Wrapped(...),
   color='#FFFFFF')`` beside its parameters and its children. The artwork

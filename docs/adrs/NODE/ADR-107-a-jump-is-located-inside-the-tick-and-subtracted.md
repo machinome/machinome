@@ -1,6 +1,8 @@
 # ADR-107: A Jump Is Located Inside the Tick and Subtracted
 
-**Status:** Accepted
+**Status:** Accepted, amended by [ADR-121](./ADR-121-a-law-may-read-the-coordinate-it-drives.md)
+for a law that reads its own driven coordinate (two layers, and a branch read at
+the piece's left end; a law with no self-read keeps this decision unchanged)
 **Date:** 2026-09-13
 **Depends on:**
 - [ADR-106: One law, two readings — a relation is inspected as an expression](./ADR-106-one-law-two-readings.md)

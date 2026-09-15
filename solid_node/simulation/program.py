@@ -52,6 +52,7 @@ import hashlib
 import math
 import operator
 import re
+import struct
 from dataclasses import dataclass
 
 from solid2.core.object_base import OpenSCADConstant
@@ -111,6 +112,14 @@ _SUBDIVISIONS = 64
 # safety net, not the working number.
 _BISECTION_ROUNDS = 64
 
+# How far the far-side landing walks out from the segment's own
+# arithmetic before it gives up, with the stride DOUBLING from one ulp:
+# 200 doublings cover every distance a double can express, so this is the
+# safety net and never the working number (a solved crossing is a couple
+# of ulps out, a searched one up to `_CROSSING_TOLERANCE` of the piece's
+# travel).
+_WALK_STRIDES = 200
+
 # The per-graph per-tick bound on the partition. A thousand surfaces in
 # one tick is a dt that is not resolving the mechanism, and an unbounded
 # partition would be an unbounded per-tick cost inside a mode whose whole
@@ -136,6 +145,22 @@ class UnsupportedLaw(CouplingError):
 class TooManyCrossings(CouplingError):
     """One tick would cut a law's path more times than the run admits.
     The tick committed nothing."""
+
+
+class LandingInvariantError(RuntimeError):
+    """A self-read cut placed the driven coordinate nowhere.
+
+    The landing is bracketed by stepping out from the segment's own
+    arithmetic with the stride doubling from one ulp, and `_WALK_STRIDES`
+    doublings cover every distance a double can express. A cut exists
+    because the level crossed the surface, so the branch differs
+    somewhere on either side of it and a bracket is found by
+    construction. This is therefore a broken invariant of the run rather
+    than a dt that is too coarse -- the `StopInvariantError` it is
+    modelled on says the same of a stop -- and it is raised rather than
+    committing a value the design says is never committed. The tick
+    committed nothing.
+    """
 
 
 @dataclass(frozen=True)
@@ -362,6 +387,13 @@ class JumpPlan:
         return tuple(self._partition(start, delta, described, coordinate,
                                      None, 0))
 
+    def retained(self, own):
+        """This plan read in TWO LAYERS, for a driven end whose own law
+        reads it: the jump nodes that do not depend on `own` keep the
+        partition below, and the ones that do are walked inside each of
+        its pieces (`_Retained`)."""
+        return _Retained(self, own)
+
     def _partition(self, start, delta, described, coordinate,
                    crossings, tick):
         """The tick's path, cut at every crossing of every jump surface.
@@ -563,6 +595,480 @@ def _merged(cuts, found):
     return kept
 
 
+def _dependence(plan, own):
+    """Which of a plan's jump nodes DEPEND on the driven coordinate.
+
+    A node depends on it when that coordinate is among the free names of
+    the node's ARGUMENT SUBTREE in the original graph. Read off the plan,
+    where every inner jump is already a placeholder, that is: the node's
+    level quantity names the driven id, OR it names the placeholder of a
+    node that depends on it -- the same set, because a placeholder stands
+    for exactly the subtree it replaced.
+
+    Dependence is therefore UPWARD CLOSED along the nesting, which is
+    what makes the independent nodes a well formed plan of their own.
+    """
+    found = {}
+    for jump in plan.jumps:
+        names = free_names(as_node(jump.argument))
+        found[jump.placeholder] = (own in names
+                                   or any(found.get(name, False)
+                                          for name in names))
+    return found
+
+
+def _on_surface(jump, level):
+    """Whether a jump node's level sits EXACTLY on one of its surfaces.
+
+    Asked only at a piece's LEFT END under a self-read, where the value
+    is the coordinate's own retained one and the question is which
+    branch the piece begins under -- never of a midpoint, which is a
+    point genuinely inside its piece.
+    """
+    if jump.primitive == 'sign' or jump.primitive in _COMPARISONS:
+        return level == 0.0
+    if not math.isfinite(level):
+        return False
+    if jump.primitive == '%' and level == 0.0:
+        # `%` is continuous where `a / b` crosses zero, so zero is not
+        # one of its surfaces.
+        return False
+    return level == math.floor(level)
+
+
+def _ordinal(value):
+    """A float as the integer its bits order by, so two floats can be
+    bisected in FLOAT space: adjacent floats differ by one here, at any
+    magnitude, with no tolerance anywhere."""
+    whole = struct.unpack('<q', struct.pack('<d', value))[0]
+    return whole if whole >= 0 else -(2 ** 63) - whole
+
+
+def _from_ordinal(whole):
+    if whole < 0:
+        whole = -(2 ** 63) - whole
+    return struct.unpack('<d', struct.pack('<q', whole))[0]
+
+
+def _chattering(described, coordinate, jump):
+    return UnsupportedLaw(
+        f'{described}: {coordinate} stands exactly on a surface of its '
+        f'{jump.primitive} and each branch carries the level back across '
+        f'it -- a sliding mode, not a mechanism. The framework integrates '
+        f'a law piece by piece, and there is no piece here to integrate. '
+        f'The tick committed nothing: the bank, the tick count and the '
+        f'tree stand as they were.')
+
+
+class _Retained:
+    """How ONE driven end whose own law READS it is integrated.
+
+    The split is decided HERE, once, at compile time: the plan's jump
+    nodes that do NOT depend on the driven coordinate keep ADR-107's
+    whole partition -- built by `_partition` itself, over a plan of
+    exactly that subset -- and the ones that DO are WALKED inside each of
+    its pieces, their branches read at the piece's LEFT END from the
+    value the coordinate RETAINS there.
+
+    A midpoint is no use to a dependent node: the coordinate's value
+    there is a consequence of the branch being asked for. The retained
+    value is the one value known without assuming the answer, and it is
+    the mechanism's own reading -- a rack meets the tooth the wheel is
+    standing on.
+    """
+
+    __slots__ = ('plan', 'own', 'dependent', 'outer', 'affine')
+
+    def __init__(self, plan, own):
+        dependence = _dependence(plan, own)
+        self.plan = plan
+        self.own = own
+        self.dependent = tuple(jump for jump in plan.jumps
+                               if dependence[jump.placeholder])
+        self.outer = JumpPlan(plan.skeleton,
+                              [jump for jump in plan.jumps
+                               if not dependence[jump.placeholder]])
+        # Whether the SKELETON is affine along the path, which is what
+        # makes the driven coordinate's own path affine in `t` on a
+        # piece and a dependent level's crossing SOLVABLE rather than
+        # searched.
+        self.affine = _affine_in_sources(as_node(plan.skeleton))
+
+    def __repr__(self):
+        return (f'<retained reading of {self.own}: '
+                f'{len(self.dependent)} dependent, '
+                f'{len(self.outer.jumps)} independent>')
+
+    def increment(self, start, delta, described, coordinate,
+                  crossings=None, tick=0):
+        """`(increment, landing)`: what this end MOVES BY over the tick,
+        and the ABSOLUTE value it holds at the tick's end where at least
+        one cut placed it -- None where none did."""
+        walk = _Walk(self, start, delta, described, coordinate)
+        increment, landing, _cuts = walk.run(crossings, tick)
+        return increment, landing
+
+    def cuts(self, start, delta, described, coordinate):
+        """The breakpoints the two layers together put on the path."""
+        walk = _Walk(self, start, delta, described, coordinate)
+        return walk.run(None, 0)[2]
+
+
+class _Walk:
+    """One driven end's piece-by-piece walk over one tick."""
+
+    __slots__ = ('reading', 'plan', 'own', 'start', 'delta', 'described',
+                 'coordinate', 'taken')
+
+    def __init__(self, reading, start, delta, described, coordinate):
+        self.reading = reading
+        self.plan = reading.plan
+        self.own = reading.own
+        self.start = start
+        self.delta = dict(delta)
+        # The driven coordinate's own source moves by NOTHING along the
+        # path: what it holds on a piece is what the pieces before it
+        # produced, never an increment the tick handed it.
+        self.delta[self.own] = 0.0
+        self.described = described
+        self.coordinate = coordinate
+        self.taken = 0
+
+    ##############################################
+    # The two layers
+
+    def run(self, crossings, tick):
+        own0 = self.start[self.own]
+        if not any(value for name, value in self.delta.items()
+                   if name != self.own):
+            # A tick in which no SOURCE moves contributes zero without
+            # evaluating the law, exactly as any other law's does.
+            return 0.0, None, (0.0, 1.0)
+        outer = self._outer(crossings, tick)
+        own_left = own0
+        landed = False
+        cuts = [0.0]
+        for left, right in zip(outer, outer[1:]):
+            outer_branches = self._outer_branches(left, right)
+            t = left
+            while True:
+                branches = self._decide(t, right, own_left, outer_branches)
+                base = self._skeleton(t, branches)
+
+                def own_at(s, branches=branches, base=base,
+                           own_left=own_left):
+                    """The driven coordinate's own path on this piece --
+                    one ordinary evaluation, because the substituted
+                    skeleton does not name it."""
+                    return own_left + self._skeleton(s, branches) - base
+
+                cut = self._first_cut(t, right, own_left, branches, own_at)
+                if cut is None:
+                    own_left = own_at(right)
+                    break
+                where, crossed = cut
+                own_star = own_at(where)
+                self.taken += 1
+                if self.taken > _MAX_CROSSINGS:
+                    raise _too_many(self.described, self.coordinate,
+                                    crossed[0][1], self.taken)
+                own_left = self._land(crossed, where, own_left, own_star,
+                                      branches)
+                landed = True
+                if crossings is not None:
+                    crossings.extend(
+                        Crossing(tick, self.described, self.coordinate,
+                                 jump.primitive, level, where)
+                        for level, jump in crossed)
+                cuts.append(where)
+                t = where
+            cuts.append(right)
+        return own_left - own0, (own_left if landed else None), tuple(cuts)
+
+    def _outer(self, crossings, tick):
+        """Layer one: ADR-107's own partition, over the jump nodes that
+        do not depend on the driven coordinate."""
+        if not self.reading.outer.jumps:
+            return (0.0, 1.0)
+        return self.reading.outer._partition(
+            self.start, self.delta, self.described, self.coordinate,
+            crossings, tick)
+
+    def _outer_branches(self, left, right):
+        if not self.reading.outer.jumps:
+            return {}
+        return self.reading.outer._branches(
+            self.start, self.delta, (left + right) / 2.0,
+            len(self.reading.outer.jumps), self.described, self.coordinate)
+
+    ##############################################
+    # The branches at a piece's LEFT END
+
+    def _decide(self, t, right, own_left, outer_branches):
+        """Every dependent node's branch at the piece's left end, in the
+        graph's postorder, with the driven coordinate at its RETAINED
+        value and every other source at `t`.
+
+        A node whose level sits exactly on a surface takes the branch its
+        OPERATOR gives; if the level then LEAVES the surface into the
+        other branch's region, it is flipped there -- a zero-length
+        piece -- and every branch is decided again. A node flipped twice
+        is a sliding mode and refuses the tick.
+        """
+        forced = {}
+        for _attempt in range(2 * len(self.reading.dependent) + 1):
+            branches, sitting = self._tentative(t, own_left, outer_branches,
+                                                forced)
+            flip = None
+            for jump in self.reading.dependent:
+                if jump.placeholder not in sitting:
+                    continue
+                surface = sitting[jump.placeholder]
+                probe = self._probe(jump, surface, t, right, own_left,
+                                    branches)
+                if probe is None:
+                    continue
+                # The branch of the region the level leaves the surface
+                # INTO -- the one immediately on that side -- and never
+                # the branch at the probe itself. A `floor` whose level
+                # departs downward from `k` enters `(k - 1, k)` whatever
+                # the sample that showed it moving reached, and a piece
+                # is integrated under the branch at its own LEFT END: on
+                # a gate that changes the rate rather than holding the
+                # part, that sample is several surfaces away and its
+                # branch is not this piece's.
+                wanted = _branch_of(jump, math.nextafter(surface, probe))
+                if wanted != branches[jump.placeholder]:
+                    flip = (jump, wanted)
+                    break
+            if flip is None:
+                return branches
+            jump, wanted = flip
+            if jump.placeholder in forced:
+                raise _chattering(self.described, self.coordinate, jump)
+            forced[jump.placeholder] = wanted
+        raise _chattering(self.described, self.coordinate,
+                          self.reading.dependent[0])
+
+    def _tentative(self, t, own_left, outer_branches, forced):
+        branches = dict(outer_branches)
+        sitting = {}
+        for jump in self.reading.dependent:
+            level = self._level(jump, t, own_left, branches)
+            if _on_surface(jump, level):
+                sitting[jump.placeholder] = level
+            branches[jump.placeholder] = forced.get(
+                jump.placeholder, _branch_of(jump, level))
+        return branches, sitting
+
+    def _probe(self, jump, surface, t, right, own_left, branches):
+        """The level's value at the FIRST point of the piece at which it
+        differs from the surface it sits on -- an inequality between two
+        evaluated floats, with no tolerance in it."""
+        base = self._skeleton(t, branches)
+        for step in range(1, _SUBDIVISIONS + 1):
+            s = t + (right - t) * step / _SUBDIVISIONS
+            own = own_left + self._skeleton(s, branches) - base
+            level = self._level(jump, s, own, branches)
+            if level != surface:
+                return level
+        return None
+
+    ##############################################
+    # The FIRST surface strictly inside the piece
+
+    def _first_cut(self, t, right, own_left, branches, own_at):
+        found = []
+        for jump in self.reading.dependent:
+            crossing = self._crossing(jump, t, right, own_left, branches,
+                                      own_at)
+            if crossing is not None:
+                found.append((crossing[0], crossing[1], jump))
+        if not found:
+            return None
+        first = min(where for where, _level, _jump in found)
+        # Two dependent nodes crossing at one fraction are ONE cut, and
+        # each takes its far side.
+        crossed = [(level, jump) for where, level, jump in found
+                   if where - first <= _CROSSING_TOLERANCE]
+        return first, crossed
+
+    def _crossing(self, jump, t, right, own_left, branches, own_at):
+        if jump.affine and self.reading.affine:
+            low = self._level(jump, t, own_left, branches)
+            high = self._level(jump, right, own_at(right), branches)
+            if high == low:
+                return None
+            found = _surfaces(jump, low, high, self.described,
+                              self.coordinate, inclusive=False)
+            if not found:
+                return None
+            return min(((t + (right - t) * (level - low) / (high - low),
+                         level) for level in found),
+                       key=lambda entry: entry[0])
+        return self._searched(jump, t, right, own_left, branches, own_at)
+
+    def _searched(self, jump, t, right, own_left, branches, own_at):
+        """A level that is not affine along the path: sampled, bracketed
+        and bisected on the same three tolerances a jump search already
+        uses, and stopped at the FIRST surface it reaches."""
+        width = (right - t) / _SUBDIVISIONS
+        previous = self._level(jump, t, own_left, branches)
+        for step in range(1, _SUBDIVISIONS + 1):
+            s = t + width * step
+            level = self._level(jump, s, own_at(s), branches)
+            if level == previous:
+                # A level that does not MOVE crosses nothing. Worth
+                # saying here and nowhere else: a dependent node whose
+                # branch holds the driven coordinate still sits exactly
+                # on the surface it was landed at for the whole piece,
+                # and an inclusive search would report that surface as
+                # reached over and over.
+                continue
+            found = [surface for surface
+                     in _surfaces(jump, previous, level, self.described,
+                                  self.coordinate, inclusive=True)
+                     # The surface a sub-interval STARTS on is not one it
+                     # crosses. At the piece's left end that surface is
+                     # `_decide`'s to answer, and at an interior sample
+                     # it was reached in the sub-interval before and
+                     # reported there -- the far-side landing leaves the
+                     # coordinate reading the far branch, so a level that
+                     # walks on from a surface it was placed at is
+                     # LEAVING it.
+                     if surface != previous]
+            # `_surfaces` counts upward, so the surface the path reaches
+            # FIRST is the one nearest the sample it starts from:
+            # `found[0]` is the LAST one a DESCENDING level crosses, and
+            # cutting there would integrate everything before it under a
+            # branch the path had already left.
+            for surface in sorted(found,
+                                  key=lambda one: abs(one - previous)):
+                if level == surface:
+                    # A sample that IS on the surface is the crossing,
+                    # at that sample; there is nothing to bisect toward.
+                    where = s
+                else:
+                    where = self._bisect(jump, surface, previous, s - width,
+                                         s, branches, own_at)
+                # Every crossing strictly inside the piece is returned,
+                # one a hair from its left end included: folding that one
+                # away would integrate the piece under the near-side
+                # branch and drive the part through its gap, which
+                # design.md section 3's rule (d) forbids and the solved
+                # path never does. It is not rule (c)'s case either --
+                # a dial a hair SHORT of its surface, where a rest
+                # default or a restore leaves one, is not ON it, so
+                # `_decide` has nothing to flip.
+                if where > t:
+                    return where, surface
+            previous = level
+        return None
+
+    def _bisect(self, jump, level, below, low, high, branches, own_at):
+        """The bracket `[low, high]` narrowed onto `level`.
+
+        `below` is the level at `low`, and `_searched` has already
+        excluded a surface EQUAL to it, so the sign test below brackets
+        something: a `below` of zero would put every round in the `else`
+        arm and collapse the answer onto `high`.
+        """
+        below = below - level
+        for _round in range(_BISECTION_ROUNDS):
+            if high - low <= _CROSSING_TOLERANCE:
+                break
+            middle = (low + high) / 2.0
+            here = self._level(jump, middle, own_at(middle), branches) - level
+            if here == 0.0 or (here < 0.0) != (below < 0.0):
+                high = middle
+            else:
+                low, below = middle, here
+        return (low + high) / 2.0
+
+    ##############################################
+    # The FAR-SIDE landing
+
+    def _land(self, crossed, where, own_left, own_star, branches):
+        """After a cut the driven coordinate is placed at the nearest
+        representable value on the FAR side of the surface.
+
+        ADR-108's "committed AT its bound exactly", transposed to a
+        surface that is not stated in the coordinate's own units: the
+        segment's arithmetic finds the landing, and the landing is then
+        walked to the adjacent float. Where the piece did NOT move the
+        coordinate there is nothing to walk -- the level crossed by the
+        sources' motion while the gate held, and the coordinate stands
+        where it stood.
+        """
+        if own_star == own_left:
+            return own_star
+        direction = math.copysign(1.0, own_star - own_left)
+        landing = own_star
+        for _level, jump in crossed:
+            landing = self._far_side(jump, where, landing, direction,
+                                     branches)
+        return landing
+
+    def _far_side(self, jump, where, own_star, direction, branches):
+        near = branches[jump.placeholder]
+
+        def branch_at(value):
+            return _branch_of(jump, self._level(jump, where, value, branches))
+
+        step = math.ulp(own_star) if own_star else 5e-324
+        if branch_at(own_star) != near:
+            # The segment's arithmetic already landed PAST the surface,
+            # which it does about as often as it lands short, so the
+            # bracket is sought in both directions.
+            far, inside = own_star, None
+            for power in range(_WALK_STRIDES):
+                candidate = own_star - direction * step * (2 ** power)
+                if branch_at(candidate) == near:
+                    inside = candidate
+                    break
+            if inside is None:
+                # Unreachable by construction, and loud rather than
+                # silent because of it: the cut exists because the level
+                # crossed this surface, so the branch differs somewhere
+                # on either side of it, and 200 doublings of a ulp cover
+                # every distance a double expresses. No test can reach
+                # this; committing `own_star` instead would commit a
+                # value the design says is never committed.
+                raise _unlanded(self.described, self.coordinate, jump)
+        else:
+            inside, far = own_star, None
+            for power in range(_WALK_STRIDES):
+                candidate = own_star + direction * step * (2 ** power)
+                if branch_at(candidate) != near:
+                    far = candidate
+                    break
+            if far is None:
+                raise _unlanded(self.described, self.coordinate, jump)
+        low, high = _ordinal(inside), _ordinal(far)
+        while abs(high - low) > 1:
+            middle = (low + high) // 2
+            if branch_at(_from_ordinal(middle)) == near:
+                low = middle
+            else:
+                high = middle
+        return _from_ordinal(high)
+
+    ##############################################
+    # Evaluation
+
+    def _skeleton(self, t, branches):
+        values = _along(self.start, self.delta, t)
+        values.update(branches)
+        return self.plan.skeleton.evaluate(values)
+
+    def _level(self, jump, t, own_value, branches):
+        values = _along(self.start, self.delta, t)
+        values[self.own] = own_value
+        values.update(branches)
+        return self.plan._level(jump, values, self.described,
+                                self.coordinate)
+
+
 def _too_many(described, coordinate, jump, count):
     return TooManyCrossings(
         f'{described}: over one tick {coordinate} would cross {count} '
@@ -572,6 +1078,18 @@ def _too_many(described, coordinate, jump, count):
         f'what a jump law is FOR. Step in smaller ticks. The tick '
         f'committed nothing: the bank, the tick count and the tree stand '
         f'as they were.')
+
+
+def _unlanded(described, coordinate, jump):
+    return LandingInvariantError(
+        f'{described}: {coordinate} was cut at a surface of '
+        f'{jump.primitive} and no value within {_WALK_STRIDES} doublings '
+        f'of a ulp of the segment\'s own arithmetic reads the other '
+        f'branch, so the cut placed the coordinate nowhere. The level '
+        f'crossed that surface, so this is a broken invariant of the run '
+        f'rather than a dt that is too coarse. The tick committed '
+        f'nothing: the bank, the tick count and the tree stand as they '
+        f'were.')
 
 
 def _no_level(jump, described, coordinate, reason=None):
@@ -601,7 +1119,7 @@ class Edge:
 
     __slots__ = ('kind', 'needs', 'gives', 'graphs', 'plans', 'driven',
                  'names', 'factors', 'constant', 'slot_key', 'description',
-                 'stated_by', 'affine')
+                 'stated_by', 'affine', 'retained')
 
     def __init__(self, kind, needs, gives, description, stated_by,
                  graphs=(), plans=(), driven=(), names=(), factors=(),
@@ -630,6 +1148,25 @@ class Edge:
         # graph, or off its SKELETON where it carries a jump plan, whose
         # branch placeholders are constants on a piece.
         self.affine = tuple(self._affine_ends())
+        # The driven ends this edge's own law READS -- the `gives` whose
+        # id is also one of its `needs` -- each with the two-layer
+        # reading of its plan, decided here at compile time. EMPTY for
+        # every other edge, which is the one test `increments` makes
+        # before taking ADR-107's path unchanged.
+        self.retained = tuple(self._retained_ends())
+
+    def _retained_ends(self):
+        if self.kind != 'law' or not self.plans:
+            return ()
+        found = [None] * len(self.gives)
+        reads = False
+        for index, key in enumerate(self.gives):
+            plan = self.plans[index]
+            if plan is None or key not in self.needs:
+                continue
+            found[index] = plan.retained(self.driven[index])
+            reads = True
+        return tuple(found) if reads else ()
 
     def _affine_ends(self):
         if self.kind != 'law':
@@ -675,7 +1212,8 @@ class Edge:
             return [(self.gives[0], self._linear(values))]
         return []
 
-    def increments(self, values, deltas, crossings=None, tick=0):
+    def increments(self, values, deltas, crossings=None, tick=0,
+                   landings=None):
         """What this edge's targets MOVE BY over the tick.
 
         A law with no jump in it is the difference of two exact
@@ -683,6 +1221,12 @@ class Edge:
         FIRST thing tested here, so a continuous law pays nothing for
         the jump machinery. A law that jumps takes its plan, which cuts
         the tick at every crossing and sums the pieces.
+
+        A law that READS the coordinate it drives is walked piece by
+        piece instead, and REPORTS into `landings` the absolute value
+        that end holds at the tick's end where at least one cut placed
+        it: the run commits that float rather than `value + delta`,
+        exactly where it commits a stop at its bound.
         """
         if self.kind == 'law':
             start = self._inputs(values)
@@ -694,6 +1238,7 @@ class Edge:
             delta = {name: deltas[key]
                      for name, key in zip(self.names, self.needs)}
             end = self._inputs(values, deltas)
+            retained = self.retained
             found = []
             for index, key in enumerate(self.gives):
                 plan = self.plans[index]
@@ -702,9 +1247,18 @@ class Edge:
                     found.append((key, _evaluated(graph, end)
                                   - _evaluated(graph, start)))
                     continue
-                found.append((key, plan.increment(
+                reading = retained[index] if retained else None
+                if reading is None:
+                    found.append((key, plan.increment(
+                        start, delta, self.description, self.driven[index],
+                        crossings, tick)))
+                    continue
+                increment, landing = reading.increment(
                     start, delta, self.description, self.driven[index],
-                    crossings, tick)))
+                    crossings, tick)
+                if landing is not None and landings is not None:
+                    landings[key] = landing
+                found.append((key, increment))
             return found
         if self.kind == 'wiring':
             return [(self.gives[0], deltas[self.needs[0]] * self.factors[0])]
@@ -723,6 +1277,10 @@ class Edge:
         start = self._inputs(values)
         delta = {name: deltas[key]
                  for name, key in zip(self.names, self.needs)}
+        reading = self.retained[index] if self.retained else None
+        if reading is not None:
+            return reading.cuts(start, delta, self.description,
+                                self.driven[index])
         return plan.cuts(start, delta, self.description, self.driven[index])
 
     def _linear(self, held, constant=None):
@@ -1967,8 +2525,76 @@ def _relation_edge(root, assembly, record, nodes, bank_keys):
             f'group; state the rest as joints, or as a relation of their '
             f'own.')
 
+    # WHICH end a relation reads is decided ONCE, at class definition, by
+    # declaration identity (`_self_read_index`), and recorded on the
+    # relation: the rest rule and the non-running refusal both key on
+    # that answer, and only that check refuses a driven GROUP. Reading it
+    # back off the record here rather than re-deriving it from the
+    # resolved slots keeps ONE definition of the self-read; what remains
+    # is the consistency check between the two, kept as a BACKSTOP for
+    # the invariant rather than as a path a running machine takes -- a
+    # coordinate spelled two ways disagrees about the read, and the rest
+    # render refuses that shape before the compile is reached.
+    self_read = record.relation.self_read
+    if self_read is None:
+        read = []
+        agrees = not any(source.key == node.key
+                         for node in target_nodes
+                         for source in source_nodes)
+    else:
+        read = [0]
+        agrees = (record.direction == 'forward'
+                  and len(target_nodes) == 1
+                  and self_read < len(source_nodes)
+                  and source_nodes[self_read].key == target_nodes[0].key)
+    if not agrees:
+        raise UnsupportedLaw(
+            f'{record.described()}, stated by {type(assembly).__name__}: '
+            f'the coordinate it drives is named TWO WAYS -- the child '
+            f'standing for its one joint on one side and the coordinate '
+            f'on the other -- so the class definition and the resolved '
+            f'slots disagree about whether the law reads the end it '
+            f'drives. Spell that coordinate the same way on both sides of '
+            f'the relation.')
+    for index in read:
+        if not banked[index]:
+            # A retained value is a HISTORY, and an intermediate keeps
+            # none: the ordinary enumeration recomputes it absolutely
+            # from the bank on every tick, so there is nothing for the
+            # law to read back.
+            raise UnsupportedLaw(
+                f'{record.described()}, stated by {type(assembly).__name__}: '
+                f'it reads {target_nodes[index].name}, the end it drives, '
+                f'which the running simulation does not own. A retained '
+                f'value is a history and only a coordinate the run owns '
+                f'keeps one -- a plain port and a derived coordinate are '
+                f'calculations the ordinary enumeration recomputes from the '
+                f'bank on every tick. State the relation into the joint '
+                f'coordinate and let the port follow it.')
+
     compiled = _law_graphs(assembly, record, source_nodes,
                            len(target_nodes))
+    for index in read:
+        graph, plan = compiled[index]
+        skeleton = plan.skeleton if plan is not None else graph
+        own = target_nodes[index].name
+        if skeleton is not None and own in free_names(as_node(skeleton)):
+            # The SKELETON is the law with every jump node replaced by
+            # its branch. A read that survives it enters the law
+            # CONTINUOUSLY, which makes the relation a differential
+            # equation that the difference of two evaluations does not
+            # define.
+            raise UnsupportedLaw(
+                f'{record.described()}, stated by {type(assembly).__name__}: '
+                f'its law reads {own}, the coordinate it drives, '
+                f'CONTINUOUSLY -- with every jump node replaced by its '
+                f'branch the expression still names it, so the relation is '
+                f'a differential equation rather than an increment, and '
+                f'f(end) - f(start) does not define one. A read must pass '
+                f'through a node that is PIECEWISE CONSTANT in it: floor, '
+                f'ceil, sign or a comparison. A remainder alone is not one, '
+                f'because a fixed quotient leaves a - q*b, which still '
+                f'carries the coordinate\'s slope.')
     graphs = [graph for graph, _plan in compiled]
     plans = [plan for _graph, plan in compiled]
     if any(plan is not None for plan in plans) and not any(banked):
@@ -2343,7 +2969,10 @@ def _ordered(kept, nodes):
 
     A coordinate no edge determines is resolved from the start -- it is
     an input, or it HOLDS -- so an edge waits only on the ends something
-    else in the program moves.
+    else in the program moves. A need an edge itself GIVES is a READ of
+    what that coordinate HOLDS, not a wait on something else, so it is
+    ignored here: the edge is ready as soon as everything ELSE it reads
+    is.
     """
     determiner = {}
     for edge in kept:
@@ -2354,7 +2983,8 @@ def _ordered(kept, nodes):
     remaining = list(kept)
     while remaining:
         ready = [edge for edge in remaining
-                 if all(key in resolved for key in edge.needs)]
+                 if all(key in resolved or key in edge.gives
+                        for key in edge.needs)]
         if not ready:
             stuck = ', '.join(edge.description for edge in remaining)
             raise UnsupportedLaw(

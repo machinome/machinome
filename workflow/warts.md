@@ -2678,3 +2678,90 @@ these.
   `unittest` itself reports these as ERRORS, distinct from failures, and
   keeps running the rest of the suite; `solid test` has no error
   classification at all, for a set-up exception or any other.
+
+# read-the-driven-coordinate (2026-09-15, found while fixing)
+
+Findings outside that cycle's ratified scope, from
+`openspec/changes/read-the-driven-coordinate/proposal.md` ("Non-goals"),
+`design.md` ("Open Questions", §1, §4, §11 and the dated "Implementation
+notes") and `tasks.md` 9.1; **status: filed here; triage open**. The cycle
+itself is ADR-121, which gives a relation whose source group names its own
+driven end a meaning and integrates it piece by piece; nothing below was
+implemented by it.
+
+The pilot's retained-angle clearing requirement,
+`workflow/docs/curta-retained-angle-clearing.md` (Curta Type I 3x, branch
+`direct-operation`, checkpoint `b285393`), was **taken up as this change**.
+Its items 8 (replay through the independent viewer, whose version 6 execution
+is that repository's own cycle) and 9 (the Curta's own migration) stay open,
+and the shape item 9 needs is stated in the change's design.md §12.
+
+- **A gate with no WIDTH is not refused, and the framework cannot tell one
+  from a band.** A self-read gate whose disengaged state is a single value of
+  the coordinate — `wheel % 360 > 0` — is not a gap, and the distinction
+  between it and a band is numeric, not syntactic: refusing every gate whose
+  disengaged interval is narrow would need a number nobody can justify. It is
+  documented in `docs/scenarios.rst`, pinned by `KnifeEdgeTest` asserting only
+  what the framework promises, and left as ADR-121's open question 1.
+  Implementation found that such a gate HELD in every case probed — ratios
+  `1`, `7/3`, `0.7` and `π`, digits `108`, `107.3` and `12.345`, both
+  directions, two step sizes — because `_land` walks the crossed nodes in
+  postorder with the others at their near-side branches, so coincident `floor`
+  and comparison surfaces land the coordinate exactly ON the surface where the
+  comparison reads disengaged. That is the landing's arithmetic and not a
+  promise: a single float is still not a gap, and nothing guarantees another
+  model's numbers land on the surface rather than past it.
+- **`a.drives(a)`, one to one, still deadlocks into `UnreachedCoordinate`
+  instead of naming itself.** ADR-100 declined to widen its shared-coordinate
+  refusal to the one-to-one shape and ADR-121 does not either: recognition is
+  scoped to a relation naming SEVERAL ends, which is the only shape that is
+  forward-only, so `a.drives(a)` is not checked at class definition at all.
+  Measured on this worktree (`evidence.md` §1 E): it raises
+  `UnreachedCoordinate: wheel.turn drives wheel.turn: nothing bound either
+  end` at the close of the enumeration, which says nothing about the shape. A
+  one-to-one self-read has no second source to carry slope, so the skeleton
+  test would refuse every such law anyway — the message, not the verdict, is
+  what is wrong.
+- **ADR-113's pushing test is net over the stretch, not local at `t*`.**
+  Recorded by ADR-113 itself and untouched here, but a self-read gate makes
+  the limit easier to reach: an input that pushes a coordinate over the first
+  half of a stretch and is DISENGAGED over the second is counted as pushing.
+- **A driven GROUP with a self-read is refused, and lifting it needs a joint
+  walk.** `Edge.increments` walks ONE plan per driven end, so a member reading
+  a sibling would need that sibling's path while the sibling's own walk is
+  cutting it at its own crossings — a joint walk over several plans that
+  nothing defines yet. The rest rule is undefined for such a group too: one
+  mixing a self-read end with a plain driven end would leave the plain end
+  unbound at rest. Refused at class definition by name (design.md §1); no
+  mechanism in the campaign has asked for the shape.
+- **A kinked but piecewise-affine skeleton falls to the 64-sample search where
+  an exact path exists.** `_affine_in_sources` calls a CALL non-affine, so a
+  skeleton gated by `clamp01` — two kinks whose pieces are each affine — is
+  not affine, the driven coordinate's own path is not affine in the fraction,
+  and every self-read crossing is SEARCHED rather than solved. That is the
+  Curta's own shape, and it is measured: `Clearing` (affine skeleton, solved)
+  runs at **1 349 ticks/s** and 99 graph evaluations per tick, `CurtaInterface`
+  (`clamp01` window, searched) at **24.4 ticks/s** and 2 861 — about 29 times
+  the cost, six dials at 64 samples per piece plus the bisection behind each.
+  Re-measured at 27.2 ticks/s after the closure's fixes. A cheap exact path
+  for a piecewise-affine kink would remove it (design.md §11).
+- **A repeated child's JOINT coordinate cannot be banked under a running root,
+  so a `.repeat()` self-read cannot be a running machine.** Pre-existing and
+  already recorded under the fix-warts campaign; recorded again here because
+  it is what stops the broadcast self-read from having a corpus scenario.
+  Measured on the base tree `cd3e6ca`, with no self-read in sight:
+  `DriverIdError: cannot qualify driver 'turn' through node segment
+  'wheels-0': a qualified driver id must be a legal identifier …`. The
+  couplings-level resolution rule ADR-121 ratifies IS implemented and tested
+  directly (`SelfReadTest::test_each_copy_of_a_broadcast_reads_itself`: four
+  records, each copy reading its own slot), and the export spec's generator
+  list never named `.repeat()`, so the ratified contract is met; only the
+  change's design.md §10 prose asked for something unattainable.
+- **`docs/scenarios.rst` was stale on ADR-113 (fixed in this cycle).** Its
+  "refused by name, each a later cycle's to lift" list still said a range
+  bound naming a SECOND coordinate was not sayable, which
+  `bounds-read-other-coordinates` (ADR-113, 2026-09-14) had already
+  implemented as `Bound(expression, reads=(...))`. Task 8.1 replaced that
+  bullet with the continuous-read refusal this cycle adds. Filed as a finding
+  because the miss is a class: a cycle that adds a capability has to sweep the
+  narrative documentation's refusal lists, and nothing checks that it did.
