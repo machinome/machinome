@@ -41,9 +41,10 @@ from solid_node.motion.joints import Bound, Free, Prismatic, Revolute
 from solid_node.motion.ports import RotationalPort, Time
 from solid_node.node import AssemblyNode
 from solid_node.parameters import Flag
-from solid_node.simulation import Button, Driver, Instruction, Turn
+from solid_node.simulation import Button, Driver, Instruction, Slide, Turn
 
-from .parts import Arbor, Block, Dial, Floater, PenSpring, Pin, Slide, Wheel
+from .parts import (Arbor, Block, Carriage, Dial, Floater, PenSpring, Pin,
+                    Wheel)
 
 
 def tooth_window(source, target):
@@ -210,7 +211,7 @@ class TrainBody(AssemblyNode):
 
     first = Arbor()
     second = Arbor()
-    slide = Slide()
+    slide = Carriage()
     wheel = Wheel(turn=spindle)
 
     crank.drives(first.turn, ratio=2.0)
@@ -342,7 +343,7 @@ class Guarded(AssemblyNode):
 
     crank = Driver(default=0.0, unit='deg')
     first = Arbor()
-    slide = Slide()
+    slide = Carriage()
 
     crank.drives(first.turn, ratio=2.0)
 
@@ -362,7 +363,7 @@ class Conditional(AssemblyNode):
     clear semantics explicitly allow ('SHALL find the coordinate
     unbound on every run')."""
 
-    gate = Slide()
+    gate = Carriage()
 
     def simulate(self):
         if self.time < 0.5:
@@ -975,8 +976,8 @@ class SweptBody(AssemblyNode):
     steer = Driver(default=45.0, unit='mm')
     motor = Driver(default=0.0, unit='deg')
 
-    rack = Slide(travel=Prismatic(axis=(1, 0, 0), range=(None, 50.0),
-                                  unit='mm'))
+    rack = Carriage(travel=Prismatic(axis=(1, 0, 0), range=(None, 50.0),
+                                     unit='mm'))
     wheel = Arbor()
 
     steer.drives(rack.travel, ratio=1.0)
@@ -998,8 +999,8 @@ class SweptWideBody(SweptBody):
     """The same machine with the rack's bound MOVED and nothing else, so
     a snapshot of one cannot restore into the other."""
 
-    rack = Slide(travel=Prismatic(axis=(1, 0, 0), range=(None, 80.0),
-                                  unit='mm'))
+    rack = Carriage(travel=Prismatic(axis=(1, 0, 0), range=(None, 80.0),
+                                     unit='mm'))
 
 
 class SweptWide(SweptWideBody):
@@ -1011,7 +1012,7 @@ class StepperBody(AssemblyNode):
     zero, so a negative rate rounds like a positive one."""
 
     step = Driver(default=0, dtype=int, unit='step')
-    carriage = Slide()
+    carriage = Carriage()
 
     step.drives(carriage.travel, ratio=1.0)
 
@@ -1080,8 +1081,8 @@ class TwoStopsBody(AssemblyNode):
 
     lever = Arbor(turn=Revolute(axis=(0, 0, 1), range=(None, 20.0),
                                 unit='deg'))
-    rack = Slide(travel=Prismatic(axis=(1, 0, 0), range=(None, 50.0),
-                                  unit='mm'))
+    rack = Carriage(travel=Prismatic(axis=(1, 0, 0), range=(None, 50.0),
+                                     unit='mm'))
 
     lever_in.drives(lever.turn, ratio=1.0)
     steer.drives(rack.travel, ratio=1.0)
@@ -1902,6 +1903,343 @@ class SmoothControl(AssemblyNode):
     controls = {
         'turn units': Turn(units.dial, crank),
     }
+
+
+##############################################
+# The DIRECT MOTION machines: a slide, and two freedoms on one body
+#
+# The Curta's shape, reduced to what the framework has to express: a
+# setting selector that only slides, a crank that both lifts and turns,
+# a carriage whose marker knob hangs under a jointed child of it, and a
+# body whose two joints are NOT parallel -- the case an interaction
+# frame taken from the whole body's world matrix gets wrong.
+#
+# Declaration order is composition order (ADR-093): the first joint a
+# class declares is the innermost, and the later ones carry it.
+
+
+class SlideKnob(AssemblyNode):
+    """A selector body sliding along one line, with the knob a hand
+    takes hold of beneath it."""
+
+    travel = Prismatic(axis=(0, 1, 0), unit='mm')
+
+    knob = Dial()
+
+
+class Selector(AssemblyNode):
+    """A `Slide` over a single translational joint, and a `Button` on
+    the same prismatic part: the selector, handled along the rail it
+    actually runs on, with no selection needed because the body has one
+    freedom."""
+
+    time = Time.running()
+
+    setting = Driver(default=0.0, unit='step')
+
+    selector = SlideKnob()
+
+    setting.drives(selector.travel, ratio=6.0)
+
+    instructions = {
+        'One detent': Instruction(by={'setting': 1.0}, duration=1.0),
+    }
+    controls = {
+        'press selector': Button(selector.knob, 'One detent'),
+        'slide selector': Slide(selector.knob, setting),
+    }
+
+
+class CrankBody(AssemblyNode):
+    """The Curta's crank: it turns about the machine's axis and lifts
+    along it, and neither joint is "the" one.
+
+    `turn` is declared first and is therefore the inner placement; its
+    line does not pass through the body's own origin, so its block is
+    the three operations a centred one would be one of.
+    """
+
+    turn = Revolute(axis=(0, 0, 1), at=(0, 12, 0), unit='deg')
+    lift = Prismatic(axis=(0, 0, 1), unit='mm')
+
+    handle = Dial()
+
+
+class Crank(AssemblyNode):
+    """One body, two freedoms, each control naming the coordinate it
+    means."""
+
+    time = Time.running()
+
+    rotation = Driver(default=0.0, unit='turn')
+    elevation = Driver(default=0.0, unit='mm')
+
+    crank = CrankBody()
+
+    rotation.drives(crank.turn, ratio=360.0)
+    elevation.drives(crank.lift, ratio=8.0)
+
+    instructions = {
+        'One revolution': Instruction(by={'rotation': 1.0}, duration=1.0),
+    }
+    controls = {
+        'lift crank': Slide(crank.handle, elevation, coordinate=crank.lift),
+        'rotate crank': Turn(crank.handle, rotation, coordinate=crank.turn),
+        'turn crank': Button(crank.handle, 'One revolution',
+                             coordinate=crank.turn),
+    }
+
+    def render(self):
+        self.crank.translate([0.0, 0.0, 30.0])
+
+
+class CrankBare(AssemblyNode):
+    """`Crank` to the last character, minus the controls: what its bank,
+    its program and its identity must be unchanged against."""
+
+    time = Time.running()
+
+    rotation = Driver(default=0.0, unit='turn')
+    elevation = Driver(default=0.0, unit='mm')
+
+    crank = CrankBody()
+
+    rotation.drives(crank.turn, ratio=360.0)
+    elevation.drives(crank.lift, ratio=8.0)
+
+    instructions = {
+        'One revolution': Instruction(by={'rotation': 1.0}, duration=1.0),
+    }
+
+    def render(self):
+        self.crank.translate([0.0, 0.0, 30.0])
+
+
+class AmbiguousCrank(AssemblyNode):
+    """The same two-freedom body with a control that selects nothing:
+    the ADR-112 refusal, unchanged by the arrival of selection."""
+
+    time = Time.running()
+
+    rotation = Driver(default=0.0, unit='turn')
+    elevation = Driver(default=0.0, unit='mm')
+
+    crank = CrankBody()
+
+    rotation.drives(crank.turn, ratio=360.0)
+    elevation.drives(crank.lift, ratio=8.0)
+
+    instructions = {
+        'One revolution': Instruction(by={'rotation': 1.0}, duration=1.0),
+    }
+    controls = {
+        'rotate crank': Turn(crank.handle, rotation),
+    }
+
+
+class TiltedBody(AssemblyNode):
+    """Two joints that are NOT parallel: an inner swing about X, an
+    outer slide along Y.
+
+    The inner rotation turns the frame everything after it acts in,
+    which is exactly why the OUTER joint's axis must not be carried
+    through it -- and why the outer translation does move the inner
+    joint's pivot point.
+    """
+
+    swing = Revolute(axis=(1, 0, 0), unit='deg')
+    shift = Prismatic(axis=(0, 1, 0), unit='mm')
+
+    plate = Dial()
+
+
+class Tilted(AssemblyNode):
+    """Both freedoms of the non-parallel body, separately selected --
+    the slide against a NEGATIVE ratio, because a gesture scaled by a
+    signed number must carry its sign."""
+
+    time = Time.running()
+
+    angle = Driver(default=0.0, unit='deg')
+    reach = Driver(default=0.0, unit='mm')
+
+    stack = TiltedBody()
+
+    angle.drives(stack.swing, ratio=1.0)
+    reach.drives(stack.shift, ratio=-2.5)
+
+    instructions = {
+        'Swing': Instruction(by={'angle': 1.0}, duration=1.0),
+    }
+    controls = {
+        'shift stack': Slide(stack.plate, reach, coordinate=stack.shift),
+        'swing stack': Turn(stack.plate, angle, coordinate=stack.swing),
+    }
+
+    def render(self):
+        self.stack.translate([0.0, 0.0, 15.0])
+
+
+class MarkerDial(AssemblyNode):
+    """A marker that turns, with the knob a hand takes hold of."""
+
+    turn = Revolute(axis=(0, 0, 1), unit='deg')
+
+    knob = Dial()
+
+
+class CarriageBody(AssemblyNode):
+    """A carriage that slides, carrying a marker that turns."""
+
+    travel = Prismatic(axis=(1, 0, 0), unit='mm')
+
+    marker = MarkerDial()
+
+
+class Register(AssemblyNode):
+    """The knob's NEAREST posing joint is the marker's own turn; the
+    `Slide` reaches past it to the carriage the marker rides on, which
+    inference could never choose."""
+
+    time = Time.running()
+
+    shift = Driver(default=0.0, unit='mm')
+    spin = Driver(default=0.0, unit='deg')
+
+    register = CarriageBody()
+
+    shift.drives(register.travel, ratio=1.0)
+    spin.drives(register.marker.turn, ratio=1.0)
+
+    instructions = {
+        'Shift': Instruction(by={'shift': 1.0}, duration=1.0),
+    }
+    controls = {
+        'shift register': Slide(register.marker.knob, shift,
+                                coordinate=register.travel),
+        'turn marker': Turn(register.marker.knob, spin,
+                            coordinate=register.marker.turn),
+    }
+
+    def render(self):
+        self.register.translate([0.0, 40.0, 0.0])
+
+
+class Sideways(AssemblyNode):
+    """A control on the crank selecting the SELECTOR's joint: a
+    selection may not reach across the machine."""
+
+    time = Time.running()
+
+    rotation = Driver(default=0.0, unit='turn')
+    elevation = Driver(default=0.0, unit='mm')
+    setting = Driver(default=0.0, unit='step')
+
+    crank = CrankBody()
+    selector = SlideKnob()
+
+    rotation.drives(crank.turn, ratio=360.0)
+    elevation.drives(crank.lift, ratio=8.0)
+    setting.drives(selector.travel, ratio=6.0)
+
+    instructions = {
+        'One detent': Instruction(by={'setting': 1.0}, duration=1.0),
+    }
+    controls = {
+        'lift crank': Slide(crank.handle, elevation,
+                            coordinate=selector.travel),
+    }
+
+
+class FreeSelected(AssemblyNode):
+    """An explicit selection of a joint owning SIX coordinates: naming
+    it does not unpack it."""
+
+    time = Time.running()
+
+    lift = Driver(default=0.0, unit='mm')
+    surge = Driver(default=0.0, unit='mm')
+    sway = Driver(default=0.0, unit='mm')
+    heading = Driver(default=0.0, unit='deg')
+    pitching = Driver(default=0.0, unit='deg')
+    rolling = Driver(default=0.0, unit='deg')
+
+    floating = FreeDial()
+
+    lift.drives(floating.pose.z)
+    surge.drives(floating.pose.x)
+    sway.drives(floating.pose.y)
+    heading.drives(floating.pose.yaw)
+    pitching.drives(floating.pose.pitch)
+    rolling.drives(floating.pose.roll)
+
+    instructions = {
+        'Turn about': Instruction(by={'heading': 1.0}, duration=1.0),
+    }
+    controls = {
+        'turn floating': Turn(floating.dial, heading,
+                              coordinate=floating.pose),
+    }
+
+
+class DerivedPair(AssemblyNode):
+    """Two dials and the linear formula over them, which IS a
+    coordinate -- and poses nothing."""
+
+    left = DialArbor()
+    right = DialArbor()
+
+    spread = left.turn - right.turn
+
+    body = DialArbor()
+
+
+class DerivedSelected(AssemblyNode):
+    """A selection naming a DERIVED coordinate of a child: it reads as
+    a coordinate, and no joint owns it."""
+
+    time = Time.running()
+
+    left_entry = Driver(default=0.0, unit='deg')
+    right_entry = Driver(default=0.0, unit='deg')
+    body_entry = Driver(default=0.0, unit='deg')
+
+    pair = DerivedPair()
+
+    left_entry.drives(pair.left.turn, ratio=1.0)
+    right_entry.drives(pair.right.turn, ratio=1.0)
+    body_entry.drives(pair.body.turn, ratio=1.0)
+
+    instructions = {
+        'Nudge': Instruction(by={'left_entry': 1.0}, duration=1.0),
+    }
+    controls = {
+        'turn body': Turn(pair.body.dial, body_entry,
+                          coordinate=pair.spread),
+    }
+
+
+class SlidingTurn(AssemblyNode):
+    """A `Slide` over a ROTATIONAL coordinate: the mirror of the `Turn`
+    over a translational one."""
+
+    time = Time.running()
+
+    units_entry = Driver(default=0.0, unit='digit')
+
+    units = DialArbor()
+
+    units_entry.drives(units.turn, ratio=-36.0)
+
+    instructions = {
+        'Add one': Instruction(by={'units_entry': 1.0}, duration=1.0),
+    }
+    controls = {
+        'slide units': Slide(units.dial, units_entry),
+    }
+
+
+##############################################
 # The CONSTRAINT machines: a bound that reads other coordinates
 #
 # The pin tumbler lock's shape, reduced to two pins: a key whose travel
@@ -1948,7 +2286,7 @@ class GateBody(AssemblyNode):
         axis=(0, 0, 1), unit='deg',
         range=(0, Bound(lambda turn, a, b: 90 * cleared(a) * cleared(b),
                         reads=(p1.lift, p2.lift)))))
-    key = Slide()
+    key = Carriage()
 
     feed.drives(key.travel, ratio=1.0)
     key.travel.drives(p1.lift, law=pin_lift(10))
@@ -1963,6 +2301,23 @@ class GateBody(AssemblyNode):
 
 class Gate(GateBody):
     time = Time.running()
+
+
+class GateTouched(GateBody):
+    """`Gate` with its key and its plug declared as controls.
+
+    The key SLIDES and the plug turns, and the plug's upper bound reads
+    both pin lifts -- so a request issued by taking hold of a part meets
+    a stop that belongs to a second mechanism. What it is admitted is
+    the ordinary move's own outcome, and nothing here seats a pin.
+    """
+
+    time = Time.running()
+
+    controls = {
+        'slide key': Slide(GateBody.key, GateBody.feed),
+        'turn plug': Turn(GateBody.plug, GateBody.twist),
+    }
 
 
 class GateWideBody(AssemblyNode):
@@ -1980,7 +2335,7 @@ class GateWideBody(AssemblyNode):
         range=(0, Bound(lambda turn, a, b: (90 * cleared(a, 0.5)
                                             * cleared(b, 0.5)),
                         reads=(p1.lift, p2.lift)))))
-    key = Slide()
+    key = Carriage()
 
     feed.drives(key.travel, ratio=1.0)
     key.travel.drives(p1.lift, law=pin_lift(10))
@@ -2016,7 +2371,7 @@ class CapturedBody(AssemblyNode):
         axis=(0, 0, 1), unit='deg',
         range=(0, Bound(lambda turn, a, b: 90 * cleared(a) * cleared(b),
                         reads=(p1.lift, p2.lift)))))
-    key = Slide(travel=Prismatic(
+    key = Carriage(travel=Prismatic(
         axis=(1, 0, 0), unit='mm',
         range=(Bound(lambda travel, turn: 20 * (turn > 0),
                      reads=(plug.turn,)), 20)))
@@ -2091,7 +2446,7 @@ class ClassGateBody(AssemblyNode):
     twist = Driver(default=0.0, unit='deg')
 
     plug = Plug()
-    key = Slide()
+    key = Carriage()
 
     feed.drives(key.travel, ratio=1.0)
     key.travel.drives(plug.p1.lift, law=pin_lift(10))
@@ -2140,7 +2495,7 @@ class ConstantBoundBody(AssemblyNode):
     feed = Driver(default=0.0, unit='mm')
     twist = Driver(default=0.0, unit='deg')
 
-    key = Slide()
+    key = Carriage()
     p1 = Pin()
     plug = Arbor(turn=Revolute(
         axis=(0, 0, 1), unit='deg',
@@ -2167,7 +2522,7 @@ class UnusedReadBody(AssemblyNode):
     feed = Driver(default=0.0, unit='mm')
     twist = Driver(default=0.0, unit='deg')
 
-    key = Slide()
+    key = Carriage()
     p1 = Pin()
     p2 = Pin()
     plug = Arbor(turn=Revolute(
@@ -2250,7 +2605,7 @@ class SpringBankBody(AssemblyNode):
 
     lift = Driver(default=0.0, unit='mm')
 
-    slider = Slide()
+    slider = Carriage()
     springs = PenSpring().repeat(3)
 
     lift.drives(slider.travel, ratio=1.0)
@@ -2332,7 +2687,7 @@ class StatedPlug(AssemblyNode):
     is the shape: a coordinate a child binds and an ancestor only READS.
     """
 
-    key = Slide()
+    key = Carriage()
     p1 = Pin()
 
     key.travel.drives(p1.lift, ratio=0.5)

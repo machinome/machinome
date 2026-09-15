@@ -974,6 +974,10 @@ class Program:
         by qualified control name, each entry's fields in a fixed order,
         so republishing an unchanged model is byte-identical.
 
+        `operation_span` is LAST and present only where the compiled
+        control carries one, which is what keeps an entry published
+        before it existed byte-identical to the one published now.
+
         `initial` is the REST BANK, the same one `published` takes, and
         the only thing the ratio is measured at.
         """
@@ -990,6 +994,8 @@ class Program:
             entry['axis'] = [float(component) for component in control.axis]
             entry['origin'] = [float(component)
                                for component in control.origin]
+            if control.span is not None:
+                entry['operation_span'] = [control.span[0], control.span[1]]
             table[control.name] = entry
         return table
 
@@ -1027,7 +1033,7 @@ class Program:
             initial, control.input, -native)[control.coordinate] / -design
         if forward == 0.0 and backward == 0.0:
             raise ControlError(
-                f"the control '{control.name}' turns "
+                f"the control '{control.name}' moves "
                 f"{'.'.join(control.part)} with the input "
                 f"'{control.input}', and at the rest bank that part does "
                 f"not move with that input at all: displacing "
@@ -1040,7 +1046,7 @@ class Program:
         window = _CONTROL_AGREEMENT * max(abs(forward), abs(backward))
         if abs(forward - backward) > window:
             raise ControlError(
-                f"the control '{control.name}' turns the coordinate "
+                f"the control '{control.name}' moves the coordinate "
                 f"'{control.coordinate}' with the input '{control.input}', "
                 f"and the two directions do not agree at the rest bank: "
                 f"forward reads {forward!r} and backward {backward!r} "
@@ -1374,15 +1380,25 @@ class _Control:
     and `input` are dotted qualified ids, because they are expression
     names and must be. `axis` and `origin` are in the JOINT NODE's own
     frame, being exactly the values `Joint.place` built the placement
-    from, so a consumer computes the world line as `matrixWorld . axis`
-    and `matrixWorld . origin` with no case analysis.
+    from.
+
+    `span` is the half-open pair of indices identifying that placement
+    inside the joint node's own `operations`, or `None` where there is
+    nothing to distinguish: a single inferred rotational joint turns its
+    own axis and its own pivot into themselves, so the joint node's
+    whole world matrix carries them correctly and the legacy entry says
+    nothing more. A translational coordinate, and any coordinate the
+    author SELECTED, needs the block named: the frame that carries the
+    gesture is the parent's world matrix composed with the operations
+    AFTER the block, and an inner joint's motion must never be applied
+    to an outer joint's line.
     """
 
     __slots__ = ('kind', 'name', 'part', 'joint', 'coordinate', 'axis',
-                 'origin', 'instruction', 'input')
+                 'origin', 'span', 'instruction', 'input')
 
     def __init__(self, kind, name, part, joint, coordinate, axis, origin,
-                 instruction=None, input=None):
+                 span=None, instruction=None, input=None):
         self.kind = kind
         self.name = name
         self.part = part
@@ -1390,6 +1406,7 @@ class _Control:
         self.coordinate = coordinate
         self.axis = axis
         self.origin = origin
+        self.span = span
         self.instruction = instruction
         self.input = input
 
@@ -1425,14 +1442,20 @@ def _compiled_controls(root, program, coordinates, controls, instructions):
         except DriverIdError:
             # Not linked under the root: this render omitted it.
             continue
-        joint_node, joint = _posing_joint(part_node, root, owners, name,
-                                          control)
+        if control.coordinate is None:
+            joint_node, joint = _posing_joint(part_node, root, owners, name,
+                                              control)
+        else:
+            joint_node, joint = _selected_joint(part_node, root, owners,
+                                                name, control, declaring)
         coordinate = owners[id(joint_node)][coordinates_of(joint)[0]]
         axis, origin = _placed_geometry(joint_node, joint)
         entry = dict(
             kind=control.control_kind, name=name, part=part_path,
             joint=instance_path(joint_node, root), coordinate=coordinate,
-            axis=axis, origin=origin)
+            axis=axis, origin=origin,
+            span=_published_span(joint_node, joint, name, control,
+                                 program, coordinate))
         if control.control_kind == 'button':
             entry['instruction'] = _checked_instruction(
                 name, path, control, instructions)
@@ -1474,8 +1497,9 @@ def _posing_joint(part_node, root, owners, name, control):
             f"{type(current).__name__} '{current.name}', which declares "
             f"{len(joints)} joints -- {', '.join(joints)} -- that compose "
             f"one motion between them. A control names ONE coordinate, and "
-            f"neither of those is it. Declare the control on a part posed "
-            f"by a single joint.")
+            f"neither of those is it: say which of them this control means "
+            f"with coordinate=, or declare the control on a part posed by "
+            f"a single joint.")
     joint = next(iter(joints.values()))
     owned = coordinates_of(joint)
     if len(owned) > 1:
@@ -1486,6 +1510,113 @@ def _posing_joint(part_node, root, owners, name, control):
             f"{', '.join(owned)}. A control names ONE coordinate, and a "
             f"free body's six are not one gesture.")
     return current, joint
+
+
+def _selected_joint(part_node, root, owners, name, control, declaring):
+    """The joint the author SELECTED, and the node it poses.
+
+    Selection reaches exactly as far as inference does and no further:
+    the joint must pose the touched part or one of its ancestors in this
+    same tree, the run must bank its coordinate, and it must own one.
+    What it adds is the CHOICE between the freedoms of one body, which
+    no walk up the tree can make -- and the reach past a nearer joint to
+    the one a hand actually means, which a walk up the tree would pass
+    on its way and never reconsider.
+    """
+    joint = control.selected_declaration
+    # Duck-typed on the dict of coordinates a JOINT owns, before
+    # anything else: a derived coordinate of a child owns `coordinate`
+    # and passes the declaration check, and asking it for the
+    # coordinates a joint owns would fail as an attribute error rather
+    # than as a refusal naming the control.
+    owned = getattr(joint, 'coordinates', None)
+    if not isinstance(owned, dict) or not owned:
+        raise ControlError(
+            f"the control '{name}' names '{control.selected}', which is "
+            f"not a joint. A control's gesture is a JOINT's motion -- a "
+            f"Revolute, a Prismatic, or another declaration that poses a "
+            f"body -- and a derived coordinate, computed from the ones "
+            f"that do, poses nothing.")
+    owned = tuple(owned)
+    if len(owned) > 1:
+        raise ControlError(
+            f"the control '{name}' names the joint '{control.selected}', "
+            f"which owns {len(owned)} coordinates -- {', '.join(owned)}. A "
+            f"control names ONE coordinate, and naming the joint a free "
+            f"body floats on does not choose one of its six.")
+    node = control.selected_node(declaring)
+    current = part_node
+    while current is not node:
+        parent = getattr(current, '_parent', None)
+        if current is root or parent is None:
+            raise ControlError(
+                f"the control '{name}' is on "
+                f"{'.'.join(instance_path(part_node, root))} "
+                f"({control.part.written}) and names the coordinate "
+                f"'{control.selected}', which poses neither that part nor "
+                f"any ancestor of it. A control's gesture is the motion of "
+                f"the part a hand takes hold of; a selection says WHICH of "
+                f"that part's own freedoms is meant, and cannot reach "
+                f"sideways to another mechanism.")
+        current = parent
+    declared = declared_joints(type(node))
+    if not any(joint is mine for mine in declared.values()):
+        known = ', '.join(declared) or 'none'
+        raise ControlError(
+            f"the control '{name}' names the coordinate "
+            f"'{control.selected}', which is not a joint of "
+            f"{type(node).__name__} '{node.name}'. A control's gesture is "
+            f"a joint's motion; {type(node).__name__} declares: {known}.")
+    if owned[0] not in owners.get(id(node), {}):
+        raise ControlError(
+            f"the control '{name}' names the coordinate "
+            f"'{control.selected}', which the run does not bank. A "
+            f"control's gesture is a coordinate the run owns and commits; "
+            f"nothing else poses a part.")
+    return node, joint
+
+
+def _published_span(node, joint, name, control, program, coordinate):
+    """The half-open pair of operation indices identifying this joint's
+    complete placement on `node`, or `None` where the entry publishes
+    none.
+
+    An INFERRED ROTATIONAL control publishes none, and that is what
+    keeps every entry published before this change byte-identical: its
+    joint is the only one on its node, and a rotation carries its own
+    axis and its own pivot into themselves, so the joint node's whole
+    world matrix is already the gesture's frame. Everything else needs
+    the block named -- a translation moves the pivot of an inner joint,
+    and an inner rotation turns the line of an outer one.
+
+    The block is read off the placement's OWN ownership marks: every
+    operation a joint places carries the slot its declaration holds
+    (ADR-093, ADR-114), so the indices come from the thing that placed
+    them and never from searching a published expression for a
+    coordinate's name. An operation a sweep or a checkpoint restore has
+    dropped would leave a block that is not one contiguous run, and that
+    is refused rather than published as an invented frame.
+    """
+    domain = program.declared.get(coordinate, (None, None))[1]
+    if control.coordinate is None and domain != 'translational':
+        return None
+    slot = list(declared_joints(type(node))).index(joint.name)
+    indices = [index for index, operation in enumerate(node.operations)
+               if getattr(operation, '_motion', False)
+               and getattr(operation, '_joint_slot', None) == slot]
+    if not indices or indices[-1] - indices[0] + 1 != len(indices):
+        found = ('places none of that node\'s operations' if not indices
+                 else f'places {len(indices)} of that node\'s operations '
+                      f'and they are not one contiguous run')
+        raise ControlError(
+            f"the control '{name}' is about the coordinate "
+            f"'{coordinate}', and the placement it names cannot be "
+            f"identified on {type(node).__name__} '{node.name}': its joint "
+            f"'{joint.name}' {found}. A gesture's frame is the operations "
+            f"OUTSIDE its own placement, so a block that is not exactly "
+            f"this coordinate's is refused rather than published as an "
+            f"invented frame.")
+    return indices[0], indices[-1] + 1
 
 
 def _placed_geometry(node, joint):
@@ -1522,23 +1653,25 @@ def _checked_instruction(name, path, control, instructions):
 
 
 def _checked_input(name, path, control, declaring, program, coordinate):
-    """A turn's input, qualified through the declaring node's path,
-    with the two things a DRAG needs of it checked: the coordinate
-    turns, and this input reaches it."""
+    """A drag's input, qualified through the declaring node's path,
+    with the two things a DRAG needs of it checked: the coordinate moves
+    the way this gesture does, and this input reaches it."""
     unit, domain = program.declared.get(coordinate, (None, None))
-    if domain != 'rotational':
+    required = control.required_domain
+    if domain != required:
         raise ControlError(
-            f"the control '{name}' is a Turn on the coordinate "
-            f"'{coordinate}', whose domain is {domain!r} and not "
-            f"'rotational'. A turn is a drag about a rotational "
-            f"coordinate; Slide, for a prismatic one, is not in this "
-            f"release.")
+            f"the control '{name}' is a {type(control).__name__} on the "
+            f"coordinate '{coordinate}', whose domain is {domain!r} and "
+            f"not {required!r}. A Turn is a drag ABOUT a rotational "
+            f"coordinate and a Slide is a drag ALONG a translational one; "
+            f"declare the gesture the part actually makes, or name the "
+            f"coordinate it is about with coordinate=.")
     identifier = driver_id(path, control.local_input_of(type(declaring)))
     reaching = program.sources.get(program.keys[coordinate], frozenset())
     if identifier not in reaching:
         reach = ', '.join(sorted(reaching)) or 'no input at all'
         raise ControlError(
-            f"the control '{name}' turns the coordinate '{coordinate}' "
+            f"the control '{name}' moves the coordinate '{coordinate}' "
             f"with the input '{identifier}', which does not reach it "
             f"through the compiled program. The inputs that DO reach "
             f"'{coordinate}' are: {reach}.")

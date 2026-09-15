@@ -2,14 +2,24 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""Controls: which part a person presses, and which part a person turns.
+"""Controls: which part a person presses, turns, or slides.
 
 An `Instruction` says what a machine can be told; a control says HOW a
 person tells it -- by touching a part of the machine rather than a
 button on a panel beside it. `Button(part, instruction)` is a press on
 `part` submitting the named instruction; `Turn(part, input)` is a drag
-on `part`, about the rotational coordinate that part rides, issued as a
-sequence of relative moves on `input`.
+on `part`, about the rotational coordinate that part rides, and
+`Slide(part, input)` is a drag ALONG the translational one, each issued
+as a sequence of relative moves on `input`.
+
+A body with ONE freedom needs nothing more: the framework walks up from
+the part to the nearest joint the run banks. A body with two -- the
+Curta's crank, which lifts and turns about the same line, and its
+register carriage, which does the same -- has no nearest joint, and
+`coordinate=` is where the author says which of its freedoms this
+control means. It names an existing joint DECLARATION, by the same path
+a relation's end is written (`crank.lift`), and it adds no joint, no
+edge and no source: the selection is a reading of the tree.
 
 A control MOVES NOTHING. It names a request the run already accepts, so
 ownership, admission, stops and outcomes stay exactly what `trigger`,
@@ -36,7 +46,7 @@ needs the class, which does not exist while its body runs, so
 so `solid_node/node/` still imports nothing from this package.
 """
 
-from solid_node.motion.couplings import (BroadcastRef, PathRef,
+from solid_node.motion.couplings import (BroadcastRef, OwnRef, PathRef,
                                          _coordinate_of, _coordinates_of,
                                          _is_declaration_list, _named_in_body)
 from solid_node.node.declarative import (ChildDeclaration, RepeatDeclaration,
@@ -55,13 +65,51 @@ class Control:
 
     control_kind = None
 
-    def __init__(self, part):
+    # The domain the gesture's coordinate must have, or `None` for a
+    # control that is not a gesture at all: a press asks for a declared
+    # instruction and needs no direction, so a `Button` names a sliding
+    # part as readily as a turning one.
+    required_domain = None
+
+    def __init__(self, part, coordinate=None):
         self.part = _part_ref(part, type(self).__name__)
+        self.coordinate = (None if coordinate is None
+                           else _coordinate_ref(coordinate,
+                                                type(self).__name__))
 
     @property
     def written(self):
         """The part as the class body wrote it, for a message."""
         return self.part.written
+
+    @property
+    def selected(self):
+        """The coordinate selection as the class body wrote it, or
+        `None` where the author left the coordinate to inference."""
+        return (None if self.coordinate is None
+                else self.coordinate.described())
+
+    @property
+    def selected_declaration(self):
+        """The joint the explicit selection names, as far as the
+        CLASSES alone can say -- no instance needed, which is what lets
+        a joint owning several coordinates be refused before anything
+        tries to walk to the node it poses."""
+        if isinstance(self.coordinate, PathRef):
+            return self.coordinate.terminal
+        return self.coordinate.declared
+
+    def selected_node(self, declaring):
+        """The realized node the explicit selection's joint POSES,
+        resolved on the instance that declares this control.
+
+        A path names the node its coordinate belongs to, exactly as a
+        relation's end does; a joint written bare in the class body is
+        a joint of the DECLARING node, and poses it.
+        """
+        if isinstance(self.coordinate, PathRef):
+            return self.coordinate._walk(declaring)
+        return declaring
 
     def check_declared_on(self, owner, name):
         """Refuse a part whose first segment is not a child `owner`
@@ -81,19 +129,61 @@ class Control:
                 f"cannot be a control's part. Hold the "
                 f"{self.part.root.node_class.__name__} on its own "
                 f"attribute, or state the control inside it.")
-        if declared_children(owner).get(first) is self.part.root:
+        if declared_children(owner).get(first) is not self.part.root:
+            declares = ', '.join(declared_children(owner)) or 'none'
+            raise TypeError(
+                f"{owner.__name__}: '{first}', the first segment of "
+                f"{self.part.written} in the control '{name}', is not a "
+                f"child {owner.__name__} declares. A control's part is "
+                f"walked from the assembly that declares the control; "
+                f"{owner.__name__} declares: {declares}.")
+        self.check_selection_declared_on(owner, name)
+
+    def check_selection_declared_on(self, owner, name):
+        """Refuse a selected coordinate `owner` cannot reach: a path
+        whose first segment is not a child it declares, or a bare joint
+        it does not declare.
+
+        The same test the part gets, for the same reason -- the classes
+        are all known the moment `NodeMeta` builds this one, and a
+        reference borrowed from another class is a mistake that should
+        never survive to a render.
+        """
+        from solid_node.motion.joints import declared_joints
+
+        if self.coordinate is None:
             return
-        declares = ', '.join(declared_children(owner)) or 'none'
+        if isinstance(self.coordinate, PathRef):
+            first = self.coordinate.root._name
+            if declared_children(owner).get(first) is self.coordinate.root:
+                return
+            declares = ', '.join(declared_children(owner)) or 'none'
+            raise TypeError(
+                f"{owner.__name__}: '{first}', the first segment of "
+                f"{self.selected} in the control '{name}', is not a child "
+                f"{owner.__name__} declares. A control's coordinate is "
+                f"walked from the assembly that declares the control; "
+                f"{owner.__name__} declares: {declares}.")
+        declared = declared_joints(owner)
+        if any(self.coordinate.declared is joint
+               for joint in declared.values()):
+            return
+        known = ', '.join(declared) or 'none'
         raise TypeError(
-            f"{owner.__name__}: '{first}', the first segment of "
-            f"{self.part.written} in the control '{name}', is not a child "
-            f"{owner.__name__} declares. A control's part is walked from "
-            f"the assembly that declares the control; {owner.__name__} "
-            f"declares: {declares}.")
+            f"{owner.__name__}: the control '{name}' names the joint "
+            f"'{self.selected}', which {owner.__name__} does not declare. "
+            f"A control's coordinate is a joint of the class stating the "
+            f"control or of a child it declares -- reached by path "
+            f"(crank.turn) -- and {owner.__name__} declares: {known}.")
 
     def references(self):
         """What this control names besides its part, for a repr."""
         return ''
+
+    @property
+    def about(self):
+        """The selection, for a repr: empty where there is none."""
+        return '' if self.coordinate is None else f' at {self.selected}'
 
 
 class Button(Control):
@@ -107,12 +197,16 @@ class Button(Control):
     naming `'Add one'` names `'column.Add one'` -- a key of the tree's
     instruction table by construction rather than by two schemes
     agreeing.
+
+    A press has no direction, so a button names a translational
+    coordinate as readily as a rotational one: what it asks for is an
+    instruction, and the instruction states the travel.
     """
 
     control_kind = 'button'
 
-    def __init__(self, part, instruction):
-        super().__init__(part)
+    def __init__(self, part, instruction, *, coordinate=None):
+        super().__init__(part, coordinate)
         if not isinstance(instruction, str):
             raise TypeError(
                 f'a Button names its instruction by the name it is '
@@ -125,12 +219,13 @@ class Button(Control):
         return f' -> {self.instruction!r}'
 
     def __repr__(self):
-        return f'<button on {self.part.written}{self.references()}>'
+        return (f'<button on {self.part.written}{self.about}'
+                f'{self.references()}>')
 
 
-class Turn(Control):
-    """A drag on `part`, about the rotational coordinate it rides, as a
-    sequence of relative moves on `input`.
+class Drag(Control):
+    """The shared base of the two gestures: a drag on `part`, issued as
+    a sequence of relative moves on `input`.
 
     `input` is the `Driver` DECLARATION, read off the class body that
     declares it -- never a qualified id string, which would give one
@@ -140,18 +235,18 @@ class Turn(Control):
     instruction over a child's driver is; reading one off a child
     declaration is already refused by `read_through`.
 
-    `Slide`, for a prismatic coordinate, is the obvious sibling and is
-    deliberately not in this release: a `Turn` over a translational
-    coordinate is refused by name.
+    A subclass is the whole of the difference: its `control_kind` and
+    the `required_domain` its coordinate must have. Neither states an
+    axis, a pivot, a direction or a scale -- the tree carries the first
+    three and the compiled program the fourth.
     """
 
-    control_kind = 'turn'
-
-    def __init__(self, part, input):
-        super().__init__(part)
+    def __init__(self, part, input, *, coordinate=None):
+        super().__init__(part, coordinate)
+        kind = type(self).__name__
         if isinstance(input, str):
             raise TypeError(
-                f"a Turn names its input by its DECLARATION -- the "
+                f"a {kind} names its input by its DECLARATION -- the "
                 f"`Driver(...)` the class body assigns -- not by the "
                 f"string {input!r}. A driver is addressed by the qualified "
                 f"id its position in the tree gives it, and a second "
@@ -159,9 +254,9 @@ class Turn(Control):
                 f"prevents.")
         if not isinstance(input, DriverDeclaration):
             raise TypeError(
-                f'a Turn is a drag on a part issued as moves on an INPUT, '
-                f'and an input is a Driver declared on the class stating '
-                f'the control; got {input!r}.')
+                f'a {kind} is a drag on a part issued as moves on an '
+                f'INPUT, and an input is a Driver declared on the class '
+                f'stating the control; got {input!r}.')
         self.input = input
 
     def references(self):
@@ -175,11 +270,12 @@ class Turn(Control):
                 return
         known = ', '.join(sorted(declared)) or 'none'
         raise TypeError(
-            f"{owner.__name__}: the control '{name}' turns "
+            f"{owner.__name__}: the control '{name}' drags "
             f"{self.part.written} with a Driver {owner.__name__} does not "
-            f"declare. A Turn's input is a driver of the class stating the "
-            f"control -- a child's driver is named by declaring the control "
-            f"on the child -- and {owner.__name__} declares: {known}.")
+            f"declare. A {type(self).__name__}'s input is a driver of the "
+            f"class stating the control -- a child's driver is named by "
+            f"declaring the control on the child -- and {owner.__name__} "
+            f"declares: {known}.")
 
     def local_input_of(self, owner):
         """The class-local name `owner` declares this control's input
@@ -194,7 +290,29 @@ class Turn(Control):
             f'validated.')
 
     def __repr__(self):
-        return f'<turn on {self.part.written}{self.references()}>'
+        return (f'<{self.control_kind} on {self.part.written}{self.about}'
+                f'{self.references()}>')
+
+
+class Turn(Drag):
+    """A drag on `part`, ABOUT the rotational coordinate it rides."""
+
+    control_kind = 'turn'
+    required_domain = 'rotational'
+
+
+class Slide(Drag):
+    """A drag on `part`, ALONG the translational coordinate it rides.
+
+    The prismatic sibling of `Turn`, and identical to it in everything
+    but the domain it requires: the Curta's setting selectors run in
+    their slots, its crank lifts before it turns, and a vertical pointer
+    movement translated into a fake rotational input would misdescribe
+    every one of them.
+    """
+
+    control_kind = 'slide'
+    required_domain = 'translational'
 
 
 def _part_ref(value, kind):
@@ -241,6 +359,79 @@ def _part_ref(value, kind):
         f'a {kind} names a PART: a child the declaring assembly holds, or '
         f'a path of declared children through one (units.input.dial). '
         f'{value!r} is none of those.')
+
+
+def _is_joint(value):
+    """Whether `value` is a joint DECLARATION: something that OWNS a
+    coordinate rather than being one.
+
+    The file's own duck-typed style, and the distinction the selection
+    turns on: `units.turn` written in a class body is a `Revolute` that
+    owns the port `units.turn`, while `gauge.hand` may be a plain
+    `RotationalPort` -- a value an author's own `render()` turns, which
+    no run banks and no gesture can be about.
+    """
+    if _coordinates_of(value) is not None:
+        return True
+    owned = _coordinate_of(value)
+    return owned is not None and owned is not value
+
+
+def _coordinate_ref(value, kind):
+    """`value` as a reference to ONE JOINT of the tree.
+
+    The same normalization a relation's end gets, narrowed to what a
+    control may select: the joint declaration itself, written bare in
+    the class body that declares it, or a path of declared children
+    ending on one (`crank.turn`, `register.marker.turn`). A qualified
+    id string is refused for the reason a `Turn`'s input is: one value,
+    one address.
+
+    Whether the joint actually poses this control's part, whether the
+    run banks its coordinate and whether it owns only one are questions
+    about the TREE, and are asked where the tree exists -- at compile,
+    by `_selected_joint`.
+    """
+    if isinstance(value, BroadcastRef):
+        raise TypeError(
+            f"a {kind} names ONE coordinate, and '{value.written}' passes "
+            f"through the repeated declaration '{value.repeat._name}' of "
+            f"{value.repeat.node_class.__name__} "
+            f"(count={value.repeat.count!r}): a repeated child names one "
+            f"joint per copy. Name one copy's own attribute, or state the "
+            f"control inside {value.repeat.node_class.__name__}.")
+    if isinstance(value, PathRef):
+        if value.root._name is None:
+            raise TypeError(
+                f"a {kind}'s coordinate is held in a LIST. A declaration "
+                f"held in a list is named <attribute>-<index> and names one "
+                f"child per entry, so it cannot be a control's coordinate. "
+                f"Hold the {value.root.node_class.__name__} on its own "
+                f"attribute, or state the control inside it.")
+        if not _is_joint(value.terminal):
+            raise TypeError(
+                f"a {kind}'s coordinate names a JOINT -- the declaration "
+                f"that POSES the part -- and '{value.written}' does not. A "
+                f"control's gesture is a joint's motion; a plain port an "
+                f"author's own render() turns is not one, and a single "
+                f"coordinate of a joint that owns several is not one "
+                f"either.")
+        return value
+    if isinstance(value, str):
+        raise TypeError(
+            f"a {kind} names its coordinate by the joint DECLARATION -- "
+            f"the `Revolute(...)` or `Prismatic(...)` the class body "
+            f"assigns, or a path of declared children to one -- not by the "
+            f"string {value!r}. A coordinate is addressed by the qualified "
+            f"id its position in the tree gives it, and a second address "
+            f"for one value is what that qualification prevents.")
+    if _is_joint(value):
+        return OwnRef(value)
+    raise TypeError(
+        f"a {kind}'s coordinate names a JOINT: the declaration that poses "
+        f"the part, written as the class body writes it "
+        f"(crank.turn), or a joint of the declaring class itself. "
+        f"{value!r} is none of those.")
 
 
 def _refuse_coordinate(value, written, kind):

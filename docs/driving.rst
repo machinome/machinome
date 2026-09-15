@@ -973,8 +973,8 @@ machine does.
 
 .. _controls-on-parts:
 
-Controls: pressing and turning the part itself
-==============================================
+Controls: pressing, turning and sliding the part itself
+=======================================================
 
 An instruction becomes a button on a panel beside the model. A
 **control** puts the same request on the *part*: click the dial, and the
@@ -998,10 +998,11 @@ on a root that declares `Time.running()`:
 
 ``Button(part, instruction)`` is a press on `part` submitting the named
 instruction — the panel's button, moved onto the part, carrying no
-movement of its own. ``Turn(part, input)`` is a drag on `part`, about
-the rotational coordinate that part rides, issued as a sequence of
-relative moves on `input`. ``Slide``, for a prismatic coordinate, is the
-obvious sibling and is not in this release.
+movement of its own. ``Turn(part, input)`` is a drag on `part`, *about*
+the rotational coordinate that part rides, and ``Slide(part, input)`` is
+a drag *along* the translational one, each issued as a sequence of
+relative moves on `input`. A press has no direction, so a ``Button``
+names a sliding part as readily as a turning one.
 
 A control **moves nothing itself**. It names a request the run already
 accepts, so ownership, admission, stops and outcomes are exactly what
@@ -1023,16 +1024,52 @@ means; and the number drum turns with an input, yet a hand may not turn
 it, because the ratchet is on the input arbor and the drum sits under
 the lid. Only the author knows, so the binding is declared.
 
-**The geometry is not declared, and neither is the ratio.** The
-gesture's coordinate is the one owned by the nearest ancestor-or-self of
-the part whose joint the run banks; its axis and the point it turns
-about are read off the tree, being exactly the values the joint's own
-placement used. How far the input travels per unit of the part —
-``per_unit`` in the published document — is **measured** from the
-compiled program at the rest bank, with that input displaced a little in
-each direction and nothing else moved. Stating that number in the class
-body would only repeat a relation the program already holds, and a
-number stated twice is a number that drifts.
+**Say which freedom you mean when the body has two.** The gesture's
+coordinate is normally the one owned by the nearest ancestor-or-self of
+the part whose joint the run banks, and a body with one freedom needs
+nothing more. The Curta's crank both lifts and turns, and its register
+carriage does the same: there *is* no nearest joint, and a control on
+such a body is refused until it says which coordinate it means.
+``coordinate=`` is where it says so, naming the joint declaration by the
+same path a relation's end is written:
+
+.. code-block:: python
+
+    class Crank(AssemblyNode):
+        turn = Revolute(axis=(0, 0, 1), at=(0, 12, 0), unit='deg')
+        lift = Prismatic(axis=(0, 0, 1), unit='mm')
+        handle = Knob()
+
+    class Calculator(AssemblyNode):
+        time = Time.running()
+        rotation = Driver(default=0.0, unit='turn')
+        elevation = Driver(default=0.0, unit='mm')
+        crank = Crank()
+
+        controls = {
+            'turn the crank': Turn(crank.handle, rotation,
+                                   coordinate=crank.turn),
+            'lift the crank': Slide(crank.handle, elevation,
+                                    coordinate=crank.lift),
+        }
+
+The selected joint must pose the touched part or one of its ancestors in
+the same tree, must own exactly one coordinate, and must be one the run
+banks. It may be *further* from the part than the nearest one — a marker
+knob on a carriage selects the carriage's travel, which no walk up the
+tree would ever choose — but it may never reach sideways to another
+mechanism. Selection adds no joint, no edge and no source: it is a
+reading of the tree, and the program is the program it would be with no
+control declared at all.
+
+**The geometry is not declared, and neither is the ratio.** A gesture's
+axis and the point it turns about are read off the tree, being exactly
+the values the joint's own placement used. How far the input travels per
+unit of the part — ``per_unit`` in the published document — is
+**measured** from the compiled program at the rest bank, with that input
+displaced a little in each direction and nothing else moved. Stating
+that number in the class body would only repeat a relation the program
+already holds, and a number stated twice is a number that drifts.
 
 The reading is taken **at rest**. A law whose response to that input
 changes with state makes a pointer built on it lead or lag the part; the
@@ -1045,21 +1082,34 @@ class does not hold, a coordinate or a driver written where a part
 belongs, a repeated child, a misspelt path segment, a `Turn` over a
 driver the class does not declare, and a ``controls`` attribute that is
 not a table of controls — ``controls`` is a reserved name on a node
-class, so a mistyped table is never silently inert. At compile, where
-the program is known: a part no run-owned coordinate poses, a posing
-node declaring several joints or a joint owning several coordinates, a
-`Turn` over a coordinate that is not rotational, a `Turn` whose input
-does not reach the coordinate (naming the inputs that do), a `Button`
-naming no declared instruction, and a control under a root that does not
-declare `Time.running()`. At publication: a `Turn` whose input moves the
-part by nothing at rest, and one whose two directions disagree.
+class, so a mistyped table is never silently inert, and a ``coordinate=``
+that is not a joint of the declaring class or of a child it declares. At
+compile, where the program is known: a part no run-owned coordinate
+poses, a posing node declaring several joints or a joint owning several
+coordinates where nothing was selected, a selection that reaches
+sideways or names a joint owning several coordinates, a `Turn` over a
+coordinate that is not rotational or a `Slide` over one that is not
+translational, a drag whose input does not reach the coordinate (naming
+the inputs that do), a `Button` naming no declared instruction, and a
+control under a root that does not declare `Time.running()`. At
+publication: a drag whose input moves the part by nothing at rest, one
+whose two directions disagree, and a selected coordinate whose placement
+cannot be identified exactly.
 
 A version 5 document publishes the table beside ``instructions``,
 additively — a document that declares no control omits the key and is
 byte-identical to the one the framework published before controls
+existed. A translational or explicitly selected entry carries one field
+more, ``operation_span``: the half-open pair of indices identifying that
+coordinate's own placement inside the joint node's ``operations``, so a
+consumer builds the gesture's frame from the operations *outside* that
+block and never applies an inner joint's motion to an outer joint's
+line. An entry the framework inferred over a single rotational joint
+carries no span and is byte-identical to the entry published before this
 existed. What a viewer *does* with the table — the hover affordance, the
-pick, the drag plane, the quantum — is the browser viewer's own release,
-not the framework's.
+pick, the drag handles, the quantum — is the browser viewer's own
+release, not the framework's; operating a sliding part or picking
+between the two freedoms of one body needs a viewer of API 13 or later.
 
 Driving it in the viewer
 ========================

@@ -849,9 +849,9 @@ def _validate_controls(cls, name, table):
         raise TypeError(
             f'{name}.controls is {table!r}. On a node class `controls` '
             f'names the machine\'s CONTROLS -- a mapping of display name '
-            f'to Button(part, instruction) or Turn(part, input), beside '
-            f'`instructions` -- so the name is reserved; rename the '
-            f'attribute.')
+            f'to Button(part, instruction), Turn(part, input) or '
+            f'Slide(part, input), beside `instructions` -- so the name is '
+            f'reserved; rename the attribute.')
     for entry_name, control in table.items():
         if not isinstance(entry_name, str):
             raise TypeError(
@@ -861,9 +861,9 @@ def _validate_controls(cls, name, table):
             raise TypeError(
                 f"{name}.controls['{entry_name}'] is {control!r}, which is "
                 f"not a control. On a node class `controls` names the "
-                f"machine's CONTROLS -- Button(part, instruction) or "
-                f"Turn(part, input) -- so the name is reserved; rename the "
-                f"attribute.")
+                f"machine's CONTROLS -- Button(part, instruction), "
+                f"Turn(part, input) or Slide(part, input) -- so the name is "
+                f"reserved; rename the attribute.")
         control.check_declared_on(cls, entry_name)
     cls._declares_controls = bool(table)
 

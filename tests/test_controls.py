@@ -25,19 +25,24 @@ from solid_node.motion.joints import Free, Prismatic, Revolute
 from solid_node.motion.ports import RotationalPort, Time
 from solid_node.node import AssemblyNode
 from solid_node.node.qualified import instance_path
-from solid_node.simulation import Button, Driver, Instruction, Sim, Turn
+from solid_node.simulation import (Button, Driver, Instruction, Sim,
+                                   Slide, Turn)
 from solid_node.simulation.enumeration import (qualified_controls,
                                                qualified_declarations,
                                                qualified_instructions)
 
 from .base import BaseNodeTest
-from .running_project.machine import (Column, ColumnStack, Columns,
-                                      ColumnsBare, DeepColumn, DialArbor,
-                                      FreePosed, KinkedControl, LoopingControls,
-                                      NotRunning, OffCentre, OmittedControl,
-                                      SiteTurned, Sliding, SmoothControl,
-                                      Stepping, TwoJoints, Unmoved, Unnamed,
-                                      Unposed, Unreached, carried_column)
+from .running_project.machine import (AmbiguousCrank, Column, ColumnStack,
+                                      Columns, ColumnsBare, Crank, CrankBare,
+                                      CrankBody, DeepColumn, DerivedSelected,
+                                      DialArbor, FreePosed, FreeSelected,
+                                      Gate, GateTouched, KinkedControl,
+                                      LoopingControls, NotRunning, OffCentre,
+                                      OmittedControl, Register, Selector,
+                                      Sideways, SiteTurned, SlideKnob, Sliding,
+                                      SlidingTurn, SmoothControl, Stepping,
+                                      TwoJoints, Unmoved, Unnamed, Unposed,
+                                      Unreached, carried_column)
 from .running_project.parts import Block, Dial
 
 
@@ -747,3 +752,385 @@ class InheritanceTest(BaseNodeTest):
     def test_a_class_declaring_no_controls_carries_no_flag(self):
         self.assertFalse(getattr(ColumnsBare, '_declares_controls', False))
         self.assertTrue(Columns._declares_controls)
+
+
+class SlideTest(BaseNodeTest):
+    """(1.1, 1.2) `Slide` is the prismatic sibling of `Turn`.
+
+    OpenSpec change ``direct-part-motion``. A drag ALONG the selected
+    translational coordinate, declared exactly as a turn is -- part and
+    input, no axis, no scale, no law -- because the tree already carries
+    the rail and the program already holds the ratio.
+    """
+
+    def test_a_slide_over_a_single_prismatic_joint_is_admitted(self):
+        compiled = controls_of(Sim(Selector(), 0.1).program)
+        entry = compiled['slide selector']
+        self.assertEqual(entry.kind, 'slide')
+        self.assertEqual(entry.part, ('selector', 'knob'))
+        self.assertEqual(entry.joint, ('selector',))
+        self.assertEqual(entry.coordinate, 'selector.travel')
+        self.assertEqual(entry.input, 'setting')
+        self.assertEqual(entry.axis, (0, 1, 0))
+
+    def test_a_press_on_a_sliding_part_names_the_same_instruction(self):
+        sim = Sim(Selector(), 0.1)
+        entry = controls_of(sim.program)['press selector']
+        self.assertEqual(entry.kind, 'button')
+        self.assertEqual(entry.instruction, 'One detent')
+        self.assertIn('One detent', sim.instructions)
+        self.assertEqual(entry.coordinate, 'selector.travel')
+
+    def test_a_slide_over_a_rotational_coordinate_is_refused(self):
+        with self.assertRaises(ValueError) as raised:
+            Sim(SlidingTurn(), 0.1)
+        message = str(raised.exception)
+        self.assertIn('units.turn', message)
+        self.assertIn('rotational', message)
+        self.assertIn('translational', message)
+
+    def test_a_slide_names_its_input_by_declaration(self):
+        with self.assertRaises(TypeError) as raised:
+            class Stringly(AssemblyNode):
+                time = Time.running()
+                setting = Driver(default=0.0, unit='step')
+                selector = SlideKnob()
+                setting.drives(selector.travel, ratio=6.0)
+                controls = {'slide': Slide(selector.knob, 'setting')}
+
+        self.assertIn('DECLARATION', str(raised.exception))
+
+    def test_a_slides_input_must_be_declared_on_the_declaring_class(self):
+        class Elsewhere(AssemblyNode):
+            other = Driver(default=0.0, unit='mm')
+
+        with self.assertRaises(TypeError) as raised:
+            class Foreign(AssemblyNode):
+                time = Time.running()
+                setting = Driver(default=0.0, unit='step')
+                selector = SlideKnob()
+                setting.drives(selector.travel, ratio=6.0)
+                controls = {'slide': Slide(selector.knob, Elsewhere.other)}
+
+        message = str(raised.exception)
+        self.assertIn('Foreign', message)
+        self.assertIn('setting', message)
+
+    def test_a_slide_whose_input_does_not_reach_the_part_is_refused(self):
+        with self.assertRaises(ValueError) as raised:
+            class Unreaching(AssemblyNode):
+                time = Time.running()
+                setting = Driver(default=0.0, unit='step')
+                spare = Driver(default=0.0, unit='step')
+                selector = SlideKnob()
+                setting.drives(selector.travel, ratio=6.0)
+                controls = {'slide': Slide(selector.knob, spare)}
+
+            Sim(Unreaching(), 0.1)
+        message = str(raised.exception)
+        self.assertIn('selector.travel', message)
+        self.assertIn('setting', message)
+
+    def test_a_coordinate_is_not_a_part_for_a_slide_either(self):
+        with self.assertRaises(TypeError) as raised:
+            class Jointed(AssemblyNode):
+                time = Time.running()
+                setting = Driver(default=0.0, unit='step')
+                selector = SlideKnob()
+                setting.drives(selector.travel, ratio=6.0)
+                controls = {'slide': Slide(selector.travel, setting)}
+
+        message = str(raised.exception)
+        self.assertIn('PART', message)
+        self.assertIn('coordinate', message)
+
+
+class SelectionTest(BaseNodeTest):
+    """(1.2) A control may name the coordinate it means.
+
+    Inference stays exactly what ADR-112 made it; `coordinate=` is the
+    escape for the bodies inference cannot serve -- a crank that lifts
+    AND turns, a knob whose nearest joint is not the one a hand means.
+    """
+
+    def test_one_body_is_lifted_and_turned_independently(self):
+        compiled = controls_of(Sim(Crank(), 0.1).program)
+        self.assertEqual(sorted(compiled),
+                         ['lift crank', 'rotate crank', 'turn crank'])
+        for name, kind, coordinate in (
+                ('lift crank', 'slide', 'crank.lift'),
+                ('rotate crank', 'turn', 'crank.turn'),
+                ('turn crank', 'button', 'crank.turn')):
+            with self.subTest(control=name):
+                entry = compiled[name]
+                self.assertEqual(entry.kind, kind)
+                self.assertEqual(entry.coordinate, coordinate)
+                self.assertEqual(entry.part, ('crank', 'handle'))
+                self.assertEqual(entry.joint, ('crank',))
+
+    def test_each_selection_carries_its_own_joints_geometry(self):
+        compiled = controls_of(Sim(Crank(), 0.1).program)
+        self.assertEqual(compiled['rotate crank'].axis, (0, 0, 1))
+        self.assertEqual(compiled['rotate crank'].origin, (0.0, 12.0, 0.0))
+        self.assertEqual(compiled['lift crank'].axis, (0, 0, 1))
+
+    def test_each_input_is_the_one_that_reaches_the_selected_coordinate(self):
+        compiled = controls_of(Sim(Crank(), 0.1).program)
+        self.assertEqual(compiled['rotate crank'].input, 'rotation')
+        self.assertEqual(compiled['lift crank'].input, 'elevation')
+
+    def test_ambiguity_is_still_refused_without_a_selection(self):
+        with self.assertRaises(ValueError) as raised:
+            Sim(AmbiguousCrank(), 0.1)
+        message = str(raised.exception)
+        self.assertIn('turn', message)
+        self.assertIn('lift', message)
+        self.assertIn('ONE coordinate', message)
+
+    def test_an_ancestor_coordinate_is_reachable_past_a_nearer_joint(self):
+        compiled = controls_of(Sim(Register(), 0.1).program)
+        shift = compiled['shift register']
+        self.assertEqual(shift.part, ('register', 'marker', 'knob'))
+        self.assertEqual(shift.joint, ('register',))
+        self.assertEqual(shift.coordinate, 'register.travel')
+        # ... and the nearer joint is genuinely the one inference finds.
+        turn = compiled['turn marker']
+        self.assertEqual(turn.joint, ('register', 'marker'))
+        self.assertEqual(turn.coordinate, 'register.marker.turn')
+
+    def test_a_selection_cannot_reach_sideways(self):
+        with self.assertRaises(ValueError) as raised:
+            Sim(Sideways(), 0.1)
+        message = str(raised.exception)
+        self.assertIn('lift crank', message)
+        self.assertIn('selector.travel', message)
+        self.assertIn('crank.handle', message)
+
+    def test_selecting_a_joint_does_not_unpack_it(self):
+        with self.assertRaises(ValueError) as raised:
+            Sim(FreeSelected(), 0.1)
+        message = str(raised.exception)
+        self.assertIn('pose', message)
+        self.assertIn('yaw', message)
+        self.assertIn('ONE coordinate', message)
+
+    def test_a_selection_that_is_not_a_joint_is_refused_where_written(self):
+        with self.assertRaises(TypeError) as raised:
+            class Numeric(AssemblyNode):
+                time = Time.running()
+                rotation = Driver(default=0.0, unit='turn')
+                crank = CrankBody()
+                rotation.drives(crank.turn, ratio=360.0)
+                controls = {'rotate': Turn(crank.handle, rotation,
+                                           coordinate=3.0)}
+
+        message = str(raised.exception)
+        self.assertIn('JOINT', message)
+        self.assertIn('3.0', message)
+
+    def test_a_selection_of_another_classs_joint_is_refused(self):
+        class Elsewhere(AssemblyNode):
+            spare = CrankBody()
+
+        with self.assertRaises(TypeError) as raised:
+            class Borrower(AssemblyNode):
+                time = Time.running()
+                rotation = Driver(default=0.0, unit='turn')
+                crank = CrankBody()
+                rotation.drives(crank.turn, ratio=360.0)
+                controls = {'rotate': Turn(crank.handle, rotation,
+                                           coordinate=Elsewhere.spare.turn)}
+
+        message = str(raised.exception)
+        self.assertIn('Borrower', message)
+        self.assertIn('rotate', message)
+        self.assertIn('spare', message)
+
+    def test_a_derived_coordinate_is_not_a_joint(self):
+        """A linear formula over coordinates reads as a coordinate and
+        poses nothing; a gesture is a JOINT's motion."""
+        with self.assertRaises(ValueError) as raised:
+            Sim(DerivedSelected(), 0.1)
+        message = str(raised.exception)
+        self.assertIn('turn body', message)
+        self.assertIn('pair.spread', message)
+        self.assertIn('not a joint', message)
+
+    def test_a_plain_port_is_not_a_joint(self):
+        """A control's gesture is a JOINT's motion: a port an author's
+        own render() turns is refused where it is written."""
+        from .running_project.parts import Wheel
+
+        with self.assertRaises(TypeError) as raised:
+            class Plain(AssemblyNode):
+                time = Time.running()
+                entry = Driver(default=0.0, unit='deg')
+                units = DialArbor()
+                spin = Wheel()
+                entry.drives(units.turn, ratio=-36.0)
+                entry.drives(spin.turn, ratio=1.0)
+                controls = {'turn spin': Turn(units.dial, entry,
+                                              coordinate=spin.turn)}
+
+        message = str(raised.exception)
+        self.assertIn('JOINT', message)
+        self.assertIn('spin.turn', message)
+
+    def test_a_selection_changes_neither_the_bank_nor_the_identity(self):
+        """The program of a two-freedom body is what it is with no
+        control at all: selection is a reading of the tree, and it adds
+        no joint, no edge and no source."""
+        selected = Sim(Crank(), 0.1)
+        bare = Sim(CrankBare(), 0.1)
+        self.assertEqual(dict(selected.state), dict(bare.state))
+        self.assertEqual(selected.program.described().split('\n')[1:],
+                         bare.program.described().split('\n')[1:])
+        self.assertEqual(
+            {selected.program.nodes[key].name: sorted(names)
+             for key, names in selected.program.sources.items()},
+            {bare.program.nodes[key].name: sorted(names)
+             for key, names in bare.program.sources.items()})
+        # The identity itself, with the one line that names the ROOT
+        # CLASS aligned -- a twin under another name necessarily hashes
+        # differently, and nothing else may.
+        lines = bare.program.described().split('\n')
+        lines[0] = selected.program.described().split('\n')[0]
+        self.assertEqual(
+            hashlib.sha256('\n'.join(lines).encode()).hexdigest(),
+            selected.program.identity)
+        described = selected.program.described()
+        for name in ('lift crank', 'rotate crank', 'control'):
+            self.assertNotIn(name, described)
+
+    def test_the_two_step_identically(self):
+        selected = Sim(Crank(), 0.1)
+        bare = Sim(CrankBare(), 0.1)
+        for sim in (selected, bare):
+            sim.move('rotation', by=0.5, duration=0.5)
+            sim.run(0.5)
+            sim.move('elevation', by=-2.0, duration=0.3)
+            sim.run(0.5)
+        self.assertEqual(dict(selected.state), dict(bare.state))
+
+
+class InterlockedSlideTest(BaseNodeTest):
+    """(1.3) A sliding control is a `move` request and nothing else.
+
+    The gate's plug may turn only while both pins stand in the shear
+    line, and its key is what lifts them. A request issued through the
+    key's sliding control is admitted exactly as the same ordinary move
+    is, and it repositions nothing.
+    """
+
+    def outcome(self, sim, identifier, by):
+        sim.move(identifier, by=by, duration=0.5)
+        return sim.run(0.5)
+
+    def test_a_slide_admits_what_the_ordinary_move_admits(self):
+        touched = Sim(GateTouched(), 0.1)
+        plain = Sim(Gate(), 0.1)
+        for sim in (touched, plain):
+            self.outcome(sim, 'feed', 4.0)
+            self.outcome(sim, 'twist', 30.0)
+        self.assertEqual(dict(touched.state), dict(plain.state))
+
+    def test_a_blocked_turn_does_not_move_the_key(self):
+        sim = Sim(GateTouched(), 0.1)
+        before = dict(sim.state)
+        self.outcome(sim, 'twist', 30.0)
+        self.assertEqual(sim.state['key.travel'], before['key.travel'])
+        self.assertEqual(sim.state['p1.lift'], before['p1.lift'])
+
+    def test_the_controls_do_not_change_the_program(self):
+        touched = Sim(GateTouched(), 0.1).program
+        plain = Sim(Gate(), 0.1).program
+        self.assertEqual(touched.described().split('\n')[1:],
+                         plain.described().split('\n')[1:])
+
+
+class PlacementSpanTest(BaseNodeTest):
+    """(2.2) The published block is the placement's OWN, or nothing.
+
+    The indices come from the slot mark every operation a joint places
+    carries (ADR-093, ADR-114) -- the thing that placed them -- and
+    never from searching a rendered expression for a coordinate's name.
+    A block that is not exactly one contiguous run of this coordinate's
+    own operations is refused rather than published as a frame the
+    producer invented.
+    """
+
+    def compiled(self, factory):
+        sim = Sim(factory(), 0.1)
+        return sim, controls_of(sim.program)
+
+    def test_an_inferred_rotational_control_publishes_no_span(self):
+        _sim, compiled = self.compiled(Columns)
+        for name in sorted(compiled):
+            with self.subTest(control=name):
+                self.assertIsNone(compiled[name].span)
+
+    def test_a_translational_coordinate_publishes_one_uninvited(self):
+        _sim, compiled = self.compiled(Selector)
+        self.assertEqual(compiled['slide selector'].span, (0, 1))
+        self.assertEqual(compiled['press selector'].span, (0, 1))
+
+    def test_a_selection_publishes_one_even_where_it_turns(self):
+        _sim, compiled = self.compiled(Crank)
+        self.assertEqual(compiled['rotate crank'].span, (0, 3))
+        self.assertEqual(compiled['turn crank'].span, (0, 3))
+        self.assertEqual(compiled['lift crank'].span, (3, 4))
+
+    def test_the_span_is_the_same_wherever_the_run_stands(self):
+        """The block is a property of the PLACEMENT, not of the pose:
+        a crank that has been lifted and turned publishes the same two
+        blocks it published at rest."""
+        sim = Sim(Crank(), 0.1)
+        at_rest = {name: entry.span
+                   for name, entry in controls_of(sim.program).items()}
+        sim.move('rotation', by=0.25, duration=0.5)
+        sim.run(0.5)
+        sim.move('elevation', by=3.0, duration=0.5)
+        sim.run(0.5)
+        self.assertNotEqual(sim.state['crank.turn'], 0.0)
+        self.assertNotEqual(sim.state['crank.lift'], 0.0)
+        moved = Sim(Crank(), 0.1, state={'rotation': 0.25,
+                                         'elevation': 3.0})
+        self.assertEqual(
+            {name: entry.span
+             for name, entry in controls_of(moved.program).items()},
+            at_rest)
+
+    def test_a_placement_that_is_not_there_is_refused(self):
+        from solid_node.simulation.program import (ControlError,
+                                                   _published_span)
+
+        sim = Sim(Crank(), 0.1)
+        crank = sim.node.crank
+        crank.operations[:] = [
+            operation for operation in crank.operations
+            if getattr(operation, '_joint_slot', None) != 0]
+        with self.assertRaises(ControlError) as raised:
+            _published_span(crank, type(crank).turn, 'rotate crank',
+                            Crank.controls['rotate crank'], sim.program,
+                            'crank.turn')
+        message = str(raised.exception)
+        self.assertIn('crank.turn', message)
+        self.assertIn('turn', message)
+        self.assertIn('invented', message)
+
+    def test_a_block_that_is_not_contiguous_is_refused(self):
+        from solid_node.node.operations import Translation
+        from solid_node.simulation.program import (ControlError,
+                                                   _published_span)
+
+        sim = Sim(Crank(), 0.1)
+        crank = sim.node.crank
+        intruder = Translation([0.0, 0.0, 1.0], crank)
+        intruder._motion = True
+        intruder._joint_slot = 1
+        crank.operations.insert(1, intruder)
+        with self.assertRaises(ControlError) as raised:
+            _published_span(crank, type(crank).turn, 'rotate crank',
+                            Crank.controls['rotate crank'], sim.program,
+                            'crank.turn')
+        self.assertIn('contiguous', str(raised.exception))

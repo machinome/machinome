@@ -1,6 +1,10 @@
 # ADR-112: A Control Is a Declaration on the Model, and the Gesture's Geometry Comes from the Tree
 
-**Status:** Accepted
+**Status:** Accepted — decision 2's single-joint narrowing, and the two
+extensions the consequences record rather than take, superseded in part by
+[ADR-117](./ADR-117-a-control-may-name-the-freedom-it-means.md),
+2026-09-15. A control may now name the coordinate it means and a `Slide`
+is a control; everything else below stands, inference included.
 **Date:** 2026-09-14
 **Depends on:**
 - [ADR-105: The run owns the coordinates and binds them](./ADR-105-the-run-owns-the-coordinates-and-binds-them.md)
@@ -158,6 +162,9 @@ and measures its ratio from the compiled program.**
 - Two compatible extensions are recorded rather than taken: a control on
   a composed joint or a `Free` (choosing one coordinate), and `Slide`
   for a prismatic drag. A `Button` on a part nothing poses is likewise a
-  later, additive relaxation.
+  later, additive relaxation. *(ADR-117 took the first and the second: a
+  control may select one single-coordinate joint of a composed body, and
+  `Slide` exists. A `Free` still refuses selection, and a `Button` on a
+  part nothing poses is still refused.)*
 - The ratio is a reading at rest. A machine whose dial ratio changes
   with state gets a looser drag, not a wrong one.

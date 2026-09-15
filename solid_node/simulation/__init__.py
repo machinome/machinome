@@ -47,11 +47,13 @@ _EXPORTS = {
     'qualified_drivers': 'enumeration',
     'qualified_instructions': 'enumeration',
     'Instruction': 'instruction',
-    # The two control kinds: which part a person presses, and which
-    # part a person turns. Lazy like every export here -- a model that
-    # declares no control never imports the module, and a model that
-    # does names them in its class body, which is the first access.
+    # The three control kinds: which part a person presses, which part
+    # a person turns, and which part a person slides. Lazy like every
+    # export here -- a model that declares no control never imports the
+    # module, and a model that does names them in its class body, which
+    # is the first access.
     'Button': 'control',
+    'Slide': 'control',
     'Turn': 'control',
     'ScenarioTest': 'scenario',
     'Sim': 'sim',
