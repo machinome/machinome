@@ -17,6 +17,7 @@ including the file.
 """
 
 import ast
+import errno
 import os
 import sys
 from importlib.util import resolve_name
@@ -35,6 +36,70 @@ FRAMEWORK_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 # atomically replaced file is re-parsed even when size and mtime are restored.
 # A miss evicts the superseded entry, like the other per-source caches.
 _import_cache = {}
+
+
+class MissingSourceFile(FileNotFoundError):
+    """A declared source file that is not there, raised at construction.
+
+    A plain `FileNotFoundError(message)` renders correctly with
+    `str(error)`, but assigning `.filename` on it afterwards (to let
+    reload-repair watching, builder.py's `_on_reload_exception`, find the
+    exact path to watch) breaks that rendering: `OSError.__str__` switches
+    to "[Errno N] strerror: filename" the moment `.filename` is set at
+    all, regardless of how it got there, and neither errno nor strerror
+    were supplied, so the message becomes "[Errno None] None: '<path>'".
+    Building the standard `(errno, strerror, filename)` triple through the
+    constructor keeps `errno`, `strerror` and `filename` as the normal
+    `OSError` attributes builder.py already reads, while `__str__` is
+    overridden back to the one-sentence message alone.
+    """
+    def __init__(self, message, path):
+        super().__init__(errno.ENOENT, message, path)
+
+    def __str__(self):
+        return self.strerror
+
+
+def require_source_file(klass, attribute, declared, path):
+    """Refuse a leaf whose declared source file is not there.
+
+    Called by each source-bound adapter (`StlNode`, `StepNode`,
+    `JScadNode`, `OpenScadNode`) immediately after it resolves its
+    declared attribute into an absolute `path`, before `super().__init__`
+    reads anything from it. `klass` is the constructing subclass;
+    `attribute` and `declared` are the class attribute's name and the
+    value it was declared with -- both needed because `path` alone
+    cannot say which of a leaf's several possible source attributes to
+    fix.
+
+    Raises `FileNotFoundError` when `path` does not exist -- the same
+    exception `AbstractBaseNode.mtime_ns` already raises for a source
+    that vanishes after construction, so both failures read as one
+    family. Raises `ValueError` when `path` exists but is not a regular
+    file, matching the other admission refusals these adapters already
+    raise for a missing declaration. Returns `None` when `path` is a
+    file, so a caller can call this and move on.
+    """
+    if os.path.isfile(path):
+        return None
+
+    module = sys.modules[klass.__module__]
+    wrapper = os.path.realpath(module.__file__)
+    where = (f'{klass.__name__} declares {attribute} = {declared!r}, '
+             f'resolved against {wrapper}, but {path} ')
+
+    if os.path.exists(path):
+        error = ValueError(where + 'is not a file.')
+        # Assigned after construction, not passed to the constructor:
+        # ValueError.__str__ reads only .args, so this is inert for the
+        # message and only gives reload-repair watching (builder.py's
+        # _on_reload_exception) the exact foreign path this refusal names.
+        error.filename = path
+        raise error
+
+    raise MissingSourceFile(
+        where + 'does not exist. Create or fetch the file, or correct '
+        'the declaration.', path)
 
 
 def source_closure(src):

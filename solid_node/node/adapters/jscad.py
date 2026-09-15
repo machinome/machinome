@@ -9,6 +9,7 @@ import time
 from subprocess import CalledProcessError, Popen
 from solid_node import currency
 from solid_node.node.leaf import LeafNode
+from solid_node.node.sources import require_source_file
 from solid_node.source_generation import current_phase
 
 
@@ -30,8 +31,11 @@ class JScadNode(LeafNode):
                             'property with path with a valid OpenJScad js file')
         module = sys.modules[self.__class__.__module__]
         basedir = os.path.dirname(module.__file__)
+        declared = self.jscad_source
         source_path = os.path.join(basedir, self.jscad_source)
         self.jscad_source = os.path.realpath(source_path)
+        require_source_file(self.__class__, 'jscad_source', declared,
+                            self.jscad_source)
 
         super().__init__(name=name)
 

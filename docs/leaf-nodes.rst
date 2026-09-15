@@ -74,6 +74,17 @@ The :doc:`Quickstart <quickstart>` starts with a Solid2Node example showing
 a box with a hole. Below are the codes for the same model in each modelling
 technology.
 
+.. _missing-source-file:
+
+Four of these -- **OpenScadNode**, **JScadNode**, **StlNode** and
+**StepNode** -- bind a node to a file outside Python instead of authoring
+geometry in it. Each checks that its declared file is there when the node
+is *constructed*, before anything is read from it: the failure names the
+class, the declaring attribute and its declared value, and the absolute
+path the declaration resolved to. A declared path that exists but is a
+directory fails the same way, saying so, instead of failing later inside
+the mesh or document reader.
+
 Solid2Node
 ==========
 
@@ -400,7 +411,9 @@ OpenScadNode
 ============
 
 The same model can also be obtained using an **OpenScadNode**, which is a small
-python wrapper around an OpenScad module.
+python wrapper around an OpenScad module. A declared `scad_source` that
+does not resolve to a file is refused at construction
+(:ref:`missing-source-file`).
 
 .. code-block:: python
 
@@ -451,7 +464,9 @@ Finally, the model can also be obtained using a **JScadNode**, which similarly
 to OpenScadNode, it's a python wrapper around a JScad function.
 
 You need the **jscad** CLI tool installed in `$PATH`, and its node dependencies
-installed in the directory you run `solid` from.
+installed in the directory you run `solid` from. A declared `jscad_source`
+that does not resolve to a file is refused at construction
+(:ref:`missing-source-file`).
 
 .. code-block:: python
 
@@ -507,7 +522,9 @@ declares it, and name it:
         stl_source = 'bracket.stl'
 
 That is the whole declaration for a well-behaved file. `render()` is not
-an extension point here — the part is the mesh.
+an extension point here — the part is the mesh. A declared `stl_source`
+that does not resolve to a file is refused at construction
+(:ref:`missing-source-file`).
 
 The node does not import the file in place: it materializes
 **its own artifact** from it, exactly as every other leaf produces its
@@ -677,7 +694,9 @@ that declares it, and name it:
         step_source = 'vendor/bracket.step'
 
 A file holding exactly one product needs nothing more. `render()` is
-not an extension point here — the part is the document's product.
+not an extension point here — the part is the document's product. A
+declared `step_source` that does not resolve to a file is refused at
+construction (:ref:`missing-source-file`).
 
 Selecting a product by name
 ----------------------------

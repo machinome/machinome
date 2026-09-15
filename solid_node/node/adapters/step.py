@@ -66,7 +66,7 @@ from OCP.XCAFApp import XCAFApp_Application
 from OCP.XCAFDoc import XCAFDoc_ColorSurf, XCAFDoc_DocumentTool
 
 from solid_node.node.exact_leaf import ExactLeafNode
-from solid_node.node.sources import source_closure
+from solid_node.node.sources import require_source_file, source_closure
 from solid_node.source_generation import consumed_source
 
 
@@ -480,8 +480,11 @@ class StepNode(ExactLeafNode):
 
         module = sys.modules[self.__class__.__module__]
         wrapper = os.path.realpath(module.__file__)
+        declared = self.step_source
         self.step_source = os.path.realpath(
             os.path.join(os.path.dirname(module.__file__), self.step_source))
+        require_source_file(self.__class__, 'step_source', declared,
+                            self.step_source)
 
         super().__init__(*args, **kwargs)
 

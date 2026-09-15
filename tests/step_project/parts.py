@@ -206,3 +206,17 @@ class BrokenAdjustPart(StepNode):
 
     def adjust(self, shape):
         return shape.Faces()[0]
+
+
+class AbsentPart(StepNode):
+    """A declared document that was never fetched. Constructed nowhere
+    but `tests/test_missing_source_file.py`, which owns this class (and
+    the directory `DirectoryPart` below names) so it can pass alone."""
+
+    step_source = 'no-such-part.step'
+
+
+class DirectoryPart(StepNode):
+    """A declared source that resolves to a directory, not a file."""
+
+    step_source = 'a_directory'

@@ -526,8 +526,11 @@ class Builder(FileSystemEventHandler):
 
         if self.is_reload:
             logger.error(error_message)
-            self._watch_broadly(
-                getattr(getattr(self, 'node', None), 'files', ()))
+            sources = set(getattr(getattr(self, 'node', None), 'files', ()))
+            filename = getattr(exc, 'filename', None)
+            if filename:
+                sources.add(filename)
+            self._watch_broadly(sources)
             self.observer.start()
             return await self.report_error(error_message)
 
