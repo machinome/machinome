@@ -2533,3 +2533,55 @@ code changed for either.
 - **`self.mesh_scad_file` / `self.mesh_stl_file` are vestigial.** Nothing
   in `solid_node/` writes or reads them beyond the assignment at
   `base.py:711-712`.
+
+# Calculators (2026-09-15, markings applied after the part is made)
+
+Recorded at the pilot's explicit request, from
+`projects/Calculators/Curta-Type-I-3x` and
+`projects/Calculators/Pascaline-module`. These are empirical findings, not
+ratified requirements or permission to implement a framework change. No
+framework source was modified; `solid_node/node/base.py`,
+`solid_node/core/serializer.py` and the viewer's `widget/src/tree.ts` were
+read to locate the limit. The proposed design is
+`workflow/docs/markings.md`; **status: filed here, triage open**.
+
+- **A part can carry only one colour, so a marking the maker applies after
+  manufacture cannot be modelled at all.** `color` is one class attribute per
+  node (`base.py:569`), validated to one `#RRGGBB` and applied whole-node
+  (`_colorize`, `base.py:1002`), published as one scalar
+  (`serializer.py:645`), and resolved by the viewer to exactly one
+  `MeshStandardMaterial` per mesh (`solid-node-viewer`,
+  `solid_node_viewer/widget/src/tree.ts:55,106`). Nothing in that chain names
+  a region of a part or a finishing step. A project wanting digits on a
+  number roll must either declare each glyph as its own leaf — which adds
+  parts no maker handles, volume, and (after 0.8) mass, and puts phantom
+  solids in front of every clearance and interference contract — or drop the
+  markings. Both calculators dropped them.
+- **The consequence is a calculator that cannot show its answer.** The Curta's
+  ten number rolls are modelled and driven (`FittedDialType1`/`Type2` in
+  `simulation/dial_fits.py`, on `Revolute` joints in `simulation/registers.py`,
+  each carrying the register value through its port), so the register value is
+  computed correctly and is unreadable: the digits are not on the part. The
+  Pascaline's `DigitDrum` (`simulation/parts.py`) is the same, one `StlNode`
+  with one colour turning `DIGIT_STEP` per entered digit. Driving the crank in
+  the browser produces no answer, which for a calculator is the whole point of
+  the machine. The same gap covers every dial face, index mark, scale, label
+  and part number in the catalogue.
+- **The upstream already states the concept the framework is missing.** The
+  Curta ships its markings three ways: as paint and vinyl artwork
+  (`Manual/Painting/`, eleven DXF; `Drawings/`, the same as SVG;
+  `Drawings/cricut-images/`, PNG with a sizing table — `upper_housing_numbers`
+  is sized by width, 224.8 mm, being an unwrapped circumference); as a
+  co-printed variant (`Mods/Printed Lettering/`, the body STL plus one STL per
+  glyph — `results dial - digit 0.stl` through `digit 9.stl`, `upper housing -
+  digit 1.stl` through `digit 11-2.stl`, the sleeve's `A/C/R/T/U` and two
+  arrows — each set beside a `.3mf` grouping body and glyphs as one
+  multi-material object); or not at all. **One part, several colour bodies, one
+  manufacturing unit** is what those file names say and what 3MF expresses
+  natively. Candidate requirement: a declared, zero-volume surface marking on
+  a leaf, placed by cylindrical wrap or on a plane, carrying artwork, a colour
+  and a process — drawn by the viewer, excluded from every solid contract and
+  from the part inventory, and (with 0.8's process and material) exported as
+  the nominal flat cut file or the multi-material 3MF the maker actually uses.
+  Whether a co-printed marking is geometry is a product decision held for the
+  pilot. Filed here; triage open.
