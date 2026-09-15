@@ -1462,6 +1462,15 @@ class ResolvedEnd:
     the coordinate, and the way to read and bind it."""
 
     def __init__(self, node, declared, ref):
+        from solid_node.motion.joints import Joint, declared_joints
+
+        if isinstance(declared, Joint):
+            # An inherited own/path relation retains its written declaration,
+            # but binding already addresses the realized node by name. Read
+            # that same effective joint here, before the first slot is made;
+            # otherwise an old prismatic declaration can seed a rotational
+            # replacement's bank slot with mm/translational metadata.
+            declared = declared_joints(type(node)).get(declared.name, declared)
         self.node = node
         self.declared = declared
         self.ref = ref

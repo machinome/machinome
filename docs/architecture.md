@@ -1625,7 +1625,9 @@ A TRANSLATIONAL or explicitly selected entry carries `operation_span`
 last: the half-open pair of indices identifying that coordinate's own
 placement inside the joint node's `operations`, derived from the slot
 mark every placed operation carries (ADR-093, ADR-114) rather than from
-searching an expression. The gesture's frame is then the joint node's
+searching an expression. Private block length and index marks also prove that
+the selected placement is complete and ordered, not merely contiguous.
+The gesture's frame is then the joint node's
 parent's current world matrix composed with the operations AFTER that
 block, so an inner joint's motion never turns an outer joint's line and
 a sliding pivot travels with its rail; an entry inferred over a single

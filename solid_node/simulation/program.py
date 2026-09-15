@@ -1537,13 +1537,6 @@ def _selected_joint(part_node, root, owners, name, control, declaring):
             f"Revolute, a Prismatic, or another declaration that poses a "
             f"body -- and a derived coordinate, computed from the ones "
             f"that do, poses nothing.")
-    owned = tuple(owned)
-    if len(owned) > 1:
-        raise ControlError(
-            f"the control '{name}' names the joint '{control.selected}', "
-            f"which owns {len(owned)} coordinates -- {', '.join(owned)}. A "
-            f"control names ONE coordinate, and naming the joint a free "
-            f"body floats on does not choose one of its six.")
     node = control.selected_node(declaring)
     current = part_node
     while current is not node:
@@ -1560,13 +1553,25 @@ def _selected_joint(part_node, root, owners, name, control, declaring):
                 f"sideways to another mechanism.")
         current = parent
     declared = declared_joints(type(node))
-    if not any(joint is mine for mine in declared.values()):
+    # Ownership of the written reference was checked at class definition.
+    # A subclass or site may replace that named joint, just as it may
+    # replace one reached by a relation. Its effective declaration owns
+    # the current geometry and coordinate count, not the inherited object.
+    joint = declared.get(joint.name)
+    if joint is None:
         known = ', '.join(declared) or 'none'
         raise ControlError(
             f"the control '{name}' names the coordinate "
             f"'{control.selected}', which is not a joint of "
             f"{type(node).__name__} '{node.name}'. A control's gesture is "
             f"a joint's motion; {type(node).__name__} declares: {known}.")
+    owned = tuple(joint.coordinates)
+    if len(owned) > 1:
+        raise ControlError(
+            f"the control '{name}' names the joint '{control.selected}', "
+            f"which owns {len(owned)} coordinates -- {', '.join(owned)}. A "
+            f"control names ONE coordinate, and naming the joint a free "
+            f"body floats on does not choose one of its six.")
     if owned[0] not in owners.get(id(node), {}):
         raise ControlError(
             f"the control '{name}' names the coordinate "
@@ -1616,6 +1621,16 @@ def _published_span(node, joint, name, control, program, coordinate):
             f"OUTSIDE its own placement, so a block that is not exactly "
             f"this coordinate's is refused rather than published as an "
             f"invented frame.")
+    block = [node.operations[index] for index in indices]
+    if any(getattr(operation, '_joint_length', None) != len(block)
+           or getattr(operation, '_joint_index', None) != offset
+           for offset, operation in enumerate(block)):
+        raise ControlError(
+            f"the control '{name}' names the coordinate '{coordinate}', "
+            f"but joint '{joint.name}' on {type(node).__name__} "
+            f"'{node.name}' does not retain its complete ordered placement. "
+            f"A truncated, duplicated or reordered pivot cannot publish "
+            f"a gesture's frame.")
     return indices[0], indices[-1] + 1
 
 
