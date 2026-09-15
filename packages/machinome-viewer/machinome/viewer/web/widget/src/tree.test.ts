@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { readFileSync } from 'node:fs';
+
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -25,9 +27,13 @@ vi.mock('./evaluator', async (importOriginal) => {
 
 import { evalExpr } from './evaluator';
 import { bindingTable } from './bindings';
-import { assemblyPathKey, materialForColor, WidgetTree } from './tree';
+import {
+  assemblyPathKey, liftAlongNormals, liftDecal, MARKING_LIFT, materialForColor,
+  WidgetTree,
+} from './tree';
 import { Manifest, ManifestNode } from './types';
 import pascaline from '../../../tests/fixtures/pascaline/viewer.json';
+import markedFixture from '../../../tests/fixtures/marked/manifest.json';
 
 const evaluations = () =>
   (evalExpr as unknown as ReturnType<typeof vi.fn>).mock.calls
@@ -560,5 +566,502 @@ describe('WidgetTree bindings: a republish that changes only the table (D6)', ()
       { time: true, drivers: new Set() },
     );
     expect(tree.children[0].group.matrix.elements[12]).toBeCloseTo(0.8);
+  });
+});
+
+// OpenSpec `draw-what-a-part-carries`: what a part CARRIES on its
+// surface -- artwork, not a solid -- is drawn inside that part's own
+// group (design D2), through the same `loadMesh` a model takes (D1),
+// lifted off the nominal surface by the viewer's own rendering constant
+// (D3).
+describe('WidgetTree draws the markings a part carries', () => {
+  const digits = { name: 'digits', model: 'dial.marking-digits.stl',
+                   color: '#FFFFFF', mtime: 2 };
+  const band = { name: 'band', model: 'dial.marking-band.stl',
+                 color: '#C0C0C0', mtime: 3 };
+
+  const marked = (markings = [digits, band]) =>
+    root([leaf({ name: 'dial', model: 'dial.stl', markings })]);
+
+  const decalMeshes = (part: WidgetTree): THREE.Mesh[] => {
+    const groups = part.group.children
+      .filter((child): child is THREE.Group => child instanceof THREE.Group);
+    expect(groups.length).toBe(1);
+    return groups[0].children
+      .filter((child): child is THREE.Mesh => child instanceof THREE.Mesh);
+  };
+
+  it('loads one mesh per entry, in document order, through the model path', async () => {
+    loadAsync.mockClear();
+    const tree = new WidgetTree(marked(), '/build/');
+    await tree.loaded;
+
+    expect(loadAsync.mock.calls.map(([url]) => url).sort()).toEqual([
+      '/build/dial.marking-band.stl',
+      '/build/dial.marking-digits.stl',
+      '/build/dial.stl',
+    ]);
+    expect(tree.children[0].markings.map((one) => one.name))
+      .toEqual(['digits', 'band']);
+  });
+
+  it('puts the decals in a group of their own inside the part\'s group', async () => {
+    const tree = new WidgetTree(marked(), '/build/');
+    await tree.loaded;
+    const part = tree.children[0];
+
+    // The part's own mesh is a DIRECT child; the decals are not.
+    expect(part.group.children
+      .filter((child) => child instanceof THREE.Mesh).length).toBe(1);
+    expect(decalMeshes(part).length).toBe(2);
+    expect(decalMeshes(part)).toEqual(part.markings.map((one) => one.mesh));
+  });
+
+  it('gives each decal the colour its own entry declares', async () => {
+    const tree = new WidgetTree(marked(), '/build/');
+    await tree.loaded;
+    const materials = decalMeshes(tree.children[0])
+      .map((mesh) => mesh.material as THREE.MeshStandardMaterial);
+
+    expect(materials[0].color.getHexString()).toBe('ffffff');
+    expect(materials[1].color.getHexString()).toBe('c0c0c0');
+  });
+
+  it('adds nothing at all to a node that carries no markings', async () => {
+    const tree = new WidgetTree(root([leaf()]), '/build/');
+    await tree.loaded;
+    const part = tree.children[0];
+
+    expect(part.markings).toEqual([]);
+    expect(part.group.children.filter(
+      (child) => child instanceof THREE.Group).length).toBe(0);
+    expect(part.group.children.length).toBe(1);
+  });
+
+  // Design D3: the bias is TWO things, and both belong to the viewer.
+  it('draws a decal over the surface with the material design D3 states', async () => {
+    const tree = new WidgetTree(marked([digits]), '/build/');
+    await tree.loaded;
+    const material = decalMeshes(tree.children[0])[0]
+      .material as THREE.MeshStandardMaterial;
+
+    // An open sheet has a back, and a decal must not vanish when the
+    // camera crosses its plane.
+    expect(material.side).toBe(THREE.DoubleSide);
+    expect(material.polygonOffset).toBe(true);
+    expect(material.polygonOffsetFactor).toBe(-1);
+    expect(material.polygonOffsetUnits).toBe(-1);
+    // A decal that did not write depth would show through everything
+    // drawn after it.
+    expect(material.depthWrite).toBe(true);
+  });
+});
+
+// Design D3's world-space lift, pinned in BOTH direction and magnitude:
+// 0.15 document units along each vertex's own normal. The direction
+// argument relies on a property the producer has but the export spec
+// does not yet promise -- a decal's triangles wind with their normal
+// AWAY from the part -- so the fixture assertion below fails by name if
+// a producer ever winds the other way, rather than drawing digits inside
+// the roll.
+describe('MARKING_LIFT', () => {
+  it('is the ratified 0.15 document units', () => {
+    expect(MARKING_LIFT).toBe(0.15);
+  });
+
+  it('moves each vertex along its own normal, by exactly the lift', () => {
+    // One triangle in the z = 0 plane, wound counter-clockwise seen
+    // from +z: its normal is +z, the way a `Flat` decal's is its
+    // declared plane normal.
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(
+      new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]), 3));
+    geometry.computeVertexNormals();
+    const normal = geometry.getAttribute('normal');
+    expect([normal.getX(0), normal.getY(0), normal.getZ(0)]).toEqual([0, 0, 1]);
+
+    liftAlongNormals(geometry);
+
+    // Float32 storage, so the components are pinned to the precision
+    // the buffer actually keeps.
+    const position = geometry.getAttribute('position');
+    [...position.array].forEach((value, index) => {
+      expect(value).toBeCloseTo([0, 0, 0.15, 1, 0, 0.15, 0, 1, 0.15][index], 6);
+    });
+  });
+
+  const fixtureDecal = async () => {
+    const { STLLoader: RealSTLLoader } = await vi.importActual<
+      typeof import('three/examples/jsm/loaders/STLLoader.js')
+    >('three/examples/jsm/loaders/STLLoader.js');
+    const bytes = readFileSync(new URL(
+      '../../../tests/fixtures/marked/models/markings_project/'
+      + 'dial-Dial-9f2c3557d753.marking-digits.stl',
+      import.meta.url));
+    return new RealSTLLoader().parse(
+      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  };
+
+  const radii = (geometry: THREE.BufferGeometry) => {
+    const position = geometry.getAttribute('position');
+    return Array.from({ length: position.count }, (_, index) =>
+      Math.hypot(position.getX(index), position.getY(index)));
+  };
+
+  it('lifts the fixture\'s wrapped decal OUTWARD, every vertex of it', async () => {
+    const geometry = await fixtureDecal();
+    const before = radii(geometry);
+    // The dial's nominal radius, which the artifact lies exactly on.
+    expect(Math.min(...before)).toBeCloseTo(9.45, 5);
+    expect(Math.max(...before)).toBeCloseTo(9.45, 5);
+
+    const after = radii(liftDecal(geometry));
+
+    expect(after.filter((value) => value > 9.45).length).toBe(after.length);
+    // And by the lift itself, since the wrapped decal's normals are radial.
+    expect(Math.min(...after)).toBeGreaterThan(9.45 + 0.9 * MARKING_LIFT);
+    expect(Math.max(...after)).toBeLessThan(9.45 + 1.01 * MARKING_LIFT);
+  });
+
+  it('welds the sheet before lifting it, so it cannot tear open', async () => {
+    // An STL arrives non-indexed, one private copy of each corner per
+    // facet. Lifting each copy along its own FACE normal pulls adjacent
+    // facets apart and the part shows through the cracks -- measured on
+    // this very decal as a 0.031 mm tear along every internal edge,
+    // drawn as a grid over the digits. Welding is what makes the sheet
+    // move as one.
+    const geometry = await fixtureDecal();
+    expect(geometry.index).toBeNull();
+    const facetCorners = geometry.getAttribute('position').count;
+
+    const lifted = liftDecal(geometry);
+
+    expect(lifted.index).not.toBeNull();
+    expect(lifted.getAttribute('position').count).toBeLessThan(facetCorners);
+    // Every facet still has its three corners.
+    expect(lifted.index!.count).toBe(facetCorners);
+  });
+});
+
+// Design D2's two filters, and the one line the sub-group costs.
+describe('WidgetTree markings under the filters that select direct meshes', () => {
+  const digits = { name: 'digits', model: 'dial.marking-digits.stl',
+                   color: '#FFFFFF', mtime: 2 };
+
+  const markedRoot = (color: string | null = null) => ({
+    ...root([leaf({ name: 'pin', model: 'pin.stl' })]),
+    color, model: 'base.stl', mtime: 1, markings: [digits],
+  });
+
+  const decals = (part: WidgetTree) => part.group.children
+    .find((child): child is THREE.Group => child instanceof THREE.Group)!;
+
+  it('does not draw an ancestor\'s decals while its own surface is not drawn', async () => {
+    const tree = new WidgetTree(markedRoot(), '/build/');
+    await tree.loaded;
+
+    tree.applyVisibility(['pin'], new Set());
+
+    // The group itself stays visible to preserve the focused node's
+    // transform; the ancestor's own surface is not drawn -- and its
+    // decals ARE its own surface.
+    expect(tree.group.visible).toBe(true);
+    expect(tree.group.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh)!.visible)
+      .toBe(false);
+    expect(decals(tree).visible).toBe(false);
+
+    tree.applyVisibility(null, new Set());
+    expect(decals(tree).visible).toBe(true);
+  });
+
+  it('leaves a decal\'s material alone when the part\'s inherited colour moves', async () => {
+    const tree = new WidgetTree(markedRoot(null), '/build/');
+    await tree.loaded;
+    const material = tree.markings[0].mesh.material as THREE.MeshStandardMaterial;
+
+    await tree.reconcile(markedRoot('#336699'), '/build/');
+
+    expect(tree.markings[0].mesh.material).toBe(material);
+    expect(material.color.getHexString()).toBe('ffffff');
+    expect((material as THREE.Material).side).toBe(THREE.DoubleSide);
+  });
+
+  it('leaves a decal\'s geometry alone when the part\'s own model is replaced', async () => {
+    const tree = new WidgetTree(markedRoot(), '/build/');
+    await tree.loaded;
+    const mesh = tree.markings[0].mesh;
+    const geometry = mesh.geometry;
+    loadAsync.mockClear();
+
+    await tree.reconcile({ ...markedRoot(), model: 'base2.stl' }, '/build/');
+
+    expect(loadAsync.mock.calls.map(([url]) => url)).toEqual(['/build/base2.stl']);
+    expect(tree.markings[0].mesh).toBe(mesh);
+    expect(tree.markings[0].mesh.geometry).toBe(geometry);
+    expect(geometry.getAttribute('position')).toBeDefined();
+    expect(decals(tree).children).toEqual([mesh]);
+  });
+});
+
+// Design D7: a marking is NOT a part, and the assembly readback is the
+// first place that has to be true. `assembly()` walks `this.children`,
+// which are `WidgetTree`s, so a marking is excluded BY CONSTRUCTION --
+// and "by construction" is a property of today's code, which is why it
+// is pinned here on the framework's own marked document.
+describe('WidgetTree assembly over a marked document', () => {
+  const stripped = (node: ManifestNode): ManifestNode => {
+    const { markings, ...rest } = node as ManifestNode & { markings?: unknown };
+    void markings;
+    return { ...rest, children: node.children?.map(stripped) } as ManifestNode;
+  };
+
+  it('reads back exactly the snapshot its unmarked twin reads back', async () => {
+    const document = markedFixture as unknown as Manifest;
+    const marked = new WidgetTree(document.root, '/build/');
+    const twin = new WidgetTree(stripped(document.root), '/build/');
+    await Promise.all([marked.loaded, twin.loaded]);
+
+    expect(marked.assembly()).toEqual(twin.assembly());
+    // And nothing named for a marking is anywhere in it.
+    const names: string[] = [];
+    const walk = (node: ReturnType<WidgetTree['assembly']>) => {
+      names.push(node.name);
+      node.children.forEach(walk);
+    };
+    walk(marked.assembly());
+    expect(names).toEqual(['Bench', 'dial', 'plate']);
+    expect(marked.children[0].markings.map((one) => one.name)).toEqual(['digits']);
+    expect(marked.children[1].markings.map((one) => one.name))
+      .toEqual(['badge', 'band']);
+  });
+
+  it('hides a marked part\'s decals with it and restores them with it', async () => {
+    // The path `setVisible` drives: a hidden part's group is invisible,
+    // and there is no path that names a marking, so a decal is hidden
+    // with its part and in no other way.
+    const document = markedFixture as unknown as Manifest;
+    const tree = new WidgetTree(document.root, '/build/');
+    await tree.loaded;
+    const plate = tree.children[1];
+
+    tree.applyVisibility(null, new Set([assemblyPathKey(['plate'])]));
+    expect(plate.group.visible).toBe(false);
+    expect(tree.children[0].group.visible).toBe(true);
+
+    tree.applyVisibility(null, new Set());
+    expect(plate.group.visible).toBe(true);
+    expect(plate.markings.every((one) => one.mesh.visible)).toBe(true);
+  });
+});
+
+// Design D5: a decal has its OWN currency. The producer's whole currency
+// split exists so that editing artwork moves the marking's stamp and
+// leaves the part's STL current -- so a targeted update refetches a
+// decal without refetching the part it is on, and the mirror.
+describe('WidgetTree markings reload on their own currency', () => {
+  const digits = { name: 'digits', model: 'dial.marking-digits.stl',
+                   color: '#FFFFFF', mtime: 2 };
+  const band = { name: 'band', model: 'dial.marking-band.stl',
+                 color: '#C0C0C0', mtime: 3 };
+
+  // `null` means the node carries NO `markings` key at all, which a
+  // default parameter could not express: an explicit `undefined` takes
+  // the default.
+  const marked = (markings: unknown[] | null = [digits, band],
+                  overrides: Partial<ManifestNode> = {}) => root([{
+    ...leaf({ name: 'dial', model: 'dial.stl', ...overrides }),
+    ...(markings === null ? {} : { markings }),
+  } as ManifestNode]);
+
+  const mounted = async (markings?: unknown[]) => {
+    const tree = new WidgetTree(marked(markings), '/build/');
+    await tree.loaded;
+    loadAsync.mockClear();
+    return tree;
+  };
+
+  const fetched = () => loadAsync.mock.calls.map(([url]) => url);
+
+  const decalGroup = (part: WidgetTree) => part.group.children
+    .find((child): child is THREE.Group => child instanceof THREE.Group);
+
+  it('refetches a marking whose mtime moved, and not the part it is on', async () => {
+    const tree = await mounted();
+    const partMesh = tree.children[0].group.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh);
+
+    await tree.reconcile(marked([{ ...digits, mtime: 9 }, band]), '/build/');
+
+    expect(fetched()).toEqual(['/build/dial.marking-digits.stl']);
+    expect(tree.children[0].group.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh)).toBe(partMesh);
+    expect(decalGroup(tree.children[0])!.children.length).toBe(2);
+  });
+
+  it('refetches a marking whose model path moved, and not the part', async () => {
+    const tree = await mounted();
+
+    await tree.reconcile(
+      marked([{ ...digits, model: 'dial.marking-digits-2.stl' }, band]), '/build/');
+
+    expect(fetched()).toEqual(['/build/dial.marking-digits-2.stl']);
+    expect(tree.children[0].markings[0].model).toBe('dial.marking-digits-2.stl');
+  });
+
+  it('refetches a part whose model moved, and none of its markings', async () => {
+    const tree = await mounted();
+    const meshes = tree.children[0].markings.map((one) => one.mesh);
+
+    await tree.reconcile(marked([digits, band], { mtime: 7 }), '/build/');
+
+    expect(fetched()).toEqual(['/build/dial.stl']);
+    expect(tree.children[0].markings.map((one) => one.mesh)).toEqual(meshes);
+  });
+
+  it('removes a marking dropped from the list and leaves the rest standing', async () => {
+    const tree = await mounted();
+    const dropped = tree.children[0].markings[0].mesh;
+    const kept = tree.children[0].markings[1].mesh;
+    const disposed = vi.spyOn(dropped.geometry, 'dispose');
+
+    await tree.reconcile(marked([band]), '/build/');
+
+    expect(fetched()).toEqual([]);
+    expect(disposed).toHaveBeenCalled();
+    expect(tree.children[0].markings.map((one) => one.name)).toEqual(['band']);
+    expect(decalGroup(tree.children[0])!.children).toEqual([kept]);
+  });
+
+  it('drops the group when the whole markings key disappears', async () => {
+    const tree = await mounted();
+
+    await tree.reconcile(marked(null), '/build/');
+
+    expect(tree.children[0].markings).toEqual([]);
+    expect(decalGroup(tree.children[0])).toBeUndefined();
+    expect(tree.children[0].group.children.filter(
+      (child) => child instanceof THREE.Mesh).length).toBe(1);
+  });
+
+  it('creates the group for a marking added to a node that had none', async () => {
+    const tree = await mounted([]);
+
+    await tree.reconcile(marked([digits]), '/build/');
+
+    expect(fetched()).toEqual(['/build/dial.marking-digits.stl']);
+    expect(tree.children[0].markings.map((one) => one.name)).toEqual(['digits']);
+    expect(decalGroup(tree.children[0])!.children.length).toBe(1);
+  });
+
+  it('keeps document order when a marking is inserted before another', async () => {
+    const tree = await mounted([band]);
+
+    await tree.reconcile(marked([digits, band]), '/build/');
+
+    expect(tree.children[0].markings.map((one) => one.name))
+      .toEqual(['digits', 'band']);
+    expect(decalGroup(tree.children[0])!.children)
+      .toEqual(tree.children[0].markings.map((one) => one.mesh));
+  });
+
+  it('replaces the material of a retained marking whose colour moved, with no refetch', async () => {
+    const tree = await mounted();
+    const mesh = tree.children[0].markings[0].mesh;
+    const previous = mesh.material as THREE.MeshStandardMaterial;
+    const disposed = vi.spyOn(previous, 'dispose');
+
+    await tree.reconcile(marked([{ ...digits, color: '#112233' }, band]), '/build/');
+
+    expect(fetched()).toEqual([]);
+    expect(tree.children[0].markings[0].mesh).toBe(mesh);
+    expect((mesh.material as THREE.MeshStandardMaterial).color.getHexString())
+      .toBe('112233');
+    expect((mesh.material as THREE.MeshStandardMaterial).polygonOffset).toBe(true);
+    expect(disposed).toHaveBeenCalled();
+  });
+
+  it('routes artifactChanged to the marking that owns the path, and to it alone', async () => {
+    const tree = await mounted();
+    const partMesh = tree.children[0].group.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh);
+    const before = tree.children[0].markings[0].mesh;
+
+    await tree.artifactChanged('dial.marking-digits.stl', '/build/');
+
+    expect(fetched()).toEqual(['/build/dial.marking-digits.stl']);
+    expect(tree.children[0].markings[0].mesh).not.toBe(before);
+    expect(tree.children[0].markings[1].mesh).toBeDefined();
+    expect(tree.children[0].group.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh)).toBe(partMesh);
+    expect(decalGroup(tree.children[0])!.children)
+      .toEqual(tree.children[0].markings.map((one) => one.mesh));
+  });
+
+  it('does not refetch the reconcile that follows a marking\'s artifact update', async () => {
+    // The manifest publishes AFTER the artifact, so the reconcile that
+    // follows names a new mtime for bytes already on screen. A decal's
+    // flag is independent of its node's, because their stamps are.
+    const tree = await mounted();
+
+    await tree.artifactChanged('dial.marking-digits.stl', '/build/');
+    loadAsync.mockClear();
+
+    await tree.reconcile(marked([{ ...digits, mtime: 99 }, band]), '/build/');
+    expect(fetched()).toEqual([]);
+
+    // And the flag is consumed: a later genuine change is still caught.
+    await tree.reconcile(marked([{ ...digits, mtime: 100 }, band]), '/build/');
+    expect(fetched()).toEqual(['/build/dial.marking-digits.stl']);
+  });
+
+  it('leaves the whole previous scene standing when a decal fetch rejects', async () => {
+    const tree = await mounted();
+    const part = tree.children[0];
+    const meshes = part.markings.map((one) => one.mesh);
+    const partMesh = part.group.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh);
+    loadAsync.mockRejectedValueOnce(new Error('decal fetch failed'));
+
+    await expect(tree.reconcile(
+      marked([{ ...digits, mtime: 9 }, band], { mtime: 7 }), '/build/'))
+      .rejects.toThrow('decal fetch failed');
+
+    expect(tree.children[0]).toBe(part);
+    expect(part.markings.map((one) => one.mesh)).toEqual(meshes);
+    expect(part.group.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh)).toBe(partMesh);
+
+    // And a later update still succeeds.
+    await tree.reconcile(marked([{ ...digits, mtime: 9 }, band]), '/build/');
+    expect(part.markings[0].mesh).not.toBe(meshes[0]);
+  });
+});
+
+// Design D2, the last thing membership in the part's group buys:
+// `viewer.ts`'s `rebuildPartControls` (`:673-696`) traverses the
+// control's part group and collects every `THREE.Mesh` under it. A decal
+// on a touchable dial is therefore pressable and highlights WITH the
+// dial -- which is what a maker means when they press the digit they can
+// see -- and `artifactChanged`'s handler needs no change beyond what
+// `tree.ts` now does, because the traverse is rerun there already.
+describe('a decal is part of the surface a control is bound to', () => {
+  it('is collected by the traverse rebuildPartControls performs', async () => {
+    const tree = new WidgetTree(root([{
+      ...leaf({ name: 'dial', model: 'dial.stl' }),
+      markings: [{ name: 'digits', model: 'dial.marking-digits.stl',
+                   color: '#FFFFFF', mtime: 2 }],
+    } as ManifestNode]), '/build/');
+    await tree.loaded;
+
+    const meshes: THREE.Mesh[] = [];
+    tree.requirePath(['dial']).group.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        meshes.push(object);
+      }
+    });
+
+    expect(meshes.length).toBe(2);
+    expect(meshes).toContain(tree.children[0].markings[0].mesh);
   });
 });

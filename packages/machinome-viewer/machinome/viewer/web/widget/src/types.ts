@@ -31,6 +31,29 @@ export interface ManifestFlexible {
   params: Record<string, string>;
 }
 
+// One marking a rigid part CARRIES on its surface -- artwork, not a
+// solid (solid-node ADR-120, "Manifest contract"). The wire shape, as
+// the producer publishes it:
+//
+//   - `name` is the marking's declaring attribute, unique on its node;
+//   - `model` is a reference to its own surface-mesh artifact, under the
+//     same rules and the same portability guarantee as the node's own;
+//   - `color` is required, in `#RRGGBB` form: a decal with no colour is
+//     invisible, which means the declaration did nothing;
+//   - `mtime` is the MARKING ARTIFACT's stamp, not the node's, which is
+//     what lets edited artwork refetch a decal and leave the part alone.
+//
+// No placement is published: the artifact already holds the artwork's
+// surface in the part's own frame, so the part's own operations place
+// it and no consumer reproduces the placement arithmetic. No `piece`
+// either -- a marking is not a part.
+export interface ManifestMarking {
+  name: string;
+  model: string;
+  color: string;
+  mtime?: number;
+}
+
 export interface ManifestNode {
   name: string;
   type: string;
@@ -46,6 +69,12 @@ export interface ManifestNode {
   // A flexible leaf: geometry from a spec, and neither a model nor
   // children below it. Present only in a version 3 document.
   flexible?: ManifestFlexible;
+  // What this rigid part carries on its surface, one entry per declared
+  // marking in declaration order. ADDITIVE and gated on NO document
+  // version: the framework's own marked fixture declares version 2. The
+  // key is absent on a node that declares none, and such a node takes
+  // exactly the path it took before this viewer could read one.
+  markings?: ManifestMarking[];
 }
 
 // Every document version this package renders. The producer emits the

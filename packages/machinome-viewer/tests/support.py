@@ -12,6 +12,7 @@ reads documents, it does not make them.
 """
 
 import glob
+import json
 import os
 import shutil
 import threading
@@ -36,6 +37,10 @@ LOCK = FIXTURES / 'lock'
 #: version 5 document whose six controls make three dials touchable,
 #: beside stand-in meshes. See its own README.
 TOUCHED = FIXTURES / 'touched'
+#: The framework's own marked bench, exported verbatim: a version 2
+#: document whose two parts carry three markings between them, beside
+#: REAL part meshes and their decal sheets. See its own README.
+MARKED = FIXTURES / 'marked'
 
 try:
     from PIL import Image, ImageChops  # noqa: F401
@@ -116,6 +121,48 @@ def published_touched(target):
     :func:`published_run`, with a `controls` table beside the program."""
     shutil.copytree(TOUCHED, target)
     return Path(target)
+
+
+def export_marked(target):
+    """Copy the MARKED fixture into ``target`` and complete it with the
+    installed widget files, exactly as `solid export` would have --
+    :func:`export_with_widget`'s shape, over the marked bench."""
+    shutil.copytree(MARKED, target)
+    shutil.copy2(bundle_path(), Path(target) / 'solid-widget.js')
+    shutil.copy2(index_path(), Path(target) / 'index.html')
+    return Path(target)
+
+
+def published_marked(target):
+    """Stage the MARKED fixture shaped as a normal build: the document
+    is named ``viewer.json``, beside the models and the decal sheets it
+    names -- :func:`published_build`'s shape, over the marked bench."""
+    shutil.copytree(MARKED, target)
+    (Path(target) / 'manifest.json').rename(Path(target) / 'viewer.json')
+    return Path(target)
+
+
+def strip_markings(document_path, target_path=None):
+    """Write ``document_path`` again with every `markings` key removed.
+
+    The UNMARKED TWIN every "renders exactly as before" and "reads
+    exactly as before" assertion compares against: the same document,
+    the same models, the same everything else. Produced by the test that
+    needs it and never committed -- the fixture is the marked one, and
+    the twin is one `del` away from it.
+    """
+    document_path = Path(document_path)
+    target_path = Path(target_path) if target_path else document_path
+    document = json.loads(document_path.read_text())
+
+    def strip(node):
+        node.pop('markings', None)
+        for child in node.get('children', []):
+            strip(child)
+
+    strip(document['root'])
+    target_path.write_text(json.dumps(document))
+    return target_path
 
 
 class QuietHandler(SimpleHTTPRequestHandler):

@@ -13,7 +13,8 @@
 
 import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
-import { ManifestNode, RawOperation } from './types';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { ManifestMarking, ManifestNode, RawOperation } from './types';
 import { EvalScope, evalExpr, freeVariables, TIME_ID } from './evaluator';
 import { bindingRootsEqual } from './expressions';
 import { BindingTable, EMPTY_BINDINGS } from './bindings';
@@ -59,6 +60,113 @@ export function materialForColor(color: string | null): THREE.Material {
   });
 }
 
+/** The anti-z-fighting lift, in document units (millimetres).
+ *
+ * The artifact carries NO offset -- solid-node design D5 states the
+ * offset is the VIEWER's rendering constant, not a claim about where the
+ * part's surface is -- so the viewer supplies it, and `polygonOffset`
+ * alone cannot: its units are denominated in the depth buffer's smallest
+ * resolvable difference, which varies with the camera, so no fixed unit
+ * count is a fixed world bias.
+ *
+ * The magnitude is a DERIVED BOUND, not a guess. The producer subdivides
+ * a wrapped decal so it follows its cylinder to within the part's own
+ * tessellation precision `t` (the part's declared `linear_deflection`,
+ * or the framework default 0.1 mm), and chords sag INWARD, so the depth
+ * of any interpenetration is bounded by the decal's own chordal sag, at
+ * most `t`. 0.15 is 1.5x the framework default: it covers every part
+ * declaring no tolerance and every part declaring up to 0.15 mm, with
+ * margin. The residual is recorded rather than hidden -- a part
+ * declaring a `linear_deflection` ABOVE 0.15 mm may still punch through,
+ * and the remedy then is a framework finding (publish the tolerance, or
+ * lift in the producer), not a viewer knob. */
+export const MARKING_LIFT = 0.15;
+
+/** Displace every vertex along its OWN normal by {@link MARKING_LIFT}.
+ *
+ * A rigid transform preserves it, so the lift stays perpendicular to the
+ * surface under every operation the part carries -- which is what makes
+ * it a rendering constant and not a placement.
+ *
+ * The direction relies on a property the producer HAS and its export
+ * spec does not yet promise: a decal's triangles wind with their normal
+ * AWAY from the part. `tree.test.ts` pins that on the committed fixture,
+ * so a producer that ever wound the other way fails there by name rather
+ * than drawing digits inside the roll. */
+export function liftAlongNormals(geometry: THREE.BufferGeometry): void {
+  const position = geometry.getAttribute('position');
+  const normal = geometry.getAttribute('normal');
+  if (position === undefined || normal === undefined) {
+    return;
+  }
+  for (let index = 0; index < position.count; index += 1) {
+    position.setXYZ(
+      index,
+      position.getX(index) + normal.getX(index) * MARKING_LIFT,
+      position.getY(index) + normal.getY(index) * MARKING_LIFT,
+      position.getZ(index) + normal.getZ(index) * MARKING_LIFT,
+    );
+  }
+  position.needsUpdate = true;
+  // The vertices moved: anything already derived from where they were
+  // is stale, and `visibleBounds` recomputes a null box on demand.
+  geometry.boundingBox = null;
+  geometry.boundingSphere = null;
+}
+
+/** A decal's material: its OWN declared colour (inheritance never
+ * reaches a marking), drawn over the surface it lies on.
+ *
+ * `DoubleSide` because an open sheet has a back and must not vanish when
+ * the camera crosses its plane; `polygonOffset` at the MINIMUM bias
+ * that separates two surfaces the depth buffer cannot tell apart, on top
+ * of the world-space lift, for the case a viewer is zoomed far enough
+ * out that 0.15 mm falls below one depth-buffer step. Staying at the
+ * minimum is deliberate: a large offset starts letting a decal show
+ * through a part standing genuinely in front of it. Depth is written
+ * normally -- a decal that did not would show through everything drawn
+ * after it. */
+export function markingMaterial(color: string): THREE.Material {
+  const material = materialForColor(color) as THREE.MeshStandardMaterial;
+  material.side = THREE.DoubleSide;
+  material.polygonOffset = true;
+  material.polygonOffsetFactor = -1;
+  material.polygonOffsetUnits = -1;
+  return material;
+}
+
+/** One marking as this viewer holds it: the entry the document
+ * published, and the mesh drawn for it.
+ *
+ * `freshFromArtifact` is the node's own flag, per marking and
+ * INDEPENDENT of it, for the reason the node's exists: the manifest
+ * publishes after the artifact, so the reconcile that follows an
+ * `artifactChanged` would otherwise see a moved `mtime` for bytes
+ * already on screen and refetch them. A marking's stamp and its part's
+ * are independent, which is the whole point of the producer's currency
+ * split. */
+export interface LoadedMarking {
+  name: string;
+  model: string;
+  mtime: number | undefined;
+  color: string;
+  mesh: THREE.Mesh;
+  freshFromArtifact: boolean;
+}
+
+function disposeMesh(mesh: THREE.Mesh): void {
+  mesh.geometry.dispose();
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  materials.forEach((material) => material.dispose());
+}
+
+function markingRecord(entry: ManifestMarking, mesh: THREE.Mesh): LoadedMarking {
+  return {
+    name: entry.name, model: entry.model, mtime: entry.mtime,
+    color: entry.color, mesh, freshFromArtifact: false,
+  };
+}
+
 export class WidgetTree {
   group: THREE.Group;
   operations: RawOperation[];
@@ -89,6 +197,27 @@ export class WidgetTree {
   // path it followed before this change.
   private bindings: BindingTable;
 
+  /** What this part CARRIES on its surface, in document order (OpenSpec
+   * `draw-what-a-part-carries`, design D2). Empty for a node that
+   * declares none, which builds no group and adds no object: its scene
+   * graph is byte-for-byte the one it had before this viewer could draw
+   * a marking. */
+  markings: LoadedMarking[] = [];
+  // The decals' own child group inside this node's group -- built
+  // lazily, only for a node that carries markings.
+  //
+  // Membership in the part's group is what buys everything: the part's
+  // local matrix is the decal's PARENT matrix, so pose, `$t` animation
+  // and a run's committed bank carry the decal with no new code, which
+  // is exactly why the producer publishes no placement. A group rather
+  // than tagged meshes because three existing sites filter the DIRECT
+  // mesh children of a node's group, and two of them would be wrong for
+  // a decal: `removeMesh` would destroy the decals whenever the part's
+  // own model was replaced, and `setColor` would repaint a decal in the
+  // part's inherited colour. A group is correct by construction at both,
+  // and at every site written later.
+  private decals: THREE.Group | undefined;
+
   // Resolves when this node's mesh (if any) and all descendants
   // finished loading, so the camera can be fit to the actual bounds.
   loaded: Promise<void>;
@@ -111,6 +240,10 @@ export class WidgetTree {
 
     if (data.model) {
       pending.push(this.loadModel(baseUrl + data.model, color));
+    }
+
+    if ((data.markings ?? []).length > 0) {
+      pending.push(this.loadMarkings(data.markings!, baseUrl));
     }
 
     // Nothing to fetch: the geometry is the spec, and the first update
@@ -136,23 +269,64 @@ export class WidgetTree {
     this.group.add(await loadMesh(url, color));
   }
 
+  /** Fetch every decal, then add them in DOCUMENT order -- the order
+   * the producer declared them in, which no race between fetches may
+   * disturb. */
+  private async loadMarkings(entries: ManifestMarking[],
+                             baseUrl: string): Promise<void> {
+    const group = this.markingGroup();
+    this.markings = await Promise.all(entries.map(async (entry) => markingRecord(
+      entry, await loadDecal(baseUrl + entry.model, entry.color))));
+    this.markings.forEach((record) => group.add(record.mesh));
+  }
+
+  private markingGroup(): THREE.Group {
+    if (this.decals === undefined) {
+      this.decals = new THREE.Group();
+      this.group.add(this.decals);
+    }
+    return this.decals;
+  }
+
   /** Replace every mesh that names this artifact.  Unknown artifacts are
    * deliberately harmless: a manifest update is authoritative for removals. */
   async artifactChanged(path: string, baseUrl: string): Promise<void> {
     const replacements: Array<{ tree: WidgetTree; mesh: THREE.Mesh }> = [];
+    // The markings that name this artifact, beside the nodes that do
+    // (design D5). Routing is exact string match, so there is no
+    // ambiguity -- and in practice no collision is even possible, the
+    // producer naming a decal `<basepath>.marking-<name>.stl`.
+    const decals: Array<{ tree: WidgetTree; record: LoadedMarking;
+                          mesh: THREE.Mesh }> = [];
     const collect = (node: WidgetTree) => {
       if (node.model === path) {
         replacements.push({ tree: node, mesh: undefined as unknown as THREE.Mesh });
       }
+      node.markings.filter((record) => record.model === path)
+        .forEach((record) => decals.push({
+          tree: node, record, mesh: undefined as unknown as THREE.Mesh,
+        }));
       node.children.forEach(collect);
     };
     collect(this);
-    await Promise.all(replacements.map(async (replacement) => {
-      replacement.mesh = await loadMesh(baseUrl + path, replacement.tree.color);
-    }));
+    await Promise.all([
+      ...replacements.map(async (replacement) => {
+        replacement.mesh = await loadMesh(baseUrl + path, replacement.tree.color);
+      }),
+      ...decals.map(async (decal) => {
+        decal.mesh = await loadDecal(baseUrl + path, decal.record.color);
+      }),
+    ]);
     replacements.forEach(({ tree, mesh }) => {
       tree.replaceMesh(mesh);
       tree.freshFromArtifact = true;
+    });
+    decals.forEach(({ tree, record, mesh }) => {
+      tree.markingGroup().remove(record.mesh);
+      disposeMesh(record.mesh);
+      record.mesh = mesh;
+      record.freshFromArtifact = true;
+      tree.orderMarkings();
     });
   }
 
@@ -183,6 +357,29 @@ export class WidgetTree {
     const nextFlexible = data.flexible
       && !this.flexible?.describes(data.flexible)
       ? new FlexibleShape(data.name, data.flexible, nextColor, bindings) : undefined;
+
+    // A decal's identity is its own `model` path and its own `mtime`,
+    // exactly as a node's is, and the two are INDEPENDENT: the
+    // producer's currency split exists so that editing artwork moves
+    // the marking's stamp and leaves the part's STL current. Matched
+    // across a republish BY NAME -- a marking's name is its declaring
+    // attribute, so it is unique on its node -- and fetched here,
+    // before the live tree is touched, so a decal that will not fetch
+    // leaves the whole previous scene standing.
+    const held = new Map(this.markings.map((record) => [record.name, record]));
+    const nextMarkings = await Promise.all((data.markings ?? []).map(
+      async (entry) => {
+        const current = held.get(entry.name);
+        const stale = current === undefined
+          || current.model !== entry.model
+          || (current.mtime !== entry.mtime && !current.freshFromArtifact);
+        return {
+          entry,
+          current,
+          mesh: stale
+            ? await loadDecal(baseUrl + entry.model, entry.color) : undefined,
+        };
+      }));
 
     const existing = uniqueByName(this.children);
     const incoming = uniqueDataByName(data.children ?? []);
@@ -239,6 +436,8 @@ export class WidgetTree {
         this.removeFlexible();
       }
 
+      this.applyMarkings(nextMarkings);
+
       const retained = new Set(nextChildren.map((child) => child.tree));
       this.children.filter((child) => !retained.has(child)).forEach((child) => {
         this.group.remove(child.group);
@@ -250,6 +449,66 @@ export class WidgetTree {
         this.group.add(child.group);
       });
     };
+  }
+
+  /** Swap, add and remove this node's decals, from records whose meshes
+   * are already fetched. Order follows the DOCUMENT, never the order
+   * the fetches happened to finish in. */
+  private applyMarkings(next: Array<{
+    entry: ManifestMarking;
+    current: LoadedMarking | undefined;
+    mesh: THREE.Mesh | undefined;
+  }>): void {
+    const records = next.map(({ entry, current, mesh }) => {
+      if (mesh !== undefined) {
+        if (current !== undefined) {
+          this.decals?.remove(current.mesh);
+          disposeMesh(current.mesh);
+        }
+        return markingRecord(entry, mesh);
+      }
+      // Retained: only the colour can have moved, and colour is not
+      // geometry identity, so the material is replaced in place and the
+      // old one disposed, with no refetch (design D4).
+      const record = current!;
+      if (record.color !== entry.color) {
+        const previous = record.mesh.material;
+        record.mesh.material = markingMaterial(entry.color);
+        (Array.isArray(previous) ? previous : [previous])
+          .forEach((material) => material.dispose());
+      }
+      record.color = entry.color;
+      record.mtime = entry.mtime;
+      record.model = entry.model;
+      record.freshFromArtifact = false;
+      return record;
+    });
+
+    const survivors = new Set(records.map((record) => record.mesh));
+    this.markings.filter((record) => !survivors.has(record.mesh))
+      .forEach((record) => {
+        this.decals?.remove(record.mesh);
+        disposeMesh(record.mesh);
+      });
+    this.markings = records;
+
+    if (records.length === 0) {
+      if (this.decals !== undefined) {
+        this.group.remove(this.decals);
+        this.decals = undefined;
+      }
+      return;
+    }
+    this.orderMarkings();
+  }
+
+  /** Re-seat every decal in the group in document order. */
+  private orderMarkings(): void {
+    const group = this.markingGroup();
+    this.markings.forEach((record) => {
+      group.remove(record.mesh);
+      group.add(record.mesh);
+    });
   }
 
   private replaceMesh(mesh: THREE.Mesh): void {
@@ -371,6 +630,13 @@ export class WidgetTree {
       node.group.children
         .filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
         .forEach((mesh) => { mesh.visible = inFocusedSubtree; });
+      // The one line the sub-group costs (design D2). The case that
+      // matters is a part that is an ANCESTOR of the focused node: its
+      // group stays visible to preserve the transform, while its own
+      // surface must not be drawn -- and its decals are its own surface.
+      if (node.decals !== undefined) {
+        node.decals.visible = inFocusedSubtree;
+      }
       node.children.forEach((child) => visit(child, [...path, child.name]));
     };
     visit(this, []);
@@ -439,10 +705,52 @@ function isPathPrefix(prefix: AssemblyPath, path: AssemblyPath): boolean {
     && prefix.every((part, index) => part === path[index]);
 }
 
-async function loadMesh(url: string, color: string | null): Promise<THREE.Mesh> {
+async function loadMesh(
+  url: string, color: string | null,
+  material: (color: string | null) => THREE.Material = materialForColor,
+): Promise<THREE.Mesh> {
   const geometry = await stlLoader.loadAsync(url);
   geometry.computeVertexNormals();
-  return new THREE.Mesh(geometry, materialForColor(color));
+  return new THREE.Mesh(geometry, material(color));
+}
+
+/** Weld the sheet, average its normals, and lift it (design D3).
+ *
+ * The welding is not cosmetic. An STL arrives NON-INDEXED -- one private
+ * copy of each corner per facet -- so `computeVertexNormals` gives every
+ * copy its own FACE normal, and lifting each along that normal pulls
+ * adjacent facets APART. The sheet tears along every internal edge and
+ * the part shows through the cracks: measured on the fixture's wrapped
+ * decal (448 facets on R = 9.45 at a 0.05 mm deflection, an 11.8-degree
+ * turn between neighbours), the tear is 2 * 0.15 * sin(5.9 deg) = 0.031
+ * mm, which draws a visible grid over the digits from 30 mm away and
+ * widens with the lift.
+ *
+ * Design D3 says AVERAGED vertex normals, and averaging is exactly what
+ * welding buys: co-located corners become one vertex carrying the mean
+ * of the facet normals around it, the whole sheet moves off the surface
+ * together, and the lift stays perpendicular to it. */
+export function liftDecal(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
+  // The normal attribute is dropped BEFORE welding because
+  // `mergeVertices` merges only vertices agreeing in every attribute,
+  // and the per-facet normals are precisely what disagrees.
+  const welded = mergeVertices(geometry.clone().deleteAttribute('normal'));
+  welded.computeVertexNormals();
+  liftAlongNormals(welded);
+  return welded;
+}
+
+/** A decal, through exactly the path a model takes (design D1): the
+ * artifact is a binary STL like any other, and nothing about it needs a
+ * second loader, a second cache or a second failure mode. What is added
+ * is the viewer's own rendering constant, and only that. */
+async function loadDecal(url: string, color: string): Promise<THREE.Mesh> {
+  const mesh = await loadMesh(url, color,
+                              (own) => markingMaterial(own as string));
+  const loadedGeometry = mesh.geometry;
+  mesh.geometry = liftDecal(loadedGeometry);
+  loadedGeometry.dispose();
+  return mesh;
 }
 
 function uniqueByName(children: WidgetTree[]): Map<string, WidgetTree> {

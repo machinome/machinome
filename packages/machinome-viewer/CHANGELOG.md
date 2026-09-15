@@ -352,6 +352,71 @@ The viewer stops posing a machine and starts running one.
   shape of a span is unchanged, and no public JS surface moves, so the
   declared widget API version stays at 12.
 
+- **The viewer draws what a part carries, so a calculator can be read.**
+  A Curta's answer is the angular position of ten printed number rolls,
+  and a Pascaline's is the digit each drum shows through its window. Both
+  were modelled, driven and run here and both were unreadable, because
+  the digits were not on the parts. solid-node's `carry-markings-on-a-part`
+  (ADR-120) closed the producer's half: a rigid part declares what it
+  **carries** on its surface without declaring a solid, the build writes
+  one surface-mesh artifact per marking, and the document publishes it as
+  a `markings` entry with its own name, model, `#RRGGBB` colour and
+  `mtime`. This draws it. (OpenSpec change `draw-what-a-part-carries`,
+  ADR-056.)
+
+- **A decal is a mesh, not a texture.** The artifact is a binary STL like
+  any other, loaded through the path a node's own model already takes and
+  drawn inside that node's own group. Rasterising the artwork and
+  UV-mapping it is the better answer eventually, and needs UV coordinates
+  neither the producer nor this viewer has; the decal mesh reuses the
+  whole existing rigid path for nothing. Membership in the part's group
+  is the whole trick: the part's local matrix is the decal's parent
+  matrix, so a pose, an animation instant, a run's committed bank, a
+  focus, a hide and a touchable dial's highlight all carry the decal with
+  no code of their own — which is exactly why the producer publishes no
+  placement and the viewer computes none.
+
+- **The bias that draws a decal over its surface is the viewer's**, and
+  says nothing about where the part's surface is. The artifact carries no
+  offset by the producer's own design, so the viewer lifts each decal
+  0.15 mm along the sheet's own averaged normals — 1.5× the framework's
+  default tessellation tolerance, the bound an interpenetration cannot
+  exceed — and puts a minimum polygon offset under it for the case a
+  camera is zoomed far enough out that 0.15 mm falls below one
+  depth-buffer step. The sheet is welded before it is lifted: an STL
+  arrives non-indexed, and lifting each facet's private corners along
+  their own face normals tears it open along every internal edge.
+
+- **A marking is not a part.** No navigator row, no node in a host's
+  assembly readback, no focus or visibility target of its own, and in no
+  inventory: a host reading a marked document is given exactly what the
+  same document without its markings gives it. The camera's fit box is
+  the one place a decal counts, deliberately — a decal may lie outside
+  its part's silhouette, and framing the model with its marking cut off
+  would be the opposite of the point.
+
+- **A decal reloads on its own currency.** A marking artifact carries its
+  own `mtime`, which is the whole reason the producer split it from the
+  part's: editing artwork refetches the decal and leaves the part's mesh
+  on screen, rebuilding the part refetches the part and leaves the decals
+  alone, a marking dropped from the list is removed and disposed while
+  the rest stand, and a marking whose colour alone moved has its material
+  replaced with no refetch.
+
+- **A `markings` list this viewer cannot read is refused by name** —
+  naming the document, the node and the marking, before anything is
+  rendered, on the surface an unreadable bindings table, an inexecutable
+  program and an unresolvable controls table already stand on. A viewer
+  that read nine digits and silently dropped the tenth would show a false
+  register.
+
+- **The declared API version rises to 14**, because drawing a document's
+  markings is a capability a host may require: a studio that means to
+  show a readable Curta wants to know, before it mounts, whether this
+  bundle draws the digits or shows a blank drum. `documentVersions` stays
+  `[1, 2, 3, 4, 5]` — `markings` is additive and gated on no document
+  version, and the framework's own marked fixture declares version 2.
+
 ## 0.1.0 — unreleased
 
 The viewer leaves the solid-node framework and becomes this package.

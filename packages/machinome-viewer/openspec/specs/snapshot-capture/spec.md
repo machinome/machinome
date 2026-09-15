@@ -9,9 +9,7 @@ capture half of solid-node's `web-snapshot` baseline when the viewer became
 this package; the staging contract is new.
 
 Code: `solid_node_viewer/capture.py`, `solid_node_viewer/cli.py` (`capture`).
-
 ## Requirements
-
 ### Requirement: A staged document is photographed with a transparent background
 
 The system SHALL provide `solid-node-viewer capture STAGING -o PNG`, where
@@ -32,6 +30,13 @@ name before any browser starts: a running document publishes no animation
 cycle, and honouring an animation instant on one would photograph the rest
 state while claiming another. A still of a state the machine reached is a
 different picture and is not offered here.
+
+A staged document whose parts carry markings SHALL be photographed WITH them:
+the marking artifacts are staged beside the models the document names, and the
+photograph shows each marking in its own colour on the part that carries it,
+exactly as the viewer draws it on screen. A staging that names a marking
+artifact it does not hold SHALL refuse to mount and report that failure, rather
+than producing a picture with a marking silently absent.
 
 #### Scenario: A host composites a model onto its own surface
 
@@ -57,6 +62,14 @@ different picture and is not offered here.
   with a non-zero `--time`
 - **THEN** it fails naming the option and saying a running document has no
   animation instant, starts no browser, and writes no image
+
+#### Scenario: A marked model is photographed with its markings
+
+- **WHEN** the capture is asked for a staged document whose part carries a
+  marking, staged beside the part's own model
+- **THEN** the photograph shows the marking's colour where the marking is and
+  the part's where it is not, and the same staging with its markings removed
+  produces the picture without it
 
 ### Requirement: A requested camera is honoured, never approximated
 
@@ -104,3 +117,4 @@ sandboxed there; a viewer that fails to mount SHALL report the page's error.
 - **WHEN** the capture is requested by a process running as root
 - **THEN** the command fails explaining that the browser cannot be sandboxed
   as root, and writes no image
+

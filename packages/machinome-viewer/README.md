@@ -383,6 +383,57 @@ photograph is the last place a hover affordance should appear.
 Not in this: no `Slide` (a prismatic drag), no dialling by position, no
 keyboard gesture, and nothing anywhere writes a coordinate.
 
+## What a part carries
+
+A rigid part may declare what it **carries on its surface** — the digits
+printed round a Curta's result roll, the graduations on a dial, a maker's
+mark — and the framework publishes each one as a `markings` entry beside
+the part's own `model`: a name, its own surface-mesh artifact, a colour in
+`#RRGGBB`, and its own `mtime`. The viewer draws every one of them.
+
+A marking is drawn **in the part's own place**, from the artifact alone.
+No placement is published and the viewer computes none: the artifact
+already holds the artwork's surface in the part's own frame, so the
+part's own operations carry it. A decal therefore goes wherever its part
+goes — through a driver, an animation instant, a run's committed bank,
+the focused root and hide/show — with no code of its own for any of it.
+
+A marking is drawn **in its own declared colour**, and the colour a part
+inherits never reaches it: a part with no colour at all renders through
+the normal-based material while its decal renders white, which is what
+the framework's own marked fixture publishes.
+
+A marking is drawn **over the surface it lies on**. The artifact carries
+no offset, because where the surface is is the part's statement and not
+the artwork's; the bias that keeps the decal clear of it is the
+**viewer's own rendering constant** — a small world-space lift along the
+sheet's own normals, and a minimum polygon offset under it — and says
+nothing about where the part's surface is.
+
+A marking is **not a part**. It is no row of the navigator, no node of
+the assembly a host reads back, no focus or visibility target of its own,
+and in no inventory: a host reading a marked document is given exactly
+the nodes, paths, colours and geometry flags the same document without
+its markings gives it. It is a region of a part's surface, and it is
+hidden, shown and focused only with the part.
+
+A marking **reloads on its own currency**. Its `mtime` is the artifact's,
+not the part's, so editing artwork refetches the decal and leaves the
+part's mesh alone — and rebuilding the part refetches the part and leaves
+the decals alone.
+
+A `markings` list this viewer cannot read is refused when the document
+loads, naming the document, the node and the marking, before anything is
+rendered — a value that is not a list, an entry that is not an object or
+whose name or artifact reference is not a non-empty string, a colour that
+is not six hexadecimal digits, one node declaring a name twice, or a
+markings list on a node that is not rigid. A viewer that read nine digits
+and silently dropped the tenth would show a false register, which is why
+the answer is a refusal rather than a partial drawing.
+
+`markings` is additive and gated on no document version: the marked
+documents the framework publishes today declare version 2.
+
 ## Versions
 
 The package version and the **viewer API version** are different numbers.
@@ -399,7 +450,10 @@ build reads rather than infer it.
 | solid-node-viewer | viewer API | reads document versions |
 | --- | --- | --- |
 | 0.1.0 | 7 | 1, 2, 3, 4 |
-| 0.2.0 | 12 | 1, 2, 3, 4, 5 |
+| 0.2.0 | 14 | 1, 2, 3, 4, 5 |
+
+(13 is skipped deliberately: the in-flight `slide-and-turn-parts`
+cycle claims it, and integration reconciles this row.)
 
 ## Working on the viewer
 

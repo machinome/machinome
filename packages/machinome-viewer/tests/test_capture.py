@@ -15,7 +15,8 @@ from solid_node_viewer.capture import Capture, CaptureError, mount_options
 
 from .support import (
     HAS_PIL, HAS_PLAYWRIGHT, SPINNER, needs_bundle, needs_pil,
-    needs_playwright, published_build, published_run,
+    needs_playwright, published_build, published_marked, published_run,
+    strip_markings,
 )
 
 if HAS_PLAYWRIGHT:
@@ -272,3 +273,62 @@ class RunningCapturePageTest(TestCase):
                         0, selector)
             finally:
                 browser.close()
+
+
+@needs_bundle
+@needs_playwright
+@needs_pil
+class MarkedStagedDocumentTest(TestCase):
+    """A staged document whose parts carry markings is photographed WITH
+    them (design D10).
+
+    `Capture.serve` serves the WHOLE staging directory, and the framework
+    already stages marking artifacts beside the models it copies, so
+    `solid snapshot --renderer web` photographs markings the moment the
+    widget draws them -- with no change to `capture.py` and none to
+    `mount_options`. That is a claim, and this proves it with a marked
+    staging rather than asserting it.
+
+    The probe is `test_widget_e2e.MarkedDocumentPixelsTest`'s: both parts
+    of this fixture declare no colour and render through
+    `MeshNormalMaterial`, whose `normal * 0.5 + 0.5` output is NEUTRAL
+    only where |nx| = |ny| = |nz| -- which a cylinder about z and an
+    axis-aligned box never reach -- while both declared marking colours,
+    `#FFFFFF` and `#C0C0C0`, are neutral under the scene's near-white
+    lights.
+    """
+
+    NEUTRAL_SPREAD = 20
+    NEUTRAL_FLOOR = 40
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+
+    def photograph(self, staging):
+        output = os.path.join(self.tempdir.name, f'{staging.name}.png')
+        Capture(str(staging)).render(output, (480, 360), mount_options())
+        return Image.open(output).convert('RGB')
+
+    def marking_pixels(self, image):
+        """Count the pixels showing a marking's own colour."""
+        found = 0
+        for red, green, blue in image.getdata():
+            if (max(red, green, blue) - min(red, green, blue) <= self.NEUTRAL_SPREAD
+                    and min(red, green, blue) >= self.NEUTRAL_FLOOR):
+                found += 1
+        return found
+
+    def test_a_marked_model_is_photographed_with_its_markings(self):
+        marked = published_marked(Path(self.tempdir.name) / 'marked')
+        twin = published_marked(Path(self.tempdir.name) / 'twin')
+        strip_markings(twin / 'viewer.json')
+
+        with_markings = self.marking_pixels(self.photograph(marked))
+        without = self.marking_pixels(self.photograph(twin))
+
+        self.assertGreater(with_markings, 500,
+                           'the photograph shows no marking')
+        self.assertLess(without, 100,
+                        'the same staging with its markings removed was '
+                        'photographed with one anyway')

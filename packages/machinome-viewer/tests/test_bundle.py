@@ -25,8 +25,12 @@ class BundleLookupTest(TestCase):
         self.assertTrue(froms <= {'pathlib', 'importlib.metadata', 'solid_node_viewer'},
                         froms)
 
-    def test_declares_api_version_eleven(self):
-        self.assertEqual(bundle.api_version(), 12)
+    def test_declares_api_version_fourteen(self):
+        # OpenSpec `draw-what-a-part-carries`, design D9: drawing a
+        # document's markings is a capability a host may require, so the
+        # declared version moves. 13 is skipped deliberately -- the
+        # in-flight `slide-and-turn-parts` cycle claims it.
+        self.assertEqual(bundle.api_version(), 14)
 
     def test_declares_the_document_versions_this_build_reads(self):
         self.assertEqual(bundle.document_versions(), [1, 2, 3, 4, 5])

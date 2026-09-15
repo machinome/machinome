@@ -21,12 +21,13 @@ from unittest import TestCase
 from solid_node_viewer.bundle import api_version
 
 from .support import (
-    CHROME, HAS_PIL, HAS_PLAYWRIGHT, export_with_widget, needs_bundle,
-    needs_chrome, needs_pil, needs_playwright, serve_directory,
+    CHROME, HAS_PIL, HAS_PLAYWRIGHT, export_marked, export_with_widget,
+    needs_bundle, needs_chrome, needs_pil, needs_playwright, serve_directory,
+    strip_markings,
 )
 
 if HAS_PIL:
-    from PIL import Image, ImageChops
+    from PIL import Image, ImageChops, ImageFilter
 if HAS_PLAYWRIGHT:
     from playwright.sync_api import sync_playwright
 
@@ -185,10 +186,11 @@ class ViewerMountApiTest(TestCase):
         }""")
         self.assertEqual(result['bundle'], api_version())
         self.assertEqual(result['bundle'], result['handle'])
-        # OpenSpec `ship-the-inspector-layout`: mounting the composed
-        # inspector itself is a capability a host may require, so the
-        # declared version moves.
-        self.assertEqual(result['bundle'], 12)
+        # OpenSpec `draw-what-a-part-carries`: drawing the markings a
+        # document's parts carry is a capability a host may require, so
+        # the declared version moves. 13 is skipped deliberately (design
+        # D9), the in-flight `slide-and-turn-parts` cycle claiming it.
+        self.assertEqual(result['bundle'], 14)
         # And a document carrying no program has no run, which is what a
         # host asking one question is answered with.
         self.assertIsNone(result['run'])
@@ -860,3 +862,263 @@ class InspectorLayoutE2ETest(TestCase):
                 ".includes('unknown layout')")
             text = page.locator('#solid-widget').text_content()
             self.assertIn('unknown layout "bogus"', text)
+
+
+
+MARKED_HARNESS = """<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      /* A saturated dark blue behind the canvas. The probes below read
+         near-white and NEUTRAL GREY, and a neutral page colour would
+         answer both of them everywhere. */
+      html, body { margin: 0; background: #08183f; }
+      #host { width: 640px; height: 480px; position: relative; }
+    </style>
+  </head>
+  <body>
+    <div id="host"></div>
+    <script src="solid-widget.js"></script>
+  </body>
+</html>
+"""
+
+
+@needs_bundle
+@needs_playwright
+@needs_pil
+class MarkedDocumentPixelsTest(TestCase):
+    """The markings a part carries, on screen.
+
+    Pixels are the evidence, and the fixture is built for it: the `dial`
+    and the `plate` declare NO colour, so both render through
+    `MeshNormalMaterial`, whose output is `normal * 0.5 + 0.5`. Two
+    probes follow from that, and the part provably trips neither.
+
+    **Near-white.** A unit normal cannot exceed 0.577 in all three
+    components at once, so the brightest GREY the part can show is 201 --
+    and an antialiased edge cannot beat it either, an averaged pair of
+    unit normals being no longer than a unit normal. `#FFFFFF` decals
+    pass it.
+
+    **Neutral grey.** `normal * 0.5 + 0.5` is neutral only where
+    |nx| = |ny| = |nz|, which a cylinder about z (whose normals are
+    (cos, sin, 0) and (0, 0, +-1)) and an axis-aligned box never reach.
+    Both declared marking colours -- `#FFFFFF` and `#C0C0C0` -- ARE
+    neutral under the scene's near-white lights, at any brightness.
+
+    NOTE, and a choice for the pilot. The ratified design D12 probes all
+    four of its steps with near-white alone. Measured here, that does not
+    hold for two of them, and the two probes above are this
+    implementation's answer:
+
+      * a `#FFFFFF` surface in this scene never renders brighter than
+        213 in its darkest channel, and the DIAL's decal -- whose
+        normals are horizontal, while the one directional light shines
+        from (1, -1, 2) -- never passes 180. Near-white cannot see the
+        turning decal at all, at any camera angle (measured over a
+        12 x 3 sweep of azimuth and elevation);
+      * the fixture's `band` decal is `#C0C0C0` by declaration, so
+        near-white cannot see it either, and "every non-near-white pixel
+        is unchanged" is false wherever it is drawn.
+
+    Neutral grey answers both, with a proof of the same kind D12's own
+    is. It is a deviation from the ratified test design and is recorded
+    rather than taken silently.
+    """
+
+    #: `(0.577 * 0.5 + 0.5) * 255 = 201`: the ceiling the part's own
+    #: material cannot pass in all three channels at once. The probe sits
+    #: just above it.
+    NEAR_WHITE = 205
+    #: How far from neutral a pixel may be and still read as a marking's
+    #: own colour, and how dark before it is background or shadow rather
+    #: than a decal.
+    NEUTRAL_SPREAD = 20
+    NEUTRAL_FLOOR = 40
+
+    #: The whole bench, at a FIXED camera. The document's own fit box
+    #: includes its decals (design D8 -- the `band` lies at radius 12.0
+    #: on a plate whose box is +-10.0), so a marked document and its
+    #: unmarked twin do not frame alike; pinning the view is what makes
+    #: "every pixel that is not the decal is unchanged" a question about
+    #: the decal rather than about the framing.
+    BENCH_VIEW = {'camera': [-55.1, 55.1, 55.0], 'target': [0.0, 0.0, 10.0]}
+    #: The dial alone. The azimuth is chosen so that part of the artwork
+    #: faces the camera at `angle = 0` AND part of it does at
+    #: `angle = 180`: the artwork covers 12 to 121 degrees of the drum,
+    #: and a camera sees a 180-degree window of it.
+    DIAL_VIEW = {'camera': [-60.1, 26.7, 43.9], 'target': [0.0, 0.0, 20.0]}
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        self.out_dir = export_marked(Path(self.tempdir.name) / 'export')
+        # The unmarked twin, written by the test and never committed: the
+        # same document, one `del` away (design D11).
+        strip_markings(self.out_dir / 'manifest.json',
+                       self.out_dir / 'unmarked.json')
+        (self.out_dir / 'harness.html').write_text(MARKED_HARNESS)
+        server = serve_directory(self.out_dir)
+        base = server.__enter__()
+        self.addCleanup(server.__exit__, None, None, None)
+        self.harness_url = f'{base}/harness.html'
+
+    def mount_options(self, view):
+        return {'view': view, 'up': [0, 0, 1], 'fov': 35,
+                'driverControls': 'none', 'partControls': 'none',
+                'animation': 'external'}
+
+    def shots(self, requests):
+        """Photograph the canvas once per `(source, view, after)` request,
+        in one browser."""
+        images = []
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 800, 'height': 600})
+                errors = []
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.goto(self.harness_url)
+                page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+                path = os.path.join(self.tempdir.name, 'shot.png')
+                for source, view, after in requests:
+                    page.evaluate(
+                        """async ([source, options, after]) => {
+                          const host = document.getElementById('host');
+                          host.innerHTML = '';
+                          if (window.viewer) { window.viewer.dispose(); }
+                          window.viewer = await SolidNodeWidget.mount(
+                            host, source, options);
+                          if (after) {
+                            new Function('viewer', after)(window.viewer);
+                          }
+                          await new Promise((done) => requestAnimationFrame(
+                            () => requestAnimationFrame(done)));
+                        }""",
+                        [source, self.mount_options(view), after])
+                    self.assertEqual(errors, [],
+                                     f'uncaught page errors: {errors}')
+                    box = page.locator('#host canvas').bounding_box()
+                    page.screenshot(path=path, clip=box)
+                    images.append(Image.open(path).convert('RGB'))
+                    os.remove(path)
+            finally:
+                browser.close()
+        return images
+
+    @staticmethod
+    def channels(image):
+        red, green, blue = image.split()
+        brightest = ImageChops.lighter(ImageChops.lighter(red, green), blue)
+        darkest = ImageChops.darker(ImageChops.darker(red, green), blue)
+        return brightest, darkest
+
+    def near_white(self, image):
+        _, darkest = self.channels(image)
+        return darkest.point(
+            lambda value: 255 if value >= self.NEAR_WHITE else 0)
+
+    def marking_coloured(self, image):
+        """The mask of pixels showing a NEUTRAL colour bright enough to be
+        a decal rather than background or shadow."""
+        brightest, darkest = self.channels(image)
+        spread = ImageChops.difference(brightest, darkest)
+        return Image.frombytes('L', image.size, bytes(
+            255 if width <= self.NEUTRAL_SPREAD and low >= self.NEUTRAL_FLOOR
+            else 0
+            for width, low in zip(spread.getdata(), darkest.getdata())))
+
+    @staticmethod
+    def changed(first, second, threshold=24):
+        bands = ImageChops.difference(first, second).split()
+        return ImageChops.lighter(
+            ImageChops.lighter(bands[0], bands[1]), bands[2],
+        ).point(lambda value: 255 if value > threshold else 0)
+
+    @staticmethod
+    def count(mask):
+        return sum(1 for value in mask.getdata() if value)
+
+    def centroid(self, mask):
+        indices = [index for index, value in enumerate(mask.getdata()) if value]
+        self.assertTrue(indices, 'no marking pixels to take a centroid of')
+        return (sum(index % mask.width for index in indices) / len(indices),
+                sum(index // mask.width for index in indices) / len(indices))
+
+    def test_the_decals_are_drawn_and_the_twin_shows_none(self):
+        marked, twin = self.shots([
+            ('manifest.json', self.BENCH_VIEW, ''),
+            ('unmarked.json', self.BENCH_VIEW, ''),
+        ])
+
+        # The two `#FFFFFF` decals, on the probe the part cannot trip.
+        self.assertGreater(self.count(self.near_white(marked)), 100,
+                           'the white markings were not drawn')
+        self.assertEqual(self.count(self.near_white(twin)), 0,
+                         'the parts alone showed near-white, which their '
+                         'normal material cannot do')
+        # And all three, on the probe that sees the silver band too.
+        self.assertGreater(self.count(self.marking_coloured(marked)), 2000,
+                           'the markings were not drawn')
+        self.assertLess(self.count(self.marking_coloured(twin)), 100,
+                        'the parts alone showed a marking colour')
+
+    def test_adding_a_decal_changes_only_the_decal(self):
+        marked, twin = self.shots([
+            ('manifest.json', self.BENCH_VIEW, ''),
+            ('unmarked.json', self.BENCH_VIEW, ''),
+        ])
+
+        changed = self.changed(marked, twin)
+        pixels = marked.width * marked.height
+        moved = self.count(changed)
+        self.assertGreater(moved, 0, 'the markings changed nothing')
+        self.assertLess(moved, 0.03 * pixels,
+                        'adding the markings redrew the whole picture')
+
+        # Every changed pixel is a decal pixel, or one the canvas's
+        # antialiasing blended along a decal edge -- half decal and half
+        # part, which is neither a marking colour nor unchanged, and is
+        # still the decal.
+        decal = self.marking_coloured(marked).filter(ImageFilter.MaxFilter(5))
+        stray = sum(1 for was_changed, is_decal
+                    in zip(changed.getdata(), decal.getdata())
+                    if was_changed and not is_decal)
+        self.assertLess(stray, 0.01 * moved,
+                        f'{stray} of {moved} changed pixels were away from '
+                        'any marking')
+
+    def test_a_decal_turns_with_the_part_it_is_on(self):
+        # The plate is hidden so the marking pixels are the DIAL's digits
+        # alone: the plate's own decals never move.
+        hide = "viewer.setVisible(['plate'], false);"
+        at_zero, turned, twin = self.shots([
+            ('manifest.json', self.DIAL_VIEW, hide),
+            ('manifest.json', self.DIAL_VIEW,
+             hide + "viewer.setDriver('angle', 180);"),
+            ('unmarked.json', self.DIAL_VIEW, hide),
+        ])
+
+        first = self.marking_coloured(at_zero)
+        second = self.marking_coloured(turned)
+        self.assertLess(self.count(self.marking_coloured(twin)), 100,
+                        'the bare dial showed a marking colour')
+        self.assertGreater(self.count(first), 500,
+                           'the dial showed no digits at angle 0')
+        self.assertGreater(self.count(second), 500,
+                           'the dial showed no digits at angle 180')
+
+        # The whole claim of "the producer publishes no placement": the
+        # part's own operations carried the decal, and the viewer
+        # computed nothing.
+        before = self.centroid(first)
+        after = self.centroid(second)
+        travelled = ((after[0] - before[0]) ** 2
+                     + (after[1] - before[1]) ** 2) ** 0.5
+        self.assertGreater(travelled, 50,
+                           f'the digits did not turn with the dial: {before} '
+                           f'-> {after}')

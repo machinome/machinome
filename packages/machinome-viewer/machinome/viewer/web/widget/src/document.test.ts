@@ -29,6 +29,7 @@ import { expressionMetrics, prepare, releaseExpressions } from './expressions';
 import {
   Manifest, ManifestFlexible, ManifestNode, RawOperation,
 } from './types';
+import markedFixture from '../../../tests/fixtures/marked/manifest.json';
 
 const node = (name: string, operations: RawOperation[],
               children?: ManifestNode[]): ManifestNode => ({
@@ -717,5 +718,119 @@ describe('assertRenderable on a document carrying controls', () => {
       { 'turn units': { ...TURN_CONTROL, per_unit: 0 } },
       node('root', [['r', 'nowhere.at.all', [0, 0, 1]]], [column]));
     expect(() => assertRenderable(bad, '/m.json')).toThrow(/quantum/);
+  });
+});
+
+// OpenSpec `draw-what-a-part-carries`, design D6: a `markings` list this
+// viewer cannot read is refused BY NAME -- the document, the node and
+// the marking -- before anything is rendered, on the surface an
+// unreadable bindings table, an inexecutable program and an unresolvable
+// controls table already stand on. Half-reading is the failure mode: a
+// viewer that reads nine digits and silently drops the tenth shows a
+// FALSE register.
+describe('assertRenderable on a document carrying markings', () => {
+  const marked = (markings: unknown, overrides: Partial<ManifestNode> = {}) => {
+    const part = {
+      ...node('dial', []), model: 'dial.stl', mtime: 1, ...overrides,
+    } as ManifestNode & { markings?: unknown };
+    part.markings = markings;
+    return document({ root: node('root', [], [part as ManifestNode]) });
+  };
+
+  const digits = { name: 'digits', model: 'dial.marking-digits.stl',
+                   color: '#FFFFFF', mtime: 2 };
+
+  it('accepts the marked bench the framework publishes', () => {
+    expect(() => assertRenderable(
+      markedFixture as unknown as Manifest, '/marked.json')).not.toThrow();
+  });
+
+  it('accepts a marking whose optional mtime is absent', () => {
+    const { name, model, color } = digits;
+    expect(() => assertRenderable(marked([{ name, model, color }]), '/m.json'))
+      .not.toThrow();
+  });
+
+  it('refuses a markings value that is not a list, naming document and node', () => {
+    expect(() => assertRenderable(marked({ digits }), '/m.json'))
+      .toThrow(/\/m\.json.*"dial".*markings.*list/s);
+  });
+
+  it('refuses an entry that is not an object, naming where it is', () => {
+    expect(() => assertRenderable(marked(['digits']), '/m.json'))
+      .toThrow(/\/m\.json.*"dial".*0.*object/s);
+  });
+
+  it('refuses a marking whose name is not a non-empty string', () => {
+    expect(() => assertRenderable(
+      marked([{ ...digits, name: '' }]), '/m.json'))
+      .toThrow(/\/m\.json.*"dial".*name/s);
+    expect(() => assertRenderable(
+      marked([{ ...digits, name: 7 }]), '/m.json'))
+      .toThrow(/\/m\.json.*"dial".*name/s);
+  });
+
+  it('refuses a marking that names no artifact, naming node and marking', () => {
+    expect(() => assertRenderable(
+      marked([{ ...digits, model: '' }]), '/m.json'))
+      .toThrow(/\/m\.json.*"dial".*"digits".*artifact/s);
+    expect(() => assertRenderable(
+      marked([{ ...digits, model: undefined }]), '/m.json'))
+      .toThrow(/\/m\.json.*"dial".*"digits".*artifact/s);
+  });
+
+  it('refuses a colour that is not six hexadecimal digits', () => {
+    for (const colour of ['white', '#FFF', '#GGGGGG', '#FFFFFFF', null, 16777215]) {
+      expect(() => assertRenderable(
+        marked([{ ...digits, color: colour }]), '/m.json'))
+        .toThrow(/\/m\.json.*"dial".*"digits".*colour/s);
+    }
+  });
+
+  it('refuses two markings of one node sharing a name', () => {
+    expect(() => assertRenderable(marked([
+      digits, { ...digits, model: 'other.stl' },
+    ]), '/m.json')).toThrow(/\/m\.json.*"dial".*"digits".*twice/s);
+  });
+
+  it('refuses a markings list on a node that carries children', () => {
+    expect(() => assertRenderable(
+      marked([digits], { model: undefined, children: [node('pin', [])] }),
+      '/m.json')).toThrow(/\/m\.json.*"dial".*rigid/s);
+  });
+
+  it('refuses a markings list on a flexible node', () => {
+    const flexible = { ...spring(), model: undefined } as ManifestNode
+      & { markings?: unknown };
+    flexible.markings = [digits];
+    expect(() => assertRenderable(
+      document({ version: 3, drivers: { 'valvetrain.lift': lift },
+                 root: node('root', [], [flexible as ManifestNode]) }),
+      '/m.json')).toThrow(/\/m\.json.*"spring".*rigid/s);
+  });
+
+  it('refuses the markings before the tree is walked for driver ids', () => {
+    // Wrong in BOTH ways: the markings refusal is the one that fires,
+    // because a marking is read where the node is visited and the
+    // undeclared-driver report is assembled only after the whole walk.
+    const bad = marked([{ ...digits, color: 'white' }],
+                       { operations: [['r', 'nowhere.at.all', [0, 0, 1]]] });
+    expect(() => assertRenderable(bad, '/m.json')).toThrow(/colour/);
+  });
+
+  it('validates a document with no markings key exactly as it did', () => {
+    // The stripped twin of the committed fixture: the same document,
+    // one `del` away, reaching exactly the validation it reached before
+    // this viewer could read a markings list.
+    const twin = JSON.parse(JSON.stringify(markedFixture)) as Manifest;
+    const strip = (one: ManifestNode) => {
+      delete (one as { markings?: unknown }).markings;
+      (one.children ?? []).forEach(strip);
+    };
+    strip(twin.root);
+    expect(() => assertRenderable(twin, '/twin.json')).not.toThrow();
+    expect(JSON.stringify(assertRenderable(twin, '/twin.json')))
+      .toEqual(JSON.stringify(
+        assertRenderable(markedFixture as unknown as Manifest, '/marked.json')));
   });
 });

@@ -1,0 +1,123 @@
+{
+  "format": "solid-node-export",
+  "version": 2,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "angle": {
+      "default": 0.0,
+      "range": null,
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {},
+  "root": {
+    "name": "Bench",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1789475324.9386523,
+    "operations": [],
+    "children": [
+      {
+        "name": "dial",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789475324.934652,
+        "operations": [
+          [
+            "r",
+            "angle",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "0",
+              "0",
+              "20.0"
+            ]
+          ]
+        ],
+        "model": "models/markings_project/dial-Dial-9f2c3557d753.stl",
+        "piece": "62f6c453fd92",
+        "markings": [
+          {
+            "name": "digits",
+            "model": "models/markings_project/dial-Dial-9f2c3557d753.marking-digits.stl",
+            "color": "#FFFFFF",
+            "mtime": 1789475324.935652
+          }
+        ]
+      },
+      {
+        "name": "plate",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789475324.9386523,
+        "operations": [],
+        "model": "models/markings_project/plate-Plate-a7cd5d8f8422.stl",
+        "piece": "2d8a0cac2bd1",
+        "markings": [
+          {
+            "name": "badge",
+            "model": "models/markings_project/plate-Plate-a7cd5d8f8422.marking-badge.stl",
+            "color": "#FFFFFF",
+            "mtime": 1789475324.9386523
+          },
+          {
+            "name": "band",
+            "model": "models/markings_project/plate-Plate-a7cd5d8f8422.marking-band.stl",
+            "color": "#C0C0C0",
+            "mtime": 1789475324.9386523
+          }
+        ]
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "62f6c453fd92",
+      "name": "Dial",
+      "sources": [
+        "markings_project/dial.py"
+      ],
+      "models": [
+        "models/markings_project/dial-Dial-9f2c3557d753.stl"
+      ],
+      "count": 1,
+      "size": [
+        18.899999618530273,
+        18.89412498474121,
+        12.0
+      ],
+      "volume": 3365.2298381649357,
+      "watertight": true
+    },
+    {
+      "id": "2d8a0cac2bd1",
+      "name": "Plate",
+      "sources": [
+        "markings_project/plate.stl"
+      ],
+      "models": [
+        "models/markings_project/plate-Plate-a7cd5d8f8422.stl"
+      ],
+      "count": 1,
+      "size": [
+        20.0,
+        20.0,
+        4.0
+      ],
+      "volume": 1600.0,
+      "watertight": true
+    }
+  ]
+}

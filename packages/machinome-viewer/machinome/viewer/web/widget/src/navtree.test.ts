@@ -11,12 +11,23 @@
 // DOM, so this runs in the suite's default `node` environment exactly as
 // `controls.test.ts` does.
 
-import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
+import { describe, expect, it, vi } from 'vitest';
+
+// The marked document's meshes are never the question here, so the
+// loader is stood in for exactly as `tree.test.ts` stands it in.
+vi.mock('three/examples/jsm/loaders/STLLoader.js', () => ({
+  STLLoader: class {
+    loadAsync = () => Promise.resolve(new THREE.BoxGeometry());
+  },
+}));
 import { AssemblyNavigationState } from './assembly';
 import {
   chipState, keyAction, NavigatorLocal, navigatorRows, reconcileLocal,
 } from './navtree';
-import { AssemblyNode, assemblyPathKey } from './tree';
+import { AssemblyNode, assemblyPathKey, WidgetTree } from './tree';
+import { ManifestNode } from './types';
+import markedManifest from '../../../tests/fixtures/marked/manifest.json';
 
 // One tree, reused across every test: a root with a coloured child `A`
 // that has its own child `B` (inheriting A's colour, resolved already --
@@ -311,5 +322,46 @@ describe('reconcileLocal', () => {
     const previous: NavigatorLocal = { expanded: new Set([rootKey]), active: rootKey };
     const result = reconcileLocal(root(), nav({ root: ['A', 'B'] }), previous, ['A', 'B']);
     expect(result.expanded.has(keyA)).toBe(false);
+  });
+});
+
+// OpenSpec `draw-what-a-part-carries`, design D7: a marking is NO ROW of
+// the navigator. `navigatorRows` walks `AssemblyNode.children`, and
+// `assembly()` builds those from `WidgetTree` children only, so a
+// marking cannot become a row -- excluded by construction. Pinned all
+// the same, on the framework's own marked document, because "by
+// construction" is a property of today's code.
+describe('navigatorRows over a marked document', () => {
+  const stripMarkings = (node: ManifestNode): ManifestNode => {
+    const { markings, ...rest } = node as ManifestNode & { markings?: unknown };
+    void markings;
+    return { ...rest, children: node.children?.map(stripMarkings) } as ManifestNode;
+  };
+
+  const rowsFor = async (manifestRoot: ManifestNode) => {
+    const tree = new WidgetTree(manifestRoot, '/build/');
+    await tree.loaded;
+    const assembly = tree.assembly();
+    const expanded = new Set<string>();
+    const collect = (node: AssemblyNode) => {
+      expanded.add(assemblyPathKey(node.path));
+      node.children.forEach(collect);
+    };
+    collect(assembly);
+    return navigatorRows(assembly, nav(), local({ expanded }));
+  };
+
+  it('presents one row per part and none for any marking', async () => {
+    const document = markedManifest as unknown as { root: ManifestNode };
+    const marked = await rowsFor(document.root);
+    const twin = await rowsFor(stripMarkings(document.root));
+
+    expect(marked.map((row) => row.node.name)).toEqual(['Bench', 'dial', 'plate']);
+    expect(marked.map((row) => row.key)).toEqual(twin.map((row) => row.key));
+    expect(marked.map((row) => [row.node.name, row.depth, row.node.color]))
+      .toEqual(twin.map((row) => [row.node.name, row.depth, row.node.color]));
+    for (const name of ['digits', 'badge', 'band']) {
+      expect(marked.some((row) => row.node.name === name)).toBe(false);
+    }
   });
 });

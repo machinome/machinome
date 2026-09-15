@@ -1860,6 +1860,76 @@ export interface LoadedDocument {
   controls: LoadedControl[];
 }
 
+/** `#RRGGBB`, and nothing else. The producer REQUIRES a colour on a
+ * marking (solid-node design D6: "a decal with no colour is invisible,
+ * which means the declaration did nothing"), so a shorthand, a name or a
+ * number is a producer bug rather than a value to guess at. */
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+/** Refuse a `markings` list this viewer cannot read, by name (OpenSpec
+ * `draw-what-a-part-carries`, design D6).
+ *
+ * Why refuse rather than ignore: the framework blesses a consumer that
+ * ignores `markings` entirely -- it renders today's picture, which is a
+ * TRUTHFUL picture. This viewer does not ignore them, and one that read
+ * nine digits and silently dropped the tenth would show a FALSE
+ * register. Half-reading is the failure mode; refusing names the
+ * producer bug where it can be fixed.
+ *
+ * `mtime` is the one optional field, accepted absent exactly as a
+ * node's own optional `mtime` is. */
+export function assertMarkings(node: ManifestNode, sourceUrl: string): void {
+  const markings = (node as { markings?: unknown }).markings;
+  if (markings === undefined) {
+    return;
+  }
+  const refuse = (reason: string): never => {
+    throw new Error(
+      `${sourceUrl} carries the node "${node.name}", whose ${reason}. ` +
+      'Refusing the document rather than drawing part of what the part ' +
+      'carries: a marking read in part is a false answer printed on a ' +
+      'machine.',
+    );
+  };
+  if (!Array.isArray(markings)) {
+    refuse('"markings" is not a list');
+  }
+  // A marking is a region of a PART's surface: the producer cannot emit
+  // one on a node carrying children or a flexible spec, and drawing a
+  // decal on either would put it somewhere the document never said.
+  if ((markings as unknown[]).length > 0
+      && (node.children !== undefined || node.flexible !== undefined)) {
+    refuse('markings sit on a node that is not rigid (it carries '
+           + `${node.flexible !== undefined ? 'a flexible spec' : 'children'})`);
+  }
+  const seen = new Set<string>();
+  (markings as unknown[]).forEach((entry, index) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+      refuse(`marking at index ${index} is not an object`);
+    }
+    const marking = entry as Record<string, unknown>;
+    if (typeof marking.name !== 'string' || marking.name === '') {
+      refuse(`marking at index ${index} declares no name`);
+    }
+    const name = marking.name as string;
+    if (seen.has(name)) {
+      refuse(`markings declare the name "${name}" twice`);
+    }
+    seen.add(name);
+    if (typeof marking.model !== 'string' || marking.model === '') {
+      refuse(`marking "${name}" names no artifact`);
+    }
+    if (typeof marking.color !== 'string' || !HEX_COLOR.test(marking.color)) {
+      refuse(`marking "${name}" declares the colour `
+             + `${JSON.stringify(marking.color)}, which is not a six-digit `
+             + '#RRGGBB');
+    }
+    if (marking.mtime !== undefined && typeof marking.mtime !== 'number') {
+      refuse(`marking "${name}" declares an mtime that is not a number`);
+    }
+  });
+}
+
 export function assertRenderable(document: Manifest,
                                  sourceUrl: string): LoadedDocument {
   if (!RENDERED_VERSIONS.includes(document.version)) {
@@ -1934,6 +2004,12 @@ export function assertRenderable(document: Manifest,
   };
 
   const visit = (node: ManifestNode) => {
+    // Read FIRST for this node (OpenSpec `draw-what-a-part-carries`,
+    // design D6): a `markings` list this viewer cannot read is refused
+    // before anything is rendered, on the surface the bindings table,
+    // the program and the controls table already stand on. A node with
+    // no key reaches exactly the validation it reached before.
+    assertMarkings(node, sourceUrl);
     for (const operation of node.operations) {
       const expressions = operation[0] === 'r'
         ? [operation[1]] : operation[1];

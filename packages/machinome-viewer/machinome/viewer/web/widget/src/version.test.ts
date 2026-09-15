@@ -77,8 +77,19 @@ describe('API_VERSION', () => {
   // at all, and no number would say so: the document versions this
   // build reads do NOT move, because `controls` is additive within
   // version 5 (solid-node ADR-112).
-  it('declares the part-controls API as version 12', () => {
-    expect(API_VERSION).toBe(12);
+  // Drawing the markings a document's parts carry (OpenSpec
+  // `draw-what-a-part-carries`) is the one after that (14): a studio
+  // that means to show a readable Curta -- a machine whose ANSWER is
+  // printed on its parts -- wants to know, before it mounts, whether
+  // this bundle draws the digits or silently shows a blank drum. 13 is
+  // SKIPPED deliberately: the in-flight cycle `slide-and-turn-parts`
+  // claims it, and taking 14 here means the two numbers cannot collide
+  // whatever order they integrate in (design D9). The document versions
+  // this build reads do NOT move: `markings` is additive and gated on
+  // no document version -- the framework's own marked fixture declares
+  // version 2 -- which is the posture the `controls` table already set.
+  it('declares the markings API as version 14', () => {
+    expect(API_VERSION).toBe(14);
   });
 });
 
