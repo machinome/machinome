@@ -12,8 +12,14 @@
 import { describe, expect, it } from 'vitest';
 import { Run } from './run';
 import type { StopRecord } from './run';
-import { loadProgram } from './program';
+import {
+  LandingInvariantError, loadProgram, refusalKind, StopInvariantError,
+} from './program';
 import type { LoadedProgram, RunDocument } from './program';
+import { nextAfter } from './jumps';
+
+/** The next representable float below `value`. */
+const nextDown = (value: number): number => nextAfter(value, -Infinity);
 
 const LIMITS = {
   crossing_tolerance: 1e-12, subdivisions: 64, bisection_rounds: 64,
@@ -880,5 +886,376 @@ describe('the sub-program pass is the segment arithmetic (design D4)', () => {
     expect(out.status).toBe('blocked');
     expect(back.status).toBe('completed');
     expect(run.stops()[run.stops().length - 1].inputs).toEqual(['feed']);
+  });
+});
+
+// ---------------------------------------------------------------------
+// A law that READS THE COORDINATE IT DRIVES: the framework's own
+// `Clearing` and `StoppedClearing`, reproduced as benches (design D2,
+// D4, D5, tasks 5 and 6). Every number below is the framework's own --
+// `tests/running_project/machine.py`'s `GAP = 0.5`,
+// `STATION = (100.0, 500.0)`, the dial resting at 108 -- and the
+// published document for the same machine is in the conformance corpus.
+// ---------------------------------------------------------------------
+
+/** `missing_tooth`, published: the setter turns the dial directly, and
+ * the ring turns it only while the rack's station reaches it AND the
+ * dial is not already standing in its missing-tooth gap. */
+const CLEARING_EDGE = {
+  kind: 'law',
+  needs: ['setter', 'ring', 'wheel.turn'],
+  gives: ['wheel.turn'],
+  description: '(setter, ring, wheel.turn) drives wheel.turn',
+  stated_by: 'Clearing',
+  expressions: [
+    '(setter + ((ring * (floor(((ring - 100.0) / 400.0)) == 0)) * '
+    + '((((wheel.turn + 0.5) - (360.0 * floor(((wheel.turn + 0.5) '
+    + '/ 360.0)))) - 1.0) >= 0.0)))',
+  ],
+  affine: [true],
+  plans: [{
+    skeleton: '(setter + ((ring * _j1) * _j3))',
+    jumps: [
+      { name: '_j0', primitive: 'floor', level: '((ring - 100.0) / 400.0)',
+        affine: true },
+      { name: '_j1', primitive: '==', level: '(_j0 - 0)', affine: true },
+      { name: '_j2', primitive: 'floor',
+        level: '((wheel.turn + 0.5) / 360.0)', affine: true },
+      { name: '_j3', primitive: '>=',
+        level: '(((wheel.turn + 0.5) - (360.0 * _j2)) - 1.0)', affine: true },
+    ],
+  }],
+};
+
+const GAP = 0.5;
+
+function clearingRun(dt = 0.05, rest = 108, ringRest = 0,
+                     spec: Record<string, unknown> = {}): Run {
+  const program = bench({
+    coordinates: {
+      setter: input(0), ring: input(ringRest),
+      'wheel.turn': coordinate(rest),
+    },
+    edges: [CLEARING_EDGE],
+    sources: {
+      setter: ['setter'], ring: ['ring'], 'wheel.turn': ['ring', 'setter'],
+    },
+    ...spec,
+  });
+  return new Run(program, dt, 400);
+}
+
+/** Whether the published gate reads DISENGAGED at `value`, by this
+ * viewer's own arithmetic rather than by a tolerance. */
+function disengaged(value: number): boolean {
+  const shifted = value + GAP;
+  return shifted - 360 * Math.floor(shifted / 360) < 2 * GAP;
+}
+
+describe('a law that reads the coordinate it drives (tasks 6)', () => {
+  it('6.1 loads with the shape the framework publishes', () => {
+    const run = clearingRun();
+    const edge = run.state !== undefined
+      ? (run as unknown as { program: LoadedProgram }).program.edges[0]
+      : null;
+    expect(edge!.needs).toEqual(['setter', 'ring', 'wheel.turn']);
+    expect(edge!.gives).toEqual(['wheel.turn']);
+    expect(edge!.retained).toHaveLength(1);
+    expect(edge!.retained[0]!.own).toBe('wheel.turn');
+    expect(run.state()['wheel.turn']).toBe(108);
+  });
+
+  it('6.2 the dial clears to its gap and the RING RUNS ON', () => {
+    const run = clearingRun();
+    const command = run.move('ring', { by: 600, duration: 0.25 });
+    for (let tick = 0; tick < 8; tick += 1) run.advance();
+    const dial = run.state()['wheel.turn'];
+    // Within the band half-width of a full turn, in the sweep's own
+    // direction, at a value the published gate reads DISENGAGED.
+    expect(Math.abs(dial - 360)).toBeLessThanOrEqual(GAP);
+    expect(dial).toBeLessThan(360);
+    expect(disengaged(dial)).toBe(true);
+    // The ring completed its whole travel even so.
+    expect(run.state().ring).toBeCloseTo(600, 9);
+    expect(command.status).toBe('completed');
+    // One crossing, in the crossing record, and NO stop.
+    expect(run.crossings().filter(
+      (one) => one.coordinate === 'wheel.turn' && one.primitive === 'floor',
+    ).length).toBeGreaterThanOrEqual(1);
+    expect(run.stops()).toEqual([]);
+  });
+
+  it('6.3 a second and a third sweep move the dial by NOTHING -- the same '
+     + 'float, bit for bit', () => {
+    const run = clearingRun();
+    run.move('ring', { by: 600, duration: 0.25 });
+    for (let tick = 0; tick < 8; tick += 1) run.advance();
+    const cleared = run.state()['wheel.turn'];
+    for (const sweep of [2, 3]) {
+      const command = run.move('ring', { by: 600, duration: 0.25 });
+      for (let tick = 0; tick < 8; tick += 1) run.advance();
+      expect(Object.is(run.state()['wheel.turn'], cleared)).toBe(true);
+      expect(command.status).toBe('completed');
+      void sweep;
+    }
+    expect(run.stops()).toEqual([]);
+  });
+
+  it('6.4 swept BACKWARD from inside the station the dial ends on the '
+     + 'band\'s UPPER edge and does not move again', () => {
+    // The ring RESTS inside its station, so the approach itself turns
+    // nothing: the dial stands at 108 with the gate engaged.
+    const run = clearingRun(0.05, 108, 300);
+    run.move('ring', { by: -250, duration: 0.25 });
+    for (let tick = 0; tick < 8; tick += 1) run.advance();
+    const dial = run.state()['wheel.turn'];
+    expect(disengaged(dial)).toBe(true);
+    // The UPPER edge of the band, which is the first value BELOW `GAP`
+    // at which the gate disengages.
+    expect(dial).toBeLessThan(GAP);
+    expect(dial).toBeGreaterThan(GAP - 1e-12);
+    const stood = dial;
+    run.move('ring', { to: 300, duration: 0.1 });
+    for (let tick = 0; tick < 4; tick += 1) run.advance();
+    run.move('ring', { by: -250, duration: 0.25 });
+    for (let tick = 0; tick < 8; tick += 1) run.advance();
+    expect(Object.is(run.state()['wheel.turn'], stood)).toBe(true);
+  });
+
+  it('6.5 a dial standing EXACTLY at a band edge holds in the direction '
+     + 'that takes it deeper and turns in the one that leaves', () => {
+    // At `wheel.turn == 0.5` the gate's level is exactly zero: `>=`
+    // reads ENGAGED there, and rule (c) decides the piece by where the
+    // level GOES.
+    const forward = clearingRun(0.05, GAP, 200);
+    forward.move('ring', { by: 50, duration: 0.05 });
+    forward.advance();
+    // Leaving the band: the dial turns with the ring.
+    expect(forward.state()['wheel.turn']).toBe(GAP + 50);
+
+    const backward = clearingRun(0.05, GAP, 200);
+    const stood = backward.state()['wheel.turn'];
+    expect(stood).toBe(GAP);
+    backward.move('ring', { by: -50, duration: 0.05 });
+    backward.advance();
+    // Deeper into the band: the dial holds, bit for bit.
+    expect(Object.is(backward.state()['wheel.turn'], stood)).toBe(true);
+  });
+
+  it('6.6 the same sweep at one tick, twelve and two hundred and forty '
+     + 'agrees within the run\'s agreement window', () => {
+    const answers = [1, 12, 240].map((ticks) => {
+      const run = clearingRun(0.25 / ticks);
+      const command = run.move('ring', { by: 600, duration: 0.25 });
+      for (let tick = 0; tick < ticks * 4; tick += 1) run.advance();
+      expect(command.status).toBe('completed');
+      expect(run.stops()).toEqual([]);
+      return run.state()['wheel.turn'];
+    });
+    for (const answer of answers) {
+      expect(Math.abs(answer - answers[0]))
+        .toBeLessThanOrEqual(1e-9 * Math.max(1, Math.abs(answer)));
+      expect(disengaged(answer)).toBe(true);
+    }
+  });
+
+  it('6.7 a run state taken after a partial sweep and restored resumes '
+     + 'from the same float and reaches the same band edge', () => {
+    const run = clearingRun();
+    run.move('ring', { by: 600, duration: 0.25 });
+    run.advance();
+    run.advance();
+    const taken = run.snapshot();
+    const midway = run.state()['wheel.turn'];
+    for (let tick = 0; tick < 6; tick += 1) run.advance();
+    const reached = run.state()['wheel.turn'];
+
+    run.restore(taken);
+    expect(Object.is(run.state()['wheel.turn'], midway)).toBe(true);
+    for (let tick = 0; tick < 6; tick += 1) run.advance();
+    expect(Object.is(run.state()['wheel.turn'], reached)).toBe(true);
+  });
+
+  it('6.8 `StoppedClearing`: one segment reports BOTH a landing and a '
+     + 'bound on the same coordinate, and the BOUND wins', () => {
+    const program = bench({
+      coordinates: {
+        setter: input(0), ring: input(0), gauge_in: input(0),
+        'wheel.turn': coordinate(108), 'gauge.turn': coordinate(0),
+      },
+      edges: [
+        CLEARING_EDGE,
+        { kind: 'wiring', needs: ['gauge_in'], gives: ['gauge.turn'],
+          description: 'gauge_in drives gauge.turn', stated_by:
+          'StoppedClearing', factor: 1.0 },
+      ],
+      spans: {
+        'wheel.turn': { low: null, high: 400.0 },
+        'gauge.turn': { low: null, high: 40.0 },
+      },
+      sources: {
+        setter: ['setter'], ring: ['ring'], gauge_in: ['gauge_in'],
+        'wheel.turn': ['ring', 'setter'], 'gauge.turn': ['gauge_in'],
+      },
+    });
+    const run = new Run(program, 0.05, 400);
+    run.move('ring', { by: 600, duration: 0.25 });
+    run.move('gauge_in', { by: 100, duration: 0.25 });
+    run.move('setter', { by: 100, duration: 0.25 });
+    run.advance();
+    run.advance();
+    let seen = run.stops().length;
+    run.advance();
+
+    // The framework's own third tick, to the digit.
+    const bank = run.state();
+    expect(bank['wheel.turn']).toBe(400);
+    expect(bank['gauge.turn']).toBe(40);
+    expect(bank.ring).toBeCloseTo(341.1428571428571, 9);
+    expect(bank.setter).toBeCloseTo(56.85714285714286, 9);
+
+    const stops = run.stops().slice(seen);
+    expect(stops.map((one) => one.coordinate))
+      .toEqual(['gauge.turn', 'wheel.turn']);
+    expect(stops[0].t).toBe(0);
+    expect(stops[0].inputs).toEqual(['gauge_in']);
+    expect(stops[1].value).toBe(400);
+    expect(stops[1].t).toBeCloseTo(0.8428571428571429, 9);
+    expect(stops[1].inputs).toEqual(['ring', 'setter']);
+    seen = 0;
+  });
+});
+
+describe('what the run does with a landing (design D4, D5, tasks 5)', () => {
+  // A gate whose surface is NOT a float the tick's own arithmetic
+  // reproduces: the dial holds at `11.9`, and `value + delta` from a
+  // rest of `3.7` gives `11.899999999999999` -- one ulp BACK TOWARD the
+  // surface, which is the ENGAGED side of the gate. That ulp is the
+  // whole of what `landed` is for, so it is what these two pin.
+  const LOSSY_EDGE = {
+    kind: 'law',
+    needs: ['ring', 'wheel.turn'],
+    gives: ['wheel.turn'],
+    description: '(ring, wheel.turn) drives wheel.turn',
+    stated_by: 'Bench',
+    expressions: [
+      '(ring * (1.0 - ((floor((wheel.turn / 1.7)) - 7.0) >= 0.0)))',
+    ],
+    affine: [true],
+    plans: [{
+      skeleton: '(ring * (1.0 - _j1))',
+      jumps: [
+        { name: '_j0', primitive: 'floor', level: '(wheel.turn / 1.7)',
+          affine: true },
+        { name: '_j1', primitive: '>=', level: '(_j0 - 7.0)', affine: true },
+      ],
+    }],
+  };
+
+  it('5.2 applies the landing after the FULL-STRETCH pass, before the '
+     + 'bounds are examined', () => {
+    const program = bench({
+      coordinates: { ring: input(0), 'wheel.turn': coordinate(3.7) },
+      edges: [LOSSY_EDGE],
+      sources: { ring: ['ring'], 'wheel.turn': ['ring'] },
+    });
+    const run = new Run(program, 0.25, 400);
+    run.move('ring', { to: 100, duration: 0.25 });
+    run.advance();
+    // The float the WALK left it at, not the starting value plus the
+    // increment: `3.7 + (11.9 - 3.7)` is `11.899999999999999`, which
+    // reads ENGAGED.
+    expect(run.state()['wheel.turn']).toBe(11.9);
+    expect(3.7 + (11.9 - 3.7)).toBe(11.899999999999999);
+    expect(Math.floor(11.899999999999999 / 1.7)).toBe(6);
+    // And so a further sweep moves it by nothing at all.
+    run.move('ring', { to: 200, duration: 0.25 });
+    run.advance();
+    expect(run.state()['wheel.turn']).toBe(11.9);
+  });
+
+  it('5.2 applies the landing after the SEGMENT pass too -- the place a '
+     + 'later stretch cannot quietly put right', () => {
+    const program = bench({
+      coordinates: {
+        ring: input(0), 'shaft.turn': coordinate(0),
+        'wheel.turn': coordinate(3.7),
+      },
+      edges: [
+        { kind: 'wiring', needs: ['ring'], gives: ['shaft.turn'],
+          description: 'ring drives shaft.turn', stated_by: 'Bench',
+          factor: 1.0 },
+        LOSSY_EDGE,
+      ],
+      // A shaft the RING drives, bounded, and reaching its bound AFTER
+      // the dial has landed: the stop blocks the ring for the rest of
+      // the tick, so the segment's landing is what the tick commits and
+      // no later stretch can land it a second time.
+      spans: { 'shaft.turn': { low: null, high: 60.0 } },
+      sources: {
+        ring: ['ring'], 'shaft.turn': ['ring'], 'wheel.turn': ['ring'],
+      },
+    });
+    const run = new Run(program, 0.25, 400);
+    const command = run.move('ring', { to: 100, duration: 0.25 });
+    run.advance();
+    expect(run.stops().map((one) => one.coordinate)).toEqual(['shaft.turn']);
+    expect(run.stops()[0].t).toBeCloseTo(0.6, 12);
+    expect(run.stops()[0].inputs).toEqual(['ring']);
+    expect(run.state()['shaft.turn']).toBe(60);
+    expect(command.status).toBe('blocked');
+    expect(run.state()['wheel.turn']).toBe(11.9);
+  });
+
+  it('5.3 a tick that fails AFTER a cut commits nothing -- not the '
+     + 'landing, not the crossing, not the bank', () => {
+    const program = bench({
+      coordinates: {
+        setter: input(0), ring: input(0), 'wheel.turn': coordinate(108),
+      },
+      edges: [
+        CLEARING_EDGE,
+        // A second law determining the same coordinate, disagreeing.
+        law(['setter'], ['wheel.turn'], '(setter * 7.0)',
+            'a second opinion about wheel.turn'),
+      ],
+      sources: {
+        setter: ['setter'], ring: ['ring'], 'wheel.turn': ['ring', 'setter'],
+      },
+    });
+    const run = new Run(program, 0.25, 400);
+    const command = run.move('ring', { to: 600, duration: 0.25 });
+    expect(() => run.advance()).toThrow(/wheel\.turn/);
+    expect(run.state()['wheel.turn']).toBe(108);
+    expect(run.state().ring).toBe(0);
+    expect(run.tick()).toBe(0);
+    expect(run.crossings()).toEqual([]);
+    expect(run.stops()).toEqual([]);
+    expect(command.status).toBe('refused');
+  });
+
+  it('5.3 `refusalKind` maps the landing invariant to its own kind, not '
+     + 'to a broken STOP invariant', () => {
+    expect(refusalKind(new LandingInvariantError('nowhere'))).toBe('landing');
+    expect(refusalKind(new StopInvariantError('runaway'))).toBe('stop');
+  });
+
+  it('5.4 a self-read crossing is recorded as a CROSSING and never as a '
+     + 'stop, and stops no input', () => {
+    const run = clearingRun();
+    const command = run.move('ring', { by: 600, duration: 0.25 });
+    for (let tick = 0; tick < 8; tick += 1) run.advance();
+    expect(run.stops()).toEqual([]);
+    expect(command.status).toBe('completed');
+    const mine = run.crossings().filter(
+      (one) => one.coordinate === 'wheel.turn');
+    expect(mine.length).toBeGreaterThan(0);
+    for (const one of mine) {
+      expect(one.relation)
+        .toBe('(setter, ring, wheel.turn) drives wheel.turn');
+      expect(['floor', '==', '>=']).toContain(one.primitive);
+      expect(one.t).toBeGreaterThanOrEqual(0);
+      expect(one.t).toBeLessThanOrEqual(1);
+    }
   });
 });

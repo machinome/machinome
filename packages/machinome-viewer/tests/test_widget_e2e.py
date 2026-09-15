@@ -188,9 +188,14 @@ class ViewerMountApiTest(TestCase):
         self.assertEqual(result['bundle'], result['handle'])
         # OpenSpec `draw-what-a-part-carries`: drawing the markings a
         # document's parts carry is a capability a host may require, so
-        # the declared version moves. 13 is skipped deliberately (design
-        # D9), the in-flight `slide-and-turn-parts` cycle claiming it.
-        self.assertEqual(result['bundle'], 14)
+        # the declared version moves to 14. 13 is skipped deliberately
+        # (design D9), the in-flight `slide-and-turn-parts` cycle
+        # claiming it. OpenSpec `execute-the-self-read`: executing a
+        # version 6 document -- a law that reads the coordinate it
+        # drives -- is the next such capability, and unlike `controls`
+        # and `markings` it is not additive, so this moves to 15 and the
+        # document list moves with it.
+        self.assertEqual(result['bundle'], 15)
         # And a document carrying no program has no run, which is what a
         # host asking one question is answered with.
         self.assertIsNone(result['run'])

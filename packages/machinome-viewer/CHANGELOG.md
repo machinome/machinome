@@ -7,6 +7,64 @@ it carries release together and share one version.
 
 The viewer stops posing a machine and starts running one.
 
+- **The worker executes a law that READS THE COORDINATE IT DRIVES.**
+  solid-node's ADR-121 gave a law the one thing every law it admitted
+  before was forbidden: the coordinate a law determines may appear among
+  the values it reads, and what it reads there is the value that
+  coordinate RETAINS. The mechanism is the Curta's clearing rack — a ring
+  carrying nine-tooth racks sweeps past the register dials, and a rack
+  turns a dial only while its teeth reach it AND the dial is not already
+  standing in its missing-tooth gap, which is what lets the ring go on
+  sweeping past a finished dial while it still clears the dials beyond
+  it. The producer publishes such a program as a **version 6** document
+  and adds no key for it: the self-read is a law edge whose read set
+  meets its own determined set, and this viewer recognises it from
+  exactly that. Over one step such a law is integrated PIECE BY PIECE —
+  the independent jump nodes partition the path as they always did,
+  their branches read at the midpoints; inside each of their pieces the
+  nodes that depend on the driven coordinate are walked, their branches
+  read at the piece's LEFT END with that coordinate at its retained
+  value; the piece is cut at the first surface any of them reaches
+  strictly inside it; and the coordinate is then placed at the nearest
+  representable value on the FAR SIDE of the surface, found by bisecting
+  in ordinal float space. A step whose cut placed the coordinate commits
+  that float rather than its starting value plus the increment — a ulp
+  back toward the surface is the ENGAGED side of the gate — and a
+  declared bound on the same coordinate in the same segment still wins,
+  because a physical bound is a bound of the coordinate itself. A law
+  that reads nothing of its own takes the path it always took, at the
+  cost it always paid: one array-length test per edge per step and
+  nothing else. (OpenSpec change `execute-the-self-read`, ADR-057, on
+  top of solid-node's ADR-121.)
+
+- **The Curta's own clearing interface mounts and clears six dials in a
+  browser.** The framework's own `CurtaInterface` — six register dials in
+  two rows of three, one clearing input, the originating project's
+  measured rack starts, pitches and stations — is exported verbatim as a
+  version 6 document and mounted in Chromium. One sweep of the clearing
+  input leaves all six dials at exactly `359.5`, which is the number the
+  framework's own suite asserts for the same machine; a second sweep
+  completes its whole travel and moves no dial AT ALL, bit for bit; no
+  stop is recorded and every crossing names a dial's own coordinate. Its
+  station window is a `clamp01`, so every one of its self-read crossings
+  is a searched one: it runs correctly at the viewer's default `1/240` s
+  step and, on the development bench, at about 0.79× real time.
+
+- **The conformance corpus is the producer's regenerated one** — 17
+  scenarios over 14 machines, 328 ticks, including `Clearing` at two step
+  sizes and `StoppedClearing` — replayed here through the shipped engine
+  and compared tick by tick. The width guard gains the producer's three
+  new required features, so a narrower corpus copied in is loud here
+  without anyone running the generator.
+
+- **`documentVersions` becomes `[1, 2, 3, 4, 5, 6]` and the declared API
+  version rises to 15.** Executing a version 6 document is a capability a
+  host may require BEFORE it mounts, because unlike a `controls` table or
+  a `markings` list it is not additive: a build at the previous version
+  refuses such a document by name and renders nothing at all.
+  `bundle.py`'s released-versions floor does not move — it is what a
+  viewer that predates the declaration is entitled to be assumed to read.
+
 - **A document that carries a compiled mechanical program is executed.**
   solid-node's version 5 document is a version 4 one plus a `program`
   object — the bank of coordinates with their rest values, the values the
@@ -56,7 +114,7 @@ The viewer stops posing a machine and starts running one.
 - **The declared API version rises to 8**, and `describe` reports
   `documentVersions` beside it — the document schema versions this build
   reads, from the same single declaration the bundle refuses by, so a
-  producer can ask rather than infer. A version 6 document is refused by
+  producer can ask rather than infer. A version 7 document is refused by
   name and by list, which is the sentence every viewer released so far
   gives a version 5 one.
 

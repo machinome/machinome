@@ -19,6 +19,7 @@ import { describe, expect, it } from 'vitest';
 import corpus from '../running-corpus.json';
 import acceptance from '../../../../tests/fixtures/pascaline/viewer.json';
 import lock from '../../../../tests/fixtures/lock/viewer.json';
+import clearing from '../../../../tests/fixtures/clearing/viewer.json';
 import { Engine } from './engine';
 import type { RunDocument } from './program';
 
@@ -66,8 +67,13 @@ describe('the cost of a tick', () => {
   it('pays nothing for a constraint in a machine that declares none',
      () => {
     // The no-regression floor the other way (design D9): `Train`
-    // declares no bound reading another coordinate, so nothing this
-    // cycle added may cost it anything.
+    // declares no bound reading another coordinate, so nothing that
+    // cycle added may cost it anything -- and it states no law reading
+    // the coordinate it drives either, so nothing THIS cycle added may
+    // either. A document with no self-read pays one array-length test
+    // per edge per tick and nothing else: measured on this bench at
+    // 140 663 ticks/s before and 165 250 ticks/s after, which is to say
+    // inside this host's run-to-run spread (design D8, tasks 10.2).
     const train = machines.find((one) => one.name === 'Train')!;
     const engine = Engine.load(train.document as RunDocument,
                                { dt: train.dt, record: null });
@@ -108,6 +114,31 @@ describe('the cost of a tick', () => {
     expect(ticksPerSecond('the lock, advancing the key', engine, 2400))
       .toBeGreaterThan(15);
   }, 120_000);
+
+  it('solves a self-read whose skeleton IS affine', () => {
+    // The corpus's own `Clearing`: one dial, one ring, one setter, and a
+    // skeleton the producer published as affine -- so every self-read
+    // crossing of it is SOLVED from the piece's two endpoint values.
+    const machine = machines.find((one) => one.name === 'Clearing')!;
+    const engine = Engine.load(machine.document as RunDocument,
+                               { dt: machine.dt, record: null });
+    engine.move('ring', { by: 100000, duration: machine.dt * 20000 });
+    expect(ticksPerSecond('Clearing, a solved self-read', engine, 20000))
+      .toBeGreaterThan(1000);
+  }, 120_000);
+
+  it('searches six self-read dials through a `clamp01` window', () => {
+    // The Curta's own clearing interface: six dials, each its own
+    // self-read edge, each with a `clamp01` station window that makes
+    // the SKELETON non-affine -- so every one of its self-read crossings
+    // falls to the 64-sample search plus its bisection. This is the
+    // worst case this cycle has, and the number is what it costs.
+    const engine = Engine.load(clearing as unknown as RunDocument,
+                               { dt: 1 / 240, record: null });
+    engine.move('clearing', { by: 1, duration: 10 });
+    expect(ticksPerSecond('the Curta fixture at dt = 1/240', engine, 2400))
+      .toBeGreaterThan(10);
+  }, 240_000);
 
   it('runs the acceptance machine far faster than real time', () => {
     const engine = Engine.load(acceptance as unknown as RunDocument,

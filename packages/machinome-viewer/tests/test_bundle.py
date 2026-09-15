@@ -25,15 +25,29 @@ class BundleLookupTest(TestCase):
         self.assertTrue(froms <= {'pathlib', 'importlib.metadata', 'solid_node_viewer'},
                         froms)
 
-    def test_declares_api_version_fourteen(self):
+    def test_declares_api_version_fifteen(self):
         # OpenSpec `draw-what-a-part-carries`, design D9: drawing a
         # document's markings is a capability a host may require, so the
-        # declared version moves. 13 is skipped deliberately -- the
-        # in-flight `slide-and-turn-parts` cycle claims it.
-        self.assertEqual(bundle.api_version(), 14)
+        # declared version moves to 14. 13 is skipped deliberately --
+        # the in-flight `slide-and-turn-parts` cycle claims it.
+        # OpenSpec `execute-the-self-read`, design D6: executing a
+        # version 6 document -- a law that reads the coordinate it
+        # drives -- is the next such capability, and unlike `controls`
+        # and `markings` it is NOT additive, so the document list moves
+        # with it.
+        self.assertEqual(bundle.api_version(), 15)
 
     def test_declares_the_document_versions_this_build_reads(self):
-        self.assertEqual(bundle.document_versions(), [1, 2, 3, 4, 5])
+        self.assertEqual(bundle.document_versions(), [1, 2, 3, 4, 5, 6])
+
+    def test_the_released_floor_does_not_move_with_the_build(self):
+        # `RELEASED_DOCUMENT_VERSIONS` is what a viewer that PREDATES
+        # the declaration is entitled to be assumed to read, and the
+        # only released viewer is 0.1.0, which read [1, 2, 3, 4]. It is
+        # a floor for builds without the key, not a mirror of this one.
+        self.assertEqual(bundle.RELEASED_DOCUMENT_VERSIONS, [1, 2, 3, 4])
+        self.assertNotEqual(bundle.RELEASED_DOCUMENT_VERSIONS,
+                            bundle.document_versions())
 
     def test_paths_and_remedy_share_one_source(self):
         self.assertTrue(str(bundle.bundle_path()).endswith('widget/dist/solid-widget.js'))

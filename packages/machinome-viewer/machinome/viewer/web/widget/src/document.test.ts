@@ -197,16 +197,19 @@ describe('assertRenderable on a flexible document', () => {
   it('refuses a version it does not render, naming it and the ones it does', () => {
     // OpenSpec `run-in-the-worker`: version 5 is now RENDERED (see the
     // `assertRenderable on a document carrying a program` suite below),
-    // so the version this test names moves to 6, the next one still
-    // refused -- the same sentence a version 5 document got from every
-    // viewer released so far.
+    // so the version this test names moved to 6. OpenSpec
+    // `execute-the-self-read`: version 6 is now rendered too, so it
+    // moves again to 7 -- the next one still refused, and the same
+    // sentence a version 5 document got from every viewer released so
+    // far.
     const manifest = document({
-      version: 6 as unknown as Manifest['version'],
+      version: 7 as unknown as Manifest['version'],
       root: node('root', []),
     });
 
-    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b6\b/);
-    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/1, 2, 3, 4, 5/);
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b7\b/);
+    expect(() => assertRenderable(manifest, '/m.json'))
+      .toThrow(/1, 2, 3, 4, 5, 6/);
     expect(() => assertRenderable(manifest, '/m.json')).toThrow(/m\.json/);
   });
 
@@ -486,8 +489,33 @@ function withProgram(overrides: Record<string, unknown> = {},
 }
 
 describe('assertRenderable on a document carrying a program', () => {
-  it('renders version 5 and says so in its list', () => {
-    expect(RENDERED_VERSIONS).toEqual([1, 2, 3, 4, 5]);
+  it('renders versions 5 and 6 and says so in its list', () => {
+    expect(RENDERED_VERSIONS).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it('accepts a version 6 document -- one whose program carries a law '
+     + 'that reads the coordinate it drives -- and hands back its loaded '
+     + 'program', () => {
+    const manifest = withProgram(
+      { version: 6 as unknown as Manifest['version'] });
+    const { program } = assertRenderable(manifest, '/m.json');
+    expect(program).not.toBeNull();
+    expect(program!.identity).toBe('a-program');
+  });
+
+  it('refuses a version 6 document with NO program at all -- the second '
+     + 'clause of the gate must not let it through as a treeful document '
+     + 'with nothing to run', () => {
+    const manifest = running({ version: 6 as unknown as Manifest['version'] });
+    expect(() => assertRenderable(manifest, '/m.json'))
+      .toThrow(/"program"/);
+  });
+
+  it('refuses a version 7 document by name, naming what it renders', () => {
+    const manifest = withProgram(
+      { version: 7 as unknown as Manifest['version'] });
+    expect(() => assertRenderable(manifest, '/m.json'))
+      .toThrow(/renders versions 1, 2, 3, 4, 5, 6/);
   });
 
   it('accepts a version 5 document and hands back its loaded program', () => {

@@ -58,13 +58,19 @@ class _QuietHandler(SimpleHTTPRequestHandler):
 def carries_program(document):
     """Whether a staged document carries a compiled mechanical program.
 
-    Version 5 is version 4 plus ``program``; a document declaring the
-    running version must carry one, whether or not the key is there,
-    which is the first thing the widget's loader refuses.
+    Version 5 is version 4 plus ``program``; a document declaring a
+    RUNNING VERSION must carry one, whether or not the key is there,
+    which is the first thing the widget's loader refuses. Version 6 --
+    a program one of whose laws reads the coordinate it drives -- is
+    such a version, and so is any the framework publishes after it: the
+    test is the FLOOR, not the one number, because a document that
+    carries a program has no animation cycle whatever its version says.
     """
     if not isinstance(document, dict):
         return False
-    return document.get("program") is not None or document.get("version") == 5
+    version = document.get("version")
+    return (document.get("program") is not None
+            or (isinstance(version, int) and version >= 5))
 
 
 def mount_options(time=0.0, view=None, up=None, fov=None):

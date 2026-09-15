@@ -1821,7 +1821,7 @@ function visibleBounds(root: THREE.Object3D): THREE.Box3 {
 // the bundle and `bundle.py` both read (`solidNodeDocumentVersions` in
 // package.json): the number this viewer reports and the versions it
 // refuses by must not be able to drift apart.
-export const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4, 5];
+export const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6];
 
 // The document schema this viewer evaluates. Version 2 added the
 // `drivers` table, and since ADR-056 stage 3b this viewer EVALUATES
@@ -1954,9 +1954,12 @@ export function assertRenderable(document: Manifest,
   // before the tree's expressions are walked, so a program this engine
   // cannot execute is refused before a single pose is evaluated. A
   // document below version 5 carries none and loads exactly as it did.
-  // A document DECLARING the running version must carry one, whether or
-  // not the key is there: that is the first thing design §4 refuses.
-  const program = document.version === 5
+  // A document DECLARING A RUNNING VERSION -- 5, or the 6 a self-read
+  // law moves it to -- must carry one, whether or not the key is there:
+  // that is the first thing design §4 refuses, and a version 6 document
+  // with no `program` key must meet THAT sentence rather than be read
+  // as a treeful document with nothing to run.
+  const program = document.version >= 5
       || (document as RunDocument).program !== undefined
     ? loadProgram(document as RunDocument, sourceUrl, table)
     : null;

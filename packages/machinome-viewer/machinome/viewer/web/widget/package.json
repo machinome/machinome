@@ -1,13 +1,14 @@
 {
   "name": "@solid-node/widget",
   "version": "0.2.0",
-  "solidNodeViewerApi": 14,
+  "solidNodeViewerApi": 15,
   "solidNodeDocumentVersions": [
     1,
     2,
     3,
     4,
-    5
+    5,
+    6
   ],
   "private": true,
   "license": "AGPL-3.0-only",

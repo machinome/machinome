@@ -21,10 +21,10 @@
 // epsilon, no one-sided limit rule, no direction test anywhere.
 
 import {
-  evaluateExpression, JumpPrimitive, ProgramJump, ProgramLimits, ProgramPlan,
-  TooManyCrossings, UnsupportedLaw,
+  evaluateExpression, JumpPrimitive, LandingInvariantError, ProgramJump,
+  ProgramLimits, ProgramPlan, TooManyCrossings, UnsupportedLaw,
 } from './program';
-import type { LoadedProgram } from './program';
+import type { LoadedProgram, RetainedReading } from './program';
 
 /** One jump surface met inside one tick. `level` is the surface value in
  * the LEVEL QUANTITY's own units and `t` is the fraction of the tick at
@@ -69,6 +69,56 @@ export function branchOf(primitive: JumpPrimitive, level: number): number {
   return COMPARISONS[primitive](level) ? 1 : 0;
 }
 
+// ---------------------------------------------------------------------
+// The float primitives the far-side landing is defined in terms of
+// (design D3). `math.ulp`, `math.nextafter` and `math.copysign` have no
+// JavaScript equivalents, so `_ordinal`/`_from_ordinal` are reproduced
+// over a `Float64Array`/`BigInt64Array` view of the same eight bytes and
+// the other three are built on them. `BigInt` rather than `number`
+// because the ordinal range is the whole of int64 and `2**63` is not
+// exactly representable as a double.
+// ---------------------------------------------------------------------
+
+const BYTES = new ArrayBuffer(8);
+const AS_FLOAT = new Float64Array(BYTES);
+const AS_BITS = new BigInt64Array(BYTES);
+const TWO_63 = 2n ** 63n;
+
+/** A float as the integer its bits order by, so two floats can be
+ * bisected in FLOAT space: adjacent floats differ by one here, at any
+ * magnitude, with no tolerance anywhere, and `-0` maps to the same
+ * ordinal `0` as `+0`. */
+export function ordinalOf(value: number): bigint {
+  AS_FLOAT[0] = value;
+  const bits = AS_BITS[0];
+  return bits >= 0n ? bits : -TWO_63 - bits;
+}
+
+export function fromOrdinal(whole: bigint): number {
+  AS_BITS[0] = whole < 0n ? -TWO_63 - whole : whole;
+  return AS_FLOAT[0];
+}
+
+/** The distance from `value` to the next representable float away from
+ * zero -- `math.ulp`. */
+export function ulpOf(value: number): number {
+  const magnitude = Math.abs(value);
+  return fromOrdinal(ordinalOf(magnitude) + 1n) - magnitude;
+}
+
+/** The next representable float after `x` in the direction of `y` --
+ * `math.nextafter`. */
+export function nextAfter(x: number, y: number): number {
+  if (x === y) return y;
+  return fromOrdinal(ordinalOf(x) + (y > x ? 1n : -1n));
+}
+
+/** `math.copysign(1.0, value)`: -1 for a negative, NEGATIVE ZERO
+ * included. */
+export function copySign(value: number): number {
+  return (value < 0 || Object.is(value, -0)) ? -1 : 1;
+}
+
 export function tooMany(described: string, coordinate: string,
                         primitive: string, count: number,
                         limits: ProgramLimits): TooManyCrossings {
@@ -79,6 +129,29 @@ export function tooMany(described: string, coordinate: string,
     'the mechanism: the crossings between the frames are what a jump law ' +
     'is FOR. Step in smaller ticks. The tick committed nothing: the bank, ' +
     'the tick count and the tree stand as they were.');
+}
+
+export function chattering(described: string, coordinate: string,
+                           primitive: string): UnsupportedLaw {
+  return new UnsupportedLaw(
+    `${described}: ${coordinate} stands exactly on a surface of its ` +
+    `${primitive} and each branch carries the level back across it -- a ` +
+    'sliding mode, not a mechanism. The framework integrates a law piece ' +
+    'by piece, and there is no piece here to integrate. The tick committed ' +
+    'nothing: the bank, the tick count and the tree stand as they were.');
+}
+
+export function unlanded(described: string, coordinate: string,
+                         primitive: string,
+                         strides: number): LandingInvariantError {
+  return new LandingInvariantError(
+    `${described}: ${coordinate} was cut at a surface of ${primitive} and ` +
+    `no value within ${strides} doublings of a ulp of the segment's own ` +
+    'arithmetic reads the other branch, so the cut placed the coordinate ' +
+    'nowhere. The level crossed that surface, so this is a broken ' +
+    'invariant of the run rather than a dt that is too coarse. The tick ' +
+    'committed nothing: the bank, the tick count and the tree stand as ' +
+    'they were.');
 }
 
 export function noLevel(primitive: string, described: string,
@@ -397,6 +470,517 @@ export function planIncrement(
       - substituted(program, plan, start, delta, left, branches);
   }
   return total;
+}
+
+// ---------------------------------------------------------------------
+// A law that READS THE COORDINATE IT DRIVES (`_Retained` and `_Walk`,
+// design D2). Reuses `partition`, `branchesAt`, `levelOf`, `surfacesOf`
+// and `branchOf` above rather than a second copy of any of them: a copy
+// would drift from them at the first correction either received, which
+// is exactly the failure the conformance corpus exists to prevent.
+// ---------------------------------------------------------------------
+
+/** How far the bracket for a far-side landing is grown, in doublings of
+ * one ulp. `_WALK_STRIDES`: 200 doublings cover every distance a double
+ * can express. */
+const WALK_STRIDES = 200;
+
+/** Whether a jump node's level sits EXACTLY on one of its surfaces
+ * (`_on_surface`).
+ *
+ * Asked only at a piece's LEFT END under a self-read, where the value is
+ * the coordinate's own retained one and the question is which branch the
+ * piece begins under -- never of a midpoint, which is a point genuinely
+ * inside its piece. */
+export function onSurface(jump: ProgramJump, level: number): boolean {
+  if (jump.primitive === 'sign' || jump.primitive in COMPARISONS) {
+    return level === 0;
+  }
+  if (!Number.isFinite(level)) return false;
+  // `%` is continuous where `a / b` crosses zero, so zero is not one of
+  // its surfaces.
+  if (jump.primitive === '%' && level === 0) return false;
+  return level === Math.floor(level);
+}
+
+/** Python's `//` on two integers: FLOOR, where BigInt `/` truncates
+ * toward zero. The two differ for a negative odd sum, which is every
+ * other bisection round on a negative coordinate. */
+function halved(sum: bigint): bigint {
+  const quotient = sum / 2n;
+  return (sum < 0n && quotient * 2n !== sum) ? quotient - 1n : quotient;
+}
+
+/** One driven end's piece-by-piece walk over one tick (`_Walk`). */
+class Walk {
+  private readonly delta: Record<string, number>;
+
+  private taken = 0;
+
+  constructor(private readonly program: LoadedProgram,
+              private readonly reading: RetainedReading,
+              private readonly start: Record<string, number>,
+              delta: Record<string, number>,
+              private readonly described: string,
+              private readonly coordinate: string) {
+    this.delta = { ...delta };
+    // The driven coordinate's own source moves by NOTHING along the
+    // path: what it holds on a piece is what the pieces before it
+    // produced, never an increment the tick handed it.
+    this.delta[this.reading.own] = 0;
+  }
+
+  // ------------------------------------------------------------------
+  // The two layers
+
+  run(crossings: CrossingRecord[] | null, tick: number):
+  { increment: number; landing: number | null; cuts: number[] } {
+    const own = this.reading.own;
+    const own0 = this.start[own];
+    let moves = false;
+    for (const name in this.delta) {
+      if (!Object.prototype.hasOwnProperty.call(this.delta, name)) continue;
+      if (name !== own && this.delta[name]) moves = true;
+    }
+    if (!moves) {
+      // A tick in which no SOURCE moves contributes zero without
+      // evaluating the law, exactly as any other law's does.
+      return { increment: 0, landing: null, cuts: [0, 1] };
+    }
+    const outer = this.outerCuts(crossings, tick);
+    let ownLeft = own0;
+    let landed = false;
+    const cuts = [0];
+    for (let at = 0; at < outer.length - 1; at += 1) {
+      const left = outer[at];
+      const right = outer[at + 1];
+      const outerBranches = this.outerBranches(left, right);
+      let t = left;
+      for (;;) {
+        const branches = this.decide(t, right, ownLeft, outerBranches);
+        const base = this.skeletonAt(t, branches);
+        const from = ownLeft;
+        /** The driven coordinate's own path on this piece -- one
+         * ordinary evaluation, because the substituted skeleton does not
+         * name it. */
+        const ownAt = (s: number): number =>
+          from + this.skeletonAt(s, branches) - base;
+        const cut = this.firstCut(t, right, ownLeft, branches, ownAt);
+        if (cut === null) {
+          ownLeft = ownAt(right);
+          break;
+        }
+        const [where, crossed] = cut;
+        const ownStar = ownAt(where);
+        this.taken += 1;
+        if (this.taken > this.program.limits.maxCrossings) {
+          throw tooMany(this.described, this.coordinate,
+                        crossed[0][1].primitive, this.taken,
+                        this.program.limits);
+        }
+        ownLeft = this.land(crossed, where, ownLeft, ownStar, branches);
+        landed = true;
+        if (crossings !== null) {
+          for (const [level, jump] of crossed) {
+            crossings.push({
+              tick,
+              relation: this.described,
+              coordinate: this.coordinate,
+              primitive: jump.primitive,
+              level,
+              t: where,
+            });
+          }
+        }
+        cuts.push(where);
+        t = where;
+      }
+      cuts.push(right);
+    }
+    return {
+      increment: ownLeft - own0,
+      landing: landed ? ownLeft : null,
+      cuts,
+    };
+  }
+
+  /** Layer one: ADR-107's own partition, over the jump nodes that do not
+   * depend on the driven coordinate. */
+  private outerCuts(crossings: CrossingRecord[] | null,
+                    tick: number): number[] {
+    if (this.reading.outer.jumps.length === 0) return [0, 1];
+    return partition(this.program, this.reading.outer, this.start, this.delta,
+                     this.described, this.coordinate, crossings, tick);
+  }
+
+  private outerBranches(left: number, right: number): Record<string, number> {
+    if (this.reading.outer.jumps.length === 0) return {};
+    return branchesAt(this.program, this.reading.outer, this.start, this.delta,
+                      (left + right) / 2, this.reading.outer.jumps.length,
+                      this.described, this.coordinate);
+  }
+
+  // ------------------------------------------------------------------
+  // The branches at a piece's LEFT END
+
+  /** Every dependent node's branch at the piece's left end, in the
+   * graph's postorder, with the driven coordinate at its RETAINED value
+   * and every other source at `t`.
+   *
+   * A node whose level sits exactly on a surface takes the branch its
+   * OPERATOR gives; if the level then LEAVES the surface into the other
+   * branch's region, it is flipped there -- a zero-length piece -- and
+   * every branch is decided again. A node flipped twice is a sliding
+   * mode and refuses the tick. */
+  private decide(t: number, right: number, ownLeft: number,
+                 outerBranches: Record<string, number>):
+  Record<string, number> {
+    const forced = new Map<string, number>();
+    const attempts = 2 * this.reading.dependent.length + 1;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const { branches, sitting } =
+        this.tentative(t, ownLeft, outerBranches, forced);
+      let flip: [ProgramJump, number] | null = null;
+      for (const jump of this.reading.dependent) {
+        const surface = sitting.get(jump.name);
+        if (surface === undefined) continue;
+        const probe = this.probe(jump, surface, t, right, ownLeft, branches);
+        if (probe === null) continue;
+        // The branch of the region the level leaves the surface INTO --
+        // the one immediately on that side -- and NEVER the branch at
+        // the probe itself. A `floor` whose level departs downward from
+        // `k` enters `(k - 1, k)` whatever the sample that showed it
+        // moving reached, and a piece is integrated under the branch at
+        // its own LEFT END: on a gate that changes the rate rather than
+        // holding the part, that sample is several surfaces away and its
+        // branch is not this piece's.
+        const wanted = branchOf(jump.primitive, nextAfter(surface, probe));
+        if (wanted !== branches[jump.name]) {
+          flip = [jump, wanted];
+          break;
+        }
+      }
+      if (flip === null) return branches;
+      const [jump, wanted] = flip;
+      if (forced.has(jump.name)) {
+        throw chattering(this.described, this.coordinate, jump.primitive);
+      }
+      forced.set(jump.name, wanted);
+    }
+    throw chattering(this.described, this.coordinate,
+                     this.reading.dependent[0].primitive);
+  }
+
+  private tentative(t: number, ownLeft: number,
+                    outerBranches: Record<string, number>,
+                    forced: Map<string, number>):
+  { branches: Record<string, number>; sitting: Map<string, number> } {
+    const branches = { ...outerBranches };
+    const sitting = new Map<string, number>();
+    for (const jump of this.reading.dependent) {
+      const level = this.levelOfJump(jump, t, ownLeft, branches);
+      if (onSurface(jump, level)) sitting.set(jump.name, level);
+      const chosen = forced.get(jump.name);
+      branches[jump.name] = chosen === undefined
+        ? branchOf(jump.primitive, level) : chosen;
+    }
+    return { branches, sitting };
+  }
+
+  /** The level's value at the FIRST point of the piece at which it
+   * differs from the surface it sits on -- an inequality between two
+   * evaluated floats, with no tolerance in it. */
+  private probe(jump: ProgramJump, surface: number, t: number, right: number,
+                ownLeft: number,
+                branches: Record<string, number>): number | null {
+    const base = this.skeletonAt(t, branches);
+    const subdivisions = this.program.limits.subdivisions;
+    for (let step = 1; step <= subdivisions; step += 1) {
+      const s = t + (right - t) * step / subdivisions;
+      const own = ownLeft + this.skeletonAt(s, branches) - base;
+      const level = this.levelOfJump(jump, s, own, branches);
+      if (level !== surface) return level;
+    }
+    return null;
+  }
+
+  // ------------------------------------------------------------------
+  // The FIRST surface strictly inside the piece
+
+  private firstCut(t: number, right: number, ownLeft: number,
+                   branches: Record<string, number>,
+                   ownAt: (s: number) => number):
+  [number, [number, ProgramJump][]] | null {
+    const found: [number, number, ProgramJump][] = [];
+    for (const jump of this.reading.dependent) {
+      const crossing = this.crossing(jump, t, right, ownLeft, branches, ownAt);
+      if (crossing !== null) found.push([crossing[0], crossing[1], jump]);
+    }
+    if (found.length === 0) return null;
+    let first = found[0][0];
+    for (const [where] of found) if (where < first) first = where;
+    // Two dependent nodes crossing at one fraction are ONE cut, and each
+    // takes its far side.
+    const crossed: [number, ProgramJump][] = found
+      .filter(([where]) => where - first <= this.program.limits.crossingTolerance)
+      .map(([, level, jump]) => [level, jump]);
+    return [first, crossed];
+  }
+
+  private crossing(jump: ProgramJump, t: number, right: number,
+                   ownLeft: number, branches: Record<string, number>,
+                   ownAt: (s: number) => number): [number, number] | null {
+    const limits = this.program.limits;
+    const refuse = (count: number | null): never => {
+      if (count === null) {
+        throw noLevel(jump.primitive, this.described, this.coordinate);
+      }
+      throw tooMany(this.described, this.coordinate, jump.primitive, count,
+                    limits);
+    };
+    if (jump.affine && this.reading.affine) {
+      // Note the difference from `crossingsOf`, which returns ALL the
+      // surfaces between the two endpoints: under a self-read the path
+      // is known only until the branch changes, so the walk takes the
+      // FIRST and decides again. Three tooth windows in one tick are
+      // still three throws, as three successive pieces.
+      const low = this.levelOfJump(jump, t, ownLeft, branches);
+      const high = this.levelOfJump(jump, right, ownAt(right), branches);
+      if (high === low) return null;
+      const found = surfacesOf(jump, low, high, false, limits, refuse);
+      if (found.length === 0) return null;
+      let best: [number, number] | null = null;
+      for (const level of found) {
+        const where = t + (right - t) * (level - low) / (high - low);
+        if (best === null || where < best[0]) best = [where, level];
+      }
+      return best;
+    }
+    return this.searched(jump, t, right, ownLeft, branches, ownAt, refuse);
+  }
+
+  /** A level that is not affine along the path: sampled, bracketed and
+   * bisected on the same three tolerances a jump search already uses,
+   * and stopped at the FIRST surface it reaches. */
+  private searched(jump: ProgramJump, t: number, right: number,
+                   ownLeft: number, branches: Record<string, number>,
+                   ownAt: (s: number) => number,
+                   refuse: (count: number | null) => never):
+  [number, number] | null {
+    const limits = this.program.limits;
+    const width = (right - t) / limits.subdivisions;
+    let previous = this.levelOfJump(jump, t, ownLeft, branches);
+    for (let step = 1; step <= limits.subdivisions; step += 1) {
+      const s = t + width * step;
+      const level = this.levelOfJump(jump, s, ownAt(s), branches);
+      if (level === previous) {
+        // A level that does not MOVE crosses nothing. Worth saying here
+        // and nowhere else: a dependent node whose branch holds the
+        // driven coordinate still sits exactly on the surface it was
+        // landed at for the whole piece, and an inclusive search would
+        // report that surface as reached over and over.
+        continue;
+      }
+      const found = surfacesOf(jump, previous, level, true, limits, refuse)
+        // The surface a sub-interval STARTS on is not one it crosses. At
+        // the piece's left end that surface is `decide`'s to answer, and
+        // at an interior sample it was reached in the sub-interval
+        // before and reported there -- the far-side landing leaves the
+        // coordinate reading the far branch, so a level that walks on
+        // from a surface it was placed at is LEAVING it.
+        .filter((surface) => surface !== previous);
+      // `surfacesOf` counts upward, so the surface the path reaches
+      // FIRST is the one nearest the sample it starts from: `found[0]`
+      // is the LAST one a DESCENDING level crosses, and cutting there
+      // would integrate everything before it under a branch the path had
+      // already left.
+      const nearest = [...found].sort(
+        (a, b) => Math.abs(a - previous) - Math.abs(b - previous));
+      for (const surface of nearest) {
+        // A sample that IS on the surface is the crossing, at that
+        // sample; there is nothing to bisect toward.
+        const where = level === surface
+          ? s
+          : this.bisectTo(jump, surface, previous, s - width, s, branches,
+                          ownAt);
+        // Every crossing strictly inside the piece is returned, one a
+        // hair from its left end included: folding that one away would
+        // integrate the piece under the near-side branch and drive the
+        // part through its gap. `merged` and `deduplicated` belong to
+        // layer one only.
+        if (where > t) return [where, surface];
+      }
+      previous = level;
+    }
+    return null;
+  }
+
+  /** The bracket `[low, high]` narrowed onto `level`.
+   *
+   * `below` is the level at `low`, and `searched` has already excluded a
+   * surface EQUAL to it, so the sign test below brackets something: a
+   * `below` of zero would put every round in the `else` arm and collapse
+   * the answer onto `high`. */
+  private bisectTo(jump: ProgramJump, level: number, below: number,
+                   low: number, high: number,
+                   branches: Record<string, number>,
+                   ownAt: (s: number) => number): number {
+    const limits = this.program.limits;
+    let under = below - level;
+    let lower = low;
+    let upper = high;
+    for (let round = 0; round < limits.bisectionRounds; round += 1) {
+      if (upper - lower <= limits.crossingTolerance) break;
+      const middle = (lower + upper) / 2;
+      const here =
+        this.levelOfJump(jump, middle, ownAt(middle), branches) - level;
+      if (here === 0 || (here < 0) !== (under < 0)) {
+        upper = middle;
+      } else {
+        lower = middle;
+        under = here;
+      }
+    }
+    return (lower + upper) / 2;
+  }
+
+  // ------------------------------------------------------------------
+  // The FAR-SIDE landing
+
+  /** After a cut the driven coordinate is placed at the nearest
+   * representable value on the FAR side of the surface.
+   *
+   * ADR-108's "committed AT its bound exactly", transposed to a surface
+   * that is not stated in the coordinate's own units: the segment's
+   * arithmetic finds the landing, and the landing is then walked to the
+   * adjacent float. Where the piece did NOT move the coordinate there is
+   * nothing to walk -- the level crossed by the sources' motion while
+   * the gate held, and the coordinate stands where it stood. */
+  private land(crossed: [number, ProgramJump][], where: number,
+               ownLeft: number, ownStar: number,
+               branches: Record<string, number>): number {
+    if (ownStar === ownLeft) return ownStar;
+    const direction = copySign(ownStar - ownLeft);
+    let landing = ownStar;
+    for (const [, jump] of crossed) {
+      landing = this.farSide(jump, where, landing, direction, branches);
+    }
+    return landing;
+  }
+
+  private farSide(jump: ProgramJump, where: number, ownStar: number,
+                  direction: number,
+                  branches: Record<string, number>): number {
+    const near = branches[jump.name];
+    const branchAt = (value: number): number =>
+      branchOf(jump.primitive,
+               this.levelOfJump(jump, where, value, branches));
+    const step = ownStar ? ulpOf(ownStar) : 5e-324;
+    let inside: number | null;
+    let far: number | null;
+    if (branchAt(ownStar) !== near) {
+      // The segment's arithmetic already landed PAST the surface, which
+      // it does about as often as it lands short, so the bracket is
+      // sought in both directions.
+      far = ownStar;
+      inside = null;
+      for (let power = 0; power < WALK_STRIDES; power += 1) {
+        const candidate = ownStar - direction * step * (2 ** power);
+        if (branchAt(candidate) === near) {
+          inside = candidate;
+          break;
+        }
+      }
+      if (inside === null) {
+        // Unreachable by construction, and loud rather than silent
+        // because of it: the cut exists because the level crossed this
+        // surface, so the branch differs somewhere on either side of it,
+        // and 200 doublings of a ulp cover every distance a double
+        // expresses. NO TEST CAN REACH THIS; committing `ownStar`
+        // instead would commit a value the design says is never
+        // committed.
+        throw unlanded(this.described, this.coordinate, jump.primitive,
+                       WALK_STRIDES);
+      }
+    } else {
+      inside = ownStar;
+      far = null;
+      for (let power = 0; power < WALK_STRIDES; power += 1) {
+        const candidate = ownStar + direction * step * (2 ** power);
+        if (branchAt(candidate) !== near) {
+          far = candidate;
+          break;
+        }
+      }
+      if (far === null) {
+        throw unlanded(this.described, this.coordinate, jump.primitive,
+                       WALK_STRIDES);
+      }
+    }
+    let low = ordinalOf(inside);
+    let high = ordinalOf(far);
+    for (;;) {
+      const span = high - low;
+      if ((span < 0n ? -span : span) <= 1n) break;
+      const middle = halved(low + high);
+      if (branchAt(fromOrdinal(middle)) === near) low = middle;
+      else high = middle;
+    }
+    return fromOrdinal(high);
+  }
+
+  // ------------------------------------------------------------------
+  // Evaluation
+
+  private skeletonAt(t: number, branches: Record<string, number>): number {
+    const values = along(this.start, this.delta, t);
+    for (const name in branches) {
+      if (Object.prototype.hasOwnProperty.call(branches, name)) {
+        values[name] = branches[name];
+      }
+    }
+    return evaluateExpression(this.program, this.reading.outer.skeleton,
+                              values);
+  }
+
+  private levelOfJump(jump: ProgramJump, t: number, ownValue: number,
+                      branches: Record<string, number>): number {
+    const values = along(this.start, this.delta, t);
+    values[this.reading.own] = ownValue;
+    for (const name in branches) {
+      if (Object.prototype.hasOwnProperty.call(branches, name)) {
+        values[name] = branches[name];
+      }
+    }
+    return levelOf(this.program, this.reading.outer, jump, values,
+                   this.described, this.coordinate);
+  }
+}
+
+/** `{ increment, landing }`: what a self-read driven end MOVES BY over
+ * the tick, and the ABSOLUTE value it holds at the tick's end where at
+ * least one cut placed it -- `null` where none did
+ * (`_Retained.increment`). */
+export function retainedIncrement(
+  program: LoadedProgram, reading: RetainedReading,
+  start: Record<string, number>, delta: Record<string, number>,
+  described: string, coordinate: string,
+  crossings: CrossingRecord[] | null, tick: number,
+): { increment: number; landing: number | null } {
+  const walk = new Walk(program, reading, start, delta, described, coordinate);
+  const { increment, landing } = walk.run(crossings, tick);
+  return { increment, landing };
+}
+
+/** The breakpoints the two layers together put on the path
+ * (`_Retained.cuts`). */
+export function retainedCuts(
+  program: LoadedProgram, reading: RetainedReading,
+  start: Record<string, number>, delta: Record<string, number>,
+  described: string, coordinate: string,
+): number[] {
+  const walk = new Walk(program, reading, start, delta, described, coordinate);
+  return walk.run(null, 0).cuts;
 }
 
 /** The breakpoints this law's own jumps put on the tick's path.

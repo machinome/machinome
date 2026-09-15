@@ -27,8 +27,9 @@ import { Command, CommandRecord } from './commands';
 import { edgeCuts, edgeIncrements, edgeValues, predictsOf } from './edges';
 import { CrossingRecord } from './jumps';
 import {
-  Constraint, evaluateExpression, ProgramBound, ProgramEdge, RunConflict,
-  StopInvariantError, TooManyCrossings, UnsupportedLaw,
+  Constraint, evaluateExpression, LandingInvariantError, ProgramBound,
+  ProgramEdge, RunConflict, StopInvariantError, TooManyCrossings,
+  UnsupportedLaw,
 } from './program';
 import type { LoadedProgram } from './program';
 
@@ -377,11 +378,13 @@ export class Run {
         const values = this.valuesOf(staged);
         let deltas = this.deltasOf(scaled);
         let found: CrossingRecord[] | null = crossings === null ? null : [];
-        this.pass(values, deltas, found, tick);
+        let landings: Record<string, number> = {};
+        this.pass(values, deltas, found, tick, landings);
         let committed: Record<string, number> = {};
         for (const id of Object.keys(staged)) {
           committed[id] = staged[id] + (deltas[id] ?? 0);
         }
+        this.landed(committed, landings);
         const reached = this.reachedBounds(staged, committed, bounds,
                                            values, scaled);
         if (reached.length === 0) {
@@ -407,11 +410,13 @@ export class Run {
         }
         deltas = this.deltasOf(segment);
         found = crossings === null ? null : [];
-        this.pass(values, deltas, found, tick);
+        landings = {};
+        this.pass(values, deltas, found, tick, landings);
         committed = {};
         for (const id of Object.keys(staged)) {
           committed[id] = staged[id] + (deltas[id] ?? 0);
         }
+        this.landed(committed, landings);
 
         const blocked = new Set<string>();
         for (const [, identifier, side, bound] of event) {
@@ -463,7 +468,8 @@ export class Run {
     } catch (error) {
       if (error instanceof RunConflict || error instanceof TooManyCrossings
           || error instanceof UnsupportedLaw
-          || error instanceof StopInvariantError) {
+          || error instanceof StopInvariantError
+          || error instanceof LandingInvariantError) {
         // A tick that fails commits nothing, every segment of it
         // included.
         this.refuse(moved);
@@ -498,13 +504,31 @@ export class Run {
     }
   }
 
+  /** A coordinate whose own law READ it and whose walk took at least one
+   * cut is committed at the value that walk LEFT it at.
+   *
+   * `value + delta` is not enough on its own: `x + (y - x) !== y` for
+   * about six pairs of floats in a hundred, so an exact landing inside
+   * the plan would still be a ulp out in the bank the next tick starts
+   * from -- and a ulp back toward the surface is the ENGAGED side of the
+   * gate. Applied where the segment already writes an absolute value for
+   * a stop, and BEFORE the stops are located, so a stop on the same
+   * coordinate in the same segment overwrites it: a physical bound is a
+   * bound of the coordinate itself. */
+  private landed(committed: Record<string, number>,
+                 landings: Record<string, number>): void {
+    for (const key of Object.keys(landings)) committed[key] = landings[key];
+  }
+
   /** ONE propagation over the compiled program, over whatever stretch
    * `deltas` describes. Mutates and returns `deltas`; raises rather than
    * retiring anything, because a segment is not a tick. */
   private pass(values: Record<string, number>,
                deltas: Record<string, number>,
                found: CrossingRecord[] | null,
-               tick: number): Record<string, number> {
+               tick: number,
+               landings: Record<string, number> | null = null):
+  Record<string, number> {
     const determined = new Set<string>();
     for (const edge of this.program.edges) {
       if (edge.kind === 'check') {
@@ -516,7 +540,8 @@ export class Run {
         continue;
       }
       for (const [key, delta] of edgeIncrements(this.program, edge, values,
-                                                deltas, found, tick)) {
+                                                deltas, found, tick,
+                                                landings)) {
         if (determined.has(key) && !this.agree(deltas[key], delta)) {
           throw new RunConflict(this.disagreement(edge, key, delta));
         }

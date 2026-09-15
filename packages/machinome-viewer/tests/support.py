@@ -41,6 +41,10 @@ TOUCHED = FIXTURES / 'touched'
 #: document whose two parts carry three markings between them, beside
 #: REAL part meshes and their decal sheets. See its own README.
 MARKED = FIXTURES / 'marked'
+#: The Curta's own clearing interface, exported from the framework's own
+#: test machine: a version 6 document whose six law edges each READ THE
+#: COORDINATE THEY DRIVE, beside a stand-in mesh. See its own README.
+CLEARING = FIXTURES / 'clearing'
 
 try:
     from PIL import Image, ImageChops  # noqa: F401

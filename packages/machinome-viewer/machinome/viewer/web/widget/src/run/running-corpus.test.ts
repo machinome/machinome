@@ -222,10 +222,10 @@ describe('the running corpus', () => {
   it('is the framework\'s own fixture, unedited', () => {
     expect(fixture.generated_by).toBe('tools/generate_running_corpus.py');
     expect(fixture.corpus).toBe('tests/running_project/machine.py');
-    expect(fixture.machines).toHaveLength(14);
-    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(12);
+    expect(fixture.machines).toHaveLength(17);
+    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(14);
     expect(fixture.machines.reduce((total, one) => total + one.ticks.length, 0))
-      .toBe(276);
+      .toBe(328);
   });
 
   fixture.machines.forEach((entry, index) => {
@@ -259,6 +259,9 @@ const REQUIRED = [
   'a relative instruction',
   'an absolute instruction',
   'a tick carrying both a crossing and a stop',
+  'a law that reads the coordinate it drives',
+  'a self-read coordinate holding at its gate while its input moves on',
+  'a tick carrying both a self-read crossing and a stop',
 ];
 
 /** Every free name `expression` reads, through the fixture's OWN
@@ -290,10 +293,11 @@ export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
       program?: {
         coordinates?: Record<string, { initial?: number }>;
         edges?: {
-          kind: string; needs: string[];
+          kind: string; needs: string[]; gives?: string[];
           plans?: ({ jumps: { primitive: string }[] } | null)[];
         }[];
         spans?: Record<string, Record<string, unknown>>;
+        sources?: Record<string, string[]>;
       };
       bindings?: { name: string; expression: string }[];
       instructions?: Record<string, Record<string, unknown>>;
@@ -338,9 +342,36 @@ export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
       if (action.snapshot !== undefined) seen.add('a snapshot');
       if (action.restore !== undefined) seen.add('a restore');
     }
+    // The driven ends a law of this machine READS: `needs` met with
+    // `gives`, which is where the self-read is published and the one
+    // thing a version 5 consumer reads as something else.
+    const reads = new Set<string>();
+    for (const edge of program.edges ?? []) {
+      if (edge.kind !== 'law') continue;
+      for (const key of edge.gives ?? []) {
+        if (edge.needs.includes(key)) reads.add(key);
+      }
+    }
+    if (reads.size > 0) seen.add('a law that reads the coordinate it drives');
+    const sources = program.sources ?? {};
     let previous: Record<string, number> | null = null;
     for (const tick of entry.ticks) {
       if (tick.stops.length > 0) seen.add('a stop located inside a tick');
+      for (const identifier of reads) {
+        if (previous === null) continue;
+        const held = previous[identifier] === tick.bank[identifier];
+        const moved = (sources[identifier] ?? []).some(
+          (reaching) => reaching in tick.bank
+            && previous![reaching] !== tick.bank[reaching]);
+        if (held && moved) {
+          seen.add('a self-read coordinate holding at its gate while its '
+                   + 'input moves on');
+        }
+      }
+      if (tick.stops.length > 0
+          && tick.crossings.some((one) => reads.has(one.coordinate))) {
+        seen.add('a tick carrying both a self-read crossing and a stop');
+      }
       for (const stop of tick.stops) {
         // A stop whose coordinate holds the SAME value before and after
         // its tick was reached by the motion of what the bound READS,
@@ -382,5 +413,13 @@ describe('the corpus\'s width', () => {
       'a bound reading another coordinate');
     expect(uncoveredFeatures(trimmed)).toContain(
       'a stop reached by the motion of what a bound reads');
+    // And the three the self-read added: `Train` states no law reading
+    // the coordinate it drives, so all three go with it.
+    expect(uncoveredFeatures(trimmed)).toContain(
+      'a law that reads the coordinate it drives');
+    expect(uncoveredFeatures(trimmed)).toContain(
+      'a self-read coordinate holding at its gate while its input moves on');
+    expect(uncoveredFeatures(trimmed)).toContain(
+      'a tick carrying both a self-read crossing and a stop');
   });
 });

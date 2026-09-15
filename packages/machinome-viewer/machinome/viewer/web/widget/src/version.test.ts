@@ -88,15 +88,28 @@ describe('API_VERSION', () => {
   // this build reads do NOT move: `markings` is additive and gated on
   // no document version -- the framework's own marked fixture declares
   // version 2 -- which is the posture the `controls` table already set.
-  it('declares the markings API as version 14', () => {
-    expect(API_VERSION).toBe(14);
+  // Executing a version 6 document -- a compiled program one of whose
+  // laws READS THE COORDINATE IT DRIVES -- is the one after that (15).
+  // This one is NOT additive, which is why the document list moves with
+  // it: a bundle at 14 refuses the Curta's own clearing interface BY
+  // NAME and renders nothing at all, so a host that means to present
+  // such a machine has to be able to ask before it mounts. The
+  // precedent is exact -- `run-in-the-worker` raised the API to 8 when
+  // `documentVersions` grew to include 5 -- and the contrast is exact
+  // too: `controls` and `markings` left the list alone because a
+  // document carrying neither renders identically. 13 stays SKIPPED:
+  // the in-flight cycle `slide-and-turn-parts` claims it, and taking 14
+  // and then 15 here means the numbers cannot collide whatever order
+  // they integrate in.
+  it('declares the self-read API as version 15', () => {
+    expect(API_VERSION).toBe(15);
   });
 });
 
 describe('DOCUMENT_VERSIONS', () => {
   it('is declared in package.json, where a Python caller can read it', () => {
     expect(Array.isArray(pkg.solidNodeDocumentVersions)).toBe(true);
-    expect(pkg.solidNodeDocumentVersions).toEqual([1, 2, 3, 4, 5]);
+    expect(pkg.solidNodeDocumentVersions).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
   it('is the list the package declares, not a second copy', () => {

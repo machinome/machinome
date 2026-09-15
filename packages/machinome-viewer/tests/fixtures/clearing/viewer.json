@@ -1,0 +1,706 @@
+{
+  "format": "solid-node-export",
+  "version": 6,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "clearing": {
+      "default": 0.0,
+      "range": null,
+      "unit": null,
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {},
+  "bindings": [
+    {
+      "name": "_b0",
+      "expression": "(clearing - 0.1)"
+    },
+    {
+      "name": "_b1",
+      "expression": "(_b0 / 0.8)"
+    },
+    {
+      "name": "_b2",
+      "expression": "max(_b1, 0.0)"
+    },
+    {
+      "name": "_b3",
+      "expression": "min(_b2, 1.0)"
+    },
+    {
+      "name": "_b4",
+      "expression": "(240.0 * _b3)"
+    },
+    {
+      "name": "_b5",
+      "expression": "(-40.0 + _b4)"
+    },
+    {
+      "name": "_b6",
+      "expression": "(_b5 - 10.5)"
+    },
+    {
+      "name": "_b7",
+      "expression": "(8.302182185886627 * _b6)"
+    },
+    {
+      "name": "_b8",
+      "expression": "(result0.turn + 0.5)"
+    },
+    {
+      "name": "_b9",
+      "expression": "(_b8 / 360.0)"
+    },
+    {
+      "name": "_b10",
+      "expression": "(_b5 - -9.5)"
+    },
+    {
+      "name": "_b11",
+      "expression": "(8.302182185886627 * _b10)"
+    },
+    {
+      "name": "_b12",
+      "expression": "(result1.turn + 0.5)"
+    },
+    {
+      "name": "_b13",
+      "expression": "(_b12 / 360.0)"
+    },
+    {
+      "name": "_b14",
+      "expression": "(_b5 - -29.5)"
+    },
+    {
+      "name": "_b15",
+      "expression": "(8.302182185886627 * _b14)"
+    },
+    {
+      "name": "_b16",
+      "expression": "(result2.turn + 0.5)"
+    },
+    {
+      "name": "_b17",
+      "expression": "(_b16 / 360.0)"
+    },
+    {
+      "name": "_b18",
+      "expression": "(_b5 - 139.75)"
+    },
+    {
+      "name": "_b19",
+      "expression": "(8.712683625955693 * _b18)"
+    },
+    {
+      "name": "_b20",
+      "expression": "(counter0.turn + 0.5)"
+    },
+    {
+      "name": "_b21",
+      "expression": "(_b20 / 360.0)"
+    },
+    {
+      "name": "_b22",
+      "expression": "(_b5 - 119.75)"
+    },
+    {
+      "name": "_b23",
+      "expression": "(8.712683625955693 * _b22)"
+    },
+    {
+      "name": "_b24",
+      "expression": "(counter1.turn + 0.5)"
+    },
+    {
+      "name": "_b25",
+      "expression": "(_b24 / 360.0)"
+    },
+    {
+      "name": "_b26",
+      "expression": "(_b5 - 99.75)"
+    },
+    {
+      "name": "_b27",
+      "expression": "(8.712683625955693 * _b26)"
+    },
+    {
+      "name": "_b28",
+      "expression": "(counter2.turn + 0.5)"
+    },
+    {
+      "name": "_b29",
+      "expression": "(_b28 / 360.0)"
+    }
+  ],
+  "program": {
+    "identity": "7425122fcfafee5a96152d79dd6a4ec4d66d1745a569abe7997ee9d00db4eecb",
+    "clock": "time",
+    "coordinates": {
+      "clearing": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "counter0.turn": {
+        "kind": "coordinate",
+        "initial": 144.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "counter1.turn": {
+        "kind": "coordinate",
+        "initial": 180.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "counter2.turn": {
+        "kind": "coordinate",
+        "initial": 216.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "result0.turn": {
+        "kind": "coordinate",
+        "initial": 36.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "result1.turn": {
+        "kind": "coordinate",
+        "initial": 72.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "result2.turn": {
+        "kind": "coordinate",
+        "initial": 108.0,
+        "unit": "deg",
+        "domain": "rotational"
+      }
+    },
+    "intermediates": [],
+    "edges": [
+      {
+        "kind": "law",
+        "needs": [
+          "clearing",
+          "result0.turn"
+        ],
+        "gives": [
+          "result0.turn"
+        ],
+        "description": "(clearing, result0.turn) drives result0.turn",
+        "stated_by": "CurtaInterface",
+        "expressions": [
+          "((_b7 * ((_b6 >= 0.0) * (_b6 <= 39.02588412848695))) * ((_b8 - (360.0 * floor(_b9))) >= 1.0))"
+        ],
+        "affine": [
+          false
+        ],
+        "plans": [
+          {
+            "skeleton": "((_b7 * (_j0 * _j1)) * _j3)",
+            "jumps": [
+              {
+                "name": "_j0",
+                "primitive": ">=",
+                "level": "(_b6 - 0.0)",
+                "affine": false
+              },
+              {
+                "name": "_j1",
+                "primitive": "<=",
+                "level": "(_b6 - 39.02588412848695)",
+                "affine": false
+              },
+              {
+                "name": "_j2",
+                "primitive": "floor",
+                "level": "_b9",
+                "affine": true
+              },
+              {
+                "name": "_j3",
+                "primitive": ">=",
+                "level": "((_b8 - (360.0 * _j2)) - 1.0)",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "clearing",
+          "result1.turn"
+        ],
+        "gives": [
+          "result1.turn"
+        ],
+        "description": "(clearing, result1.turn) drives result1.turn",
+        "stated_by": "CurtaInterface",
+        "expressions": [
+          "((_b11 * ((_b10 >= 0.0) * (_b10 <= 39.02588412848695))) * ((_b12 - (360.0 * floor(_b13))) >= 1.0))"
+        ],
+        "affine": [
+          false
+        ],
+        "plans": [
+          {
+            "skeleton": "((_b11 * (_j4 * _j5)) * _j7)",
+            "jumps": [
+              {
+                "name": "_j4",
+                "primitive": ">=",
+                "level": "(_b10 - 0.0)",
+                "affine": false
+              },
+              {
+                "name": "_j5",
+                "primitive": "<=",
+                "level": "(_b10 - 39.02588412848695)",
+                "affine": false
+              },
+              {
+                "name": "_j6",
+                "primitive": "floor",
+                "level": "_b13",
+                "affine": true
+              },
+              {
+                "name": "_j7",
+                "primitive": ">=",
+                "level": "((_b12 - (360.0 * _j6)) - 1.0)",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "clearing",
+          "result2.turn"
+        ],
+        "gives": [
+          "result2.turn"
+        ],
+        "description": "(clearing, result2.turn) drives result2.turn",
+        "stated_by": "CurtaInterface",
+        "expressions": [
+          "((_b15 * ((_b14 >= 0.0) * (_b14 <= 39.02588412848695))) * ((_b16 - (360.0 * floor(_b17))) >= 1.0))"
+        ],
+        "affine": [
+          false
+        ],
+        "plans": [
+          {
+            "skeleton": "((_b15 * (_j8 * _j9)) * _j11)",
+            "jumps": [
+              {
+                "name": "_j8",
+                "primitive": ">=",
+                "level": "(_b14 - 0.0)",
+                "affine": false
+              },
+              {
+                "name": "_j9",
+                "primitive": "<=",
+                "level": "(_b14 - 39.02588412848695)",
+                "affine": false
+              },
+              {
+                "name": "_j10",
+                "primitive": "floor",
+                "level": "_b17",
+                "affine": true
+              },
+              {
+                "name": "_j11",
+                "primitive": ">=",
+                "level": "((_b16 - (360.0 * _j10)) - 1.0)",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "clearing",
+          "counter0.turn"
+        ],
+        "gives": [
+          "counter0.turn"
+        ],
+        "description": "(clearing, counter0.turn) drives counter0.turn",
+        "stated_by": "CurtaInterface",
+        "expressions": [
+          "((_b19 * ((_b18 >= 0.0) * (_b18 <= 37.187164587817854))) * ((_b20 - (360.0 * floor(_b21))) >= 1.0))"
+        ],
+        "affine": [
+          false
+        ],
+        "plans": [
+          {
+            "skeleton": "((_b19 * (_j12 * _j13)) * _j15)",
+            "jumps": [
+              {
+                "name": "_j12",
+                "primitive": ">=",
+                "level": "(_b18 - 0.0)",
+                "affine": false
+              },
+              {
+                "name": "_j13",
+                "primitive": "<=",
+                "level": "(_b18 - 37.187164587817854)",
+                "affine": false
+              },
+              {
+                "name": "_j14",
+                "primitive": "floor",
+                "level": "_b21",
+                "affine": true
+              },
+              {
+                "name": "_j15",
+                "primitive": ">=",
+                "level": "((_b20 - (360.0 * _j14)) - 1.0)",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "clearing",
+          "counter1.turn"
+        ],
+        "gives": [
+          "counter1.turn"
+        ],
+        "description": "(clearing, counter1.turn) drives counter1.turn",
+        "stated_by": "CurtaInterface",
+        "expressions": [
+          "((_b23 * ((_b22 >= 0.0) * (_b22 <= 37.187164587817854))) * ((_b24 - (360.0 * floor(_b25))) >= 1.0))"
+        ],
+        "affine": [
+          false
+        ],
+        "plans": [
+          {
+            "skeleton": "((_b23 * (_j16 * _j17)) * _j19)",
+            "jumps": [
+              {
+                "name": "_j16",
+                "primitive": ">=",
+                "level": "(_b22 - 0.0)",
+                "affine": false
+              },
+              {
+                "name": "_j17",
+                "primitive": "<=",
+                "level": "(_b22 - 37.187164587817854)",
+                "affine": false
+              },
+              {
+                "name": "_j18",
+                "primitive": "floor",
+                "level": "_b25",
+                "affine": true
+              },
+              {
+                "name": "_j19",
+                "primitive": ">=",
+                "level": "((_b24 - (360.0 * _j18)) - 1.0)",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "clearing",
+          "counter2.turn"
+        ],
+        "gives": [
+          "counter2.turn"
+        ],
+        "description": "(clearing, counter2.turn) drives counter2.turn",
+        "stated_by": "CurtaInterface",
+        "expressions": [
+          "((_b27 * ((_b26 >= 0.0) * (_b26 <= 37.187164587817854))) * ((_b28 - (360.0 * floor(_b29))) >= 1.0))"
+        ],
+        "affine": [
+          false
+        ],
+        "plans": [
+          {
+            "skeleton": "((_b27 * (_j20 * _j21)) * _j23)",
+            "jumps": [
+              {
+                "name": "_j20",
+                "primitive": ">=",
+                "level": "(_b26 - 0.0)",
+                "affine": false
+              },
+              {
+                "name": "_j21",
+                "primitive": "<=",
+                "level": "(_b26 - 37.187164587817854)",
+                "affine": false
+              },
+              {
+                "name": "_j22",
+                "primitive": "floor",
+                "level": "_b29",
+                "affine": true
+              },
+              {
+                "name": "_j23",
+                "primitive": ">=",
+                "level": "((_b28 - (360.0 * _j22)) - 1.0)",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "spans": {},
+    "sources": {
+      "clearing": [
+        "clearing"
+      ],
+      "counter0.turn": [
+        "clearing"
+      ],
+      "counter1.turn": [
+        "clearing"
+      ],
+      "counter2.turn": [
+        "clearing"
+      ],
+      "result0.turn": [
+        "clearing"
+      ],
+      "result1.turn": [
+        "clearing"
+      ],
+      "result2.turn": [
+        "clearing"
+      ]
+    },
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "subdivisions": 64,
+      "bisection_rounds": 64,
+      "max_crossings": 1000,
+      "agreement": 1e-09
+    }
+  },
+  "root": {
+    "name": "CurtaInterface",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1789492601.4301908,
+    "operations": [],
+    "children": [
+      {
+        "name": "result0",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789488920.0,
+        "operations": [
+          [
+            "r",
+            "result0.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "0.0",
+              "0.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "models/running_project/parts-Arbor-ff269d604af9.stl",
+        "piece": "f3f90312fcda"
+      },
+      {
+        "name": "result1",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789488920.0,
+        "operations": [
+          [
+            "r",
+            "result1.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "25.0",
+              "0.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "models/running_project/parts-Arbor-ff269d604af9.stl",
+        "piece": "f3f90312fcda"
+      },
+      {
+        "name": "result2",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789488920.0,
+        "operations": [
+          [
+            "r",
+            "result2.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "50.0",
+              "0.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "models/running_project/parts-Arbor-ff269d604af9.stl",
+        "piece": "f3f90312fcda"
+      },
+      {
+        "name": "counter0",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789488920.0,
+        "operations": [
+          [
+            "r",
+            "counter0.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "75.0",
+              "0.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "models/running_project/parts-Arbor-ff269d604af9.stl",
+        "piece": "f3f90312fcda"
+      },
+      {
+        "name": "counter1",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789488920.0,
+        "operations": [
+          [
+            "r",
+            "counter1.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "100.0",
+              "0.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "models/running_project/parts-Arbor-ff269d604af9.stl",
+        "piece": "f3f90312fcda"
+      },
+      {
+        "name": "counter2",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789488920.0,
+        "operations": [
+          [
+            "r",
+            "counter2.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "125.0",
+              "0.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "models/running_project/parts-Arbor-ff269d604af9.stl",
+        "piece": "f3f90312fcda"
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "f3f90312fcda",
+      "name": "Arbor",
+      "sources": [
+        "running_project/parts.py"
+      ],
+      "models": [
+        "models/running_project/parts-Arbor-ff269d604af9.stl"
+      ],
+      "count": 6,
+      "size": [
+        20.0,
+        19.890438079833984,
+        4.0
+      ],
+      "volume": 1247.4701422871512,
+      "watertight": true
+    }
+  ]
+}

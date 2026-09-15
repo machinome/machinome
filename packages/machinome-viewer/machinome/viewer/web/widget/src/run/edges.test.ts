@@ -283,3 +283,115 @@ describe('every evaluation gets a FRESH scope object (design D11)', () => {
     expect(callers).toEqual(['program.ts']);
   });
 });
+
+// ---------------------------------------------------------------------
+// A law that READS THE COORDINATE IT DRIVES: the dispatch, and the
+// landing report (design D4, tasks 5.1).
+// ---------------------------------------------------------------------
+
+const CLEARING = {
+  kind: 'law',
+  needs: ['setter', 'ring', 'wheel.turn'],
+  gives: ['wheel.turn'],
+  description: '(setter, ring, wheel.turn) drives wheel.turn',
+  stated_by: 'Clearing',
+  expressions: [
+    '(setter + ((ring * (floor(((ring - 100.0) / 400.0)) == 0)) * '
+    + '((((wheel.turn + 0.5) - (360.0 * floor(((wheel.turn + 0.5) '
+    + '/ 360.0)))) - 1.0) >= 0.0)))',
+  ],
+  affine: [true],
+  plans: [{
+    skeleton: '(setter + ((ring * _j1) * _j3))',
+    jumps: [
+      { name: '_j0', primitive: 'floor', level: '((ring - 100.0) / 400.0)',
+        affine: true },
+      { name: '_j1', primitive: '==', level: '(_j0 - 0)', affine: true },
+      { name: '_j2', primitive: 'floor',
+        level: '((wheel.turn + 0.5) / 360.0)', affine: true },
+      { name: '_j3', primitive: '>=',
+        level: '(((wheel.turn + 0.5) - (360.0 * _j2)) - 1.0)', affine: true },
+    ],
+  }],
+};
+
+function clearingProgram(): LoadedProgram {
+  return bench({
+    coordinates: {
+      setter: { kind: 'input', initial: 0, domain: null },
+      ring: { kind: 'input', initial: 0, domain: null },
+      'wheel.turn': {
+        kind: 'coordinate', initial: 108, unit: 'deg', domain: 'rotational',
+      },
+    },
+    edges: [CLEARING],
+    sources: {
+      setter: ['setter'], ring: ['ring'], 'wheel.turn': ['ring', 'setter'],
+    },
+  });
+}
+
+describe('edgeIncrements reports a landing (design D4)', () => {
+  it('5.1 fills `landings` for a driven end at least one of whose cuts '
+     + 'placed it', () => {
+    const program = clearingProgram();
+    const edge = program.edges[0];
+    const values = { setter: 0, ring: 100, 'wheel.turn': 108 };
+    const deltas = { setter: 0, ring: 400, 'wheel.turn': 0 };
+    const landings: Record<string, number> = {};
+    const found = edgeIncrements(program, edge, values, deltas, null, 1,
+                                 landings);
+    expect(landings['wheel.turn']).toBe(359.5);
+    expect(found).toEqual([['wheel.turn', 359.5 - 108]]);
+  });
+
+  it('5.1 reports NO landing where no cut placed the coordinate', () => {
+    const program = clearingProgram();
+    const landings: Record<string, number> = {};
+    edgeIncrements(program, program.edges[0],
+                   { setter: 0, ring: 0, 'wheel.turn': 108 },
+                   { setter: 0, ring: 50, 'wheel.turn': 0 }, null, 1,
+                   landings);
+    expect(landings).toEqual({});
+  });
+
+  it('5.1 leaves `landings` alone for an edge with NO self-read -- one '
+     + 'array-length test and nothing else', () => {
+    const program = bench({
+      coordinates: {
+        crank: { kind: 'input', initial: 0, domain: null },
+        'wheel.turn': {
+          kind: 'coordinate', initial: 0, unit: null, domain: null,
+        },
+      },
+      edges: [{
+        kind: 'law', needs: ['crank'], gives: ['wheel.turn'],
+        description: 'crank drives wheel.turn', stated_by: 'Bench',
+        expressions: ['(crank - floor(crank))'], affine: [false],
+        plans: [{
+          skeleton: '(crank - _j0)',
+          jumps: [{ name: '_j0', primitive: 'floor', level: 'crank',
+                    affine: true }],
+        }],
+      }],
+    });
+    expect(program.edges[0].retained).toEqual([]);
+    const landings: Record<string, number> = {};
+    edgeIncrements(program, program.edges[0], { crank: 0, 'wheel.turn': 0 },
+                   { crank: 2.5, 'wheel.turn': 0 }, null, 1, landings);
+    expect(landings).toEqual({});
+  });
+
+  it('5.1 `edgeCuts` routes a self-read end through the two-layer walk', () => {
+    const program = clearingProgram();
+    const cuts = edgeCuts(program, program.edges[0],
+                          { setter: 0, ring: 0, 'wheel.turn': 108 },
+                          { setter: 0, ring: 600, 'wheel.turn': 0 }, 0);
+    // Layer one's station crossings AND layer two's own band cut, which
+    // `planCuts` alone would not have: the station opens at 1/6 and
+    // closes at 5/6, and the dial reaches its gap in between.
+    expect(cuts[0]).toBe(0);
+    expect(cuts[cuts.length - 1]).toBe(1);
+    expect(cuts.length).toBeGreaterThan(3);
+  });
+});

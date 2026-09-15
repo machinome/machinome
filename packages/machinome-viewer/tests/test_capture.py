@@ -223,6 +223,36 @@ class RunningStagedDocumentTest(TestCase):
             capture.render(self.output, (320, 240), mount_options(time=0.5))
         browser.assert_called_once()
 
+    def test_a_version_six_document_carries_a_program_too(self):
+        # `carries_program` is a load-time gate on "does this document
+        # carry a program", and a document declaring ANY running version
+        # does by definition -- the 6 a law reading the coordinate it
+        # drives moves it to included. A test on the number 5 alone
+        # would photograph the rest state while claiming another
+        # instant.
+        from solid_node_viewer.capture import carries_program
+
+        self.assertTrue(carries_program({"version": 6}))
+        self.assertTrue(carries_program({"version": 5}))
+        self.assertTrue(carries_program({"version": 7}))
+        self.assertFalse(carries_program({"version": 4}))
+        self.assertTrue(carries_program({"version": 4, "program": {}}))
+        self.assertFalse(carries_program("not a document"))
+
+    def test_an_animation_instant_is_refused_for_a_version_six_document(self):
+        document = json.loads((self.staging / 'viewer.json').read_text())
+        document['version'] = 6
+        (self.staging / 'viewer.json').write_text(json.dumps(document))
+        capture = Capture(str(self.staging))
+        with patch.object(capture, 'capture') as browser, \
+             patch.object(capture, 'add_viewer') as staged:
+            with self.assertRaises(CaptureError) as raised:
+                capture.render(self.output, (320, 240),
+                               mount_options(time=0.5))
+        self.assertIn('--time', str(raised.exception))
+        browser.assert_not_called()
+        staged.assert_not_called()
+
     def test_a_staging_without_a_document_is_still_named_first(self):
         empty = Capture(tempfile.mkdtemp(dir=self.tempdir.name))
         with self.assertRaisesRegex(CaptureError, 'viewer.json'):

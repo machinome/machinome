@@ -15,7 +15,9 @@
 
 import { evaluateExpression, ProgramEdge } from './program';
 import type { LoadedProgram } from './program';
-import { CrossingRecord, planCuts, planIncrement } from './jumps';
+import {
+  CrossingRecord, planCuts, planIncrement, retainedCuts, retainedIncrement,
+} from './jumps';
 
 /** The graph's free names bound to the values its sources hold,
  * optionally advanced by the tick's increments. */
@@ -104,11 +106,18 @@ export function edgeValues(program: LoadedProgram, edge: ProgramEdge,
  * which is what makes a kink exact -- and that is the FIRST thing tested
  * here, so a continuous law pays nothing for the jump machinery. A law
  * that jumps takes its plan, which cuts the tick at every crossing and
- * sums the pieces. */
+ * sums the pieces.
+ *
+ * A law that READS THE COORDINATE IT DRIVES is walked piece by piece
+ * instead, and REPORTS into `landings` the absolute value that end holds
+ * at the tick's end where at least one cut placed it: the run commits
+ * that float rather than `value + delta`, exactly where it commits a
+ * stop at its bound. A law with no self-read pays ONE array-length test
+ * for all of this and nothing else. */
 export function edgeIncrements(
   program: LoadedProgram, edge: ProgramEdge, values: Record<string, number>,
   deltas: Record<string, number>, crossings: CrossingRecord[] | null,
-  tick: number,
+  tick: number, landings: Record<string, number> | null = null,
 ): [string, number][] {
   if (edge.kind === 'law') {
     const start = inputsOf(edge, values);
@@ -124,6 +133,7 @@ export function edgeIncrements(
     const delta: Record<string, number> = {};
     for (const key of edge.needs) delta[key] = deltas[key];
     const end = inputsOf(edge, values, deltas);
+    const retained = edge.retained;
     return edge.gives.map((key, index) => {
       const plan = edge.plans[index];
       if (plan === null) {
@@ -131,9 +141,17 @@ export function edgeIncrements(
                 evaluated(program, edge.expressions[index], end)
                   - evaluated(program, edge.expressions[index], start)];
       }
-      return [key, planIncrement(program, plan, start, delta,
-                                 edge.description, edge.gives[index],
-                                 crossings, tick)];
+      const reading = retained.length > 0 ? retained[index] : null;
+      if (reading === null) {
+        return [key, planIncrement(program, plan, start, delta,
+                                   edge.description, edge.gives[index],
+                                   crossings, tick)];
+      }
+      const { increment, landing } = retainedIncrement(
+        program, reading, start, delta, edge.description, edge.gives[index],
+        crossings, tick);
+      if (landing !== null && landings !== null) landings[key] = landing;
+      return [key, increment];
     });
   }
   if (edge.kind === 'wiring') {
@@ -157,6 +175,11 @@ export function edgeCuts(program: LoadedProgram, edge: ProgramEdge,
   const start = inputsOf(edge, values);
   const delta: Record<string, number> = {};
   for (const key of edge.needs) delta[key] = deltas[key];
+  const reading = edge.retained.length > 0 ? edge.retained[index] : null;
+  if (reading !== null) {
+    return retainedCuts(program, reading, start, delta, edge.description,
+                        edge.gives[index]);
+  }
   return planCuts(program, plan, start, delta, edge.description,
                   edge.gives[index]);
 }

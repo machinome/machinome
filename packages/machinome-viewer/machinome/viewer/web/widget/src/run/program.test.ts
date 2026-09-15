@@ -14,6 +14,8 @@ import { loadProgram, uncomputedValues } from './program';
 import type { RunDocument } from './program';
 import acceptance from '../../../../tests/fixtures/pascaline/viewer.json';
 import lockDocument from '../../../../tests/fixtures/lock/viewer.json';
+import corpus from '../running-corpus.json';
+import clearingDocument from '../../../../tests/fixtures/clearing/viewer.json';
 
 const SOURCE = 'http://example.test/viewer.json';
 
@@ -817,6 +819,325 @@ describe('the pin tumbler lock\'s published document', () => {
       expect(loaded.spans[id]).toEqual({ low: -6.9, high: 6.1 });
       expect(loaded.constraints.has(`${id}:low`)).toBe(false);
       expect(loaded.constraints.has(`${id}:high`)).toBe(false);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------
+// The SELF-READ, recognised and read at load (design D1)
+// ---------------------------------------------------------------------
+
+/** `Clearing`'s shape, as the framework publishes it: a ring carrying
+ * racks sweeps past a dial, and the rack turns the dial only while its
+ * teeth reach it (`_j0`/`_j1`, over the RING) AND the dial is not
+ * already standing in its missing-tooth gap (`_j2`/`_j3`, over the
+ * DIAL's own retained angle, reached ONLY through `_b3`). */
+function selfRead(program: Overrides = {},
+                  overrides: Overrides = {}): RunDocument {
+  return {
+    format: 'solid-node-export',
+    version: 6,
+    drivers: {
+      ring: { default: 0, range: null, unit: 'deg', dtype: null, scale: null },
+      setter: {
+        default: 0, range: null, unit: 'deg', dtype: null, scale: null,
+      },
+    },
+    instructions: {},
+    bindings: [
+      { name: '_b0', expression: '(ring - 100.0)' },
+      { name: '_b1', expression: '(_b0 / 400.0)' },
+      { name: '_b2', expression: '(wheel.turn + 0.5)' },
+      { name: '_b3', expression: '(_b2 / 360.0)' },
+    ],
+    program: {
+      identity: 'clearing',
+      clock: 'time',
+      coordinates: {
+        ring: { kind: 'input', initial: 0, domain: null },
+        setter: { kind: 'input', initial: 0, domain: null },
+        'wheel.turn': {
+          kind: 'coordinate', initial: 108, unit: 'deg', domain: 'rotational',
+        },
+      },
+      intermediates: [],
+      edges: [{
+        kind: 'law',
+        needs: ['setter', 'ring', 'wheel.turn'],
+        gives: ['wheel.turn'],
+        description: '(setter, ring, wheel.turn) drives wheel.turn',
+        stated_by: 'Clearing',
+        expressions: [
+          '(setter + ((ring * (floor(_b1) == 0)) * '
+          + '((_b2 - (360.0 * floor(_b3))) >= 1.0)))',
+        ],
+        affine: [true],
+        plans: [{
+          skeleton: '(setter + ((ring * _j1) * _j3))',
+          jumps: [
+            { name: '_j0', primitive: 'floor', level: '_b1', affine: true },
+            { name: '_j1', primitive: '==', level: '(_j0 - 0)', affine: true },
+            { name: '_j2', primitive: 'floor', level: '_b3', affine: true },
+            {
+              name: '_j3', primitive: '>=',
+              level: '((_b2 - (360.0 * _j2)) - 1.0)', affine: true,
+            },
+          ],
+        }],
+      }],
+      spans: {},
+      sources: {
+        ring: ['ring'], setter: ['setter'], 'wheel.turn': ['ring', 'setter'],
+      },
+      limits: { ...LIMITS },
+      ...program,
+    },
+    ...overrides,
+  } as RunDocument;
+}
+
+describe('a law that reads the coordinate it drives (design D1)', () => {
+  it('2.1 is recognised from `needs` met with `gives`, and its BAND gate '
+     + '-- which reaches the driven id only through a binding -- is '
+     + 'dependent', () => {
+    const loaded = loadProgram(selfRead(), SOURCE);
+    const edge = loaded.edges[0];
+    expect(edge.retained).toHaveLength(1);
+    const reading = edge.retained[0]!;
+    expect(reading.own).toBe('wheel.turn');
+    expect(reading.dependent.map((jump) => jump.name)).toEqual(['_j2', '_j3']);
+    expect(reading.outer.jumps.map((jump) => jump.name))
+      .toEqual(['_j0', '_j1']);
+    expect(reading.outer.skeleton).toBe('(setter + ((ring * _j1) * _j3))');
+  });
+
+  it('2.2 reads `affine` off the edge\'s published per-end flag and '
+     + 'recomputes nothing -- which for a plan-bearing law IS '
+     + '`_affine_in_sources(plan.skeleton)`', () => {
+    const loaded = loadProgram(selfRead(), SOURCE);
+    expect(loaded.edges[0].retained[0]!.affine)
+      .toBe(loaded.edges[0].affine[0]);
+    expect(loaded.edges[0].retained[0]!.affine).toBe(true);
+    // And the same equality on the producer's OWN document, taken from
+    // the corpus rather than written here.
+    const clearing = (corpus as unknown as {
+      machines: { name: string; document: RunDocument }[];
+    }).machines.find((one) => one.name === 'Clearing')!;
+    const published = loadProgram(clearing.document,
+                                  'running-corpus.json#Clearing');
+    const edge = published.edges[0];
+    expect(edge.retained[0]!.affine).toBe(edge.affine[0]);
+  });
+
+  it('2.3 a plan with no dependent node at all keeps the WHOLE plan as '
+     + 'its outer layer and an empty dependent list', () => {
+    // The same edge with the band gate stated over the RING instead: the
+    // driven id is still among `needs`, so the edge is still a self-read
+    // -- but no jump node depends on it.
+    const loaded = loadProgram(selfRead({
+      edges: [{
+        kind: 'law',
+        needs: ['setter', 'ring', 'wheel.turn'],
+        gives: ['wheel.turn'],
+        description: 'a self-read no jump node depends on',
+        stated_by: 'Clearing',
+        expressions: ['(setter + (ring * (floor(_b1) == 0)))'],
+        affine: [true],
+        plans: [{
+          skeleton: '(setter + (ring * _j1))',
+          jumps: [
+            { name: '_j0', primitive: 'floor', level: '_b1', affine: true },
+            { name: '_j1', primitive: '==', level: '(_j0 - 0)', affine: true },
+          ],
+        }],
+      }],
+    }), SOURCE);
+    const reading = loaded.edges[0].retained[0]!;
+    expect(reading.dependent).toEqual([]);
+    expect(reading.outer.jumps.map((jump) => jump.name))
+      .toEqual(['_j0', '_j1']);
+  });
+
+  it('2.3 a nested dependent node makes its ENCLOSING node dependent', () => {
+    const loaded = loadProgram(selfRead({
+      edges: [{
+        kind: 'law',
+        needs: ['setter', 'ring', 'wheel.turn'],
+        gives: ['wheel.turn'],
+        description: 'a dependent node nested inside an independent level',
+        stated_by: 'Clearing',
+        expressions: ['(setter + (ring * 1.0))'],
+        affine: [true],
+        plans: [{
+          skeleton: '(setter + (ring * _j1))',
+          jumps: [
+            // `_j0` names the driven id only through `_b3`; `_j1`'s own
+            // level names no coordinate at all and reaches it ONLY
+            // through `_j0`'s placeholder.
+            { name: '_j0', primitive: 'floor', level: '_b3', affine: true },
+            { name: '_j1', primitive: '>=', level: '(_j0 - 1.0)',
+              affine: true },
+          ],
+        }],
+      }],
+    }), SOURCE);
+    const reading = loaded.edges[0].retained[0]!;
+    expect(reading.dependent.map((jump) => jump.name)).toEqual(['_j0', '_j1']);
+    expect(reading.outer.jumps).toEqual([]);
+  });
+
+  it('2.4 refuses a self-read law that drives more than one coordinate', () => {
+    const message = refusal(selfRead({
+      coordinates: {
+        ring: { kind: 'input', initial: 0, domain: null },
+        setter: { kind: 'input', initial: 0, domain: null },
+        'wheel.turn': {
+          kind: 'coordinate', initial: 108, unit: 'deg', domain: 'rotational',
+        },
+        'other.turn': {
+          kind: 'coordinate', initial: 0, unit: 'deg', domain: 'rotational',
+        },
+      },
+      edges: [{
+        kind: 'law',
+        needs: ['setter', 'ring', 'wheel.turn'],
+        gives: ['wheel.turn', 'other.turn'],
+        description: 'a self-read driving a group',
+        stated_by: 'Clearing',
+        expressions: ['(setter + (ring * _b3))', '(setter * 2.0)'],
+        affine: [true, true],
+        plans: [null, null],
+      }],
+      sources: {
+        ring: ['ring'], setter: ['setter'],
+        'wheel.turn': ['ring', 'setter'], 'other.turn': ['setter'],
+      },
+    }));
+    expect(message).toContain('wheel.turn');
+    expect(message).toContain('drives exactly ONE coordinate');
+    expect(message).toContain(SOURCE);
+  });
+
+  it('2.4 refuses a self-read of a published computed value', () => {
+    const message = refusal(selfRead({
+      intermediates: ['port.angle'],
+      edges: [{
+        kind: 'law',
+        needs: ['ring', 'port.angle'],
+        gives: ['port.angle'],
+        description: 'a self-read of a port',
+        stated_by: 'Clearing',
+        expressions: ['(ring * 2.0)'],
+        affine: [true],
+        plans: [null],
+      }],
+      sources: { ring: ['ring'], setter: ['setter'], 'port.angle': ['ring'] },
+    }));
+    expect(message).toContain('port.angle');
+    expect(message).toContain('A retained value is a history');
+    expect(message).toContain(SOURCE);
+  });
+
+  it('2.4 refuses a read that survives the SKELETON', () => {
+    const message = refusal(selfRead({
+      edges: [{
+        kind: 'law',
+        needs: ['setter', 'ring', 'wheel.turn'],
+        gives: ['wheel.turn'],
+        description: 'a continuous self-read',
+        stated_by: 'Clearing',
+        expressions: ['(setter + ((ring * _b2) * (floor(_b1) == 0)))'],
+        affine: [false],
+        plans: [{
+          // `_b2` is `(wheel.turn + 0.5)`: the read SURVIVES the
+          // substitution of every branch.
+          skeleton: '(setter + ((ring * _b2) * _j1))',
+          jumps: [
+            { name: '_j0', primitive: 'floor', level: '_b1', affine: true },
+            { name: '_j1', primitive: '==', level: '(_j0 - 0)', affine: true },
+          ],
+        }],
+      }],
+    }));
+    expect(message).toContain('wheel.turn');
+    expect(message).toContain('PIECEWISE');
+    expect(message).toContain('remainder');
+    expect(message).toContain(SOURCE);
+  });
+
+  it('2.5 a version 6 document with NO self-read edge loads with no '
+     + 'reading at all', () => {
+    const plain = document({}, { version: 6 });
+    const loaded = loadProgram(plain, SOURCE);
+    expect(loaded.edges[0].retained).toEqual([]);
+  });
+
+  it('2.5 a version 5 document is never given a reading, and a version 5 '
+     + 'document that DOES read its own driven end is read exactly as a '
+     + 'version 6 one -- the test is `needs` met with `gives`, never the '
+     + 'version number', () => {
+    expect(loadProgram(document(), SOURCE).edges[0].retained).toEqual([]);
+    const mislabelled = selfRead({}, { version: 5 });
+    expect(loadProgram(mislabelled, SOURCE).edges[0].retained)
+      .toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------
+// The committed Curta fixture (design D9, tasks 9.3)
+// ---------------------------------------------------------------------
+
+describe('the Curta\'s clearing interface, as published', () => {
+  const loaded = loadProgram(clearingDocument as unknown as RunDocument,
+                             'tests/fixtures/clearing/viewer.json');
+
+  it('9.3 loads: a version 6 document of six self-read edges', () => {
+    expect((clearingDocument as { version: number }).version).toBe(6);
+    expect(loaded.identity).toBe(
+      '7425122fcfafee5a96152d79dd6a4ec4d66d1745a569abe7997ee9d00db4eecb');
+    expect(loaded.inputs).toEqual(['clearing']);
+    expect(loaded.edges).toHaveLength(6);
+    expect([...loaded.order].sort()).toEqual([
+      'clearing', 'counter0.turn', 'counter1.turn', 'counter2.turn',
+      'result0.turn', 'result1.turn', 'result2.turn',
+    ]);
+  });
+
+  it('9.3 gives every one of the six edges a reading of its own driven '
+     + 'end', () => {
+    for (const edge of loaded.edges) {
+      expect(edge.gives).toHaveLength(1);
+      expect(edge.needs).toContain(edge.gives[0]);
+      expect(edge.retained).toHaveLength(1);
+      expect(edge.retained[0]!.own).toBe(edge.gives[0]);
+    }
+    expect(loaded.edges.map((edge) => edge.retained[0]!.own).sort()).toEqual([
+      'counter0.turn', 'counter1.turn', 'counter2.turn',
+      'result0.turn', 'result1.turn', 'result2.turn',
+    ]);
+  });
+
+  it('9.3 splits each plan into the band\'s own nodes and the rack\'s', () => {
+    for (const edge of loaded.edges) {
+      const reading = edge.retained[0]!;
+      // The BAND, over the dial's own retained angle: a `floor` and a
+      // comparison. The rack's reach nodes are the independent ones.
+      expect(reading.dependent.map((jump) => jump.primitive))
+        .toEqual(['floor', '>=']);
+      expect(reading.outer.jumps.length).toBeGreaterThan(0);
+      for (const jump of reading.outer.jumps) {
+        expect(['<=', '>=', '<', '>']).toContain(jump.primitive);
+      }
+      expect(reading.outer.skeleton).toBe(edge.plans[0]!.skeleton);
+    }
+  });
+
+  it('9.3 reads every one of the six as NON-AFFINE -- the `clamp01` '
+     + 'station window, which makes every self-read crossing here a '
+     + 'SEARCHED one', () => {
+    for (const edge of loaded.edges) {
+      expect(edge.affine[0]).toBe(false);
+      expect(edge.retained[0]!.affine).toBe(false);
     }
   });
 });

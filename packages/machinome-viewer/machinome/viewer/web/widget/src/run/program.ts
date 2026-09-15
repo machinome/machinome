@@ -62,14 +62,32 @@ export class StopInvariantError extends Error {
   readonly kind = 'stop';
 }
 
+/** A self-read cut placed the driven coordinate NOWHERE
+ * (`simulation/program.py`'s `LandingInvariantError`).
+ *
+ * The landing is bracketed by stepping out from the segment's own
+ * arithmetic with the stride doubling from one ulp, and 200 doublings
+ * cover every distance a double can express. A cut exists because the
+ * level crossed the surface, so the branch differs somewhere on either
+ * side of it and a bracket is found by construction. This is therefore a
+ * broken invariant of the run rather than a dt that is too coarse -- the
+ * `StopInvariantError` it is modelled on says the same of a stop -- and
+ * it is raised rather than committing a value the design says is never
+ * committed. The tick committed nothing. */
+export class LandingInvariantError extends Error {
+  readonly kind = 'landing';
+}
+
 /** Every refusal a TICK can make, as the protocol reports it. */
-export type RefusalKind = 'law' | 'crossings' | 'conflict' | 'stop';
+export type RefusalKind =
+  'law' | 'crossings' | 'conflict' | 'stop' | 'landing';
 
 export function refusalKind(error: unknown): RefusalKind | null {
   if (error instanceof UnsupportedLaw) return 'law';
   if (error instanceof TooManyCrossings) return 'crossings';
   if (error instanceof RunConflict) return 'conflict';
   if (error instanceof StopInvariantError) return 'stop';
+  if (error instanceof LandingInvariantError) return 'landing';
   return null;
 }
 
@@ -106,6 +124,32 @@ export interface ProgramPlan {
   jumps: ProgramJump[];
 }
 
+/** How ONE driven end whose own law READS it is integrated
+ * (`simulation/program.py`'s `_Retained`), derived at LOAD from the
+ * published plan and the document's bindings table.
+ *
+ * The plan's jump nodes that do NOT depend on the driven coordinate keep
+ * ADR-107's whole partition -- built by `partition` itself, over a plan
+ * of exactly that subset -- and the ones that DO are WALKED inside each
+ * of its pieces, their branches read at the piece's LEFT END from the
+ * value the coordinate RETAINS there. A midpoint is no use to a
+ * dependent node: the coordinate's value there is a consequence of the
+ * branch being asked for. */
+export interface RetainedReading {
+  /** The driven id, which is `edge.gives[index]`. */
+  own: string;
+  /** The plan's jumps that DEPEND on `own`, in the plan's own postorder. */
+  dependent: ProgramJump[];
+  /** The plan with only the INDEPENDENT jumps -- a well formed plan of
+   * its own, because dependence is upward closed along the nesting. */
+  outer: ProgramPlan;
+  /** Whether the SKELETON is affine along the path. READ off the edge's
+   * published per-end `affine` flag, never recomputed: for a
+   * plan-bearing law that flag IS `_affine_in_sources(plan.skeleton)`
+   * (`Edge._affine_ends`). */
+  affine: boolean;
+}
+
 export type ProgramBound = number | null | { expression: string };
 
 export interface ProgramSpan {
@@ -126,6 +170,12 @@ export interface ProgramEdge {
    * its sources along the tick's path. Read, never recomputed. */
   affine: boolean[];
   plans: (ProgramPlan | null)[];
+  /** The driven ends this edge's own law READS -- the `gives` whose id
+   * is also one of its `needs` -- each with the two-layer reading of its
+   * plan, derived once at load. EMPTY for every other edge, which is the
+   * one test `edgeIncrements` makes before taking ADR-107's path
+   * unchanged. */
+  retained: (RetainedReading | null)[];
   /** A wiring's one factor; a formula's or check's per-need factors. */
   factor: number;
   factors: number[];
@@ -467,6 +517,7 @@ export function loadProgram(
       expressions: [],
       affine: (gives as string[]).map(() => true),
       plans: (gives as string[]).map(() => null),
+      retained: [],
       factor: 0,
       factors: [],
       constant: 0,
@@ -735,6 +786,98 @@ export function loadProgram(
               `${edge.description}'s ${jump.primitive} level quantity`);
       }
     });
+  }
+
+  // The SELF-READ, recognised and read HERE, once, at load (design D1).
+  //
+  // A law edge whose `needs` intersects its `gives` reads the coordinate
+  // it DRIVES, and what it reads there is the value that coordinate
+  // RETAINS. No key is published for it -- the intersection IS the
+  // recognition, the same question `serializer.py`'s `_reads_its_own`
+  // asks to publish the document at version 6 -- so nothing here tests
+  // the version number: a version 6 document whose program carries no
+  // such edge takes exactly the path a version 5 one takes, and a
+  // version 5 document is never given a reading.
+  //
+  // `Edge._retained_ends` and `_dependence` reproduced.
+  for (const edge of edges) {
+    if (edge.kind !== 'law') continue;
+    const read = edge.gives.filter((key) => edge.needs.includes(key));
+    if (read.length === 0) continue;
+    if (read.length > 1 || edge.gives.length > 1) {
+      refuse(
+        `${edge.description} names ${read.sort().join(', ')} both among the ` +
+        'values it reads and among the values it determines, and it ' +
+        `determines ${edge.gives.length} of them: ` +
+        `${[...edge.gives].sort().join(', ')}. A law reading its own driven ` +
+        'end drives exactly ONE coordinate, because each driven end is ' +
+        "walked over its own path and a member reading a sibling would need " +
+        "that sibling's path while the sibling's own walk is cutting it.");
+    }
+    const own = read[0];
+    if (!bank.has(own)) {
+      refuse(
+        `${edge.description} reads "${own}", the end it drives, which is a ` +
+        'published computed value rather than a coordinate of the bank. A ' +
+        'retained value is a history and only a coordinate the run banks ' +
+        'keeps one: a computed value is recomputed from the bank on every ' +
+        'tick, so there is nothing for the law to read back.');
+    }
+    const index = edge.gives.indexOf(own);
+    const plan = edge.plans[index];
+    // The SKELETON is the law with every jump node replaced by its
+    // branch -- and for an end carrying no plan at all, the expression
+    // itself is that skeleton, which is `_compiled_law`'s own
+    // `plan.skeleton if plan is not None else graph`.
+    const skeleton = plan === null ? edge.expressions[index] : plan.skeleton;
+    if (skeleton !== null && skeleton !== undefined
+        && namesOf(skeleton).has(own)) {
+      refuse(
+        `${edge.description} reads "${own}", the coordinate it drives, ` +
+        'CONTINUOUSLY -- with every jump node replaced by its branch the ' +
+        'expression still names it, so the relation is a differential ' +
+        'equation rather than an increment, and f(end) - f(start) does not ' +
+        'define one. A read must pass through a node that is PIECEWISE ' +
+        'CONSTANT in it: floor, ceil, sign or a comparison. A remainder ' +
+        'alone is not one, because a fixed quotient leaves a - q*b, which ' +
+        `still carries the coordinate's slope. Quoting the expression: ` +
+        `${quoted(skeleton)}.`);
+    }
+    if (plan === null) continue;
+    // Dependence, propagated in the plan's own (postorder) jump order,
+    // because a plan lists its jumps in postorder and a placeholder is
+    // always defined before it is named. The free names are taken
+    // through the document's BINDINGS TABLE -- `Clearing`'s band gate
+    // reaches `wheel.turn` only through `_b3 = ((wheel.turn + 0.5) /
+    // 360.0)`, and a viewer reading `freeVariables` alone would sort
+    // that node INDEPENDENT and integrate the whole tick under one
+    // branch.
+    const dependence = new Map<string, boolean>();
+    for (const jump of plan.jumps) {
+      const names = namesOf(jump.level);
+      let depends = names.has(own);
+      if (!depends) {
+        for (const name of names) {
+          if (dependence.get(name) === true) {
+            depends = true;
+            break;
+          }
+        }
+      }
+      dependence.set(jump.name, depends);
+    }
+    const reading: RetainedReading = {
+      own,
+      dependent: plan.jumps.filter((jump) => dependence.get(jump.name)),
+      outer: {
+        skeleton: plan.skeleton,
+        jumps: plan.jumps.filter((jump) => !dependence.get(jump.name)),
+      },
+      // READ, never recomputed: what compile time decided (ADR-047).
+      affine: edge.affine[index],
+    };
+    edge.retained = edge.gives.map(
+      (_key, at) => (at === index ? reading : null));
   }
   // 11 (continued). What a bound may read: the bounded coordinate's own
   // id together with every coordinate of the bank (design D3). An
