@@ -34,6 +34,7 @@ and license your own designs however you choose.
    animation
    driving
    fusion
+   markings
    testing
    scenarios
 

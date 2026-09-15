@@ -139,6 +139,28 @@ rebinds the child's end from the parent's after every `simulate()` of
 the parent. Every other keyword keeps the meaning it has, including the
 `TypeError` an unknown one raises.
 
+A fourth kind of declaration says what a part CARRIES rather than what
+it is made of: a **marking** (ADR-120), `digits = Marking(Svg(path),
+Wrapped(...) | Flat(...), color='#RRGGBB')` in the class body of a rigid
+node. `NodeMeta.__new__` recognizes it duck-typed on `marking_kind`,
+exactly as it recognizes a control by `control_kind`, and refuses it at
+class creation on a non-rigid node, on a name that clashes with a
+parameter, a child, a port or a joint coordinate, on a name a node
+attribute already carries (`color` among them), and when it is
+malformed. Collection walks `reversed(cls.__mro__)` as `declared_children`
+does, so a marking is inherited — including from a PLAIN MIXIN that is
+not a node, which is how a family of fitted parts is usually spelled;
+the artwork path resolves against the module that DECLARED it, captured
+in `__set_name__`, and a subclass assigning `None` drops it. A marking is
+deliberately neither a `Declaration` nor a descriptor: it never reaches
+`identity_values` or `_build_uniq_id`, so it cannot key an artifact, and
+automatic child naming, which scans the instance dict, can never mistake
+it for a child. It contributes no solid, no child and no printed piece —
+volume, bounds, STL and BREP bytes, piece id and every interference and
+connectivity verdict are what they are without it — and it lives in the
+part's own adjusted frame, so the part's placement carries it and
+nothing about time or a joint is involved.
+
 The public surface is split by concern above the node package, so an
 import line says what each name is for: build parameters come from
 `solid_node/parameters.py`, node classes from `solid_node/node/`, ports
@@ -1106,6 +1128,27 @@ and the directory it owns, anchored for the process and inherited by the
 fresh interpreters it starts. Within a build directory artifacts mirror
 the source layout, basename `<script>-<uniq_id>`.
 
+A rigid node that declares markings writes one more artifact per
+marking, `<basename>.marking-<attribute>.stl`, beside its own `.stl`:
+the artwork's surface in the part's adjusted frame, on the nominal
+cylinder or plane with no offset, subdivided so a wrap follows its
+cylinder to within the part's own tessellation precision (ADR-120). Its
+currency is **separate** from the solid's: its tracked set is the node's
+`files` together with the artwork file, and the artwork is deliberately
+not in `node.files`, so editing the drawing rebuilds only the decal
+while the STL, the BREP, the `.scad` and every ancestor stay current.
+The pass runs in `_prepare` AFTER and OUTSIDE the solid's skip decision,
+each marking guarded by the same `_up_to_date` predicate and the same
+`_artifact_recipe` hook the solid uses, so a lost decal always comes
+back and costs no render — the one place the sheet leaf's DXF is not the
+model, since that file IS derived from the rendered profile and a
+marking never is. The artifact records the recipe
+`marking-svg-v1:<tolerance>`, because a part that declares no
+`linear_deflection` is meshed at a framework default that lives in no
+project file. Unlike the `.brep`, a marking is NAMED by the published
+document, so the sweep spares it by reference and removes the artifact
+of a declaration that was deleted.
+
 Every `import(file = …)` the framework writes into a generated `.scad` is
 anchored on that same build directory — the directory the artifact layout
 mirrors the source tree under, whichever node ends up importing it — so a
@@ -1645,6 +1688,26 @@ pass. The build's `viewer.json` and the export's `manifest.json` publish
 it; the headless browser-snapshot capture does not, because it bakes one
 instant and already publishes an empty `instructions` table.
 
+A rigid node that declares markings carries a `markings` list in its
+entry: one object per declared marking in declaration order, with the
+marking's `name`, a `model` reference to its artifact under the same
+portability rules and the same containment guard as the node's own
+model, its `color`, and its own `mtime` — the marking's, so a consumer
+that reloads on change sees a redrawn decal without the part appearing
+to change. No placement is published: the artifact already holds the
+artwork's surface in the part's own frame, so a consumer applies the
+part's operations to it and no consumer reproduces the placement
+arithmetic. A marking carries no `piece` and never enters the inventory:
+a piece is one thing to print, and a decal is a surface the maker
+applies. The list is ADDITIVE and moves no version — a marking adds no
+solid and enters no operation, binding or program, so a document whose
+tree declares no marking is byte-identical to the one published before
+markings existed (ADR-120, the `piece` precedent of ADR-043).
+`solid export` copies each named marking under `models/` with an
+ordinary atomic copy rather than through the piece inventory, which
+serves only registered pieces; the browser-snapshot capture stages them
+beside the models it links.
+
 **The handle also drives the document** (ADR-056 stage 3b). A document
 whose `drivers` table is non-empty loads and renders at the pose its
 expressions evaluate to under the declared defaults; what is refused is
@@ -2064,6 +2127,16 @@ The short list that changes must not silently break:
   per file is not a premise of the cache; what remains true of a
   multi-node file is a property of node references (a bare path to it is
   ambiguous), not of currency.
+- A **marking** contributes no solid and no piece (ADR-120). A part's
+  volume, bounds, STL bytes, BREP bytes, `uniq_id` and piece id are
+  identical whether or not it declares markings, every interference and
+  connectivity verdict is unchanged under both comparison kernels, and
+  the tree, the part count and the published inventory never see one. It
+  is enforced by construction rather than by care: a marking is not a
+  `Declaration`, so no code path carries it into the artifact key, and
+  its own artifact is derived from the artwork and the declaration and
+  never from the part's render — so a stale decal cannot re-derive a
+  solid, and an artwork edit cannot invalidate one.
 - A loaded tree belongs to one sealed source generation. Project Python is
   executed from coherently observed bytes, all consumed Python and foreign
   contributors retain their canonical targets and strong identities, and

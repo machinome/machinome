@@ -21,6 +21,7 @@ import json
 import logging
 import os
 import shutil
+import tempfile
 
 from solid_node._artifact import ArtifactChanged
 from .serializer import (
@@ -59,6 +60,29 @@ class ExportModelPathError(Exception):
             f'Cannot export model artifact {artifact}: its canonical path is '
             f'outside build directory {build_dir}'
         )
+
+
+def _copy_artifact(source, target):
+    """Copy one artifact into the export atomically.
+
+    A marking is deliberately not a registered piece, so
+    `PieceInventory.copy_artifact` -- which serves only paths it
+    registered (`core/pieces.py:273-276`) -- is not the copier for it.
+    The write is still atomic, for the reason every other artifact write
+    is: a reader must never find a half-copied mesh.
+    """
+    directory = os.path.dirname(target) or '.'
+    os.makedirs(directory, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=f'.{os.path.basename(target)}.', suffix='.tmp', dir=directory)
+    os.close(descriptor)
+    try:
+        shutil.copyfile(source, temporary)
+        os.replace(temporary, target)
+    except Exception:
+        if os.path.exists(temporary):
+            os.remove(temporary)
+        raise
 
 
 def export_node(node, output_dir, fps=30, frames=360, widget=True):
@@ -106,6 +130,11 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True):
             with PieceInventory() as inventory:
                 # Maps each rigid node's stl_file to its manifest-relative path
                 models = {}
+                # Each marking artifact the manifest names, and where it
+                # is copied to: beneath `models/`, under the same
+                # portability rules and the same containment guard as a
+                # model, so the export stays self-contained.
+                markings = {}
                 # Compiled BEFORE the symbolic walk, off the NUMERIC rest
                 # render, and `(None, None)` under any root but a running
                 # one -- so a model that declares no running time loads
@@ -119,6 +148,11 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True):
                         ),
                         inventory.register,
                         graph_values=True,
+                        marking_path=lambda rigid_node, artifact:
+                            markings.setdefault(
+                                artifact,
+                                _artifact_model_path(artifact, rigid_node),
+                            ),
                     )
                     drivers = drivers_table(declarations)
                     events = instructions_table(
@@ -136,6 +170,10 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True):
                     target = os.path.join(output_dir, model_path)
                     inventory.copy_artifact(stl_file, target)
                     logger.info(f'{stl_file} -> {target}')
+                for artifact, marking_path in markings.items():
+                    target = os.path.join(output_dir, marking_path)
+                    _copy_artifact(artifact, target)
+                    logger.info(f'{artifact} -> {target}')
 
                 inventory.validate()
                 manifest_path = os.path.join(output_dir, 'manifest.json')
@@ -184,16 +222,29 @@ def _copy_widget(output_dir):
 def _model_path(node):
     """The manifest-relative path for a rigid node's STL, preserving
     its position under the selected build dir for uniqueness."""
+    return _artifact_model_path(node.stl_file, node)
+
+
+def _artifact_model_path(artifact, node):
+    """The manifest-relative path of one artifact of `node`.
+
+    A marking's artifact goes through exactly this: it sits beside the
+    part's own mesh, under the same basename, so preserving its position
+    under the build root gives it a unique path under `models/` with no
+    parent traversal, and the containment guard refuses one that lies
+    outside -- BEFORE the output directory is created, since the walk
+    that resolves it runs before anything is written.
+    """
     build_root = os.path.realpath(get_build_dir(node.src))
-    artifact = os.path.realpath(node.stl_file)
+    resolved = os.path.realpath(artifact)
     try:
-        contained = os.path.commonpath((artifact, build_root)) == build_root
+        contained = os.path.commonpath((resolved, build_root)) == build_root
     except ValueError:
         # Different drives on Windows have no common path.
         contained = False
     if not contained:
-        raise ExportModelPathError(artifact, build_root)
+        raise ExportModelPathError(resolved, build_root)
     return os.path.join(
         'models',
-        os.path.relpath(artifact, build_root),
+        os.path.relpath(resolved, build_root),
     )

@@ -200,6 +200,13 @@ directory that symlink references into the ordinary build path. Build
 preparation SHALL NOT remove any other path merely because its name begins
 with the build directory's name and a dot.
 
+A rigid node that declares markings under the `markings` capability SHALL
+additionally write one artifact per marking under that same basename,
+distinguished by the marking's own declared name, so two markings on one part
+never collide and the file says which declaration produced it. Unlike the
+`.brep`, a marking artifact IS named by the published document, and it is
+published, coloured and copied on export like a model.
+
 The `.brep` artifact SHALL be private to the build. No viewer snapshot, export
 manifest, or other published document SHALL reference it, and its presence
 SHALL NOT alter any document's schema.
@@ -286,6 +293,18 @@ SHALL NOT alter any document's schema.
 - **WHEN** a project that declares no models is built
 - **THEN** its artifacts, `viewer.json` and `errors.json` are written in the
   build root itself, at the paths they have today
+
+#### Scenario: A marking's artifact sits beside the part's mesh
+
+- **WHEN** a rigid node declaring the markings `digits` and `arrows` is built
+- **THEN** two marking artifacts sit beside its `.stl` under the same basename,
+  one distinguished by `digits` and one by `arrows`
+
+#### Scenario: A part declaring no marking writes no marking artifact
+
+- **WHEN** a rigid node that declares no marking is built
+- **THEN** its build directory holds exactly the artifacts it held before
+  markings existed
 
 ### Requirement: Mtime-equality caching
 
@@ -946,6 +965,12 @@ published document names them. As with `.scad` inputs, a superseded one is
 therefore not removed by the sweep; mtime-equality caching means a superseded
 artifact is never read.
 
+A **marking** artifact under the `markings` capability is spared by
+**reference**, not by kind, because the published snapshot names it beside the
+part's model. A marking still declared is therefore kept, and a marking
+artifact whose declaration was deleted or renamed is removed by the next
+successful publication, exactly as a renamed node's artifact is.
+
 #### Scenario: A renamed node leaves nothing behind
 
 - **WHEN** a node is renamed and the project is rebuilt successfully
@@ -962,6 +987,19 @@ artifact is never read.
 - **WHEN** a build of exact nodes publishes successfully and sweeps
 - **THEN** every `.brep` written for a current node is still present, though
   the published snapshot names none of them
+
+#### Scenario: A declared marking survives the sweep
+
+- **WHEN** a project whose parts declare markings publishes successfully and
+  sweeps
+- **THEN** every marking artifact the snapshot names is still present
+
+#### Scenario: A dropped marking leaves nothing behind
+
+- **WHEN** a marking declaration is deleted and the project is rebuilt
+  successfully
+- **THEN** that marking's artifact is gone from the build directory and the
+  part's own artifacts are untouched
 
 ### Requirement: Error file lifecycle
 

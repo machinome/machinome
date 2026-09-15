@@ -22,6 +22,7 @@ from solid_node.openscad import require_openscad
 from solid_node.source_generation import (
     current_census, current_generation, current_phase, track_sources,
 )
+from .markings import DEFAULT_DEFLECTION, declared_markings
 from .sources import source_closure, source_scope
 from . import phase as _phase
 from .declarative import (ChildDeclaration, NodeMeta, StructureError,
@@ -883,7 +884,18 @@ class AbstractBaseNode(metaclass=NodeMeta):
         return assembled
 
     def _prepare(self, root=None):
-        """Prepare native structure and geometry without presenting SCAD."""
+        """Prepare native structure and geometry without presenting SCAD.
+
+        Every declared marking is visited here too, AFTER and
+        INDEPENDENTLY of the solid's skip decision: the pass sits
+        outside the `_prepare_can_be_skipped()` block, so a part whose
+        STL is current still has its decals checked and a lost one
+        always comes back, and each is guarded by its own currency over
+        its own tracked set, so a stale decal never re-derives a solid.
+        It sits after the `_prepared` early return, so it runs once per
+        node per process, which is the guarantee the solid's own
+        materialization has.
+        """
         track_sources(self.files)
         if root:
             self.root = root
@@ -901,6 +913,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
                 self.generate_scad()
             else:
                 self.materialize(rendered)
+        self._build_markings()
         self._prepared = True
         return self
 
@@ -1017,6 +1030,29 @@ class AbstractBaseNode(metaclass=NodeMeta):
             return
         return self.stl_file
 
+    def _tracked_mtime_ns(self, files):
+        """The maximum mtime over one tracked source set, as integer
+        nanoseconds.
+
+        The set is a parameter because a node has more than one: its own
+        (`self.files`, what `mtime_ns` answers over) and, per declared
+        marking, that set together with the artwork file. Everything
+        else about currency is identical, so it is written once here and
+        the three properties below are the node's own case of it.
+        """
+        census = current_census()
+        if census is not None:
+            return max(census[path].mtime_ns for path in files)
+        return max(os.stat(path).st_mtime_ns for path in files)
+
+    def _tracked_digest(self, files):
+        """What one tracked source set says, as one digest."""
+        return currency.source_digest(files, self._project_root, self.scope)
+
+    def _tracked_fingerprint(self, files):
+        """The observable metadata state of one tracked source set."""
+        return currency.source_fingerprint(files, self._project_root)
+
     @property
     def mtime_ns(self):
         """Maximum mtime in source file of all nodes rendered inside this
@@ -1033,10 +1069,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
         (ADR-006). An integer read from the filesystem and written back
         unchanged is a fixed point at any resolution.
         """
-        census = current_census()
-        if census is not None:
-            return max(census[path].mtime_ns for path in self.files)
-        return max(os.stat(path).st_mtime_ns for path in self.files)
+        return self._tracked_mtime_ns(self.files)
 
     @property
     def source_digest(self):
@@ -1056,8 +1089,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
         None when any tracked source cannot be read -- an answer, not an
         error: nothing can be vouched for, so nothing is current.
         """
-        return currency.source_digest(self.files, self._project_root,
-                                      self.scope)
+        return self._tracked_digest(self.files)
 
     @property
     def source_fingerprint(self):
@@ -1067,7 +1099,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
         a changed contributor hidden beneath the same maximum mtime; any
         disagreement falls through to the content digest.
         """
-        return currency.source_fingerprint(self.files, self._project_root)
+        return self._tracked_fingerprint(self.files)
 
     @property
     def mtime(self):
@@ -1346,8 +1378,15 @@ class AbstractBaseNode(metaclass=NodeMeta):
         return reversed(to_revert)
 
 
-    def _up_to_date(self, path):
+    def _up_to_date(self, path, sources=None):
         """Exact artifact equality guarded by every source's metadata.
+
+        `sources` names the tracked set to answer over, defaulting to
+        this node's own. A marking's artifact is checked here, over its
+        own set, through exactly this predicate and exactly this
+        producer-recipe hook -- so the solid's currency and a decal's
+        are one piece of code answering two questions, and neither can
+        drift from the other.
 
         Equality and not tolerance: a window wide enough to absorb a
         filesystem's quantum is exactly a window in which a real edit
@@ -1360,6 +1399,8 @@ class AbstractBaseNode(metaclass=NodeMeta):
         sidecar, but does not open source contents. Any disagreement invokes
         the existing stronger content proof.
         """
+        if sources is None:
+            sources = self.files
         if not os.path.exists(path):
             return False
         expected_recipe = self._artifact_recipe(path)
@@ -1367,15 +1408,15 @@ class AbstractBaseNode(metaclass=NodeMeta):
                 and currency.recorded_recipe(path) != expected_recipe):
             return False
         artifact_mtime_ns = os.stat(path).st_mtime_ns
-        node_mtime_ns = self.mtime_ns
-        fingerprint = self.source_fingerprint
+        node_mtime_ns = self._tracked_mtime_ns(sources)
+        fingerprint = self._tracked_fingerprint(sources)
         if (fingerprint is not None
                 and artifact_mtime_ns == node_mtime_ns
                 and currency.recorded_fingerprint(path) == fingerprint):
             return True
-        return self._content_verified(path, fingerprint)
+        return self._content_verified(path, fingerprint, sources)
 
-    def _content_verified(self, path, fingerprint=None):
+    def _content_verified(self, path, fingerprint=None, sources=None):
         """Whether `path` was produced from the sources that are here now.
 
         The timestamp or contributor fingerprint moved -- a clone, a branch
@@ -1397,22 +1438,134 @@ class AbstractBaseNode(metaclass=NodeMeta):
         current for this build on the strength of the digest, and the
         fallback is simply consulted again next time.
         """
+        if sources is None:
+            sources = self.files
         recorded = currency.recorded_digest(path)
         if recorded is None:
             return False
-        digest = self.source_digest
+        digest = self._tracked_digest(sources)
         if digest is None or digest != recorded:
             return False
-        currency.restamp(path, self.mtime_ns)
+        currency.restamp(path, self._tracked_mtime_ns(sources))
         if fingerprint is None:
-            fingerprint = self.source_fingerprint
+            fingerprint = self._tracked_fingerprint(sources)
         currency.record(path, digest, fingerprint,
                         self._artifact_recipe(path))
         return True
 
+    ##############################################
+    # Markings: what this part CARRIES, and is not made of
+
+    def marking_file(self, name):
+        """The artifact of the marking declared as `name`.
+
+        Beside the part's own `.stl` and under the same basename, with
+        the attribute name in the path, so two markings on one part
+        never collide and the file says which declaration wrote it.
+        """
+        return f'{self.basepath}.marking-{name}.stl'
+
+    def declared_markings(self):
+        """Every marking this node's class declares, by attribute, in
+        declaration order.
+
+        Memoized per INSTANCE, under a private key the child-naming scan
+        already skips: an instance's class never changes, `_up_to_date`
+        asks on every artifact of every node, and a develop-mode reload
+        builds new instances of the reloaded class.
+        """
+        cached = self.__dict__.get('_markings')
+        if cached is None:
+            cached = self.__dict__['_markings'] = declared_markings(
+                type(self))
+        return cached
+
+    def marking_sources(self, marking):
+        """What a marking's artifact is derived from: this node's own
+        tracked sources TOGETHER WITH the artwork file.
+
+        The artwork is deliberately not in `node.files`. Putting it
+        there would be the one-line version of this feature and would
+        break the invariant it exists for: `node.files` is what
+        `mtime_ns`, `source_digest` and `source_fingerprint` are
+        computed over, so an artwork edit would invalidate the STL, the
+        BREP, the `.scad` and, through the parent's union, every
+        ancestor.
+        """
+        artwork = marking.artwork.resolved
+        return self.files | ({artwork} if artwork else set())
+
+    def marking_tolerance(self):
+        """The precision a decal of this part is meshed at: the part's
+        own declared linear deflection where it declares one, and the
+        framework's default where it does not (an `StlNode` declares
+        none)."""
+        return getattr(self, 'linear_deflection', DEFAULT_DEFLECTION)
+
+    def marking_mtime_ns(self, marking):
+        """The stamp a marking's artifact carries: the maximum over its
+        own tracked set, so an artwork edit moves it and the node's own
+        stamp stays where it was."""
+        return self._tracked_mtime_ns(self.marking_sources(marking))
+
+    def marking_mtime(self, marking):
+        """The same stamp as the float the document records, derived the
+        way `mtime` is derived from `mtime_ns` so the two can never
+        disagree about how a nanosecond becomes a second."""
+        return _seconds(self.marking_mtime_ns(marking))
+
+    def _build_markings(self):
+        """Write every marking of this node that is not already the file
+        its sources would produce.
+
+        Never reached for a non-rigid node: a marking is refused on one
+        at class creation, so there is nothing to visit.
+        """
+        for name, marking in self.declared_markings().items():
+            path = self.marking_file(name)
+            sources = self.marking_sources(marking)
+            if self._up_to_date(path, sources):
+                continue
+            content = marking.mesh_bytes(self.marking_tolerance())
+            _atomic_write_bytes(
+                path, content, self._tracked_mtime_ns(sources),
+                self._tracked_digest(sources),
+                self._tracked_fingerprint(sources),
+                self._artifact_recipe(path),
+            )
+            logger.info('%s generated with %s!', path,
+                        _seconds(self._tracked_mtime_ns(sources)))
+
     def _artifact_recipe(self, path):
-        """Private producer revision expected for an affected artifact."""
+        """Private producer revision expected for an affected artifact.
+
+        A marking artifact records one, because the rule that produced
+        it is not entirely in its sources: a part that declares no
+        `linear_deflection` is meshed at a framework default that lives
+        in the framework and in no project file, so without this,
+        changing that default -- or the meshing rule itself -- would
+        leave every existing decal certified current and go on serving
+        chords where the new rule wants arcs. Every other artifact
+        defers to `super()` and records nothing, as it always has.
+        """
+        # The prefix test first, so the common path -- the STL, the
+        # BREP, the `.scad`, asked about on every currency check of
+        # every node -- costs one string comparison and enumerates
+        # nothing.
+        if (path.startswith(f'{self.basepath}.marking-')
+                and path in self._marking_files()):
+            return f'marking-svg-v1:{self.marking_tolerance()}'
         return None
+
+    def _marking_files(self):
+        """The artifact of every marking still declared.
+
+        By the declarations rather than by the path shape: the artifact
+        of a marking whose declaration was deleted is not this node's to
+        vouch for, and the build's sweep removes it.
+        """
+        return {self.marking_file(name)
+                for name in self.declared_markings()}
 
     @property
     def geometry_recipe(self):

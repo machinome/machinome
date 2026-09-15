@@ -657,6 +657,8 @@ class Builder(FileSystemEventHandler):
                     rigid_node.stl_file, self.build_dir),
                 inventory.register,
                 graph_values=True,
+                marking_path=lambda rigid_node, artifact: os.path.relpath(
+                    artifact, self.build_dir),
             )
             drivers = drivers_table(declarations)
             events = instructions_table(instructions,
@@ -720,6 +722,18 @@ class Builder(FileSystemEventHandler):
             if (node.rigid and getattr(node, 'exact', False)
                     and not node._up_to_date(node.brep_file)):
                 return False
+            # A marking's currency is checked on every build of its
+            # part, whether or not the solid is current: a lost decal
+            # always comes back, and the document about to be
+            # republished names it. The check reads the marking's own
+            # tracked set, so a stale decal costs the artifact pass and
+            # never a render (see `AbstractBaseNode._build_markings`).
+            declared = (getattr(node, 'declared_markings', None)
+                        if node.rigid else None)
+            for name, marking in (declared() if declared else {}).items():
+                if not node._up_to_date(node.marking_file(name),
+                                        node.marking_sources(marking)):
+                    return False
             return all(current(child) for child in node.children)
 
         return current(self.node)
@@ -730,6 +744,14 @@ class Builder(FileSystemEventHandler):
         def collect(node):
             if 'model' in node:
                 referenced.add(os.path.normpath(node['model']))
+            # A marking is spared by REFERENCE, not by kind: unlike the
+            # `.brep` and the `.scad`, which no document names, the
+            # snapshot names a marking beside the part's model -- so a
+            # marking still declared is kept, and one whose declaration
+            # was deleted is swept exactly as a renamed node's artifact
+            # is.
+            for marking in node.get('markings', []):
+                referenced.add(os.path.normpath(marking['model']))
             for child in node.get('children', []):
                 collect(child)
 

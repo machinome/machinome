@@ -5,6 +5,32 @@ History
 Unreleased
 ----------
 
+* A **marking**: what a rigid part carries on its surface, declared in
+  its class body as ``digits = Marking(Svg('dial.svg'), Wrapped(...),
+  color='#FFFFFF')`` beside its parameters and its children. The artwork
+  is an SVG resolved against the module that declared the marking and
+  reduced to its closed regions, holes nested and open paths ignored and
+  counted; the placement is ``Wrapped`` onto a cylinder (artwork X is
+  arc length, with a stated angular zero and an optional repeat pitch)
+  or ``Flat`` on a plane, both in the part's own frame, so the part's
+  placement carries the decal and nothing about time or a joint is
+  involved. A marking adds **no solid, no part and no printed piece**:
+  volume, bounds, STL and BREP bytes, piece id and every interference
+  and connectivity verdict are what they are without it, and it does not
+  key the part's artifacts. The build writes one surface mesh per
+  marking beside the part's ``.stl``, at the nominal surface with no
+  offset, following a wrap to the part's own tessellation precision;
+  it has a currency of its own, so editing the artwork rebuilds only the
+  decal and a lost decal comes back without re-deriving a solid, while
+  editing the declaration rebuilds the part as any source edit does. A
+  rigid node's published entry gains an optional additive ``markings``
+  list (``name``, ``model``, ``color`` and the marking's own ``mtime``,
+  with no placement and no ``piece``) that moves no document version, so
+  a tree that declares no marking publishes the same bytes as before,
+  and ``solid export`` copies each named marking under ``models/``. The
+  browser viewer draws markings in its own release; until then a model
+  that declares one publishes it and looks as it does today, and the
+  OpenSCAD path does not draw them at all.
 * **BREAKING:** OpenSCAD is no longer a ``solid develop`` viewer or automatic
   fallback. It was solid-node's first reliable viewer, but as machine
   simulation gained independent drivers, instructions and continuously

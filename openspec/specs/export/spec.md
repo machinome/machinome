@@ -22,6 +22,15 @@ the viewer package is not installed, export SHALL fail with
 `WidgetBundleMissing` naming `pip install "solid-node[viewer]"` and
 `--no-widget` as the alternatives.
 
+The `models/` directory SHALL also hold a copy of every **marking** artifact
+the manifest names under the `markings` capability, preserving that artifact's
+path relative to the selected build directory exactly as a model's is, so the
+export stays self-contained: a consumer reading the manifest from a static host
+resolves every marking without a solid-node process and without any path
+outside the export directory. A marking artifact outside its resolved build
+directory SHALL fail export before the requested output is created or
+modified, as a model artifact outside it already does.
+
 #### Scenario: Widget-less export
 
 - **WHEN** export runs with `widget=False` (`--no-widget`)
@@ -34,6 +43,12 @@ the viewer package is not installed, export SHALL fail with
   `solid-node-viewer`
 - **THEN** it fails naming the extra and `--no-widget`, and writes no output
   directory
+
+#### Scenario: An export carries the markings it names
+
+- **WHEN** a node whose parts declare markings is exported
+- **THEN** every marking reference in `manifest.json` resolves to a copied
+  artifact beneath the export's `models/` directory, with no parent traversal
 
 ### Requirement: Manifest contract
 
@@ -102,6 +117,30 @@ qualified driver id and both in design units, beside `duration` in seconds.
 Under versions 2, 3 and 4 an instruction stating `by` SHALL continue to be
 OMITTED from the table, because a consumer of those versions reads `targets`
 off every entry.
+
+A rigid node that declares markings under the `markings` capability SHALL
+additionally carry a `markings` list, one entry per declared marking in
+declaration order, each entry carrying the marking's `name`, a `model`
+reference to its artifact under the same rules and the same portability
+guarantee as the node's own `model`, its `color` in `#RRGGBB` form, and its own
+`mtime` — the marking artifact's, not the node's, so a consumer that reloads on
+change sees a redrawn decal without the part appearing to change. The key SHALL
+be ABSENT on a node that declares no marking.
+
+A marking entry SHALL NOT publish its placement: the artifact already holds the
+artwork's surface in the part's own frame, so a consumer applies the part's
+operations to it exactly as it applies them to the part's model, and no
+consumer reproduces the placement arithmetic. A marking SHALL NOT carry a
+`piece`, and SHALL NOT appear in the piece inventory.
+
+The `markings` list SHALL be treated as ADDITIVE and SHALL NOT bump `version`.
+A consumer that ignores it renders exactly the picture it renders today,
+because a marking adds no solid, enters no operation, no binding and no
+program, and describes nothing the existing fields describe differently — which
+is the `piece` precedent, and the standing rule that a producer emits the
+lowest version its content needs. A document whose tree declares no marking
+SHALL therefore be byte-identical to the document published before markings
+existed.
 
 #### Scenario: A running root's document declares version 5
 
@@ -185,6 +224,41 @@ off every entry.
 - **THEN** direct export raises `ExportModelPathError`, CLI export exits
   nonzero with that diagnostic, and the requested output is not created or
   modified
+
+#### Scenario: A part publishes the markings it carries
+
+- **WHEN** a rigid node declaring `digits` and then `arrows` is exported
+- **THEN** its entry carries a `markings` list of two entries in that order,
+  each with `name`, `model`, `color` and `mtime`, and neither carries a
+  placement or a `piece`
+
+#### Scenario: A document with no marking is unchanged in every byte
+
+- **WHEN** a tree whose parts declare no marking is exported
+- **THEN** no node's entry has a `markings` key, the document declares the
+  version its content already needed, and it is byte-identical to the
+  manifest exported before markings existed
+
+#### Scenario: A marking's mtime is its own
+
+- **WHEN** a marking's artwork is edited and the project is exported again
+- **THEN** that marking entry's `mtime` has moved and the node's own `mtime`
+  and `model` have not
+
+#### Scenario: The picture is unchanged for a consumer that ignores markings
+
+- **WHEN** a consumer written against the previous document reads a document
+  whose parts carry markings
+- **THEN** it finds the same `format`, `version`, `animation` and `root` tree,
+  with every previously published node field unchanged
+
+#### Scenario: The OpenSCAD renderer does not draw markings
+
+- **WHEN** a model whose parts declare markings is photographed with the
+  OpenSCAD snapshot renderer, or opened by `solid develop` without the viewer
+  extra
+- **THEN** it renders exactly as the same model without the markings, and
+  neither the build nor the render fails
 
 ### Requirement: Model deduplication
 

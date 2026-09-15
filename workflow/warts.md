@@ -2567,7 +2567,13 @@ ratified requirements or permission to implement a framework change. No
 framework source was modified; `solid_node/node/base.py`,
 `solid_node/core/serializer.py` and the viewer's `widget/src/tree.ts` were
 read to locate the limit. The proposed design is
-`workflow/docs/markings.md`; **status: filed here, triage open**.
+`workflow/docs/markings.md`; **status: cycle 1 of 3 implemented** — OpenSpec change
+`carry-markings-on-a-part` (archived 2026-09-15, ADR-120) gives a rigid node a
+declared zero-volume `Marking` with `Svg` artwork and `Wrapped`/`Flat` placement,
+a decal artifact with its own currency, and an additive `markings` document
+field; on branch `markings`, not yet integrated. Still open: drawing it (the
+viewer's cycle), DXF artwork (its chains only close at 0.01 mm and read as the
+stencil), and `process` with the cut file and multi-material 3MF (0.8).
 
 - **A part can carry only one colour, so a marking the maker applies after
   manufacture cannot be modelled at all.** `color` is one class attribute per
@@ -2608,7 +2614,8 @@ read to locate the limit. The proposed design is
   from the part inventory, and (with 0.8's process and material) exported as
   the nominal flat cut file or the multi-material 3MF the maker actually uses.
   Whether a co-printed marking is geometry is a product decision held for the
-  pilot. Filed here; triage open.
+  pilot. Cycle 1 implemented as `carry-markings-on-a-part` (ADR-120), see the
+  status above; the co-printed question stays with the pilot for cycle 3.
 
 # name-the-missing-file (2026-09-15, found while fixing)
 

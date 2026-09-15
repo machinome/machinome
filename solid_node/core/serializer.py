@@ -624,7 +624,41 @@ def compiled_controls(program, initial):
     return program.published_controls(initial)
 
 
-def serialize_node(node, model_path, piece_id=None, *, graph_values=False):
+def marking_entries(node, marking_path):
+    """One entry per marking a rigid node declares, in declaration order.
+
+    No placement: the artifact already holds the artwork's surface in
+    the part's own frame, so a consumer applies the part's operations to
+    it exactly as it applies them to the part's model, and no consumer
+    reproduces the placement arithmetic. No ``piece`` either: a piece is
+    one thing to print, and a decal is a surface the maker applies.
+
+    The ``mtime`` is the MARKING's -- the maximum over its own tracked
+    set, the artwork included -- so a consumer that reloads on change
+    sees a redrawn decal without the part appearing to change.
+    """
+    # `getattr`, as the producers already ask a node whether it is
+    # `exact`: a node DOUBLE -- the parity fixtures, the lifecycle
+    # fakes -- is a stand-in for the two or three attributes a producer
+    # reads, and a part that declares no marking publishes nothing here
+    # either way.
+    declared = getattr(node, 'declared_markings', None)
+    if declared is None:
+        return []
+    entries = []
+    for name, marking in declared().items():
+        artifact = node.marking_file(name)
+        entries.append({
+            'name': name,
+            'model': marking_path(node, artifact),
+            'color': marking.color,
+            'mtime': node.marking_mtime(marking),
+        })
+    return entries
+
+
+def serialize_node(node, model_path, piece_id=None, *, graph_values=False,
+                   marking_path=None):
     """Serialize one node using ``model_path`` for rigid artifacts.
 
     The established parent-linking rule must run before recursion because a
@@ -638,6 +672,15 @@ def serialize_node(node, model_path, piece_id=None, *, graph_values=False):
     every rigid node -- ``model`` being the reference just resolved above --
     and its return value is published as ``piece``. It defaults to ``None``
     so every existing caller keeps its previous, piece-free document.
+
+    ``marking_path`` is resolved the same way: called as
+    ``marking_path(node, artifact)`` for each marking a rigid node
+    declares, it returns the reference published as that marking's
+    ``model``. The ``markings`` list is ADDITIVE and absent on a node
+    that declares none, so a consumer that ignores it renders exactly
+    the picture it renders today -- and a caller that resolves no
+    marking publishes the document it published before markings
+    existed.
     """
     data = {
         'name': node.name,
@@ -653,6 +696,10 @@ def serialize_node(node, model_path, piece_id=None, *, graph_values=False):
         data['model'] = model
         if piece_id is not None:
             data['piece'] = piece_id(node, model)
+        if marking_path is not None:
+            markings = marking_entries(node, marking_path)
+            if markings:
+                data['markings'] = markings
         return data
 
     if node.flexible:
@@ -668,7 +715,9 @@ def serialize_node(node, model_path, piece_id=None, *, graph_values=False):
 
     node._link_children(children)
     data['children'] = [
-        serialize_node(child, model_path, piece_id, graph_values=graph_values)
+        serialize_node(child, model_path, piece_id,
+                       graph_values=graph_values,
+                       marking_path=marking_path)
         for child in children
     ]
     return data

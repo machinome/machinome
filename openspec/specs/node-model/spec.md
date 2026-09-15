@@ -139,6 +139,15 @@ printed solid and the unit selected by whole-solid assertions; this definition
 does not itself run an assertion or guarantee that the solid's geometry is
 connected. A flexible leaf is never a topmost rigid node.
 
+Rigidity is also what decides where a **marking** may be declared under the
+`markings` capability. A marking is a surface feature in a part's own frame and
+is carried by that part's placement, so it SHALL be declared only on a rigid
+node; a marking declared on an `AssemblyNode`, on a flexible leaf, or on any
+other non-rigid node SHALL be refused when the class is created, naming the
+class and the attribute. A marking does not change what a node IS: it adds no
+solid, no child and no printed piece, so a node carrying markings remains
+exactly as rigid, as fusable and as printable as the same node without them.
+
 #### Scenario: An assembly cannot be fused
 
 - **WHEN** a `FusionNode` renders a child that is an `AssemblyNode`, or any
@@ -176,6 +185,21 @@ connected. A flexible leaf is never a topmost rigid node.
 - **WHEN** `rigid` is read on a flexible leaf
 - **THEN** it reports `False` while the node remains a leaf, and a
   `FusionNode` rendering it raises naming both nodes
+
+#### Scenario: Only a rigid node may carry a marking
+
+- **WHEN** an `AssemblyNode` subclass and a flexible leaf subclass each declare
+  a marking
+- **THEN** creating each class raises, naming the class and the attribute,
+  while the same declaration on a rigid leaf or a `FusionNode` is accepted
+
+#### Scenario: A marking does not change what a node is
+
+- **WHEN** a rigid leaf that declares two markings is fused into a
+  `FusionNode` and the fusion is built
+- **THEN** the fusion accepts it as a rigid child, the leaf remains a rigid
+  leaf, and the fusion's topmost-rigid-node status is what it is without the
+  markings
 
 ### Requirement: Animation-time access restrictions
 
@@ -476,10 +500,23 @@ Direct reassignment, alias changes, replacement, append/removal, and same-length
 The system SHALL accept a class-level `color` in `#RRGGBB` form and reject
 any other non-None value with `ValueError` during colorization.
 
+A node's `color` remains one colour for the whole node and remains optional. A
+**marking** declared on a rigid node under the `markings` capability carries
+its own colour, validated in the same `#RRGGBB` form and rejected with the same
+`ValueError`, and required rather than optional: a marking with no colour would
+declare nothing. A marking's colour SHALL NOT change the node's own.
+
 #### Scenario: Invalid color
 
 - **WHEN** a node declares `color = 'red'`
 - **THEN** assembling it raises `ValueError`
+
+#### Scenario: A marking's colour is separate from the node's
+
+- **WHEN** a node declaring `color = '#222831'` carries a marking declaring
+  `color = '#FFFFFF'`
+- **THEN** the node's published colour is `#222831` and the marking's is
+  `#FFFFFF`
 
 ### Requirement: Leaf adapters are distinct types
 

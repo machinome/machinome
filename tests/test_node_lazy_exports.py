@@ -55,6 +55,15 @@ EXPECTED_EXPORTS = {
     # one unreleased cycle now live in `solid_node.parameters` and are
     # pinned out of here by ParameterModuleSurface below.
     'declared_children': 'solid_node.node.declarative',
+    # Added by `carry-markings-on-a-part`: what a part carries on its
+    # surface is an answer to "what has shape", so the four names are
+    # node exports -- and deferred like the rest, since the artwork
+    # reduction's build123d and the mesh build's trimesh are reached
+    # inside the build and never at import.
+    'Marking': 'solid_node.node.markings',
+    'Wrapped': 'solid_node.node.markings',
+    'Flat': 'solid_node.node.markings',
+    'Svg': 'solid_node.node.markings',
 }
 
 # What the node package must NOT answer for. A build parameter is imported

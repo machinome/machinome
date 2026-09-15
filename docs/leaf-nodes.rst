@@ -63,6 +63,11 @@ And two whose part is not modelled here at all, but imported:
   `StlNode`, it is exact: a STEP product is a boundary representation
   the moment it is read.
 
+Whatever a part is modelled in, once it is rigid it can carry a
+**marking** — a drawing wrapped around it or laid flat on it, in a
+colour of its own, contributing no solid and no piece. See
+:doc:`Markings <markings>`.
+
 And one whose part does not hold still:
 
 * **MolejoNode** A flexible part — a spring, a belt, a cable — whose

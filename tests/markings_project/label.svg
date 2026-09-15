@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="12"
+     viewBox="0 0 24 12">
+  <!-- The sheet border: four open lines, exactly as the Curta's own
+       artwork carries its unwrapped circumference. Ignored, and counted. -->
+  <path d="M 0 0 L 24 0 L 24 12 L 0 12" fill="none" stroke="black"
+        stroke-width="0.1"/>
+  <!-- A closed region with a closed region inside it: the counter of a
+       glyph, which must come out as a hole and not as a second face. -->
+  <path d="M 2 2 L 10 2 L 10 10 L 2 10 Z M 4 4 L 8 4 L 8 8 L 4 8 Z"
+        fill="black" fill-rule="evenodd"/>
+  <!-- A plain closed region. -->
+  <path d="M 14 3 L 20 3 L 20 9 L 14 9 Z" fill="black"/>
+</svg>

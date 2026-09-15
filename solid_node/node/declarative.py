@@ -38,8 +38,14 @@ parameter and a child alike, which is why it knows the parameter layer's
 
 import sys
 
-from solid_node.parameters import (Declaration, ParameterError,
+from solid_node.parameters import (_RESERVED, Declaration, ParameterError,
                                    declared_parameters, evaluate)
+
+
+#: Distinguishes "this class body assigned None" from "this class body
+#: assigned nothing", which `None` alone cannot: `color = None` on the
+#: node base is an attribute every caller reads.
+_ABSENT = object()
 
 
 class StructureError(RuntimeError):
@@ -687,6 +693,20 @@ class _DeclaringNamespace(dict):
         shadowed = self.get(key)
         if shadowed is not None and shadowed is not value:
             _refuse_coordinate_clash(self, key, shadowed, value)
+        if (getattr(type(value), 'marking_kind', None) == 'marking'
+                and shadowed is not None and shadowed is not value):
+            raise TypeError(
+                f"'{key}' is declared twice in one class body: first as "
+                f"{shadowed!r} and then as a marking. A marking is read "
+                f"as an attribute of its node, so its name has to be "
+                f"free on that node: rename one of them.")
+        if (getattr(type(shadowed), 'marking_kind', None) == 'marking'
+                and value is not None and value is not shadowed):
+            raise TypeError(
+                f"'{key}' is declared twice in one class body: first as "
+                f"a marking and then as {value!r}. A marking is read as "
+                f"an attribute of its node, so its name has to be free "
+                f"on that node: rename one of them.")
         if isinstance(value, (Declaration, ChildDeclaration,
                               RepeatDeclaration)):
             if isinstance(value, Declaration) and value._name is None:
@@ -823,6 +843,8 @@ class NodeMeta(type):
                 relation.check_declared_on(cls)
         if 'controls' in namespace:
             _validate_controls(cls, name, namespace['controls'])
+        if _declares_marking(cls):
+            _validate_markings(cls, name, namespace)
         return cls
 
 
@@ -866,6 +888,125 @@ def _validate_controls(cls, name, table):
                 f"reserved; rename the attribute.")
         control.check_declared_on(cls, entry_name)
     cls._declares_controls = bool(table)
+
+
+def _declares_marking(cls):
+    """Whether any class in `cls`'s method resolution order wrote a
+    marking.
+
+    Duck-typed on `marking_kind`, exactly as a control is recognized by
+    its `control_kind`, so this module imports nothing new to ask -- and
+    so a class body that declares none, which is nearly all of them,
+    pays one attribute scan and no import at all. The walk is over the
+    whole MRO rather than over the class's own namespace because a
+    marking may be written in a PLAIN MIXIN that is not a node: the
+    mixin never reaches this metaclass, and refusing a marking there
+    would be refusing it in a class that says nothing about rigidity.
+    """
+    for klass in cls.__mro__:
+        for value in vars(klass).values():
+            if getattr(type(value), 'marking_kind', None) == 'marking':
+                return True
+    return False
+
+
+def _validate_markings(cls, name, namespace):
+    """Validate every marking `cls` carries, for the reason a control
+    and a relation are validated here: the class exists NOW, so its own
+    parameters, children, ports and joint coordinates can be enumerated,
+    and a marking that collides with one of them is refused at the line
+    that wrote it rather than at a build.
+
+    The enumeration itself is the marking module's own, taken as a local
+    import exactly as `AssemblyNode` is above: nothing is imported for a
+    class that declares no marking, and the recognition that decides
+    whether to ask is duck-typed (`_declares_marking`).
+
+    Four refusals, all naming the class and the attribute: a marking on
+    a non-rigid node, a name clash with this class's own declarations, a
+    name a node attribute already carries, and a malformed marking.
+
+    `namespace` is this class's own body, and it is read for one thing:
+    when a class carries both an inherited marking and one of its own,
+    the refusal names the one just written, so the error points at the
+    line the author is looking at rather than at a mixin two modules
+    away.
+    """
+    from solid_node.motion.joints import declared_joints
+    from solid_node.motion.ports import declared_ports
+    from solid_node.node.markings import declared_markings
+
+    markings = declared_markings(cls)
+    if not markings:
+        return
+
+    if not getattr(cls, 'rigid', False) or getattr(cls, 'flexible', False):
+        written = [attribute for attribute in markings
+                   if attribute in namespace]
+        attribute = next(iter(written or markings))
+        raise TypeError(
+            f"{name}.{attribute} is a marking, and {name} is not a rigid "
+            f"node. A marking is a surface feature in a part's OWN frame, "
+            f"carried by that part's placement, so it belongs on a rigid "
+            f"part -- a leaf adapter or a fusion. An assembly has no "
+            f"artifact to carry it and no frame of its own to place it in, "
+            f"and a flexible part's surface is a function of machine state. "
+            f"Declare the marking on the part.")
+
+    parameters = declared_parameters(cls)
+    children = declared_children(cls)
+    joints = declared_joints(cls)
+    ports = declared_ports(cls)
+
+    for attribute, marking in markings.items():
+        collision = None
+        if attribute in parameters:
+            collision = 'the declared parameter'
+        elif attribute in children:
+            collision = 'the declared child'
+        elif attribute in joints:
+            collision = 'the joint'
+        elif attribute in ports:
+            collision = 'the port'
+        if collision is not None:
+            raise TypeError(
+                f"'{attribute}' on {name} is declared twice, as a marking "
+                f"and as {collision} of the same class. A marking is read as "
+                f"an attribute of its node, so its name has to be free on "
+                f"that node: rename one of them.")
+
+        if attribute in _RESERVED:
+            raise TypeError(
+                f"marking '{attribute}' on {name} would shadow the node "
+                f"attribute '{attribute}', which every node carries. Rename "
+                f"the marking.")
+
+        for klass in cls.__mro__[1:]:
+            existing = vars(klass).get(attribute, _ABSENT)
+            if existing is _ABSENT:
+                continue
+            if getattr(existing, 'marking_kind', None) == 'marking':
+                continue
+            if existing is None and _drops_marking(klass, attribute):
+                # `digits = None` removing an inherited marking, not an
+                # attribute of the node that a marking would hide.
+                continue
+            raise TypeError(
+                f"marking '{attribute}' on {name} would shadow "
+                f"{klass.__name__}.{attribute}, which a read of the marking "
+                f"would then hide for good. A marking is read as an "
+                f"attribute of its node, exactly as a parameter is, so its "
+                f"name has to be free on that node: rename the marking.")
+
+        marking.declared_on(cls, attribute)
+
+
+def _drops_marking(klass, attribute):
+    """Whether `klass` assigning `attribute = None` removes a marking it
+    inherited, rather than declaring an attribute of its own."""
+    return any(getattr(type(vars(base).get(attribute)), 'marking_kind', None)
+               == 'marking'
+               for base in klass.__mro__[1:])
 
 
 ##############################################

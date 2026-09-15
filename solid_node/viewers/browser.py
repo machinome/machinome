@@ -72,6 +72,9 @@ class BrowserRenderer:
             raise BrowserSnapshotError(viewer_bundle.missing_bundle_remedy())
 
         artifacts = {}
+        # A marking is staged beside the models it belongs to, by the
+        # same build-relative path: the capture reads one directory.
+        markings = {}
         # A capture BAKES one instant: the node arrives keyframed and
         # posed at whatever `--drive` asked for, and its operations hold
         # the numbers that pose produced. So this document is not the
@@ -88,6 +91,9 @@ class BrowserRenderer:
                 ),
                 inventory.register,
                 graph_values=True,
+                marking_path=lambda rigid_node, artifact: markings.setdefault(
+                    artifact, self.artifact_path(artifact, build_dir),
+                ),
             )
             drivers = ({} if program is None
                        else drivers_table(dict(program.inputs)))
@@ -108,6 +114,16 @@ class BrowserRenderer:
                             f"Build artifact is missing: {relative}")
                     target = os.path.join(staging, relative)
                     inventory.copy_artifact(source, target)
+                for source, relative in markings.items():
+                    if not os.path.isfile(source):
+                        raise BrowserSnapshotError(
+                            f"Marking artifact is missing: {relative}")
+                    target = os.path.join(staging, relative)
+                    os.makedirs(os.path.dirname(target) or '.', exist_ok=True)
+                    # Not `inventory.copy_artifact`: that serves only
+                    # paths registered as pieces, and a marking is
+                    # deliberately not one.
+                    shutil.copy2(source, target)
                 inventory.validate()
                 # Document last: a successful staged directory never names a
                 # missing or incoherent model.

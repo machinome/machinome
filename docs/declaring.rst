@@ -86,6 +86,12 @@ One more declaration belongs to the root alone: its time base,
 timeline is and makes ``self.time`` read seconds everywhere below it. See
 :ref:`Declaring the time base <time-base>`.
 
+And one belongs to a rigid part alone: a **marking**, what the part
+carries on its surface — digits, an index mark, a scale, a label. It is
+none of the three layers above, because it says nothing about what is
+built: it adds no solid, no child and no printed piece, and it does not
+key the part's artifacts. See :doc:`Markings <markings>`.
+
 Kinds
 =====
 
