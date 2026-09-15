@@ -12,9 +12,13 @@ Never guess an interface from a symbol name.
 
 This describes solid-node 0.6 plus what followed it on the framework's
 main branch: the declarative node API, the motion layer (joints,
-relations, `solid_node.motion`), and open-run simulation through
-`publish-the-mechanical-program` (ADRs 104–110). These additions are local
-development capabilities, not a claim about the published 0.6.0 package.
+relations, `solid_node.motion`), open-run simulation through
+`publish-the-mechanical-program` (ADRs 104–110), and direct part motion
+(`Slide` and explicit joint selection, ADR 117). The selected-joint
+conformance below includes the completed `harden-direct-part-motion`
+correction (`d1108a4`), currently on its own unmerged framework branch.
+These additions are local development capabilities, not a claim about
+the published 0.6.0 package or what an installed checkout contains.
 
 ## Imports
 
@@ -38,7 +42,7 @@ from solid_node.motion.joints import (         # where a body may move
 from solid_node.motion.couplings import (      # a law between two coordinates
     Affine, UnreachedCoordinate, DoublyBound, NotInvertible, PrematureRead)
 from solid_node.simulation import (            # how it runs
-    Driver, Instruction, Button, Turn, Sim, ScenarioTest, RampProgram,
+    Driver, Instruction, Button, Turn, Slide, Sim, ScenarioTest, RampProgram,
     qualified_drivers, qualified_instructions,
     RunConflict, UnsupportedLaw, TooManyCrossings, Crossing, Stop)
 from solid_node.test import (
@@ -867,15 +871,16 @@ controls = {
 
 `Button(part, instruction)` is a press submitting that named instruction;
 `Turn(part, input)` is a drag about the rotational coordinate the part
-rides, issued as relative moves on `input`. `Slide`, for a prismatic
-coordinate, does not exist yet. A control MOVES NOTHING ITSELF and carries
+rides; `Slide(part, input)` is a drag along its translational coordinate.
+Both issue relative moves on `input`. A `Button` can name a sliding part
+as readily as a turning one. A control MOVES NOTHING ITSELF and carries
 no state: it names a request the run already accepts, so ownership,
 admission, stops and outcomes are exactly what `trigger`, `move` and
 `rate` state, and a blocked drag reports blocked with no hidden backlog.
 
 `part` is a NODE, written the way a relation's path ends are —
 `units.input.dial`, a declared child or a path of declared children
-through one — never a coordinate and never a driver. `Turn`'s `input` is
+through one — never a coordinate and never a driver. A drag's `input` is
 the `Driver` DECLARATION, not a qualified id string; a child's driver is
 reached by declaring the control on that child, exactly as an instruction
 over it is. Controls qualify through the declaring node's instance path
@@ -883,10 +888,37 @@ over it is. Controls qualify through the declaring node's instance path
 key of the tree's instruction table by construction. `controls` is a
 reserved name on a node class: a mistyped table is never silently inert.
 
-Nothing about the gesture is declared. The coordinate is the one owned by
-the nearest ancestor-or-self of the part that declares a joint the run
-banks; the axis and the point the part turns about are read off the tree,
-being the values that joint's own placement used; and `per_unit` — the
+All three controls accept the optional keyword `coordinate=`. Omit it
+when the nearest ancestor-or-self posing the touched part has exactly
+one joint owning one run-banked coordinate. When a body both lifts and
+turns, explicitly select each freedom by its joint declaration, using
+the same path notation as a relation's end:
+
+```python
+# crank.turn is Revolute; crank.lift is Prismatic. The declared drivers
+# rotation and elevation must already drive those respective joints.
+controls = {
+    'turn crank': Turn(crank.handle, rotation, coordinate=crank.turn),
+    'lift crank': Slide(crank.handle, elevation, coordinate=crank.lift),
+    'one revolution': Button(crank.handle, 'Turn once',
+                             coordinate=crank.turn),
+}
+```
+
+`coordinate=` names a JOINT declaration, not a coordinate-id string or a
+`Free` component. It may select a joint farther up the touched part's
+ancestry than inference would choose, but never one on another branch.
+The selected joint must own exactly one coordinate that the run banks;
+selection neither creates a joint nor changes the mechanical program.
+An inherited selection follows the effective named joint after a
+subclass or declaration-site override, including a replaced child along
+its path. Axis, pivot, units and domain come from that effective joint.
+This does not admit a foreign same-named joint, unpack a `Free`, or make
+a `Slide` valid after its selected joint becomes rotational.
+
+The geometry and ratio are not declared. The axis and the point the part
+turns about are read off the tree, being the values that joint's own
+placement used; and `per_unit` — the
 coordinate units the part moves per design unit the input travels — is
 MEASURED from the compiled program at the rest bank, with that input
 displaced a little each way and nothing else moved. It is a reading AT
@@ -898,23 +930,34 @@ holds.
 Every mistake is refused where its facts exist. At class definition: a
 part the declaring class does not hold, a misspelt path segment, a
 coordinate or a driver written where a part belongs, a repeated or
-list-held child, a `Turn` over a driver that class does not declare, and a
+list-held child, a drag over a driver that class does not declare, a
+`coordinate=` that is not an owned joint declaration/path, and a
 `controls` value that is not a table of controls. When the tree is
 enumerated or the program compiled: a `Button` naming no declared
 instruction, a part no run-owned coordinate poses, a posing node declaring
-several joints or a joint owning several coordinates, a `Turn` over a
-coordinate whose domain is not rotational, a `Turn` whose input does not
+several joints without a selection, a joint owning several coordinates,
+a selection reaching sideways, a `Turn` over a non-rotational coordinate,
+a `Slide` over a non-translational one, or a drag whose input does not
 reach the coordinate (naming the inputs that do). A control under a root
 that does not declare `Time.running()` is refused when the simulation is
-constructed and again at publication. At publication: a `Turn`
-whose input moves the part by nothing at rest, and one whose two readings
-disagree.
+constructed and again at publication. At publication: a drag whose input
+moves the part by nothing at rest, one whose two readings disagree, or a
+selected placement that cannot be identified as a complete, contiguous,
+ordered block. Missing, truncated, duplicated or reordered placement
+operations are refused; do not repair them by hand-authoring a span.
 
 A version 5 document publishes a `controls` table beside `instructions`,
-keyed and ordered by qualified name: `kind` (`"button"` or `"turn"`),
+keyed and ordered by qualified name: `kind` (`"button"`, `"turn"` or `"slide"`),
 `part` and `joint` as node-name paths, `instruction` or `input` with
 `per_unit`, `coordinate`, `axis` and `origin` (the axis and the point in
-the joint node's own frame). It is ADDITIVE — the version does not move,
+the joint node's own frame). A translational or explicitly selected
+entry also carries `operation_span: [start, end]`, the half-open indices
+of its own complete placement block in that joint node's `operations`.
+A consumer uses the current ancestor transforms and the operations
+after that block to frame the gesture; using the whole posed body
+would incorrectly rotate an outer slide's axis with an inner turn.
+Inferred single-rotation entries retain their previous shape, without a
+span. It is ADDITIVE — the version does not move,
 the key is absent when nothing is declared, and the compiled program's
 `identity` never learns a control exists, so a model that declares one
 publishes the same program as before. A control whose part THIS render
@@ -927,10 +970,15 @@ driver sliders and absolute instruction buttons. A viewer supporting the
 running controls uses nudge, hold-to-jog and instruction buttons with
 committed readouts instead of position sliders, and run/pause/step/speed/
 elapsed-time/reset transport instead of a seekable timeline. A viewer that
-reads the `controls` table (viewer API 12) also hovers each declared part,
-presses it to submit its instruction and drags it round its own axis,
-reporting a blocked travel where the run refuses it. Check the installed
-viewer's `solid viewer` report, not its package version alone.
+reads the original `controls` table (viewer API 12) also hovers each
+declared part, presses it to submit its instruction and drags it round
+its inferred rotational axis, reporting a blocked travel where the run
+refuses it. Sliding or choosing between a body's explicitly selected
+freedoms requires viewer API 13 or later. The framework publishes the
+contract; the independent viewer owns picking and gesture affordances.
+API 13 consumer work is still in progress at this update, not a released
+capability. Check the installed viewer's `solid viewer` report and test
+actual pointer operation, not its package version or export alone.
 
 ## Instance surface
 
@@ -1573,8 +1621,9 @@ An older report without `documentVersions` means support for `[1, 2, 3, 4]`,
 not 5. Build/develop/export still publish version 5 and warn if the
 installed viewer cannot render it; a web snapshot refuses before opening
 the browser. Viewer API 12 supports version 5, the running controls,
-the `controls` table and bounds that read other coordinates, in the
-current development checkout; that does not imply a published release.
+the original `controls` table and bounds that read other coordinates, in
+the development checkout; sliding and explicit joint selection require
+API 13 or later. Neither capability number implies a published release.
 
 ## Viewer HTTP surface
 
