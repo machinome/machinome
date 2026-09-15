@@ -1,0 +1,32 @@
+test_expected_failure_passes (__main__.ReferenceTest.test_expected_failure_passes) ... unexpected success
+test_expected_failure_raises (__main__.ReferenceTest.test_expected_failure_raises) ... expected failure
+test_plain_fail (__main__.ReferenceTest.test_plain_fail) ... FAIL
+test_plain_pass (__main__.ReferenceTest.test_plain_pass) ... ok
+test_skipped (__main__.ReferenceTest.test_skipped) ... skipped 'the exact kernel is not available here'
+
+======================================================================
+FAIL: test_plain_fail (__main__.ReferenceTest.test_plain_fail)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/openspec/changes/honour-skip-and-xfail/evidence/probe_unittest_reference.py", line 27, in test_plain_fail
+    raise AssertionError('a real regression')
+AssertionError: a real regression
+
+======================================================================
+UNEXPECTED SUCCESS: test_expected_failure_passes (__main__.ReferenceTest.test_expected_failure_passes)
+----------------------------------------------------------------------
+Ran 5 tests in 0.001s
+
+FAILED (failures=1, skipped=1, expected failures=1, unexpected successes=1)
+test_skips (__main__.SkipInsideExpectedFailure.test_skips) ... skipped 'no kernel here'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK (skipped=1)
+python 3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]
+
+testsRun=5 failures=1 errors=0 skipped=1 expectedFailures=1 unexpectedSuccesses=1 wasSuccessful=False
+
+=== skip inside an expectedFailure test
+skipped=1 expectedFailures=0 unexpectedSuccesses=0 wasSuccessful=True

@@ -1,0 +1,35 @@
+Running SweeperTest.test_expected_failure_over_a_sweep...FAIL!
+Traceback (most recent call last):
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/solid_node/manager/test.py", line 345, in run_test
+    method()
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/openspec/changes/honour-skip-and-xfail/evidence/skip_xfail_project/test_sweeper.py", line 31, in test_expected_failure_over_a_sweep
+    raise AssertionError('the known kernel gap, mid-sweep')
+AssertionError: the known kernel gap, mid-sweep
+
+Running SweeperTest.test_fail_at_one_instant...FAIL!
+Traceback (most recent call last):
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/solid_node/manager/test.py", line 345, in run_test
+    method()
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/openspec/changes/honour-skip-and-xfail/evidence/skip_xfail_project/test_sweeper.py", line 24, in test_fail_at_one_instant
+    raise AssertionError('mid-sweep regression')
+AssertionError: mid-sweep regression
+
+Running SweeperTest.test_instants_attribute_survives_the_decorator_pair  instants on test_expected_failure_over_a_sweep: [0.0, 0.5, 1]; __unittest_expecting_failure__: True
+. passed
+Running SweeperTest.test_skip_at_one_instant  [body ran, instant #1]
+.  [body ran, instant #2]
+.  [body ran, instant #3]
+.FAIL!
+Traceback (most recent call last):
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/solid_node/manager/test.py", line 345, in run_test
+    method()
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/openspec/changes/honour-skip-and-xfail/evidence/skip_xfail_project/test_sweeper.py", line 18, in test_skip_at_one_instant
+    self.skipTest('nothing to compare at mid-sweep')
+  File "/usr/lib/python3.12/unittest/case.py", line 711, in skipTest
+    raise SkipTest(reason)
+unittest.case.SkipTest: nothing to compare at mid-sweep
+
+
+Ran 4 tests in 0.06 seconds: 1 passed, 3 failed
+
+[exit code 1]
