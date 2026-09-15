@@ -30,6 +30,7 @@ from solid_node.node import (                  # what the machine is made of
     CadQueryNode, Build123dNode, Solid2Node, OpenScadNode, JScadNode,
     Build123dSheetNode, StlNode, StepNode, MolejoNode,
     declared_children, property_as_number,
+    Marking, Wrapped, Flat, Svg,               # what a part CARRIES (also solid_node.node.markings)
 )
 from solid_node.parameters import (            # what is built
     Length, Angle, Count, Ratio, Scalar, Flag, Quantity,
@@ -193,6 +194,11 @@ Every value a node uses is one of three things:
 
 Wrapped is a parameter, bare is a constant. Placement arithmetic, lookup
 tables and naming logic are constants and ordinary code.
+
+A fourth class-body declaration says what a rigid part *carries* rather
+than what it is made of: a `Marking` (see "Markings"). It is none of the
+three layers — not a parameter (never build identity), not a child, not a
+port — and it adds no solid.
 
 ### Kinds
 
@@ -1064,6 +1070,9 @@ Consequences:
   classes' bodies (any the remaining text names stay in), so editing one
   class rebuilds that node and the fusions above it and only restamps the
   other. Editing module-level code they share rebuilds both.
+- A marking's artwork file is tracked by the marking, not by the part:
+  editing the SVG rebuilds only the decal; editing the `Marking(...)`
+  line rebuilds the part like any edit to its module (see "Markings").
 
 ## Printed solids
 
@@ -1078,6 +1087,106 @@ built-artifact content with `id`, `name`, `sources`, `models`, `count`,
 `size` (mm extents), `volume` (mm³) and `watertight`; every rigid tree
 node carries its `piece` id. Identity is content-derived, so a repeated
 part is one piece with a count, and handed variants are two.
+
+## Markings: what a part carries
+
+A **marking** is a declared, zero-volume surface feature on a rigid node —
+digits on a number roll, an index mark, a scale, a label — drawn from a
+file, placed in the part's own frame, in a colour of its own:
+
+```python
+from solid_node.node import CadQueryNode
+from solid_node.node.markings import Marking, Svg, Wrapped, Flat
+
+class ResultsDial(CadQueryNode):
+    digits = Marking(
+        Svg('results_dial.svg'),                       # relative to THIS module
+        Wrapped(axis=(0, 0, 1), radius=9.45, at=(0, 0, 18.45)),
+        color='#FFFFFF',                               # required, #RRGGBB
+    )
+
+class LowerHousing(StepNode):
+    arrows = Marking(Svg('reversing_lever_arrows.svg'),
+                     Flat(at=(0, -40, 12), normal=(0, -1, 0), x_axis=(1, 0, 0)),
+                     color='#222831')
+```
+
+What it is **not**, and these are enforced: not a solid (volume, bounds,
+STL and BREP bytes, piece id, `assertNoSolidInterference`,
+`assertNoDisconnectedSolids` and every clearance sweep are identical with
+and without it, faceted and exact); not a child (`children`, the tree, the
+part count and the `pieces` inventory are unchanged, and it is never
+addressable as a part); not build identity (not a parameter, never in
+`uniq_id`, so adding one to a built part rebuilds nothing of the solid).
+
+Where: on any rigid node — a leaf adapter or a `FusionNode` — refused at
+class creation on an `AssemblyNode` or a flexible leaf, naming the class
+and attribute. It is an ordinary class attribute: inherited through the
+MRO, dropped by a subclass assigning `digits = None`, and it may be written
+in a **plain mixin** (`class ResultsFace: digits = Marking(...)` mixed into
+a node), in which case the artwork path resolves against the mixin's
+module. Its name must be free on the node: a clash with a parameter,
+child, port or joint coordinate — in the same body or through the bases —
+or with an attribute every node carries (`color`, `files`, `model`, ...)
+is refused at class creation.
+
+Artwork: `Svg(path, scale=None)` only. The path is relative to the
+declaring module and a missing file is refused at the declaration
+(`MissingSourceFile`, like `stl_source`). The drawing reduces to its
+**closed regions**, each with its enclosed regions as holes (a digit's
+counter needs no rule of yours); the file's origin is kept and Y is
+flipped into model orientation. **Open paths are ignored and counted** in
+one INFO log line per build — a sheet border is a registration mark, and
+the Curta's `results_dial.svg` border is exactly its roll's unwrapped
+circumference (59.376 mm = 2π × 9.45). A drawing with no closed region is
+refused. Coordinates are millimetres; `scale` multiplies them. DXF, font
+text and projection onto an arbitrary face are not supported.
+
+Placement, in the part's **adjusted** frame (the frame its artifact is
+written in, after `adjust()`); both land artwork point `origin=(0, 0)` on
+the placement origin, and vectors need not be unit:
+
+- `Flat(at, normal, x_axis, origin=(0, 0))` — artwork X along `x_axis`
+  orthogonalized against `normal`, Y along `normal × x_axis`; `x_axis`
+  parallel to `normal` is refused.
+- `Wrapped(axis, radius, at, start=0, origin=(0, 0), pitch=None, zero=None)`
+  — artwork X is **arc length** (angle = `start + degrees(x / radius)`,
+  right-handed about `axis`), artwork Y is height along `axis` from `at`.
+  The angular zero is `zero=` projected across the axis when given;
+  otherwise the next principal axis in right-hand order (`+Z` from `+X`,
+  `+X` from `+Y`, `+Y` from `+Z`, `-Z` from `-X`); an axis along (1, 1, 1)
+  is refused naming `zero` as the remedy. `pitch` stamps the whole artwork
+  every `pitch` degrees and must divide 360 exactly. A drawing that already
+  carries all ten digits round one circumference needs no pitch.
+
+The build writes one artifact per marking beside the part's STL,
+`<script>-<uniq_id>.marking-<name>.stl`: an open, non-watertight surface
+mesh on the **nominal** cylinder or plane with **no offset** (the
+anti-z-fighting offset is the renderer's), subdivided so a wrap follows
+its cylinder to the part's `linear_deflection` (0.1 mm when it declares
+none), recorded with recipe `marking-svg-v1:<tolerance>`. Its currency is
+its own: the tracked set is the part's plus the artwork; a stale or lost
+decal is regenerated on the next build **without re-rendering the solid**
+(the leaf skip predicates are untouched); a current decal is never
+rewritten. Editing the artwork rebuilds only the decal; editing the
+declaration line rebuilds the part.
+
+The document: a rigid node's entry gains an optional `markings` list, one
+entry per marking in declaration order, `{name, model, color, mtime}` —
+`model` under the same rules as the node's `model`, `mtime` the marking's
+own — absent when none is declared. **Additive, no version bump**: no
+placement is published (the mesh is already in the part's frame; a consumer
+applies the part's operations to it), no `piece`, and a document with no
+marking is byte-identical to before. `solid export` copies each under
+`models/`; the browser snapshot stages them beside the models; the build's
+sweep spares them by reference, so a deleted declaration's decal is swept.
+
+Status (2026-09-15): framework side integrated into solid-node main
+(ADR-120). The browser viewer draws markings only once its own cycle
+lands; until then a marked model looks as it did. The OpenSCAD path never
+draws them. Real callers: the Curta Type I number rolls and the
+Pascaline's digit drum are the originating projects (their digits are
+the register they compute).
 
 ## Test surface
 
@@ -1563,7 +1672,8 @@ carry drivers, instructions and animation and never freeze a pose.
 
 `SOLID_BUILD_DIR` (default `_build`) is an ordinary directory under the
 project root, written directly. Per node it holds `<script>-<uniq_id>.scad`
-and `.stl`, plus `.brep` for an exact node and `.dxf` for a sheet part;
+and `.stl`, plus `.brep` for an exact node, `.dxf` for a sheet part and
+`.marking-<name>.stl` per declared marking;
 artifacts of different parameter sets coexist. Each artifact is written
 whole or not at all (temporary file plus atomic replace), every artifact
 a snapshot names is in place before the snapshot, and a successful
@@ -1590,7 +1700,9 @@ Inside a publication:
   tables keyed by qualified id (empty for a driverless model). Each tree
   node carries `name`, `type`, `color`, `mtime`, `operations`, and either
   `children`, a rigid node's `model` path relative to the build directory
-  with its `piece` id, or a flexible leaf's `flexible` spec. Operations
+  with its `piece` id (plus an optional additive `markings` list of
+  `{name, model, color, mtime}` when it declares markings), or a flexible
+  leaf's `flexible` spec. Operations
   serialize as `['r', angle, axis]` / `['t', vector]` with raw
   expressions; animated values keep symbolic `$t` and qualified driver
   ids under non-running roots. Under version 5, joint placements name
