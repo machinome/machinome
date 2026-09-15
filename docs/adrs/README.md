@@ -138,6 +138,7 @@ that way.
 - [ADR-090](TEST-FRAMEWORK/ADR-090-the-placement-quantum-is-a-property-of-the-test-run.md) — The placement quantum is a property of the test run — **Accepted**, amends 070
 - [ADR-091](TEST-FRAMEWORK/ADR-091-the-broad-phase-chooses-its-indexing-frame.md) — The broad phase chooses its indexing frame — **Accepted**, extends 029, extended by 092
 - [ADR-092](TEST-FRAMEWORK/ADR-092-face-boxes-decide-an-enclosed-pair-without-a-boolean.md) — Face boxes decide an enclosed pair without a boolean — **Accepted**, extends 029, 091
+- [ADR-118](TEST-FRAMEWORK/ADR-118-an-unexpected-success-fails-the-run.md) — An unexpected success fails the run: `solid test` honours `skipTest`/`unittest.skip` and `@unittest.expectedFailure`, and a stale expected-failure marking that starts passing fails the run — **Accepted**
 
 ### VIEWER-WEB — web viewer
 - [ADR-012](VIEWER-WEB/ADR-012-threejs-for-3d-rendering.md) — Three.js rendering — **Accepted** — *Relocated* to solid-node-viewer (ADR-068)

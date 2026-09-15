@@ -8,6 +8,23 @@ Changelog
 Unreleased
 ----------
 
+**A skipped test is not a failure, and an unexpected success fails the
+run.** ``solid test``'s runner had no skip concept and no
+expected-failure concept: every method ran under one bare ``except
+Exception``, so ``self.skipTest(reason)`` and ``unittest``'s skip
+decorators counted as an ordinary failure, and ``@unittest.expectedFailure``
+was read nowhere. A test that skips — in the method, in ``setUp``, or by
+carrying ``unittest``'s skip decoration on the method or on the whole
+class — is now reported skipped, named with its reason, and does not
+count as a failure; the unit of a skip is the animation instant. A
+method marked ``@unittest.expectedFailure`` is now honoured: an expected
+failure when it raises, with no traceback printed, and an **unexpected
+success** — which fails the run — when it does not (ADR-118). The
+summary line gains ``, S skipped``, ``, X expected failures`` and
+``, U unexpected successes``, each printed only when non-zero; a default
+run's output is unchanged. Originating project:
+``Internal-Cycloidal-Actuator``.
+
 **A source-bound leaf names its missing file.** ``StlNode``, ``StepNode``,
 ``JScadNode`` and ``OpenScadNode`` each bind a node to a file outside
 Python; a declared file that was not there used to construct without

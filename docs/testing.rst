@@ -238,6 +238,52 @@ While `@testing_steps` runs a test across a range of the animation,
         def test_pointer_at_half_turn(self):
             self.assertNotIntersecting(self.pointer, self.pin)
 
+Skipping a test and marking a known gap
+========================================
+
+A test that does not apply here — the exact kernel is not installed, a
+part this project does not have — says so with ``self.skipTest(reason)``,
+anywhere in the method or in ``setUp``:
+
+.. code-block:: python
+
+    def test_only_under_the_exact_kernel(self):
+        if not exact_kernel_available():
+            self.skipTest('the exact kernel is not available here')
+        ...
+
+A skipped test is reported by name, with its reason, and counts as neither
+a pass nor a failure; it cannot make the run exit non-zero on its own.
+`unittest`'s own decorators work too — ``@unittest.skip('why')`` on one
+method or on a whole test class, and ``@unittest.skipIf``/``@unittest.skipUnless``
+— and a skipped class runs no method's body and no ``setUpClass`` at all.
+
+Under ``@testing_steps``/``@testing_instant`` the unit of a skip is the
+INSTANT: a method that skips at one instant and passes at the rest is
+reported passed, saying how many instants it skipped; only a method that
+skips at every instant is reported skipped.
+
+A known, accepted gap — a regression the project has not fixed yet, or a
+kernel limit it is waiting on — is marked with ``@unittest.expectedFailure``
+instead of being deleted or left red:
+
+.. code-block:: python
+
+    import unittest
+
+    @unittest.expectedFailure
+    def test_full_precision_hobbing_profile(self):
+        self.assertAlmostEqual(measured_backlash, 0.0, places=4)
+
+A marked method that raises is reported an expected failure, with no
+traceback printed, and does not count as a failure. A marked method that
+does **not** raise is reported an unexpected success — the gap it names is
+gone, or was never real — and this **does** fail the run: a green suite
+must not stand over a statement about the machine that is no longer true.
+A skip takes precedence over the marking: a marked method that skips at
+every instant is reported skipped, neither an expected failure nor an
+unexpected success.
+
 Tests in a separate file
 ========================
 

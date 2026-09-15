@@ -117,6 +117,6 @@ them.
 - Affected projects: `Internal-Cycloidal-Actuator` may replace its early
   `return` guards with `skipTest` and its inverted canary with a marked
   expected failure. Nothing forces it to; nothing it does today breaks.
-- ADR-117 is proposed: the exit-code contract changes in both directions — a
+- ADR-118 is proposed: the exit-code contract changes in both directions — a
   run whose only unusual result is a skip exits 0 where it exits 1 today, and
   a run containing an unexpected success exits 1 where it exits 0 today.

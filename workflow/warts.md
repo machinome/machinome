@@ -317,14 +317,28 @@ redid the comparison under a distinctive name).
   tessellation (0.01 mm / 0.1 rad) rather than through the framework's
   spatial contracts, and there is no way to measure an overlap volume
   without asserting on it.
-- (c) `solid test`'s runner has no skip and no expected-failure concept:
-  it calls each method in a loop under a bare `except Exception`, so
-  `self.skipTest()` and `@unittest.expectedFailure` both count as plain
-  failures. The actuator guards exact-only volume bands with an early
-  `return` and records the kernel gap as a canary asserting the wrong
-  value, which is the honest equivalent it has; a runner that honoured
-  `SkipTest` and expected failures would let a project say these things
-  plainly.
+- **FIXED (cycle `honour-skip-and-xfail`, ADR-118). (c) `solid test`'s
+  runner has no skip and no expected-failure concept: it calls each
+  method in a loop under a bare `except Exception`, so `self.skipTest()`
+  and `@unittest.expectedFailure` both count as plain failures. The
+  actuator guards exact-only volume bands with an early `return` and
+  records the kernel gap as a canary asserting the wrong value, which is
+  the honest equivalent it has; a runner that honoured `SkipTest` and
+  expected failures would let a project say these things plainly.**
+
+  **What shipped.** `solid_node/manager/test.py`'s runner now classifies
+  each animation instant as passed, skipped (`unittest.SkipTest`, raised
+  from the method or from `setUp`, or `unittest`'s skip decoration on the
+  method or the whole class) or failed, before deciding the method's
+  verdict: SKIPPED when every instant skipped, EXPECTED FAILURE when a
+  method marked `@unittest.expectedFailure` raised at any instant (no
+  traceback printed), UNEXPECTED SUCCESS — which fails the run — when a
+  marked method raised at none, and PASSED (saying how many instants
+  skipped) otherwise. A skip never overwrites a real failure's
+  traceback, and `--failfast` stops only on a real failure or an
+  unexpected success. The actuator may now replace its early-`return`
+  guards with `skipTest` and its inverted canary with a marked expected
+  failure; nothing forces it to.
 
 # AlbertPro (2026-09-07, simulate the Albert quadruped)
 
@@ -2625,3 +2639,35 @@ framework code changed for either.
   assembly the wrapper still names only the root (`evidence.md`,
   measurement 4/"After"). This cycle's own message, inside `exc`, does
   name the node; the wrapper around it is untouched.
+
+# honour-skip-and-xfail (2026-09-15, found while fixing)
+
+Findings outside that cycle's ratified scope, from
+`openspec/changes/honour-skip-and-xfail/proposal.md` ("Out of scope") and
+`design.md` ("Reviewer's notes (ratification, 2026-09-15)", note 1);
+**status: filed here; triage open**. No framework code changed for any of
+these.
+
+- **The runner keeps the LAST failing instant's traceback, not the
+  first.** `run_test`'s `error` is rebound on every raising instant
+  (`manager/test.py`) and only the last is printed, so a method that
+  fails at instant 0 and again, differently, at instant 2 reports
+  instant 2's traceback. This change only stopped a SKIP from becoming
+  that traceback (`error` is now set in the `except Exception` arm
+  alone); which real failure is reported when several instants fail is
+  left exactly as it was.
+- **No failure report names the instant it happened at.** `FAIL!`'s
+  traceback shows where in the method's own source the assertion raised,
+  never which declared instant (`0`, `0.5`, `1`, ...) it raised at under
+  `@testing_steps`/`@testing_instant`. A maker reproducing a sweep
+  failure has to re-run the method by hand to find the instant.
+- **A non-skip exception from `setUp`, or any exception from
+  `setUpClass`, aborts the run without a verdict.** `run_test` now
+  catches `unittest.SkipTest` from `setUp` and reports the method
+  skipped; any OTHER exception `setUp` raises still escapes `run_test`
+  uncaught, as does anything `setUpClass` raises, and `handle` catches
+  only `StopTestRun` — so the run stops with a bare traceback, no
+  summary line, and no verdict for the tests that would have followed.
+  `unittest` itself reports these as ERRORS, distinct from failures, and
+  keeps running the rest of the suite; `solid test` has no error
+  classification at all, for a set-up exception or any other.

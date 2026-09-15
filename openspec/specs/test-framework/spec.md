@@ -91,8 +91,13 @@ anywhere in the list — is reverted as before. A re-placement the restore makes
 SHALL NOT outlive the coordinate value that states it: if the next instant's
 enumeration leaves that coordinate unbound, the child stands at rest.
 The run SHALL print `Ran N tests in X seconds: P passed, F
-failed` and exit 1 if any failed; `--failfast` stops at the first failure.
-Under the faceted comparison kernel that summary line SHALL continue with
+failed`, continued by `, S skipped`, `, X expected failures` and
+`, U unexpected successes` for each of those counts that is not zero, and
+SHALL exit 1 when any test failed or any test succeeded unexpectedly, and 0
+otherwise; `--failfast` stops at the first test that fails the run. A run in
+which nothing was skipped, expected to fail, or unexpectedly successful
+SHALL print that line with none of those continuations. Under the faceted
+comparison kernel that summary line SHALL continue with
 ` (faceted kernel, volume epsilon E mm³)`, and the run SHALL announce the
 kernel and epsilon on a line of its own before the first node is built; under
 the exact kernel the run's output is unchanged.
@@ -101,6 +106,12 @@ the exact kernel the run's output is unchanged.
 
 - **WHEN** any assertion raises across any instant
 - **THEN** the summary counts the failure and the process exits 1
+
+#### Scenario: A run whose only unusual results are skips exits 0
+
+- **WHEN** a run's tests all pass except one that skipped itself
+- **THEN** the summary reads one skipped test, counts it as neither passed
+  nor failed, and the process exits 0
 
 #### Scenario: A test sweep does not block a rebuild
 
@@ -140,7 +151,8 @@ the exact kernel the run's output is unchanged.
 
 - **WHEN** `solid test` runs without a kernel selection and without
   `SOLID_TEST_KERNEL` in the environment
-- **THEN** no kernel line is printed and the summary line is exactly
+- **THEN** no kernel line is printed and, when no test was skipped,
+  expected to fail, or unexpectedly successful, the summary line is exactly
   `Ran N tests in X seconds: P passed, F failed`
 
 #### Scenario: A test after a scenario measures the machine the scenario left
@@ -1754,4 +1766,150 @@ For an equilibrium system, sparse storage SHALL produce the same feasibility res
 
 - **WHEN** a representative system has 1,000 free bodies and sparse contacts
 - **THEN** program construction uses sparse coefficient and identity structures, with no allocation proportional to `576 * F²` bytes for the two slack identities
+
+### Requirement: A skipped test is not a failure
+
+A test that declares itself inapplicable — by calling `skipTest(reason)` in
+the test method or in its `setUp`, by raising the skip exception any other
+way, or by carrying `unittest`'s skip decoration on the test method or on the
+whole test class — SHALL be reported
+as SKIPPED: neither passed nor failed, named with its reason, counted in the
+summary's own skipped count, and unable on its own to make the run exit 1.
+
+A skipped test SHALL be distinguishable from a passing and from a failing one
+by the words the runner writes, not by colour alone, so a run captured to a
+log or a pipe still says which tests were skipped.
+
+The unit of a skip is the INSTANT at which it was declared. Under an
+animation-instant decorator, a method runs once per declared instant, and an
+instant that declares itself skipped SHALL be skipped alone: the remaining
+instants still run, and the method's verdict follows them. A method whose
+every instant skipped SHALL be reported as one skipped test; a method some of
+whose instants skipped and whose remaining instants all passed SHALL be
+reported as passed, saying how many instants it skipped.
+
+When a test class is decorated as skipped, no test method of that class SHALL
+run, and the class's own set-up SHALL NOT run either; each of its test methods
+is counted once as skipped.
+
+A skip SHALL NOT replace the report of a real failure: when one instant of a
+method fails and another skips, the run reports the failure, with the failing
+instant's traceback.
+
+`--failfast` SHALL NOT stop on a skip, at either the instant or the test
+level, because a skip is not a failure.
+
+#### Scenario: A test that skips itself
+
+- **WHEN** a test method calls `skipTest('no exact kernel here')` and every
+  other test passes
+- **THEN** the run names that test as skipped with its reason, counts it as
+  neither passed nor failed, reports one skipped test in the summary, and
+  exits 0
+
+#### Scenario: A skip at one instant of a sweep
+
+- **WHEN** a method decorated to run at several instants skips itself at one
+  of them and passes at the others
+- **THEN** the remaining instants still run, the method is reported as passed
+  saying one instant was skipped, and the run exits 0
+
+#### Scenario: Every instant of a sweep skips
+
+- **WHEN** a method decorated to run at several instants skips itself at
+  every instant
+- **THEN** the method is reported as one skipped test, not as several
+
+#### Scenario: A skip does not hide a failure in the same method
+
+- **WHEN** a method fails at one instant and skips at a later one
+- **THEN** the method is reported as failed, with the traceback of the
+  failing instant and not of the skip, and the run exits 1
+
+#### Scenario: A whole test class declared skipped
+
+- **WHEN** a companion test class carries `unittest`'s skip decoration
+- **THEN** none of its test method bodies runs, its class set-up does not
+  run, each of its test methods is counted once as skipped, and the run
+  exits 0
+
+#### Scenario: A skip declared in set-up
+
+- **WHEN** a test case's `setUp` calls `skipTest(reason)` before a test method
+  runs
+- **THEN** that method is reported as skipped with the reason, counted once,
+  no instant of it runs, and the run continues with the next test and exits 0
+
+#### Scenario: A skipped test in a log without colour
+
+- **WHEN** a run whose output is captured to a file skips a test
+- **THEN** the captured text says that test was skipped and gives its reason,
+  without depending on colour
+
+### Requirement: An expected failure is honoured and an unexpected success fails the run
+
+A test method marked as expected to fail — `unittest`'s expected-failure
+decoration — SHALL be reported as an EXPECTED FAILURE when it raises: neither
+passed nor failed, counted in the summary's own expected-failure count,
+unable on its own to make the run exit 1, and printed without the traceback a
+real failure prints, because that failure is the declared outcome.
+
+A test method marked as expected to fail that does NOT raise SHALL be
+reported as an UNEXPECTED SUCCESS, counted in the summary's own
+unexpected-success count, and SHALL make the run exit 1 — the marking is now
+wrong, and a run must not stay green over a statement about the machine that
+is no longer true.
+
+Expectation is a property of the METHOD, not of an instant. A method marked
+as expected to fail that is also decorated to run at several instants is an
+expected failure when at least one of its instants raises, and an unexpected
+success when none does; the run over the remaining instants is not abandoned
+by the first raise.
+
+A skip SHALL take precedence over the expectation: a method marked as
+expected to fail whose every instant skipped is reported as skipped, not as
+an expected failure and not as an unexpected success, which is what
+`unittest` itself reports.
+
+`--failfast` SHALL NOT stop on an expected failure, and SHALL stop on an
+unexpected success, which is a failure of the run.
+
+#### Scenario: A test expected to fail, that fails
+
+- **WHEN** a test method marked as expected to fail raises an assertion error
+- **THEN** the run names it an expected failure, prints no traceback for it,
+  counts it as neither passed nor failed, reports one expected failure in the
+  summary, and exits 0
+
+#### Scenario: A test expected to fail, that passes
+
+- **WHEN** a test method marked as expected to fail completes without raising
+- **THEN** the run names it an unexpected success, reports one unexpected
+  success in the summary, and exits 1
+
+#### Scenario: A sweep expected to fail that raises at one instant
+
+- **WHEN** a method marked as expected to fail is decorated to run at several
+  instants and raises at one of them
+- **THEN** every instant runs, the method is reported as one expected
+  failure, and the run exits 0
+
+#### Scenario: A sweep expected to fail that passes at every instant
+
+- **WHEN** a method marked as expected to fail is decorated to run at several
+  instants and raises at none of them
+- **THEN** the method is reported as one unexpected success and the run
+  exits 1
+
+#### Scenario: A test expected to fail that skips instead
+
+- **WHEN** a test method marked as expected to fail skips itself at every
+  instant
+- **THEN** it is reported as skipped, not as an expected failure and not as
+  an unexpected success, and the run exits 0
+
+#### Scenario: Failfast and an unexpected success
+
+- **WHEN** `--failfast` is given and a test marked as expected to fail passes
+- **THEN** the run stops there and exits 1
 

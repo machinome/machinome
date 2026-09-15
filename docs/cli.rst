@@ -125,8 +125,26 @@ any other test class, and the same class runs under plain ``pytest``
 unmodified. See :doc:`Test-driven CAD <testing>` and
 :doc:`Simulating and testing scenarios <scenarios>`.
 
+Prints ``Ran N tests in X seconds: P passed, F failed``, continued by
+``, S skipped``, ``, X expected failures`` and ``, U unexpected successes``
+for each of those counts that is non-zero — a run with none of them prints
+exactly that line, byte for byte, with no continuation. Exits 1 when any
+test failed or any test succeeded unexpectedly, 0 otherwise.
+
+A test that calls ``self.skipTest(reason)`` — in the method itself or in
+its ``setUp`` — or that carries ``unittest``'s skip decoration on the
+method or on the whole class, is reported skipped, named with its reason,
+and does not count as a failure. A test marked
+``@unittest.expectedFailure`` is reported an expected failure when it
+raises, with no traceback printed, and does not count as a failure either;
+one that does **not** raise is reported an unexpected success and **does**
+fail the run — the marking is now a false statement about the machine. See
+:doc:`How to skip a test and how to mark a known gap <testing>`.
+
 ``--failfast``
-    Stop the test run on the first failure.
+    Stop the test run on the first test that fails the run. A skip and an
+    expected failure are not failures and never stop it; an unexpected
+    success does.
 
 ``--exact`` / ``--faceted``
     The kernel every geometric assertion decides on: exact parts on their

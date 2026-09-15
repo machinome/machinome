@@ -7,6 +7,7 @@ import sys
 import bdb
 import time
 import traceback
+import unittest
 from termcolor import colored
 from solid_node.core.loader import (
     ProjectManifestError, load_tests, load_node, read_project, resolve_node,
@@ -49,6 +50,9 @@ class Test:
         self.num_tests = 0
         self.num_passed = 0
         self.num_failed = 0
+        self.num_skipped = 0
+        self.num_expected_failures = 0
+        self.num_unexpected_successes = 0
         self.failfast = False
 
     def add_arguments(self, parser):
@@ -176,7 +180,7 @@ class Test:
         except StopTestRun:
             pass
         self.report(time.time() - start_time)
-        if self.num_failed:
+        if self.num_failed or self.num_unexpected_successes:
             sys.exit(1)
 
     def select_all(self, path):
@@ -285,6 +289,17 @@ class Test:
     def report(self, total_time):
         summary = (f"Ran {self.num_tests} tests in {total_time:.2f} seconds: "
                    f"{self.num_passed} passed, {self.num_failed} failed")
+        # A default run whose skip/expected/unexpected counts are all zero
+        # must print exactly today's line (ADR-090's discipline for this
+        # output); "skipped" never inflects, the other two do.
+        if self.num_skipped:
+            summary += f", {self.num_skipped} skipped"
+        if self.num_expected_failures:
+            noun = 'failure' if self.num_expected_failures == 1 else 'failures'
+            summary += f", {self.num_expected_failures} expected {noun}"
+        if self.num_unexpected_successes:
+            noun = 'success' if self.num_unexpected_successes == 1 else 'successes'
+            summary += f", {self.num_unexpected_successes} unexpected {noun}"
         policy = getattr(self, 'policy', ComparisonPolicy('exact', 0.0))
         notes = []
         if policy.kernel == 'faceted':
@@ -309,6 +324,29 @@ class Test:
 
     # node is kept as argument to be used for recursion into children later
     def run_class_tests(self, klass, node):
+        # `klass` is sometimes the node INSTANCE (a node's own test
+        # methods) and sometimes a companion test case; getattr finds a
+        # class-level `@unittest.skip` either way, and the whole class
+        # runs nothing -- not even its own set-up -- when it is marked.
+        if getattr(klass, '__unittest_skip__', False):
+            reason = getattr(klass, '__unittest_skip_why__', '')
+            try:
+                class_name = klass.__name__
+            except AttributeError:
+                class_name = klass.__class__.__name__
+            for method_name in dir(klass):
+                if method_name.startswith("test_"):
+                    method = getattr(klass, method_name)
+                    if callable(method):
+                        self.num_tests += 1
+                        sys.stdout.write(
+                            f"Running {class_name}.{method_name}")
+                        sys.stdout.flush()
+                        sys.stdout.write(
+                            colored(f" skipped: {reason}\n", 'yellow'))
+                        self.num_skipped += 1
+            return
+
         if hasattr(klass, "setUpClass"):
             klass.setUpClass()
 
@@ -327,27 +365,49 @@ class Test:
         self.save_children_checkpoints(node)
 
         try:
+            class_name = klass.__name__
+        except AttributeError:
+            class_name = klass.__class__.__name__
+
+        try:
             if hasattr(self.test_case, "setUp"):
-                self.test_case.setUp()
-            try:
-                class_name = klass.__name__
-            except AttributeError:
-                class_name = klass.__class__.__name__
+                try:
+                    self.test_case.setUp()
+                except unittest.SkipTest as e:
+                    # The commonest skip idiom: self.skipTest(...) in
+                    # setUp. No instant of this method ever ran, so it
+                    # is reported and counted exactly like a method that
+                    # skipped itself; any OTHER exception from setUp
+                    # propagates uncaught, as it always has.
+                    sys.stdout.write(f"Running {class_name}.{name}")
+                    sys.stdout.flush()
+                    sys.stdout.write(colored(f" skipped: {e}\n", 'yellow'))
+                    self.num_skipped += 1
+                    return
             sys.stdout.write(f"Running {class_name}.{name}")
             sys.stdout.flush()
+            expecting = getattr(
+                method, '__unittest_expecting_failure__', False)
             step_pass = 0
             step_fail = 0
+            step_skip = 0
+            skip_reason = None
             error = None
             instants = getattr(method, 'testing_instants', [0])
             for instant in instants:
+                real_failure = False
                 try:
                     node.set_keyframe(instant)
                     method()
                     step_pass += 1
-                    dot_color = 'green'
+                    mark, color = '.', 'green'
                 except bdb.BdbQuit:
                     print("Developer quit!")
                     return
+                except unittest.SkipTest as e:
+                    step_skip += 1
+                    skip_reason = skip_reason or str(e)
+                    mark, color = 's', 'yellow'
                 except Exception as e:
                     exc_type, exc_value, exc_traceback = sys.exc_info()
                     error = (
@@ -360,23 +420,46 @@ class Test:
                         ))
                     )
                     step_fail += 1
-                    dot_color = 'red'
-                sys.stdout.write(colored('.', dot_color))
+                    real_failure = not expecting
+                    mark, color = '.', 'red'
+                sys.stdout.write(colored(mark, color))
                 sys.stdout.flush()
                 # Every instant starts from clean children: a leaked
                 # operation must not poison the following instants.
                 self.restore_children_checkpoints(node)
-                if self.failfast and dot_color == 'red':
+                if self.failfast and real_failure:
                     break
-            if not step_fail:
-                sys.stdout.write(colored(" passed\n", "green"))
-                self.num_passed += 1
-            else:
-                sys.stdout.write(colored('FAIL!\n', 'red'))
-                print(error[2])
-                self.num_failed += 1
+            n = len(instants)
+            if step_skip == n:
+                # A skip takes precedence over the expectation, at
+                # every instant of a marked method included -- what
+                # unittest itself does.
+                sys.stdout.write(
+                    colored(f" skipped: {skip_reason}\n", 'yellow'))
+                self.num_skipped += 1
+            elif step_fail:
+                if expecting:
+                    sys.stdout.write(colored(" expected failure\n", 'yellow'))
+                    self.num_expected_failures += 1
+                else:
+                    sys.stdout.write(colored('FAIL!\n', 'red'))
+                    print(error[2])
+                    self.num_failed += 1
+                    if self.failfast:
+                        raise StopTestRun()
+            elif expecting:
+                sys.stdout.write(colored('UNEXPECTED SUCCESS!\n', 'red'))
+                self.num_unexpected_successes += 1
                 if self.failfast:
                     raise StopTestRun()
+            elif step_skip:
+                sys.stdout.write(colored(
+                    f" passed ({step_skip} of {n} instants skipped)\n",
+                    'green'))
+                self.num_passed += 1
+            else:
+                sys.stdout.write(colored(" passed\n", "green"))
+                self.num_passed += 1
         finally:
             if hasattr(self.test_case, "tearDown"):
                 self.test_case.tearDown()

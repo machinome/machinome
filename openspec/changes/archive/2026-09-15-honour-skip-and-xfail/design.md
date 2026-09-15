@@ -193,7 +193,7 @@ today's line — the discipline ADR-090 set for this output, and the
 `record_model_failure` (`:229-239`) is untouched: a model that cannot be
 built is a failure, not a skip.
 
-## Why this is an ADR — ADR-117
+## Why this is an ADR — ADR-118
 
 The exit-code contract moves in BOTH directions, and it is the contract every
 CI job and every shop floor reads:
@@ -208,7 +208,7 @@ The second is the consequential one: it is the first time `solid test` fails a
 run over something that did not raise. `unittest` has decided this the same
 way since 3.4 (`wasSuccessful()` is false with `unexpectedSuccesses`,
 measurement 1), and the framework follows it rather than inventing a third
-answer. `ADR-117: An unexpected success fails the run` records the decision,
+answer. `ADR-118: An unexpected success fails the run` records the decision,
 its two directions, and the `unittest` precedent, under
 `docs/adrs/TEST-FRAMEWORK/`, with `docs/adrs/README.md` updated.
 
@@ -291,6 +291,6 @@ Ratified as written, with these additions binding on the implementation:
 3. **A skipped instant still restores the children's checkpoints** (design
    §1) — assert it in the sweep tests: a skip at instant 1 after an
    operation was added at instant 0 must not leak into instant 2.
-4. **ADR-117** accepted as proposed, under `docs/adrs/TEST-FRAMEWORK/`.
+4. **ADR-118** accepted as proposed, under `docs/adrs/TEST-FRAMEWORK/`.
 5. **`shop-skills/solid-node-api/SKILL.md:1050`** is the reviewer's
    follow-up at the campaign's end, not this change's.

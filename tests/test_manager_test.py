@@ -5,6 +5,7 @@
 import io
 import os
 import tempfile
+import unittest
 from argparse import Namespace
 from contextlib import redirect_stdout, redirect_stderr
 from unittest import TestCase
@@ -80,6 +81,203 @@ def run_class_tests_capturing_stdout(runner, node):
             runner.run_class_tests(node, node)
         except StopTestRun:
             pass
+
+
+def run_class_tests_capturing_output(runner, klass, node):
+    """Like run_class_tests_capturing_stdout, but returns the captured
+    text and accepts `klass` and `node` separately -- needed when the
+    methods under test live on a companion test case bound to a
+    different node object (the setUp-skip scenarios)."""
+    out = io.StringIO()
+    with redirect_stdout(out):
+        try:
+            runner.run_class_tests(klass, node)
+        except StopTestRun:
+            pass
+    return out.getvalue()
+
+
+class SkipTestMixin:
+    """A tiny stand-in for unittest.TestCase.skipTest: raises the same
+    exception the real method raises, without pulling in the rest of
+    TestCase -- FakeNode deliberately isn't one."""
+
+    def skipTest(self, reason=None):
+        raise unittest.SkipTest(reason)
+
+
+class SkipsOnlyInstantNode(SkipTestMixin, FakeNode):
+    def test_skip(self):
+        self.skipTest('the exact kernel is not available here')
+
+
+class ExpectedFailureRaisesNode(FakeNode):
+    @unittest.expectedFailure
+    def test_expected_fail(self):
+        raise AssertionError('the known kernel gap')
+
+
+class ExpectedFailurePassesNode(FakeNode):
+    @unittest.expectedFailure
+    def test_expected_fail(self):
+        pass
+
+
+class SkipMiddleInstantNode(SkipTestMixin, FakeNode):
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        self.calls.append(self.last_instant)
+        if self.last_instant == 1:
+            self.skipTest('nothing to compare at mid-sweep')
+
+
+class SkipEveryInstantNode(SkipTestMixin, FakeNode):
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        self.calls.append(self.last_instant)
+        self.skipTest('never applicable')
+
+
+class FailThenSkipNode(SkipTestMixin, FakeNode):
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        self.calls.append(self.last_instant)
+        if self.last_instant == 0:
+            raise AssertionError('a real regression')
+        if self.last_instant == 2:
+            self.skipTest('skipped at instant 2')
+
+
+class ExpectedFailureSweepNode(FakeNode):
+    @unittest.expectedFailure
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        self.calls.append(self.last_instant)
+        if self.last_instant == 1:
+            raise AssertionError('the known kernel gap')
+
+
+class ExpectedFailureAllSkipNode(SkipTestMixin, FakeNode):
+    @unittest.expectedFailure
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        self.calls.append(self.last_instant)
+        self.skipTest('never applicable')
+
+
+@unittest.skip('methods should not run')
+class SkippedWholeClassNode(FakeNode):
+    setup_called = False
+
+    @classmethod
+    def setUpClass(cls):
+        cls.setup_called = True
+
+    def test_a(self):
+        self.calls.append('a')
+
+    def test_b(self):
+        self.calls.append('b')
+
+
+class SetupSkipsCase(SkipTestMixin):
+    """A companion test case whose setUp skips before any instant runs
+    (reviewer's note 1): both test methods must be individually skipped,
+    and the run continues from one to the next."""
+
+    def __init__(self):
+        self.calls = []
+
+    def setUp(self):
+        self.calls.append('setup')
+        self.skipTest('the exact kernel is not available here')
+
+    def tearDown(self):
+        self.calls.append('teardown')
+
+    def test_a(self):
+        self.calls.append('a')
+
+    def test_b(self):
+        self.calls.append('b')
+
+
+class SetupRaisesCase:
+    """A companion whose setUp raises something other than SkipTest: the
+    run aborts exactly as it does today (reviewer's note 1) -- a
+    green-both-ways guard, not a RED case."""
+
+    def setUp(self):
+        raise RuntimeError('setup blew up')
+
+    def test_a(self):
+        pass
+
+
+class FakeChild:
+    """A minimal stand-in for a child node: `restore_children_checkpoints`
+    only reads and reassigns `operations`, and `re_place_declared_joints`
+    finds no joints declared on a plain class."""
+
+    def __init__(self):
+        self.operations = []
+
+
+class ChildOperationsGrowThenSkipNode(SkipTestMixin, FakeNode):
+    """A sweep whose instant 0 leaks an operation onto a child and whose
+    instant 1 skips: instant 2 must still see a restored child
+    (reviewer's note 3) -- restore_children_checkpoints already runs
+    after every instant unconditionally, skipped ones included, so this
+    is a guard rather than a RED case."""
+
+    def __init__(self, child):
+        super().__init__()
+        self.child = child
+        self.instant2_operations = None
+
+    @property
+    def children(self):
+        return [self.child]
+
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        if self.last_instant == 0:
+            self.child.operations.append('leaked')
+        elif self.last_instant == 1:
+            self.skipTest('mid-sweep')
+        else:
+            self.instant2_operations = list(self.child.operations)
+
+
+class FailfastSkipSweepNode(SkipTestMixin, FakeNode):
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        self.calls.append(self.last_instant)
+        if self.last_instant == 1:
+            self.skipTest('mid-sweep')
+
+
+class FailfastExpectedFailureSweepThenPassNode(FakeNode):
+    # dir() visits these in alphabetical order, so test_a_expected_fail
+    # always runs before test_b_passes.
+    @unittest.expectedFailure
+    @with_instants(0, 1, 2)
+    def test_a_expected_fail(self):
+        self.calls.append(('a', self.last_instant))
+        if self.last_instant == 1:
+            raise AssertionError('the known kernel gap')
+
+    def test_b_passes(self):
+        self.calls.append('b')
+
+
+class FailfastUnexpectedSuccessNode(FakeNode):
+    @unittest.expectedFailure
+    def test_a_unexpectedly_passes(self):
+        self.calls.append('a')
+
+    def test_b_should_not_run(self):
+        self.calls.append('b')
 
 
 class FailfastInstantsLoopTest(TestCase):
@@ -161,6 +359,245 @@ class FailfastAbortsRunTest(TestCase):
         self.assertEqual(runner.num_failed, 1)
         self.assertEqual(runner.num_passed, 1)
         self.assertIn("Ran 2 tests", out.getvalue())
+
+
+class SkipAndExpectedFailureTest(TestCase):
+    """workflow/warts.md, Internal-Cycloidal-Actuator finding: the
+    instants loop and run_class_tests have no skip and no
+    expected-failure concept -- `unittest.SkipTest` is caught by the
+    bare `except Exception` and counted as a failure, and
+    `@unittest.expectedFailure` is read nowhere. Each method here is
+    RED against the unchanged runner for the reason recorded in
+    tasks.md 1.1/1.2; evidence.md's probes are the end-to-end
+    reproduction this file exercises unit by unit."""
+
+    def test_a_skip_is_reported_skipped_not_failed(self):
+        node = SkipsOnlyInstantNode()
+        runner = Runner()
+        runner.test_case = None
+
+        text = run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(runner.num_failed, 0)
+        self.assertEqual(getattr(runner, 'num_skipped', 0), 1)
+        self.assertIn(' skipped', text)
+        self.assertIn('the exact kernel is not available here', text)
+
+    def test_an_expected_failure_that_raises_is_not_a_failure(self):
+        node = ExpectedFailureRaisesNode()
+        runner = Runner()
+        runner.test_case = None
+
+        text = run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(runner.num_failed, 0)
+        self.assertEqual(getattr(runner, 'num_expected_failures', 0), 1)
+        self.assertNotIn('Traceback', text)
+        self.assertNotIn('the known kernel gap', text)
+
+    def test_an_expected_failure_that_passes_is_an_unexpected_success(self):
+        node = ExpectedFailurePassesNode()
+        runner = Runner()
+        runner.test_case = None
+
+        text = run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(runner.num_passed, 0)
+        self.assertEqual(getattr(runner, 'num_unexpected_successes', 0), 1)
+        self.assertIn('UNEXPECTED SUCCESS', text)
+
+    def test_a_skip_at_one_instant_does_not_fail_the_sweep(self):
+        node = SkipMiddleInstantNode()
+        runner = Runner()
+        runner.test_case = None
+
+        text = run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(node.calls, [0, 1, 2])
+        self.assertEqual(runner.num_passed, 1)
+        self.assertEqual(runner.num_failed, 0)
+        self.assertIn('1 of 3 instants skipped', text)
+
+    def test_a_sweep_that_skips_at_every_instant_is_one_skipped_test(self):
+        node = SkipEveryInstantNode()
+        runner = Runner()
+        runner.test_case = None
+
+        run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(getattr(runner, 'num_skipped', 0), 1)
+        self.assertEqual(runner.num_passed, 0)
+        self.assertEqual(runner.num_failed, 0)
+
+    def test_a_skip_does_not_overwrite_a_real_failures_traceback(self):
+        node = FailThenSkipNode()
+        runner = Runner()
+        runner.test_case = None
+
+        text = run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(runner.num_failed, 1)
+        self.assertIn('a real regression', text)
+        self.assertNotIn('SkipTest', text)
+
+    def test_a_marked_methods_sweep_runs_every_instant(self):
+        node = ExpectedFailureSweepNode()
+        runner = Runner()
+        runner.test_case = None
+
+        run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(node.calls, [0, 1, 2])
+        self.assertEqual(getattr(runner, 'num_expected_failures', 0), 1)
+        self.assertEqual(runner.num_failed, 0)
+
+    def test_a_skip_wins_over_the_expectation(self):
+        node = ExpectedFailureAllSkipNode()
+        runner = Runner()
+        runner.test_case = None
+
+        run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(getattr(runner, 'num_skipped', 0), 1)
+        self.assertEqual(getattr(runner, 'num_expected_failures', 0), 0)
+        self.assertEqual(getattr(runner, 'num_unexpected_successes', 0), 0)
+
+    def test_a_class_level_skip_runs_no_body_and_no_setup(self):
+        node = SkippedWholeClassNode()
+        runner = Runner()
+        runner.test_case = None
+
+        run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(node.calls, [])
+        self.assertFalse(SkippedWholeClassNode.setup_called)
+        self.assertEqual(getattr(runner, 'num_skipped', 0), 2)
+
+    def test_a_skip_declared_in_setup_skips_the_method_and_continues(self):
+        case = SetupSkipsCase()
+        node = FakeNode()
+        runner = Runner()
+        runner.test_case = case
+        runner.node = node
+
+        try:
+            text = run_class_tests_capturing_output(runner, case, node)
+        except unittest.SkipTest:
+            self.fail(
+                'a SkipTest raised from setUp escaped run_class_tests '
+                "instead of being reported as a skipped test "
+                "(reviewer's note 1)")
+
+        self.assertEqual(
+            case.calls, ['setup', 'teardown', 'setup', 'teardown'])
+        self.assertEqual(getattr(runner, 'num_skipped', 0), 2)
+        self.assertEqual(runner.num_failed, 0)
+        self.assertIn('the exact kernel is not available here', text)
+
+    def test_a_non_skip_setup_error_still_propagates(self):
+        case = SetupRaisesCase()
+        node = FakeNode()
+        runner = Runner()
+        runner.test_case = case
+        runner.node = node
+
+        with self.assertRaises(RuntimeError):
+            runner.run_class_tests(case, node)
+
+    def test_a_skip_between_instants_still_restores_the_children(self):
+        # reviewer's note 3: a skip at instant 1 after an operation was
+        # added at instant 0 must not leak into instant 2.
+        child = FakeChild()
+        node = ChildOperationsGrowThenSkipNode(child)
+        runner = Runner()
+        runner.test_case = None
+
+        run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(node.instant2_operations, [])
+
+    def test_failfast_does_not_break_the_sweep_on_a_skip(self):
+        node = FailfastSkipSweepNode()
+        runner = Runner()
+        runner.test_case = None
+        runner.node = node
+        runner.failfast = True
+
+        with redirect_stdout(io.StringIO()):
+            runner.run_tests()
+
+        self.assertEqual(node.calls, [0, 1, 2])
+        self.assertEqual(runner.num_passed, 1)
+        self.assertEqual(runner.num_failed, 0)
+
+    def test_failfast_does_not_break_on_a_marked_methods_raise(self):
+        node = FailfastExpectedFailureSweepThenPassNode()
+        runner = Runner()
+        runner.test_case = None
+        runner.node = node
+        runner.failfast = True
+
+        with redirect_stdout(io.StringIO()):
+            runner.run_tests()
+
+        self.assertEqual(
+            node.calls, [('a', 0), ('a', 1), ('a', 2), 'b'])
+        self.assertEqual(getattr(runner, 'num_expected_failures', 0), 1)
+        self.assertEqual(runner.num_failed, 0)
+
+    def test_failfast_stops_on_an_unexpected_success(self):
+        node = FailfastUnexpectedSuccessNode()
+        runner = Runner()
+        runner.test_case = None
+        runner.node = node
+        runner.failfast = True
+
+        with redirect_stdout(io.StringIO()):
+            runner.run_tests()
+
+        self.assertEqual(node.calls, ['a'])
+        self.assertEqual(getattr(runner, 'num_unexpected_successes', 0), 1)
+
+
+class ReportSummaryLineTest(TestCase):
+    """report()'s summary line: unchanged when nothing unusual happened
+    -- the ADR-090 discipline for this output -- and, when something
+    did, the three new counts appended before the kernel/quantum
+    note."""
+
+    def test_default_run_reports_todays_line_unchanged(self):
+        runner = Runner()
+        runner.num_tests = 3
+        runner.num_passed = 3
+        runner.num_failed = 0
+
+        out = io.StringIO()
+        with redirect_stdout(out):
+            runner.report(1.23)
+
+        self.assertIn(
+            'Ran 3 tests in 1.23 seconds: 3 passed, 0 failed\n',
+            out.getvalue())
+
+    def test_nonzero_counts_are_appended_before_the_kernel_note(self):
+        runner = Runner()
+        runner.num_tests = 8
+        runner.num_passed = 4
+        runner.num_failed = 0
+        runner.num_skipped = 1
+        runner.num_expected_failures = 2
+        runner.num_unexpected_successes = 1
+        runner.policy = framework.ComparisonPolicy('faceted', 0.0)
+
+        out = io.StringIO()
+        with redirect_stdout(out):
+            runner.report(1.0)
+
+        self.assertIn(
+            'Ran 8 tests in 1.00 seconds: 4 passed, 0 failed, '
+            '1 skipped, 2 expected failures, 1 unexpected success '
+            '(faceted kernel, volume epsilon 0 mm³)',
+            out.getvalue())
 
 
 class InstrumentedChild:
@@ -607,6 +1044,76 @@ class MultiTestCaseFixture(TestCase):
             except SystemExit as exc:
                 code = exc.code
         return code, stdout.getvalue(), stderr.getvalue()
+
+
+SKIP_ONLY_SOURCE = '''from solid_node.node import Solid2Node
+from solid2 import cube
+
+
+class Widget(Solid2Node):
+    def render(self):
+        return cube(1, center=True)
+'''
+
+SKIP_ONLY_TEST_SOURCE = '''from solid_node.test import TestCase
+from .widget import Widget
+
+
+class WidgetTest(TestCase):
+    node = Widget
+
+    def test_builds(self):
+        self.assertIsNotNone(self.node.mesh)
+
+    def test_skips(self):
+        self.skipTest('the exact kernel is not available here')
+'''
+
+UNEXPECTED_SUCCESS_SOURCE = '''from solid_node.node import Solid2Node
+from solid2 import cube
+
+
+class Gadget(Solid2Node):
+    def render(self):
+        return cube(1, center=True)
+'''
+
+UNEXPECTED_SUCCESS_TEST_SOURCE = '''import unittest
+from solid_node.test import TestCase
+from .gadget import Gadget
+
+
+class GadgetTest(TestCase):
+    node = Gadget
+
+    @unittest.expectedFailure
+    def test_marked_but_passes(self):
+        self.assertIsNotNone(self.node.mesh)
+'''
+
+
+class UnusualResultExitCodeTest(MultiTestCaseFixture):
+    """ADR-117: the exit-code contract moves in both directions -- a run
+    whose only unusual result is a skip must not fail the run, and a run
+    containing an unexpected success must (`manager/test.py:179-180`)."""
+
+    def test_a_run_with_only_a_skip_exits_zero(self):
+        node_path = self.write('boat/widget.py', SKIP_ONLY_SOURCE)
+        self.write('boat/test_widget.py', SKIP_ONLY_TEST_SOURCE)
+
+        code, stdout, stderr = self.run_solid_test(node_path)
+
+        self.assertEqual(code, 0, stderr)
+        self.assertIn('1 skipped', stdout)
+
+    def test_a_run_with_an_unexpected_success_exits_one(self):
+        node_path = self.write('boat/gadget.py', UNEXPECTED_SUCCESS_SOURCE)
+        self.write('boat/test_gadget.py', UNEXPECTED_SUCCESS_TEST_SOURCE)
+
+        code, stdout, stderr = self.run_solid_test(node_path)
+
+        self.assertEqual(code, 1, stderr)
+        self.assertIn('1 unexpected success', stdout)
 
 
 WINDMILL_SOURCE = '''from solid_node.node import Solid2Node

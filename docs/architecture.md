@@ -1346,7 +1346,13 @@ its coordinates from disagreeing across a test boundary — including a
 child a running simulation posed, whose own placement the content
 restore alone cannot make consistent again. Only `node.children` are
 checkpointed and re-placed this way; a joint the node under test
-declares on itself is neither.
+declares on itself is neither. A method's verdict is not only pass or
+fail: `self.skipTest`/`unittest`'s skip decorations report it SKIPPED
+(counted as neither, the unit of a skip being the animation instant, and
+never overwriting a real failure's traceback), and
+`@unittest.expectedFailure` reports it an EXPECTED FAILURE when it
+raises or an UNEXPECTED SUCCESS — which fails the run — when it does not
+(ADR-118).
 
 Collision assertions (ADR-009/044) select the strongest shared representation
 the run allows: intersection-volume and connectivity questions use placed
