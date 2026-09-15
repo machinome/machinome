@@ -1476,6 +1476,11 @@ class RelationRecord:
         self.law = law
         self.direction = None
         self.copy = copy
+        # Whether this record is a member of a BLOCK -- a dependency
+        # cycle every selection breaks (OpenSpec change
+        # ``select-the-source``). Decided at `Sim` construction, before
+        # the rest render, and cleared with the run's claim on the tree.
+        self.block_member = False
 
     @property
     def name(self):
@@ -2210,6 +2215,22 @@ def _step_relation(record, claimed, bound):
         # Applying it again would bind a coordinate the run owns.
         record.direction = 'run'
         return False
+
+    if record.block_member and _under_running_root(record):
+        # A relation on a dependency cycle every selection breaks binds
+        # NOTHING at rest either, and for the same reason: a BLOCK is
+        # ordered once per PIECE of a tick, so the rest pose is the
+        # author's own rest-default guard and the run refuses by name
+        # when there is none (simulation spec, "A selection decides which
+        # sources a law reads"). Recorded solved FORWARD -- the one
+        # direction a relation of several ends has -- so the enumeration
+        # leaves it alone. Under any other time base nothing is marked
+        # and the relation is solved, deferred and refused exactly as it
+        # is without this rule.
+        if record.direction is not None:
+            return False
+        record.direction = 'forward'
+        return True
 
     if record.relation.self_read is not None:
         # A relation that READS its own driven end binds NOTHING at

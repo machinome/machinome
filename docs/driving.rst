@@ -875,6 +875,80 @@ here: ``forward`` may not BRANCH on its arguments' values (a symbolic
 value is not comparable), and a non-linear function of a symbolic value
 must come from ``solid_node.math`` so it emits an OpenSCAD call.
 
+A selection decides which sources a law reads
+--------------------------------------------
+
+A mechanism's dependencies may be SELECTED by where one of its own parts
+stands. A Curta's carry levers belong to the fixed frame and its number
+dials ride on the carriage, so the same lever is tripped by dial ``s``
+and advances dial ``s + 1``, where ``s`` is the carriage position the
+maker chose. At any one position the dependencies are a chain; their
+UNION over the positions is a cycle, and the union is what a running
+program has to order.
+
+Nothing new is declared. The selection is the comparison the model
+already writes -- a term multiplied by a gate on the coordinate that
+selects::
+
+    (crank & seat.turn & levers.travel & dial.turn).drives(
+        dial.turn, law=advanced(place))
+
+Under a running root a cycle every selection breaks is a **BLOCK**: one
+entry of the program, ordered once per PIECE of a tick rather than once
+per program. The program as a whole is acyclic again, and nothing
+outside a block changes.
+
+A **SELECTOR** is a jump node of a block member's law whose LEVEL
+QUANTITY reads no coordinate the block determines -- so its branch is
+known before the block runs, from what the edges upstream already gave.
+``seat.turn >= place - 0.5`` is one; ``lever.travel >= 1`` is not,
+because the block determines the lever.
+
+A source is **SWITCHED** when folding a selector's branch to ZERO removes
+it from the law: a product with a zero factor is zero, so the term goes
+and every name only that term read goes with it. A branch counts as
+foldable only where the primitive holds ZERO over an INTERVAL of its
+level -- ``floor`` over ``[0, 1)``, ``ceil`` over ``(-1, 0]``, a
+remainder's quotient over ``(-1, 1)``, and a comparison over the whole of
+its false side. ``sign`` is the one that does not: its zero is a single
+POINT, the level exactly at zero, so a ``sign``-gated source is active on
+every real piece and gating a cycle on one is refused at construction
+rather than admitted and refused at the first tick.
+
+Over a stretch the block's selectors are located FIRST, by the machinery
+a jump crossing already uses, and the block then runs PIECE BY PIECE. On
+each piece every selector's branch is read at the MIDPOINT and
+SUBSTITUTED into each member's own integration rather than located again,
+so the order the block chose and the branch a member reads cannot
+disagree. The members are then ordered over what the fold leaves ACTIVE
+and run in that order, each by the rules that already govern it.
+
+Three things follow, and each is worth stating:
+
+* **A selection change alone moves nothing.** A selector is a jump node
+  and a jump never moves a part, so a carriage moved from one position to
+  another with the crank standing still contributes exactly zero to every
+  dial and every lever.
+* **A block relation binds NOTHING at rest**, as a law that reads its own
+  driven end does. Every coordinate a block drives therefore needs the
+  author's own guarded rest default -- ``if self.turn.value is None:
+  self.turn = 0`` -- and construction refuses by name when there is none.
+* **A piece that still cannot be ordered refuses the TICK**, naming the
+  piece, the selector branches it was read under and the relations on the
+  cycle, and committing nothing. The construction check catches every
+  cycle no selection can break; which branch VECTORS are reachable is
+  arithmetic about the selecting input, not structure, so a particular
+  selection that leaves two dependencies active at once is answered when
+  it happens.
+
+Refused at construction, by relation identity: a block containing a
+WIRING or a DERIVED COORDINATE (neither carries a jump node, so neither
+can be switched); a block whose members' unconditional dependencies are
+still cyclic; a block driving an INTERMEDIATE -- a plain port or a
+derived coordinate -- because a block advances its coordinates piece by
+piece and only a coordinate the run owns keeps that history; and a block
+member driving a GROUP.
+
 Derived coordinates
 -------------------
 

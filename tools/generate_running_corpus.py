@@ -60,7 +60,16 @@ from solid_node.simulation.enumeration import (  # noqa: E402
 )
 from solid_node.simulation.run import _TOLERANCE  # noqa: E402
 
+from tests.carriage_project import machine as carriage  # noqa: E402
 from tests.running_project import machine as machines  # noqa: E402
+
+
+def machine_class(name):
+    """One corpus machine by name, from either fixture package."""
+    found = getattr(machines, name, None)
+    if found is None:
+        found = getattr(carriage, name)
+    return found
 
 
 #: The keys of a published document the RUN is answerable for. `root`,
@@ -89,6 +98,9 @@ REQUIRED = (
     'a law that reads the coordinate it drives',
     'a self-read coordinate holding at its gate while its input moves on',
     'a tick carrying both a self-read crossing and a stop',
+    'a switched source',
+    'a selection crossing inside a tick',
+    'a tick carrying both a selection crossing and a stop',
 )
 
 COMPARISONS = ('<', '<=', '>', '>=', '==', '!=')
@@ -211,6 +223,31 @@ CORPUS = (
         {'tick': 1, 'move': {'input': 'setter', 'by': 100.0,
                              'duration': 0.25}, 'handle': 'h2'},
     ]},
+    # A BLOCK: a union of dependencies the carriage SELECTS, ordered
+    # once per piece. The crank turns the lower wheel, the lever is
+    # tripped by whichever wheel the carriage has brought under it, and
+    # the higher wheel is advanced by the lever at one position and by
+    # the crank at the other -- so each member reads a coordinate the
+    # other determines, through a comparison on a live input.
+    {'name': 'ShiftedCarry', 'dt': 0.05, 'steps': 20, 'script': [
+        {'tick': 1, 'move': {'input': 'crank', 'by': 2.0,
+                             'duration': 0.2}, 'handle': 'h0'},
+        {'tick': 8, 'move': {'input': 'shift', 'by': 1.0,
+                             'duration': 0.2}, 'handle': 'h1'},
+        {'tick': 14, 'move': {'input': 'crank', 'by': 2.0,
+                              'duration': 0.2}, 'handle': 'h2'},
+    ]},
+    # A SELECTION CROSSING and a STOP in one tick: the lever is driven
+    # into its declared range a third of the way along a tick whose
+    # second half hands it to the other wheel.
+    {'name': 'RangedBlock', 'dt': 0.05, 'steps': 8, 'script': [
+        {'tick': 1, 'move': {'input': 'spin', 'by': 2.0,
+                             'duration': 0.05}, 'handle': 'h0'},
+        {'tick': 1, 'move': {'input': 'shift', 'by': 1.0,
+                             'duration': 0.05}, 'handle': 'h1'},
+        {'tick': 4, 'move': {'input': 'crank', 'by': 1.0,
+                             'duration': 0.05}, 'handle': 'h2'},
+    ]},
     # A bound that READS OTHER COORDINATES, both ways round: the plug
     # turns with the pins cleared, and the withdrawal that follows is
     # stopped by a coordinate that does not move in the tick that stops
@@ -230,7 +267,7 @@ CORPUS = (
 
 def document_of(name):
     """The program-bearing keys of the document `name` publishes."""
-    node = getattr(machines, name)()
+    node = machine_class(name)()
     bind_declared_defaults(node)
     program, initial = compiled_program(node)
     with symbolic_document(node) as (declarations, instructions):
@@ -244,7 +281,7 @@ def document_of(name):
 
 def run_machine(entry):
     """One machine's whole run, tick by tick."""
-    sim = Sim(getattr(machines, entry['name'])(), entry['dt'],
+    sim = Sim(machine_class(entry['name'])(), entry['dt'],
               record=entry['steps'] + 1)
     script = {}
     for action in entry['script']:
@@ -351,6 +388,13 @@ def uncovered_features(machines):
         if reads:
             seen.add('a law that reads the coordinate it drives')
         sources = program.get('sources') or {}
+        # The BLOCK and its SELECTORS, re-derived from the published
+        # edges exactly as a consumer must: no key carries either.
+        gives, selectors = _selection(program, bindings)
+        if any(set(edge['needs']) & gives
+               for index, edge in enumerate(program.get('edges', ()))
+               if index in selectors):
+            seen.add('a switched source')
         previous = None
         for tick in entry['ticks']:
             if tick['stops']:
@@ -381,6 +425,14 @@ def uncovered_features(machines):
                         identifier):
                     seen.add('a stop reached by the motion of what a '
                              'bound reads')
+            selection = [one for one in tick['crossings']
+                         if one['primitive'] in selectors.get(
+                             _member_of(program, one['coordinate']), ())]
+            if selection:
+                seen.add('a selection crossing inside a tick')
+                if tick['stops']:
+                    seen.add('a tick carrying both a selection crossing '
+                             'and a stop')
             if tick['stops'] and tick['crossings']:
                 seen.add('a tick carrying both a crossing and a stop')
             for command in tick['commands']:
@@ -388,6 +440,73 @@ def uncovered_features(machines):
                     seen.add('a command retired blocked')
             previous = tick['bank']
     return [feature for feature in REQUIRED if feature not in seen]
+
+
+def _member_of(program, coordinate):
+    """The index of the edge that determines `coordinate`, or None."""
+    for index, edge in enumerate(program.get('edges', ())):
+        if coordinate in edge.get('gives', ()):
+            return index
+    return None
+
+
+def _selection(program, bindings):
+    """`(what the blocks give, {edge index: its selector primitives})`,
+    re-derived from the published edges the way a consumer must.
+
+    A BLOCK is a strongly connected component of the graph over the
+    edges' own `needs` and `gives` with `needs` met with `gives`
+    excluded; a SELECTOR is a jump of a member's plan whose `level` --
+    placeholders resolved transitively into their own jumps' levels --
+    names no id the block gives. The primitives reported here are the
+    ones a selector of that member has and no OTHER jump of it has, so a
+    crossing carrying one is a selection crossing and not a gate that
+    happens to share an operator.
+    """
+    edges = [edge for edge in program.get('edges', ())
+             if edge.get('kind') != 'check']
+    determiner = {name: index for index, edge in enumerate(edges)
+                  for name in edge.get('gives', ())}
+    after = {}
+    for index, edge in enumerate(edges):
+        own = set(edge.get('gives', ()))
+        after[index] = {determiner[name] for name in edge.get('needs', ())
+                        if name in determiner and name not in own}
+    members = set()
+    for start in after:
+        seen, pending = set(), list(after[start])
+        while pending:
+            node = pending.pop()
+            if node in seen:
+                continue
+            seen.add(node)
+            pending.extend(after[node])
+        if start in seen:
+            members.add(start)
+    gives = {name for index in members
+             for name in edges[index].get('gives', ())}
+    selectors = {}
+    for index in members:
+        found, other = set(), set()
+        for plan in edges[index].get('plans') or ():
+            if plan is None:
+                continue
+            levels = {jump['name']: jump['level'] for jump in plan['jumps']}
+            for jump in plan['jumps']:
+                names, pending = set(), [jump['level']]
+                while pending:
+                    text = str(pending.pop())
+                    for name in free_names(text, bindings):
+                        if name in levels:
+                            pending.append(levels[name])
+                        else:
+                            names.add(name)
+                if names & gives:
+                    other.add(jump['primitive'])
+                else:
+                    found.add(jump['primitive'])
+        selectors[index] = found - other
+    return gives, selectors
 
 
 def free_names(expression, bindings):

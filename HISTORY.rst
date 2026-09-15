@@ -5,6 +5,55 @@ History
 Unreleased
 ----------
 
+* **A selection decides which sources a law reads.** A mechanism's
+  dependencies may be SELECTED by where one of its own parts stands, so
+  that the union of what it reads over every selection is cyclic although
+  each selection's own dependencies are not: a Curta's fixed carry lever
+  is tripped by the dial the carriage has brought under it and advances
+  the dial beyond that one, and which dial is which follows the carriage.
+  Nothing new is declared — the selection is the comparison the model
+  already writes, a term multiplied by a gate on the coordinate that
+  selects. Under a running root such a union is a **BLOCK**: one entry of
+  the program, ordered once per PIECE of a tick rather than once per
+  program, so the program as a whole is acyclic again and nothing outside
+  a block changes. A **SELECTOR** is a jump node of a member's law whose
+  level quantity reads no coordinate the block determines, and a source
+  is **SWITCHED** when folding that node's branch to ZERO removes it from
+  the law — which ``floor``, ``ceil``, a remainder's quotient and a
+  comparison can do, because each holds its zero branch over an INTERVAL
+  of its level, and ``sign`` cannot, because its zero is a single point.
+  Over a stretch the selectors are located first, the stretch is cut at
+  each of their surfaces, and on each piece the branches read at the
+  MIDPOINT are SUBSTITUTED into every member's own integration rather
+  than located again — so the order the block chose and the branch a
+  member reads cannot disagree. A selection change ALONE moves nothing; a
+  block relation binds NOTHING at rest, so every coordinate it drives
+  needs the author's own guarded rest default; a selector crossing is a
+  crossing and not a stop; a declared range on a block coordinate still
+  stops it and an input reaching it only through an inactive selection is
+  not stopped by it; and what the block commits for a coordinate a piece
+  LANDED is the absolute value it advanced that coordinate to by the
+  stretch's end, landing and later motion both. Refused at construction
+  by relation identity: a wiring or a derived coordinate inside a block,
+  a cycle no selection breaks, an intermediate among a block's driven
+  ends, and a block member driving a group. A piece that still cannot be
+  ordered refuses the TICK, naming the piece, the selector branches and
+  the cycle, and commits nothing. **BREAKING for consumers:** a document
+  whose program carries a block declares ``version: 7``, because the
+  published ORDER of a block's members is a listing and not an execution
+  order — a runtime that executed them in it would move the machine by
+  whatever that order happened to give, silently, and by a different
+  amount for each order it might have chosen. No key is added: a consumer
+  re-derives the block from the edges' own ``needs`` and ``gives`` and its
+  selectors from the published plans. A program with no block publishes
+  the byte-identical version 6 or 5 document it always did, keeps its
+  order and its identity, and pays nothing per tick.
+* Fixed: a law that reads the coordinate it drives left that coordinate
+  one ulp from where it stood on a tick in which a source moved but the
+  branch-substituted law did not — ``(own + S) − S`` rounded whenever the
+  law's value was comparable in size to the coordinate. The walk now takes
+  the difference first, so a piece whose substituted law is unchanged
+  leaves the coordinate at the exact float it held.
 * A law may **read the coordinate it drives**. A coordinate named in a
   relation's source group AND as its one driven end is a READ of that
   end — ``(ring & wheel.turn).drives(wheel.turn, law=missing_tooth)`` —

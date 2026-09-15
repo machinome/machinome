@@ -401,6 +401,52 @@ segment. And a document whose program carries such a law is a **version
 would have the read at both ends, freeze the branch and move the part by
 a different mechanism in silence.
 
+A selection decides which sources a law reads
+--------------------------------------------
+
+A machine whose dependencies are SELECTED by where one of its own parts
+stands has a CYCLIC union: a Curta's fixed carry lever is tripped by the
+dial the carriage has brought under it and advances the dial beyond that
+one, so which dial it reads and which dial it drives both follow the
+carriage. :doc:`driving` states how such a machine is written -- every
+association a comparison factor on the carriage's own joint coordinate.
+Here is what a run does with it.
+
+A cycle every selection breaks is a **BLOCK**: one entry of the program,
+ordered once per PIECE of a tick. Over a stretch the block's selectors
+are located first, the stretch is cut at each of their surfaces, and on
+each piece the branches read at the MIDPOINT decide which dependencies
+are active, in what order the members run, and what each of them reads.
+A member is then integrated over the piece by the rules that already
+govern it -- the jump partition, and the walk of a law that reads the
+coordinate it drives -- with its selectors held at the branch the block
+read, not located again.
+
+What a block reports for a coordinate some piece LANDED at a gate is the
+absolute value it has advanced that coordinate to by the stretch's END --
+the landing plus every later piece's increment -- because the run commits
+a reported landing absolutely and would otherwise discard the motion
+after it.
+
+A selector crossing is a CROSSING and not a stop: it stops no input and
+retires no command. A declared range on a coordinate the block drives
+still stops it, located through the block's own searched path and
+committed at its bound. An input that reaches a stopped block coordinate
+ONLY through a selection that is inactive over the stretch is not stopped
+by it, and admits its whole travel.
+
+A tick whose piece still cannot be ordered is REFUSED, naming the piece,
+the selector branches it was read under and the relations on the cycle.
+It commits nothing, exactly as a conflict does.
+
+A document whose program carries a block is a **version 7** document.
+The published ORDER of a block's members is a listing, not an execution
+order: a runtime that executed them in it would move the machine by
+whatever that order happened to give, silently, and by a different amount
+for each order it might have chosen. No key is added for a block -- a
+consumer re-derives it from the edges' own ``needs`` and ``gives``, and
+its selectors from the published ``level`` of each plan's jumps.
+
 A range is a physical stop
 --------------------------
 

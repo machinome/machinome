@@ -53,7 +53,7 @@ import math
 import operator
 import re
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from solid2.core.object_base import OpenSCADConstant
 
@@ -160,6 +160,21 @@ class LandingInvariantError(RuntimeError):
     modelled on says the same of a stop -- and it is raised rather than
     committing a value the design says is never committed. The tick
     committed nothing.
+    """
+
+
+class MembershipInvariantError(RuntimeError):
+    """The two readings of one tree disagreed about what a block holds.
+
+    An INTERNAL invariant of the compile, not a model's mistake: the
+    construction pre-pass decides which relations bind nothing at rest
+    and the compile decides which are ordered per piece, and they agree
+    by construction -- the pre-pass keeps only a cycle holding a banked
+    driven end, and a block whose gives hold an intermediate is refused
+    before this is reached. It is raised where a landing invariant is
+    raised, and for the same reason: an impossible reading is reported
+    rather than rendered. It happens at CONSTRUCTION, where there is no
+    tick to commit or refuse, which is why it is its own kind.
     """
 
 
@@ -320,19 +335,29 @@ class JumpPlan:
     # The increment
 
     def increment(self, start, delta, described, coordinate,
-                  crossings=None, tick=0):
-        """The CONTINUOUS part of this law's change over one tick."""
+                  crossings=None, tick=0, forced=None):
+        """The CONTINUOUS part of this law's change over one tick.
+
+        `forced` is the one thing a BLOCK adds: a map from a SELECTOR's
+        placeholder to the branch the block read at that piece's
+        midpoint. A forced node is a CONSTANT here -- its crossings were
+        located by the block over the whole stretch and are not located
+        again, and every reading of its branch is the number the block
+        substituted -- so the order the block chose and the branch this
+        member reads cannot disagree (design.md section 3).
+        """
         if not any(delta.values()):
             # A zero-length path contributes zero without evaluating
             # anything -- and must never reach the sum below, where a
             # one-point piece would read as minus a jump.
             return 0.0
         cuts = self._partition(start, delta, described, coordinate,
-                               crossings, tick)
+                               crossings, tick, forced)
         total = 0.0
         for left, right in zip(cuts, cuts[1:]):
             branches = self._branches(start, delta, (left + right) / 2.0,
-                                      len(self.jumps), described, coordinate)
+                                      len(self.jumps), described, coordinate,
+                                      forced)
             total += (self._substituted(start, delta, right, branches)
                       - self._substituted(start, delta, left, branches))
         return total
@@ -342,15 +367,24 @@ class JumpPlan:
         values.update(branches)
         return self.skeleton.evaluate(values)
 
-    def _branches(self, start, delta, t, count, described, coordinate):
+    def _branches(self, start, delta, t, count, described, coordinate,
+                  forced=None):
         """Every jump node's branch at one point of the path, in
         postorder, so a node nested inside another's argument is
-        determined first."""
+        determined first.
+
+        A node the caller FORCED reads the branch it was given and its
+        level is never evaluated: one of the two places a block's
+        selector is read.
+        """
         values = _along(start, delta, t)
         found = {}
         for jump in self.jumps[:count]:
-            level = self._level(jump, values, described, coordinate)
-            branch = _branch_of(jump, level)
+            if forced is not None and jump.placeholder in forced:
+                branch = forced[jump.placeholder]
+            else:
+                level = self._level(jump, values, described, coordinate)
+                branch = _branch_of(jump, level)
             found[jump.placeholder] = branch
             values[jump.placeholder] = branch
         return found
@@ -372,7 +406,7 @@ class JumpPlan:
     ##############################################
     # The partition
 
-    def cuts(self, start, delta, described, coordinate):
+    def cuts(self, start, delta, described, coordinate, forced=None):
         """The breakpoints this law's own jumps put on the tick's path.
 
         The partition the increment already builds, made reachable and
@@ -385,7 +419,7 @@ class JumpPlan:
         if not any(delta.values()):
             return (0.0, 1.0)
         return tuple(self._partition(start, delta, described, coordinate,
-                                     None, 0))
+                                     None, 0, forced))
 
     def retained(self, own):
         """This plan read in TWO LAYERS, for a driven end whose own law
@@ -395,7 +429,7 @@ class JumpPlan:
         return _Retained(self, own)
 
     def _partition(self, start, delta, described, coordinate,
-                   crossings, tick):
+                   crossings, tick, forced=None):
         """The tick's path, cut at every crossing of every jump surface.
 
         The jump nodes are taken in POSTORDER, so a node's level
@@ -408,10 +442,16 @@ class JumpPlan:
         cuts = [0.0, 1.0]
         located = []
         for index, jump in enumerate(self.jumps):
+            if forced is not None and jump.placeholder in forced:
+                # The block located this node's crossings over the WHOLE
+                # stretch already, and its branch is a constant on this
+                # piece: re-locating it here is the second reading this
+                # design exists to remove.
+                continue
             found = []
             for left, right in zip(cuts, cuts[1:]):
                 inner = self._branches(start, delta, (left + right) / 2.0,
-                                       index, described, coordinate)
+                                       index, described, coordinate, forced)
                 found.extend(self._crossings_of(
                     jump, start, delta, inner, left, right,
                     described, coordinate))
@@ -700,17 +740,17 @@ class _Retained:
                 f'{len(self.outer.jumps)} independent>')
 
     def increment(self, start, delta, described, coordinate,
-                  crossings=None, tick=0):
+                  crossings=None, tick=0, forced=None):
         """`(increment, landing)`: what this end MOVES BY over the tick,
         and the ABSOLUTE value it holds at the tick's end where at least
         one cut placed it -- None where none did."""
-        walk = _Walk(self, start, delta, described, coordinate)
+        walk = _Walk(self, start, delta, described, coordinate, forced)
         increment, landing, _cuts = walk.run(crossings, tick)
         return increment, landing
 
-    def cuts(self, start, delta, described, coordinate):
+    def cuts(self, start, delta, described, coordinate, forced=None):
         """The breakpoints the two layers together put on the path."""
-        walk = _Walk(self, start, delta, described, coordinate)
+        walk = _Walk(self, start, delta, described, coordinate, forced)
         return walk.run(None, 0)[2]
 
 
@@ -718,9 +758,10 @@ class _Walk:
     """One driven end's piece-by-piece walk over one tick."""
 
     __slots__ = ('reading', 'plan', 'own', 'start', 'delta', 'described',
-                 'coordinate', 'taken')
+                 'coordinate', 'taken', 'forced')
 
-    def __init__(self, reading, start, delta, described, coordinate):
+    def __init__(self, reading, start, delta, described, coordinate,
+                 forced=None):
         self.reading = reading
         self.plan = reading.plan
         self.own = reading.own
@@ -732,6 +773,11 @@ class _Walk:
         self.delta[self.own] = 0.0
         self.described = described
         self.coordinate = coordinate
+        # A SELECTOR's level reads no coordinate the block determines --
+        # the driven end included -- so a forced node is always an
+        # INDEPENDENT one in `_Retained`'s split, and forcing reaches the
+        # whole walk through layer one alone.
+        self.forced = forced
         self.taken = 0
 
     ##############################################
@@ -759,8 +805,16 @@ class _Walk:
                            own_left=own_left):
                     """The driven coordinate's own path on this piece --
                     one ordinary evaluation, because the substituted
-                    skeleton does not name it."""
-                    return own_left + self._skeleton(s, branches) - base
+                    skeleton does not name it.
+
+                    The skeleton's CHANGE is taken first. Left to right,
+                    `(own_left + S) - base` rounds whenever `|S|` is
+                    comparable to `|own_left|`, so a piece whose skeleton
+                    does not move would still shift the coordinate by an
+                    ulp; taken this way an unchanged skeleton adds a true
+                    zero and the coordinate keeps the exact float it
+                    held."""
+                    return own_left + (self._skeleton(s, branches) - base)
 
                 cut = self._first_cut(t, right, own_left, branches, own_at)
                 if cut is None:
@@ -792,14 +846,15 @@ class _Walk:
             return (0.0, 1.0)
         return self.reading.outer._partition(
             self.start, self.delta, self.described, self.coordinate,
-            crossings, tick)
+            crossings, tick, self.forced)
 
     def _outer_branches(self, left, right):
         if not self.reading.outer.jumps:
             return {}
         return self.reading.outer._branches(
             self.start, self.delta, (left + right) / 2.0,
-            len(self.reading.outer.jumps), self.described, self.coordinate)
+            len(self.reading.outer.jumps), self.described, self.coordinate,
+            self.forced)
 
     ##############################################
     # The branches at a piece's LEFT END
@@ -868,7 +923,7 @@ class _Walk:
         base = self._skeleton(t, branches)
         for step in range(1, _SUBDIVISIONS + 1):
             s = t + (right - t) * step / _SUBDIVISIONS
-            own = own_left + self._skeleton(s, branches) - base
+            own = own_left + (self._skeleton(s, branches) - base)
             level = self._level(jump, s, own, branches)
             if level != surface:
                 return level
@@ -1104,6 +1159,380 @@ def _no_level(jump, described, coordinate, reason=None):
 
 
 ##############################################
+# A selection: blocks, selectors, switched sources
+
+
+# The jump primitives whose ZERO BRANCH is held over an INTERVAL of the
+# level quantity, and which can therefore make a source SWITCHED: `floor`
+# over `[0, 1)`, `ceil` over `(-1, 0]`, a remainder's quotient over
+# `(-1, 1)` and a comparison over the whole of its false side. `sign` is
+# the one that does NOT qualify -- `_branch_of` returns `0.0` for it only
+# where the level is EXACTLY zero, one point and not an interval -- so a
+# `sign`-gated source is never switched, and a cycle whose only gate is a
+# `sign` is refused at construction rather than at the first tick
+# (design.md section 2).
+_FOLDABLE = ('floor', 'ceil', '%') + tuple(_COMPARISONS)
+
+
+def _folded(root, substitution):
+    """`root` with every placeholder in `substitution` replaced by the
+    number it stands for, and the arithmetic then folded:
+    `x*0 -> 0`, `0*x -> 0`, `0/x -> 0`, `0+y -> y`, `y+0 -> y`,
+    `y-0 -> y`, `0-y -> -y`.
+
+    Monotone in the set of names sent to ZERO: every rule either removes
+    names or keeps exactly the names its operand had, and a call's reads
+    are the union of its arguments', so zeroing one more placeholder can
+    never ADD a read. That is what makes ONE all-zero fold the minimum
+    over every selector assignment (design.md section 2).
+    """
+    replaced = {}
+
+    def is_zero(node):
+        return node.kind == 'num' and float(node.text) == 0.0
+
+    for node in postorder([root]):
+        if node.kind == 'name' and node.text in substitution:
+            replaced[node] = ExpressionNode(
+                'num', text=repr(float(substitution[node.text])))
+            continue
+        if not node.children:
+            continue
+        children = tuple(replaced.get(child, child) for child in node.children)
+        if node.kind == 'binop' and node.op == '*' and any(map(is_zero,
+                                                               children)):
+            replaced[node] = _ZERO
+        elif node.kind == 'binop' and node.op == '/' and is_zero(children[0]):
+            replaced[node] = _ZERO
+        elif node.kind == 'binop' and node.op == '+' and is_zero(children[0]):
+            replaced[node] = children[1]
+        elif node.kind == 'binop' and node.op in ('+', '-') \
+                and is_zero(children[1]):
+            replaced[node] = children[0]
+        elif node.kind == 'binop' and node.op == '-' and is_zero(children[0]):
+            replaced[node] = ExpressionNode('unary', '-', (children[1],))
+        elif children != node.children:
+            replaced[node] = ExpressionNode(node.kind, node.op, children,
+                                            node.text)
+    return replaced.get(root, root)
+
+
+_ZERO = ExpressionNode('num', text='0')
+
+
+def _reads_under(plan, substitution):
+    """Every coordinate a law still READS with `substitution`'s
+    placeholders holding the branches it names: the folded skeleton's
+    free names, with every surviving placeholder followed into its own
+    folded level quantity, transitively."""
+    by_name = {jump.placeholder: jump for jump in plan.jumps}
+    pending = list(free_names(_folded(as_node(plan.skeleton), substitution)))
+    seen, found = set(), set()
+    while pending:
+        name = pending.pop()
+        if name in seen:
+            continue
+        seen.add(name)
+        jump = by_name.get(name)
+        if jump is None:
+            found.add(name)
+            continue
+        pending.extend(free_names(
+            _folded(as_node(jump.argument), substitution)))
+    return found
+
+
+def _selectors(plan, determined):
+    """A plan's SELECTORS: the jump nodes whose LEVEL QUANTITY reads no
+    coordinate in `determined` -- a placeholder standing in that level
+    resolved into the jump it replaced, transitively.
+
+    Upward closed along the nesting for `_dependence`'s own reason: a
+    placeholder stands for exactly the subtree it replaced, so a node
+    whose level names a non-selector placeholder is itself not one. The
+    plan's jumps are in the graph's POSTORDER, so an inner node is
+    decided before the node it sits in.
+    """
+    reaches = {}
+    found = []
+    for jump in plan.jumps:
+        names = free_names(as_node(jump.argument))
+        touches = any(name in determined for name in names) or \
+            any(reaches.get(name, False) for name in names)
+        reaches[jump.placeholder] = touches
+        if not touches:
+            found.append(jump)
+    return tuple(found)
+
+
+class _Block:
+    """A nontrivial strongly connected component of the program's
+    dependency graph, and what a selection does to it.
+
+    Its members are ORDINARY law edges; the block is what carries them
+    through the program as ONE entry, so `_ordered` contracts the cycle
+    and everything in `run.py` goes on meeting the program through the
+    `Edge` interface it already calls.
+    """
+
+    __slots__ = ('members', 'gives', 'names', 'selectors', 'plans',
+                 'unconditional', 'switched')
+
+    def __init__(self, members, nodes):
+        self.members = tuple(members)
+        self.gives = tuple(member.gives[0] for member in self.members)
+        self.names = tuple(nodes[key].name for key in self.gives)
+        determined = frozenset(self.names)
+        by_name = {name: key for name, key in zip(self.names, self.gives)}
+        selectors, plans, unconditional, switched = [], [], [], []
+        for member in self.members:
+            plan = member.plans[0] if member.plans else None
+            if plan is None:
+                # A law with no jump in it carries no selector at all, so
+                # everything it reads in the block is unconditional.
+                selectors.append(())
+                plans.append(None)
+                own = member.gives[0]
+                unconditional.append(frozenset(
+                    key for key in member.needs
+                    if key in self.gives and key != own))
+                switched.append(frozenset())
+                continue
+            own = member.gives[0]
+            found = _selectors(plan, determined)
+            selectors.append(found)
+            plans.append(JumpPlan(plan.skeleton, found))
+            zero = {jump.placeholder: 0.0 for jump in found
+                    if jump.primitive in _FOLDABLE}
+            # A read of the member's OWN driven end is ADR-121's
+            # self-read, not a wait on anything else, and is excluded
+            # from both sets exactly as `_ordered` excludes it.
+            whole = frozenset(by_name[name] for name in _reads_under(plan, {})
+                              if name in by_name) - {own}
+            least = frozenset(by_name[name] for name
+                              in _reads_under(plan, zero)
+                              if name in by_name) - {own}
+            unconditional.append(least)
+            switched.append(whole - least)
+        self.selectors = tuple(selectors)
+        self.plans = tuple(plans)
+        self.unconditional = tuple(unconditional)
+        self.switched = tuple(switched)
+
+    def __repr__(self):
+        return f'<block of {", ".join(self.names)}>'
+
+    ##############################################
+    # Construction
+
+    def unconditional_cycle(self):
+        """The members whose UNCONDITIONAL dependencies still form a
+        cycle, or `()`.
+
+        Present on every piece, so it is refused at construction with the
+        message a plain cycle of two ordinary laws has always had.
+        """
+        remaining = list(range(len(self.members)))
+        resolved = set()
+        while remaining:
+            ready = [index for index in remaining
+                     if all(key in resolved
+                            for key in self.unconditional[index]
+                            if key != self.gives[index])]
+            if not ready:
+                return tuple(self.members[index] for index in remaining)
+            for index in ready:
+                resolved.add(self.gives[index])
+            remaining = [index for index in remaining if index not in ready]
+        return ()
+
+    ##############################################
+    # The tick
+
+    def increments(self, values, deltas, crossings, tick, landings):
+        """The block's contribution to each of its coordinates over one
+        stretch: the selectors located FIRST, and then the members run
+        PIECE BY PIECE in the order each piece's own selection gives
+        (design.md section 3)."""
+        starts, steps = [], []
+        for member in self.members:
+            starts.append({name: values[key] for name, key
+                           in zip(member.names, member.needs)})
+            steps.append({name: deltas[key] for name, key
+                          in zip(member.names, member.needs)})
+        located = None if crossings is None else []
+        cuts = self._partition(starts, steps, located, tick)
+        advanced = {key: values[key] for key in self.gives}
+        total = {key: 0.0 for key in self.gives}
+        landed = set()
+        orders = {}
+        for left, right in zip(cuts, cuts[1:]):
+            forced = self._forced(starts, steps, (left + right) / 2.0)
+            vector = tuple(tuple(sorted(entry.items())) for entry in forced)
+            order = orders.get(vector)
+            if order is None:
+                order = orders[vector] = self._order(forced, left, right)
+            held = dict(advanced)
+            piece = {}
+            for index in order:
+                member = self.members[index]
+                own = self.gives[index]
+                start, delta = {}, {}
+                for name, key in zip(member.names, member.needs):
+                    if key in held:
+                        start[name] = held[key]
+                        delta[name] = piece.get(key, 0.0)
+                    else:
+                        start[name] = values[key] + deltas[key] * left
+                        delta[name] = deltas[key] * (right - left)
+                found = None if located is None else []
+                increment, landing = _integrated(
+                    member, start, delta, found, tick, forced[index])
+                piece[own] = increment
+                total[own] += increment
+                if landing is None:
+                    advanced[own] = advanced[own] + increment
+                else:
+                    advanced[own] = landing
+                    landed.add(own)
+                if found:
+                    width = right - left
+                    located.extend(replace(entry, t=left + entry.t * width)
+                                   for entry in found)
+        if located:
+            # In the order the path meets them, as ADR-107's own
+            # partition reports a law's: a selector's crossing is
+            # located over the whole stretch and a member's own is
+            # rescaled out of its piece, and the listing must not depend
+            # on which of the two was computed first.
+            located.sort(key=lambda entry: entry.t)
+            crossings.extend(located)
+        if landings is not None:
+            for key in landed:
+                # What the block reports is the ABSOLUTE value it has
+                # advanced the coordinate to by the stretch's END -- the
+                # landing plus every later piece's increment -- because
+                # `Run._landed` commits a reported landing absolutely and
+                # would otherwise discard the motion after it.
+                landings[key] = advanced[key]
+        return [(key, total[key]) for key in self.gives]
+
+    def _partition(self, starts, steps, crossings, tick):
+        """The stretch cut at every crossing of every selector of every
+        member, in the members' own order and each member's postorder."""
+        cuts = [0.0, 1.0]
+        for index, plan in enumerate(self.plans):
+            if plan is None or not plan.jumps:
+                continue
+            member = self.members[index]
+            found = None if crossings is None else []
+            located = plan._partition(starts[index], steps[index],
+                                      member.description, member.driven[0],
+                                      found, tick)
+            if found:
+                crossings.extend(found)
+            if len(located) > 2:
+                cuts = _merged(cuts, list(located[1:-1]))
+        return cuts
+
+    def _forced(self, starts, steps, where):
+        """Every selector's branch, read at one point of the stretch."""
+        found = []
+        for index, plan in enumerate(self.plans):
+            if plan is None or not plan.jumps:
+                found.append({})
+                continue
+            member = self.members[index]
+            found.append(plan._branches(
+                starts[index], steps[index], where, len(plan.jumps),
+                member.description, member.driven[0]))
+        return found
+
+    def _order(self, forced, left, right):
+        """The members of this piece, ordered over the dependencies its
+        own selection leaves ACTIVE."""
+        active = []
+        for index, member in enumerate(self.members):
+            plan = member.plans[0] if member.plans else None
+            if plan is None:
+                active.append(self.unconditional[index])
+                continue
+            reads = _reads_under(plan, forced[index])
+            active.append(frozenset(
+                key for name, key in zip(self.names, self.gives)
+                if name in reads))
+        remaining = list(range(len(self.members)))
+        resolved, order = set(), []
+        while remaining:
+            ready = [index for index in remaining
+                     if all(key in resolved for key in active[index]
+                            if key != self.gives[index])]
+            if not ready:
+                raise UnsupportedLaw(self._refused(remaining, forced,
+                                                   left, right))
+            for index in ready:
+                order.append(index)
+                resolved.add(self.gives[index])
+            remaining = [index for index in remaining if index not in ready]
+        return tuple(order)
+
+    def _refused(self, remaining, forced, left, right):
+        branches = []
+        for index in remaining:
+            for jump in self.selectors[index]:
+                branches.append(f'{self.names[index]}: {jump.primitive} on '
+                                f'{jump.argument} reads '
+                                f'{forced[index][jump.placeholder]!r}')
+        stuck = ', '.join(self.members[index].description
+                          for index in remaining)
+        return (f'over the piece [{left!r}, {right!r}] of this tick the '
+                f'relations {stuck} form a cycle the run cannot order: each '
+                f'waits on a coordinate another determines, and the '
+                f'selection this piece was read under leaves every '
+                f'dependency on this cycle active. The selectors read '
+                f'{"; ".join(branches) or "nothing"}. The tick committed '
+                f'nothing: the bank, the tick count and the tree stand as '
+                f'they were.')
+
+    def cuts(self, values, deltas, index):
+        """The breakpoints a block puts on the path for one of its
+        coordinates: the selector partition, with each member's own cuts
+        inside each piece.
+
+        `Run._locate` reaches this only through the AFFINE path, and a
+        block's gives are never affine, so nothing calls it today. It is
+        defined rather than left to raise because `_piecewise` is
+        meaningful over it the day a later cycle classifies a block give
+        as affine under a fixed branch vector.
+        """
+        starts, steps = [], []
+        for member in self.members:
+            starts.append({name: values[key] for name, key
+                           in zip(member.names, member.needs)})
+            steps.append({name: deltas[key] for name, key
+                          in zip(member.names, member.needs)})
+        return self._partition(starts, steps, None, 0)
+
+
+def _integrated(member, start, delta, crossings, tick, forced):
+    """One block member over one piece: `(increment, landing)`, by the
+    machinery that already governs it -- ADR-107's partition and
+    ADR-121's walk -- with its selectors FORCED."""
+    plan = member.plans[0] if member.plans else None
+    if plan is None:
+        graph = member.graphs[0]
+        end = {name: start[name] + delta[name] for name in start}
+        return (_evaluated(graph, end) - _evaluated(graph, start)), None
+    reading = member.retained[0] if member.retained else None
+    if reading is None:
+        return plan.increment(start, delta, member.description,
+                              member.driven[0], crossings, tick,
+                              forced), None
+    return reading.increment(start, delta, member.description,
+                             member.driven[0], crossings, tick, forced)
+
+
+##############################################
 # What the program is made of
 
 
@@ -1119,12 +1548,17 @@ class Edge:
 
     __slots__ = ('kind', 'needs', 'gives', 'graphs', 'plans', 'driven',
                  'names', 'factors', 'constant', 'slot_key', 'description',
-                 'stated_by', 'affine', 'retained')
+                 'stated_by', 'affine', 'retained', 'block')
 
     def __init__(self, kind, needs, gives, description, stated_by,
                  graphs=(), plans=(), driven=(), names=(), factors=(),
-                 constant=0.0, slot_key=None):
+                 constant=0.0, slot_key=None, block=None):
         self.kind = kind
+        # The `_Block` reading for a compound BLOCK edge, and `None` for
+        # every other kind: a block is ONE entry of the program, so
+        # `_ordered` contracts the cycle and `run.py` meets it through
+        # the interface it already calls.
+        self.block = block
         self.needs = tuple(needs)
         self.gives = tuple(gives)
         self.graphs = tuple(graphs)
@@ -1169,6 +1603,11 @@ class Edge:
         return tuple(found) if reads else ()
 
     def _affine_ends(self):
+        if self.kind == 'block':
+            # A block's value is piecewise in the SELECTOR partition and
+            # re-ordered across it, so a stop on one of its coordinates
+            # is searched, never solved.
+            return [False] * len(self.gives)
         if self.kind != 'law':
             return [True] * len(self.gives)
         found = []
@@ -1260,6 +1699,9 @@ class Edge:
                     landings[key] = landing
                 found.append((key, increment))
             return found
+        if self.kind == 'block':
+            return self.block.increments(values, deltas, crossings, tick,
+                                         landings)
         if self.kind == 'wiring':
             return [(self.gives[0], deltas[self.needs[0]] * self.factors[0])]
         if self.kind == 'formula':
@@ -1269,6 +1711,8 @@ class Edge:
     def cuts(self, values, deltas, index):
         """The breakpoints of the driven end at `index` along the tick's
         path, or `()` where that end carries no jump plan."""
+        if self.kind == 'block':
+            return self.block.cuts(values, deltas, index)
         if self.kind != 'law' or not self.plans:
             return ()
         plan = self.plans[index]
@@ -1424,9 +1868,35 @@ class Program:
         chosen.reverse()
         return tuple(chosen)
 
+    def listed(self):
+        """`self.edges` with every BLOCK expanded into its members,
+        CONTIGUOUSLY and in the block's own deterministic order.
+
+        The listing the identity, the placeholder minting and the
+        published `edges` all walk, so the three cannot disagree about
+        where a member sits. A program with no block returns exactly
+        `self.edges`.
+        """
+        found = []
+        for edge in self.edges:
+            if edge.kind == 'block':
+                found.extend(edge.block.members)
+            else:
+                found.append(edge)
+        return found
+
     def described(self):
         """The canonical listing the identity is taken of, and what a
-        message about the program prints."""
+        message about the program prints.
+
+        A BLOCK prints one `block` line naming its members' driven ids at
+        the block's own position, and then each member's ORDINARY edge
+        line contiguously: so the identity covers every member's ends,
+        direction and expression exactly as it covers any other edge's,
+        a program whose block membership changes has a different
+        identity, and a program with NO block prints what it printed
+        before, character for character.
+        """
         lines = [f'root {self.root_class.__module__}.'
                  f'{self.root_class.__qualname__}']
         for identifier, declaration in self.inputs:
@@ -1440,17 +1910,25 @@ class Program:
             lines.append(f'span {identifier} {_written(low)} to '
                          f'{_written(high)} {unit or "units"}')
         for edge in self.edges:
-            ends = (f'{[self.nodes[key].name for key in edge.needs]} -> '
+            if edge.kind == 'block':
+                lines.append(
+                    'block '
                     f'{[self.nodes[key].name for key in edge.gives]}')
-            if edge.kind == 'law':
-                how = ' | '.join('constant' if graph is None else str(graph)
-                                 for graph in edge.graphs)
-            elif edge.kind == 'wiring':
-                how = f'identity * {edge.factors[0]!r}'
+                members = edge.block.members
             else:
-                how = (f'{list(edge.factors)!r} + {edge.constant!r} '
-                       f'on {self.nodes[edge.slot_key].name}')
-            lines.append(f'{edge.kind} {ends} {how} [{edge.description}]')
+                members = (edge,)
+            for one in members:
+                ends = (f'{[self.nodes[key].name for key in one.needs]} -> '
+                        f'{[self.nodes[key].name for key in one.gives]}')
+                if one.kind == 'law':
+                    how = ' | '.join('constant' if graph is None
+                                     else str(graph) for graph in one.graphs)
+                elif one.kind == 'wiring':
+                    how = f'identity * {one.factors[0]!r}'
+                else:
+                    how = (f'{list(one.factors)!r} + {one.constant!r} '
+                           f'on {self.nodes[one.slot_key].name}')
+                lines.append(f'{one.kind} {ends} {how} [{one.description}]')
         return '\n'.join(lines)
 
     ##############################################
@@ -1647,7 +2125,7 @@ class Program:
                 node.name for node in self.nodes.values()
                 if node.kind == 'intermediate'),
             'edges': [self._published_edge(edge, placeholders[index])
-                      for index, edge in enumerate(self.edges)],
+                      for index, edge in enumerate(self.listed())],
             'spans': {identifier: {'low': _published_bound(low),
                                    'high': _published_bound(high)}
                       for identifier, low, high, _unit in self.spans},
@@ -1717,7 +2195,7 @@ class Program:
         prefix = _placeholder_prefix(names)
         minted = 0
         found = []
-        for edge in self.edges:
+        for edge in self.listed():
             per_edge = []
             for index in range(len(edge.gives)):
                 plan = edge.plans[index] if edge.plans else None
@@ -1856,11 +2334,14 @@ def compile_program(root, inputs, coordinates, controls=None,
         bank_keys.add(key)
 
     candidates = []
+    marked = set()
     for assembly, path, records, formulas, wirings in _units(root):
         for record in records:
             edge = _relation_edge(root, assembly, record, nodes, bank_keys)
             if edge is not None:
                 candidates.append(edge)
+                if record.block_member:
+                    marked.update(edge.gives)
         for wiring in wirings:
             edge = _wiring_edge(root, assembly, wiring, nodes)
             if edge is not None:
@@ -1884,7 +2365,9 @@ def compile_program(root, inputs, coordinates, controls=None,
         touched.update(edge.gives)
     nodes = {key: node for key, node in nodes.items() if key in touched}
     _refuse_opaque(kept, bank_keys, nodes)
-    ordered = _ordered(kept, nodes)
+    grouped, blocks = _blocked(kept, nodes, bank_keys)
+    _agree_on_membership(marked, blocks, nodes)
+    ordered = _ordered(grouped, nodes)
     spans, bound_reads = _compiled_spans(root, inputs, coordinates)
     program = Program(root, sorted(inputs.items()), sorted(coordinates),
                       nodes, ordered, spans,
@@ -2943,6 +3426,31 @@ def _reaching_the_bank(candidates, bank_keys):
     return kept
 
 
+def _agree_on_membership(marked, blocks, nodes):
+    """The PRE-PASS's membership and the COMPILE's, asserted equal.
+
+    They agree BY CONSTRUCTION and not by luck: the pre-pass keeps only a
+    cycle holding a BANKED driven end, `_reaching_the_bank` drops a
+    candidate only when NO driven end reaches the bank, and a block whose
+    gives hold an intermediate is refused above. The assertion is here
+    because a disagreement would be an internal error rather than a
+    model's mistake, and it names both sides.
+    """
+    compiled = {key for block in blocks for key in block.gives}
+    if marked == compiled:
+        return
+    def listed(keys):
+        return ', '.join(sorted(nodes[key].name for key in keys
+                                if key in nodes)) or 'none'
+    raise MembershipInvariantError(
+        f'the construction pre-pass marked the relations determining '
+        f'{listed(marked)} as members of a block and the compile found '
+        f'{listed(compiled)}. The two readings of one tree must agree: the '
+        f'pre-pass decides what binds nothing at rest and the compile '
+        f'decides what is ordered per piece. Construction refused the '
+        f'model.')
+
+
 def _refuse_opaque(kept, bank_keys, nodes):
     """An edge reading a coordinate the run does not own and no kept edge
     computes is refused by name: a plain port the author's `simulate()`
@@ -2961,6 +3469,138 @@ def _refuse_opaque(kept, bank_keys, nodes):
                 f'integrates relations over drivers and joint '
                 f'coordinates, so state that value as a relation, or give '
                 f'the part a joint.')
+
+
+def _components(kept):
+    """The strongly connected components of the program's DEPENDENCY
+    GRAPH, in the candidates' own order: edge A precedes edge B when B
+    reads a coordinate A determines, with a coordinate an edge itself
+    determines EXCLUDED (that is the self-read, which is not a wait on
+    anything else).
+
+    Tarjan, iterative so a deep chain cannot exhaust the interpreter's
+    stack, and with every adjacency list kept in the candidates' order so
+    the components and their members come out the same for a given tree
+    on every run and in every process.
+    """
+    determiner = {}
+    for index, edge in enumerate(kept):
+        for key in edge.gives:
+            determiner[key] = index
+    after = []
+    for edge in kept:
+        found = []
+        for key in edge.needs:
+            if key in edge.gives:
+                continue
+            source = determiner.get(key)
+            if source is not None and source not in found:
+                found.append(source)
+        after.append(found)
+    return _strongly_connected(after)
+
+
+def _blocked(kept, nodes, bank_keys):
+    """`kept` with every nontrivial strongly connected component
+    contracted to ONE compound `block` edge, or the refusal that names
+    what cannot be one.
+
+    The program is acyclic again afterwards, which is what keeps every
+    order, every document and every tick of a program with NO block
+    exactly what it was.
+    """
+    components = _components(kept)
+    blocks = []
+    contracted = []
+    taken = set()
+    for component in components:
+        if len(component) < 2:
+            continue
+        members = [kept[index] for index in component]
+        _refuse_unselectable(members, bank_keys, nodes)
+        block = _Block(members, nodes)
+        stuck = block.unconditional_cycle()
+        if stuck:
+            raise UnsupportedLaw(_cycle_message(stuck))
+        blocks.append((component[0], block))
+        taken.update(component)
+    if not blocks:
+        return list(kept), ()
+    made = {position: _block_edge(block) for position, block in blocks}
+    for index, edge in enumerate(kept):
+        if index in made:
+            contracted.append(made[index])
+        elif index not in taken:
+            contracted.append(edge)
+    return contracted, tuple(block for _position, block in blocks)
+
+
+def _block_edge(block):
+    """One block as the single `Edge` the program carries."""
+    needs = []
+    for member in block.members:
+        for key in member.needs:
+            if key not in needs:
+                needs.append(key)
+    return Edge('block', needs, block.gives,
+                '; '.join(member.description for member in block.members),
+                ', '.join(dict.fromkeys(member.stated_by
+                                        for member in block.members)),
+                driven=block.names, block=block)
+
+
+def _refuse_unselectable(members, bank_keys, nodes):
+    """What cannot be a block member, refused by relation identity."""
+    for edge in members:
+        if edge.kind in ('wiring', 'formula'):
+            raise UnsupportedLaw(
+                f'{edge.description}, stated by {edge.stated_by}: it is on a '
+                f'dependency cycle -- '
+                f'{", ".join(other.description for other in members)} -- and '
+                f'it carries no jump node, so no selection can switch what '
+                f'it reads. A cycle is admitted only where every dependency '
+                f'inside it is gated by a jump node whose level reads no '
+                f'coordinate the cycle determines. State the value as a '
+                f'relation whose law carries the gate.')
+    for edge in members:
+        if len(edge.gives) != 1:
+            raise UnsupportedLaw(
+                f'{edge.description}, stated by {edge.stated_by}: it drives '
+                f'a GROUP and it is on a dependency cycle -- '
+                f'{", ".join(other.description for other in members)}. A '
+                f'member of a block drives ONE coordinate, because what a '
+                f'selection switches is decided per driven end off that '
+                f"end's own expression, while a group's ends are claimed "
+                f'and bound together. State each end as a relation of its '
+                f'own.')
+    for edge in members:
+        if edge.gives[0] not in bank_keys:
+            raise UnsupportedLaw(
+                f'{edge.description}, stated by {edge.stated_by}: it drives '
+                f'{nodes[edge.gives[0]].name}, which the running simulation '
+                f'does not own, and it is on a dependency cycle -- '
+                f'{", ".join(other.description for other in members)}. A '
+                f'block advances its coordinates PIECE BY PIECE inside a '
+                f'tick, and only a coordinate the run owns keeps that '
+                f'history -- a plain port and a derived coordinate are '
+                f'calculations the ordinary enumeration recomputes from the '
+                f'bank on every tick. State the relation into the joint '
+                f'coordinate and let the port follow it.')
+
+
+def _cycle_message(stuck):
+    """The refusal a cycle no selection breaks has always had, with one
+    sentence saying what a switch would be."""
+    return (f'the relations {", ".join(edge.description for edge in stuck)} '
+            f'form a cycle the run cannot order: each waits on a coordinate '
+            f'another determines. A running program is acyclic, because the '
+            f'rest render solved every relation in one direction. A '
+            f'dependency inside a cycle is admitted only where it is '
+            f'SWITCHED: a source that folding a jump node to zero removes '
+            f'from the law, where that node\'s level reads no coordinate '
+            f'the cycle determines and its zero branch is one the node holds '
+            f'over an INTERVAL of that level -- floor, ceil, a remainder or '
+            f'a comparison, and not sign, whose zero is a single point.')
 
 
 def _ordered(kept, nodes):
@@ -2986,12 +3626,10 @@ def _ordered(kept, nodes):
                  if all(key in resolved or key in edge.gives
                         for key in edge.needs)]
         if not ready:
-            stuck = ', '.join(edge.description for edge in remaining)
-            raise UnsupportedLaw(
-                f'the relations {stuck} form a cycle the run cannot order: '
-                f'each waits on a coordinate another determines. A running '
-                f'program is acyclic, because the rest render solved every '
-                f'relation in one direction.')
+            # Unreachable once every strongly connected component is
+            # contracted to one entry, and kept as the backstop for that
+            # invariant rather than as a path a machine takes.
+            raise UnsupportedLaw(_cycle_message(remaining))
         for edge in ready:
             order.append(edge)
             remaining.remove(edge)
@@ -3073,6 +3711,128 @@ def owning_run(root):
     return getattr(root.__dict__.get('_run_binder'), 'owner', None)
 
 
+def _block_members(root):
+    """Mark every relation record of `root`'s linked tree that lies on a
+    dependency CYCLE determining at least one coordinate the run BANKS.
+
+    Run at `Sim` construction, BEFORE the rest render, because the rest
+    render is what refuses such a cycle today -- `DoublyBound` where the
+    driven ends carry rest guards and `UnreachedCoordinate` where they do
+    not -- so a rule only the compile knows cannot save it (design.md
+    section 5). The records exist with their ends resolved at that point;
+    nothing here renders, binds or poses anything.
+
+    The graph is built over RESOLVED DRIVEN SLOTS from EVERY relation
+    record, EVERY wiring and EVERY derived coordinate, each taken FORWARD
+    AS DECLARED -- which for a relation of several ends and for a wiring
+    is the only direction it has. A wiring and a derived coordinate are
+    in the graph so the cycle is SEEN; they carry no mark, because they
+    bind nothing this rule could change and the compile is what refuses
+    them. An SCC determining NO banked coordinate is left alone: the
+    compile drops it before it orders anything, and marking it would make
+    a legitimate model bind nothing at rest for a block that is never
+    compiled.
+
+    Idempotent: it recomputes membership from the records and rewrites
+    every mark, so a second simulation over a shared tree decides afresh.
+    """
+    from solid_node.motion.ports import get_coordinate
+
+    banked = {id(get_coordinate(node, name))
+              for _identifier, (node, name)
+              in qualified_coordinates(root).items()}
+    units = []
+    for assembly, _path, records, formulas, wirings in _units(root):
+        for record in records:
+            record.block_member = False
+            units.append((record,
+                          [_pre_key(root, end) for end in record.driver_ends],
+                          [_pre_key(root, end) for end in record.driven_ends]))
+        for wiring in wirings:
+            units.append((None, [('slot', id(wiring.slot))],
+                          [('slot', id(wiring.target))]))
+        for formula in formulas:
+            slot = formula.slot_of(assembly)
+            units.append((None,
+                          [_pre_key(root, end) for end, _coefficient
+                           in formula.resolved_terms(assembly)],
+                          [('slot', id(slot))]))
+    determiner = {}
+    for index, (_record, _sources, driven) in enumerate(units):
+        for key in driven:
+            determiner[key] = index
+    after = []
+    for _record, sources, driven in units:
+        found = []
+        for key in sources:
+            if key in driven:
+                continue
+            source = determiner.get(key)
+            if source is not None and source not in found:
+                found.append(source)
+        after.append(found)
+    for component in _strongly_connected(after):
+        if len(component) < 2:
+            continue
+        if not any(key[0] == 'input' or key[1] in banked
+                   for index in component for key in units[index][2]):
+            continue
+        for index in component:
+            record = units[index][0]
+            if record is not None:
+                record.block_member = True
+
+
+def _pre_key(root, end):
+    """One resolved end as the pre-pass addresses it: an input by its
+    qualified id, anything else by its slot's identity."""
+    if end.is_driver:
+        return ('input', _qualified(root, end)[0])
+    return ('slot', id(end.slot))
+
+
+def _strongly_connected(after):
+    """Tarjan over an adjacency list, iteratively, with the components
+    and their members in the list's own order."""
+    index_of, low, on_stack, stack = {}, {}, set(), []
+    counter = [0]
+    found = []
+    for root in range(len(after)):
+        if root in index_of:
+            continue
+        work = [(root, 0)]
+        while work:
+            node, step = work[-1]
+            if step == 0:
+                index_of[node] = low[node] = counter[0]
+                counter[0] += 1
+                stack.append(node)
+                on_stack.add(node)
+            if step < len(after[node]):
+                work[-1] = (node, step + 1)
+                child = after[node][step]
+                if child not in index_of:
+                    work.append((child, 0))
+                elif child in on_stack:
+                    low[node] = min(low[node], index_of[child])
+                continue
+            work.pop()
+            if work:
+                parent = work[-1][0]
+                low[parent] = min(low[parent], low[node])
+            if low[node] == index_of[node]:
+                component = []
+                while True:
+                    other = stack.pop()
+                    on_stack.discard(other)
+                    component.append(other)
+                    if other == node:
+                        break
+                found.append(sorted(component))
+    found.sort(key=lambda component: component[0])
+    return found
+
+
 def release_tree(root):
     """Drop a previous run's ownership of `root`'s tree.
 
@@ -3086,6 +3846,16 @@ def release_tree(root):
     from solid_node.motion.ports import get_coordinate, run_owned
 
     root.__dict__.pop('_run_binder', None)
+    # The BLOCK MARKS are deliberately NOT dropped here. They are a pure
+    # function of the tree's declared relations rather than run state,
+    # and `program_of` releases a tree it is about to RE-RENDER for the
+    # producer: clearing them would leave a block's relations unmarked
+    # for that render, which would then refuse the model `DoublyBound`.
+    # What keeps a stale mark harmless is `_step_relation`'s running-root
+    # guard -- a marked record is solved, deferred and refused exactly as
+    # it is today under any other time base -- and the pre-pass's own
+    # idempotence, which rewrites every mark from the records on each
+    # running construction.
     for _identifier, (node, name) in qualified_coordinates(root).items():
         slot = get_coordinate(node, name)
         if run_owned(slot):

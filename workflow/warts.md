@@ -2765,3 +2765,64 @@ and the shape item 9 needs is stated in the change's design.md §12.
   bullet with the continuous-read refusal this cycle adds. Filed as a finding
   because the miss is a class: a cycle that adds a capability has to sweep the
   narrative documentation's refusal lists, and nothing checks that it did.
+
+# select-the-source (2026-09-15, found while fixing)
+
+Findings outside that cycle's ratified scope, from
+`openspec/changes/select-the-source/tasks.md` 10.1, `design.md` (§2, §7,
+§10 and "Risks / Trade-offs") and `evidence.md` ("Out of scope, found while
+applying" and "Review closure (round 1)"); **status: filed here; triage
+open** except the last entry, which was fixed inside the cycle and is
+recorded so nobody reopens it. The cycle itself is ADR-122, which lets a
+union of dependencies that every selection breaks compile as a BLOCK ordered
+once per piece of a tick; nothing below except that last entry was
+implemented by it.
+
+The pilot's shifted carry association requirement,
+`workflow/docs/curta-shifted-carry-association.md`, is what the cycle took
+up; the Curta's own migration (item 6 there) and the viewer's execution of a
+version 7 document (item 7) are open in their own repositories.
+
+- **A stop on a block coordinate is never SOLVED.** A block's gives are classified
+  non-affine by construction (`Edge._affine_ends`), so `Run._locate` searches every
+  stop on one: 64 samples plus bisection of the WHOLE block per event. Measured
+  17.2 ms for the tick that drives `RangedBlock`'s lever into its range against
+  1.3 ms for a quiet tick of the same block (`tools/bench_selection.py`). A later
+  cycle could classify a block give affine per branch vector and take `_piecewise`.
+  Deferred; nothing has asked for the speed yet.
+- **`Program.sources` treats a block as ONE node.** Every input reaching any member
+  is a candidate for a stop on any other (`['crank', 'shift', 'spin']` for
+  `carry.travel` in `RangedBlock`); `_pushes` filters it per tick, so the answer is
+  right and the cost is one extra propagation per spurious candidate on a blocking
+  tick only. Deferred.
+- **A block member driving a GROUP is refused by name.** The fold that decides an
+  active dependency is per driven end off that end's own skeleton, and a group's
+  ends are claimed and bound together. No mechanism has asked for the shape.
+- **A `sign`-gated dependency is never switched.** `_branch_of` gives `sign` its zero
+  only where the level is EXACTLY zero, a point and not an interval, so the fold
+  cannot fold it and a cycle gated only by `sign` is refused at construction —
+  intended, and documented in `docs/driving.rst`, but a shape an author could
+  reasonably expect to work. A comparison says the same thing and is switched.
+- **`_affine_in_sources` calls any CALL non-affine, so a `clamp01` in a selector's
+  level sends it to the 64-sample search** — pre-existing (recorded under
+  `read-the-driven-coordinate`), and the reason the Curta's own migration must write
+  its association as comparisons rather than the pose model's `1 − clamp01(abs(…))`
+  hat (`simulation/transmission.py:24`), which is not a jump node at all.
+- **ADR-113's one-input pushing probe cannot see a push that needs TWO inputs
+  moving together.** A clutch `(shaft & sleeve).drives(wheel.turn, law=s * (v > 0.5))`
+  whose sleeve engages mid-tick while the shaft turns, the wheel declaring a range it
+  reaches only after engagement, refuses the tick with `StopInvariantError: … locating
+  the stop stopped no input that was moving`, because `_pushes` displaces one input
+  with every other still. Pre-existing on main, identical with no block in sight;
+  met again on `RangedBlock` when a detent passes and the crank then pushes the lever
+  through the other wheel. Transactional, not a wrong answer. A follow-up would
+  displace the selecting inputs alongside the candidate — a change to the pushing
+  test, not to the block.
+- **FIXED in this cycle: ADR-121's walk moved a HELD self-read coordinate by one ulp.**
+  `_Walk.run`'s `own_at` and `_Walk._probe` computed `own_left + S − base` left to
+  right; when the skeleton is unchanged over a piece but comparable in magnitude to
+  the coordinate, `(own + S) − S` rounds. Reproduced on main with no block (a wheel
+  at `71.99999999999996` under `crank` standing at `72` committed `71.99999999999994`
+  when an unrelated hoist moved); on the Curta-shaped fixture a lift moved two dials
+  by an ulp. Parenthesized as `own_left + (S − base)`; every pre-existing corpus
+  entry byte-identical afterwards (see the change's evidence.md).

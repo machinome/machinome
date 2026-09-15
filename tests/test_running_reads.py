@@ -39,7 +39,7 @@ from .base import BaseNodeTest
 from .clearing_project.machine import CurtaInterface, TEETH, TOOTH
 from .running_project.machine import (GAP, BlockedRing, Clearing,
                                       ClearingRow, CrowdedClearing,
-                                      KnifeEdge, LatchedClearing,
+                                      HeldAngle, KnifeEdge, LatchedClearing,
                                       RangedClearing, RefusedClearing,
                                       SlidingRead)
 
@@ -584,6 +584,34 @@ class RetentionTest(BaseNodeTest):
         self.assertEqual(sim.crossings, [])
 
 
+class HeldValueTest(BaseNodeTest):
+    """A piece whose skeleton does not move leaves the coordinate at the
+    EXACT float it held.
+
+    The walk reads the driven end's own path as
+    ``own_left + (S(s) - base)``: the difference is taken FIRST, so a
+    skeleton that is unchanged over the piece adds a true zero. Read the
+    other way round -- ``(own_left + S) - base``, which is how Python
+    takes the expression without the parentheses -- the sum rounds
+    whenever ``|S|`` is comparable to ``|own_left|``, and the coordinate
+    moves by an ulp for no mechanical reason at all.
+    """
+
+    def test_a_tick_that_moves_only_an_outer_source_holds_the_angle(self):
+        sim = Sim(HeldAngle(), 1.0, record=8)
+        held = sim.state['wheel.turn']
+        self.assertEqual(held, 71.99999999999996)
+
+        # The lift's own comparison is an OUTER node: moving it
+        # re-partitions the tick while every term of the substituted law
+        # stands exactly where it stood.
+        sim.move('lift', by=0.2, duration=1.0)
+        sim.run(1.0)
+
+        self.assertEqual(sim.state['wheel.turn'], held)
+        self.assertEqual(reads(sim.node, 'wheel.turn'), held)
+
+
 class CurtaShapeTest(BaseNodeTest):
     """The originating machine's own shape, on its own numbers.
 
@@ -647,3 +675,78 @@ class CurtaShapeTest(BaseNodeTest):
                     'counter0', 'counter1', 'counter2')[index]
             with self.subTest(dial=name):
                 self.assertEqual(sim.state[f'{name}.turn'], 360.0 - GAP)
+
+
+class BlockSelfReadTest(BaseNodeTest):
+    """A BLOCK member that also reads the coordinate it drives (OpenSpec
+    change ``select-the-source``).
+
+    Three layers now, and the first two were already here: the block's
+    SELECTORS, forced and constant on each piece; ADR-107's independent
+    partition inside it; and the walk of the nodes that depend on the
+    driven end. The split of the last two is decided ONCE at compile with
+    the selectors still SYMBOLIC, so a law with no block is partitioned
+    exactly as it was.
+    """
+
+    def test_a_selector_piece_and_a_self_read_cut_are_both_recorded(self):
+        from .carriage_project.machine import LandedCarry
+
+        sim = Sim(LandedCarry(), 1.0, record=8)
+        sim.move('crank', by=4.0, duration=1.0)
+        sim.move('shift', by=1.0, duration=1.0)
+        sim.run(1.0)
+        self.assertEqual(
+            [(one.coordinate, one.primitive, one.t) for one in sim.crossings],
+            [('carry.travel', '<', 0.25), ('higher.turn', '>=', 0.25),
+             ('higher.turn', '<', 0.5), ('carry.travel', '<', 0.5)])
+        # The lever's own gate cut the first piece at a quarter of the
+        # tick and the carriage's detent cut the stretch at its half.
+        self.assertEqual(sim.state['carry.travel'], 3.0)
+
+    def test_the_walk_leaves_the_latch_at_its_far_side(self):
+        from .carriage_project.machine import LandedCarry
+
+        sim = Sim(LandedCarry(), 0.5, record=8)
+        sim.move('crank', by=4.0, duration=1.0)
+        sim.move('shift', by=1.0, duration=1.0)
+        sim.run(0.5)
+        # The piece before the detent lands the lever at its gate, and
+        # the run commits the float the walk left it at.
+        self.assertEqual(sim.state['carry.travel'], 1.0)
+        self.assertEqual(reads(sim.node, 'carry.travel'), 1.0)
+
+    def test_the_two_layer_split_is_decided_once_with_selectors_symbolic(
+            self):
+        from .carriage_project.machine import ShiftedCarry
+
+        sim = Sim(ShiftedCarry(), 0.02)
+        block, = [edge for edge in sim._run.program.edges
+                  if edge.kind == 'block']
+        wheel, lever = block.block.members
+        # The wheel's own `higher.turn > 0.5` is the only DEPENDENT node;
+        # its two selectors and the lever's gate are independent, which is
+        # what puts a forced selector in layer one and nowhere else.
+        self.assertEqual(
+            [jump.placeholder for jump in wheel.retained[0].dependent],
+            ['$j3'])
+        self.assertEqual(
+            [jump.placeholder for jump in wheel.retained[0].outer.jumps],
+            ['$j0', '$j1', '$j2'])
+        self.assertEqual(
+            [jump.placeholder for jump in lever.retained[0].dependent],
+            ['$j2'])
+        self.assertEqual(
+            [jump.placeholder for jump in lever.retained[0].outer.jumps],
+            ['$j0', '$j1'])
+
+    def test_a_law_with_no_block_is_partitioned_exactly_as_before(self):
+        sim = Sim(CurtaInterface(), 0.05)
+        edge = next(one for one in sim._run.program.edges
+                    if one.kind == 'law' and 'result0.turn' in one.driven)
+        reading = edge.retained[0]
+        self.assertEqual(len(reading.dependent), 2)
+        self.assertEqual(len(reading.outer.jumps), 2)
+        self.assertEqual(
+            [edge.kind for edge in sim._run.program.edges],
+            ['law'] * 6)

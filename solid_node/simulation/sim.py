@@ -120,6 +120,28 @@ class Sim:
         self.dt = dt
         self.tick = 0
         self._run = None
+        base = declared_time(type(node))
+        if base is not None and base.mode == 'running':
+            # ONE simulation owns a tree at a time, and the NEWEST takes
+            # it. A previous run's claim is released BEFORE the FIRST
+            # enumeration of this construction, so every walk below finds
+            # a tree no run owns and poses it exactly as it would a tree
+            # no run ever touched -- which is what makes
+            # `ScenarioTest.simulation()`'s "fresh per call" true over a
+            # node built once per class. The released run then refuses to
+            # advance rather than binding over this one.
+            #
+            # The BLOCK PRE-PASS follows it, and must: the driver walk
+            # below is itself an enumeration, and a dependency cycle
+            # every selection breaks is refused THERE -- `DoublyBound`
+            # where its driven ends carry rest guards and
+            # `UnreachedCoordinate` where they do not -- long before any
+            # compile is reached (OpenSpec change ``select-the-source``,
+            # design.md section 5).
+            from .program import _block_members, release_tree
+
+            release_tree(node)
+            _block_members(node)
         # Enumerated across the WHOLE linked tree, not off the root
         # class: a machine's drivers live on its mechanisms, and a
         # machine whose root declares none would otherwise get an empty
@@ -140,22 +162,9 @@ class Sim:
         self._trajectory = []
         self._at = {}
         self._every = []
-        base = declared_time(type(node))
         if self.controls and not (base is not None
                                   and base.mode == 'running'):
             _refuse_control_without_a_run(node, self.controls)
-        if base is not None and base.mode == 'running':
-            # ONE simulation owns a tree at a time, and the NEWEST takes
-            # it. A previous run's claim is released BEFORE the rest
-            # render below, so that render finds a tree no run owns and
-            # poses it exactly as it would a tree no run ever touched --
-            # which is what makes `ScenarioTest.simulation()`'s "fresh
-            # per call" true over a node built once per class. The
-            # released run then refuses to advance rather than binding
-            # over this one.
-            from .program import release_tree
-
-            release_tree(node)
         self._bind_initial(state)
         if base is not None and base.mode == 'running':
             # The running engine and the compile step are imported HERE,

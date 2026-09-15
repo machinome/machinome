@@ -9090,6 +9090,1326 @@
       ]
     },
     {
+      "name": "ShiftedCarry",
+      "dt": 0.05,
+      "steps": 20,
+      "document": {
+        "format": "solid-node-export",
+        "version": 7,
+        "drivers": {
+          "clearing": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "shift": {
+            "default": 0.0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(shift < 0.5)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(crank * _b0)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(shift - 0.5)"
+          },
+          {
+            "name": "_b3",
+            "expression": "(shift >= 0.5)"
+          }
+        ],
+        "program": {
+          "identity": "55ed21b5a23fe970d53b10fef61a073f1f308ae943892eb4985553f9f644a0fe",
+          "clock": "time",
+          "coordinates": {
+            "clearing": {
+              "kind": "input",
+              "initial": 0.0,
+              "domain": null
+            },
+            "crank": {
+              "kind": "input",
+              "initial": 0.0,
+              "domain": null
+            },
+            "shift": {
+              "kind": "input",
+              "initial": 0.0,
+              "domain": null
+            },
+            "carry.travel": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "mm",
+              "domain": "translational"
+            },
+            "higher.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "lower.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "shift",
+                "clearing",
+                "lower.turn"
+              ],
+              "gives": [
+                "lower.turn"
+              ],
+              "description": "(crank, shift, clearing, lower.turn) drives lower.turn",
+              "stated_by": "ShiftedCarry",
+              "expressions": [
+                "(_b1 + (clearing * (lower.turn > 0.5)))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "((crank * _j0) + (clearing * _j1))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j1",
+                      "primitive": ">",
+                      "level": "(lower.turn - 0.5)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "shift",
+                "clearing",
+                "carry.travel",
+                "higher.turn"
+              ],
+              "gives": [
+                "higher.turn"
+              ],
+              "description": "(crank, shift, clearing, carry.travel, higher.turn) drives higher.turn",
+              "stated_by": "ShiftedCarry",
+              "expressions": [
+                "(((crank * _b3) + (_b1 * (carry.travel >= 0.5))) + (clearing * (higher.turn > 0.5)))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((crank * _j2) + ((crank * _j3) * _j4)) + (clearing * _j5))",
+                  "jumps": [
+                    {
+                      "name": "_j2",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j3",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j4",
+                      "primitive": ">=",
+                      "level": "(carry.travel - 0.5)",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j5",
+                      "primitive": ">",
+                      "level": "(higher.turn - 0.5)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "lower.turn",
+                "higher.turn",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "carry.travel"
+              ],
+              "description": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "stated_by": "ShiftedCarry",
+              "expressions": [
+                "(((lower.turn * _b0) + (higher.turn * _b3)) * (carry.travel < 1.0))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((lower.turn * _j6) + (higher.turn * _j7)) * _j8)",
+                  "jumps": [
+                    {
+                      "name": "_j6",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j7",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j8",
+                      "primitive": "<",
+                      "level": "(carry.travel - 1.0)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {},
+          "sources": {
+            "carry.travel": [
+              "clearing",
+              "crank",
+              "shift"
+            ],
+            "clearing": [
+              "clearing"
+            ],
+            "crank": [
+              "crank"
+            ],
+            "higher.turn": [
+              "clearing",
+              "crank",
+              "shift"
+            ],
+            "lower.turn": [
+              "clearing",
+              "crank",
+              "shift"
+            ],
+            "shift": [
+              "shift"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          }
+        }
+      },
+      "script": [
+        {
+          "tick": 1,
+          "move": {
+            "input": "crank",
+            "by": 2.0,
+            "duration": 0.2
+          },
+          "handle": "h0"
+        },
+        {
+          "tick": 8,
+          "move": {
+            "input": "shift",
+            "by": 1.0,
+            "duration": 0.2
+          },
+          "handle": "h1"
+        },
+        {
+          "tick": 14,
+          "move": {
+            "input": "crank",
+            "by": 2.0,
+            "duration": 0.2
+          },
+          "handle": "h2"
+        }
+      ],
+      "ticks": [
+        {
+          "tick": 1,
+          "bank": {
+            "carry.travel": 0.5,
+            "clearing": 0.0,
+            "crank": 0.5,
+            "higher.turn": 0.0,
+            "lower.turn": 0.5,
+            "shift": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "active",
+              "admitted": 0.5
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 1.0,
+            "higher.turn": 0.5,
+            "lower.turn": 1.0,
+            "shift": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "active",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 3,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 1.5,
+            "higher.turn": 1.0,
+            "lower.turn": 1.5,
+            "shift": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "active",
+              "admitted": 1.5
+            }
+          ]
+        },
+        {
+          "tick": 4,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 2.0,
+            "higher.turn": 1.5,
+            "lower.turn": 2.0,
+            "shift": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        },
+        {
+          "tick": 5,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 2.0,
+            "higher.turn": 1.5,
+            "lower.turn": 2.0,
+            "shift": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        },
+        {
+          "tick": 6,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 2.0,
+            "higher.turn": 1.5,
+            "lower.turn": 2.0,
+            "shift": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        },
+        {
+          "tick": 7,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 2.0,
+            "higher.turn": 1.5,
+            "lower.turn": 2.0,
+            "shift": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        },
+        {
+          "tick": 8,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 2.0,
+            "higher.turn": 1.5,
+            "lower.turn": 2.0,
+            "shift": 0.25
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "active",
+              "admitted": 0.25
+            }
+          ]
+        },
+        {
+          "tick": 9,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 2.0,
+            "higher.turn": 1.5,
+            "lower.turn": 2.0,
+            "shift": 0.5
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "active",
+              "admitted": 0.5
+            }
+          ]
+        },
+        {
+          "tick": 10,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 2.0,
+            "higher.turn": 1.5,
+            "lower.turn": 2.0,
+            "shift": 0.75
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "active",
+              "admitted": 0.75
+            }
+          ]
+        },
+        {
+          "tick": 11,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 2.0,
+            "higher.turn": 1.5,
+            "lower.turn": 2.0,
+            "shift": 1.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 12,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 2.0,
+            "higher.turn": 1.5,
+            "lower.turn": 2.0,
+            "shift": 1.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 13,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 2.0,
+            "higher.turn": 1.5,
+            "lower.turn": 2.0,
+            "shift": 1.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 14,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 2.5,
+            "higher.turn": 2.0,
+            "lower.turn": 2.0,
+            "shift": 1.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "h2",
+              "status": "active",
+              "admitted": 0.5
+            }
+          ]
+        },
+        {
+          "tick": 15,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 3.0,
+            "higher.turn": 2.5,
+            "lower.turn": 2.0,
+            "shift": 1.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "h2",
+              "status": "active",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 16,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 3.5,
+            "higher.turn": 3.0,
+            "lower.turn": 2.0,
+            "shift": 1.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "h2",
+              "status": "active",
+              "admitted": 1.5
+            }
+          ]
+        },
+        {
+          "tick": 17,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 4.0,
+            "higher.turn": 3.5,
+            "lower.turn": 2.0,
+            "shift": 1.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "h2",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        },
+        {
+          "tick": 18,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 4.0,
+            "higher.turn": 3.5,
+            "lower.turn": 2.0,
+            "shift": 1.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "h2",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        },
+        {
+          "tick": 19,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 4.0,
+            "higher.turn": 3.5,
+            "lower.turn": 2.0,
+            "shift": 1.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "h2",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        },
+        {
+          "tick": 20,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 4.0,
+            "higher.turn": 3.5,
+            "lower.turn": 2.0,
+            "shift": 1.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "h2",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RangedBlock",
+      "dt": 0.05,
+      "steps": 8,
+      "document": {
+        "format": "solid-node-export",
+        "version": 7,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "shift": {
+            "default": 0.0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          },
+          "spin": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(shift >= 0.5)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(shift < 0.5)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(shift - 0.5)"
+          }
+        ],
+        "program": {
+          "identity": "051dc551f2d79f4b813a033a2730750548e4fb724a82604c677c9ed7190a8531",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 0.0,
+              "domain": null
+            },
+            "shift": {
+              "kind": "input",
+              "initial": 0.0,
+              "domain": null
+            },
+            "spin": {
+              "kind": "input",
+              "initial": 0.0,
+              "domain": null
+            },
+            "carry.travel": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "mm",
+              "domain": "translational"
+            },
+            "higher.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "lower.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "spin"
+              ],
+              "gives": [
+                "lower.turn"
+              ],
+              "description": "spin drives lower.turn",
+              "stated_by": "RangedBlock",
+              "expressions": [
+                "spin"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "higher.turn"
+              ],
+              "description": "(crank, shift, carry.travel) drives higher.turn",
+              "stated_by": "RangedBlock",
+              "expressions": [
+                "((crank * _b0) + ((crank * _b1) * (carry.travel >= 0.5)))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "((crank * _j0) + ((crank * _j1) * _j2))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j1",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j2",
+                      "primitive": ">=",
+                      "level": "(carry.travel - 0.5)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "lower.turn",
+                "higher.turn",
+                "shift"
+              ],
+              "gives": [
+                "carry.travel"
+              ],
+              "description": "(lower.turn, higher.turn, shift) drives carry.travel",
+              "stated_by": "RangedBlock",
+              "expressions": [
+                "((lower.turn * _b1) + (higher.turn * _b0))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "((lower.turn * _j3) + (higher.turn * _j4))",
+                  "jumps": [
+                    {
+                      "name": "_j3",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j4",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {
+            "carry.travel": {
+              "low": null,
+              "high": 0.6
+            }
+          },
+          "sources": {
+            "carry.travel": [
+              "crank",
+              "shift",
+              "spin"
+            ],
+            "crank": [
+              "crank"
+            ],
+            "higher.turn": [
+              "crank",
+              "shift",
+              "spin"
+            ],
+            "lower.turn": [
+              "spin"
+            ],
+            "shift": [
+              "shift"
+            ],
+            "spin": [
+              "spin"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          }
+        }
+      },
+      "script": [
+        {
+          "tick": 1,
+          "move": {
+            "input": "spin",
+            "by": 2.0,
+            "duration": 0.05
+          },
+          "handle": "h0"
+        },
+        {
+          "tick": 1,
+          "move": {
+            "input": "shift",
+            "by": 1.0,
+            "duration": 0.05
+          },
+          "handle": "h1"
+        },
+        {
+          "tick": 4,
+          "move": {
+            "input": "crank",
+            "by": 1.0,
+            "duration": 0.05
+          },
+          "handle": "h2"
+        }
+      ],
+      "ticks": [
+        {
+          "tick": 1,
+          "bank": {
+            "carry.travel": 0.6,
+            "crank": 0.0,
+            "higher.turn": 0.0,
+            "lower.turn": 0.5999999999994543,
+            "shift": 1.0,
+            "spin": 0.5999999999994543
+          },
+          "crossings": [
+            {
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0.0,
+              "t": 0.25
+            },
+            {
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0.0,
+              "t": 0.5
+            },
+            {
+              "relation": "(lower.turn, higher.turn, shift) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [
+            {
+              "coordinate": "carry.travel",
+              "bound": "high",
+              "value": 0.6,
+              "t": 0.29999999999972715,
+              "inputs": [
+                "spin"
+              ]
+            }
+          ],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "blocked",
+              "admitted": 0.5999999999994543
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "bank": {
+            "carry.travel": 0.6,
+            "crank": 0.0,
+            "higher.turn": 0.0,
+            "lower.turn": 0.5999999999994543,
+            "shift": 1.0,
+            "spin": 0.5999999999994543
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "blocked",
+              "admitted": 0.5999999999994543
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 3,
+          "bank": {
+            "carry.travel": 0.6,
+            "crank": 0.0,
+            "higher.turn": 0.0,
+            "lower.turn": 0.5999999999994543,
+            "shift": 1.0,
+            "spin": 0.5999999999994543
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "blocked",
+              "admitted": 0.5999999999994543
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 4,
+          "bank": {
+            "carry.travel": 0.6,
+            "crank": 0.0,
+            "higher.turn": 0.0,
+            "lower.turn": 0.5999999999994543,
+            "shift": 1.0,
+            "spin": 0.5999999999994543
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "carry.travel",
+              "bound": "high",
+              "value": 0.6,
+              "t": 0.0,
+              "inputs": [
+                "crank"
+              ]
+            }
+          ],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "blocked",
+              "admitted": 0.5999999999994543
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "h2",
+              "status": "blocked",
+              "admitted": 0.0
+            }
+          ]
+        },
+        {
+          "tick": 5,
+          "bank": {
+            "carry.travel": 0.6,
+            "crank": 0.0,
+            "higher.turn": 0.0,
+            "lower.turn": 0.5999999999994543,
+            "shift": 1.0,
+            "spin": 0.5999999999994543
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "blocked",
+              "admitted": 0.5999999999994543
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "h2",
+              "status": "blocked",
+              "admitted": 0.0
+            }
+          ]
+        },
+        {
+          "tick": 6,
+          "bank": {
+            "carry.travel": 0.6,
+            "crank": 0.0,
+            "higher.turn": 0.0,
+            "lower.turn": 0.5999999999994543,
+            "shift": 1.0,
+            "spin": 0.5999999999994543
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "blocked",
+              "admitted": 0.5999999999994543
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "h2",
+              "status": "blocked",
+              "admitted": 0.0
+            }
+          ]
+        },
+        {
+          "tick": 7,
+          "bank": {
+            "carry.travel": 0.6,
+            "crank": 0.0,
+            "higher.turn": 0.0,
+            "lower.turn": 0.5999999999994543,
+            "shift": 1.0,
+            "spin": 0.5999999999994543
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "blocked",
+              "admitted": 0.5999999999994543
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "h2",
+              "status": "blocked",
+              "admitted": 0.0
+            }
+          ]
+        },
+        {
+          "tick": 8,
+          "bank": {
+            "carry.travel": 0.6,
+            "crank": 0.0,
+            "higher.turn": 0.0,
+            "lower.turn": 0.5999999999994543,
+            "shift": 1.0,
+            "spin": 0.5999999999994543
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "blocked",
+              "admitted": 0.5999999999994543
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "h2",
+              "status": "blocked",
+              "admitted": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Captured",
       "dt": 0.05,
       "steps": 16,

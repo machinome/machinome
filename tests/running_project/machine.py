@@ -3191,3 +3191,42 @@ class StoppedClearing(AssemblyNode):
     def simulate(self):
         if self.wheel.turn.value is None:
             self.wheel.turn = 108.0
+
+
+def held_angle(sources, target):
+    """A self-read law whose SKELETON does not move at all.
+
+    The dial's angle is the setter's, plus the ring's only while the
+    dial is standing away from its own zero AND the lift is down. The
+    lift's comparison is an outer node and the dial's own is a dependent
+    one, so moving the lift alone re-partitions the tick while every
+    term of the substituted law stays exactly where it was.
+    """
+    def law(setter, lift, ring, wheel):
+        return setter + ring * (wheel > 0.5) * (lift < 0.5)
+
+    return law
+
+
+class HeldAngle(AssemblyNode):
+    """A self-read dial whose sources leave its law UNCHANGED over the
+    tick: the setter stands at 72 degrees, the ring at zero, and only
+    the lift moves. The dial holds an angle that is not the setter's own
+    float, which is what makes the walk's arithmetic visible -- a piece
+    whose skeleton does not move must leave the coordinate at the exact
+    float it held.
+    """
+
+    time = Time.running()
+
+    setter = Driver(default=72.0, unit='deg')
+    lift = Driver(default=0.0, unit='mm')
+    ring = Driver(default=0.0, unit='deg')
+
+    wheel = Arbor()
+
+    (setter & lift & ring & wheel.turn).drives(wheel.turn, law=held_angle)
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = 71.99999999999996

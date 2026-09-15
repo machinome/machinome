@@ -5,6 +5,14 @@ pilot on 2026-09-15. This records a reproduced project limitation, not a
 ratified API or permission to redesign the solver. The refused representation
 is not evidence that every supported representation is impossible.
 
+**Taken up** as OpenSpec change `select-the-source` (ADR-122, extracted after
+review) on 2026-09-15: a cycle every selection breaks is a BLOCK, one entry of
+the running program, ordered once per PIECE of a tick rather than once per
+program. The selection is the comparison the model already writes; nothing new
+is declared. The project-side migration (item 6) and the viewer's execution of
+a version 7 document (item 7) remain open, each in its own repository, and
+what the migration needs is listed in that change's design.md section 12.
+
 This follows [retained-angle clearing](curta-retained-angle-clearing.md).
 ADR-121 has resolved that declaration limitation in Python, and the project's
 finite-band clearing prerequisite tests now pass. The finding below concerns

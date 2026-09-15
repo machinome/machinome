@@ -1,6 +1,12 @@
 # ADR-106: One Law, Two Readings — A Relation Is Inspected as an Expression
 
-**Status:** Accepted
+**Status:** Accepted, its "edges are ordered by Kahn over the ends they
+determine" amended by
+[ADR-122](./ADR-122-a-selection-decides-which-sources-a-law-reads.md)
+(every nontrivial strongly connected component of that graph is contracted to
+ONE entry, a BLOCK, and ordered again per piece of a tick; a program with no
+such component is ordered exactly as this decision states, and everything else
+below stands)
 **Date:** 2026-09-13
 **Depends on:**
 - [ADR-105: The run owns the coordinates and binds them](./ADR-105-the-run-owns-the-coordinates-and-binds-them.md)

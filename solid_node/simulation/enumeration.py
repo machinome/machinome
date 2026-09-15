@@ -111,7 +111,30 @@ def bind_declared_defaults(root):
     """
     if not tree_declares_drivers(root):
         return {}
+    _decide_block_membership(root)
     return qualified_drivers(root)
+
+
+def _decide_block_membership(root):
+    """Mark the relations of `root`'s tree that lie on a dependency
+    cycle every selection breaks, BEFORE the enumeration below sees them
+    (OpenSpec change ``select-the-source``).
+
+    The same pre-pass `Sim` runs, at the same point relative to the first
+    enumeration of the tree, because a producer binding declared defaults
+    IS a rest render: without it a running root whose union is cyclic
+    would be refused `DoublyBound` here and never reach the compile that
+    answers it. Idempotent and confined to a running root, so a tree
+    under any other time base is not walked at all.
+    """
+    from solid_node.motion.ports import declared_time
+
+    base = declared_time(type(root))
+    if base is None or base.mode != 'running':
+        return
+    from .program import _block_members
+
+    _block_members(root)
 
 
 def tree_declares_drivers(node, seen=None):

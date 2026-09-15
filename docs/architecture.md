@@ -938,11 +938,16 @@ relation's law applied ONCE to a symbolic token per source, in the
 direction the render solved it, the resulting graph over coordinate ids
 being what the run evaluates; a wiring into a bank coordinate an identity
 edge, a derived coordinate a linear one, and edges ordered by Kahn over
-the ends they determine. What the expression cannot say is refused there,
-by relation identity: a law that cannot be applied to a symbol, an edge
-into a bank coordinate whose source no edge computes, a driven group
-mixing banked and unbanked ends, a law that can move its coordinate only
-by JUMPING, and a jumping law none of whose driven ends the run owns. A
+the ends they determine with every nontrivial STRONGLY CONNECTED
+COMPONENT of that graph contracted to ONE entry, a BLOCK (ADR-122,
+amending ADR-106). A need an edge itself gives is excluded from the
+graph — that is the self-read, not a wait on something else — so a
+program with no block is ordered exactly as it always was. What the
+expression cannot say is refused there, by relation identity: a law that
+cannot be applied to a symbol, an edge into a bank coordinate whose
+source no edge computes, a driven group mixing banked and unbanked ends,
+a law that can move its coordinate only by JUMPING, a jumping law none of
+whose driven ends the run owns, and a CYCLE NO SELECTION BREAKS. A
 relation reaching no bank coordinate is not compiled at all and stays the
 ordinary solver's.
 
@@ -999,6 +1004,66 @@ same coordinate in the same segment winning. The self-read id is a
 ignores a need an edge itself gives and a consumer identifies the read
 as `needs ∩ gives` with no new document key. A law with no self-read
 takes ADR-107's path on one boolean test, at the same evaluation count.
+
+A SELECTION DECIDES WHICH SOURCES A LAW READS (ADR-122), which is how a
+machine whose dependencies change with where one of its own parts stands
+— the Curta's carry levers on the fixed frame, its dials on the carriage
+— states itself. Nothing new is declared: the selection is the
+comparison the model already writes, a term multiplied by a gate. A
+cycle every selection breaks is a BLOCK, one entry of the program
+(`_components`, `_blocked`), so the program as a whole is acyclic again
+and `run.py` meets a block through the `Edge` interface it already
+calls. A SELECTOR is a jump node of a member's law whose LEVEL QUANTITY
+reads no coordinate the block determines, resolved transitively through
+placeholders (`_selectors`), so its branch is known before the block
+runs; a node reading the member's own driven end is not one and stays in
+ADR-121's walked layer. A source is SWITCHED when folding that node's
+branch to ZERO removes it from the member's skeleton (`_folded`,
+`_reads_under`) — admissible only where the primitive holds zero over an
+INTERVAL of its level (`floor`, `ceil`, a remainder's quotient, a
+comparison), never for `sign`, whose zero is a single point. The fold is
+MONOTONE, so ONE all-zero fold per member decides both what is
+unconditional and what is switched.
+
+Over a stretch a block locates its selectors FIRST, by ADR-107's own
+partition and under the same three tolerances, and then runs PIECE BY
+PIECE: on each piece every selector's branch is read at the MIDPOINT and
+SUBSTITUTED into the member's own integration rather than located again
+(`JumpPlan._partition` and `JumpPlan._branches` are the only two forcing
+points), the run-time fold gives each member's ACTIVE in-block reads,
+Kahn over those gives the piece's order, and the members run with their
+in-block values carried forward. What the block reports for a coordinate
+some piece LANDED is the absolute value it has advanced that coordinate
+to by the stretch's END — landing plus every later piece's increment —
+because `Run._landed` commits a reported landing absolutely. A piece
+whose active graph is STILL cyclic refuses the tick, naming the piece,
+the selector branches it was read under and the relations on the cycle,
+and commits nothing: a FOURTH way a running tick refuses, beside a
+conflict, an over-crossed law and an unintegrable level.
+
+Membership is decided BEFORE the rest render, by a pre-pass over the
+records (`_block_members`, run from `Sim.__init__` and from
+`bind_declared_defaults`, ahead of the first enumeration either makes):
+one graph over resolved driven slots from every relation, wiring and
+derived coordinate taken forward as declared, and every relation record
+in a nontrivial component holding at least one BANKED driven end is
+marked. It must be that early because without a self-read the rest
+render is what refuses such a cycle today. A marked relation binds
+NOTHING at rest — `_step_relation` records it solved `'forward'` under a
+running root and only there — so every coordinate a block drives needs
+the author's own guarded rest default, and the run refuses by name when
+there is none. The pre-pass is idempotent, is not cleared by
+`release_tree` (the marks are a function of the declared relations, not
+of run state), and the compile asserts its own membership equals the
+pre-pass's (`_agree_on_membership`). Refused at construction by relation
+identity: a wiring or a derived coordinate inside a block, a block whose
+unconditional dependencies are still cyclic, an INTERMEDIATE among a
+block's driven ends, and a block member driving a GROUP. A program
+carrying a block is a VERSION 7 document, its members published as
+ordinary law edges contiguous at the block's position in an order that
+is a LISTING and not an execution order; `Program.described()` gains one
+`block` line, so the identity distinguishes membership, and a program
+with no block prints, publishes and costs exactly what it did.
 
 The compile step also carries the SPAN TABLE and the CANDIDATE table.
 Every banked coordinate's declared range is resolved once, each bound a
@@ -1125,17 +1190,32 @@ recorded, a coordinate that leaves its range and returns within one tick
 is not stopped (impossible for an affine determiner; a smaller `dt`
 otherwise), a constraint violated and relieved inside one sub-interval
 of the search is not seen either, a constraint's pushing test is net
-over the stretch rather than local at `t*`, a constraint's reach is its
-declarer's subtree, a tick in which a constraint's READS move pays up
+over the stretch rather than local at `t*` — so a push that needs TWO
+inputs moving together (a clutch engaging mid-tick while its shaft
+turns) is invisible to it and the tick is refused `StopInvariantError`
+rather than answered wrongly, with or without a block — a constraint's
+reach is its declarer's subtree, a tick in which a constraint's READS
+move pays up
 to `_SUBDIVISIONS` sub-program passes for it whether or not it stops
 (measured on `Gate`: 0.36 ms quiet, 5.4 ms active, 3.3 ms blocking; on
-the lock 2.9 ms idle, 4.7 ms turning, 45 ms advancing the key), and
-the evaluator is `GraphValue.evaluate` per edge per tick — measured at
-1.05 ms/tick on the same machine against the untimed loop's 0.33 ms, a
+the lock 2.9 ms idle, 4.7 ms turning, 45 ms advancing the key), a block
+give is never affine so every stop on one is SEARCHED, and a block's
+candidate table is over-broad (every input reaching any member is a
+candidate for a stop on any other, filtered per tick by the pushing
+test). The evaluator is `GraphValue.evaluate` per edge per tick —
+measured at 1.05 ms/tick against the untimed loop's 0.33 ms, a
 jump-carrying law costing 1.3x its continuous twin on a non-crossing tick
 and 1.8x on a crossing one, a blocking tick costing its own localization
 plus one propagation pass per segment and one per pushing candidate, with
-memory flat.
+memory flat. A block's own cost was measured later, on a different
+machine, so it is quoted against its own control: at `dt = 0.02`,
+`Train` with no block 0.482 ms/tick, the same two laws as separate edges
+with the selection frozen 0.799, one block of two 1.306 quiet and 2.671
+on the tick that crosses a selector surface (1.6x and 2.0x the frozen
+baseline), a seven-member Curta carriage block 10.658, and the tick that
+drives a block coordinate into its declared range — the searched stop —
+17.186, some 22x a quiet tick of the same machine. No test pins any of
+these numbers.
 
 ### Build pipeline (BUILD · spec `build-pipeline`)
 
@@ -2004,7 +2084,13 @@ the wire, and branch placeholders are minted document-wide as `_j0`,
 `_j1`, … The version is the one step of the ladder read off the
 DECLARATION rather than the content, because a running root with a
 trivial program is still a machine a version 4 consumer would animate
-wrongly, and the bump is not additive.
+wrongly, and the bump is not additive. Within it the CONTENT decides
+once more, off the published edges and with no key added for either
+fact: a program carrying a BLOCK is version 7 (ADR-122), one carrying
+none but a law edge that reads the coordinate it drives is version 6
+(ADR-121), and one with neither is the byte-identical version 5 it
+always was — seven dominating six, since a block says nothing about
+self-reads and a self-read nothing about blocks.
 
 The framework asks the installed viewer what it can read, through the
 existing `solid_node.viewer` entry point: `bundle.document_versions()`
@@ -2262,6 +2348,30 @@ The short list that changes must not silently break:
   (ADR-121): `clamp01` is two kinks and its pieces are affine, yet
   `_affine_in_sources` calls it non-affine, so the Curta's own shape
   pays 64 samples per piece where an exact path exists.
+- **A block's construction check is necessary and not sufficient**
+  (ADR-122): which selector branch VECTORS are reachable is arithmetic
+  about the selecting input rather than structure, so a particular
+  selection that leaves a cycle active is refused only when it happens —
+  transactionally, at run time, which is a failure mode an author can
+  meet only by running.
+- **A stop on a block coordinate is always SEARCHED** (ADR-122): a
+  block's value is piecewise in its selector partition and re-ordered
+  across it, so `Edge.affine` is `False` on every give and the
+  localization pays up to 64 samples plus the bisection rounds, each
+  re-running the whole block. Classifying a give as affine under a fixed
+  branch vector is unmeasured.
+- **A `sign`-gated source is never SWITCHED** (ADR-122): `sign`'s zero is
+  a single point of its level, so a model gating its only conditional
+  dependency on one is refused at construction rather than admitted and
+  refused at the first tick. A block member driving a GROUP is refused
+  for the same kind of reason — the fold is computed per driven end while
+  a group's ends are bound together.
+- **A push that needs TWO inputs moving together is invisible to the
+  pushing test** (ADR-113, restated by ADR-122): it displaces one input
+  with the others held, so a clutch that engages mid-tick while its shaft
+  turns leaves the stop with no moving input to stop and the tick is
+  refused `StopInvariantError`. Pre-existing and identical with no block
+  anywhere.
 
 ## Map
 
@@ -2270,8 +2380,8 @@ The short list that changes must not silently break:
 | Node model | `solid_node/node/`, `solid_node/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115 |
 | Build parameters | `solid_node/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104 |
-| Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121 |
-| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121 |
+| Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122 |
+| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122 |
 | Mechanisms | `solid_node/mechanisms/` | `mechanisms` | 022, 076 |
 | Build pipeline | `solid_node/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `solid_node/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |

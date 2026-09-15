@@ -1490,3 +1490,128 @@ class SelfReadDocumentTest(BaseNodeTest):
         self.assertIn('version 6', message)
         self.assertIn('1, 2, 3, 4, 5', message)
         self.assertIn('solid-node-viewer 0.1.0', message)
+
+
+class BlockDocumentTest(BaseNodeTest):
+    """A program carrying a BLOCK is a version 7 document, and its
+    members publish as ordinary law edges (OpenSpec change
+    ``select-the-source``).
+
+    No key is added anywhere: a consumer re-derives the block from the
+    edges' own `needs` and `gives`, and its selectors from the published
+    `plans[i].jumps[j].level`.
+    """
+
+    def published(self, klass):
+        node = klass()
+        bind_declared_defaults(node)
+        return document(node)
+
+    def test_a_program_carrying_a_block_declares_version_seven(self):
+        from .carriage_project.machine import ShiftedCarry
+
+        body = self.published(ShiftedCarry)
+        self.assertEqual(body['version'], 7)
+
+    def test_a_program_with_no_block_declares_the_version_it_always_did(
+            self):
+        self.assertEqual(self.published(Train)['version'], 5)
+        self.assertEqual(self.published(Clearing)['version'], 6)
+
+    def test_a_blocks_members_publish_as_ordinary_law_edges(self):
+        from .carriage_project.machine import ShiftedCarry
+
+        program = self.published(ShiftedCarry)['program']
+        kinds = [edge['kind'] for edge in program['edges']]
+        self.assertEqual(kinds, ['law', 'law', 'law'])
+        self.assertEqual([edge['gives'] for edge in program['edges']],
+                         [['lower.turn'], ['higher.turn'], ['carry.travel']])
+        # Contiguous, at the block's position in the program's order.
+        wheel, lever = program['edges'][1], program['edges'][2]
+        self.assertIn('carry.travel', wheel['needs'])
+        self.assertIn('higher.turn', lever['needs'])
+        for edge in (wheel, lever):
+            self.assertEqual(sorted(edge),
+                             ['affine', 'description', 'expressions',
+                              'gives', 'kind', 'needs', 'plans',
+                              'stated_by'])
+
+    def test_no_new_key_appears_anywhere_in_the_program(self):
+        from .carriage_project.machine import ShiftedCarry
+
+        program = self.published(ShiftedCarry)['program']
+        self.assertEqual(
+            sorted(program),
+            ['clock', 'coordinates', 'edges', 'identity', 'intermediates',
+             'limits', 'sources', 'spans'])
+        for edge in program['edges']:
+            for plan in edge['plans']:
+                for jump in plan['jumps']:
+                    self.assertEqual(sorted(jump),
+                                     ['affine', 'level', 'name',
+                                      'primitive'])
+
+    def test_a_block_and_its_selectors_are_derivable_from_the_document(self):
+        from .carriage_project.machine import ShiftedCarry
+
+        body = self.published(ShiftedCarry)
+        program = body['program']
+        edges = program['edges']
+        # The block: the strongly connected component of the graph over
+        # the edges' own `needs` and `gives`, with `needs` met with
+        # `gives` excluded -- the same exclusion a version 6 consumer
+        # already makes for the self-read.
+        determiner = {name: index for index, edge in enumerate(edges)
+                      for name in edge['gives']}
+        after = {}
+        for index, edge in enumerate(edges):
+            gives = set(edge['gives'])
+            after[index] = {determiner[name] for name in edge['needs']
+                            if name in determiner and name not in gives}
+        cyclic = set()
+        for start in after:
+            seen, pending = set(), list(after[start])
+            while pending:
+                node = pending.pop()
+                if node in seen:
+                    continue
+                seen.add(node)
+                pending.extend(after[node])
+            if start in seen:
+                cyclic.add(start)
+        self.assertEqual(sorted(cyclic), [1, 2])
+        gives = {name for index in cyclic for name in edges[index]['gives']}
+        self.assertEqual(sorted(gives), ['carry.travel', 'higher.turn'])
+
+        # The selectors: a jump whose `level`, with placeholders resolved
+        # transitively into their own jumps' levels, names no id the
+        # block gives.
+        for index in sorted(cyclic):
+            plan, = edges[index]['plans']
+            levels = {jump['name']: jump['level']
+                      for jump in plan['jumps']}
+            found = []
+            for jump in plan['jumps']:
+                names, pending = set(), [jump['level']]
+                while pending:
+                    text = pending.pop()
+                    for name in free_names_of(resolved(body, str(text))):
+                        if name in levels:
+                            pending.append(levels[name])
+                        else:
+                            names.add(name)
+                if not names & gives:
+                    found.append(jump['primitive'])
+            self.assertEqual(found, ['>=', '<'] if index == 1 else ['<', '>='])
+
+    def test_placeholders_are_minted_over_the_flat_list_of_law_edges(self):
+        from .carriage_project.machine import ShiftedCarry
+
+        body = self.published(ShiftedCarry)
+        minted = [jump['name']
+                  for edge in body['program']['edges']
+                  for plan in edge['plans'] if plan is not None
+                  for jump in plan['jumps']]
+        self.assertEqual(minted,
+                         [f'_j{index}' for index in range(len(minted))])
+        self.assertEqual(len(minted), 2 + 4 + 3)

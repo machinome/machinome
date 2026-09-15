@@ -124,6 +124,20 @@ RUNNING_DOCUMENT_VERSION = 5
 #: selects and moves the part by a different mechanism without saying so.
 SELF_READ_DOCUMENT_VERSION = 6
 
+#: The version a running root's document declares when its compiled
+#: program carries a BLOCK -- a set of two or more edges whose
+#: dependencies are cyclic, ordered once per PIECE of a tick rather than
+#: once per program (OpenSpec change ``select-the-source``). A property
+#: of the CONTENT like the one below it: a program with no block
+#: publishes byte-identically at 6 or 5. The bump is not additive and it
+#: is not cosmetic -- the published ORDER of a block's members is a
+#: LISTING, not an execution order, so a version 6 consumer that
+#: Kahn-orders the published edges either refuses the program by name or
+#: executes that listing and moves the machine by whatever it happens to
+#: give, silently, and by a different amount for each order it might have
+#: chosen.
+BLOCK_DOCUMENT_VERSION = 7
+
 
 _MISSING = object()
 
@@ -453,11 +467,15 @@ def document_version(root, bindings=(), program=None):
     property of the ROOT'S DECLARATION, and a running root with nothing
     shared and no flexible leaf is still a machine a version 4 consumer
     would animate wrongly. Within it the CONTENT decides once more: a
-    program one of whose law edges reads the coordinate it drives is a
-    version 6 document, and one with none is the byte-identical version
-    5 it always was.
+    program carrying a BLOCK is a version 7 document, one carrying none
+    but a law edge that reads the coordinate it drives is a version 6
+    document, and one with neither is the byte-identical version 5 it
+    always was. Seven dominates six, because a block says nothing about
+    self-reads and a self-read says nothing about blocks.
     """
     if program is not None:
+        if _carries_a_block(program):
+            return BLOCK_DOCUMENT_VERSION
         return (SELF_READ_DOCUMENT_VERSION if _reads_its_own(program)
                 else RUNNING_DOCUMENT_VERSION)
     if bindings:
@@ -477,6 +495,41 @@ def _reads_its_own(program):
         if edge.get('kind') != 'law':
             continue
         if set(edge.get('needs', ())) & set(edge.get('gives', ())):
+            return True
+    return False
+
+
+def _carries_a_block(program):
+    """Whether a published program carries a BLOCK.
+
+    Read off the document exactly as a consumer re-derives it, because no
+    key is added for it: the strongly connected components of the graph
+    over the edges' own ``needs`` and ``gives``, with ``needs`` met with
+    ``gives`` excluded -- the same exclusion a version 6 consumer already
+    makes for the self-read.
+    """
+    edges = [edge for edge in program.get('edges', ())
+             if edge.get('kind') != 'check']
+    determiner = {}
+    for index, edge in enumerate(edges):
+        for name in edge.get('gives', ()):
+            determiner[name] = index
+    after = {}
+    for index, edge in enumerate(edges):
+        gives = set(edge.get('gives', ()))
+        after[index] = {determiner[name] for name in edge.get('needs', ())
+                        if name in determiner and name not in gives}
+    # Two edges on one cycle are enough: reachability from each edge back
+    # to itself through at least one other.
+    for start in after:
+        seen, pending = set(), list(after[start])
+        while pending:
+            node = pending.pop()
+            if node in seen:
+                continue
+            seen.add(node)
+            pending.extend(after[node])
+        if start in seen:
             return True
     return False
 

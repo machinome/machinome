@@ -598,22 +598,38 @@ no producer-local sharing syntax appears anywhere in the document. The
 object SHALL be ordered deterministically for a given tree, so republishing
 an unchanged model produces a byte-identical document.
 
-The producer SHALL declare `version: 6` for a program at least one of whose
-LAW edges names one of its own `gives` among its `needs` — a law that reads
-the coordinate it drives — and `version: 5` for a program with none, whose
-document SHALL be byte-identical to the one it published before this rule
-existed. The shape of the document SHALL NOT otherwise change: the self-read
+The producer SHALL declare `version: 7` for a program carrying a BLOCK —
+a set of two or more edges whose dependencies are cyclic, ordered per
+piece under the simulation requirement "A selection decides which sources
+a law reads" — `version: 6` for a program with no block at least one of
+whose LAW edges names one of its own `gives` among its `needs` — a law
+that reads the coordinate it drives — and `version: 5` for a program with
+neither, whose document SHALL be byte-identical to the one it published
+before this rule existed. The shape of the document SHALL NOT otherwise change: the self-read
 is `needs ∩ gives`, no key is added for it, and the free names of a law
-edge's expressions SHALL still be exactly the ids in `needs`. The bump is
-what a consumer needs, because a runtime that evaluates a law edge as the
-difference of its two endpoint evaluations would read the self-read at BOTH
-ends, freeze the branch it selects and move the part by a different
-mechanism without saying so. Where such an edge's driven coordinate ends a
-tick at a crossing, what it is COMMITTED at is behaviour rather than a
-document key: a runtime that commits it a single float short of the far
-side re-engages the gate and diverges from the corpus's bank on a LATER
-tick, far outside the agreement window, which is where that rule is
-pinned.
+edge's expressions SHALL still be exactly the ids in `needs`. NO KEY is
+added for a block either: a consumer SHALL re-derive it as the strongly
+connected components of the graph over the edges' own `needs` and
+`gives`, with `needs ∩ gives` excluded, and SHALL re-derive its SELECTORS
+as the jump nodes of its members' published plans whose `level` —
+placeholders resolved transitively into their own jumps' levels — names
+no id the block gives.
+
+Each version says what a lower consumer would get wrong. **Version 6**
+carries a law edge that reads the coordinate it drives: a runtime that
+evaluated such an edge as the difference of its two endpoint evaluations
+would read the self-read at BOTH ends, freeze the branch it selects and
+move the part by a different mechanism without saying so. **Version 7**
+carries a block: the published ORDER of its members is a listing, not an
+execution order, so a runtime that executes them in it moves the machine
+by whatever that order happens to give — silently, and by a different
+amount for each order it might have chosen.
+
+Where a self-read edge's driven coordinate ends a tick at a crossing,
+what it is COMMITTED at is behaviour rather than a document key: a
+runtime that commits it a single float short of the far side re-engages
+the gate and diverges from the corpus's bank on a LATER tick, far outside
+the agreement window, which is where that rule is pinned.
 
 `program` SHALL carry:
 
@@ -640,7 +656,20 @@ pinned.
   named in the `gives` of an `edges` entry.
 - `edges`: one entry per compiled edge, IN PROGRAM ORDER, defined by the
   requirement "The published edges say what each one reads, gives and
-  computes".
+  computes". PROGRAM ORDER is a topological order of the dependency graph
+  with each BLOCK contracted to one node; a block's members SHALL appear
+  CONTIGUOUSLY at that node's position, in an order deterministic for a
+  given tree. A consumer SHALL NOT execute a block's members in that
+  order: it SHALL re-derive the block and its selectors, cut the stretch
+  at the selectors' crossings, and order the members on each piece, as
+  the producer does. It SHALL fold a published `skeleton` by the SAME
+  rules the simulation requirement "A selection decides which sources a
+  law reads" states — the same folding arithmetic, the same rule about
+  which primitives hold a zero branch on an interval of their level, and
+  the same distinction between the single compile-time fold and the
+  run-time substitution of the branches actually read — because those
+  rules decide the ORDER the members run in on every piece, and the
+  conformance corpus pins the bank that order produces.
 - `spans`: one entry per banked coordinate whose joint declares a range,
   keyed by its qualified id, carrying `low` and `high`, each `null` for
   unbounded, a number, or `{"expression": <text>}` for a bound stated as an
@@ -837,6 +866,22 @@ run's binder is restored afterwards.
 - **THEN** the simulation refuses at construction, naming the id and that
   `time` is reserved for the clock
 
+#### Scenario: A program carrying a block declares version 7
+
+- **WHEN** a running root whose relations form a block — two laws each
+  reading a coordinate the other determines, each behind a comparison on
+  a third input — is exported
+- **THEN** the document declares `version: 7`, its `program.edges` lists
+  the two members contiguously, and no key beyond the ones this
+  requirement lists appears anywhere in `program`
+
+#### Scenario: A program with no block is byte-identical
+
+- **WHEN** a running root with no block is exported before and after this
+  rule exists
+- **THEN** the two documents are byte-identical and declare the version
+  they always did
+
 ### Requirement: The published edges say what each one reads, gives and computes
 
 Each `program.edges` entry SHALL carry `kind` (`"law"`, `"wiring"`,
@@ -845,7 +890,10 @@ Each `program.edges` entry SHALL carry `kind` (`"law"`, `"wiring"`,
 coordinate AS WRITTEN — and `stated_by`, the class that stated it, so a
 consumer's refusal names what a reader can find in the model. The free
 names each of the entry's expressions reads SHALL be exactly the ids in
-`needs`, so no separate name list is published.
+`needs`, so no separate name list is published. That holds for a BLOCK's
+members exactly as for any other edge: a block is published as its member
+edges and never as an entry of its own, so nothing about an entry's shape
+says whether it belongs to one.
 
 **A law** SHALL carry three lists aligned with `gives`: `expressions`, the
 law applied once to a symbolic token per source, or `null` where the law is
@@ -926,6 +974,22 @@ evaluated by these rules and no others:
   are determined by other edges
 - **THEN** the program carries a `check` edge with empty `gives`, naming the
   slot and the coefficients it predicts from
+
+#### Scenario: A block's members publish as ordinary law edges
+
+- **WHEN** a running root carrying a block is exported
+- **THEN** each member is an ordinary `law` entry carrying `expressions`,
+  `affine` and `plans`, the free names of each expression are exactly
+  that entry's `needs`, and the coordinate each member reads from another
+  member is an ordinary id of `needs` with no marking of any kind
+
+#### Scenario: A selector is derivable from the published plan
+
+- **WHEN** a block member's law gates a source behind a comparison on a
+  coordinate the block does not determine
+- **THEN** that comparison appears in the member's plan as a jump entry
+  whose `level` names only ids the block does not give, and whose
+  placeholder the member's `skeleton` reads where the comparison stood
 
 ### Requirement: A committed bank poses the geometry
 
@@ -1088,8 +1152,11 @@ coordinate holds the same value before and after its tick — a command
 retired `blocked`, a rate, a snapshot and restore, an instruction in each
 of its two forms, a tick carrying both a crossing and a stop, a law that
 READS THE COORDINATE IT DRIVES — one whose driven coordinate holds at its
-gate while the input that reached it goes on moving — and a tick in which a
-self-read crossing and a stop both fall. The framework's suite SHALL test
+gate while the input that reached it goes on moving — a tick in which a
+self-read crossing and a stop both fall, a SWITCHED SOURCE — a law edge
+reading a coordinate another member of its own block determines — a
+SELECTION CROSSING located inside a tick, and a tick in which a selection
+crossing and a stop both fall. The framework's suite SHALL test
 that refusal directly, so the corpus's width is visible without running the
 generator.
 
@@ -1134,6 +1201,13 @@ cannot drift from the producer it claims to come from.
 - **WHEN** the generator is asked to write a corpus none of whose machines
   states a law reading the coordinate it drives, or none of whose ticks
   holds such a coordinate at its gate while the input reaching it moves on
+- **THEN** it refuses naming the uncovered feature and writes nothing
+
+#### Scenario: A corpus missing a switched source is refused
+
+- **WHEN** the generator is asked to write a corpus none of whose
+  machines carries a block, or none of whose ticks locates a selection
+  crossing
 - **THEN** it refuses naming the uncovered feature and writes nothing
 
 ### Requirement: A running document publishes the controls its parts carry

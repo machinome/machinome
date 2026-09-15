@@ -36,9 +36,13 @@ def corpus():
 
 
 def machine_class(name):
+    from .carriage_project import machine as carriage
     from .running_project import machine as module
 
-    return getattr(module, name)
+    found = getattr(module, name, None)
+    if found is None:
+        found = getattr(carriage, name)
+    return found
 
 
 class CorpusReplayTest(BaseNodeTest):
@@ -232,13 +236,48 @@ class CoverageGuardTest(TestCase):
         from tools.generate_running_corpus import uncovered_features
 
         machines = [entry for entry in corpus()['machines']
-                    if entry['name'] not in ('Clearing', 'StoppedClearing')]
+                    if entry['name'] not in ('Clearing', 'StoppedClearing',
+                                             'ShiftedCarry')]
         missing = uncovered_features(machines)
         self.assertIn('a law that reads the coordinate it drives', missing)
         self.assertIn('a self-read coordinate holding at its gate while '
                       'its input moves on', missing)
         self.assertIn('a tick carrying both a self-read crossing and a stop',
                       missing)
+
+    def test_a_corpus_with_no_block_is_refused(self):
+        """OpenSpec change ``select-the-source``: the corpus is the
+        contract the browser runtime's own cycle is held to, and a
+        version 7 document is the one a version 6 consumer would execute
+        in the published ORDER and move by whatever that gives."""
+        from tools.generate_running_corpus import uncovered_features
+
+        machines = [entry for entry in corpus()['machines']
+                    if entry['name'] not in ('ShiftedCarry', 'RangedBlock')]
+        missing = uncovered_features(machines)
+        self.assertIn('a switched source', missing)
+        self.assertIn('a selection crossing inside a tick', missing)
+        self.assertIn('a tick carrying both a selection crossing and a stop',
+                      missing)
+
+    def test_a_corpus_with_no_selection_crossing_is_refused(self):
+        """Every machine kept, but no tick in which a selector's own
+        surface is reached: the corpus still states the block and still
+        loses the behaviour the version is for."""
+        from tools.generate_running_corpus import uncovered_features
+
+        machines = []
+        for entry in corpus()['machines']:
+            copy = dict(entry)
+            copy['ticks'] = [dict(tick, crossings=[]) if entry['name'] in
+                             ('ShiftedCarry', 'RangedBlock') else tick
+                             for tick in entry['ticks']]
+            machines.append(copy)
+        missing = uncovered_features(machines)
+        self.assertIn('a selection crossing inside a tick', missing)
+        self.assertIn('a tick carrying both a selection crossing and a stop',
+                      missing)
+        self.assertNotIn('a switched source', missing)
 
     def test_a_corpus_whose_dial_never_holds_at_its_gate_is_refused(self):
         from tools.generate_running_corpus import uncovered_features
@@ -253,7 +292,8 @@ class CoverageGuardTest(TestCase):
             copy['ticks'] = [dict(tick, bank=dict(tick['bank']))
                              for tick in entry['ticks']]
             for index, tick in enumerate(copy['ticks']):
-                for identifier in ('wheel.turn',):
+                for identifier in ('wheel.turn', 'carry.travel',
+                                   'lower.turn', 'higher.turn'):
                     if identifier in tick['bank']:
                         tick['bank'][identifier] += index
             machines.append(copy)

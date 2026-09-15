@@ -657,7 +657,13 @@ and nothing in the sum ever spans the cut. So a carriage moved from one
 position to another with the crank standing still contributes zero to
 every dial and every lever — not "approximately zero", exactly the
 number zero, because both pieces evaluate a constant law at two equal
-points. This is requirement-note item 2's second sentence.
+points. This is requirement-note item 2's second sentence. It is BIT FOR
+BIT because a piece whose substituted skeleton is unchanged leaves the
+coordinate at the exact float it held, which required ADR-121's walk to
+read the driven end's own path as `own_left + (S(s) - base)` — taking
+the skeleton's CHANGE first, where `(own_left + S) - base` rounds
+whenever `|S|` is comparable to `|own_left|` and moves a held
+coordinate by an ulp.
 
 **A command taken in one tick, in twelve, and in two hundred and forty
 agree to the run's own AGREEMENT TOLERANCE**, `1e-9·max(1, |a|, |b|)`
@@ -923,6 +929,24 @@ whole tick is staged.
 **A stop LATER than the selector crossing.** The block crosses inside
 the first segment and the stop cuts after it. Same machinery.
 
+**The limit "same machinery" inherits: a push that needs TWO inputs
+moving together is invisible to `Run._pushes`, and the tick is then
+refused.** ADR-113's pushing test displaces ONE input with the others
+held (`run.py:1055`), so an input that reaches a stopped coordinate only
+once ANOTHER input has moved the selection contributes nothing to the
+probe, `Run._group` comes back empty, and `Run.integrate` raises
+`StopInvariantError: ... locating the stop stopped no input that was
+moving`. This is NOT introduced by the block: it is what any
+source-gated law does today. Measured on a machine with no block at all
+— a clutch `(shaft & sleeve).drives(wheel.turn, law=s * (v > 0.5))`,
+`wheel.turn` ranged `(None, 0.3)`, `sleeve` 0 → 1 and `shaft` 0 → 1 in
+one tick of `dt = 1.0` — the run raises exactly that error, on this
+worktree and on the tree before it alike (probe `two_input_push.py`).
+The tick is refused transactionally rather than answered wrongly, so
+this cycle states the limit and changes nothing: lifting it means
+displacing the selecting input alongside the candidate, which is a
+change to the pushing test rather than to the block.
+
 **A stop's blocked group when the pushing input reaches the coordinate
 only through an INACTIVE selection.** `Run._group` takes the compiled
 candidates — `Program.sources[key]`, which for a block is the union of
@@ -1142,6 +1166,36 @@ Two consequences, both stated so neither is discovered later:
   branch, is guarded by `_under_running_root(record)`. Under any other
   time base a marked record is solved, deferred and refused exactly as
   it is today. Both halves are tested (task 3.6).
+
+### Implementation notes (2026-09-15, after review)
+
+Three placements stated in §11 were found wrong against the code while
+applying, and the implementation is what the ADR and the architecture
+synthesis describe. Recorded here rather than rewritten above, so the
+ratified text and what changed against it are both visible
+(`evidence.md`, "Deviations from the design, and why"):
+
+- **The pre-pass runs at the TOP of `Sim.__init__`**, together with
+  `release_tree`, before `qualified_drivers(node)` — not between
+  `release_tree` and `_bind_initial`. That driver walk is itself an
+  enumeration and refuses a selected cycle `DoublyBound` before the rest
+  render is reached; measured on `SelectedBare`.
+- **`release_tree` does NOT clear the marks.** `program_of` releases a tree
+  it is about to re-render for the producer, and a cleared mark would
+  refuse that render `DoublyBound`. The marks are a function of the
+  declared relations, not of run state; what keeps a stale mark harmless
+  is `_step_relation`'s running-root guard and the pre-pass's idempotence,
+  both tested (task 3.6).
+- **The pre-pass has a second caller, `bind_declared_defaults`**
+  (`enumeration.py`), guarded on a running root: the corpus generator and
+  the serializer enumerate before any `Sim` exists and would refuse a
+  block there.
+
+Two further facts were established by the review and are recorded in
+§4 and §7 respectively: ADR-121's walk arithmetic (`own_at`) had to be
+parenthesized for the bit-for-bit promise of §4 to hold, and ADR-113's
+one-input pushing probe cannot see a push that needs two inputs moving
+together, with or without a block.
 
 ### 12. What the Curta must do to migrate (project work, named here)
 

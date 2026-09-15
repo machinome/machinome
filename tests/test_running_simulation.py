@@ -1178,3 +1178,71 @@ class SelfReadRestTest(BaseNodeTest):
         message = str(caught.exception)
         self.assertIn('wheel.turn', message)
         self.assertIn("the author's simulate()", message)
+
+
+class SelectionConstructionTest(BaseNodeTest):
+    """A cycle every selection breaks is a BLOCK, and the program orders
+    it once per piece (OpenSpec change ``select-the-source``).
+
+    The two halves of the change's construction contract live here
+    beside the other construction tests: the union the compiler refused
+    is admitted, and the union no selection breaks is refused with the
+    message it has always had.
+    """
+
+    def test_the_selected_union_constructs(self):
+        from .carriage_project.machine import ShiftedCarry
+
+        sim = Sim(ShiftedCarry(), dt=0.02)
+        self.assertEqual(sim.state, {'carry.travel': 0.0, 'clearing': 0.0,
+                                     'crank': 0.0, 'higher.turn': 0.0,
+                                     'lower.turn': 0.0, 'shift': 0.0})
+
+    def test_a_cycle_no_selection_breaks_is_refused(self):
+        """The fixture that actually reaches ``_ordered`` today -- a
+        cycle whose relations keep their self-reads, so
+        ``_step_relation`` defers them past the rest render. Nothing in
+        the suite pinned this refusal before this change, and the specs
+        never stated it."""
+        from .carriage_project.machine import Unconditional
+
+        with self.assertRaises(UnsupportedLaw) as caught:
+            Sim(Unconditional(), dt=0.02)
+        message = str(caught.exception)
+        self.assertIn(
+            '(crank, clearing, carry.travel, higher.turn) drives higher.turn',
+            message)
+        self.assertIn(
+            '(lower.turn, higher.turn, carry.travel) drives carry.travel',
+            message)
+        self.assertIn('form a cycle the run cannot order: each waits on a '
+                      'coordinate another determines. A running program is '
+                      'acyclic, because the rest render solved every '
+                      'relation in one direction.', message)
+
+    def test_the_two_moved_refusals(self):
+        """Two outcomes MOVE with this change, and the test names the old
+        one so the move is visible in the diff.
+
+        A SELECTED cycle with no self-read, refused
+        ``DoublyBound: higher.turn would be bound by the relation
+        (crank, shift, carry.travel) drives higher.turn and by the
+        author's simulate()`` by the REST RENDER today, now constructs.
+        An UNCONDITIONAL one, refused the same way today, now reaches the
+        COMPILE and gets the message that names every relation on the
+        cycle.
+        """
+        from .carriage_project.machine import SelectedBare, UnconditionalBare
+
+        sim = Sim(SelectedBare(), dt=0.02)
+        self.assertEqual(sorted(sim.state),
+                         ['carry.travel', 'crank', 'higher.turn',
+                          'lower.turn', 'shift'])
+
+        with self.assertRaises(UnsupportedLaw) as caught:
+            Sim(UnconditionalBare(), dt=0.02)
+        message = str(caught.exception)
+        self.assertIn('(crank, carry.travel) drives higher.turn', message)
+        self.assertIn('(lower.turn, higher.turn) drives carry.travel',
+                      message)
+        self.assertNotIn('doubly bound', message.lower())

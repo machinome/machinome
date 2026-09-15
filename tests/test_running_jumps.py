@@ -650,3 +650,45 @@ class BackwardJumpTest(BaseNodeTest):
         self.assertEqual(crossing.coordinate, 'second.turn')
         self.assertEqual(crossing.t,
                          approx(0.85, rel=1e-12))
+
+
+class SelectionCrossingTest(BaseNodeTest):
+    """(2.22) A SELECTOR's crossing is a crossing like any other: it is
+    located over the stretch, recorded under the member whose law states
+    it, at its fraction of the TICK -- and it is not a stop (OpenSpec
+    change ``select-the-source``)."""
+
+    def test_a_selector_crossing_is_recorded_under_its_own_relation(self):
+        from .carriage_project.machine import ShiftedCarry
+
+        sim = Sim(ShiftedCarry(), 1.0, record=8)
+        sim.move('shift', by=1.0, duration=1.0)
+        sim.run(1.0)
+        # `shift` sweeps 0 -> 1 and every gate on it has the level
+        # `shift - 0.5`, so each law cuts the stretch once, at its half:
+        # the lower wheel's OWN relation, which is outside the block, and
+        # then the block's two members.
+        self.assertEqual(
+            [(one.coordinate, one.primitive, one.level, one.t)
+             for one in sim.crossings],
+            [('lower.turn', '<', 0.0, 0.5),
+             ('higher.turn', '>=', 0.0, 0.5),
+             ('carry.travel', '<', 0.0, 0.5)])
+        self.assertEqual(
+            sorted({one.relation for one in sim.crossings}),
+            ['(crank, shift, clearing, carry.travel, higher.turn) drives '
+             'higher.turn',
+             '(crank, shift, clearing, lower.turn) drives lower.turn',
+             '(lower.turn, higher.turn, shift, carry.travel) drives '
+             'carry.travel'])
+        self.assertEqual(sim.stops, [])
+
+    def test_a_selector_crossing_is_at_its_fraction_of_the_tick(self):
+        from .carriage_project.machine import ShiftedCarry
+
+        sim = Sim(ShiftedCarry(), 1.0, record=8)
+        sim.move('shift', by=2.0, duration=1.0)
+        sim.run(1.0)
+        # The surface at `shift == 0.5` is a quarter of the way along a
+        # stretch that carries `shift` from 0 to 2.
+        self.assertEqual(sorted({one.t for one in sim.crossings}), [0.25])

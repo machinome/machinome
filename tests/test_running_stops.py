@@ -28,7 +28,8 @@ from pytest import approx
 
 from solid_node.motion.joints import JointRangeError
 from solid_node.motion.ports import get_coordinate
-from solid_node.simulation import RunConflict, Sim, Stop
+from solid_node.simulation import (RunConflict, Sim, Stop,
+                                   UnsupportedLaw)
 
 from .base import BaseNodeTest
 from .running_project.machine import (ConstantBound, UnusedRead,
@@ -1015,3 +1016,194 @@ class SelfReadStopTest(BaseNodeTest):
         gate = [entry for entry in sim.crossings
                 if entry.coordinate == 'wheel.turn']
         self.assertTrue(any(entry.t < sim.stops[0].t for entry in gate))
+
+
+class BlockStopTest(BaseNodeTest):
+    """A declared range on a coordinate a BLOCK determines, and the
+    pushing test through it (OpenSpec change ``select-the-source``).
+
+    A block's value is piecewise in the selector partition AND re-ordered
+    across it, so every stop on one of its coordinates takes the SEARCHED
+    path -- and `Run._pushes` runs the WHOLE block under one input's
+    displacement before its `key in edge.gives` break, which is the
+    granularity an inactive selection needs.
+    """
+
+    def block_edge(self, sim):
+        found = [edge for edge in sim._run.program.edges
+                 if edge.kind == 'block']
+        self.assertEqual(len(found), 1)
+        return found[0]
+
+    def test_a_range_on_a_block_coordinate_stops_it_at_its_bound(self):
+        from .carriage_project.machine import RangedBlock
+
+        sim = Sim(RangedBlock(), 1.0, record=4, state={'shift': 1.0})
+        crank = sim.move('crank', by=2.0, duration=1.0)
+        sim.run(1.0)
+        self.assertEqual(sim.state['carry.travel'], 0.6)
+        stop, = sim.stops
+        self.assertEqual(stop.coordinate, 'carry.travel')
+        self.assertEqual(stop.bound, 'high')
+        self.assertEqual(stop.value, 0.6)
+        self.assertEqual(stop.inputs, ('crank',))
+        self.assertEqual(crank.status, 'blocked')
+        self.assertEqual(stop.t, approx(0.3, rel=1e-9))
+
+    def test_a_stop_on_a_block_coordinate_is_searched_not_solved(self):
+        from .carriage_project.machine import RangedBlock
+
+        sim = Sim(RangedBlock(), 1.0, state={'shift': 1.0})
+        edge = self.block_edge(sim)
+        self.assertEqual(list(edge.affine), [False, False])
+
+    def test_an_inactive_selection_does_not_block_its_input(self):
+        from .carriage_project.machine import RangedBlock
+
+        sim = Sim(RangedBlock(), 1.0, record=4, state={'shift': 1.0})
+        crank = sim.move('crank', by=2.0, duration=1.0)
+        spin = sim.move('spin', by=1.0, duration=1.0)
+        sim.run(1.0)
+        # `spin` reaches the stopped lever ONLY through the term the
+        # carriage has switched out, so it is not stopped by it.
+        self.assertEqual(spin.status, 'completed')
+        self.assertEqual(spin.admitted, 1.0)
+        self.assertEqual(sim.state['lower.turn'], 1.0)
+        self.assertEqual(crank.status, 'blocked')
+        self.assertEqual(sim.state['carry.travel'], 0.6)
+        stop, = sim.stops
+        self.assertEqual(stop.inputs, ('crank',))
+
+    def test_the_probe_runs_the_whole_block_under_one_displacement(self):
+        from .carriage_project.machine import RangedBlock
+
+        sim = Sim(RangedBlock(), 1.0, state={'shift': 1.0})
+        program = sim._run.program
+        key = program.keys['carry.travel']
+        edge = program.determiner[key]
+        self.assertEqual(edge.kind, 'block')
+        self.assertEqual([program.nodes[one].name for one in edge.gives],
+                         ['higher.turn', 'carry.travel'])
+        # The candidate table is deliberately over-broad -- a block is
+        # ONE node in it -- and `_pushes` is what filters it per tick.
+        self.assertEqual(sorted(program.sources[key]),
+                         ['crank', 'shift', 'spin'])
+        values = program.values_of(dict(sim.state))
+        self.assertTrue(sim._run._pushes('crank', 1.0, key, values))
+        self.assertFalse(sim._run._pushes('spin', 1.0, key, values))
+
+    def test_a_probe_over_a_cyclic_piece_refuses_as_the_tick_does(self):
+        from .carriage_project.machine import BothActive
+
+        sim = Sim(BothActive(), 1.0, state={'shift': 1.0})
+        program = sim._run.program
+        with self.assertRaises(UnsupportedLaw) as probe:
+            program.response(dict(sim.state), 'crank', 2.0 ** -20)
+        sim.move('crank', by=1.0, duration=1.0)
+        with self.assertRaises(UnsupportedLaw) as tick:
+            sim.run(1.0)
+        self.assertEqual(str(probe.exception), str(tick.exception))
+
+    def test_a_landing_and_a_stop_in_one_segment_let_the_bound_win(self):
+        from .carriage_project.machine import StoppedLanding
+
+        sim = Sim(StoppedLanding(), 1.0, record=4, state={'shift': 1.0})
+        sim.move('crank', by=2.0, duration=1.0)
+        sim.move('setter', by=1.0, duration=1.0)
+        sim.run(1.0)
+        # The lever's own gate cuts the path at `0.5` and LANDS it there;
+        # the setter then carries it past the declared `0.6`, and the
+        # bound is what the tick commits.
+        self.assertEqual(sim.state['carry.travel'], 0.6)
+        stop, = sim.stops
+        self.assertEqual((stop.coordinate, stop.value), ('carry.travel', 0.6))
+        self.assertEqual(stop.inputs, ('crank', 'setter'))
+        self.assertIn(('carry.travel', '<'),
+                      [(one.coordinate, one.primitive)
+                       for one in sim.crossings])
+
+    def test_a_selector_crossing_and_a_stop_in_one_tick_keep_their_order(
+            self):
+        from .carriage_project.machine import RangedBlock
+
+        # The STOP first: `spin` drives the lever into its bound a third
+        # of the way along, and the carriage crosses its detent at the
+        # half.
+        sim = Sim(RangedBlock(), 1.0, record=8)
+        spin = sim.move('spin', by=2.0, duration=1.0)
+        sim.move('shift', by=1.0, duration=1.0)
+        sim.run(1.0)
+        stop, = sim.stops
+        self.assertEqual(stop.t, approx(0.3, rel=1e-9))
+        self.assertEqual(spin.status, 'blocked')
+        selectors = [one.t for one in sim.crossings if one.t == 0.5]
+        self.assertEqual(selectors, [0.5, 0.5])
+        self.assertLess(stop.t, selectors[0])
+
+        # The CROSSING first: the lower wheel barely moves, so the lever
+        # reaches its bound only once the carriage has handed it to the
+        # higher one.
+        other = Sim(RangedBlock(), 1.0, record=8)
+        other.move('spin', by=0.4, duration=1.0)
+        other.move('crank', by=2.0, duration=1.0)
+        other.move('shift', by=1.0, duration=1.0)
+        other.run(1.0)
+        stop = other.stops[0]
+        self.assertEqual(stop.t, approx(0.7, rel=1e-9))
+        self.assertEqual(
+            sorted({one.t for one in other.crossings if one.t < stop.t}),
+            [0.5])
+
+
+class CarriageInterlockTest(BaseNodeTest):
+    """The Curta-shaped fixture's interlock: no shift unless lifted.
+
+    A `Bound(..., reads=)` on the carriage's own coordinate, whose
+    sub-program contains no block at all -- the lift is UPSTREAM of the
+    block -- so the constraint costs the block nothing.
+    """
+
+    DT = 0.02
+
+    def setUp(self):
+        super().setUp()
+        from .carriage_project.machine import CurtaCarriage
+
+        self.sim = Sim(CurtaCarriage(), self.DT, record=256)
+
+    def step(self, name, travel, duration, ticks):
+        handle = self.sim.move(name, by=travel, duration=duration)
+        for _tick in range(ticks):
+            self.sim.run(self.DT)
+        return handle
+
+    def test_a_shift_is_stopped_at_its_restraint_while_a_lever_stands_set(
+            self):
+        self.step('lift', 1.0, 0.1, 5)
+        self.step('position', 1.0, 0.2, 10)
+        self.step('lift', -1.0, 0.1, 5)
+        self.step('crank', 36.0, 0.4, 20)
+        self.assertEqual(self.sim.state['seat'], 20.0)
+        self.assertEqual(self.sim.state['lever0.travel'], 1.0)
+        pending = {key: self.sim.state[key] for key in self.sim.state
+                   if key.startswith(('dial', 'lever'))}
+
+        shift = self.step('position', 1.0, 0.2, 10)
+        self.assertEqual(shift.status, 'blocked')
+        self.assertEqual(shift.admitted, 0.0)
+        self.assertEqual(self.sim.state['seat'], 20.0)
+        stop = self.sim.stops[-1]
+        self.assertEqual(stop.coordinate, 'seat')
+        self.assertEqual(stop.inputs, ('position',))
+        # Nothing discarded the pending carry and nothing finished it.
+        for key, value in pending.items():
+            self.assertEqual(self.sim.state[key], value, key)
+
+    def test_the_same_shift_is_admitted_once_the_carriage_is_lifted(self):
+        self.step('crank', 36.0, 0.4, 20)
+        self.assertEqual(self.sim.state['lever0.travel'], 1.0)
+        self.step('lift', 1.0, 0.1, 5)
+        shift = self.step('position', 1.0, 0.2, 10)
+        self.assertEqual(shift.status, 'completed')
+        self.assertEqual(self.sim.state['seat'], 20.0)
+        self.assertEqual(self.sim.state['lever0.travel'], 1.0)
