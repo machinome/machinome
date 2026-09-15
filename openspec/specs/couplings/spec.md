@@ -813,7 +813,9 @@ kinds of end SHALL be:
 - a BROADCAST — a path one of whose segments is a REPEATED child
   declaration, `eccentric_bearings.orbit`, `column.beads.travel`,
   `legs.femur.lift` — resolving to ONE coordinate PER REALIZED COPY,
-  and permitted as the DRIVEN end only;
+  and permitted as the DRIVEN end only, or in the source group of the
+  relation that drives that same broadcast, where it is each copy's read
+  of itself;
 - a `Driver` declaration, resolving to the driver's value, which SHALL
   be a SOURCE only;
 - a DERIVED COORDINATE of the class;
@@ -833,17 +835,18 @@ one-source relation before the grouping is read.
 
 Every member of a group SHALL be an end of one of the kinds above and
 SHALL be checked as one, in its own role: a repeated child named as a
-SOURCE, a `Driver` named as a DRIVEN end, a node whose class declares
+SOURCE — other than the broadcast the same relation drives — a `Driver`
+named as a DRIVEN end, a node whose class declares
 several joints, and a path stopping on a joint that owns several
 coordinates SHALL each be refused inside a group exactly as outside it.
 Ends are coordinates, named ONE BY ONE. A group SHALL name at least TWO
 coordinates — an empty group and a group of one SHALL be refused,
 saying that one end is written without the group — and a group SHALL
-NOT hold another group. A coordinate SHALL be named ONCE in a group, and
-a coordinate named on BOTH sides of a relation whose ends name several
-coordinates SHALL be refused, saying that a coordinate is a source or a
-driven end of one relation and not both. A group SHALL NOT be a term of
-a derived coordinate.
+NOT hold another group. A coordinate SHALL be named ONCE in a group; a
+coordinate named on BOTH sides of a relation whose ends name several
+coordinates SHALL be a READ of that driven end rather than a refusal,
+under the requirement "A relation may name several coordinates at each
+end". A group SHALL NOT be a term of a derived coordinate.
 
 Where a DRIVEN group names a BROADCAST, every member of that group SHALL
 be a broadcast over the SAME repeated segment of the same path, so the
@@ -874,8 +877,12 @@ named one by one.
 A BROADCAST SHALL be refused at class definition when it is named as the
 SOURCE end, naming the path as written, the repeated declaration and its
 class, and saying that a relation's source is one value while the copies
-hold one each. A BROADCAST SHALL likewise be refused as a term of a
-derived coordinate, naming the formula and the path.
+hold one each — with ONE exception: the very broadcast the same relation
+DRIVES, which is not a second value but each copy's READ of itself, and
+which SHALL resolve per copy exactly as the driven end does, under the
+requirement "A relation may name several coordinates at each end". A
+BROADCAST SHALL likewise be refused as a term of a derived coordinate,
+naming the formula and the path.
 
 A path that STOPS on a joint owning several coordinates — `chassis.pose`
 — SHALL be refused at class definition naming the joint and listing its
@@ -906,12 +913,14 @@ child or a descendant of one. Whatever the classes alone decide SHALL
 be refused AT CLASS DEFINITION — an attribute no class along a path
 declares, a node end with the wrong number of joints, a driver as a
 driven end, a path through a list-held child, a broadcast named as the
-source end, a path through two repeated children, `ratio=` or
+source end of a relation that does not drive that same broadcast, a path
+through two repeated children, `ratio=` or
 `offset=` given together with `law=`, and every refusal a GROUP carries:
 a group of fewer than two coordinates, a group inside a group, a
-coordinate named twice in one group or on both sides of one relation, a
+coordinate named twice in ONE group, a
 driven group mixing a broadcast with an end that is not one or naming
-two different repeated segments, a group with `ratio=`/`offset=` or with
+two different repeated segments, a driven group one of whose members the
+source group also names, a group with `ratio=`/`offset=` or with
 no `law=`, `&` over something that is not a coordinate, and `&` over a
 relation — and whatever depends on the
 instance SHALL be refused AT REALIZATION, naming the relation, the path
@@ -1225,6 +1234,36 @@ relation: a law over several symbolic sources publishes several
 expressions, one per driven end, and the operations they lower to are
 those the same bindings written by hand would produce.
 
+A coordinate named BOTH as a source and as a driven end of ONE such
+relation SHALL be a READ of that driven end: the law SHALL be handed its
+owner exactly as it is handed any source's owner, in the position the
+source group writes it, and what the law reads there SHALL be the value
+the coordinate HOLDS and never a value that same application is about to
+give it. Such a relation SHALL be recognized only where an end names
+SEVERAL coordinates, SHALL be applied FORWARD only like any other
+relation of several ends, and SHALL be integrated under the simulation
+requirement "A law may read the coordinate it drives", which is the only
+reading that gives it a meaning.
+
+Such a relation SHALL drive exactly ONE coordinate. A relation whose
+driven end is a GROUP and whose source group names any member of that
+group SHALL be REFUSED at class definition, naming the relation and the
+coordinate, and saying that a relation reading its own driven end drives
+one coordinate — whether that member reads ITSELF or a SIBLING driven end
+of the same group. Where the driven end is a BROADCAST the relation still
+drives one coordinate per copy, and the source group's repeated member —
+the same broadcast — SHALL resolve per copy exactly as the driven end
+does, so each copy reads ITSELF and each copy is its own record. A
+coordinate named twice within ONE group SHALL stay refused, and a read of
+a coordinate some OTHER relation drives SHALL stay the ordinary source it
+has always been.
+
+Under a root that does NOT declare `Time.running()` such a relation SHALL
+be REFUSED by name at the close of the enumeration, naming the relation
+and the class that stated it and saying that a relation reading its own
+driven end states increments, which only a run integrates — rather than
+standing silently inert over a coordinate nothing moves.
+
 #### Scenario: A pawl deflects from two drums
 
 - **WHEN** a position states
@@ -1266,4 +1305,46 @@ those the same bindings written by hand would produce.
   coordinates was already bound by the author's `simulate()`
 - **THEN** the doubly-bound refusal names that coordinate and its two
   binders, and none of the other three was bound
+
+#### Scenario: A coordinate named on both sides is read, not refused
+
+- **WHEN** a class states
+  `(rack & wheel.turn).drives(wheel.turn, law=missing_tooth)` on a root
+  declaring `Time.running()`
+- **THEN** class definition succeeds, the law is called with the rack's
+  owner and the wheel's owner in that order, and the relation's one
+  record names `wheel.turn` as both a source and its driven end
+
+#### Scenario: A driven group with a self-read is refused
+
+- **WHEN** a class states
+  `(crank & lever.swing & pawl.turn).drives((lever.swing, pawl.turn), law=hysteresis)`
+- **THEN** class definition raises naming the relation and the coordinate
+  read, and saying that a relation reading its own driven end drives one
+  coordinate
+
+#### Scenario: Each copy of a broadcast reads itself
+
+- **WHEN** a class declaring `wheels = Wheel().repeat(6)` states
+  `(ring & wheels.turn).drives(wheels.turn, law=missing_tooth)`
+- **THEN** class definition succeeds although the source group names a
+  broadcast, six records are solved, one per copy, and each copy's law
+  read that copy's OWN turn rather than the first copy's
+
+#### Scenario: A coordinate named twice in one group is still refused
+
+- **WHEN** a class states
+  `(rack & wheel.turn & wheel.turn).drives(wheel.turn, law=...)`
+- **THEN** class definition raises naming the relation and the
+  coordinate, because one value would take two positions of the law
+
+#### Scenario: A self-read relation under no running root is refused
+
+- **WHEN** a root declaring no time base, or `Time(loop=4)`, states
+  `(rack & wheel.turn).drives(wheel.turn, law=missing_tooth)` and the
+  tree is rendered
+- **THEN** the enumeration refuses at its close naming the relation and
+  the class that stated it, and says that a relation reading its own
+  driven end states increments, which only a run integrates, and to
+  declare `time = Time.running()`
 

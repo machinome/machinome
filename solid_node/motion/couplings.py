@@ -892,6 +892,22 @@ def _resolve_ends(ref, instance):
     return tuple(member.resolve(instance) for member in _end_refs(ref))
 
 
+def _resolve_sources_per_copy(ref, instance, read):
+    """A SOURCE group's `ResolvedEnd`s per copy, for the relation that
+    drives the broadcast its member at `read` names.
+
+    That member resolves to one copy's coordinate each, exactly as the
+    driven end does, so the two sides land on the SAME slot of the same
+    copy; every other member resolves once and is shared by all of them.
+    """
+    members = _end_refs(ref)
+    per_copy = members[read].resolve_all(instance)
+    columns = [per_copy if index == read
+               else [member.resolve(instance)] * len(per_copy)
+               for index, member in enumerate(members)]
+    return list(zip(*columns))
+
+
 def _resolve_ends_per_copy(ref, instance):
     """This end's per-copy `(copy_node, driven_ends)` pairs, in copy
     order, for a BROADCAST end -- bare or grouped."""
@@ -911,18 +927,56 @@ def _law_argument(ends):
     return tuple(end.node for end in ends)
 
 
-def _refuse_shared_coordinate(driver_ref, driven_ref):
-    """A coordinate named on BOTH sides of a relation naming several
-    ends is refused (proposal.md decision (c)): checked only when either
-    end is several, because a one-to-one `a.drives(a)` is untouched by
-    this cycle."""
-    driver_keys = {ref.key(): ref for ref in _end_refs(driver_ref)}
-    for ref in _end_refs(driven_ref):
-        if ref.key() in driver_keys:
+def _self_read_index(driver_ref, driven_ref):
+    """Which member of the SOURCE group names the relation's one driven
+    end -- the READ of that driven end -- or None where none does.
+
+    A coordinate named on both sides used to be refused here. It is the
+    retained-angle gate: the law is handed that coordinate's owner
+    exactly as it is handed any source's, and what it reads there is the
+    value the coordinate HOLDS (couplings spec, "A relation may name
+    several coordinates at each end"). Recognized only when either end
+    names SEVERAL, because that is this check's own scope and because a
+    relation of several ends is forward only, which is what a self-read
+    must be.
+
+    A driven GROUP is refused: `Edge.increments` walks one plan per
+    driven end, and a member reading a sibling would need that sibling's
+    path while the sibling's own walk is cutting it.
+    """
+    driven_refs = _end_refs(driven_ref)
+    driven_keys = {ref.key(): ref for ref in driven_refs}
+    for index, ref in enumerate(_end_refs(driver_ref)):
+        shared = driven_keys.get(ref.key())
+        if shared is None:
+            continue
+        if len(driven_refs) > 1:
             raise TypeError(
-                f'{ref.described()} is named as both a source and a driven '
-                f'end of one relation: a coordinate is a source or a driven '
-                f'end of one relation, not both.')
+                f'{driver_ref.described()} drives {driven_ref.described()}: '
+                f'{shared.described()} is named both as a source and as one '
+                f'of several driven ends. A relation that reads its own '
+                f'driven end drives ONE coordinate, because each driven end '
+                f'is walked over its own path and a member reading a '
+                f'sibling would need that sibling\'s path while the '
+                f"sibling's own walk is cutting it. State that end as a "
+                f'relation of its own.')
+        return index
+    return None
+
+
+def _under_running_root(record):
+    """Whether the tree this record hangs in is posed by a run.
+
+    A relation that reads its own driven end states INCREMENTS, and only
+    a running root integrates those, so the rest rule and the refusal
+    both turn on the root's declared time base rather than on what owns
+    a slot: at the REST render nothing is run-bound yet.
+    """
+    from solid_node.motion.ports import declared_time
+    from solid_node.node.assembly import top_of
+
+    base = declared_time(type(top_of(record.driven_ends[0].node)))
+    return base is not None and base.mode == 'running'
 
 
 def _the_one_joint(declaration, written):
@@ -1282,6 +1336,10 @@ class Relation:
     _names_in_body = True
     _name = None
     owner = None
+    #: Which member of the source group names this relation's own driven
+    #: end -- the READ of that end -- or None for every other relation.
+    #: Set by `relate`, where the shape is recognized.
+    self_read = None
 
     def __init__(self, driver, driven, ratio, offset, law):
         self.driver = driver
@@ -1342,7 +1400,16 @@ class Relation:
         (design.md sections 3 and 5)."""
         from solid_node.parameters import evaluate
 
-        driver_ends = _resolve_ends(self.driver, instance)
+        if _is_broadcast(self.driven) and self.self_read is not None:
+            # The source group's repeated member IS the broadcast this
+            # relation drives, so it resolves PER COPY exactly as the
+            # driven end does and each copy reads ITSELF.
+            per_copy_sources = _resolve_sources_per_copy(
+                self.driver, instance, self.self_read)
+            driver_ends = ()
+        else:
+            per_copy_sources = None
+            driver_ends = _resolve_ends(self.driver, instance)
         if _is_broadcast(self.driven):
             per_copy = _resolve_ends_per_copy(self.driven, instance)
             if self.callable_law is None:
@@ -1357,18 +1424,23 @@ class Relation:
                 return [RelationRecord(self, driver_ends, driven_ends, law,
                                        copy=copy_node)
                         for copy_node, driven_ends in per_copy]
-            driver_owner = _law_argument(driver_ends)
+            driver_owner = (None if per_copy_sources is not None
+                            else _law_argument(driver_ends))
             records = []
-            for copy_node, driven_ends in per_copy:
+            for index, (copy_node, driven_ends) in enumerate(per_copy):
+                sources = (driver_ends if per_copy_sources is None
+                           else per_copy_sources[index])
+                owner = (driver_owner if per_copy_sources is None
+                         else _law_argument(sources))
                 # Called once per COPY, at realization, with the copy's
                 # own owners: the owner of a driven coordinate under a
                 # broadcast is the copy (couplings spec, "The law of a
                 # relation is an affine pair, or project code passed
                 # in").
-                returned = self.callable_law(driver_owner,
+                returned = self.callable_law(owner,
                                              _law_argument(driven_ends))
                 law = as_law(returned, self.described())
-                records.append(RelationRecord(self, driver_ends, driven_ends,
+                records.append(RelationRecord(self, sources, driven_ends,
                                               law, copy=copy_node))
             return records
         driven_ends = _resolve_ends(self.driven, instance)
@@ -1591,9 +1663,18 @@ def relate(driver, driven, ratio=None, offset=None, law=None):
             'the law, or drop law=.')
     driver_ref = coordinate_ref(driver, 'driver')
     driven_ref = coordinate_ref(driven, 'driven')
-    driver_ref.check('driver')
-    driven_ref.check('driven')
     several = len(_end_refs(driver_ref)) > 1 or len(_end_refs(driven_ref)) > 1
+    read = _self_read_index(driver_ref, driven_ref) if several else None
+    for index, member in enumerate(_end_refs(driver_ref)):
+        if index == read:
+            # The member that names this relation's own driven end is
+            # not a second value to be checked as a source: it is the
+            # READ of that end, and where it is a broadcast it resolves
+            # per copy exactly as the driven end does, each copy reading
+            # ITSELF. The driven check below is the one that validates it.
+            continue
+        member.check('driver')
+    driven_ref.check('driven')
     if several:
         if law is None:
             raise TypeError(
@@ -1601,8 +1682,8 @@ def relate(driver, driven, ratio=None, offset=None, law=None):
                 f'a relation naming several ends carries a law=. An affine '
                 f'law relates one value to one value, and ratio=/offset= '
                 f'are its shorthand, so neither states several ends.')
-        _refuse_shared_coordinate(driver_ref, driven_ref)
     relation = Relation(driver_ref, driven_ref, ratio, offset, law)
+    relation.self_read = read
     record_relation(relation)
     return relation
 
@@ -2130,6 +2211,19 @@ def _step_relation(record, claimed, bound):
         record.direction = 'run'
         return False
 
+    if record.relation.self_read is not None:
+        # A relation that READS its own driven end binds NOTHING at
+        # rest: it states increments, and the rest pose is the author's
+        # own rest-default guard (simulation spec, "A law may read the
+        # coordinate it drives"). Recorded solved FORWARD -- the one
+        # direction a relation of several ends has -- so the enumeration
+        # leaves it alone. Under any other time base it is left unsolved
+        # and `_refuse` names it at the close of the enumeration.
+        if record.direction is not None or not _under_running_root(record):
+            return False
+        record.direction = 'forward'
+        return True
+
     if not several:
         # The n = m = 1 case, unchanged: either direction, whichever end
         # is bound.
@@ -2313,6 +2407,16 @@ def _refuse(assembly, records, derived, wirings):
             continue
         driver_ends = record.driver_ends
         driven_ends = record.driven_ends
+        if record.relation.self_read is not None:
+            raise CouplingError(
+                f'{record.described()}, stated by {assembly.__class__.__name__}'
+                f': it reads {driven_ends[0].described()}, the coordinate it '
+                f'drives, and a relation that reads its own driven end states '
+                f'INCREMENTS -- how far the coordinate moves for its sources\' '
+                f'movement -- which only a run integrates. Declare '
+                f'time = Time.running() on the root, or state the law over '
+                f'other sources. It is refused rather than left standing '
+                f'inert over a coordinate nothing moves.')
         if len(driver_ends) > 1 or len(driven_ends) > 1:
             unbound_sources = [end for end in driver_ends if not end.bound()]
             bound_driven = [end for end in driven_ends if end.bound()]

@@ -227,3 +227,37 @@ class CoverageGuardTest(TestCase):
         missing = uncovered_features(machines)
         self.assertIn('a stop reached by the motion of what a bound reads',
                       missing)
+
+    def test_a_corpus_with_no_self_read_law_is_refused(self):
+        from tools.generate_running_corpus import uncovered_features
+
+        machines = [entry for entry in corpus()['machines']
+                    if entry['name'] not in ('Clearing', 'StoppedClearing')]
+        missing = uncovered_features(machines)
+        self.assertIn('a law that reads the coordinate it drives', missing)
+        self.assertIn('a self-read coordinate holding at its gate while '
+                      'its input moves on', missing)
+        self.assertIn('a tick carrying both a self-read crossing and a stop',
+                      missing)
+
+    def test_a_corpus_whose_dial_never_holds_at_its_gate_is_refused(self):
+        from tools.generate_running_corpus import uncovered_features
+
+        # Every machine kept, but no tick in which a dial HOLDS while the
+        # input that reaches it goes on moving: the corpus still states
+        # the law and still loses the one behaviour a version 5 consumer
+        # cannot reproduce.
+        machines = []
+        for entry in corpus()['machines']:
+            copy = dict(entry)
+            copy['ticks'] = [dict(tick, bank=dict(tick['bank']))
+                             for tick in entry['ticks']]
+            for index, tick in enumerate(copy['ticks']):
+                for identifier in ('wheel.turn',):
+                    if identifier in tick['bank']:
+                        tick['bank'][identifier] += index
+            machines.append(copy)
+        missing = uncovered_features(machines)
+        self.assertIn('a self-read coordinate holding at its gate while '
+                      'its input moves on', missing)
+        self.assertNotIn('a law that reads the coordinate it drives', missing)

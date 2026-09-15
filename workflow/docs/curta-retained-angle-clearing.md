@@ -5,6 +5,12 @@ pilot on 2026-09-15. This records a project need and a reproduced limitation;
 it does not ratify an API, authorize a solver redesign, or claim that the
 tested expression is the only possible representation.
 
+**Taken up** as OpenSpec change `read-the-driven-coordinate` (ADR-121) on
+2026-09-15: the refused sentence below is a READ of the driven end, integrated
+piece by piece from the retained value. The project-side migration (item 9)
+and the viewer's execution of a version 6 document (item 8) remain open, each
+in its own repository.
+
 ## Required outcome
 
 A maker sweeps the Curta's clearing ring. Each number wheel turns only while

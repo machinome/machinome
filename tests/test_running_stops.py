@@ -39,6 +39,7 @@ from .running_project.machine import (ConstantBound, UnusedRead,
                                       PawlRatchet, PortRead, Ratchet,
                                       RatchetBody, Shared, SharedBody,
                                       StopAndJump, StopAndJumpBody,
+                                      StoppedClearing,
                                       StoppedDifferential, Swept, SweptBody,
                                       SweptWide, Train, TwoStops, TwoStopsBody)
 
@@ -956,3 +957,61 @@ class ConstraintCostTest(BaseNodeTest):
         self.assertLess(blocking, 64 * 4 + 64 * 4 + 8 * 4)
         idle = self.graph_evaluations(sim, 1)
         self.assertLess(idle, blocking)
+
+
+class SelfReadStopTest(BaseNodeTest):
+    """A stop and a self-read crossing in one tick.
+
+    OpenSpec change ``read-the-driven-coordinate``: a self-read crossing
+    is NOT a stop -- it stops no input and retires no command -- while a
+    declared range on the same coordinate still is, and wins where both
+    fall in one segment.
+    """
+
+    def test_an_unrelated_stop_and_a_gate_crossing_share_one_tick(self):
+        sim = Sim(StoppedClearing(), 1.0, record=8)
+        ring = sim.move('ring', by=600.0, duration=1.0)
+        gauge = sim.move('gauge_in', by=100.0, duration=1.0)
+        sim.run(1.0)
+
+        self.assertEqual(sim.state['gauge.turn'], 40.0)
+        self.assertEqual(sim.state['wheel.turn'], 359.5)
+        self.assertEqual(ring.status, 'completed')
+        self.assertEqual(gauge.status, 'blocked')
+        self.assertEqual([stop.coordinate for stop in sim.stops],
+                         ['gauge.turn'])
+        # The crossing is recorded at its fraction OF THE TICK, not of
+        # the segment the stop cut the tick into.
+        gate = [entry for entry in sim.crossings
+                if entry.coordinate == 'wheel.turn']
+        self.assertTrue(gate)
+        for entry in gate:
+            with self.subTest(crossing=entry):
+                self.assertEqual(entry.tick, 1)
+                self.assertTrue(0.0 < entry.t < 1.0)
+        # The cut at which the dial reached its gap: ring 351.5 of the
+        # tick's 600, which is 0.58583... of the TICK even though the
+        # gauge's stop cut the tick at 0.4.
+        self.assertTrue(any(abs(entry.t - 0.5858333333333333) < 1e-9
+                            for entry in gate))
+
+    def test_a_bound_wins_over_a_landing_the_same_segment_reported(self):
+        sim = Sim(StoppedClearing(), 1.0, record=8)
+        ring = sim.move('ring', by=600.0, duration=1.0)
+        setter = sim.move('setter', by=100.0, duration=1.0)
+        sim.run(1.0)
+
+        # The gate cut the segment and placed the dial at the band's
+        # edge; the setter then carried it on to its declared bound,
+        # which is a bound of the coordinate itself and takes it AT the
+        # bound exactly.
+        self.assertEqual(sim.state['wheel.turn'], 400.0)
+        self.assertEqual([stop.coordinate for stop in sim.stops],
+                         ['wheel.turn'])
+        self.assertEqual(sim.stops[0].value, 400.0)
+        self.assertEqual(sorted(sim.stops[0].inputs), ['ring', 'setter'])
+        self.assertEqual(ring.status, 'blocked')
+        self.assertEqual(setter.status, 'blocked')
+        gate = [entry for entry in sim.crossings
+                if entry.coordinate == 'wheel.turn']
+        self.assertTrue(any(entry.t < sim.stops[0].t for entry in gate))

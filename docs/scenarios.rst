@@ -310,6 +310,97 @@ crossing bisected; a level quantity that turns twice inside one
 sub-interval is outside that guarantee, and the answer to it is a smaller
 ``dt``.
 
+A law that reads the coordinate it drives
+`````````````````````````````````````````
+
+Every law above is a function of coordinates OTHER than the one it
+drives. Some mechanisms are not: whether a rack turns a dial can depend
+on where that dial itself is standing. The Curta is cleared by sweeping a
+ring carrying two nine-tooth racks past the register dials, and a rack
+turns a dial only while its teeth reach it AND the dial is not already
+standing at its missing-tooth zero. Name the coordinate on BOTH sides of
+one relation and the law READS it:
+
+.. code-block:: python
+
+    def missing_tooth(sources, target):
+        def law(ring, wheel):
+            shifted = wheel + GAP
+            return ring * (shifted - 360 * floor(shifted / 360) >= 2 * GAP)
+        return law
+
+    (ring & wheel.turn).drives(wheel.turn, law=missing_tooth)
+
+The law is handed that coordinate's owner exactly as it is handed any
+source's, and what it reads there is the value the coordinate HOLDS —
+never a value the same application is about to give it. So a dial swept
+from any digit runs to its gap and stops; the ring goes on sweeping past
+it to reach the dials beyond; releasing the ring part way keeps the
+partial clearing, and resuming continues from there; and sweeping an
+already-cleared dial does not turn it again.
+
+**The read must be a SWITCH.** With every jump node replaced by its
+branch — the skeleton the jump plan already builds — the law must no
+longer name the driven coordinate. A read that survives the skeleton
+enters the law continuously, which makes the relation a differential
+equation that ``f(end) - f(start)`` does not define, and it is refused at
+construction naming the relation. ``%`` alone is not a switch: with the
+quotient fixed, ``a % b`` reads ``a - q·b``, which still carries the
+coordinate's slope. Pass the read through ``floor``, ``ceil``, ``sign``
+or a comparison.
+
+**The tick is integrated in two layers.** The jump nodes that do NOT
+depend on the driven coordinate partition the path exactly as any other
+law's do, their branches read at the midpoints. Inside each of those
+pieces the nodes that DO depend on it are WALKED: their branches are
+read at the piece's LEFT END, with the driven coordinate at the value it
+retains there and every other source at that same fraction; with the
+branches fixed the coordinate's own path is an ordinary evaluation; the
+piece is cut at the first surface any dependent level reaches; and the
+next piece is decided the same way. A law with no self-read takes the
+path above with nothing rebuilt at all.
+
+**After a cut the coordinate is committed at the FAR SIDE of the
+surface**, at the nearest representable value — the same rule as "a
+stopped coordinate is committed AT its bound exactly", transposed to a
+surface that is not stated in the coordinate's own units. That is what
+makes a dial that reached its gap read the same branch on every later
+tick, whatever the ring does, and survive a snapshot and a restore bit
+for bit.
+
+**A gate's disengaged state must have WIDTH**, and the width is the
+mechanism's own clearance. A missing tooth is a GAP: a band about the
+zero, entered from either side, so the dial stops at the edge it arrives
+at — the lower one swept forward, the upper one swept backward. Write the
+clearance as the band's half-width, as ``GAP`` does above. A gate whose
+disengaged state is a single value of the coordinate — ``wheel % 360 >
+0`` — is not a gap: it holds only where the far side of its surface
+happens to be the disengaged region, and the framework cannot tell a
+knife edge from a band, because the distinction is numeric and not
+syntactic. State the width.
+
+Three more things follow:
+
+* **the dial's rest value is the author's own.** Such a relation binds
+  NOTHING at rest, so the dial declares its rest default in the guarded
+  ``simulate()`` idiom, and a dial with none is refused at construction
+  by the run's "needs a rest value for every joint coordinate";
+* **it drives ONE coordinate.** A driven GROUP one of whose members the
+  source group names — itself or a sibling — is refused at class
+  definition. A broadcast is admitted: each copy is its own record with
+  one driven end reading itself;
+* **it needs a run.** Under any other time base the relation is refused
+  by name at the close of the enumeration: it states increments, and only
+  a run integrates those.
+
+A cut of a self-read law is a CROSSING, not a stop: it stops no input and
+retires no command. A declared range on the same coordinate still stops
+it, exactly as it stops any other, and wins where both fall in one
+segment. And a document whose program carries such a law is a **version
+6** document, because a consumer that read it as ``f(end) - f(start)``
+would have the read at both ends, freeze the branch and move the part by
+a different mechanism in silence.
+
 A range is a physical stop
 --------------------------
 
@@ -480,9 +571,10 @@ Each of these is refused by name, and each is a later cycle's to lift:
   unconditionally — that is a law written imperatively, and it belongs in
   a relation. The rest-default idiom, binding under ``if ... is None``,
   keeps working: it binds once, at the rest render;
-* a range bound naming a SECOND coordinate. A bound is an expression over
-  the joint's own coordinate; a pawl lift releasing a ratchet needs a
-  declaration that says what it reads, and that is a later cycle's.
+* a law that READS the coordinate it drives CONTINUOUSLY — one whose
+  skeleton still names it, a bare ``%`` included. The read must pass
+  through a node that is piecewise constant in it; anything else is a
+  differential equation, not an increment.
 
 A tick that refuses commits nothing: the bank, the tick count and the
 posed tree stand as they were, and the commands that moved an input in

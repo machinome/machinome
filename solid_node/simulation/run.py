@@ -39,8 +39,8 @@ from solid_node.motion.ports import RunBinder, get_coordinate
 
 from .driver import RampProgram
 from .program import (CLOCK_NAME, Constraint, compile_program,
-                      qualified_coordinates, Stop, TooManyCrossings,
-                      UnsupportedLaw, _BISECTION_ROUNDS,
+                      LandingInvariantError, qualified_coordinates, Stop,
+                      TooManyCrossings, UnsupportedLaw, _BISECTION_ROUNDS,
                       _CROSSING_TOLERANCE, _SUBDIVISIONS)
 
 
@@ -309,6 +309,11 @@ class Run:
         for identifier, (node, name) in coordinates.items():
             self.keys[identifier] = ('slot', id(get_coordinate(node, name)))
         self.bank_keys = set(self.keys.values())
+        # The way back, for the one absolute value a propagation reports
+        # beside its increments: where a law READ the coordinate it
+        # drives and a cut placed it, the tick commits that float.
+        self.identifiers = {key: identifier
+                            for identifier, key in self.keys.items()}
         self.spans = self.program.spans
 
         self.initial = self.snapshot()
@@ -553,10 +558,12 @@ class Run:
                 values = self._values(staged)
                 deltas = self._deltas(scaled)
                 found = None if crossings is None else []
-                self._pass(values, deltas, found, tick)
+                landings = {}
+                self._pass(values, deltas, found, tick, landings)
                 committed = {
                     identifier: value + deltas.get(self.keys[identifier], 0.0)
                     for identifier, value in staged.items()}
+                self._landed(committed, landings)
                 reached = self._reached(staged, committed, bounds,
                                         values, scaled)
                 if not reached:
@@ -577,10 +584,12 @@ class Run:
                            for input_id, delta in scaled.items()}
                 deltas = self._deltas(segment)
                 found = None if crossings is None else []
-                self._pass(values, deltas, found, tick)
+                landings = {}
+                self._pass(values, deltas, found, tick, landings)
                 committed = {
                     identifier: value + deltas.get(self.keys[identifier], 0.0)
                     for identifier, value in staged.items()}
+                self._landed(committed, landings)
 
                 blocked = set()
                 for _where, identifier, side, bound in event:
@@ -622,7 +631,7 @@ class Run:
                 stopped |= blocked
                 start = boundary
         except (RunConflict, TooManyCrossings, UnsupportedLaw,
-                StopInvariantError):
+                StopInvariantError, LandingInvariantError):
             # A tick that fails commits nothing, every segment of it
             # included.
             self._refuse(moved)
@@ -649,7 +658,24 @@ class Run:
             self.crossing_ring.extend(crossings)
             self.stop_ring.extend(stops)
 
-    def _pass(self, values, deltas, found, tick):
+    def _landed(self, committed, landings):
+        """A coordinate whose own law READ it and whose walk took at
+        least one cut is committed at the value that walk LEFT it at.
+
+        `value + delta` is not enough on its own: `x + (y - x) != y` for
+        about six pairs of floats in a hundred, so an exact landing
+        inside the plan would still be a ulp out in the bank the next
+        tick starts from -- and a ulp back toward the surface is the
+        ENGAGED side of the gate. Applied where the segment already
+        writes an absolute value for a stop, and BEFORE the stops are
+        located, so a stop on the same coordinate in the same segment
+        overwrites it: a physical bound is a bound of the coordinate
+        itself.
+        """
+        for key, value in landings.items():
+            committed[self.identifiers[key]] = value
+
+    def _pass(self, values, deltas, found, tick, landings=None):
         """ONE propagation over the compiled program: the whole of cycles
         1 and 2's tick, unchanged, over whatever stretch `deltas`
         describes.
@@ -667,7 +693,8 @@ class Run:
                     raise RunConflict(self._conflict(
                         edge, predicted, received))
                 continue
-            for key, delta in edge.increments(values, deltas, found, tick):
+            for key, delta in edge.increments(values, deltas, found, tick,
+                                              landings):
                 if key in determined and not _agree(deltas[key], delta):
                     raise RunConflict(self._disagreement(edge, key, delta))
                 deltas[key] = delta

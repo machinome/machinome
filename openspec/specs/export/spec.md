@@ -586,15 +586,34 @@ values and restore driver bindings according to the existing symbolic mode.
 
 ### Requirement: A running root's document publishes the compiled program
 
-A document declaring `version: 5` SHALL carry a top-level `program` object,
+A document declaring `version: 5` OR ABOVE SHALL carry a top-level
+`program` object,
 beside `drivers`, `instructions` and `bindings` and ahead of `root`, holding
 what COMPILE TIME decided about the machine and nothing the tick computes.
+
 Every expression it carries SHALL be written in the document's existing
 expression language and SHALL participate in the same ordered `bindings`
 table the tree's expressions use, so no subexpression is published twice and
 no producer-local sharing syntax appears anywhere in the document. The
 object SHALL be ordered deterministically for a given tree, so republishing
 an unchanged model produces a byte-identical document.
+
+The producer SHALL declare `version: 6` for a program at least one of whose
+LAW edges names one of its own `gives` among its `needs` — a law that reads
+the coordinate it drives — and `version: 5` for a program with none, whose
+document SHALL be byte-identical to the one it published before this rule
+existed. The shape of the document SHALL NOT otherwise change: the self-read
+is `needs ∩ gives`, no key is added for it, and the free names of a law
+edge's expressions SHALL still be exactly the ids in `needs`. The bump is
+what a consumer needs, because a runtime that evaluates a law edge as the
+difference of its two endpoint evaluations would read the self-read at BOTH
+ends, freeze the branch it selects and move the part by a different
+mechanism without saying so. Where such an edge's driven coordinate ends a
+tick at a crossing, what it is COMMITTED at is behaviour rather than a
+document key: a runtime that commits it a single float short of the far
+side re-engages the gate and diverges from the corpus's bank on a LATER
+tick, far outside the agreement window, which is where that rule is
+pinned.
 
 `program` SHALL carry:
 
@@ -763,6 +782,32 @@ run's binder is restored afterwards.
   expression actually reads, its own coordinate not appearing in it --
   every one of them a key of `program.coordinates`, and the document's
   version is `5`
+
+#### Scenario: A program with a self-read law is a version 6 document
+
+- **WHEN** a running root states
+  `(ring & wheel.turn).drives(wheel.turn, law=missing_tooth)` and is
+  exported
+- **THEN** the document declares `version: 6`, the law edge's `needs`
+  holds `ring` and `wheel.turn` and its `gives` holds `wheel.turn`, the
+  expression's free names are exactly those in `needs`, and no key was
+  added to `program` for the read
+
+#### Scenario: A program with no self-read law is unchanged
+
+- **WHEN** a running root that declares no self-read law is exported
+  before and after this change
+- **THEN** both documents declare `version: 5` and are byte-identical,
+  the program's ordering and its minted names included
+
+#### Scenario: A self-read law publishes its plan like any other
+
+- **WHEN** the same self-read law gates on
+  `(wheel + g) - 360 * floor((wheel + g) / 360) >= 2 * g`
+- **THEN** its edge carries one plan whose `jumps` hold the `floor` node
+  over `(wheel.turn + g) / 360` and the comparison over the remainder,
+  each marked affine, and whose `skeleton` does not name `wheel.turn` at
+  all
 
 #### Scenario: The program's expressions share the document's bindings
 
@@ -1041,7 +1086,10 @@ a tick, a bound stated as an expression, a bound reading another
 coordinate, a stop reached by the motion of what a bound reads — one whose
 coordinate holds the same value before and after its tick — a command
 retired `blocked`, a rate, a snapshot and restore, an instruction in each
-of its two forms, and a tick carrying both a crossing and a stop. The framework's suite SHALL test
+of its two forms, a tick carrying both a crossing and a stop, a law that
+READS THE COORDINATE IT DRIVES — one whose driven coordinate holds at its
+gate while the input that reached it goes on moving — and a tick in which a
+self-read crossing and a stop both fall. The framework's suite SHALL test
 that refusal directly, so the corpus's width is visible without running the
 generator.
 
@@ -1079,6 +1127,13 @@ cannot drift from the producer it claims to come from.
 - **WHEN** the generator is asked to write a corpus whose machines declare
   no bound reading another coordinate, or record no stop whose coordinate
   did not move
+- **THEN** it refuses naming the uncovered feature and writes nothing
+
+#### Scenario: A corpus missing a law that reads its own driven coordinate is refused
+
+- **WHEN** the generator is asked to write a corpus none of whose machines
+  states a law reading the coordinate it drives, or none of whose ticks
+  holds such a coordinate at its gate while the input reaching it moves on
 - **THEN** it refuses naming the uncovered feature and writes nothing
 
 ### Requirement: A running document publishes the controls its parts carry

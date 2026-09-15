@@ -31,12 +31,16 @@ from solid_node.motion.ports import get_coordinate
 from solid_node.simulation import Instruction, RunConflict, Sim, UnsupportedLaw
 
 from .base import BaseNodeTest
-from .running_project.machine import (Backwards, Differential, Follower,
+from .running_project.machine import (Backwards, Clearing, ContinuousRead,
+                                      Differential, Follower,
                                       Guarded, HandBound, LoopingTrain,
-                                      Opaque, Ranged, RangedExact, Sixfree,
+                                      Opaque, PlainClearing, PortSelfRead,
+                                      Ranged, RangedExact, RemainderRead,
+                                      Sixfree,
                                       SpringBank, SpringBankBody, StatedBelow,
                                       Stdlib, Stepped, SteppedBody, Stepper,
-                                      Train, TrainBody, Unbound)
+                                      Train, TrainBody, Unbound,
+                                      UnrestedClearing)
 
 
 def reads(node, name):
@@ -1038,3 +1042,139 @@ class StatedBelowRunTest(BaseNodeTest):
         self.assertEqual(sim.state, state)
         sim.run(0.2)
         self.assertEqual(sim.state, state)
+
+
+class SelfReadRestTest(BaseNodeTest):
+    """A law that READS the coordinate it drives, at REST and at
+    COMPILE (OpenSpec change `read-the-driven-coordinate`).
+
+    What the run does with the read is `tests/test_running_reads.py`.
+    """
+
+    def test_the_relation_binds_nothing_at_rest(self):
+        # The REST render itself: no run owns the tree yet, so this is
+        # the pose `Sim` reads the initial bank off.
+        rest = Clearing()
+        rest.set_state(setter=0.0, ring=500.0, time=0.0)
+        record = rest.__dict__['_relations'][0]
+
+        self.assertEqual(record.direction, 'forward')
+        self.assertEqual(reads(rest.wheel, 'turn'), 108.0)
+
+        node = Clearing()
+        sim = Sim(node, 0.1)
+        self.assertEqual(sim.state['wheel.turn'], 108.0)
+
+    def test_the_guarded_rest_default_survives(self):
+        node = Clearing(digit=252.0)
+        sim = Sim(node, 0.1)
+
+        self.assertEqual(sim.state['wheel.turn'], 252.0)
+        self.assertEqual(reads(node.wheel, 'turn'), 252.0)
+
+    def test_a_self_read_with_no_rest_default_is_refused(self):
+        with self.assertRaises(ValueError) as caught:
+            Sim(UnrestedClearing(), 0.1)
+
+        message = str(caught.exception)
+        self.assertIn('wheel.turn', message)
+        self.assertIn('needs a rest value for each', message)
+
+    def test_the_fixture_compiles(self):
+        sim = Sim(Clearing(), 0.1)
+
+        edges = [edge for edge in sim.program.edges if edge.kind == 'law']
+        self.assertEqual(len(edges), 1)
+        edge = edges[0]
+        self.assertIn(edge.gives[0], edge.needs)
+
+    def test_a_law_whose_skeleton_still_names_the_read_is_refused(self):
+        for machine in (ContinuousRead, RemainderRead):
+            with self.subTest(machine=machine.__name__):
+                with self.assertRaises(UnsupportedLaw) as caught:
+                    Sim(machine(), 0.1)
+                message = str(caught.exception)
+                self.assertIn('wheel.turn', message)
+                self.assertIn(machine.__name__, message)
+                self.assertIn('PIECEWISE CONSTANT', message)
+                self.assertIn('remainder', message)
+
+    def test_a_self_read_of_a_coordinate_the_run_does_not_bank_is_refused(self):
+        with self.assertRaises(UnsupportedLaw) as caught:
+            Sim(PortSelfRead(), 0.1)
+
+        message = str(caught.exception)
+        self.assertIn('wheel.turn', message)
+        self.assertIn('retained value is a history', message)
+
+    def test_reaching_inputs_ignores_a_self_need(self):
+        sim = Sim(Clearing(), 0.1)
+        key = sim._run.keys['wheel.turn']
+
+        self.assertEqual(sorted(sim.program.sources[key]),
+                         ['ring', 'setter'])
+
+    def test_the_identity_names_what_the_law_reads(self):
+        reading = Sim(Clearing(), 0.1)
+        plain = Sim(PlainClearing(), 0.1)
+
+        self.assertIn('wheel.turn', reading.program.described())
+        self.assertNotEqual(reading.program.identity, plain.program.identity)
+        with self.assertRaises(ValueError):
+            plain.restore(reading.snapshot())
+
+    def test_the_compiled_read_is_the_relation_s_declared_one(self):
+        """ONE definition of the self-read: the compile takes it off the
+        record the class definition wrote, not off a second derivation of
+        its own."""
+        node = Clearing()
+        sim = Sim(node, 0.1)
+        relation = node.__dict__['_relations'][0].relation
+
+        # `(setter & ring & wheel.turn).drives(wheel.turn, ...)`: the
+        # third member of the source group is the read.
+        self.assertEqual(relation.self_read, 2)
+
+        edge = [edge for edge in sim.program.edges if edge.kind == 'law'][0]
+        self.assertEqual(len(edge.gives), 1)
+        self.assertEqual(edge.gives[0], edge.needs[relation.self_read])
+        self.assertEqual([reading is not None for reading in edge.retained],
+                         [True])
+
+    def test_naming_the_driven_coordinate_two_ways_is_refused(self):
+        """The child standing for its one joint on one side and the
+        coordinate on the other: two spellings, two declaration keys, one
+        slot. The class definition sees no self-read, so the rest rule
+        does not apply and the REST render refuses the relation against
+        the author's own guard -- which is why a running machine never
+        reaches the compile with the two disagreeing. The compile's own
+        slot comparison stands behind this as a backstop for the
+        invariant."""
+        from solid_node.node import AssemblyNode
+        from solid_node.motion.ports import Time
+        from solid_node.parameters import Angle
+        from solid_node.simulation import Driver
+
+        from .running_project.machine import missing_tooth_pair
+        from .running_project.parts import Arbor
+
+        class Aliased(AssemblyNode):
+            time = Time.running()
+            digit = Angle(108.0)
+            ring = Driver(default=0.0, unit='deg')
+            wheel = Arbor()
+
+            (ring & wheel).drives(wheel.turn, law=missing_tooth_pair)
+
+            def simulate(self):
+                if self.wheel.turn.value is None:
+                    self.wheel.turn = self.digit
+
+        self.assertIsNone(Aliased._declared_relations[0].self_read)
+
+        with self.assertRaises(DoublyBound) as caught:
+            Sim(Aliased(), 0.1)
+
+        message = str(caught.exception)
+        self.assertIn('wheel.turn', message)
+        self.assertIn("the author's simulate()", message)
