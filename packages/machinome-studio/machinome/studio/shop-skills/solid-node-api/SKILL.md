@@ -1492,6 +1492,64 @@ coordinate unmoved. Use a joint range to express a physical stop. Multiple
 contributions to one coordinate belong in one multi-source law, not two
 competing bindings; inputs are never back-driven.
 
+**A gate may read the coordinate it drives** (ADR-121). Name the driven
+coordinate in the source group as well, and the law is handed its owner
+like any source's; what it reads there is the value the coordinate HOLDS
+at the start of each piece of the tick, never a value the same piece is
+computing:
+
+```python
+from solid_node.math import floor
+
+GAP = 0.5   # the gap's half-width in wheel degrees: the mechanism's clearance
+
+def missing_tooth(sources, target):
+    def law(ring, wheel):
+        shifted = wheel + GAP
+        engaged = shifted - 360 * floor(shifted / 360) >= 2 * GAP
+        return ring * engaged
+    return law
+
+class Register(AssemblyNode):
+    time = Time.running()
+    ring = Driver(default=0, unit='deg')
+    wheel = Dial()   # declares turn = Revolute(...)
+    (ring & wheel.turn).drives(wheel.turn, law=missing_tooth)
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = 108   # the rest value is the author's
+```
+
+The dial turns while the ring's rack reaches it and it is not standing in
+its gap; a released ring keeps the partial clearing, a second sweep moves
+a cleared dial by nothing, and each dial of a register is its own
+relation with its own read. The rules: the read must be a SWITCH (with
+every jump replaced by its branch the law must no longer name the
+coordinate, so `ring * wheel` and `ring * (wheel % 360)` are refused;
+pass the read through `floor`, `ceil`, `sign` or a comparison); the
+relation drives exactly ONE coordinate (a driven group naming one of its
+own members is refused; a `.repeat()` broadcast resolves per copy but a
+repeated child's joint cannot be banked by a run yet); the driven end
+must be a joint coordinate the run banks, not a plain port; the relation
+binds NOTHING at rest, so give the joint its rest value in the guarded
+`simulate()` idiom above or construction refuses it; and it is refused
+under any time base but `Time.running()`. State the disengaged region
+as a BAND with the mechanism's own width, centred on the zero and
+entered from either side, as `GAP` does: after a cut the run commits the
+coordinate at the nearest representable value on the far side of the
+surface, so a dial standing in its gap reads the same branch on every
+later tick and survives snapshot/restore bit for bit, and a sweep in
+either direction stops at the band's edge. A gate whose disengaged state
+is a single value (`wheel % 360 > 0`) has no width and is not promised
+to hold. A crossing of such a gate is a crossing, never a stop; a joint
+range on the same coordinate still stops it. A `clamp01` station window
+in the same law makes the law's skeleton non-affine, so every crossing is
+searched rather than solved (measured about thirty times slower per
+tick). A document whose program carries such a law declares version 6,
+which the installed viewer (document versions 1-5) refuses until its own
+cycle lands.
+
 **Stops and precision.** A joint's inclusive range is a physical stop.
 Travel beyond it stops at the bound and blocks only inputs whose movement
 actually pushes that coordinate; independent or disengaged inputs keep
