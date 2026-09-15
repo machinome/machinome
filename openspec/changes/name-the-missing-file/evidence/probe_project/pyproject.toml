@@ -1,0 +1,3 @@
+# A throwaway Solid project used only by the probes of this change.
+[tool.solid-node]
+model = "parts:MissingStl"
