@@ -2768,6 +2768,45 @@ and the shape item 9 needs is stated in the change's design.md §12.
 
 # select-the-source (2026-09-15, found while fixing)
 
+## Originating Curta follow-up: seconds per Python tick (2026-09-15)
+
+**Status: recorded; triage open.** The pilot explicitly chose to keep
+implementing the Python Curta, not prepare a performance handoff or start a
+framework fix. No viewer performance claim is made here.
+
+- **Symptom:** the source-backed `OperatingCurta` runs correctly in the
+  exercised addition, carry, release/replay and clearing cases, but Python
+  stepping is not interactive. The project must use bounded timing probes
+  and wait minutes for a short mechanical regression.
+- **Evidence:** framework `0b0f02ae743f4143fb235b0b0dba59d7f48d05ec`
+  (ADR-122), project `Calculators/Curta-Type-I-3x`, `direct-operation`
+  implementation in progress above `6a00abe`. From that project, with the
+  workspace venv, `PYTHONPATH="$PWD" OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
+  ../../../.venv/bin/python -m simulation.tools.running_probe --ticks 3`
+  measured construction at 4.973 s and three 0.1-s simulation ticks at
+  **3.3797, 2.9304, 3.3858 s** wall time. The ten tests in
+  `simulation.test_running`, `simulation.test_running_laws`, and
+  `simulation.test_running_clearing` passed in **528.874 s**. There are 17
+  retained dials and 15 retained carry sliders, with carriage-selected
+  physical associations and own-coordinate clearing/latch comparisons.
+  Runtime stack samples repeatedly visited crossing-search expression
+  evaluation; they do not establish a complete cost attribution.
+- **Workaround:** keep inactive own-read comparison levels away from their
+  boundary without changing active mechanical thresholds; use bounded
+  probes while developing. Expanding piecewise profiles into comparison
+  expressions was tried and reverted after increasing tick time to roughly
+  9–11 s. No arithmetic shortcut or alternate state bank was substituted.
+  Reproduction and current limitations live in the project's
+  `simulation/docs/direct-operation-implementation-2026-09-15.md`.
+- **Skill text this would delete:** none identified. This is an empirical
+  usability/performance finding extending the searched-crossing findings
+  above, not a proposed new capability or a measured viewer failure.
+- **Proposed interface:** none. Preserve the current retained-state,
+  selection, stop and transactional semantics; optimization strategy and
+  performance acceptance criteria remain unratified.
+
+## Findings from the framework cycle
+
 Findings outside that cycle's ratified scope, from
 `openspec/changes/select-the-source/tasks.md` 10.1, `design.md` (§2, §7,
 §10 and "Risks / Trade-offs") and `evidence.md` ("Out of scope, found while
