@@ -117,3 +117,17 @@ class AdmittedLeakyPart(StlNode):
 
     stl_source = 'leaky.stl'
     require_watertight = False
+
+
+class AbsentBracket(StlNode):
+    """A declared mesh that was never fetched. Constructed nowhere but
+    `tests/test_missing_source_file.py`, which owns this class (and the
+    directory `DirectoryBracket` below names) so it can pass alone."""
+
+    stl_source = 'no-such-bracket.stl'
+
+
+class DirectoryBracket(StlNode):
+    """A declared source that resolves to a directory, not a file."""
+
+    stl_source = 'a_directory'

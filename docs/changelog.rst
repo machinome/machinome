@@ -8,6 +8,20 @@ Changelog
 Unreleased
 ----------
 
+**A source-bound leaf names its missing file.** ``StlNode``, ``StepNode``,
+``JScadNode`` and ``OpenScadNode`` each bind a node to a file outside
+Python; a declared file that was not there used to construct without
+complaint and fail later, deep inside ``mtime_ns``, with a bare
+``FileNotFoundError`` naming only the path — and a declared file that
+turned out to be a directory was not caught at all, failing instead
+inside trimesh or the STEP reader. Each of the four now refuses at
+construction, naming the class, the declaring attribute and its declared
+value, and the absolute path the declaration resolved to; a path that
+exists but is not a regular file refuses the same way, saying so. A
+source removed after its node was constructed is unaffected: that is
+still a currency question, answered by ``mtime_ns`` exactly as before.
+Originating project: ``Internal-Cycloidal-Actuator``.
+
 **A read is not a binding: a child's relation the root only reads
 publishes.** A relation an assembly declares into its OWN leaf's joint,
 whose value a relation the ROOT declares then reads to drive another

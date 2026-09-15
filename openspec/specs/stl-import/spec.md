@@ -16,6 +16,14 @@ geometry-affecting code (`adjust`, `body`); editing the wrapper SHALL
 invalidate the node's artifacts. A subclass without `stl_source` SHALL
 fail at construction with an error naming the class.
 
+A subclass whose `stl_source` names a file that does not exist SHALL also
+fail at construction, with an error naming the class, `stl_source` and the
+value declared on it, and the absolute path the declaration resolved to; a
+`stl_source` resolving to something that exists but is not a regular file
+SHALL fail the same way, saying so. Neither failure SHALL substitute a
+placeholder mesh, and neither SHALL be deferred to the moment the mesh is
+read.
+
 #### Scenario: The declared file resolves relative to the wrapper module
 
 - **WHEN** an `StlNode` subclass in `parts/bracket.py` declares
@@ -43,6 +51,21 @@ fail at construction with an error naming the class.
   instantiated
 - **THEN** an error is raised naming the class and the missing
   attribute
+
+#### Scenario: A declared mesh that is not there fails at construction
+
+- **WHEN** an `StlNode` subclass whose `stl_source` names a file that does
+  not exist is instantiated
+- **THEN** an error is raised naming the class, `stl_source` and its
+  declared value, and the absolute path resolved from it, and no mesh is
+  read and no artifact is written
+
+#### Scenario: A stl_source naming a directory fails at construction
+
+- **WHEN** an `StlNode` subclass whose `stl_source` resolves to a directory
+  is instantiated
+- **THEN** an error is raised saying the path is not a file, naming the class
+  and `stl_source`, rather than the mesh loader failing on it later
 
 ### Requirement: Materialized artifact
 

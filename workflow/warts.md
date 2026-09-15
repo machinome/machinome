@@ -248,13 +248,23 @@ Run every project suite with `solid test --faceted`.
   so the workaround openvmp relies on is weaker than recorded; and the
   BREP had to be written before the STL or the mesher's triangulation
   leaked into it.
-- `StepNode` (ADR-078) is on main too. Finding, not filed as
-  a cycle: a `StepNode` whose `step_source` is absent constructs fine and
-  fails later inside `mtime_ns` with a bare `FileNotFoundError` naming
-  only the path. The actuator project calls its own `source.require()`
-  at import to keep the extract command in the failure. A leaf that
-  validated its declared file at construction, naming the class and the
-  path, would be the better failure; `StlNode` has the same gap.
+- **FIXED (cycle `name-the-missing-file`). `StepNode` (ADR-078) is on main
+  too. Finding, not filed as a cycle: a `StepNode` whose `step_source` is
+  absent constructs fine and fails later inside `mtime_ns` with a bare
+  `FileNotFoundError` naming only the path.** The actuator project calls
+  its own `source.require()` at import to keep the extract command in the
+  failure. A leaf that validated its declared file at construction, naming
+  the class and the path, would be the better failure; `StlNode` has the
+  same gap.
+
+  **What shipped.** `StlNode`, `StepNode`, `JScadNode` and `OpenScadNode`
+  now each refuse at construction, before anything is read, when their
+  declared source file is absent or is a directory rather than a file,
+  naming the class, the declaring attribute, its declared value, and the
+  resolved absolute path (`solid_node/node/sources.py`'s
+  `require_source_file`). The actuator's own `source.require()` preamble
+  still adds the extract command the framework cannot know, so it is
+  untouched and keeps earning its place. No ADR.
 
 ## Status (2026-09-06, project refactor pass)
 
@@ -2585,3 +2595,33 @@ read to locate the limit. The proposed design is
   the nominal flat cut file or the multi-material 3MF the maker actually uses.
   Whether a co-printed marking is geometry is a product decision held for the
   pilot. Filed here; triage open.
+
+# name-the-missing-file (2026-09-15, found while fixing)
+
+Findings outside that cycle's ratified scope, from
+`openspec/changes/name-the-missing-file/proposal.md` ("Out of scope") and
+`design.md` (reviewer's note 1); **status: filed here; triage open**. No
+framework code changed for either.
+
+- **The four adapters refuse a missing DECLARATION inconsistently.**
+  `StlNode` and `StepNode` raise `ValueError` naming the class
+  (`stl.py:162`, `step.py:476`). `JScadNode` raises a bare `Exception`
+  that names only `"OpenJScadNode subclass"`, never the actual subclass
+  (`jscad.py:28-30`). `OpenScadNode` has no check at all: an
+  undeclared `scad_source` reaches `os.path.join(basedir, None)` and
+  raises `TypeError: join() argument must be str, bytes, or os.PathLike
+  object, not 'NoneType'` (`openscad.py:40`), naming neither the class nor
+  the attribute. This cycle adds a fourth failure family — a *declared but
+  absent* file — that IS consistent across all four (`FileNotFoundError`
+  or `ValueError`, always naming the class); the pre-existing
+  *undeclared* family above it is not touched.
+- **The builder's own wrapper text reads as broken English and names the
+  model, not the node.** `Builder._start()` wraps a load-time failure as
+  `f'{self.path}: failed to {stage} project: {exc}'` (`builder.py:356`,
+  stage `'load'` or `'inspect initial sources'`), e.g. `parts:MissingStl:
+  failed to load project: ...` — "failed to load project" reads oddly for
+  a single model reference, and `self.path` is the CLI's model argument,
+  not the node whose declaration was wrong; for a leaf nested inside an
+  assembly the wrapper still names only the root (`evidence.md`,
+  measurement 4/"After"). This cycle's own message, inside `exc`, does
+  name the node; the wrapper around it is untouched.

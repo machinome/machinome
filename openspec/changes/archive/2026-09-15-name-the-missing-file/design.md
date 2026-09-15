@@ -259,3 +259,69 @@ implementation:
    adapters is one family.
 6. **No ADR** is accepted: the rule is stated in `node-model` and no
    component or lifecycle stage moves.
+
+### Amendment at implementation (reviewer, 2026-09-15)
+
+Task 3.1b did its job: with the check placed before `super().__init__`, a
+`JScadNode` root whose `.js` was absent from the start makes `load_node`
+raise, so the builder handles it at stage `load` with no node and no file
+set (`_on_reload_exception`, `builder.py:505-536`), falls back to
+`_watch_broadly(())` — the entry directory, `.py` files only
+(`builder.py:538-580`, filter at `builder.py:807-821`) — and a develop
+session never notices the `.js` being created. Before this change the same
+project failed one stage later, at `inspect initial sources`, where
+`self.node.files` named the missing path and the watch was precise.
+
+Ratified fix, preserving both the placement rule and the reload-repair
+behaviour (no spec delta: the contract "a develop session waits for the
+repair of a missing source" is unchanged, and the new test guards it):
+
+1. `require_source_file` sets `filename` on the exception it raises to the
+   resolved path — for `FileNotFoundError` and for the `ValueError` alike,
+   as an attribute assigned after construction so `str(error)` stays the
+   one-sentence message (constructing `FileNotFoundError(errno, msg, path)`
+   would prefix `[Errno 2]` and append the path a second time).
+2. `Builder._on_reload_exception`, on the reload path, adds
+   `getattr(exc, 'filename', None)` (when set) to the sources handed to
+   `_watch_broadly`, so a construction-time refusal is watched exactly like
+   a missing contributor found at the inspect stage: the smallest existing
+   parent is subscribed and the filter admits that exact path. The startup
+   (non-reload) branch is unchanged: a broken project still fails fast.
+
+Alternatives rejected: checking after `super().__init__` (the failure is
+still at `load`; nothing gained); moving the check to the inspect stage
+(alternative B above, and it would not name the attribute); having the
+builder re-run `load_node` under a broad watch until it succeeds (already
+what happens for `.py` repairs, and it cannot see a foreign file appear).
+
+**Correction (reviewer, 2026-09-15, after the amendment's first test run).**
+Point 1 above was wrong about Python: `OSError.__str__` renders
+`[Errno None] None: '<path>'` as soon as `filename` is set, however it was
+set, so assigning the attribute after construction breaks the message
+(reproduced in `evidence.md`, "Reload-repair regression — fix"). The
+ratified mechanism is instead a named subclass in `sources.py`:
+
+    class MissingSourceFile(FileNotFoundError):
+        def __init__(self, message, path):
+            super().__init__(errno.ENOENT, message, path)
+        def __str__(self):
+            return self.strerror
+
+so `errno`, `strerror` and `filename` are the standard `OSError`
+attributes (the builder keeps reading `filename`, which also lets it watch
+the file any other `OSError` raised at load names), `isinstance(error,
+FileNotFoundError)` stays true for every caller, and `str(error)` is the
+one-sentence message. The directory case stays a `ValueError` with
+`filename` assigned after construction: `ValueError.__str__` reads only
+`args`, so that rendering is unaffected (the two directory tests passed in
+the same run). Point 2 (the builder) is unchanged.
+
+**Second correction (reviewer, 2026-09-15).** The develop-mode error text
+(`errors.json`, built from `traceback.format_exc()`) names the concrete
+class, `solid_node.node.sources.MissingSourceFile`, not the literal
+`FileNotFoundError` the 3.1b test asserted. That is the intended
+user-visible spelling — a maker reading the develop error sees the
+refusal's own name above the one-sentence message — so the test asserts
+`MissingSourceFile` in that text; the type relationship
+(`isinstance(error, FileNotFoundError)`, `errno == ENOENT`) is asserted in
+`tests/test_missing_source_file.py`.

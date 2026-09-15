@@ -78,6 +78,18 @@ class SimplePipe(JScadNode):
         os.remove(self.jscad_source)
 '''
 
+# Unlike VANISHING_JSCAD_PIPE, this one never has a file to remove: the
+# declared source is absent from the moment the node is constructed, not
+# deleted from inside its own __init__ -- the construction-time refusal
+# (name-the-missing-file), not mtime_ns's currency check.
+ABSENT_JSCAD_PIPE = '''\
+from solid_node.node import JScadNode
+
+
+class SimplePipe(JScadNode):
+    jscad_source = "shape.js"
+'''
+
 VANISHING_SIBLING_JSCAD_MODEL = '''\
 import os
 from solid_node.node import JScadNode
@@ -287,6 +299,37 @@ class BuilderReloadResilienceTest(TestCase):
         self.assertFalse(lock_is_held(self.build_dir),
                          'reload recovery waited under the project lock')
         self.assertIn('FileNotFoundError', self.read_error()['error'])
+
+        self.write_jscad_source()
+        proc.join(timeout=15)
+        self.assertFalse(proc.is_alive(),
+                         'reload did not observe the foreign-source repair')
+        self.assertEqual(proc.exitcode, 0)
+
+    def test_missing_source_before_construction_reload_waits_for_repair(self):
+        # No write_jscad_source() call here: jscad_source is absent
+        # BEFORE the node is constructed, unlike VANISHING_JSCAD_PIPE
+        # above, which removes a file that was present throughout
+        # construction. The builder's load wrapper
+        # (builder.py:327-333) must surface this exactly like the
+        # vanishing-source case -- reviewer's note 4, design.md.
+        self.write_pipe(ABSENT_JSCAD_PIPE)
+
+        proc = self.spawn(is_reload=True)
+        self.assertTrue(self.wait_until(
+            lambda: self.read_error() is not None, timeout=15),
+            'construction-time refusal was not reported')
+        self.assertTrue(proc.is_alive(),
+                        'reload died instead of waiting for repair')
+        self.assertFalse(lock_is_held(self.build_dir),
+                         'reload recovery waited under the project lock')
+        error = self.read_error()['error']
+        # The traceback names the concrete exception raised, not an
+        # ancestor: the develop error names the refusal's own class,
+        # MissingSourceFile -- second correction, design.md.
+        self.assertIn('MissingSourceFile', error)
+        self.assertIn('SimplePipe', error)
+        self.assertIn('jscad_source', error)
 
         self.write_jscad_source()
         proc.join(timeout=15)
