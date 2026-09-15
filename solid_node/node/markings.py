@@ -119,12 +119,24 @@ class Svg:
 
     `scale`, when given, multiplies every artwork coordinate -- for a
     file authored in something other than millimetres. It is a property
-    of the FILE, which is why it is here and not on a placement.
+    of the FILE, which is why it is here and not on a placement. It must
+    be POSITIVE: a negative scale mirrors the artwork plane, which
+    reverses the winding `tessellate()` just oriented and renders every
+    glyph backwards, and zero collapses the artwork to a point.
     """
 
     marking_kind = 'artwork'
 
     def __init__(self, path, scale=None):
+        if scale is not None and (not isinstance(scale, (int, float))
+                                  or scale <= 0):
+            raise ValueError(
+                f'Svg(scale={scale!r}): scale is a positive number -- the '
+                f'factor every artwork coordinate is multiplied by. A '
+                f'negative scale mirrors the artwork plane, which reverses '
+                f'the winding of every triangle after its region was '
+                f'oriented and renders every glyph backwards; a zero scale '
+                f'collapses the artwork to a point.')
         self.path = path
         self.scale = scale
         #: The resolved absolute path, set when the declaring class is
@@ -204,18 +216,32 @@ class Svg:
         vertices an `(N, 2)` array of artwork coordinates and the
         triangles an `(M, 3)` array of indices into them.
 
-        Each region is meshed in its own plane through OCCT's
+        Each region is oriented to `+Z` before it is meshed, so the
+        triangles' winding is a property of THIS PRODUCER and not of the
+        drawing tool or of a transitive dependency's fix-up pass: the
+        framework's own placement maths already maps artwork `+Z`
+        outward by construction -- `Flat` builds its frame so
+        `x_axis x y_axis` is the declared normal, and `Wrapped` maps
+        artwork `(u, v)` so its tangents' cross product is the outward
+        radial direction -- so orienting the artwork here is what makes
+        the built decal face away from the part, whichever way the
+        artwork's own regions came out of the drawing.
+
+        Each region is then meshed in its own plane through OCCT's
         incremental mesher, which respects the holes the face carries,
         so a digit's counter is a hole in the decal and not a second
         patch of colour over it. `scale` multiplies the result, because
         it is a property of the FILE: a drawing authored in inches is
         the same drawing at a different size.
         """
+        import build123d as b3d
         import numpy as np
 
         vertices = []
         triangles = []
         for face in self.regions():
+            if face.normal_at().Z < 0:
+                face = b3d.Face(face.wrapped.Complemented())
             points, facets = face.tessellate(tolerance)
             offset = len(vertices)
             vertices.extend((point.X, point.Y) for point in points)

@@ -142,6 +142,17 @@ lowest version its content needs. A document whose tree declares no marking
 SHALL therefore be byte-identical to the document published before markings
 existed.
 
+A published marking artifact's triangles SHALL wind so that each triangle's
+normal points **away from the part**: radially outward from the wrap axis for a
+`Wrapped` placement, and along the declared `normal` for a `Flat` one. The
+promise SHALL hold whatever orientation the drawing tool gave the regions the
+artwork was read from. A consumer MAY therefore treat a decal's own vertex and
+face normals as the outward direction — to lift it clear of the surface it lies
+on, to offset it, or to light it — without inspecting the part the decal
+belongs to, and SHALL NOT be required to infer a side from the part's geometry.
+This is a promise about the ARTIFACT, not an offset: the surface still sits on
+the nominal cylinder or plane with no separation of its own.
+
 #### Scenario: A running root's document declares version 5
 
 - **WHEN** a root declaring `time = Time.running()` is exported
@@ -231,6 +242,15 @@ existed.
 - **THEN** its entry carries a `markings` list of two entries in that order,
   each with `name`, `model`, `color` and `mtime`, and neither carries a
   placement or a `piece`
+
+#### Scenario: A consumer reads a decal's outward side off the decal
+
+- **WHEN** a document publishing a wrapped marking and a flat marking is read
+  and each marking artifact's face normals are computed
+- **THEN** every wrapped face normal points away from its wrap axis and every
+  flat face normal points along the placement's declared normal, so displacing
+  each vertex along its own normal moves the decal clear of the part and never
+  into it
 
 #### Scenario: A document with no marking is unchanged in every byte
 

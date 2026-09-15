@@ -20,6 +20,7 @@ faceted plate, each with a twin of the same class name and the same
 parameters that declares no marking at all.
 """
 
+import hashlib
 import math
 import os
 import shutil
@@ -55,8 +56,8 @@ from solid_node.node import (AssemblyNode, FlexibleNode, FusionNode,
 from solid_node.node.declarative import NodeMeta
 from solid_node.node.sources import MissingSourceFile
 from solid_node.parameters import Length, declared_parameters
-from solid_node.node.markings import (Flat, Marking, Svg, Wrapped,
-                                      declared_markings)
+from solid_node.node.markings import (DEFAULT_DEFLECTION, Flat, Marking,
+                                      Svg, Wrapped, declared_markings)
 
 from .markings_project.decals import badge as badge_module
 from .markings_project.decals.badge import BadgeDecal, MissingBadgeDecal
@@ -637,6 +638,14 @@ class ArtworkReductionTest(BaseNodeTest):
         self.assertAlmostEqual(scaled[:, 1].max(), LABEL_MAX_Y * 25.4,
                                places=6)
 
+    def test_a_non_positive_scale_is_refused(self):
+        for scale in (-1.0, 0):
+            with self.subTest(scale=scale):
+                with self.assertRaises(ValueError) as raised:
+                    Svg(LABEL, scale=scale)
+
+                self.assertIn(str(scale), str(raised.exception))
+
 
 class FlatPlacementTest(BaseNodeTest):
     """(3.4) A plane, an in-plane X axis, and the artwork on it."""
@@ -844,6 +853,115 @@ def cylinder_departure(mesh, axis_point, radius):
     midpoints = (vertices[edges[:, 0]] + vertices[edges[:, 1]]) / 2.0
     return float(np.max(np.abs(radius - np.hypot(midpoints[:, 0],
                                                  midpoints[:, 1]))))
+
+
+def face_normals(vertices, faces):
+    """Each triangle's normal and centre, `(M, 3)` arrays computed from
+    the mesh alone -- as a consumer reading the artifact back would --
+    and not from the placement that built it."""
+    import trimesh
+
+    mesh = trimesh.Trimesh(vertices=np.asarray(vertices, dtype=np.float64),
+                           faces=np.asarray(faces, dtype=np.int64),
+                           process=False)
+    return mesh.face_normals, mesh.triangles_center
+
+
+class WindingTest(BaseNodeTest):
+    """(D2) A marking artifact's triangles wind so their normal points
+    away from the part -- radially outward from the wrap axis for a
+    `Wrapped` placement, along the declared normal for a `Flat` one --
+    whatever orientation the drawing tool gave the artwork's regions.
+    """
+
+    def reversed_regions(self):
+        """Patch `Svg.regions` so every region it yields comes back
+        REVERSED, restored after the test.
+
+        Real artwork geometry, really reversed, through the real
+        `tessellate` / `place` / `mesh_bytes` path -- the only way to
+        reach the failure this producer repairs, because
+        `ocpsvg.ensure_face_normal_up` means no SVG can express a
+        reversed region in the first place (design D2, and the blind
+        spot recorded in Risks).
+        """
+        import build123d as b3d
+
+        original = Svg.regions
+
+        def reversed_method(svg_self):
+            return [b3d.Face(face.wrapped.Complemented())
+                   for face in original(svg_self)]
+
+        patcher = patch.object(Svg, 'regions', reversed_method)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def outward_dots(self, vertices, faces):
+        """Each triangle's normal dotted with the outward radial
+        direction at its own centre, for a `Wrapped` placement whose
+        axis is `(0, 0, 1)` -- every fixture wrap in this file's."""
+        normals, centres = face_normals(vertices, faces)
+        radial = centres.copy()
+        radial[:, 2] = 0.0
+        radial /= np.linalg.norm(radial, axis=1, keepdims=True)
+        return np.sum(normals * radial, axis=1)
+
+    def test_a_wrapped_decal_faces_away_from_its_axis(self):
+        self.reversed_regions()
+
+        vertices, faces = FixtureDial.digits.surface(DIAL_DEFLECTION)
+
+        self.assertTrue(np.all(self.outward_dots(vertices, faces) > 0))
+
+    def test_a_flat_decal_faces_along_its_declared_normal(self):
+        self.reversed_regions()
+
+        vertices, faces = FixturePlate.badge.surface(DEFAULT_DEFLECTION)
+        normals, _ = face_normals(vertices, faces)
+
+        self.assertTrue(np.all(normals[:, 2] > 0))
+
+    def test_the_wrapped_decal_on_the_faceted_part_too(self):
+        self.reversed_regions()
+
+        vertices, faces = FixturePlate.band.surface(DEFAULT_DEFLECTION)
+
+        self.assertTrue(np.all(self.outward_dots(vertices, faces) > 0))
+
+    def test_reversed_artwork_builds_the_same_decal(self):
+        expected = {
+            'digits': FixtureDial.digits.mesh_bytes(DIAL_DEFLECTION),
+            'badge': FixturePlate.badge.mesh_bytes(DEFAULT_DEFLECTION),
+            'band': FixturePlate.band.mesh_bytes(DEFAULT_DEFLECTION),
+        }
+
+        self.reversed_regions()
+
+        self.assertEqual(FixtureDial.digits.mesh_bytes(DIAL_DEFLECTION),
+                         expected['digits'])
+        self.assertEqual(FixturePlate.badge.mesh_bytes(DEFAULT_DEFLECTION),
+                         expected['badge'])
+        self.assertEqual(FixturePlate.band.mesh_bytes(DEFAULT_DEFLECTION),
+                         expected['band'])
+
+    def test_correct_artwork_is_untouched(self):
+        # GREEN before the change and must stay GREEN after it: this
+        # pins the byte-for-byte no-op on correctly oriented artwork,
+        # not the red path the rest of this class exercises.
+        cases = (
+            ('digits', FixtureDial.digits.mesh_bytes(DIAL_DEFLECTION),
+             22484, 'bd3dacd344bd5050'),
+            ('badge', FixturePlate.badge.mesh_bytes(DEFAULT_DEFLECTION),
+             184, 'ff24e82d90c28677'),
+            ('band', FixturePlate.band.mesh_bytes(DEFAULT_DEFLECTION),
+             8084, 'e492ab49a5dbb307'),
+        )
+        for name, data, length, prefix in cases:
+            with self.subTest(marking=name):
+                self.assertEqual(len(data), length)
+                self.assertTrue(
+                    hashlib.sha256(data).hexdigest().startswith(prefix))
 
 
 class MarkingArtifactTest(BaseNodeTest):

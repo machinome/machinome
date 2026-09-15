@@ -19,8 +19,10 @@ Unreleased
   and connectivity verdict are what they are without it, and it does not
   key the part's artifacts. The build writes one surface mesh per
   marking beside the part's ``.stl``, at the nominal surface with no
-  offset, following a wrap to the part's own tessellation precision;
-  it has a currency of its own, so editing the artwork rebuilds only the
+  offset, following a wrap to the part's own tessellation precision, its
+  triangles wound away from the part so a viewer can lift the decal
+  clear without inspecting the part it belongs to; it has a currency of
+  its own, so editing the artwork rebuilds only the
   decal and a lost decal comes back without re-deriving a solid, while
   editing the declaration rebuilds the part as any source edit does. A
   rigid node's published entry gains an optional additive ``markings``

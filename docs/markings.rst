@@ -126,7 +126,10 @@ it ignored. A drawing with no closed region at all is refused.
 
 Artwork coordinates are read as millimetres. ``scale`` multiplies every
 one of them, for a file authored in something else; it is a property of
-the file, which is why it is here and not on a placement.
+the file, which is why it is here and not on a placement. ``scale`` is
+**positive**: a negative value mirrors the drawing, which reverses the
+decal's winding and renders every glyph backwards, and a non-positive
+``scale`` is refused naming the value.
 
 Placement
 ---------
@@ -181,6 +184,15 @@ part's own tessellation precision — its declared ``linear_deflection``
 where it declares one, and the framework's 0.1 mm where it does not —
 because two vertices of a flat triangle wrapped by their coordinates
 alone describe a chord, not an arc.
+
+The sheet's triangles wind so their normal points **away from the
+part** — radially outward from the wrap axis for a wrapped marking,
+along the declared normal for a flat one — whatever orientation the
+drawing tool gave the artwork's regions, so a renderer may offset,
+lift or light a decal along its own normals without asking the part
+which side it is on. The offset above is the sheet's **magnitude**;
+this is its **direction** — the two describe where the surface sits
+and which way it faces, not one claim twice.
 
 The mesh is deliberately not watertight. It is a surface, not a solid:
 nothing imports it as a part, fuses it, or measures its volume.

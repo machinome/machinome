@@ -120,6 +120,10 @@ fit. Artwork containing no closed region SHALL be refused, naming the file.
 
 Artwork coordinates SHALL be read as millimetres. `scale`, when given, SHALL
 multiply every artwork coordinate, for a file authored in other units.
+`scale` SHALL be positive, and a non-positive `scale` SHALL be refused naming
+the value: a negative scale mirrors every region of the drawing, which reverses
+the side the built decal faces and renders every glyph backwards, and a zero
+scale collapses the artwork to a point.
 
 #### Scenario: A drawing's glyphs become the marking
 
@@ -150,6 +154,11 @@ multiply every artwork coordinate, for a file authored in other units.
 
 - **WHEN** a marking declares `Svg('label.svg', scale=25.4)`
 - **THEN** every artwork coordinate is multiplied by 25.4 before it is placed
+
+#### Scenario: A non-positive scale is refused
+
+- **WHEN** a marking declares `Svg('label.svg', scale=-1.0)`, or `scale=0`
+- **THEN** it is refused naming the value
 
 ### Requirement: A marking is placed on a cylinder or on a plane
 
@@ -260,6 +269,20 @@ tessellation precision — the part's declared linear deflection where it
 declares one, and the framework's default otherwise — so a wrapped artwork is
 an arc and not a chord.
 
+The artifact's triangles SHALL wind so that each triangle's normal points
+**away from the part** — radially outward from the wrap axis for a `Wrapped`
+placement, and along the declared `normal` for a `Flat` one — whatever
+orientation the drawing tool gave the closed regions the artwork was read
+from. The winding SHALL therefore be a property of this producer and not of
+the artwork file or of the library that read it: a drawing whose regions
+arrive facing the other way SHALL produce the same outward-facing decal as one
+whose regions arrive facing the right way, byte for byte.
+
+Orienting the artwork SHALL change nothing about a decal built from regions
+that already face outward. Such a decal's bytes SHALL be unchanged, and the
+marking artifact's producer recipe SHALL be unchanged, so no decal already on
+disk is stale on this account.
+
 The marking artifact SHALL go through the same artifact lifecycle as the
 part's other artifacts: written atomically and stamped, regenerated when
 stale, and not rewritten when current.
@@ -300,6 +323,25 @@ current SHALL NOT have its solid re-derived on their account either.
   at radius 9.45
 - **THEN** no point of the built surface departs from that cylinder by more
   than the part's declared tessellation precision
+
+#### Scenario: A wrapped decal faces outward from reversed artwork
+
+- **WHEN** a part's artwork yields its closed regions facing the opposite way
+  and the part declares `Wrapped(axis=(0, 0, 1), radius=9.45, ...)`
+- **THEN** every triangle of the built decal has a normal pointing away from
+  that axis
+
+#### Scenario: A flat decal faces along its declared normal
+
+- **WHEN** the same reversed artwork is placed with `Flat(at=..., normal=n,
+  x_axis=...)`
+- **THEN** every triangle of the built decal has a normal pointing along `n`
+
+#### Scenario: Correctly faced artwork is untouched
+
+- **WHEN** a decal whose artwork regions already face outward is rebuilt
+- **THEN** its bytes and its producer recipe are what they were before the
+  producer oriented anything
 
 ### Requirement: A marking has its own currency, separate from the solid's
 
