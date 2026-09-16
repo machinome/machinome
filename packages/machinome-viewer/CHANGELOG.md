@@ -7,6 +7,19 @@ it carries release together and share one version.
 
 The viewer stops posing a machine and starts running one.
 
+- **The conformance corpus is refreshed to the producer's own
+  `pin-the-block-order` regeneration**, byte for byte, and the width guard
+  gains the producer's new required feature — an in-block gate crossing
+  located strictly inside a step — mirroring its detection from the
+  corpus's own documents and tick logs exactly as it already does for the
+  self-read and the selection. The suite now proves directly, against
+  this engine and not only through the guard, that a consumer running a
+  block's members in the published LISTING order disagrees with the
+  corpus, mirroring the producer's own `BlockOrderTest`. No engine
+  behaviour changes: `execute-the-selection` already orders a block per
+  piece, and the refreshed corpus replays green through it unchanged.
+  (OpenSpec change `mirror-the-gate-guard`.)
+
 - **The worker ORDERS A BLOCK PER PIECE of a tick.** solid-node's ADR-122
   lets a machine's dependencies be SELECTED by where one of its own parts
   stands. The Curta's carry levers belong to the FIXED frame and its

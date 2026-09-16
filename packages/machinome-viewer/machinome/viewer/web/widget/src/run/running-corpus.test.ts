@@ -18,7 +18,8 @@ import corpus from '../running-corpus.json';
 import { freeVariables } from '../evaluator';
 import { Engine } from './engine';
 import type { Command } from './commands';
-import type { RunDocument } from './program';
+import { loadProgram } from './program';
+import type { ProgramBlock, RunDocument } from './program';
 
 interface CorpusCrossing {
   relation: string;
@@ -265,6 +266,7 @@ const REQUIRED = [
   'a switched source',
   'a selection crossing inside a tick',
   'a tick carrying both a selection crossing and a stop',
+  'an in-block gate crossing inside a tick',
 ];
 
 /** Every free name `expression` reads, through the fixture's OWN
@@ -386,6 +388,50 @@ function selectionOf(edges: GuardEdge[], bindings: Record<string, string>):
   return { gives, selectors };
 }
 
+/** `(gates, selectors)` for `edge`'s jumps carrying `primitive`, each a
+ * list of the free names its level reads (resolved transitively through
+ * `bindings`, exactly as `selectionOf` resolves a level) --
+ * `tools/generate_running_corpus.py`'s `_in_block_names`, mirrored here
+ * and never taken from `loadProgram`.
+ *
+ * A GATE names a coordinate `gives` holds OTHER than `edge`'s own driven
+ * end, ADR-121's self-read excluded because a self-read imposes no
+ * order; a SELECTOR names none of `gives` at all. A jump naming only
+ * `edge`'s own driven end is neither, and is not returned. */
+function inBlockNames(edge: GuardEdge, primitive: string,
+                      bindings: Record<string, string>, gives: Set<string>):
+{ gates: Set<string>[]; selectors: Set<string>[] } {
+  const own = new Set(edge.gives ?? []);
+  const gates: Set<string>[] = [];
+  const selectors: Set<string>[] = [];
+  for (const plan of edge.plans ?? []) {
+    if (plan === null || plan === undefined) continue;
+    const levels = new Map<string, string>();
+    for (const jump of plan.jumps) levels.set(jump.name, jump.level);
+    for (const jump of plan.jumps) {
+      if (jump.primitive !== primitive) continue;
+      const names = new Set<string>();
+      const pending = [jump.level];
+      while (pending.length > 0) {
+        const text = pending.pop()!;
+        for (const name of freeNamesOf(text, bindings)) {
+          const inner = levels.get(name);
+          if (inner !== undefined) pending.push(inner);
+          else names.add(name);
+        }
+      }
+      const reaches = new Set(
+        [...names].filter((name) => gives.has(name) && !own.has(name)));
+      if (reaches.size > 0) {
+        gates.push(reaches);
+      } else if (![...names].some((name) => gives.has(name))) {
+        selectors.push(names);
+      }
+    }
+  }
+  return { gates, selectors };
+}
+
 export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
   const seen = new Set<string>();
   for (const entry of machines) {
@@ -500,6 +546,29 @@ export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
           seen.add('a tick carrying both a selection crossing and a stop');
         }
       }
+      // An IN-BLOCK GATE CROSSING located strictly inside a tick: the
+      // previous tick's bank is what "moved" is measured against, so the
+      // first tick (no predecessor) is skipped.
+      if (previous !== null) {
+        const changed = new Set(Object.keys(tick.bank).filter(
+          (name) => previous![name] !== tick.bank[name]));
+        for (const crossing of tick.crossings) {
+          if (!(crossing.t > 0 && crossing.t < 1)) continue;
+          const index = memberOf(program.edges ?? [], crossing.coordinate);
+          if (!selectors.has(index)) continue;
+          const { gates, selectors: blockers } = inBlockNames(
+            (program.edges ?? [])[index], crossing.primitive, bindings,
+            blockGives);
+          if (!gates.some((names) => [...names].some((name) => changed.has(name)))) {
+            continue;
+          }
+          if (blockers.some((names) => [...names].some((name) => changed.has(name))
+            || [...names].some((name) => !(name in tick.bank)))) {
+            continue;
+          }
+          seen.add('an in-block gate crossing inside a tick');
+        }
+      }
       if (tick.stops.length > 0 && tick.crossings.length > 0) {
         seen.add('a tick carrying both a crossing and a stop');
       }
@@ -542,5 +611,117 @@ describe('the corpus\'s width', () => {
     // cycle at all, so it has no block and no selector.
     expect(uncoveredFeatures(trimmed)).toContain(
       'a selection crossing inside a tick');
+    // `Train` states no block at all, so it supplies no in-block gate
+    // crossing either.
+    expect(uncoveredFeatures(trimmed)).toContain(
+      'an in-block gate crossing inside a tick');
   });
 });
+
+// ---------------------------------------------------------------------
+// The order discrimination (design D5, tasks 4), mirroring the
+// producer's own `BlockOrderTest`. `blockOrder` (run/jumps.ts:1142) is
+// module-local and not exported, but it is not the seam: it reads a
+// block only through `block.activeReads(index, forced[index])`, and
+// `ProgramBlock` is a plain interface whose `activeReads` is an ordinary
+// method member -- already substituted this way by `jumps.test.ts`'s
+// `watched()` -- and `ProgramEdge.block` is a mutable field of a loaded
+// program. `activeReads` has exactly one non-test caller in the whole
+// widget (`jumps.ts:1145`), so substituting it changes the ORDER and
+// nothing else. NO seam is added to `src/run/` for this test's benefit.
+// ---------------------------------------------------------------------
+
+/** A scenario's engine, its block edges' blocks optionally replaced by a
+ * stand-in whose `activeReads` answers the EMPTY SET. That makes every
+ * member ready in `blockOrder`'s first Kahn round, so it pushes them in
+ * `remaining`'s order -- `0..n-1` over `block.members` -- which IS the
+ * published listing order (task 4.2). */
+export function loadScenario(entry: CorpusMachine,
+                             forceListingOrder: boolean): Engine {
+  const program = loadProgram(entry.document as RunDocument,
+    `running-corpus.json#${entry.name}`);
+  if (forceListingOrder) {
+    for (const edge of program.edges) {
+      if (edge.block === null) continue;
+      const block = edge.block;
+      edge.block = {
+        members: block.members,
+        gives: block.gives,
+        activeReads: () => new Set<string>(),
+      };
+    }
+  }
+  return new Engine(program, entry.dt, entry.steps + 1);
+}
+
+/** Every committed tick's bank the replay disagrees with, under the
+ * corpus's own tolerance rule -- the producer's `BlockOrderTest`, shape
+ * for shape. */
+export function bankDisagreements(entry: CorpusMachine,
+                                  forceListingOrder: boolean): string[] {
+  const engine = loadScenario(entry, forceListingOrder);
+  const script = new Map<number, CorpusScript[]>();
+  for (const action of entry.script) {
+    const found = script.get(action.tick);
+    if (found === undefined) script.set(action.tick, [action]);
+    else found.push(action);
+  }
+  const handles = new Map<string, Command>();
+  const ordered: string[] = [];
+  const snapshots = new Map<string, unknown>();
+  const disagreements: string[] = [];
+  for (let step = 1; step <= entry.steps; step += 1) {
+    for (const action of script.get(step) ?? []) {
+      applyAction(engine, action, handles, ordered, snapshots);
+    }
+    engine.advance(1);
+    const expected = entry.ticks[step - 1];
+    const bank = engine.state();
+    for (const [id, value] of Object.entries(expected.bank)) {
+      if (!near(bank[id], value)) {
+        disagreements.push(`tick ${step} ${id}: corpus ${value}, run ${bank[id]}`);
+      }
+    }
+  }
+  return disagreements;
+}
+
+describe('a block is ordered PIECE BY PIECE, not by its listing (design D5)',
+  () => {
+    const shiftedCarry = fixture.machines.find(
+      (one) => one.name === 'ShiftedCarry' && one.dt === 0.05)!;
+
+    it('4.2 the substitution really forces the PUBLISHED LISTING order', () => {
+      const program = loadProgram(shiftedCarry.document as RunDocument,
+        'running-corpus.json#ShiftedCarry');
+      const blockEdge = program.edges.find((edge) => edge.block !== null)!;
+      const block = blockEdge.block as ProgramBlock;
+      exact(block.gives.join(','), 'higher.turn,carry.travel',
+            'the block\'s members, in the order this loaded program lists '
+            + 'them');
+      // The SAME order the document's own edges publish them in
+      // (`memberOf`, this file's own mirror of `_member_of`): edge index
+      // 1 gives `higher.turn`, edge index 2 gives `carry.travel`.
+      const rawEdges = (shiftedCarry.document as
+        { program: { edges: GuardEdge[] } }).program.edges;
+      exact(block.gives.map((name) => memberOf(rawEdges, name)).join(','),
+            '1,2', 'the block members\' own index among the published edges');
+      // blockOrder starts `remaining` as `block.members.map((_, i) => i)`
+      // -- `0, 1` over this same listing -- and with every `activeReads`
+      // answering the empty set every member is ready in the first Kahn
+      // round, so `ready` (a `.filter` over `remaining`) keeps that exact
+      // order: the FORCED order is `0, 1`, the published listing order.
+    });
+
+    it('4.3 an engine running the block in the published listing order '
+       + 'disagrees with the corpus, the run that orders it per piece '
+       + 'does not', () => {
+      // The first half is what stops the second from passing by breaking
+      // the fixture.
+      expect(bankDisagreements(shiftedCarry, false)).toEqual([]);
+      const substituted = bankDisagreements(shiftedCarry, true);
+      expect(substituted.length).toBeGreaterThan(0);
+      expect(substituted[0]).toBe(
+        'tick 2 higher.turn: corpus 0.16666666666666669, run 0');
+    });
+  });

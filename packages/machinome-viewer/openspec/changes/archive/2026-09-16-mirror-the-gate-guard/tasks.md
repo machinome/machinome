@@ -68,27 +68,27 @@
 
 ## 1. The corpus, replaced
 
-- [ ] 1.1 Copy the framework's `tests/running-corpus.json` at `d3c2242`
+- [x] 1.1 Copy the framework's `tests/running-corpus.json` at `d3c2242`
       over `solid_node_viewer/widget/src/running-corpus.json`, BYTE FOR
       BYTE (`cp`, never an edit). Record the md5 of both files in
       `evidence.md`.
-- [ ] 1.2 Confirm the census assertion in `run/running-corpus.test.ts`
+- [x] 1.2 Confirm the census assertion in `run/running-corpus.test.ts`
       does NOT move: 19 scenarios, 16 unique machines, 356 ticks. It is
       already what the file says; assert it is still green without
       touching the line.
-- [ ] 1.3 Run the suite and record that every one of the 19 replays is
+- [x] 1.3 Run the suite and record that every one of the 19 replays is
       green and that no other test file moved — six other files import
       the corpus and read only its byte-identical documents.
 
 ## 2. The guard, red first
 
-- [ ] 2.1 RED: add `'an in-block gate crossing inside a tick'` to
+- [x] 2.1 RED: add `'an in-block gate crossing inside a tick'` to
       `REQUIRED` in `run/running-corpus.test.ts`, after `'a tick carrying
       both a selection crossing and a stop'` — the producer's own
       position and spelling (`tools/generate_running_corpus.py:104`).
       The width test must FAIL, naming exactly that feature, before any
       detection is written. Record the failure text.
-- [ ] 2.2 Mirror `_in_block_names`
+- [x] 2.2 Mirror `_in_block_names`
       (`tools/generate_running_corpus.py:542-574`) as `inBlockNames`
       beside `selectionOf`: the member's jumps carrying the crossing's
       primitive, each jump's `level` resolved transitively through the
@@ -101,7 +101,7 @@
       the producer's own reading of `ShiftedCarry`: the higher wheel's
       `>=` jumps split into the gate `{carry.travel}` and the selector
       reading `shift`.
-- [ ] 2.3 Mirror the tick rule
+- [x] 2.3 Mirror the tick rule
       (`tools/generate_running_corpus.py:445-465`) in
       `uncoveredFeatures`: skip the first tick of every scenario; take
       `changed` as the bank ids whose value differs from the previous
@@ -111,32 +111,32 @@
       reaches outside the tick's bank. Through the corpus's documents and
       tick logs ONLY — never through `loadProgram`, for the reason the
       file already states.
-- [ ] 2.4 GREEN over the new corpus (`[]`), and record that the same
+- [x] 2.4 GREEN over the new corpus (`[]`), and record that the same
       guard over the STALE copy still names the feature — that is what
       makes task 1.1 load-bearing rather than cosmetic.
 
 ## 3. The narrowed-corpus test
 
-- [ ] 3.1 Add the new feature to the assertions of `'is refused when the
+- [x] 3.1 Add the new feature to the assertions of `'is refused when the
       corpus is narrowed'`, beside the self-read's three and the
       selection's one: `Train` states no block, so it supplies no gate
       crossing. Measured green at proposal time.
 
 ## 4. The order discrimination (design D5), mirroring `BlockOrderTest`
 
-- [ ] 4.1 A helper in `run/running-corpus.test.ts` that loads a
+- [x] 4.1 A helper in `run/running-corpus.test.ts` that loads a
       scenario's document with `loadProgram`, replaces each block edge's
       `block` with `{ members, gives, activeReads: () => new Set() }`,
       and builds the engine with `new Engine(program, dt, steps + 1)`.
       Nothing in `src/run/`'s engine source changes: `activeReads` has
       exactly one non-test caller (`jumps.ts:1145`) and the suite already
       substitutes a block this way (`jumps.test.ts:1079-1091`).
-- [ ] 4.2 Assert that the substitution really forces the PUBLISHED
+- [x] 4.2 Assert that the substitution really forces the PUBLISHED
       LISTING order: the block's members are `['higher.turn',
       'carry.travel']` in the order those edges are published, and the
       forced order is `0, 1`. This is what keeps the test honest if the
       engine's ordering is ever cached or rewritten.
-- [ ] 4.3 The test itself, in the producer's own two halves: replay
+- [x] 4.3 The test itself, in the producer's own two halves: replay
       `ShiftedCarry`'s corpus entry — its script, its `dt`, its 20 steps
       — UNSUBSTITUTED and assert ZERO disagreements against every
       committed tick's bank under the corpus's own tolerance rule; then
@@ -144,7 +144,7 @@
       what stops the second from passing by breaking the fixture.
       Expected: 21 disagreements substituted, the first being `tick 2
       higher.turn: corpus 0.16666666666666669, run 0`.
-- [ ] 4.4 RED FIRST for this test as it will be met by a future
+- [x] 4.4 RED FIRST for this test as it will be met by a future
       regression: run 4.3 against the STALE corpus (a scratch copy, not a
       commit) and record that the substituted replay gives ZERO
       disagreements there — the test fails on the old fixture and passes
@@ -152,10 +152,10 @@
 
 ## 5. The suite, the types and the build
 
-- [ ] 5.1 `npm test`, `npm run typecheck`, `npm run build` — against the
+- [x] 5.1 `npm test`, `npm run typecheck`, `npm run build` — against the
       base numbers of task 0.1, with the new totals recorded. Expect the
       test count to rise by the new ordering test(s) only.
-- [ ] 5.2 The Python suite is NOT run, and the reason is recorded:
+- [x] 5.2 The Python suite is NOT run, and the reason is recorded:
       the corpus is a widget test fixture imported only by TypeScript
       test files, no `src/` module imports it so it is not in
       `dist/solid-widget.js`, and no Python module or packaged file
@@ -163,22 +163,22 @@
       observe this change. `scripts/check-dist` likewise unaffected.
       If the reviewer wants it anyway, say so rather than skipping
       silently.
-- [ ] 5.3 Confirm the untouched surfaces by diff: `package.json`
+- [x] 5.3 Confirm the untouched surfaces by diff: `package.json`
       (`solidNodeViewerApi` 16, `solidNodeDocumentVersions` `[1..7]`),
       `viewer.ts`'s `RENDERED_VERSIONS`, `README.md`, `docs/adrs/`, and
       every file under `src/run/` other than `running-corpus.test.ts`.
 
 ## 6. The record
 
-- [ ] 6.1 `CHANGELOG.md` under `0.2.0 — unreleased`: ONE bullet — the
+- [x] 6.1 `CHANGELOG.md` under `0.2.0 — unreleased`: ONE bullet — the
       conformance corpus refreshed to the producer's `pin-the-block-order`
       regeneration, the width guard gaining an in-block gate crossing
       located strictly inside a step, and the suite now proving directly
       that an engine running a block's members in the published listing
       order disagrees with the corpus. No README version change.
-- [ ] 6.2 `evidence.md` for this change: the measurements of §0 with the
+- [x] 6.2 `evidence.md` for this change: the measurements of §0 with the
       after numbers beside them, the md5s of both corpus files, any
       deviation from this design and why, and the follow-ups.
-- [ ] 6.3 `openspec validate mirror-the-gate-guard --strict` green, and
+- [x] 6.3 `openspec validate mirror-the-gate-guard --strict` green, and
       the change archived under its dated name after implementation —
       the ARCHIVE left for the reviewer, as the previous cycles left it.

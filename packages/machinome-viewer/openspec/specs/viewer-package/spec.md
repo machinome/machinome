@@ -2093,8 +2093,11 @@ DRIVES, a self-read coordinate that HOLDS at its gate over a step in
 which an input reaching it goes on moving, a step carrying both a
 self-read crossing and a stop, A SWITCHED SOURCE — a published edge on a
 cycle that reads a value the cycle determines — a SELECTION CROSSING
-inside a step, and a step carrying both a selection crossing and a stop —
-so that a narrower corpus copied in
+inside a step, a step carrying both a selection crossing and a stop, and
+an IN-BLOCK GATE CROSSING located STRICTLY INSIDE a step — a crossing
+recorded under a member of a block that only a jump reading a value
+ANOTHER member of that block determines can account for, the member's own
+driven value excluded — so that a narrower corpus copied in
 is refused here without anyone running the producer's generator. A bound
 reading another coordinate SHALL be recognised through the corpus's own
 bindings table, so a corpus whose bound reaches its reads through a
@@ -2106,7 +2109,26 @@ corpus even when the engine is broken; and a crossing SHALL count as a
 SELECTION crossing only where its primitive belongs to a selector of the
 member that determines its coordinate and to no other jump of that
 member, so that a gate which happens to share an operator is not
-mistaken for one.
+mistaken for one. An in-block gate crossing SHALL be recognised from the
+crossing's own primitive and the preceding step's committed values: the
+jumps of that member carrying the primitive, their level quantities closed
+over the corpus's bindings table, SHALL be separated into those reaching a
+value the block determines other than the member's own and those reaching
+none of the block's values, and the crossing SHALL count only where one of
+the first kind reads a value that MOVED across the step and no one of the
+second kind reads a value that moved or a value the step does not carry.
+A step with no predecessor SHALL be skipped, having nothing to compare
+against.
+
+The committed corpus SHALL DISCRIMINATE the order in which a block's
+members are run, because a document publishes those members as a listing
+and not as an execution order: replaying a named scenario through the
+shipped engine with the block's members run in the order the document
+publishes them, instead of ordered for each piece of the step, SHALL
+disagree with the corpus by more than the stated tolerance on the
+committed values of at least one step, while the same replay with the
+members ordered per piece reproduces them. The suite SHALL assert this
+directly, rather than inferring it from the width above.
 
 #### Scenario: Every scenario of the corpus replays
 
@@ -2149,6 +2171,23 @@ mistaken for one.
   differs in the last bits beyond the corpus's tolerance
 - **THEN** the suite fails naming the scenario, the step and the
   coordinate
+
+#### Scenario: A corpus with no in-block gate crossing is refused
+
+- **WHEN** the committed corpus is replaced by one none of whose steps
+  records a crossing, strictly inside the step, under a member of a block
+  that only a gate on a value another member of that block determines can
+  account for
+- **THEN** the suite fails naming the feature no longer covered
+
+#### Scenario: An engine that runs a block in the published order is caught
+
+- **WHEN** a corpus scenario carrying a block is replayed through the run
+  engine with the block's members run in the order the document publishes
+  them, instead of ordered for each piece of the step
+- **THEN** the replay disagrees with the corpus by more than the stated
+  tolerance on the committed values of at least one step, while the same
+  replay with the members ordered per piece reproduces them
 
 ### Requirement: A maker presses and turns the part itself
 
