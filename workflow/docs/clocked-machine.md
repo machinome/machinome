@@ -2,8 +2,8 @@
 
 **Status:** design note recording a direction the pilot settled in
 conversation on 2026-09-16, with the context the next agent needs to cut a
-proposal from it. Nothing here is ratified. It does not name an API spelling,
-does not authorize a change to `Time.running()`, and does not claim the fast
+proposal from it. Nothing here is ratified. Its candidate spelling is a
+sketch for the proposal to cut from, not an API; the note does not authorize a change to `Time.running()`, and does not claim the fast
 Curta is already a clocked machine. Where this note and a baseline spec or an
 accepted ADR disagree, the note is stale.
 
@@ -79,7 +79,9 @@ simulation by ticks".
    event.** Partial clearing on the Curta needs the ring's furthest reach
    during a sweep, or reversing the ring un-clears the dials it already
    zeroed. That is one scalar `max` over the sweep. It is still one cheap
-   retained value; it is not a reason to integrate the machine.
+   retained value; it is not a reason to integrate the machine. The
+   candidate spelling below shows partial clearing as one event per digit
+   instead, with no held value; the spike decides whether any fold is needed.
 5. **Interlocks are expression bounds.** ADR-113 admits a bound that reads
    other coordinates. The selectors, carriage lift and clearing ring get a
    range that closes while the crank is off rest. This is what makes the
@@ -160,6 +162,138 @@ robots, the printers) keeps its pose formula; a mechanism under study keeps
 only its running model; the Curta keeps both, with `simulation/cycle.py`
 already shared between them. The risk of two models is drift, and the shared
 corpus is the mitigation.
+
+## Candidate spelling
+
+A sketch settled in conversation on 2026-09-16, kept inside the grammar the
+API already has: a declaration next to `Driver`, a verb next to `.drives`,
+and the `Bound` idiom for interlocks. It is a candidate for the proposal to
+cut from, not a ratified interface, and every name in it may change.
+
+**Declaration.** A state is a driver the machine writes:
+
+```python
+from solid_node.simulation import Driver, State
+
+class Curta(LayeredSource):
+    crank = Driver(default=0, unit='deg')          # unbounded; the pawl bounds the joint
+    operand = Driver(default=0, range=(0, 99999999), dtype=int)
+    subtract = Driver(default=0, range=(0, 1), dtype=int)
+    carriage_position = Driver(default=0, range=(0, 5))
+    ring = Driver(default=0, range=(0, 360), unit='deg')
+
+    result = State(default=0, range=(0, 10**11 - 1), dtype=int)
+    turns = State(default=0, range=(0, 10**6 - 1), dtype=int)
+```
+
+`State` takes exactly `Driver`'s arguments and reads exactly like one in
+laws and in `simulate()`. The differences are all about who writes it:
+`set_state` refuses it by name, instructions and controls cannot target it,
+the panel never lists it, and `sim.snapshot()` / `sim.restore()` carry it.
+A `State` under `Time(loop=)` is refused at class definition.
+
+**Commit.** A group of sources commits states at an event:
+
+```python
+    (crank & result & turns & operand & subtract & carriage_position).commits(
+        (result, turns), at=strokes, law=registers)
+
+def strokes(sources, targets):
+    return lambda crank, *rest: floor(crank / 360)
+
+def registers(sources, targets):
+    return lambda crank, result, turns, operand, subtract, shift: calculate(
+        result, turns, operand, 1, subtract, shift)
+```
+
+Both callables follow the existing law-factory protocol: called once at
+realization with the realized owners, returning a callable over the
+sources' values. `at` returns an integer-valued expression, built through
+`floor`, `ceil`, `sign` or comparisons, the jump vocabulary ADR-107 already
+locates. Every unit step of `at` along a request's path is one event. At
+the event the framework locates the crossing exactly on the path, evaluates
+`law` with the inputs read at the crossing and every state at its pre-event
+value, and the targets take the results together. Several events in one
+request fire in path order, each reading what the previous left; several
+`commits` sharing one event read the same pre-event state. A state has
+exactly one committing relation, may appear among its own sources, and can
+never be the driven end of `.drives`.
+
+Between events the positions are the fast Curta's existing laws, fed from
+the state instead of the sliders:
+
+```python
+    phase = crank - 360 * floor(crank / 360)    # a derived coordinate, or inside the laws
+    (result & operand & subtract & carriage_position & crank).drives(
+        carriage.registers.result_register.value, law=in_stroke_positions)
+```
+
+**Events on comparisons make partial clearing an event too**, one per
+digit, with no held value:
+
+```python
+    (ring & digit_3).commits(digit_3, at=lambda ring, d: ring >= RACK_END[3],
+                             law=lambda ring, d: d * (ring < RACK_END[3]))
+```
+
+The dial's motion under the rack stays the existing `cleared_position`
+formula of the digit and the ring; the digit becomes zero the moment the
+rack has passed it, and reversing the ring before that point turns the dial
+back, as the real teeth do. Whether a fold-commit (a `commits` with no `at`,
+evaluated at the end of every request) is needed at all is what the spike
+decides; leave it out of the first cycle unless the spike needs it.
+
+**Interlocks and the ratchet** use `Bound` and the ratchet form the API
+already documents, on the joints, not on the drivers, because a driver's
+range stays presentation metadata:
+
+```python
+class Selector(AssemblyNode):
+    setting = Prismatic(axis=(0, 0, 1), unit='mm', range=(0, Bound(
+        lambda setting, crank: 54 * (crank - 360 * floor(crank / 360) < 1),
+        reads=(crank_turn,))))
+
+class Crank(AssemblyNode):
+    turn = Revolute(axis=(0, 0, 1), range=(lambda turn: 6 * floor(turn / 6), None))
+```
+
+This is the one place the clocked mode borrows from the run: a request from
+the current input value to the requested one is a path, a violated bound
+stops the pushing input on that path (ADR-108's reading), and events are
+located on the clipped path. Under untimed poses today a violated `Bound`
+is an impossible pose; the clocked machine needs it to be a stop, solved
+along one moving input with the crossing tools ADR-123 already has.
+
+**Time.** The base and the discipline separate:
+
+```python
+class Regulator(AssemblyNode):
+    time = Time.elapsed()
+    engaged = Driver(default=1, range=(0, 1), dtype=int)
+    count = State(default=0, dtype=int)
+    (time & count & engaged).commits(count, at=lambda t, c, e: floor(2 * t / PERIOD),
+                                     law=lambda t, c, e: c + e)
+```
+
+`Time.running()` keeps its meaning, elapsed plus integrated; a `State`
+under it is defined as the ADR-121 self-read switch and not implemented in
+the first cycle.
+
+**Runtime and document.** `Sim(model)` takes no `dt`. `set_state(crank=720)`
+is a request along a path and may fire two commits; `sim.state` holds
+drivers and states; `sim.snapshot()` / `sim.restore()` are the setup path.
+The document gains a version, not additive, with each state as a coordinate
+of kind `state` carrying its initial value, and a `commits` table of
+sources, targets, and the `at` and `law` expression graphs. The viewer
+locates the events of a single moving input on its existing expression DAG
+and commits; the Python runtime does the same; a corpus scenario set on the
+pattern of ADR-111 binds them.
+
+Left for the proposal to decide rather than settled here: whether a falling
+step of `at` fires (it does under this spelling, and the law neutralises it,
+as the clearing example shows) or `at` takes a direction; and whether
+`phase` is spelled as a derived coordinate, which today admits only linear
+formulas, or stays inside the laws.
 
 ## What a proposal has to settle
 
