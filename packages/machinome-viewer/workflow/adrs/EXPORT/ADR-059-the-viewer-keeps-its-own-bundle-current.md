@@ -1,6 +1,6 @@
 # ADR-059: The viewer keeps its own bundle current, and refuses what it cannot repair
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Date:** 2026-09-16
 
