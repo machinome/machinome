@@ -26,6 +26,13 @@ import { Manifest } from './types';
 // implementations this cycle briefly runs side by side, design.md
 // "Risks / Trade-offs").
 import { evalExpr } from './evaluator';
+import { PathValue, UnsupportedPathNode, movingNames } from './expressions';
+import { evaluateExpression, loadProgram } from './run/program';
+import type { LoadedProgram, RunDocument } from './run/program';
+import corpus from './running-corpus.json';
+import clearingDoc from '../../../tests/fixtures/clearing/viewer.json';
+import carriageDoc from '../../../tests/fixtures/carriage/viewer.json';
+import lockDoc from '../../../tests/fixtures/lock/viewer.json';
 
 describe('prepare', () => {
   it('returns a node id', () => {
@@ -713,5 +720,161 @@ describe('expressionGeneration and the reset guard (D4)', () => {
     } finally {
       EXPRESSION_LIMITS.nodes = original;
     }
+  });
+});
+
+// ---------------------------------------------------------------------
+// `PathValue` (design D1-D9, openspec `walk-only-what-moves`, ADR-060): a
+// quantity followed along a step's path is evaluated as a path, its
+// standing part computed once and read back rather than recomputed at
+// every point.
+// ---------------------------------------------------------------------
+
+describe('PathValue (D1-D9)', () => {
+  it('1.1/1.2 answers, at a bound piece, the same float valueOf answers, '
+     + 'and the same again at a second point of the SAME piece', () => {
+    const expression = '((a + (b * c)) - sin(d))';
+    const id = prepare(expression);
+    const moving = new Set(['a', 'd']);
+    const path = new PathValue(id, moving);
+
+    const point1 = { a: 1, b: 2, c: 3, d: 10 };
+    const bound = path.bind(point1);
+    const whole1 = valueOf(id, { time: 0, drivers: point1 } as never);
+    expect(bound).toBe(whole1);
+
+    const point2 = { a: 5, b: 2, c: 3, d: 20 };
+    const at2 = path.at(point2);
+    const whole2 = valueOf(id, { time: 0, drivers: point2 } as never);
+    expect(at2).toBe(whole2);
+  });
+
+  it('1.3 walks a binding name INTO its own expression rather than '
+     + 'stopping at the name', () => {
+    const id = prepare('(_bound + x)');
+    const boundRoot = prepare('(x * 2)');
+    const bindings = new Map([['_bound', boundRoot]]);
+    const moving = new Set(['x']);
+    const path = new PathValue(id, moving, bindings);
+
+    const point1 = { x: 3 };
+    expect(path.bind(point1)).toBe(9); // (3*2) + 3
+    const point2 = { x: 10 };
+    expect(path.at(point2)).toBe(30); // (10*2) + 10 -- the binding MOVED
+  });
+
+  it('1.4 reads a qualified id from the FLAT bank by its whole dotted id, '
+     + 'the same number member access reaches', () => {
+    const id = prepare('units.drum.turn');
+    const values = { 'units.drum.turn': 7 };
+    const path = new PathValue(id, new Set(['units.drum.turn']));
+    expect(path.bind(values)).toBe(7);
+    expect(
+      valueOf(id, { time: 0, drivers: { units: { drum: { turn: 7 } } } } as never),
+    ).toBe(7);
+  });
+
+  it('1.5 refuses a ternary loudly rather than guessing, and a plan '
+     + 'carrying one still integrates through the fallback', () => {
+    const id = prepare('(a ? b : c)');
+    const path = new PathValue(id, new Set(['a']));
+    expect(() => path.bind({ a: 1, b: 2, c: 3 }))
+      .toThrow(UnsupportedPathNode);
+    // The caller's fallback: the SAME expression through evaluateExpression
+    // still answers correctly.
+    expect(
+      valueOf(id, { time: 0, drivers: { a: 1, b: 2, c: 3 } } as never),
+    ).toBe(2);
+  });
+
+  it('1.6 charges the resolution probe by the MOVING count for a second '
+     + 'point, and by the TOTAL for the bind', () => {
+    const id = prepare('((a + b) + (c + d))');
+    const path = new PathValue(id, new Set(['a']));
+    resetExpressionMetrics();
+    path.bind({ a: 1, b: 2, c: 3, d: 4 });
+    const afterBind = expressionMetrics().resolutions;
+    expect(afterBind).toBe(path.totalNodes());
+    path.at({ a: 5, b: 2, c: 3, d: 4 });
+    const afterAt = expressionMetrics().resolutions;
+    expect(afterAt - afterBind).toBe(path.movingNodes());
+    expect(path.movingNodes()).toBeLessThan(path.totalNodes());
+  });
+
+  it('1.7 movingNames: exactly the names whose delta is non-zero', () => {
+    expect([...movingNames({ a: 1, b: 0, c: -0.0001, d: -0 })].sort())
+      .toEqual(['a', 'c']);
+  });
+
+  it('1.8 differential: over every followed quantity of the corpus and '
+     + 'the committed fixtures, PathValue and valueOf agree at every '
+     + 'point of a piece, Object.is exact', () => {
+    const sources: RunDocument[] = [
+      ...(corpus as unknown as { machines: { document: unknown }[] })
+        .machines.map((m) => m.document as RunDocument),
+      clearingDoc as unknown as RunDocument,
+      carriageDoc as unknown as RunDocument,
+      lockDoc as unknown as RunDocument,
+    ];
+    let checked = 0;
+    for (const [index, document] of sources.entries()) {
+      let program: LoadedProgram;
+      try {
+        program = loadProgram(document, `corpus://${index}`);
+      } catch {
+        continue; // a malformed bench fixture, not this document's concern
+      }
+      const bank: Record<string, number> = { ...program.initial };
+      const perturbed = program.order.slice(0, 6);
+      const pointA: Record<string, number> = { ...bank };
+      const pointB: Record<string, number> = { ...bank };
+      const delta: Record<string, number> = {};
+      for (const name of program.order) delta[name] = 0;
+      for (const [i, name] of perturbed.entries()) {
+        delta[name] = (i + 1) * 0.37;
+        pointB[name] = pointA[name] + delta[name];
+      }
+      const moving = movingNames(delta);
+      const bindings = program.bindings.roots();
+      const expressions = new Set<string>();
+      for (const edge of program.edges) {
+        for (const plan of edge.plans) {
+          if (plan === null) continue;
+          expressions.add(plan.skeleton);
+          for (const jump of plan.jumps) expressions.add(jump.level);
+        }
+        if (edge.block !== null) {
+          for (const member of edge.block.members) {
+            if (member.plan !== null) {
+              expressions.add(member.plan.skeleton);
+              for (const jump of member.plan.jumps) expressions.add(jump.level);
+            }
+            if (member.selectorPlan !== null) {
+              for (const jump of member.selectorPlan.jumps) {
+                expressions.add(jump.level);
+              }
+            }
+          }
+        }
+      }
+      for (const expression of expressions) {
+        const nodeId = program.nodeOf(expression);
+        const path = new PathValue(nodeId, moving, bindings);
+        let boundValue: unknown;
+        try {
+          boundValue = path.bind(pointA);
+        } catch (error) {
+          if (error instanceof UnsupportedPathNode) continue;
+          throw error;
+        }
+        const wholeA = evaluateExpression(program, expression, pointA);
+        expect(Object.is(Number(boundValue), wholeA)).toBe(true);
+        const atValue = path.at(pointB);
+        const wholeB = evaluateExpression(program, expression, pointB);
+        expect(Object.is(Number(atValue), wholeB)).toBe(true);
+        checked += 1;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 });

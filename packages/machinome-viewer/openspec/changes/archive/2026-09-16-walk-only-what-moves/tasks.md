@@ -72,12 +72,12 @@
 
 ## 1. The path value (`src/expressions.ts`)
 
-- [ ] 1.1 RED: a test that a `PathValue` over a real published
+- [x] 1.1 RED: a test that a `PathValue` over a real published
       expression answers, at a point of a piece it has BOUND, the same
       float `valueOf` answers for the same values — and at a point of the
       SAME piece after binding, the same float again. Fails because there
       is no `PathValue`.
-- [ ] 1.2 `PathValue(root, moving, bindings)`: `bind(values)` walks the
+- [x] 1.2 `PathValue(root, moving, bindings)`: `bind(values)` walks the
       whole graph in postorder, computing every node and storing the
       value of every node that does not move; `at(values)` walks only the
       moving nodes, in the same postorder, reading a standing child back
@@ -86,11 +86,11 @@
       `compute` uses (design D1). Structure is decided in the FIRST
       bind's own walk and never again (D2); a later bind re-stores the
       standing values without re-deciding.
-- [ ] 1.3 A name node that the bindings table defines has that binding's
+- [x] 1.3 A name node that the bindings table defines has that binding's
       root as its ONE child, so it moves exactly when the binding does
       and its value is that root's (D3). `$t` is a constant of the run's
       scope and stands.
-- [ ] 1.4 A qualified id is read from `values` by its whole dotted id
+- [x] 1.4 A qualified id is read from `values` by its whole dotted id
       (D4). A name in neither `values` nor the bindings table falls
       through to the OpenSCAD context, exactly as `resolveName` does.
       Review amendment — state the order exactly: a name node's FIRST
@@ -105,19 +105,19 @@
       loaded program has it. A `member` node (`expr.name`, D9) is
       refused the same way; the originating document and the corpus
       carry none, which the differential test of 1.8 confirms.
-- [ ] 1.5 An unsupported node kind — a ternary, an array, an object, an
+- [x] 1.5 An unsupported node kind — a ternary, an array, an object, an
       index, a short-circuit binary — is REFUSED loudly by the path value
       rather than guessed (D9), and the caller falls back to
       `evaluateExpression`. Test: the refusal names the kind; test: a
       plan whose skeleton carries one still integrates, through the
       fallback.
-- [ ] 1.6 Every node the path value computes charges the resolution probe
+- [x] 1.6 Every node the path value computes charges the resolution probe
       (D8). Test: `expressionMetrics().resolutions` rises by the moving
       count for a second point of a bound piece, and by the total for the
       bind.
-- [ ] 1.7 `movingNames(delta)`: the names whose increment is non-zero.
+- [x] 1.7 `movingNames(delta)`: the names whose increment is non-zero.
       Exported beside `PathValue`; nothing else.
-- [ ] 1.8 A differential test, against COMMITTED fixtures only — the
+- [x] 1.8 A differential test, against COMMITTED fixtures only — the
       corpus's own documents and `tests/fixtures/{clearing,carriage,
       lock}/viewer.json`, never the originating project's export: over
       every followed quantity those documents publish and a real set of
@@ -128,66 +128,66 @@
 
 ## 2. The self-read walk (`src/run/jumps.ts`)
 
-- [ ] 2.1 RED: a test that pins D6 — a walk asked for a point of a piece
+- [x] 2.1 RED: a test that pins D6 — a walk asked for a point of a piece
       under one `branches` object and then under another must not read
       the first piece's standing values. Written against a corpus machine
       with more than one piece per tick (`Clearing` at `dt = 0.05`, the
       scenario that caught the producer's own `id()` bug), asserting the
       committed bank tick by tick. Prove it red by binding once and
       never re-binding.
-- [ ] 2.2 `Walk` builds ONE `PathValue` for `reading.outer.skeleton` over
+- [x] 2.2 `Walk` builds ONE `PathValue` for `reading.outer.skeleton` over
       the walk's moving names, and one per DEPENDENT jump over those
       names PLUS the driven coordinate (D5). `skeletonAt` and
       `levelOfJump` bind when the `branches` object changes and take a
       point otherwise; the walk keeps every `branches` object it builds
       alive for its own lifetime (D6).
-- [ ] 2.3 `levelOfJump` keeps `levelOf`'s refusal rules unchanged: a
+- [x] 2.3 `levelOfJump` keeps `levelOf`'s refusal rules unchanged: a
       non-finite level refuses the tick with the same message, whichever
       evaluator produced it.
-- [ ] 2.4 GREEN: 2.1, plus `run/jumps.test.ts` and `run/run.test.ts`
+- [x] 2.4 GREEN: 2.1, plus `run/jumps.test.ts` and `run/run.test.ts`
       unchanged and green.
 
 ## 3. The plan partition (`src/run/jumps.ts`)
 
-- [ ] 3.1 RED: a test that the level of a jump is evaluated from a
+- [x] 3.1 RED: a test that the level of a jump is evaluated from a
       standing part belonging to its OWN piece — the partition's
       equivalent of 2.1, against a machine whose partition has several
       pieces and whose level reads a switched source (`ShiftedCarry`).
-- [ ] 3.2 `LevelPaths(program, moving)`: one `PathValue` per jump
+- [x] 3.2 `LevelPaths(program, moving)`: one `PathValue` per jump
       placeholder, a monotonic `newPiece()` token, and `value(jump,
       piece, values, …)` binding when the token changed and taking a
       point otherwise (D6, D7).
-- [ ] 3.3 `partition` builds one when its caller does not supply one, and
+- [x] 3.3 `partition` builds one when its caller does not supply one, and
       threads it through `branchesAt` (a fresh token per one-shot point),
       `crossingsOf`, `bisect` and `levelAt`. `planIncrement` builds ONE
       for its partition and its per-piece `branchesAt` together. `Walk`'s
       outer layer builds ONE for the whole walk and passes it to
       `outerCuts` and `outerBranches`.
-- [ ] 3.4 The signatures stay internal: `LevelPaths` is exported from
+- [x] 3.4 The signatures stay internal: `LevelPaths` is exported from
       `jumps.ts` only for its own tests, and no engine entry point
       (`planIncrement`, `planCuts`, `retainedIncrement`, `retainedCuts`,
       `blockIncrements`, `blockCuts`) changes its published shape.
-- [ ] 3.5 GREEN: 3.1, plus the whole of `src/run/`'s suite.
+- [x] 3.5 GREEN: 3.1, plus the whole of `src/run/`'s suite.
 
 ## 4. The proof that nothing moved
 
-- [ ] 4.1 The conformance corpus, replayed: every scenario of the
+- [x] 4.1 The conformance corpus, replayed: every scenario of the
       COMMITTED `src/running-corpus.json` green, exactly as on the base.
       This is the contract, and a disagreement is a bug in this change.
-- [ ] 4.2 The originating document, bit for bit: 100 idle ticks, the
+- [x] 4.2 The originating document, bit for bit: 100 idle ticks, the
       `Turn crank` instruction, 60 more ticks; the whole bank, every
       recorded crossing and every stop written out and compared with the
       base engine's. Expected: **byte-identical, 213 lines**, on three
       runs. The prototype's own digests are in the scratchpad at
       `spikes/out/b{1,2,3}.txt` and `p{1,2,3}.txt`.
-- [ ] 4.3 `npm test` and `npx tsc --noEmit` in the widget: green, with
+- [x] 4.3 `npm test` and `npx tsc --noEmit` in the widget: green, with
       the file and test counts recorded against the base's.
-- [ ] 4.4 `node build.mjs`: the bundle rebuilt and its size recorded.
+- [x] 4.4 `node build.mjs`: the bundle rebuilt and its size recorded.
       ADR-059 keeps it current; do not commit a stale one.
 
 ## 5. The cost, asserted
 
-- [ ] 5.1 `run/cost.test.ts`: the measured floors below, each an order of
+- [x] 5.1 `run/cost.test.ts`: the measured floors below, each an order of
       magnitude under the prototype's number so the test catches a
       tenfold regression and never a slow machine. Prototype against
       base, same bench:
@@ -204,18 +204,18 @@
       stop) exactly where they are — they are `run.ts`'s constraint
       search, which this cycle does not touch, and an unmoved number is
       the evidence for that.
-- [ ] 5.2 A test asserting the STRUCTURAL claim rather than a rate: for
+- [x] 5.2 A test asserting the STRUCTURAL claim rather than a rate: for
       a machine with a followed quantity whose sources mostly stand, the
       node visits of a second point of a piece equal the MOVING count,
       and the moving count is a minority of the total. Through the probe,
       never through elapsed time.
-- [ ] 5.3 The small-machine guard, stated: `Train` and the Pascaline must
+- [x] 5.3 The small-machine guard, stated: `Train` and the Pascaline must
       not regress beyond this bench's spread. If either does on the
       applier's host, report it rather than lowering the floor.
 
 ## 6. The record
 
-- [ ] 6.1 `docs/adrs/EXPORT/ADR-060-only-what-moves-along-a-step-s-path-is-walked.md`:
+- [x] 6.1 `docs/adrs/EXPORT/ADR-060-only-what-moves-along-a-step-s-path-is-walked.md`:
       Accepted, dated, depending on ADR-043 (the shared DAG this is a
       view of), ADR-046 (the nested scope this steps around for a
       followed point), ADR-047/ADR-057/ADR-058 (the walk, the selection
@@ -224,22 +224,22 @@
       the one it deliberately does not. Record the measured before/after,
       the moving-node ratio, the bit-identity evidence, and the three
       deferred cycles with their numbers.
-- [ ] 6.2 `docs/adrs/README.md`: the new row, chronological.
-- [ ] 6.3 `CHANGELOG.md` under `0.2.0 — unreleased`: one bullet — a
+- [x] 6.2 `docs/adrs/README.md`: the new row, chronological.
+- [x] 6.3 `CHANGELOG.md` under `0.2.0 — unreleased`: one bullet — a
       quantity followed along a step's path is evaluated as a path, the
       operating Curta's tick falling 4× with every value unchanged.
-- [ ] 6.4 `workflow/warts.md`: the scope-rebuild entry gains its
+- [x] 6.4 `workflow/warts.md`: the scope-rebuild entry gains its
       after-measurement — `nest` 40.6 % → 11.2 % of an idle tick and
       16.0 % → 3.4 % of a crank tick — and its triage moves to "largely
       retired by ADR-060; the remainder is not worth a cycle on this
       document". The entry is NOT deleted: its second cost, the abandoned
       memo across run expressions, stands.
-- [ ] 6.5 `evidence.md` for this change: §0's measurements with the after
+- [x] 6.5 `evidence.md` for this change: §0's measurements with the after
       numbers beside them, the re-export of task 0.2 and whether the
       bytes matched, the digests of 4.2, any deviation from this design
       and why, and the follow-ups — the kink cut, the corpus refresh,
       `run.ts`'s constraint search, and the per-piece classification and
       compiled cone the producer holds.
-- [ ] 6.6 `openspec validate walk-only-what-moves --strict` green, and
+- [x] 6.6 `openspec validate walk-only-what-moves --strict` green, and
       the change archived under its dated name after implementation — the
       ARCHIVE left for the reviewer, as the previous cycles left it.

@@ -27,6 +27,7 @@ import {
 import type {
   BlockMember, LoadedProgram, ProgramBlock, RetainedReading,
 } from './program';
+import { movingNames, PathValue, UnsupportedPathNode } from '../expressions';
 
 /** A SELECTOR's placeholder bound to the branch the block read at its
  * piece's midpoint (design D3). A forced node is a CONSTANT on the
@@ -266,15 +267,79 @@ export function merged(cuts: number[], found: number[],
   return kept;
 }
 
+/** One caller's own LEVEL path values (design D7, ADR-060; ADR-124's
+ * `_LevelPaths`): one `PathValue` per jump PLACEHOLDER, re-bound when the
+ * PIECE token it is asked under changes and taken at a point otherwise
+ * (D6). A piece is identified by a strictly increasing integer handed out
+ * by `newPiece()` -- never by a transient object -- so no value computed
+ * under one piece can be read back under another's, even though
+ * JavaScript's `Map` keying by object identity would already prevent the
+ * hazard ADR-124 records (D6).
+ *
+ * A jump whose level the path evaluator REFUSES (D9) falls back to the
+ * ordinary whole-graph `levelOf` for every future point of that SAME
+ * jump: the refusal is a structural property of the expression, decided
+ * once. */
+export class LevelPaths {
+  private readonly paths = new Map<string, PathValue>();
+
+  private readonly bound = new Map<string, number>();
+
+  private readonly disabled = new Set<string>();
+
+  private counter = 0;
+
+  constructor(private readonly program: LoadedProgram,
+              private readonly moving: ReadonlySet<string>) {}
+
+  /** A fresh, strictly increasing piece token (D6). */
+  newPiece(): number { this.counter += 1; return this.counter; }
+
+  value(plan: ProgramPlan, jump: ProgramJump, piece: number,
+        values: Record<string, number>, described: string,
+        coordinate: string): number {
+    if (this.disabled.has(jump.name)) {
+      return levelOf(this.program, plan, jump, values, described, coordinate);
+    }
+    let path = this.paths.get(jump.name);
+    if (path === undefined) {
+      path = new PathValue(this.program.nodeOf(jump.level), this.moving,
+                           this.program.bindings.roots());
+      this.paths.set(jump.name, path);
+    }
+    const bind = this.bound.get(jump.name) !== piece;
+    if (bind) this.bound.set(jump.name, piece);
+    let level: number;
+    try {
+      level = Number(bind ? path.bind(values) : path.at(values));
+    } catch (error) {
+      if (!(error instanceof UnsupportedPathNode)) throw error;
+      this.disabled.add(jump.name);
+      return levelOf(this.program, plan, jump, values, described, coordinate);
+    }
+    if (!Number.isFinite(level)) {
+      throw noLevel(jump.primitive, described, coordinate,
+                    Number.isNaN(level)
+                      ? 'a level quantity that is not a number'
+                      : undefined);
+    }
+    return level;
+  }
+}
+
 function levelAt(program: LoadedProgram, plan: ProgramPlan, jump: ProgramJump,
                  start: Record<string, number>, delta: Record<string, number>,
                  t: number, inner: Record<string, number>,
-                 described: string, coordinate: string): number {
+                 described: string, coordinate: string,
+                 paths: LevelPaths | null = null, piece = 0): number {
   const values = along(start, delta, t);
   for (const name in inner) {
     if (Object.prototype.hasOwnProperty.call(inner, name)) {
       values[name] = inner[name];
     }
+  }
+  if (paths !== null) {
+    return paths.value(plan, jump, piece, values, described, coordinate);
   }
   return levelOf(program, plan, jump, values, described, coordinate);
 }
@@ -303,9 +368,15 @@ function branchesAt(program: LoadedProgram, plan: ProgramPlan,
                     start: Record<string, number>,
                     delta: Record<string, number>, t: number, count: number,
                     described: string, coordinate: string,
-                    forced: Forced = null): Record<string, number> {
+                    forced: Forced = null,
+                    paths: LevelPaths | null = null): Record<string, number> {
   const values = along(start, delta, t);
   const found: Record<string, number> = {};
+  // `branchesAt` is a ONE-SHOT point (design D7): every jump here is
+  // asked its branch exactly once for this `t`, so a `paths` a caller
+  // supplies still shares a jump's decided STRUCTURE with any other use
+  // of it in the same scope, but always BINDS -- a fresh piece token.
+  const piece = paths === null ? 0 : paths.newPiece();
   for (const jump of plan.jumps.slice(0, count)) {
     // A node the caller FORCED reads the branch it was given and its
     // level is never evaluated: one of the two places a block's selector
@@ -313,7 +384,11 @@ function branchesAt(program: LoadedProgram, plan: ProgramPlan,
     const branch = isForced(forced, jump.name)
       ? (forced as Record<string, number>)[jump.name]
       : branchOf(jump.primitive,
-                 levelOf(program, plan, jump, values, described, coordinate));
+                 paths === null
+                   ? levelOf(program, plan, jump, values, described,
+                             coordinate)
+                   : paths.value(plan, jump, piece, values, described,
+                                coordinate));
     found[jump.name] = branch;
     values[jump.name] = branch;
   }
@@ -338,6 +413,7 @@ function crossingsOf(
   start: Record<string, number>, delta: Record<string, number>,
   inner: Record<string, number>, left: number, right: number,
   described: string, coordinate: string,
+  paths: LevelPaths | null = null, piece = 0,
 ): [number, number][] {
   const limits = program.limits;
   const refuse = (count: number | null): never => {
@@ -350,9 +426,9 @@ function crossingsOf(
     // -- all of them, which is what makes a crank that passes three
     // tooth windows in one tick add three throws rather than one.
     const low = levelAt(program, plan, jump, start, delta, left, inner,
-                        described, coordinate);
+                        described, coordinate, paths, piece);
     const high = levelAt(program, plan, jump, start, delta, right, inner,
-                         described, coordinate);
+                         described, coordinate, paths, piece);
     if (high === low) return [];
     const found: [number, number][] = [];
     for (const level of surfacesOf(jump, low, high, false, limits, refuse)) {
@@ -368,7 +444,8 @@ function crossingsOf(
   }
   points.push(right);
   const levels = points.map((where) => levelAt(
-    program, plan, jump, start, delta, where, inner, described, coordinate));
+    program, plan, jump, start, delta, where, inner, described, coordinate,
+    paths, piece));
   const found: [number, number][] = [];
   for (let step = 0; step < limits.subdivisions; step += 1) {
     const low = levels[step];
@@ -384,7 +461,7 @@ function crossingsOf(
       } else {
         found.push([bisect(program, plan, jump, start, delta, inner, level,
                            points[step], points[step + 1], described,
-                           coordinate), level]);
+                           coordinate, paths, piece), level]);
       }
     }
     if (found.length > limits.maxCrossings) break;
@@ -395,16 +472,17 @@ function crossingsOf(
 function bisect(program: LoadedProgram, plan: ProgramPlan, jump: ProgramJump,
                 start: Record<string, number>, delta: Record<string, number>,
                 inner: Record<string, number>, level: number, low: number,
-                high: number, described: string, coordinate: string): number {
+                high: number, described: string, coordinate: string,
+                paths: LevelPaths | null = null, piece = 0): number {
   let below = levelAt(program, plan, jump, start, delta, low, inner,
-                      described, coordinate) - level;
+                      described, coordinate, paths, piece) - level;
   let lower = low;
   let upper = high;
   for (let round = 0; round < program.limits.bisectionRounds; round += 1) {
     if (upper - lower <= program.limits.crossingTolerance) break;
     const middle = (lower + upper) / 2;
     const here = levelAt(program, plan, jump, start, delta, middle, inner,
-                         described, coordinate) - level;
+                         described, coordinate, paths, piece) - level;
     if (here === 0 || (here < 0) !== (below < 0)) {
       upper = middle;
     } else {
@@ -419,8 +497,10 @@ function partition(program: LoadedProgram, plan: ProgramPlan,
                    start: Record<string, number>,
                    delta: Record<string, number>, described: string,
                    coordinate: string, crossings: CrossingRecord[] | null,
-                   tick: number, forced: Forced = null): number[] {
+                   tick: number, forced: Forced = null,
+                   given: LevelPaths | null = null): number[] {
   const limits = program.limits;
+  const paths = given ?? new LevelPaths(program, movingNames(delta));
   let cuts = [0, 1];
   const located: [number, number, string, number][] = [];
   plan.jumps.forEach((jump, index) => {
@@ -434,10 +514,11 @@ function partition(program: LoadedProgram, plan: ProgramPlan,
       const right = cuts[at + 1];
       const inner = branchesAt(program, plan, start, delta,
                                (left + right) / 2, index, described,
-                               coordinate, forced);
+                               coordinate, forced, paths);
+      const piece = paths.newPiece();
       found = found.concat(crossingsOf(program, plan, jump, start, delta,
                                        inner, left, right, described,
-                                       coordinate));
+                                       coordinate, paths, piece));
       if (found.length > limits.maxCrossings) {
         throw tooMany(described, coordinate, jump.primitive, found.length,
                       limits);
@@ -480,15 +561,16 @@ export function planIncrement(
     // read as minus a jump.
     return 0;
   }
+  const paths = new LevelPaths(program, movingNames(delta));
   const cuts = partition(program, plan, start, delta, described, coordinate,
-                         crossings, tick, forced);
+                         crossings, tick, forced, paths);
   let total = 0;
   for (let at = 0; at < cuts.length - 1; at += 1) {
     const left = cuts[at];
     const right = cuts[at + 1];
     const branches = branchesAt(program, plan, start, delta,
                                 (left + right) / 2, plan.jumps.length,
-                                described, coordinate, forced);
+                                described, coordinate, forced, paths);
     total += substituted(program, plan, start, delta, right, branches)
       - substituted(program, plan, start, delta, left, branches);
   }
@@ -557,7 +639,43 @@ class Walk {
     // path: what it holds on a piece is what the pieces before it
     // produced, never an increment the tick handed it.
     this.delta[this.reading.own] = 0;
+    // Design D5/D7: layer one's own `LevelPaths`, over the walk's moving
+    // names; one `PathValue` for the OUTER skeleton, over those same
+    // names; and one `PathValue` per DEPENDENT jump's level, over those
+    // names PLUS the driven coordinate -- because `levelOfJump` hands
+    // that coordinate its own value at every point, so a dependent
+    // node's level MOVES with it even though `this.delta` deliberately
+    // zeroes its source (above).
+    const moving = movingNames(this.delta);
+    this.outerPaths = new LevelPaths(this.program, moving);
+    const roots = this.program.bindings.roots();
+    this.skeletonPath = new PathValue(
+      this.program.nodeOf(this.reading.outer.skeleton), moving, roots);
+    const own = new Set(moving);
+    own.add(this.reading.own);
+    for (const jump of this.reading.dependent) {
+      this.levelPaths.set(
+        jump.name, new PathValue(this.program.nodeOf(jump.level), own, roots));
+    }
   }
+
+  /** Layer one's own level paths (D7). */
+  private readonly outerPaths: LevelPaths;
+
+  /** One path value for the outer skeleton, re-bound whenever `branches`
+   * changes object identity -- a new piece (D6). */
+  private readonly skeletonPath: PathValue;
+
+  private skeletonBound: Record<string, number> | null = null;
+
+  private skeletonDisabled = false;
+
+  /** One path value per DEPENDENT jump's level (D5, D7). */
+  private readonly levelPaths = new Map<string, PathValue>();
+
+  private readonly levelBound = new Map<string, Record<string, number>>();
+
+  private readonly levelDisabled = new Set<string>();
 
   // ------------------------------------------------------------------
   // The two layers
@@ -647,14 +765,15 @@ class Walk {
     if (this.reading.outer.jumps.length === 0) return [0, 1];
     return partition(this.program, this.reading.outer, this.start, this.delta,
                      this.described, this.coordinate, crossings, tick,
-                     this.forced);
+                     this.forced, this.outerPaths);
   }
 
   private outerBranches(left: number, right: number): Record<string, number> {
     if (this.reading.outer.jumps.length === 0) return {};
     return branchesAt(this.program, this.reading.outer, this.start, this.delta,
                       (left + right) / 2, this.reading.outer.jumps.length,
-                      this.described, this.coordinate, this.forced);
+                      this.described, this.coordinate, this.forced,
+                      this.outerPaths);
   }
 
   // ------------------------------------------------------------------
@@ -977,8 +1096,23 @@ class Walk {
         values[name] = branches[name];
       }
     }
-    return evaluateExpression(this.program, this.reading.outer.skeleton,
-                              values);
+    if (this.skeletonDisabled) {
+      return evaluateExpression(this.program, this.reading.outer.skeleton,
+                                values);
+    }
+    // Design D6/D7: a new BRANCHES object is a new piece -- re-bound
+    // whenever the reference changes, and taken at a point otherwise.
+    const bind = this.skeletonBound !== branches;
+    if (bind) this.skeletonBound = branches;
+    try {
+      return Number(bind ? this.skeletonPath.bind(values)
+                          : this.skeletonPath.at(values));
+    } catch (error) {
+      if (!(error instanceof UnsupportedPathNode)) throw error;
+      this.skeletonDisabled = true;
+      return evaluateExpression(this.program, this.reading.outer.skeleton,
+                                values);
+    }
   }
 
   private levelOfJump(jump: ProgramJump, t: number, ownValue: number,
@@ -990,8 +1124,30 @@ class Walk {
         values[name] = branches[name];
       }
     }
-    return levelOf(this.program, this.reading.outer, jump, values,
-                   this.described, this.coordinate);
+    const path = this.levelDisabled.has(jump.name)
+      ? undefined : this.levelPaths.get(jump.name);
+    if (path === undefined) {
+      return levelOf(this.program, this.reading.outer, jump, values,
+                     this.described, this.coordinate);
+    }
+    const bind = this.levelBound.get(jump.name) !== branches;
+    if (bind) this.levelBound.set(jump.name, branches);
+    let level: number;
+    try {
+      level = Number(bind ? path.bind(values) : path.at(values));
+    } catch (error) {
+      if (!(error instanceof UnsupportedPathNode)) throw error;
+      this.levelDisabled.add(jump.name);
+      return levelOf(this.program, this.reading.outer, jump, values,
+                     this.described, this.coordinate);
+    }
+    if (!Number.isFinite(level)) {
+      throw noLevel(jump.primitive, this.described, this.coordinate,
+                    Number.isNaN(level)
+                      ? 'a level quantity that is not a number'
+                      : undefined);
+    }
+    return level;
   }
 }
 

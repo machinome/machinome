@@ -192,8 +192,11 @@ describe('the cost of a tick', () => {
     const engine = Engine.load(machine.document as RunDocument,
                                { dt: machine.dt, record: null });
     engine.move('ring', { by: 100000, duration: machine.dt * 20000 });
+    // Raised (openspec `walk-only-what-moves`, ADR-060): only the
+    // self-read walk's moving cone is walked per point now, measured on
+    // this bench at 5919 -> 14042 ticks/s.
     expect(ticksPerSecond('Clearing, a solved self-read', engine, 20000))
-      .toBeGreaterThan(1000);
+      .toBeGreaterThan(4000);
   }, 120_000);
 
   it('searches six self-read dials through a `clamp01` window', () => {
@@ -205,8 +208,9 @@ describe('the cost of a tick', () => {
     const engine = Engine.load(clearing as unknown as RunDocument,
                                { dt: 1 / 240, record: null });
     engine.move('clearing', { by: 1, duration: 10 });
+    // Raised (ADR-060): 209 -> 321 ticks/s on this bench.
     expect(ticksPerSecond('the Curta fixture at dt = 1/240', engine, 2400))
-      .toBeGreaterThan(10);
+      .toBeGreaterThan(150);
   }, 240_000);
 
   // -------------------------------------------------------------------
@@ -248,9 +252,11 @@ describe('the cost of a tick', () => {
                 + 'the same laws with the carriage frozen, and a crossing '
                 + `tick ${(quiet / crossing).toFixed(1)}x a quiet one `
                 + "(the producer measured 1.6x and 2.0x)");
-    expect(quiet).toBeGreaterThan(1000);
+    // Raised (ADR-060): quiet 4320 -> 9859, crossing 2189 -> 4746 ticks/s
+    // on this bench.
+    expect(quiet).toBeGreaterThan(3000);
     expect(twin).toBeGreaterThan(quiet);
-    expect(crossing).toBeGreaterThan(200);
+    expect(crossing).toBeGreaterThan(1500);
   }, 240_000);
 
   it('runs the Curta carriage: ONE BLOCK OF SEVEN', () => {
@@ -259,8 +265,9 @@ describe('the cost of a tick', () => {
     const engine = Engine.load(carriage as unknown as RunDocument,
                                { dt: 0.02, record: null });
     engine.move('crank', { by: 36000, duration: 0.02 * 2000 });
+    // Raised (ADR-060): 292 -> 738 ticks/s on this bench.
     expect(ticksPerSecond('the Curta carriage at dt = 0.02', engine, 2000))
-      .toBeGreaterThan(10);
+      .toBeGreaterThan(200);
   }, 240_000);
 
   it('SEARCHES a stop on a block coordinate -- the expensive case', () => {

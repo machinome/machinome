@@ -960,3 +960,243 @@ export function affineCoordinate(expression: string, coordinate: string,
   };
   return visit(prepare(expression));
 }
+
+// ---------------------------------------------------------------------
+// A quantity FOLLOWED along one tick's path (design D1-D9; ADR-060,
+// mirroring solid-node's ADR-124's `_PathValue`). The part of an
+// expression that reads no name the step MOVES cannot change over one
+// piece, so it is computed ONCE and read back; only the moving cone is
+// walked per point. `PathValue` is a VIEW of the SAME interned DAG
+// `valueOf` walks -- the same `applyUnary`/`applyBinary`/`readMember`
+// and the same OpenSCAD `context` -- so bit-identity is a property of
+// the construction rather than a test result (D1). It mints no node and
+// holds no expression text.
+// ---------------------------------------------------------------------
+
+/** A node shape this path evaluator refuses rather than guesses (D9): a
+ * generic member, an index, a ternary, an array, an object literal, or a
+ * short-circuit `&&`/`||`. None occurs in any published document this
+ * viewer executes today (verified: zero occurrences); a document that
+ * ever did carry one falls back to `evaluateExpression` through this
+ * error. */
+export class UnsupportedPathNode extends Error {}
+
+export class PathValue {
+  /** The moving cone, in the WHOLE graph's postorder, decided the first
+   * time this quantity is bound (D2). `null` until then. */
+  private order: NodeId[] | null = null;
+
+  /** Every node's value on the CURRENT piece that does not move (D2). */
+  private readonly standing = new Map<NodeId, unknown>();
+
+  /** Scratch, valid only for the duration of one `bind`/`at` call. */
+  private readonly computed = new Map<NodeId, unknown>();
+
+  /** The whole graph's postorder, decided once and reused by every later
+   * piece (D2). */
+  private walked: NodeId[] = [];
+
+  constructor(private readonly root: NodeId,
+              private readonly moving: ReadonlySet<string>,
+              private readonly bindings?: ReadonlyMap<string, NodeId>) {}
+
+  private childrenOf(id: NodeId): readonly NodeId[] {
+    const node = nodes[id];
+    switch (node.kind) {
+      case 'const': return [];
+      case 'name': {
+        if (node.parts[0] === TIME_ID) return [];
+        const binding = this.bindings?.get(node.parts[0]);
+        // D3: a name that is a binding has the binding's root as its ONE
+        // child, so it moves exactly when the binding's own expression
+        // does.
+        return binding === undefined ? [] : [binding];
+      }
+      case 'unary': return [node.target];
+      case 'binary': return [node.left, node.right];
+      case 'call': return [node.callee, ...node.args];
+      case 'member': return [node.owner];
+      case 'index': return [node.owner, node.key];
+      case 'ternary': return [node.predicate, node.whenTrue, node.whenFalse];
+      case 'array': return node.items;
+      case 'object': return node.values;
+      default: return [];
+    }
+  }
+
+  private postorder(): NodeId[] {
+    const out: NodeId[] = [];
+    const seen = new Set<NodeId>();
+    const stack: [NodeId, boolean][] = [[this.root, false]];
+    while (stack.length > 0) {
+      const [id, expanded] = stack.pop()!;
+      if (expanded) { out.push(id); continue; }
+      if (seen.has(id)) continue;
+      seen.add(id);
+      stack.push([id, true]);
+      for (const child of this.childrenOf(id)) stack.push([child, false]);
+    }
+    return out;
+  }
+
+  /** Whether a LEAF name node (no binding, not `$t`) moves: the run's own
+   * statement (D5), read off the FLAT bank's key space -- the same id
+   * `valueAt` below resolves it by. */
+  private movesByName(id: NodeId): boolean {
+    const node = nodes[id];
+    if (node.kind !== 'name') return false;
+    return this.moving.has(node.name);
+  }
+
+  private read(id: NodeId): unknown {
+    if (this.computed.has(id)) return this.computed.get(id);
+    return this.standing.get(id);
+  }
+
+  /** One node's value at one point (D1, D4). Resolution order for a
+   * `name` node mirrors `resolveName` exactly (review amendment, tasks.md
+   * 1.4): `$t` first, then a binding (walked INTO, D3), then the WHOLE
+   * dotted id read from the run's flat bank (D4), then -- absent from the
+   * bank -- a single-part name's fallback to the OpenSCAD context, or a
+   * multi-part name's fallback through the SAME context-then-`readMember`
+   * chain `resolveName` takes; a multi-part name the bank does not hold
+   * and whose first part resolves through none of the above is the one
+   * shape flat and nested resolution could disagree on (D9 point 0) and
+   * is REFUSED rather than guessed. */
+  private valueAt(id: NodeId, values: Record<string, number>): unknown {
+    const node = nodes[id];
+    switch (node.kind) {
+      case 'const':
+        return node.value;
+      case 'name': {
+        const first = node.parts[0];
+        if (first === TIME_ID) return 0;
+        const binding = this.bindings?.get(first);
+        if (binding !== undefined) {
+          let value = this.read(binding);
+          for (let i = 1; i < node.parts.length; i += 1) {
+            value = readMember(value, node.parts[i]);
+          }
+          return value;
+        }
+        if (Object.prototype.hasOwnProperty.call(values, node.name)) {
+          return values[node.name];
+        }
+        if (node.parts.length === 1) {
+          return first in context ? context[first] : undefined;
+        }
+        if (first in context) {
+          let value: unknown = context[first];
+          for (let i = 1; i < node.parts.length; i += 1) {
+            value = readMember(value, node.parts[i]);
+          }
+          return value;
+        }
+        throw new UnsupportedPathNode(
+          `PathValue: the multi-part name "${node.name}" is neither in the `
+          + 'run\'s bank nor resolvable through $t, a binding or the '
+          + 'OpenSCAD context -- the one shape flat and nested resolution '
+          + 'could disagree on.');
+      }
+      case 'unary':
+        return applyUnary(node.op, this.read(node.target));
+      case 'binary':
+        if (node.op === '&&' || node.op === '||') {
+          throw new UnsupportedPathNode(
+            `PathValue: a short-circuit "${node.op}"`);
+        }
+        return applyBinary(node.op, this.read(node.left), this.read(node.right));
+      case 'call': {
+        const callee = this.read(node.callee) as (...a: unknown[]) => unknown;
+        return callee(...node.args.map((arg) => this.read(arg)));
+      }
+      case 'member':
+        throw new UnsupportedPathNode('PathValue: a generic member node');
+      case 'index':
+        throw new UnsupportedPathNode('PathValue: an index node');
+      case 'ternary':
+        throw new UnsupportedPathNode('PathValue: a ternary node');
+      case 'array':
+        throw new UnsupportedPathNode('PathValue: an array node');
+      case 'object':
+        throw new UnsupportedPathNode('PathValue: an object node');
+      default:
+        throw new UnsupportedPathNode(
+          `PathValue: unsupported node kind ${(node as Node).kind}`);
+    }
+  }
+
+  /** A new piece: recompute the standing part, deciding which nodes move
+   * the FIRST time, in that same walk (D2). Every node computed charges
+   * the resolution probe (D8). */
+  bind(values: Record<string, number>): unknown {
+    const deciding = this.order === null;
+    const walk = deciding ? this.postorder() : this.walked;
+    if (deciding) this.walked = walk;
+    const moves = new Map<NodeId, boolean>();
+    const order: NodeId[] = [];
+    this.computed.clear();
+    this.standing.clear();
+    const known = deciding ? null : new Set(this.order!);
+    for (const id of walk) {
+      const value = this.valueAt(id, values);
+      resolutions += 1;
+      this.computed.set(id, value);
+      if (deciding) {
+        const node = nodes[id];
+        const children = this.childrenOf(id);
+        const nodeMoves = node.kind === 'name' && children.length === 0
+          ? this.movesByName(id)
+          : children.some((child) => moves.get(child) === true);
+        moves.set(id, nodeMoves);
+        if (nodeMoves) order.push(id); else this.standing.set(id, value);
+      } else if (!known!.has(id)) {
+        this.standing.set(id, value);
+      }
+    }
+    if (deciding) this.order = order;
+    const found = this.computed.get(this.root);
+    this.computed.clear();
+    return found;
+  }
+
+  /** A LATER point of the SAME piece: only the moving cone (D2). Every
+   * node computed charges the resolution probe (D8); a quantity whose
+   * whole expression stands charges nothing. */
+  at(values: Record<string, number>): unknown {
+    const order = this.order;
+    if (order === null) {
+      throw new Error('PathValue.at() called before bind()');
+    }
+    if (order.length === 0) return this.standing.get(this.root);
+    this.computed.clear();
+    for (const id of order) {
+      const value = this.valueAt(id, values);
+      resolutions += 1;
+      this.computed.set(id, value);
+    }
+    const found = this.computed.get(this.root);
+    this.computed.clear();
+    return found;
+  }
+
+  /** The moving cone's size, or `-1` before the first `bind` (test-only,
+   * D8's census). */
+  movingNodes(): number { return this.order === null ? -1 : this.order.length; }
+
+  /** The whole graph's node count (test-only, D8's census). */
+  totalNodes(): number { return this.walked.length; }
+}
+
+/** The names a tick's path MOVES (D5): a source whose increment over the
+ * step is non-zero. Never a branch placeholder -- a constant of its piece
+ * by construction, and substituted into `values` per piece, never listed
+ * in `delta`. */
+export function movingNames(delta: Record<string, number>): ReadonlySet<string> {
+  const found = new Set<string>();
+  for (const name in delta) {
+    if (!Object.prototype.hasOwnProperty.call(delta, name)) continue;
+    if (delta[name]) found.add(name);
+  }
+  return found;
+}

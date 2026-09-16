@@ -7,6 +7,26 @@ it carries release together and share one version.
 
 The viewer stops posing a machine and starts running one.
 
+- **A quantity followed along a step's path is evaluated as a PATH.** A
+  search's samples, a bisection's rounds, a piece's two endpoints all read
+  the SAME expression, and the run already knows, from the `delta` it
+  built, which of that expression's names can have changed between them —
+  yet every one of those points walked the whole graph over again. The
+  part that reads no name the step moves is now computed once per piece
+  and read back; only the moving cone is evaluated per point, through the
+  same operators, the same context and the same node store `valueOf`
+  already walks, so every float is the float the old walk gave, bit for
+  bit — proved against the whole conformance corpus and against the
+  operating Curta's own bank, crossings and stops, byte-identical over 100
+  idle ticks, a crank turn, and 60 more. On that document — the largest
+  running document this viewer executes, and the one the studio opens —
+  an idle tick fell from ≈19 ms to ≈9.5 ms and a crank tick from ≈160 ms to
+  ≈42 ms on this bench; a solved self-read, a searched self-read and a
+  block tick each measured roughly 2-2.5× faster, and no small machine
+  measured slower outside this bench's own run-to-run noise. No document
+  field, no API version and no knob: the saving is structural.
+  (OpenSpec change `walk-only-what-moves`, ADR-060.)
+
 - **A source checkout answers from a bundle built from its own sources.**
   `dist/solid-widget.js` is this package's one published artifact and a
   build product of `widget/src/`, `package.json`, `build.mjs` and

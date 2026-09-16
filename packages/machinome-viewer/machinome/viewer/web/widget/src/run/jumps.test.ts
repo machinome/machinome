@@ -497,6 +497,36 @@ describe('the two-layer walk (design D2)', () => {
     expect(loud.landing).toBe(quiet.landing);
   });
 
+  it('2.1/3.1 pins D6: a value computed under one piece\'s branches is '
+     + 'never read back under another\'s', () => {
+    // A long sweep the dial crosses its own gap several times over (the
+    // scenario `retainedCuts` above already shows carries more than one
+    // cut): split at the FIRST cut and re-run each half as its own tick,
+    // continuing from where the first left the coordinate. Two
+    // independently-piece-bound walks must agree, exactly, with the one
+    // walk that binds and re-binds several pieces in a row -- a
+    // PathValue that let a later piece read an earlier one's standing
+    // value would agree with itself but disagree with this split.
+    const program = clearing();
+    const start = { setter: 0, ring: 0, 'wheel.turn': 108 };
+    const delta = { setter: 0, ring: 600, 'wheel.turn': 0 };
+    const cuts = retainedCuts(program, readingOf(program), start, delta,
+                              'clearing', 'wheel.turn');
+    expect(cuts.length).toBeGreaterThan(3);
+    const whole = walked(program, start, delta);
+
+    const midFraction = cuts[1];
+    const firstHalf = walked(program, start,
+                             { setter: 0, ring: 600 * midFraction, 'wheel.turn': 0 });
+    const afterFirst = start['wheel.turn'] + firstHalf.increment;
+    const secondHalf = walked(
+      program,
+      { setter: 0, ring: 600 * midFraction, 'wheel.turn': afterFirst },
+      { setter: 0, ring: 600 * (1 - midFraction), 'wheel.turn': 0 },
+    );
+    expect(afterFirst + secondHalf.increment).toBe(start['wheel.turn'] + whole.increment);
+  });
+
   it('4.3 contributes 0 and evaluates NOTHING where no source but the '
      + 'driven coordinate itself moves', () => {
     // A level quantity that divides by a source standing at zero: any

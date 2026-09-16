@@ -85,3 +85,28 @@ document interactive.
 
 - **Skill text this would delete:** none. It is a performance finding, not a
   capability the shop currently works around in prose.
+
+- **After-measurement (2026-09-16, `walk-only-what-moves`, ADR-060).** A
+  quantity followed along a step's path now reads a followed point's
+  qualified ids from the run's FLAT bank directly (Proposed interface
+  direction 1, above) — but only for the five call sites that FOLLOW a
+  quantity along many points of one piece; `evaluateExpression` itself is
+  unchanged for every call that is not one of them, so `nest` does not
+  disappear, it falls out of the HOT path. Measured on this cycle's own
+  bench (node v24.11.1, in-thread, the same document and bundle): `nest`'s
+  self time fell from 40.1% to **12.0%** of an idle tick and from 20.0% to
+  **4.65%** of a crank tick. `foldedNames` (the selection fold, untouched
+  by this cycle) is now the largest single self-time contributor on an
+  idle tick, at 16.6%.
+
+  **Triage: largely retired by ADR-060; the remainder is not worth a cycle
+  on this document.** This cycle's own measurement (its proposal's Non-
+  goals, "Retiring the rest of the scope-rebuild wart") found that after
+  the change 100% of this document's cost is inside the two evaluation
+  sites `walk-only-what-moves` already addresses, and that direction 2
+  above (a per-tick generation stamp) buys nothing further on it. The
+  entry is kept rather than deleted: the memo's SECOND cost — that it
+  shares no node between two DIFFERENT followed quantities under one run,
+  because each gets its own fresh scope by the D11 rule this finding does
+  not dispute — is unaddressed, and a document whose followed quantities
+  overlap more than the Curta's own could still pay for it.
