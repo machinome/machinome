@@ -2097,7 +2097,13 @@ inside a step, a step carrying both a selection crossing and a stop, and
 an IN-BLOCK GATE CROSSING located STRICTLY INSIDE a step — a crossing
 recorded under a member of a block that only a jump reading a value
 ANOTHER member of that block determines can account for, the member's own
-driven value excluded — so that a narrower corpus copied in
+driven value excluded — and a STOP LOCATED STRICTLY INSIDE a step ON A
+KINKED DETERMINER — a coordinate whose determining law carries no jump
+plan at all and whose published expression, closed over the corpus's
+bindings table, calls one of the CONTINUOUS SELECTIONS `abs`, `min` or
+`max`, so that its value along a step is piecewise affine rather than
+affine and a consumer dividing once over the whole step would place the
+stop where the coordinate never was — so that a narrower corpus copied in
 is refused here without anyone running the producer's generator. A bound
 reading another coordinate SHALL be recognised through the corpus's own
 bindings table, so a corpus whose bound reaches its reads through a
@@ -2105,7 +2111,10 @@ shared subexpression counts as covering it. A block and its selectors
 SHALL be re-derived for this assertion FROM THE CORPUS'S OWN DOCUMENTS
 and tick logs, by the same reading a consumer of the document makes and
 not by asking the run engine, so that the assertion is red on a narrowed
-corpus even when the engine is broken; and a crossing SHALL count as a
+corpus even when the engine is broken; a KINKED DETERMINER SHALL be
+re-derived the same way and from the same two sources — the absent plan
+and the expression closed over the bindings table — and never by asking
+the run engine what it classified; and a crossing SHALL count as a
 SELECTION crossing only where its primitive belongs to a selector of the
 member that determines its coordinate and to no other jump of that
 member, so that a gate which happens to share an operator is not
@@ -2188,6 +2197,14 @@ directly, rather than inferring it from the width above.
 - **THEN** the replay disagrees with the corpus by more than the stated
   tolerance on the committed values of at least one step, while the same
   replay with the members ordered per piece reproduces them
+
+#### Scenario: A corpus with no stop on a kinked determiner is refused
+
+- **WHEN** the committed corpus is replaced by one none of whose steps
+  records a stop, strictly inside the step, on a coordinate whose
+  determining law carries no jump plan and whose expression calls a
+  continuous selection
+- **THEN** the suite fails naming the feature no longer covered
 
 ### Requirement: A maker presses and turns the part itself
 

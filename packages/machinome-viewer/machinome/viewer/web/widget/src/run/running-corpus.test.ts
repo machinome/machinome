@@ -223,10 +223,10 @@ describe('the running corpus', () => {
   it('is the framework\'s own fixture, unedited', () => {
     expect(fixture.generated_by).toBe('tools/generate_running_corpus.py');
     expect(fixture.corpus).toBe('tests/running_project/machine.py');
-    expect(fixture.machines).toHaveLength(19);
-    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(16);
+    expect(fixture.machines).toHaveLength(20);
+    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(17);
     expect(fixture.machines.reduce((total, one) => total + one.ticks.length, 0))
-      .toBe(356);
+      .toBe(360);
   });
 
   fixture.machines.forEach((entry, index) => {
@@ -267,6 +267,7 @@ const REQUIRED = [
   'a selection crossing inside a tick',
   'a tick carrying both a selection crossing and a stop',
   'an in-block gate crossing inside a tick',
+  'a stop on a kinked determiner inside a tick',
 ];
 
 /** Every free name `expression` reads, through the fixture's OWN
@@ -296,8 +297,73 @@ interface GuardEdge {
   kind: string;
   needs: string[];
   gives?: string[];
+  expressions?: (string | null)[];
   plans?: ({ jumps: { name: string; primitive: string; level: string }[] }
            | null)[];
+}
+
+/** The CONTINUOUS SELECTIONS of the symbolic vocabulary -- a law built
+ * over one of these is piecewise affine, and the producer's own
+ * `tools/generate_running_corpus.py`'s `KINKS`, copied here verbatim. */
+const KINKS = ['abs', 'min', 'max'];
+
+/** Every function `expression` calls, closed transitively over the
+ * fixture's OWN bindings table -- the generator's `_calls(expression,
+ * bindings)`, reproduced here as a TEST-LOCAL reading (design D2, option
+ * 1) rather than by extending `structureOf` (which deliberately reports
+ * a call's ARGUMENTS and not its callee, an engine module this guard
+ * must not change for a test's benefit). A callee is an identifier
+ * immediately followed by `(`; `freeVariables` already never reports one
+ * as a free name (the parser's own `Call` node keeps its callee out of
+ * that set), so walking the bindings table through `freeVariables` here
+ * cannot mistake a callee for a name to resolve. */
+function callsOf(expression: string,
+                 bindings: Record<string, string>): Set<string> {
+  const found = new Set<string>();
+  const seen = new Set<string>();
+  const pending = [expression];
+  while (pending.length > 0) {
+    const text = pending.pop()!;
+    if (seen.has(text)) continue;
+    seen.add(text);
+    for (const match of text.matchAll(/([A-Za-z_][A-Za-z0-9_]*)\s*\(/g)) {
+      found.add(match[1]);
+    }
+    for (const name of freeVariables(text)) {
+      if (name in bindings) pending.push(bindings[name]);
+    }
+  }
+  return found;
+}
+
+/** The coordinates a LAW with no jump plan drives whose published
+ * expression -- closed over the fixture's bindings table through
+ * `callsOf` -- calls one of `KINKS`: `tools/generate_running_corpus.py`'s
+ * `_kinked_laws`, mirrored here and re-derived from the corpus's own
+ * documents only, the absent plan and the expression, never by asking
+ * the run engine what it classified -- this stays true after
+ * `solve-at-the-kink` gives the engine a classification of its own. An
+ * absent `plans` array counts as all-null, exactly as the producer's own
+ * `plans = edge.get('plans') or [None] * len(edge.get('gives', ()))`
+ * does. */
+function kinkedLawsOf(edges: GuardEdge[],
+                      bindings: Record<string, string>): Set<string> {
+  const found = new Set<string>();
+  for (const edge of edges) {
+    if (edge.kind !== 'law') continue;
+    const gives = edge.gives ?? [];
+    const plans = edge.plans ?? gives.map(() => null);
+    const expressions = edge.expressions ?? [];
+    gives.forEach((name, index) => {
+      const plan = plans[index];
+      if (plan !== null && plan !== undefined) return;
+      const expression = expressions[index];
+      if (expression === null || expression === undefined) return;
+      const calls = callsOf(expression, bindings);
+      if (KINKS.some((kink) => calls.has(kink))) found.add(name);
+    });
+  }
+  return found;
 }
 
 /** The index of the edge determining `coordinate`, or `-1` --
@@ -496,6 +562,10 @@ export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
       }
     }
     if (reads.size > 0) seen.add('a law that reads the coordinate it drives');
+    // The coordinates whose determiner is a law that is PIECEWISE AFFINE
+    // and carries no jump plan: a stop on one cannot be located by
+    // dividing once over the tick.
+    const kinked = kinkedLawsOf(program.edges ?? [], bindings);
     // The BLOCK and its SELECTORS, re-derived from the published edges
     // exactly as a consumer must: no key carries either.
     const { gives: blockGives, selectors } =
@@ -533,6 +603,9 @@ export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
           : (program.coordinates ?? {})[stop.coordinate]?.initial;
         if (before !== undefined && before === tick.bank[stop.coordinate]) {
           seen.add('a stop reached by the motion of what a bound reads');
+        }
+        if (kinked.has(stop.coordinate) && stop.t > 0 && stop.t < 1) {
+          seen.add('a stop on a kinked determiner inside a tick');
         }
       }
       const selection = tick.crossings.filter((one) => {
@@ -615,6 +688,11 @@ describe('the corpus\'s width', () => {
     // crossing either.
     expect(uncoveredFeatures(trimmed)).toContain(
       'an in-block gate crossing inside a tick');
+    // `Train` DOES carry a kinked plan-less determiner (`slide.travel`,
+    // a `min`/`max`/`abs` law with no jump plan) but records no stop on
+    // it at all, so trimming to `Train` loses the feature too.
+    expect(uncoveredFeatures(trimmed)).toContain(
+      'a stop on a kinked determiner inside a tick');
   });
 });
 

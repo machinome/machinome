@@ -7,6 +7,21 @@ it carries release together and share one version.
 
 The viewer stops posing a machine and starts running one.
 
+- **The conformance corpus is refreshed to the producer's own
+  `cut-at-the-kink` regeneration** (ADR-123: `abs`, `min` and `max` are
+  KINKS, and a kinked quantity is solved at its own breakpoints rather
+  than searched), byte for byte, and the width guard gains the producer's
+  new required feature — a stop located strictly inside a step on a
+  KINKED DETERMINER, a coordinate whose determining law carries no jump
+  plan and whose published expression calls one of those continuous
+  selections — mirroring its detection from the corpus's own documents
+  and tick logs exactly as it already does for the self-read, the
+  selection and the block. No engine behaviour changes: this viewer still
+  SEARCHES a kinked stop rather than solving it, and the refreshed
+  corpus's one such case replays inside the corpus's own tolerance,
+  9.09e-14 from the producer's solved answer. (OpenSpec change
+  `mirror-the-kink-guard`.)
+
 - **A quantity followed along a step's path is evaluated as a PATH.** A
   search's samples, a bisection's rounds, a piece's two endpoints all read
   the SAME expression, and the run already knows, from the `delta` it

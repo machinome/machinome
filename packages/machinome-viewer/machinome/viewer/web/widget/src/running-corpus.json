@@ -11062,6 +11062,173 @@
           ]
         }
       ]
+    },
+    {
+      "name": "KinkedStop",
+      "dt": 0.1,
+      "steps": 4,
+      "document": {
+        "format": "solid-node-export",
+        "version": 5,
+        "drivers": {
+          "lever": {
+            "default": 100.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "program": {
+          "identity": "7438e601107703e502a8a630c3357ed1a48a58b2319234f26e53bfccd8ddec0f",
+          "clock": "time",
+          "coordinates": {
+            "lever": {
+              "kind": "input",
+              "initial": 100.0,
+              "domain": null
+            },
+            "slide.travel": {
+              "kind": "coordinate",
+              "initial": 4.0,
+              "unit": "mm",
+              "domain": "translational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "lever"
+              ],
+              "gives": [
+                "slide.travel"
+              ],
+              "description": "lever drives slide.travel",
+              "stated_by": "KinkedStop",
+              "expressions": [
+                "(4 + (72 * min(max(((lever - 113.5) / 11.25), 0.0), 1.0)))"
+              ],
+              "affine": [
+                false
+              ],
+              "plans": [
+                null
+              ]
+            }
+          ],
+          "spans": {
+            "slide.travel": {
+              "low": null,
+              "high": 40.0
+            }
+          },
+          "sources": {
+            "lever": [
+              "lever"
+            ],
+            "slide.travel": [
+              "lever"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          }
+        }
+      },
+      "script": [
+        {
+          "tick": 1,
+          "move": {
+            "input": "lever",
+            "by": 40.0,
+            "duration": 0.1
+          },
+          "handle": "h0"
+        }
+      ],
+      "ticks": [
+        {
+          "tick": 1,
+          "bank": {
+            "lever": 119.125,
+            "slide.travel": 40.0
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "slide.travel",
+              "bound": "high",
+              "value": 40.0,
+              "t": 0.478125,
+              "inputs": [
+                "lever"
+              ]
+            }
+          ],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "blocked",
+              "admitted": 19.125
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "bank": {
+            "lever": 119.125,
+            "slide.travel": 40.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "blocked",
+              "admitted": 19.125
+            }
+          ]
+        },
+        {
+          "tick": 3,
+          "bank": {
+            "lever": 119.125,
+            "slide.travel": 40.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "blocked",
+              "admitted": 19.125
+            }
+          ]
+        },
+        {
+          "tick": 4,
+          "bank": {
+            "lever": 119.125,
+            "slide.travel": 40.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "blocked",
+              "admitted": 19.125
+            }
+          ]
+        }
+      ]
     }
   ]
 }
