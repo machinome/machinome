@@ -7,6 +7,33 @@ it carries release together and share one version.
 
 The viewer stops posing a machine and starts running one.
 
+- **A source checkout answers from a bundle built from its own sources.**
+  `dist/solid-widget.js` is this package's one published artifact and a
+  build product of `widget/src/`, `package.json`, `build.mjs` and
+  `tsconfig.json` — and until now nothing here ever compared the two. In a
+  wheel they are the same instant by construction; in a checkout they are
+  not, and a maker was told a correct version 7 document "declares document
+  version 7, which this viewer does not render" by a bundle built the
+  evening before the cycle that reads version 7 landed. The lookup was
+  reporting `apiVersion: 16` and `documentVersions: [1..7]` from
+  `package.json` while handing out the path of a bundle carrying
+  `viewer API 15`. The four exits that hand the bundle out — the
+  `solid_node.viewer` entry point and `describe`, the development server's
+  `/_viewer` and `/_viewer/bundle.js` routes, the capture's staging, and
+  packaging — now make it current first, comparing the newest build input
+  against the bundle in integer nanoseconds and rebuilding when it is
+  older. The development server checks **per request**, so editing the
+  viewer and reloading the page serves what you just wrote. A rebuild
+  **builds and never installs**: absent dependencies are reported with the
+  `npm ci && npm run build` remedy, never installed, because `npm ci`
+  through a worktree's symlinked `node_modules` has emptied a primary
+  checkout's dependencies. What cannot be repaired is **refused** rather
+  than served — a new `BundleStale`, shaped like `BundleMissing`: the
+  entry point raises, `describe` exits non-zero with empty standard
+  output, the server's routes answer unavailable, and the capture writes
+  no image. A wheel is no longer cut from a stale bundle either.
+  (OpenSpec change `keep-the-bundle-current`, ADR-059.)
+
 - **The conformance corpus is refreshed to the producer's own
   `pin-the-block-order` regeneration**, byte for byte, and the width guard
   gains the producer's new required feature — an in-block gate crossing

@@ -15,14 +15,43 @@ class FrontendPackagingTest(TestCase):
             packaging.build_distribution_frontends()
         self.assertEqual(build.call_args_list, [call(packaging.WIDGET)])
 
-    def test_wheel_builds_the_widget_only_when_its_output_is_missing(self):
+    def test_wheel_builds_the_widget_when_its_output_is_missing(self):
         with patch('solid_node_viewer.packaging.build_frontend') as build, \
-             patch.object(packaging.WIDGET, 'output_exists', return_value=False):
-            packaging.build_missing_frontends()
+             patch.object(packaging.WIDGET, 'output_exists', return_value=False), \
+             patch.object(packaging.WIDGET, 'output_is_stale', return_value=False):
+            packaging.build_stale_frontends()
         build.assert_called_once_with(packaging.WIDGET)
 
-    def test_wheel_builds_nothing_when_the_widget_is_already_built(self):
+    def test_wheel_builds_the_widget_when_its_output_is_stale(self):
+        # ADR-059 decision 8. A wheel built from a checkout whose bundle
+        # is older than the source beside it would otherwise SHIP the
+        # stale bundle, and `scripts/check-dist` would install and smoke
+        # it without noticing. That is a publishing hazard, not just a
+        # development annoyance.
         with patch('solid_node_viewer.packaging.build_frontend') as build, \
-             patch.object(packaging.WIDGET, 'output_exists', return_value=True):
-            packaging.build_missing_frontends()
+             patch.object(packaging.WIDGET, 'output_exists', return_value=True), \
+             patch.object(packaging.WIDGET, 'output_is_stale', return_value=True):
+            packaging.build_stale_frontends()
+        build.assert_called_once_with(packaging.WIDGET)
+
+    def test_wheel_builds_nothing_when_the_widget_is_built_and_current(self):
+        with patch('solid_node_viewer.packaging.build_frontend') as build, \
+             patch.object(packaging.WIDGET, 'output_exists', return_value=True), \
+             patch.object(packaging.WIDGET, 'output_is_stale', return_value=False):
+            packaging.build_stale_frontends()
         build.assert_not_called()
+
+    def test_staleness_is_decided_by_the_one_comparison(self):
+        # Packaging does not carry a second opinion about what "stale"
+        # means: it asks `currency`, the same module the lookup, the
+        # server and the capture ask.
+        with patch('solid_node_viewer.currency.is_stale',
+                   return_value=True) as stale:
+            self.assertTrue(packaging.WIDGET.output_is_stale())
+        stale.assert_called_once_with(packaging.WIDGET.directory)
+
+    def test_the_wheel_hook_builds_what_is_missing_or_stale(self):
+        with patch('solid_node_viewer.packaging.build_stale_frontends') as build, \
+             patch('setuptools.command.build_py.build_py.run'):
+            packaging.BuildPythonWithFrontend(__import__('setuptools').Distribution()).run()
+        build.assert_called_once_with()

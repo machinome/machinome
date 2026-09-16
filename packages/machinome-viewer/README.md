@@ -467,6 +467,20 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 (cd solid_node_viewer/widget && npm run typecheck && npm test)
 ```
 
+After that first build, the bundle keeps itself current: the entry point,
+`solid-node-viewer describe`, the development server's bundle route and the
+capture each compare `dist/solid-widget.js` against `widget/src/`,
+`package.json`, `build.mjs` and `tsconfig.json`, and rebuild it when a
+source is newer (ADR-059). So an edit followed by a page reload serves the
+edit, and nothing answers for a bundle older than the source beside it.
+
+What is **not** automatic is the install. A rebuild runs the build only,
+never `npm ci` or `npm install` — a worktree's `node_modules` is often a
+symlink to the primary checkout's, and installing through it empties the
+primary's dependencies. When the dependencies are absent, or the build
+fails, the bundle is refused with the reason and the `npm ci && npm run
+build` remedy rather than served stale.
+
 The Python suite skips what its environment cannot run — a headless
 Chromium, Playwright, Pillow — and says so per test. The widget suite runs
 a producer-generated parity fixture against the shipped expression

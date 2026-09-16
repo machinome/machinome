@@ -14,11 +14,19 @@ framework and no CAD stack.
 import json
 from pathlib import Path
 
-PACKAGE_DIR = Path(__file__).parent
-WIDGET_DIR = PACKAGE_DIR / 'widget'
+from solid_node_viewer.currency import (
+    BUNDLE_NAME, PACKAGE_DIR, WIDGET_DIR, BundleStale, ensure_current,
+)
+
 PACKAGE_JSON = WIDGET_DIR / 'package.json'
-BUNDLE_NAME = 'solid-widget.js'
 INDEX_NAME = 'index.html'
+
+#: Re-exported so a caller that handles one broken installation handles
+#: both: `BundleMissing` and `BundleStale` are the two ways this package
+#: declines to hand out a bundle, and neither ever substitutes one.
+__all__ = ['BundleMissing', 'BundleStale', 'api_version', 'bundle_path',
+           'describe', 'document_versions', 'has_bundle', 'index_path',
+           'missing_bundle_remedy', 'version']
 
 
 def bundle_path():
@@ -106,9 +114,18 @@ def describe():
     it renders as ``documentVersions``, and the package ``version``. Raises
     :class:`BundleMissing` when the installation has no built bundle, so a
     caller never receives a path that does not exist.
+
+    In a source checkout the bundle is made current with the sources it is
+    built from BEFORE the declaration is read (ADR-059), so the
+    ``apiVersion`` and ``documentVersions`` reported are the ones the
+    bundle at ``path`` actually carries rather than the ones a later
+    edit put in ``package.json``. Raises :class:`BundleStale` when it is
+    older and cannot be rebuilt: answering from a stale bundle is how a
+    correct document came to be refused by an old renderer.
     """
     if not has_bundle():
         raise BundleMissing()
+    ensure_current()
     return {
         'path': str(bundle_path().resolve()),
         'index': str(index_path().resolve()),

@@ -9,7 +9,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from solid_node_viewer import cli
-from solid_node_viewer.bundle import BundleMissing
+from solid_node_viewer.bundle import BundleMissing, BundleStale
 
 
 class DescribeCommandTest(TestCase):
@@ -36,6 +36,25 @@ class DescribeCommandTest(TestCase):
             status = cli.main(['describe'])
         self.assertEqual(status, 1)
         self.assertEqual(output.getvalue(), '')
+        self.assertIn('npm', errors.getvalue())
+
+    def test_a_stale_bundle_exits_nonzero_with_the_reason_and_no_stdout(self):
+        # ADR-059: a stale bundle that cannot be rebuilt is a broken
+        # installation, reported exactly as an absent one is -- because
+        # the alternative is a confident answer for a file that refuses
+        # what the answer says it renders.
+        output, errors = io.StringIO(), io.StringIO()
+        stale = BundleStale(
+            'Viewer bundle /tmp/dist/solid-widget.js is older than '
+            '/tmp/src/viewer.ts and was not rebuilt: the widget\'s '
+            'dependencies are not installed, and a rebuild never installs '
+            'them. Remedy: cd /tmp && npm ci && npm run build.')
+        with patch.object(cli, 'describe', side_effect=stale), \
+             redirect_stdout(output), redirect_stderr(errors):
+            status = cli.main(['describe'])
+        self.assertEqual(status, 1)
+        self.assertEqual(output.getvalue(), '')
+        self.assertIn('older than', errors.getvalue())
         self.assertIn('npm', errors.getvalue())
 
 

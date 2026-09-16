@@ -22,7 +22,15 @@ class BundleLookupTest(TestCase):
         froms = {node.module for node in ast.walk(tree)
                  if isinstance(node, ast.ImportFrom)}
         self.assertEqual(imports, {'json'})
-        self.assertTrue(froms <= {'pathlib', 'importlib.metadata', 'solid_node_viewer'},
+        # `solid_node_viewer.currency` joins the set with ADR-059: the
+        # lookup makes the bundle current before it reads the declaration.
+        # That module imports only the standard library too, which
+        # `tests/test_currency.py` asserts of it directly, so the promise
+        # this test exists for -- resolving the entry point costs no
+        # browser bundle and no web framework -- is unchanged.
+        self.assertTrue(froms <= {'pathlib', 'importlib.metadata',
+                                  'solid_node_viewer',
+                                  'solid_node_viewer.currency'},
                         froms)
 
     def test_declares_api_version_fifteen(self):
