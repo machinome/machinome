@@ -153,6 +153,32 @@ type FileBuffer = SourceDocument & {
   missing: boolean;
 };
 
+// Simulated seconds per tick of a running model. The document publishes no
+// step -- it is the executing viewer's choice -- and the viewer's own default
+// is 1/240 s, four ticks per frame at 60 Hz.
+//
+// One tick per rendered frame instead. A tick's cost on a large running model
+// is very nearly FIXED rather than proportional to the motion inside it: the
+// operating Curta (`Calculators/Curta-Type-I-3x`, 208 coordinates, 32 laws
+// reading the coordinate they drive) measures 152 ms a tick at 1/240 s and
+// 256 ms at 1/10 s -- 1.7x the cost for a 24x longer step. So a coarser step
+// buys back nearly all of its own multiple, and the viewer's default spends
+// three ticks in four re-deriving a machine that has not moved a frame's
+// worth.
+//
+// 1/60 s is the coarsest step that still cannot skip a rendered frame, which
+// is why it is here rather than something coarser still: the Pascaline's
+// narrowest carry window is 1/12 s, five ticks at this step and less than one
+// at 1/10 s, and a window a step steps over is a mechanism the run does not
+// see. Measured on the Curta at every step from 1/240 s to 1/10 s, a full
+// addition and a full subtraction borrow leave all seventeen dials on the
+// same angles; this is a cadence change, not a fidelity one.
+//
+// This is one step for every project the floor opens. A project whose
+// mechanism wants its own belongs in that project's manifest, which has no
+// surface for it today.
+const RUN_STEP_SECONDS = 1 / 60;
+
 function FunctionalModel({ artifact, reconnect, buildError, session, onViewerChange }: {
   artifact: ModelArtifact | null;
   reconnect: number;
@@ -210,6 +236,7 @@ function FunctionalModel({ artifact, reconnect, buildError, session, onViewerCha
             className: "functional-model",
             role: "img",
             ariaLabel: "Functional model",
+            run: { dt: RUN_STEP_SECONDS },
           });
           if (disposed) { view.current = mountedHandle.view(); mountedHandle.dispose(); return; }
           handle.current = mountedHandle;

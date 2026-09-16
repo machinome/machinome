@@ -5,7 +5,11 @@
 // viewer-navigator), declaring API 10 -- the version this studio requires
 // (design D3, `adopt-the-viewer-navigator`). Only the `ViewerHandle` surface
 // the studio actually uses is copied here, plus the navigator's own types;
-// the driving, playback and run surfaces are deliberately left out.
+// the driving and playback surfaces are deliberately left out. Of the run
+// surface only `run.dt` is declared -- the studio sets the step a running
+// model is integrated at and reads nothing back. It has been a mount option
+// since viewer API 8 (`run-in-the-worker`), below the API 10 this studio
+// requires, so declaring it raises nothing.
 type ViewerView = unknown;
 export const SOLID_NODE_VIEWER_API_VERSION: 10;
 
@@ -45,6 +49,11 @@ type ViewerOptions = {
   className?: string;
   role?: string;
   ariaLabel?: string;
+  run?: {
+    /** Simulated seconds per tick, fixed for the life of a mount. A
+     * document publishes none; the viewer defaults to 1/240 s. */
+    dt?: number;
+  };
 };
 
 type ViewerHandle = {
