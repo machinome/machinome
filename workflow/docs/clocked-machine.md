@@ -3,8 +3,8 @@
 **Status:** design note recording a direction the pilot settled in
 conversation on 2026-09-16, with the context the next agent needs to cut a
 proposal from it. Nothing here is ratified. Its candidate spelling is a
-sketch for the proposal to cut from, not an API; the note does not authorize a change to `Time.running()`, and does not claim the fast
-Curta is already a clocked machine. Where this note and a baseline spec or an
+sketch for the proposal to cut from, not an API; the note does not
+authorize a change to `Time.running()`, and does not claim the fast Curta is already a clocked machine. Where this note and a baseline spec or an
 accepted ADR disagree, the note is stale.
 
 Written against framework `main` `debd760` (ADR-124 highest), viewer `main`
