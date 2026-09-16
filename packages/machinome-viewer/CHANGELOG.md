@@ -7,6 +7,27 @@ it carries release together and share one version.
 
 The viewer stops posing a machine and starts running one.
 
+- **A quantity built over `abs`, `min` or `max` is SOLVED at its own
+  kinks instead of searched.** Such a quantity is piecewise affine —
+  affine between the points where it changes which operand it returns —
+  and `clamp`, `ramp` and `piecewise` are all built on it. The viewer now
+  derives that shape FROM THE PUBLISHED EXPRESSION, which it already
+  holds, and cuts the stretch at those breakpoints, solving each piece by
+  one division: no document field, no document version, no API version
+  and no knob, and a breakpoint is never recorded as a crossing. The
+  derived shape agrees with every one of the 73 `affine` flags the
+  conformance corpus publishes and every one of the 815 the operating
+  Curta publishes, and a contract test keeps it so. The corpus's 2 018
+  recorded floats, of which this engine reproduced 2 009 bit for bit and
+  9 within the corpus tolerance, are now reproduced **bit for bit, all of
+  them**; nothing else in the corpus's 360 ticks moved by one bit. On the
+  committed `clearing` fixture — six self-read dials through a `clamp01`
+  station window — a step fell from 32 004 to 2 724 subexpression
+  evaluations and from 342 to 1 312 steps a second, while machines with
+  no kink pay nothing to the unit, and the operating Curta's own step is
+  unchanged in every evaluation and every committed float. (OpenSpec
+  change `solve-at-the-kink`, ADR-061.)
+
 - **The conformance corpus is refreshed to the producer's own
   `cut-at-the-kink` regeneration** (ADR-123: `abs`, `min` and `max` are
   KINKS, and a kinked quantity is solved at its own breakpoints rather

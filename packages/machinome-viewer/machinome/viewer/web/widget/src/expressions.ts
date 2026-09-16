@@ -1200,3 +1200,203 @@ export function movingNames(delta: Record<string, number>): ReadonlySet<string> 
   }
   return found;
 }
+
+// ---------------------------------------------------------------------
+// The SHAPE of a quantity followed along a tick's path, and the KINKS
+// that cut it (openspec `solve-at-the-kink`, design D1-D2; solid-node's
+// ADR-123 `_shape_of`, `_kink_level` and `_KinkCuts`, mirrored over this
+// interned DAG).
+//
+// The producer publishes one two-valued flag per followed quantity --
+// affine in its sources, or not -- and its own classification is
+// THREE-valued: a quantity built over `abs`, `min` or `max` is PIECEWISE
+// AFFINE, affine between the points where it changes which operand it
+// returns. That classification is STRUCTURAL: it reads the expression
+// tree and nothing else. This viewer holds the same expressions, so it
+// computes the same shape from the same text, and no document field is
+// needed for it.
+//
+// A view of the SAME store `valueOf` walks: it mints no node and holds
+// no expression text, exactly as `PathValue` does.
+// ---------------------------------------------------------------------
+
+/** `'constant'`, `'affine'`, `'kinked'`, or `null` for unclassified --
+ * which goes on being sampled and bisected. */
+export type PathShape = 'constant' | 'affine' | 'kinked' | null;
+
+/** The CONTINUOUS SELECTIONS of the vocabulary: each returns one of its
+ * operands exactly and is continuous where the operands meet
+ * (`_KINK_CALLS`). */
+const KINK_CALLS: ReadonlySet<string> = new Set(['abs', 'min', 'max']);
+
+/** Constant, affine or kinked -- a shape an affine combination may be
+ * built over (`_MOVABLE`). */
+function movable(shape: PathShape): boolean {
+  return shape === 'constant' || shape === 'affine' || shape === 'kinked';
+}
+
+/** An affine combination of movable operands is kinked exactly when one
+ * of them is (`_joined`). */
+function joined(...parts: PathShape[]): PathShape {
+  return parts.includes('kinked') ? 'kinked' : 'affine';
+}
+
+/** A call's callee NAME, or `null` where the callee is not a plain name
+ * (`structureOf` deliberately reports a call's arguments only, because
+ * a callee is never a free variable). */
+function calleeName(id: NodeId): string | null {
+  const node = nodes[id];
+  if (node.kind !== 'call') return null;
+  const callee = nodes[node.callee];
+  return callee.kind === 'name' ? callee.name : null;
+}
+
+/** The children a STRUCTURAL walk follows: a binding name has the
+ * binding's root as its ONE child, exactly as `PathValue.childrenOf`
+ * and `foldedNames` already walk one, and a call's callee is not a
+ * child at all. */
+function shapeChildren(id: NodeId,
+                       bindings?: ReadonlyMap<string, NodeId>): readonly NodeId[] {
+  const node = nodes[id];
+  switch (node.kind) {
+    case 'const': return [];
+    case 'name': {
+      if (node.parts[0] === TIME_ID) return [];
+      const binding = bindings?.get(node.parts[0]);
+      return binding === undefined ? [] : [binding];
+    }
+    case 'unary': return [node.target];
+    case 'binary': return [node.left, node.right];
+    case 'call': return node.args;
+    case 'member': return [node.owner];
+    case 'index': return [node.owner, node.key];
+    case 'ternary': return [node.predicate, node.whenTrue, node.whenFalse];
+    case 'array': return node.items;
+    case 'object': return node.values;
+    default: return [];
+  }
+}
+
+/** `root`'s shape in the sources along the path (`_shape_of`).
+ *
+ * `constants` are the names that are CONSTANT on the stretch being cut
+ * -- a jump plan's own branch placeholders, which the producer spells
+ * `$j…` and the document spells by the jump's own name. `bindings` is
+ * the document's shared-subexpression table, walked INTO: a name it
+ * defines takes the shape of that table's own expression.
+ *
+ * Conservative by construction: anything not listed -- another call, a
+ * power, a product of two moving operands, a moving divisor, a
+ * comparison -- is unclassified and goes on being searched, which is why
+ * `max(0, sin(x))` stays searched although one of its pieces is
+ * straight. `$t` is unclassified: no published running expression names
+ * it, and guessing would be a silent divergence from the producer, whose
+ * graph has no such node at all. A cyclic bindings table classifies as
+ * unclassified rather than recursing (the loader refuses one anyway). */
+export function shapeOf(root: NodeId, constants: ReadonlySet<string>,
+                        bindings?: ReadonlyMap<string, NodeId>): PathShape {
+  const memo = new Map<NodeId, PathShape>();
+  const visit = (id: NodeId): PathShape => {
+    const cached = memo.get(id);
+    if (cached !== undefined) return cached;
+    memo.set(id, null);
+    const node = nodes[id];
+    let found: PathShape = null;
+    if (node.kind === 'const') {
+      found = typeof node.value === 'number' ? 'constant' : null;
+    } else if (node.kind === 'name') {
+      if (node.parts[0] === TIME_ID) {
+        found = null;
+      } else {
+        const binding = bindings?.get(node.parts[0]);
+        if (binding !== undefined) {
+          // A DOTTED name whose head is a binding is a member access on
+          // the binding's value, which this classification does not read.
+          found = node.parts.length === 1 ? visit(binding) : null;
+        } else if (constants.has(node.name)) {
+          found = 'constant';
+        } else {
+          found = 'affine';
+        }
+      }
+    } else {
+      const children = shapeChildren(id, bindings).map(visit);
+      if (children.length === 0) {
+        // `if not node.children: return None` -- a call with no argument
+        // carries nothing of the path.
+        found = null;
+      } else if (children.every((child) => child === 'constant')) {
+        found = 'constant';
+      } else if (node.kind === 'call') {
+        // A kink is the ONLY call that classifies, and it classifies by
+        // its OPERANDS, never by its own node type.
+        const callee = calleeName(id);
+        found = callee !== null && KINK_CALLS.has(callee)
+          && children.every(movable) ? 'kinked' : null;
+      } else if (node.kind === 'unary') {
+        found = (node.op === '-' || node.op === '+')
+          && (children[0] === 'affine' || children[0] === 'kinked')
+          ? children[0] : null;
+      } else if (node.kind === 'binary') {
+        const [left, right] = children;
+        if (node.op === '+' || node.op === '-') {
+          found = movable(left) && movable(right) ? joined(left, right) : null;
+        } else if (node.op === '*') {
+          if (left === 'constant' && movable(right)) found = joined(right);
+          else if (right === 'constant' && movable(left)) found = joined(left);
+          else found = null;
+        } else if (node.op === '/') {
+          found = right === 'constant' && movable(left) ? joined(left) : null;
+        } else {
+          found = null;
+        }
+      }
+    }
+    memo.set(id, found);
+    return found;
+  };
+  return visit(root);
+}
+
+/** A kink node's LEVEL QUANTITY -- the continuous quantity whose one
+ * surface, at zero, is where the node changes which operand it returns:
+ * `x` for `abs(x)`, and `a - b` for `min(a, b)` and `max(a, b)`.
+ *
+ * Held as the two OPERAND node ids, never a minted node: the producer
+ * mints a fresh `a - b`, and evaluating `a` minus `b` over the same DAG
+ * is the same IEEE subtraction of the same two operands while leaving
+ * the interning table free of nodes no expression names. */
+export interface KinkLevel {
+  readonly a: NodeId;
+  /** `null` for `abs`, whose level is its argument alone. */
+  readonly b: NodeId | null;
+}
+
+/** `root`'s kink nodes in the expression's own POSTORDER, so a kink
+ * nested inside another's level is cut FIRST (`_KinkCuts.__init__`).
+ * Walks INTO the bindings table exactly as `shapeOf` does. */
+export function kinkLevels(root: NodeId,
+                           bindings?: ReadonlyMap<string, NodeId>):
+readonly KinkLevel[] {
+  const found: KinkLevel[] = [];
+  const seen = new Set<NodeId>();
+  const stack: [NodeId, boolean][] = [[root, false]];
+  while (stack.length > 0) {
+    const [id, expanded] = stack.pop()!;
+    if (expanded) {
+      const callee = calleeName(id);
+      if (callee !== null && KINK_CALLS.has(callee)) {
+        const node = nodes[id] as CallNode;
+        found.push(callee === 'abs'
+          ? { a: node.args[0], b: null }
+          : { a: node.args[0], b: node.args[1] });
+      }
+      continue;
+    }
+    if (seen.has(id)) continue;
+    seen.add(id);
+    stack.push([id, true]);
+    for (const child of shapeChildren(id, bindings)) stack.push([child, false]);
+  }
+  return found;
+}

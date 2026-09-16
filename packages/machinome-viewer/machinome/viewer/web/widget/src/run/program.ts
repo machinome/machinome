@@ -27,8 +27,10 @@
 import { BindingTable, bindingTable } from '../bindings';
 import { freeVariables } from '../evaluator';
 import {
-  expressionGeneration, NodeId, prepare, structureOf, valueOf,
+  expressionGeneration, kinkLevels, NodeId, prepare, shapeOf, structureOf,
+  valueOf,
 } from '../expressions';
+import type { KinkLevel, PathShape } from '../expressions';
 import {
   Manifest, ManifestBinding, ManifestDriver, ManifestInstruction,
 } from '../types';
@@ -121,11 +123,25 @@ export interface ProgramJump {
   primitive: JumpPrimitive;
   level: string;
   affine: boolean;
+  /** This LEVEL quantity's shape along the path, DERIVED at load from
+   * the published expression (openspec `solve-at-the-kink`, design D1).
+   * The published `affine` flag above is two-valued and says nothing
+   * about a quantity that is not affine; this says whether it is
+   * PIECEWISE affine, and so solvable at its own kinks. */
+  shape: PathShape;
+  /** The kinks of that level, in the expression's own postorder --
+   * `null` unless `shape` is `'kinked'`. */
+  kinks: readonly KinkLevel[] | null;
 }
 
 export interface ProgramPlan {
   skeleton: string;
   jumps: ProgramJump[];
+  /** The SKELETON's shape along the path, derived at load under this
+   * plan's own jump names as the constants (design D1). */
+  shape: PathShape;
+  /** The skeleton's kinks -- `null` unless `shape` is `'kinked'`. */
+  kinks: readonly KinkLevel[] | null;
 }
 
 /** How ONE driven end whose own law READS it is integrated
@@ -152,6 +168,14 @@ export interface RetainedReading {
    * plan-bearing law that flag IS `_affine_in_sources(plan.skeleton)`
    * (`Edge._affine_ends`). */
   affine: boolean;
+  /** The SKELETON's own shape, DERIVED (design D1): what decides whether
+   * the driven coordinate's own path is affine in `t` on a piece, and so
+   * whether a dependent level's crossing is solved or searched. The FULL
+   * plan's skeleton under the FULL plan's jump names -- `outer` holds
+   * the same text, and a placeholder of a dependent node is a constant
+   * of the piece just as an independent one is. */
+  shape: PathShape;
+  kinks: readonly KinkLevel[] | null;
 }
 
 export type ProgramBound = number | null | { expression: string };
@@ -173,6 +197,14 @@ export interface ProgramEdge {
   /** One flag per driven end: whether this edge's value is affine in
    * its sources along the tick's path. Read, never recomputed. */
   affine: boolean[];
+  /** One SHAPE per driven end, derived at load (design D1): the plan's
+   * skeleton where the end carries a plan, the published expression
+   * where it carries none, and `null` for every kind but a law. Read
+   * beside the published flag by `Run.locate`, which solves a stop on a
+   * KINKED end as it already solves one on an affine end. */
+  shapes: PathShape[];
+  /** That end's kinks -- `null` unless its shape is `'kinked'`. */
+  kinks: (readonly KinkLevel[] | null)[];
   plans: (ProgramPlan | null)[];
   /** The driven ends this edge's own law READS -- the `gives` whose id
    * is also one of its `needs` -- each with the two-layer reading of its
@@ -364,6 +396,27 @@ export function evaluateExpression(
     bindings: program.bindings.roots(),
   });
   return typeof value === 'number' ? value : Number(value);
+}
+
+/** A KINK's LEVEL QUANTITY at one point of the path: `x` for `abs(x)`
+ * and `a - b` for `min(a, b)` and `max(a, b)`, the subtraction taken of
+ * two evaluations of the SAME DAG rather than of a minted node
+ * (openspec `solve-at-the-kink`, design D2; `_kink_level`).
+ *
+ * Here beside `evaluateExpression` because `src/run/` reaches the
+ * evaluator through this module ALONE -- `edges.test.ts` asserts it
+ * structurally -- and on the PLAIN evaluator, as the producer left
+ * `_KinkCuts` on `GraphValue.evaluate` (design D5). */
+export function kinkLevel(program: LoadedProgram, kink: KinkLevel,
+                          values: Record<string, number>): number {
+  const scope = {
+    time: 0,
+    drivers: nest(values),
+    bindings: program.bindings.roots(),
+  };
+  const a = Number(valueOf(kink.a, scope));
+  if (kink.b === null) return a;
+  return a - Number(valueOf(kink.b, scope));
 }
 
 // ---------------------------------------------------------------------
@@ -840,6 +893,8 @@ export function loadProgram(
       statedBy,
       expressions: [],
       affine: (gives as string[]).map(() => true),
+      shapes: (gives as string[]).map(() => null),
+      kinks: (gives as string[]).map(() => null),
       plans: (gives as string[]).map(() => null),
       retained: [],
       factor: 0,
@@ -908,9 +963,15 @@ export function loadProgram(
             primitive: jump.primitive as JumpPrimitive,
             level: jump.level,
             affine: jump.affine === true,
+            // Derived below, once the interned roots and the bindings
+            // table exist (design D1).
+            shape: null,
+            kinks: null,
           };
         });
-        const built: ProgramPlan = { skeleton: plan.skeleton, jumps };
+        const built: ProgramPlan = {
+          skeleton: plan.skeleton, jumps, shape: null, kinks: null,
+        };
         for (const jump of jumps) {
           const owner = placeholders.get(jump.name);
           if (owner !== undefined) {
@@ -1113,6 +1174,62 @@ export function loadProgram(
     });
   }
 
+  // The SHAPE of every followed quantity, derived HERE, once, at load
+  // (openspec `solve-at-the-kink`, design D1; solid-node's ADR-123).
+  //
+  // The producer's own classification is STRUCTURAL -- it reads the
+  // expression tree and nothing else -- and this viewer holds the same
+  // expressions, so it computes the same shape from the same text. No
+  // document field is read for it and no version moves for it.
+  //
+  // Derived per PUBLISHED QUANTITY and never per tick: it cannot change
+  // over a run. It never weakens the published flag either -- the solve
+  // for `affine: true` is untouched, and the shape is asked only where
+  // that flag is false.
+  const classify = (expression: string, constants: ReadonlySet<string>):
+  { shape: PathShape; kinks: readonly KinkLevel[] | null } => {
+    const root = nodeOf(expression);
+    const roots = table.roots();
+    const shape = shapeOf(root, constants, roots);
+    return {
+      shape,
+      kinks: shape === 'kinked' ? kinkLevels(root, roots) : null,
+    };
+  };
+  for (const edge of edges) {
+    if (edge.kind !== 'law') continue;
+    edge.gives.forEach((_key, index) => {
+      const plan = edge.plans[index];
+      if (plan !== null) {
+        // A plan's own jump names are the branch PLACEHOLDERS, constant
+        // on the piece being cut.
+        const names: ReadonlySet<string> =
+          new Set(plan.jumps.map((jump) => jump.name));
+        const skeleton = classify(plan.skeleton, names);
+        plan.shape = skeleton.shape;
+        plan.kinks = skeleton.kinks;
+        for (const jump of plan.jumps) {
+          const level = classify(jump.level, names);
+          jump.shape = level.shape;
+          jump.kinks = level.kinks;
+        }
+        edge.shapes[index] = skeleton.shape;
+        edge.kinks[index] = skeleton.kinks;
+        return;
+      }
+      const expression = edge.expressions[index] ?? null;
+      if (expression === null) {
+        // A constant law has zero slope everywhere, which is affine and
+        // moves nothing.
+        edge.shapes[index] = 'constant';
+        return;
+      }
+      const end = classify(expression, new Set<string>());
+      edge.shapes[index] = end.shape;
+      edge.kinks[index] = end.kinks;
+    });
+  }
+
   // The SELF-READ, recognised and read HERE, once, at load (design D1).
   //
   // A law edge whose `needs` intersects its `gives` reads the coordinate
@@ -1197,9 +1314,17 @@ export function loadProgram(
       outer: {
         skeleton: plan.skeleton,
         jumps: plan.jumps.filter((jump) => !dependence.get(jump.name)),
+        // The same skeleton TEXT as the full plan's, and classified
+        // under the full plan's names (design §7's last risk).
+        shape: plan.shape,
+        kinks: plan.kinks,
       },
       // READ, never recomputed: what compile time decided (ADR-047).
       affine: edge.affine[index],
+      // DERIVED, above, from the FULL plan's skeleton under the FULL
+      // plan's jump names.
+      shape: plan.shape,
+      kinks: plan.kinks,
     };
     edge.retained = edge.gives.map(
       (_key, at) => (at === index ? reading : null));
@@ -1302,7 +1427,13 @@ export function loadProgram(
         own,
         plan,
         selectors,
-        selectorPlan: { skeleton: plan.skeleton, jumps: selectors },
+        selectorPlan: {
+          skeleton: plan.skeleton,
+          jumps: selectors,
+          // The SAME skeleton text under the same plan's names.
+          shape: plan.shape,
+          kinks: plan.kinks,
+        },
         unconditional: least,
         switched: new Set([...whole].filter((key) => !least.has(key))),
       };
@@ -1361,8 +1492,12 @@ export function loadProgram(
       expressions: [],
       // A block's value is piecewise in the SELECTOR partition AND
       // re-ordered across it, so a stop on one of its coordinates is
-      // SEARCHED, never solved (design D4.2).
+      // SEARCHED, never solved (design D4.2). `solve-at-the-kink` does
+      // NOT lift that: a block has no single expression at all until a
+      // branch vector is fixed, so it carries no shape either.
       affine: block.gives.map(() => false),
+      shapes: block.gives.map(() => null),
+      kinks: block.gives.map(() => null),
       plans: block.gives.map(() => null),
       retained: [],
       factor: 0,

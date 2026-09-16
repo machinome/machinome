@@ -66,3 +66,4 @@ both repositories. Consequences:
 - [ADR-058](EXPORT/ADR-058-a-block-is-ordered-per-piece-from-the-published-edges.md) — A block is ordered per piece from the published edges — **Accepted**, extends 045 and 047, builds on 057, consumes solid-node ADR-122
 - [ADR-059](EXPORT/ADR-059-the-viewer-keeps-its-own-bundle-current.md) — The viewer keeps its own bundle current, and refuses what it cannot repair — **Accepted**
 - [ADR-060](EXPORT/ADR-060-only-what-moves-along-a-step-s-path-is-walked.md) — Only what moves along a step's path is walked — **Accepted**, extends 043 and 046, builds on 047, 057 and 058, consumes solid-node ADR-124
+- [ADR-061](EXPORT/ADR-061-a-kink-is-a-cut-in-the-viewer-too.md) — A kink is a cut in the viewer too, and the viewer derives the shape itself — **Accepted**, extends 045 and 046, builds on 047, 057, 058 and 060, consumes solid-node ADR-123

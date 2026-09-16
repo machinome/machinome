@@ -13,12 +13,17 @@ import { EXPRESSION_LIMITS, expressionGeneration, prepare } from '../expressions
 import {
   componentsOf, loadProgram, readsUnder, stronglyConnected, uncomputedValues,
 } from './program';
-import type { BlockMember, LoadedProgram, RunDocument } from './program';
+import type {
+  BlockMember, LoadedProgram, ProgramEdge, RunDocument,
+} from './program';
+import type { PathShape } from '../expressions';
 import { structureOf } from '../expressions';
 import acceptance from '../../../../tests/fixtures/pascaline/viewer.json';
 import lockDocument from '../../../../tests/fixtures/lock/viewer.json';
 import corpus from '../running-corpus.json';
 import clearingDocument from '../../../../tests/fixtures/clearing/viewer.json';
+import carriageDocument from '../../../../tests/fixtures/carriage/viewer.json';
+import touchedDocument from '../../../../tests/fixtures/touched/viewer.json';
 
 const SOURCE = 'http://example.test/viewer.json';
 
@@ -1724,5 +1729,106 @@ describe('the load-time refusals (design D1.7, tasks 5)', () => {
     const loaded = loadProgram(blockDocument(), SOURCE);
     expect(loaded.edges).toHaveLength(1);
     expect(loaded.edges[0].kind).toBe('block');
+  });
+});
+
+// ---------------------------------------------------------------------
+// The flag-agreement CONTRACT (openspec `solve-at-the-kink`, design D6,
+// tasks 1.1). The viewer's classification is a SECOND implementation of
+// the producer's `_shape_of`, and the only external check on it is the
+// flag the document already carries: a quantity this viewer finds
+// constant or affine must be one the producer published `affine: true`,
+// and one it finds kinked or unclassified must be one the producer
+// published `affine: false`. It is the test that catches the
+// classification drifting from the producer's without anyone running
+// the producer.
+// ---------------------------------------------------------------------
+
+describe('the classification agrees with the published flag (D6)', () => {
+  const machines = (corpus as unknown as {
+    machines: { name: string; document: unknown }[];
+  }).machines;
+
+  const fixtures: [string, unknown][] = [
+    ['the Pascaline fixture', acceptance],
+    ['the lock fixture', lockDocument],
+    ['the clearing fixture', clearingDocument],
+    ['the carriage fixture', carriageDocument],
+    ['the touched fixture', touchedDocument],
+  ];
+
+  /** Every published flag of one document, against the shape the loader
+   * derived for the same quantity. */
+  function agreement(name: string, document: unknown):
+  { ends: number; levels: number; disagreements: string[] } {
+    const program = loadProgram(document as RunDocument, `shapes#${name}`);
+    const solved = (shape: PathShape): boolean =>
+      shape === 'constant' || shape === 'affine';
+    const disagreements: string[] = [];
+    let ends = 0;
+    let levels = 0;
+    for (const edge of program.edges) {
+      const walk = (one: ProgramEdge): void => {
+        if (one.kind !== 'law') return;
+        one.gives.forEach((key, index) => {
+          ends += 1;
+          if (solved(one.shapes[index]) !== one.affine[index]) {
+            disagreements.push(
+              `${name}: ${key} is ${one.shapes[index]} and publishes `
+              + `affine: ${one.affine[index]}`);
+          }
+        });
+        for (const plan of one.plans) {
+          if (plan === null) continue;
+          for (const jump of plan.jumps) {
+            levels += 1;
+            if (solved(jump.shape) !== jump.affine) {
+              disagreements.push(
+                `${name}: the level of ${jump.name} is ${jump.shape} and `
+                + `publishes affine: ${jump.affine}`);
+            }
+          }
+        }
+      };
+      // A block is ONE entry of the loaded program: its members are the
+      // law edges the document published, and they carry the flags.
+      if (edge.kind === 'block') {
+        for (const member of edge.block!.members) walk(member.edge);
+      } else {
+        walk(edge);
+      }
+    }
+    return { ends, levels, disagreements };
+  }
+
+  it('finds constant or affine EXACTLY where the corpus publishes affine',
+     () => {
+    let ends = 0;
+    let levels = 0;
+    const disagreements: string[] = [];
+    for (const machine of machines) {
+      const found = agreement(machine.name, machine.document);
+      ends += found.ends;
+      levels += found.levels;
+      disagreements.push(...found.disagreements);
+    }
+    expect(disagreements).toEqual([]);
+    // The measurement design D6 records: 39 driven ends + 34 jump
+    // levels = 73 published flags over the corpus's 20 documents, zero
+    // disagreements.
+    expect([ends, levels]).toEqual([39, 34]);
+  });
+
+  it('finds constant or affine EXACTLY where a committed fixture '
+     + 'publishes affine', () => {
+    const disagreements: string[] = [];
+    let flags = 0;
+    for (const [name, document] of fixtures) {
+      const found = agreement(name, document);
+      flags += found.ends + found.levels;
+      disagreements.push(...found.disagreements);
+    }
+    expect(disagreements).toEqual([]);
+    expect(flags).toBeGreaterThan(0);
   });
 });

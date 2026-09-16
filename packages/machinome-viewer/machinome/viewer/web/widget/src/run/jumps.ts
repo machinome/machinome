@@ -28,6 +28,8 @@ import type {
   BlockMember, LoadedProgram, ProgramBlock, RetainedReading,
 } from './program';
 import { movingNames, PathValue, UnsupportedPathNode } from '../expressions';
+import type { KinkLevel } from '../expressions';
+import { kinkLevel } from './program';
 
 /** A SELECTOR's placeholder bound to the branch the block read at its
  * piece's midpoint (design D3). A forced node is a CONSTANT on the
@@ -255,16 +257,67 @@ export function deduplicated(found: [number, number][],
 }
 
 /** The partition with `found` folded in: two cuts closer than the
- * tolerance are ONE, and the partition always ends at exactly 1. */
+ * tolerance are ONE, and the partition always ends at exactly `end` --
+ * 1 for a tick's own partition, and the stretch's own right end for the
+ * kink breakpoints located INSIDE one piece of it (openspec
+ * `solve-at-the-kink`, design D2). */
 export function merged(cuts: number[], found: number[],
-                       tolerance: number): number[] {
+                       tolerance: number, end = 1): number[] {
   const ordered = [...cuts, ...found].sort((a, b) => a - b);
   const kept = [ordered[0]];
   for (const where of ordered.slice(1)) {
     if (where - kept[kept.length - 1] > tolerance) kept.push(where);
   }
-  kept[kept.length - 1] = 1;
+  kept[kept.length - 1] = end;
   return kept;
+}
+
+// ---------------------------------------------------------------------
+// WHERE A KINKED QUANTITY'S KINKS CUT A STRETCH (openspec
+// `solve-at-the-kink`, design D2; `_KinkCuts.between`).
+//
+// A kinked quantity is affine on each stretch between its own
+// breakpoints, so the stretch is cut there and each sub-piece SOLVED.
+// The kinks come in the expression's own POSTORDER, so a kink nested
+// inside another's level is cut FIRST, and on each sub-interval the
+// earlier kinks have already produced the level that follows is affine
+// in the fraction -- so its zero is ONE DIVISION. No sampling, no
+// bisection, and no tolerance but the crossing tolerance two crossings
+// are already folded under.
+//
+// A breakpoint is NOT a crossing (design D3): the quantity is
+// continuous there, so it is recorded nowhere, enters no partition an
+// increment is summed over, lands no coordinate on a far side and
+// counts toward no maximum. It exists only inside a SOLVE.
+// ---------------------------------------------------------------------
+
+/** The breakpoints STRICTLY INSIDE `[left, right]`, sorted and merged,
+ * where `level(kink, t)` gives that kink's level quantity at `t`. */
+export function kinkBreaks(kinks: readonly KinkLevel[],
+                           level: (kink: KinkLevel, t: number) => number,
+                           left: number, right: number,
+                           tolerance: number): number[] {
+  let cuts = [left, right];
+  for (const one of kinks) {
+    const found: number[] = [];
+    for (let at = 0; at < cuts.length - 1; at += 1) {
+      const lowT = cuts[at];
+      const highT = cuts[at + 1];
+      const low = level(one, lowT);
+      const high = level(one, highT);
+      if (high === low || !Number.isFinite(low) || !Number.isFinite(high)) {
+        // A level that does not MOVE over a sub-interval reaches nothing
+        // inside it -- the same statement `Walk.searched` makes of a
+        // jump level.
+        continue;
+      }
+      if (!(Math.min(low, high) < 0 && 0 < Math.max(low, high))) continue;
+      const where = lowT + (highT - lowT) * (0 - low) / (high - low);
+      if (lowT < where && where < highT) found.push(where);
+    }
+    if (found.length > 0) cuts = merged(cuts, found, tolerance, right);
+  }
+  return cuts.slice(1, -1);
 }
 
 /** One caller's own LEVEL path values (design D7, ADR-060; ADR-124's
@@ -420,21 +473,62 @@ function crossingsOf(
     if (count === null) throw noLevel(jump.primitive, described, coordinate);
     throw tooMany(described, coordinate, jump.primitive, count, limits);
   };
-  if (jump.affine) {
-    // An affine level quantity is determined everywhere on the piece by
-    // its two endpoint values, so every surface between them is SOLVED
-    // -- all of them, which is what makes a crank that passes three
-    // tooth windows in one tick add three throws rather than one.
-    const low = levelAt(program, plan, jump, start, delta, left, inner,
+  // An affine level quantity is determined everywhere on the stretch by
+  // its two endpoint values, so every surface between them is SOLVED
+  // -- all of them, which is what makes a crank that passes three
+  // tooth windows in one tick add three throws rather than one.
+  //
+  // `closed` takes the stretch's RIGHT end inclusively, for a sub-piece
+  // another sub-piece continues from (openspec `solve-at-the-kink`,
+  // design D4 (a)). The LEFT end is exclusive either way: at the piece's
+  // own left end that surface is not one the piece crosses, and at an
+  // interior breakpoint it was reached by the sub-piece before.
+  const solved = (lowT: number, highT: number,
+                  closed: boolean): [number, number][] => {
+    const low = levelAt(program, plan, jump, start, delta, lowT, inner,
                         described, coordinate, paths, piece);
-    const high = levelAt(program, plan, jump, start, delta, right, inner,
+    const high = levelAt(program, plan, jump, start, delta, highT, inner,
                          described, coordinate, paths, piece);
     if (high === low) return [];
     const found: [number, number][] = [];
-    for (const level of surfacesOf(jump, low, high, false, limits, refuse)) {
-      found.push([left + (right - left) * (level - low) / (high - low), level]);
+    for (const level of surfacesOf(jump, low, high, closed, limits, refuse)) {
+      if (closed && level === low) continue;
+      found.push([lowT + (highT - lowT) * (level - low) / (high - low), level]);
     }
     return found;
+  };
+  if (jump.affine) return solved(left, right, false);
+  if (jump.shape === 'kinked') {
+    // A KINKED level is affine on each sub-interval between its own
+    // kinks, so the piece is cut there -- recording nothing, counting
+    // toward nothing -- and each sub-piece is solved.
+    const at = (t: number): Record<string, number> => {
+      const values = along(start, delta, t);
+      for (const name in inner) {
+        if (Object.prototype.hasOwnProperty.call(inner, name)) {
+          values[name] = inner[name];
+        }
+      }
+      return values;
+    };
+    const breaks = kinkBreaks(jump.kinks!, (kink, t) => kinkLevel(
+      program, kink, at(t)), left, right, limits.crossingTolerance);
+    if (breaks.length === 0) {
+      // No kink is reached inside this piece, so the level IS affine
+      // over the whole of it.
+      return solved(left, right, false);
+    }
+    const edges = [left, ...breaks, right];
+    let found: [number, number][] = [];
+    for (let at2 = 0; at2 < edges.length - 1; at2 += 1) {
+      // The right end is INCLUSIVE for every sub-piece but the last, so
+      // a surface lying exactly on an interior breakpoint is not lost
+      // between the two sub-pieces that meet there; `deduplicated` is
+      // what stops it being taken twice, and it exists for exactly this.
+      found = found.concat(
+        solved(edges[at2], edges[at2 + 1], at2 < edges.length - 2));
+    }
+    return deduplicated(found, limits.crossingTolerance);
   }
   // Anything else: sampled, bracketed and bisected.
   const width = (right - left) / limits.subdivisions;
@@ -680,7 +774,7 @@ class Walk {
   // ------------------------------------------------------------------
   // The two layers
 
-  run(crossings: CrossingRecord[] | null, tick: number):
+  run(crossings: CrossingRecord[] | null, tick: number, cutting = false):
   { increment: number; landing: number | null; cuts: number[] } {
     const own = this.reading.own;
     const own0 = this.start[own];
@@ -720,6 +814,17 @@ class Walk {
         const ownAt = (s: number): number =>
           from + (this.skeletonAt(s, branches) - base);
         const cut = this.firstCut(t, right, ownLeft, branches, ownAt);
+        if (cutting && this.reading.kinks !== null) {
+          // The SKELETON's own kinks, inside the piece this branch
+          // reading holds over: between two of them the driven
+          // coordinate's value is affine in `t`. Asked ONLY when the
+          // caller wants the cuts -- a stop being localized -- so an
+          // ordinary tick pays nothing for them (design D4 (c)).
+          for (const where of this.skeletonCuts(
+            t, cut === null ? right : cut[0], branches)) {
+            cuts.push(where);
+          }
+        }
         if (cut === null) {
           ownLeft = ownAt(right);
           break;
@@ -895,25 +1000,109 @@ class Walk {
       throw tooMany(this.described, this.coordinate, jump.primitive, count,
                     limits);
     };
-    if (jump.affine && this.reading.affine) {
-      // Note the difference from `crossingsOf`, which returns ALL the
-      // surfaces between the two endpoints: under a self-read the path
-      // is known only until the branch changes, so the walk takes the
-      // FIRST and decides again. Three tooth windows in one tick are
-      // still three throws, as three successive pieces.
-      const low = this.levelOfJump(jump, t, ownLeft, branches);
-      const high = this.levelOfJump(jump, right, ownAt(right), branches);
+    // Note the difference from `crossingsOf`, which returns ALL the
+    // surfaces between the two endpoints: under a self-read the path
+    // is known only until the branch changes, so the walk takes the
+    // FIRST and decides again. Three tooth windows in one tick are
+    // still three throws, as three successive pieces.
+    const solved = (left: number, stop: number, ownLow: number,
+                    ownHigh: number,
+                    closed: boolean): [number, number] | null => {
+      const low = this.levelOfJump(jump, left, ownLow, branches);
+      const high = this.levelOfJump(jump, stop, ownHigh, branches);
       if (high === low) return null;
-      const found = surfacesOf(jump, low, high, false, limits, refuse);
+      const found = surfacesOf(jump, low, high, closed, limits, refuse)
+        .filter((level) => !(closed && level === low));
       if (found.length === 0) return null;
       let best: [number, number] | null = null;
       for (const level of found) {
-        const where = t + (right - t) * (level - low) / (high - low);
+        const where = left + (stop - left) * (level - low) / (high - low);
         if (best === null || where < best[0]) best = [where, level];
       }
       return best;
+    };
+    if (jump.affine && this.reading.affine) {
+      return solved(t, right, ownLeft, ownAt(right), false);
     }
-    return this.searched(jump, t, right, ownLeft, branches, ownAt, refuse);
+    const jumpShape = jump.affine ? 'affine' : jump.shape;
+    if (jumpShape === null || this.reading.shape === null) {
+      return this.searched(jump, t, right, ownLeft, branches, ownAt, refuse);
+    }
+    // At least one of the two is KINKED and neither is curved, so the
+    // piece is SOLVED on sub-intervals (openspec `solve-at-the-kink`,
+    // design D4 (b)). The SKELETON's breakpoints come FIRST, because
+    // they are what make the driven coordinate's own path `ownAt` affine
+    // at all; the LEVEL's ride that path, so they are located INSIDE
+    // each skeleton sub-piece, with the coordinate read by interpolation
+    // between that sub-piece's two ends.
+    const outer = [t, ...this.skeletonCuts(t, right, branches), right];
+    for (let index = 0; index < outer.length - 1; index += 1) {
+      const left = outer[index];
+      const stop = outer[index + 1];
+      const ownLow = left === t ? ownLeft : ownAt(left);
+      const ownHigh = ownAt(stop);
+      const inner = [left, ...this.levelCuts(jump, left, stop, ownLow,
+                                             ownHigh, branches), stop];
+      for (let step = 0; step < inner.length - 1; step += 1) {
+        const lowT = inner[step];
+        const highT = inner[step + 1];
+        // Left to right, and the FIRST surface strictly inside the PIECE
+        // wins -- `firstCut`'s own rule. The right end is inclusive for
+        // every sub-piece but the very last, and the left end is
+        // exclusive throughout, which is `searched`'s "the surface a
+        // piece STARTS on is not one it crosses".
+        const found = solved(
+          lowT, highT,
+          lowT === left ? ownLow : ownAt(lowT),
+          highT === stop ? ownHigh : ownAt(highT),
+          !(index === outer.length - 2 && step === inner.length - 2));
+        if (found !== null) return found;
+      }
+    }
+    return null;
+  }
+
+  /** The SKELETON's kink breakpoints strictly inside `[left, right]`,
+   * under this piece's branch reading (`_skeleton_cuts`). */
+  private skeletonCuts(left: number, right: number,
+                       branches: Record<string, number>): number[] {
+    if (this.reading.kinks === null) return [];
+    const at = (t: number): Record<string, number> => {
+      const values = along(this.start, this.delta, t);
+      for (const name in branches) {
+        if (Object.prototype.hasOwnProperty.call(branches, name)) {
+          values[name] = branches[name];
+        }
+      }
+      return values;
+    };
+    return kinkBreaks(
+      this.reading.kinks, (kink, t) => kinkLevel(this.program, kink, at(t)),
+      left, right, this.program.limits.crossingTolerance);
+  }
+
+  /** A KINKED level's own breakpoints inside ONE skeleton sub-piece,
+   * where the driven coordinate's path is affine and so reads by
+   * interpolation between its two ends (`_level_cuts`). */
+  private levelCuts(jump: ProgramJump, left: number, right: number,
+                    ownLow: number, ownHigh: number,
+                    branches: Record<string, number>): number[] {
+    if (jump.kinks === null) return [];
+    const span = right - left;
+    const at = (t: number): Record<string, number> => {
+      const values = along(this.start, this.delta, t);
+      values[this.reading.own] = span === 0
+        ? ownLow : ownLow + (ownHigh - ownLow) * (t - left) / span;
+      for (const name in branches) {
+        if (Object.prototype.hasOwnProperty.call(branches, name)) {
+          values[name] = branches[name];
+        }
+      }
+      return values;
+    };
+    return kinkBreaks(
+      jump.kinks, (kink, t) => kinkLevel(this.program, kink, at(t)),
+      left, right, this.program.limits.crossingTolerance);
   }
 
   /** A level that is not affine along the path: sampled, bracketed and
@@ -1176,7 +1365,7 @@ export function retainedCuts(
 ): number[] {
   const walk = new Walk(program, reading, start, delta, described, coordinate,
                         forced);
-  return walk.run(null, 0).cuts;
+  return walk.run(null, 0, true).cuts;
 }
 
 /** The breakpoints this law's own jumps put on the tick's path.
@@ -1191,8 +1380,52 @@ export function planCuts(
   forced: Forced = null,
 ): number[] {
   if (!Object.values(delta).some((value) => value !== 0)) return [0, 1];
-  return partition(program, plan, start, delta, described, coordinate, null, 0,
-                   forced);
+  const cuts = partition(program, plan, start, delta, described, coordinate,
+                         null, 0, forced);
+  if (plan.kinks === null) return cuts;
+  // The skeleton reads the plan's BRANCH PLACEHOLDERS, which are
+  // constant only within ONE piece of the plan's partition, so its kinks
+  // are located inside each piece with that piece's branches
+  // substituted, and the per-piece lists are unioned with the plan's own
+  // cuts (openspec `solve-at-the-kink`, design D4 (c)).
+  const found: number[] = [];
+  for (let at = 0; at < cuts.length - 1; at += 1) {
+    const left = cuts[at];
+    const right = cuts[at + 1];
+    const branches = branchesAt(program, plan, start, delta,
+                                (left + right) / 2, plan.jumps.length,
+                                described, coordinate, forced);
+    const point = (t: number): Record<string, number> => {
+      const values = along(start, delta, t);
+      for (const name in branches) {
+        if (Object.prototype.hasOwnProperty.call(branches, name)) {
+          values[name] = branches[name];
+        }
+      }
+      return values;
+    };
+    for (const where of kinkBreaks(
+      plan.kinks, (kink, t) => kinkLevel(program, kink, point(t)),
+      left, right, program.limits.crossingTolerance)) {
+      found.push(where);
+    }
+  }
+  return found.length === 0
+    ? cuts : merged(cuts, found, program.limits.crossingTolerance);
+}
+
+/** A PLAN-LESS kinked law's breakpoints over the whole tick, as one
+ * piece: `[]` where no kink of it is reached, which is the statement
+ * that its path IS affine over the tick (design D4 (c)). */
+export function kinkedEndCuts(
+  program: LoadedProgram, kinks: readonly KinkLevel[],
+  start: Record<string, number>, delta: Record<string, number>,
+): number[] {
+  const found = kinkBreaks(
+    kinks, (kink, t) => kinkLevel(program, kink, along(start, delta, t)),
+    0, 1, program.limits.crossingTolerance);
+  return found.length === 0
+    ? [] : merged([0, 1], found, program.limits.crossingTolerance);
 }
 
 // ---------------------------------------------------------------------

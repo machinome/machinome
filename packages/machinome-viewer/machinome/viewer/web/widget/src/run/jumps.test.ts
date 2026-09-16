@@ -14,7 +14,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   along, blockCuts, blockIncrements, branchOf, copySign, CrossingRecord,
-  deduplicated, fromOrdinal, merged, nextAfter, onSurface, ordinalOf, planCuts,
+  deduplicated, fromOrdinal, kinkBreaks, merged, nextAfter, onSurface,
+  ordinalOf, planCuts,
   planIncrement, retainedCuts, retainedIncrement, surfacesOf, ulpOf, unlanded,
 } from './jumps';
 import { edgeIncrements } from './edges';
@@ -24,6 +25,8 @@ import {
 import type {
   LoadedProgram, ProgramBlock, ProgramPlan, RunDocument,
 } from './program';
+import type { KinkLevel } from '../expressions';
+import { expressionMetrics, resetExpressionMetrics } from '../expressions';
 import corpus from '../running-corpus.json';
 
 const LIMITS = {
@@ -180,6 +183,75 @@ describe('merged', () => {
   it('always ends at exactly 1', () => {
     const cuts = merged([0, 1], [1 - 1e-15], 1e-12);
     expect(cuts[cuts.length - 1]).toBe(1);
+  });
+
+  it('ends at the STRETCH\'s own right end when it is given one '
+     + '(openspec `solve-at-the-kink`, tasks 2.3)', () => {
+    // A sub-division INSIDE one piece must not be pinned to the tick's
+    // own end: the kink breakpoints of a stretch [0.2, 0.6] fold into a
+    // partition that ends at 0.6.
+    expect(merged([0.2, 0.6], [0.4], 1e-12, 0.6))
+      .toEqual([0.2, 0.4, 0.6]);
+    const near = merged([0.2, 0.6], [0.6 - 1e-15], 1e-12, 0.6);
+    expect(near[near.length - 1]).toBe(0.6);
+    // With no end given it is the tick's own, exactly as before.
+    expect(merged([0, 1], [0.5], 1e-12)).toEqual([0, 0.5, 1]);
+  });
+});
+
+describe('kinkBreaks (openspec `solve-at-the-kink`, design D2, tasks 2.5)',
+         () => {
+  // Two kink tokens; the levels are supplied here, so this tests the
+  // sub-division rule and nothing about evaluation.
+  const A: KinkLevel = { a: 0, b: null };
+  const B: KinkLevel = { a: 1, b: null };
+  const TOLERANCE = 1e-12;
+
+  it('returns the INTERIOR breakpoints only', () => {
+    // A level whose zero is the stretch's own left end: `0` is not
+    // STRICTLY between the two end values, so nothing is reached.
+    expect(kinkBreaks([A], (_k, t) => t, 0, 1, TOLERANCE)).toEqual([]);
+    expect(kinkBreaks([A], (_k, t) => t - 1, 0, 1, TOLERANCE)).toEqual([]);
+    expect(kinkBreaks([A], (_k, t) => t - 0.25, 0, 1, TOLERANCE))
+      .toEqual([0.25]);
+  });
+
+  it('contributes none where the level does not MOVE, or is not finite',
+     () => {
+    expect(kinkBreaks([A], () => 1, 0, 1, TOLERANCE)).toEqual([]);
+    expect(kinkBreaks([A], () => 0, 0, 1, TOLERANCE)).toEqual([]);
+    expect(kinkBreaks([A], (_k, t) => (t < 0.5 ? -Infinity : 1), 0, 1,
+                      TOLERANCE)).toEqual([]);
+  });
+
+  it('folds two breakpoints closer than the CROSSING tolerance into one',
+     () => {
+    const breaks = kinkBreaks(
+      [A, B], (kink, t) => (kink === A ? t - 0.5 : t - (0.5 + 1e-15)),
+      0, 1, TOLERANCE);
+    expect(breaks).toEqual([0.5]);
+  });
+
+  it('cuts a kink nested inside another\'s level FIRST -- the postorder '
+     + 'is what makes the second one reachable', () => {
+    // `B`'s level is a V: over the whole stretch its two ends are EQUAL
+    // and it reaches nothing. Once `A` has cut at 0.5 it crosses inside
+    // each half.
+    const level = (kink: KinkLevel, t: number): number =>
+      (kink === A ? t - 0.5 : Math.abs(t - 0.5) - 0.25);
+    expect(kinkBreaks([A, B], level, 0, 1, TOLERANCE))
+      .toEqual([0.25, 0.5, 0.75]);
+    // The other order finds `A`'s alone: this is why the inventory is
+    // held in the expression's own postorder.
+    expect(kinkBreaks([B, A], level, 0, 1, TOLERANCE)).toEqual([0.5]);
+  });
+
+  it('locates a breakpoint inside a SUB-STRETCH, ending at its own right '
+     + 'end', () => {
+    expect(kinkBreaks([A], (_k, t) => t - 0.5, 0.2, 0.6, TOLERANCE))
+      .toEqual([0.5]);
+    expect(kinkBreaks([A], (_k, t) => t - 0.9, 0.2, 0.6, TOLERANCE))
+      .toEqual([]);
   });
 });
 
@@ -1648,5 +1720,253 @@ describe('the framework\'s own numbers, mirrored (tasks 9)', () => {
       expect(found['higher.turn']).toBe(1);
       expect(found['carry.travel']).toBe(1);
     }
+  });
+});
+
+// ---------------------------------------------------------------------
+// A KINKED jump level (openspec `solve-at-the-kink`, design D4 (a),
+// §6 case B, tasks 3.1-3.4).
+//
+// The corpus carries no kinked jump level at all (tasks 0.3), so the
+// fixture is written here: a gate whose level reads a `clamp01` window
+// of the driver, crossed strictly inside the tick with the clamp inside
+// its window there.
+// ---------------------------------------------------------------------
+
+/** `floor` of a `clamp01` window, ten surfaces wide.
+ *
+ * The driver runs 0 -> 8 over the tick, so `crank = 8t`; the window
+ * `(crank - 2) / 4` opens at `t = 0.25` and closes at `t = 0.75`, and
+ * the level `10 * clamp01(...)` runs 0 -> 10 between those two
+ * breakpoints and STANDS outside them. */
+const clamped = () => bench(
+  '(crank + floor((10.0 * min(max(((crank - 2.0) / 4.0), 0.0), 1.0))))', {
+    skeleton: '(crank + _j0)',
+    jumps: [{
+      name: '_j0',
+      primitive: 'floor',
+      level: '(10.0 * min(max(((crank - 2.0) / 4.0), 0.0), 1.0))',
+      affine: false,
+    }],
+  });
+
+describe('a kinked jump level is SOLVED on its own sub-intervals', () => {
+  /** The crossings of one tick of the fixture above. */
+  function crossingsOfClamped(): { level: number; t: number }[] {
+    const program = clamped();
+    const crossings: CrossingRecord[] = [];
+    planIncrement(program, planOf(program), { crank: 0 }, { crank: 8 },
+                  'crank drives wheel.turn', 'wheel.turn', crossings, 1);
+    return crossings.map((one) => ({ level: one.level, t: one.t }));
+  }
+
+  it('3.1 locates every surface at the fraction the SUB-PIECE\'s own '
+     + 'division gives, exactly', () => {
+    // The closed form of the fixture's own arithmetic, never read back
+    // from the law: inside the window the level is solved from its two
+    // endpoint values, `0` at `t = 0.25` and `10` at `t = 0.75`.
+    const LEFT = 0.25;
+    const RIGHT = 0.75;
+    const expected = [];
+    for (let level = 1; level <= 10; level += 1) {
+      expected.push({
+        level,
+        t: LEFT + (RIGHT - LEFT) * (level - 0) / (10 - 0),
+      });
+    }
+    // RED on the base: the level is published `affine: false` and the
+    // viewer knew nothing else about it, so all ten were SAMPLED and
+    // bisected -- right to the crossing tolerance and wrong in the last
+    // bits.
+    expect(crossingsOfClamped()).toEqual(expected);
+  });
+
+  it('3.4 locates a surface lying EXACTLY on an interior breakpoint once, '
+     + 'not twice and not zero times', () => {
+    // The level reaches exactly 10 at `t = 0.75`, which is the window's
+    // own closing breakpoint: the sub-piece before it takes its right
+    // end INCLUSIVELY and `deduplicated` keeps the one entry.
+    const found = crossingsOfClamped().filter((one) => one.level === 10);
+    expect(found).toEqual([{ level: 10, t: 0.75 }]);
+  });
+
+  it('3.3 solves the whole piece where the path reaches no kink at all',
+     () => {
+    // The same fixture driven entirely INSIDE the window: no breakpoint
+    // is reached, so the level IS affine over the piece and is solved
+    // over the whole of it.
+    const program = clamped();
+    const crossings: CrossingRecord[] = [];
+    planIncrement(program, planOf(program), { crank: 3 }, { crank: 1 },
+                  'crank drives wheel.turn', 'wheel.turn', crossings, 1);
+    // `crank` runs 3 -> 4, so the level runs 2.5 -> 5: surfaces 3 and 4
+    // are crossed, and 5 sits exactly on the piece's own right end,
+    // which a solve takes EXCLUSIVELY.
+    expect(crossings.map((one) => ({ level: one.level, t: one.t }))).toEqual([
+      { level: 3, t: (3 - 2.5) / (5 - 2.5) },
+      { level: 4, t: (4 - 2.5) / (5 - 2.5) },
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------
+// A KINKED self-read SKELETON (openspec `solve-at-the-kink`, design
+// D4 (b), tasks 4.3-4.4).
+//
+// The same clearing bench with the setter's contribution CLAMPED into a
+// window, which is what the Curta's own clearing interface does: the
+// skeleton is piecewise affine, so the driven coordinate's own path is
+// affine only between the window's own breakpoints.
+// ---------------------------------------------------------------------
+
+const kinkedSkeleton = () => clearing({
+  expressions: [
+    '(min(max(setter, 0.0), 50.0) + ((ring * (floor(_b1) == 0)) * '
+    + '((_b2 - (360.0 * floor(_b3))) >= 1.0)))',
+  ],
+  affine: [false],
+  plans: [{
+    skeleton: '(min(max(setter, 0.0), 50.0) + ((ring * _j1) * _j3))',
+    jumps: [
+      { name: '_j0', primitive: 'floor', level: '_b1', affine: true },
+      { name: '_j1', primitive: '==', level: '(_j0 - 0)', affine: true },
+      { name: '_j2', primitive: 'floor', level: '_b3', affine: true },
+      {
+        name: '_j3', primitive: '>=',
+        level: '((_b2 - (360.0 * _j2)) - 1.0)', affine: true,
+      },
+    ],
+  }],
+});
+
+describe('a kinked self-read skeleton (design D4 (b))', () => {
+  const start = { setter: -10, ring: 0, 'wheel.turn': 108 };
+  const delta = { setter: 50, ring: 0, 'wheel.turn': 0 };
+  // The window opens where `setter` reaches 0: a fifth of the way.
+  const opens = (0 - -10) / (40 - -10);
+
+  it('classifies the skeleton KINKED and the plan\'s levels affine', () => {
+    const program = kinkedSkeleton();
+    expect(program.edges[0].shapes[0]).toBe('kinked');
+    expect(readingOf(program).shape).toBe('kinked');
+    expect(readingOf(program).kinks).toHaveLength(2);
+    for (const jump of program.edges[0].plans[0]!.jumps) {
+      expect(jump.affine).toBe(true);
+    }
+  });
+
+  it('4.3 pays for the skeleton\'s kinks ONLY where the caller asked for '
+     + 'the cuts', () => {
+    const program = kinkedSkeleton();
+    resetExpressionMetrics();
+    const ordinary = walked(program, start, delta);
+    const plain = expressionMetrics().resolutions;
+    resetExpressionMetrics();
+    const cuts = retainedCuts(program, readingOf(program), start, delta,
+                              'clearing', 'wheel.turn');
+    const cutting = expressionMetrics().resolutions;
+    // The same tick, the same answer -- and the breakpoints cost
+    // something, which is exactly why an ordinary tick does not ask for
+    // them.
+    expect(ordinary.increment).toBe(40);
+    expect(cutting).toBeGreaterThan(plain);
+    expect(cuts).toContain(opens);
+  });
+
+  it('4.4 keeps the cuts SORTED and lets no breakpoint reach the crossing '
+     + 'record (design D3)', () => {
+    const program = kinkedSkeleton();
+    const crossings: CrossingRecord[] = [];
+    walked(program, start, delta, crossings);
+    // The path passes the window's own breakpoint and no crossing is
+    // recorded there -- the quantity is CONTINUOUS at a kink.
+    expect(crossings.map((one) => one.t)).not.toContain(opens);
+    const cuts = retainedCuts(program, readingOf(program), start, delta,
+                              'clearing', 'wheel.turn');
+    expect(cuts[0]).toBe(0);
+    expect(cuts[cuts.length - 1]).toBe(1);
+    for (let at = 1; at < cuts.length; at += 1) {
+      expect(cuts[at]).toBeGreaterThanOrEqual(cuts[at - 1]);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------
+// A PLAN-BEARING kinked skeleton (openspec `solve-at-the-kink`, design
+// D4 (c), tasks 5.4): the corpus's own `Window` -- a station window
+// `clamp01` inside a `floor` partition, whose placeholder is a constant
+// only WITHIN its own piece.
+// ---------------------------------------------------------------------
+
+describe('planCuts unions the skeleton\'s kinks into the partition', () => {
+  it('5.4 locates them inside EACH piece, under that piece\'s own '
+     + 'branches', () => {
+    const program = loadProgram(machine('Window'), 'corpus://Window');
+    const plan = program.edges[0].plans[0]!;
+    expect(program.edges[0].shapes[0]).toBe('kinked');
+    const cuts = planCuts(program, plan, { crank: 100 }, { crank: 400 },
+                          'crank drives pinion.turn', 'pinion.turn');
+    // `crank` runs 100 -> 500. The `floor` partition cuts where it
+    // passes 360; inside each piece the window opens at 113.5 and
+    // closes at 124.75 of the piece's OWN turn, which is 473.5 and
+    // 484.75 on the second one. A partition that read the placeholder
+    // from the first piece would put no breakpoint in the second at
+    // all.
+    const expected = [
+      0,
+      (113.5 - 100) / 400,
+      (124.75 - 100) / 400,
+      (360 - 100) / 400,
+      (473.5 - 100) / 400,
+      (484.75 - 100) / 400,
+      1,
+    ];
+    expect(cuts).toHaveLength(expected.length);
+    cuts.forEach((where, at) => expect(where).toBeCloseTo(expected[at], 12));
+  });
+
+  it('5.4 leaves a tick that reaches no kink with the plan\'s own cuts '
+     + 'alone', () => {
+    const program = loadProgram(machine('Window'), 'corpus://Window');
+    const plan = program.edges[0].plans[0]!;
+    // Entirely inside the window: the plan cuts nothing and no kink is
+    // reached, so the partition is the whole tick.
+    expect(planCuts(program, plan, { crank: 115 }, { crank: 5 },
+                    'crank drives pinion.turn', 'pinion.turn'))
+      .toEqual([0, 1]);
+  });
+});
+
+// ---------------------------------------------------------------------
+// A CURVED quantity is still SEARCHED (openspec `solve-at-the-kink`,
+// design §6 case E, tasks 6.3). A kink classifies by its OPERANDS and
+// never by its own node type, so a continuous selection over a curved
+// operand stays unclassified -- and costs exactly what it cost.
+// ---------------------------------------------------------------------
+
+describe('a curved quantity is still searched', () => {
+  const curved = () => bench(
+    '(crank + floor((10.0 * max(0.0, sin(crank)))))', {
+      skeleton: '(crank + _j0)',
+      jumps: [{
+        name: '_j0', primitive: 'floor',
+        level: '(10.0 * max(0.0, sin(crank)))', affine: false,
+      }],
+    });
+
+  it('6.3 classifies `max(0, sin(x))` as NOTHING and samples it at the '
+     + 'same cost as before', () => {
+    const program = curved();
+    expect(program.edges[0].plans[0]!.jumps[0].shape).toBeNull();
+    expect(program.edges[0].shapes[0]).toBe('affine');
+    resetExpressionMetrics();
+    const crossings: CrossingRecord[] = [];
+    planIncrement(program, planOf(program), { crank: 0 }, { crank: 1.5 },
+                  'crank drives wheel.turn', 'wheel.turn', crossings, 1);
+    // The number the SAME call costs on the base tree, to the
+    // resolution: 64 samples, their bisections and the substituted
+    // skeleton over the pieces.
+    expect(expressionMetrics().resolutions).toBe(278);
+    expect(crossings.length).toBeGreaterThan(0);
   });
 });

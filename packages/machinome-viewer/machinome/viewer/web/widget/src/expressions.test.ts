@@ -26,7 +26,9 @@ import { Manifest } from './types';
 // implementations this cycle briefly runs side by side, design.md
 // "Risks / Trade-offs").
 import { evalExpr } from './evaluator';
-import { PathValue, UnsupportedPathNode, movingNames } from './expressions';
+import {
+  PathValue, UnsupportedPathNode, kinkLevels, movingNames, shapeOf,
+} from './expressions';
 import { evaluateExpression, loadProgram } from './run/program';
 import type { LoadedProgram, RunDocument } from './run/program';
 import corpus from './running-corpus.json';
@@ -876,5 +878,122 @@ describe('PathValue (D1-D9)', () => {
       }
     }
     expect(checked).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------
+// The SHAPE of a followed quantity, and its kinks (openspec
+// `solve-at-the-kink`, design D1-D2, tasks 1.3 and 2.1). Structural: the
+// table of design D1, row for row.
+// ---------------------------------------------------------------------
+
+describe('shapeOf (design D1)', () => {
+  const NONE = new Set<string>();
+  const shape = (text: string, constants: ReadonlySet<string> = NONE,
+                 bindings?: ReadonlyMap<string, number>) =>
+    shapeOf(prepare(text), constants, bindings);
+
+  it('classifies a literal constant and a source name affine', () => {
+    expect(shape('2.5')).toBe('constant');
+    expect(shape('(1 + 2)')).toBe('constant');
+    expect(shape('lever')).toBe('affine');
+    expect(shape('slide.travel')).toBe('affine');
+  });
+
+  it('classifies a branch PLACEHOLDER constant, alone and in a sum', () => {
+    const jumps = new Set(['_j0']);
+    expect(shape('_j0', jumps)).toBe('constant');
+    expect(shape('(_j0 * 2)', jumps)).toBe('constant');
+    expect(shape('(lever * _j0)', jumps)).toBe('affine');
+    // Without the plan's own names it is an ordinary source.
+    expect(shape('_j0')).toBe('affine');
+  });
+
+  it('classifies a `clamp01` window KINKED', () => {
+    expect(shape('min(max(((lever - 100.0) / 40.0), 0.0), 1.0)'))
+      .toBe('kinked');
+    expect(shape('abs((lever - 3.0))')).toBe('kinked');
+  });
+
+  it('carries a kink through an affine combination', () => {
+    expect(shape('((2.0 * abs(lever)) + 3.0)')).toBe('kinked');
+    expect(shape('(-abs(lever))')).toBe('kinked');
+    expect(shape('(abs(lever) - crank)')).toBe('kinked');
+    expect(shape('(abs(lever) / 4.0)')).toBe('kinked');
+  });
+
+  it('refuses to classify a product of two MOVERS, a moving divisor, a '
+     + 'power and a comparison', () => {
+    expect(shape('(abs(lever) * crank)')).toBeNull();
+    expect(shape('(abs(lever) / crank)')).toBeNull();
+    expect(shape('(lever ^ 2)')).toBeNull();
+    expect(shape('(lever < 3.0)')).toBeNull();
+  });
+
+  it('refuses a kink over a CURVED operand (design §7, case E)', () => {
+    expect(shape('max(0.0, sin(lever))')).toBeNull();
+    expect(shape('min(lever, (crank * lever))')).toBeNull();
+    // ... and an ordinary call is not a kink at all.
+    expect(shape('sin(lever)')).toBeNull();
+    // A call with no argument classifies as nothing.
+    expect(shape('rand()')).toBeNull();
+  });
+
+  it('classifies a constant-argument call CONSTANT, as the producer does',
+     () => {
+    expect(shape('sin(0.5)')).toBe('constant');
+  });
+
+  it('walks INTO the bindings table', () => {
+    const bindings = new Map([['_b0', prepare('((lever - 100.0) / 40.0)')]]);
+    expect(shape('min(max(_b0, 0.0), 1.0)', NONE, bindings)).toBe('kinked');
+    expect(shape('(_b0 * 2.0)', NONE, bindings)).toBe('affine');
+    // The same name with no table behind it is an ordinary source.
+    expect(shape('(_b0 * 2.0)')).toBe('affine');
+  });
+
+  it('classifies `$t` and a cyclic bindings table as nothing', () => {
+    expect(shape('$t')).toBeNull();
+    expect(shape('($t * 2.0)')).toBeNull();
+    const cyclic = new Map<string, number>();
+    cyclic.set('_b0', prepare('(_b0 + 1.0)'));
+    expect(shape('_b0', NONE, cyclic)).toBeNull();
+  });
+});
+
+describe('kinkLevels (design D2, tasks 2.1)', () => {
+  it('reports a kink as its two OPERAND nodes, minting nothing', () => {
+    const before = expressionMetrics().nodes;
+    const root = prepare('max((lever - 2.0), 3.0)');
+    const grown = expressionMetrics().nodes;
+    const levels = kinkLevels(root);
+    expect(levels).toHaveLength(1);
+    expect(levels[0].a).toBe(prepare('(lever - 2.0)'));
+    expect(levels[0].b).toBe(prepare('3.0'));
+    // Nothing minted by the inventory itself.
+    expect(expressionMetrics().nodes).toBe(grown);
+    expect(grown).toBeGreaterThan(before);
+  });
+
+  it('reports `abs` with no second operand', () => {
+    const levels = kinkLevels(prepare('abs((lever - 5.0))'));
+    expect(levels).toHaveLength(1);
+    expect(levels[0].a).toBe(prepare('(lever - 5.0)'));
+    expect(levels[0].b).toBeNull();
+  });
+
+  it('reports the kinks in POSTORDER, an inner one first', () => {
+    const levels = kinkLevels(prepare('min(max(lever, 0.0), 1.0)'));
+    expect(levels).toHaveLength(2);
+    // `max` is inside `min`'s first argument, so it comes first.
+    expect(levels[0].a).toBe(prepare('lever'));
+    expect(levels[0].b).toBe(prepare('0.0'));
+    expect(levels[1].b).toBe(prepare('1.0'));
+  });
+
+  it('finds a kink reached only through a binding', () => {
+    const bindings = new Map([['_b0', prepare('abs((lever - 1.0))')]]);
+    expect(kinkLevels(prepare('(_b0 * 2.0)'), bindings)).toHaveLength(1);
+    expect(kinkLevels(prepare('(_b0 * 2.0)'))).toHaveLength(0);
   });
 });

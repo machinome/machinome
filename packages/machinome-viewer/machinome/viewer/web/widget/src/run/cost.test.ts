@@ -23,6 +23,7 @@ import clearing from '../../../../tests/fixtures/clearing/viewer.json';
 import carriage from '../../../../tests/fixtures/carriage/viewer.json';
 import { Engine } from './engine';
 import type { RunDocument } from './program';
+import { expressionMetrics, resetExpressionMetrics } from '../expressions';
 
 interface Machine { name: string; dt: number; document: unknown }
 
@@ -106,6 +107,22 @@ function frozenTwin(document: unknown): RunDocument {
     (a: { gives: string[] }, b: { gives: string[] }) =>
       order.indexOf(a.gives[0]) - order.indexOf(b.gives[0]));
   return frozen as RunDocument;
+}
+
+/** Subexpression resolutions per tick -- the engine's own probe, and a
+ * number that does not move with the host's speed (openspec
+ * `solve-at-the-kink`, tasks 4.1, 6.2). */
+function evaluationsPerTick(label: string, engine: Engine,
+                            ticks: number): number {
+  // Two ticks first, so the measurement is of the steady state and not
+  // of a command's first tick.
+  engine.advance(2);
+  resetExpressionMetrics();
+  engine.advance(ticks);
+  const each = expressionMetrics().resolutions / ticks;
+  // eslint-disable-next-line no-console
+  console.log(`  ${label}: ${each.toFixed(1)} evaluations/tick`);
+  return each;
 }
 
 describe('the cost of a tick', () => {
@@ -199,18 +216,21 @@ describe('the cost of a tick', () => {
       .toBeGreaterThan(4000);
   }, 120_000);
 
-  it('searches six self-read dials through a `clamp01` window', () => {
+  it('SOLVES six self-read dials through a `clamp01` window', () => {
     // The Curta's own clearing interface: six dials, each its own
-    // self-read edge, each with a `clamp01` station window that makes
-    // the SKELETON non-affine -- so every one of its self-read crossings
-    // falls to the 64-sample search plus its bisection. This is the
-    // worst case this cycle has, and the number is what it costs.
+    // self-read edge, each with a `clamp01` station window. That window
+    // makes the SKELETON piecewise affine rather than affine, and every
+    // one of its self-read crossings used to fall to the 64-sample
+    // search plus its bisection; cutting the piece at the window's own
+    // two breakpoints solves them instead. This is the worst case this
+    // repository has, and the number is what it costs.
     const engine = Engine.load(clearing as unknown as RunDocument,
                                { dt: 1 / 240, record: null });
     engine.move('clearing', { by: 1, duration: 10 });
-    // Raised (ADR-060): 209 -> 321 ticks/s on this bench.
+    // Raised (openspec `solve-at-the-kink`, ADR-061): 342 -> 1312
+    // ticks/s on this bench, and 32 004 -> 2 724 evaluations/tick.
     expect(ticksPerSecond('the Curta fixture at dt = 1/240', engine, 2400))
-      .toBeGreaterThan(150);
+      .toBeGreaterThan(900);
   }, 240_000);
 
   // -------------------------------------------------------------------
@@ -301,6 +321,52 @@ describe('the cost of a tick', () => {
                 + 'quiet tick of the same machine');
     expect(stopped).toBeGreaterThan(5);
     expect(quiet).toBeGreaterThan(stopped);
+  }, 240_000);
+
+  // -------------------------------------------------------------------
+  // What a tick EVALUATES (openspec `solve-at-the-kink`, design §8).
+  // Subexpression resolutions per tick: the same probe on every host,
+  // so these are equalities and not floors.
+  // -------------------------------------------------------------------
+
+  it('SOLVES the six self-read dials at their own kinks', () => {
+    // The Curta's clearing interface: six dials, each its own self-read
+    // edge, each with a `clamp01` station window that makes the SKELETON
+    // piecewise affine. Measured at 32 004 evaluations/tick while every
+    // one of those crossings fell to the 64-sample search plus its
+    // bisection; the sub-division at the window's own two breakpoints is
+    // what removes them.
+    const engine = Engine.load(clearing as unknown as RunDocument,
+                               { dt: 1 / 240, record: null });
+    engine.move('clearing', { by: 1, duration: 10 });
+    expect(evaluationsPerTick('the Curta fixture', engine, 200))
+      .toBeLessThan(4000);
+  }, 240_000);
+
+  it('leaves a machine with no kink EVALUATING EXACTLY what it did', () => {
+    // The three machines design §8 pins to the unit: none of their
+    // followed quantities is reclassified, so not one evaluation may
+    // move. Measured on the base and after, identical.
+    const clearingMachine = machines.find((one) => one.name === 'Clearing')!;
+    const clearingEngine = Engine.load(
+      clearingMachine.document as RunDocument,
+      { dt: clearingMachine.dt, record: null });
+    clearingEngine.move('ring', { by: 100000, duration: 1000 });
+    expect(evaluationsPerTick('Clearing', clearingEngine, 200).toFixed(1))
+      .toBe('471.1');
+
+    const train = machines.find((one) => one.name === 'Train')!;
+    const trainEngine = Engine.load(train.document as RunDocument,
+                                    { dt: train.dt, record: null });
+    trainEngine.move('crank', { by: 100000, duration: 1000 });
+    expect(evaluationsPerTick('Train', trainEngine, 200).toFixed(1))
+      .toBe('31.0');
+
+    const carriageEngine = Engine.load(carriage as unknown as RunDocument,
+                                       { dt: 0.02, record: null });
+    carriageEngine.move('crank', { by: 36000, duration: 40 });
+    expect(evaluationsPerTick('the Curta carriage', carriageEngine, 200)
+      .toFixed(1)).toBe('5913.2');
   }, 240_000);
 
   it('runs the acceptance machine far faster than real time', () => {

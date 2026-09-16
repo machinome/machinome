@@ -848,7 +848,13 @@ export class Run {
       // stretch, and the coordinate stands where it stands.
       return 0;
     }
-    if (edge.affine[index]) {
+    if (edge.affine[index] || edge.shapes[index] === 'kinked') {
+      // AFFINE or KINKED: either way the value is piecewise affine in
+      // `t` over the breakpoints `edgeCuts` gives, and the stop is
+      // SOLVED there rather than searched (openspec `solve-at-the-kink`,
+      // design D4 (c)). `edge.affine` is the two-valued flag the
+      // document publishes and says something narrower; the shape the
+      // loader derived is what this decision needs.
       const cuts = edgeCuts(this.program, edge, values, deltas, index);
       if (cuts.length === 0) {
         // Linear in `t`: one division, exact, no extra evaluation.

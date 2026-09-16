@@ -1385,3 +1385,95 @@ describe('a block in the run (design D4, D6, tasks 8-9)', () => {
     expect(run.state()['carry.travel']).toBe(0.6);
   });
 });
+
+// ---------------------------------------------------------------------
+// A STOP ON A KINKED DETERMINER (openspec `solve-at-the-kink`, design
+// §6 case A, tasks 5.1). The corpus's own `KinkedStop`, asserted as an
+// IDENTITY and not within the corpus's comparison window: the producer
+// SOLVES this stop at its own kink, and so must this viewer.
+//
+// The law carries no jump node at all -- `4 + 72 * clamp01((lever -
+// 113.5) / 11.25)` -- so `edgeCuts` returned `[]` for it and `locate`
+// took the one-division fast path STRAIGHT THROUGH the kink. The trap
+// that path falls into is a NUMBER: over the whole tick the coordinate
+// runs 4 -> 76, so one division puts the stop at (40 - 4) / 72 = 0.5,
+// where the coordinate reaches 40 at t = 0.478125 and is standing on
+// its flat piece for the first 0.3375 of the tick. The base did not
+// give 0.5 -- it SEARCHED, and landed 9.09e-14 out.
+// ---------------------------------------------------------------------
+
+describe('a stop on a kinked determiner (design D4 (c))', () => {
+  it('5.1 lands on the producer\'s own fraction EXACTLY', () => {
+    const run = corpusRun('KinkedStop', 0.1);
+    const command = run.move('lever', { by: 40, duration: 0.1 });
+    run.advance();
+    const stops = run.stops();
+    expect(stops).toHaveLength(1);
+    expect(stops[0].coordinate).toBe('slide.travel');
+    // The producer's own recorded floats, bit for bit.
+    expect(stops[0].t).toBe(0.478125);
+    expect(run.state()['slide.travel']).toBe(40);
+    expect(run.state().lever).toBe(119.125);
+    expect(command.admitted).toBe(19.125);
+    expect(command.status).toBe('blocked');
+    // ... and NOT the fraction a single division over the whole tick
+    // gives.
+    expect(stops[0].t).not.toBe(0.5);
+  });
+
+  /** A clamp with no jump node at all: `clamp(crank, 0, 100)`, bounded
+   * at 40. */
+  const clamped = (crank: number, travel: number) => bench({
+    coordinates: { crank: input(crank), 'wheel.turn': coordinate(travel) },
+    edges: [law(['crank'], ['wheel.turn'], 'min(max(crank, 0.0), 100.0)',
+                'crank drives wheel', false)],
+    spans: { 'wheel.turn': { low: null, high: 40 } },
+  });
+
+  it('5.2 brackets the bound between two BREAKPOINTS and divides', () => {
+    // The path starts on the clamp's FLAT piece and reaches the bound on
+    // the sloped one: `crank` runs -10 -> 50, so the coordinate holds at
+    // 10 until the clamp opens at `t = 10/60` and then runs to 60. A
+    // single division over the whole tick would put the stop at
+    // (40 - 10) / 50 = 0.6, where the coordinate is still at 34.
+    const run = new Run(clamped(-10, 10), 0.05, 64);
+    const command = run.move('crank', { by: 60, duration: 0.05 });
+    run.advance();
+    expect(run.state()['wheel.turn']).toBe(40);
+    // The closed form of the fixture's own arithmetic: the breakpoint
+    // where the clamp opens, and one division inside the piece that
+    // brackets the bound.
+    const opens = (0 - -10) / (50 - -10);
+    const expected = opens + (1 - opens) * (40 - 10) / (60 - 10);
+    expect(run.stops()[0].t).toBe(expected);
+    expect(run.stops()[0].t).toBeCloseTo(40 / 60, 12);
+    expect(run.stops()[0].t).not.toBe(0.6);
+    expect(command.admitted).toBe(60 * expected);
+  });
+
+  it('5.5 leaves a stop on a BLOCK coordinate SEARCHED', () => {
+    // A block has no single published expression until a branch vector
+    // is fixed, and the order its members run in may differ from piece
+    // to piece, so it carries no shape at all and `locate` searches it
+    // exactly as before. The corpus's own `RangedBlock` is the entry
+    // that records it.
+    const run = corpusRun('RangedBlock', 0.05);
+    const block = [...run.program.edges].find(
+      (edge) => edge.kind === 'block')!;
+    expect(block.shapes.every((shape) => shape === null)).toBe(true);
+    expect(block.affine.every((flag) => flag === false)).toBe(true);
+  });
+
+  it('5.3 leaves the ONE-DIVISION fast path alone where the tick reaches '
+     + 'no kink: empty cuts means affine over the whole tick', () => {
+    // The same law driven entirely inside the sloped piece: the path IS
+    // affine over the tick, so there are no breakpoints at all and the
+    // stop is the single exact division `locate` has always taken.
+    const run = new Run(clamped(10, 10), 0.05, 64);
+    const command = run.move('crank', { by: 40, duration: 0.05 });
+    run.advance();
+    expect(run.state()['wheel.turn']).toBe(40);
+    expect(run.stops()[0].t).toBe((40 - 10) / 40);
+    expect(command.admitted).toBe(30);
+  });
+});

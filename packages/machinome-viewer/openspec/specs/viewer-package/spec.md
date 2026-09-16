@@ -1612,9 +1612,12 @@ blocks.
   of the branch-substituted law's change over the pieces. A jump SHALL
   therefore never move a part. A level quantity the producer published as
   affine in its sources SHALL have every surface between a piece's two
-  endpoint values solved rather than searched; any other SHALL be sampled,
-  bracketed and bisected under the published subdivision, rounding and
-  tolerance limits.
+  endpoint values solved rather than searched; one the viewer finds
+  PIECEWISE AFFINE under the requirement "A piecewise-affine quantity is
+  cut at its own kinks" SHALL have the piece SUB-DIVIDED at that
+  quantity's own kinks and every surface of each sub-piece solved the
+  same way; any other SHALL be sampled, bracketed and bisected under the
+  published subdivision, rounding and tolerance limits.
 - A **law that READS THE COORDINATE IT DRIVES** SHALL instead be
   integrated piece by piece, under the requirement "The worker executes a
   law that reads the coordinate it drives" below. Such a law SHALL
@@ -2692,9 +2695,16 @@ pieces the dependent nodes SHALL then be walked:
   — through the driven coordinate's own path and through the sources —
   and the piece SHALL be CUT at the FIRST surface any of them reaches
   strictly inside it: SOLVED where the producer published both that level
-  and the plan's skeleton as affine, otherwise sampled at the published
-  number of sub-intervals and bisected to the published crossing
-  tolerance within the published number of rounds. No further tolerance
+  and the plan's skeleton as affine; solved on SUB-INTERVALS where
+  neither is curved and at least one is PIECEWISE AFFINE under the
+  requirement "A piecewise-affine quantity is cut at its own kinks", the
+  piece being cut first at the SKELETON's kinks — which are what make the
+  driven coordinate's own path affine at all — and each of those cut
+  again at the LEVEL's own, which ride that path and SHALL therefore be
+  located inside one skeleton sub-piece with the driven coordinate read
+  by interpolation between that sub-piece's two ends; otherwise sampled
+  at the published number of sub-intervals and bisected to the published
+  crossing tolerance within the published number of rounds. No further tolerance
   SHALL be introduced, and a crossing found within that tolerance of the
   piece's left end SHALL NOT be merged into it — the merging of two near
   cuts belongs to the partition over the independent nodes and SHALL NOT
@@ -3124,4 +3134,145 @@ elapsed time.
 - **THEN** it reads the value the bank holds under that whole id, which
   is the value the whole-expression walk reaches by member access, and no
   nested scope is built for that point
+
+### Requirement: A piecewise-affine quantity is cut at its own kinks
+
+Following a quantity along a step's path, the viewer decides between
+SOLVING it — determining it everywhere on a stretch from that stretch's
+two endpoint values — and SEARCHING it, by sampling the published number
+of sub-intervals and bisecting. The producer publishes, per driven end of
+a law and per jump level, whether that quantity is AFFINE in its sources;
+that flag is TWO-VALUED and says nothing about a quantity that is not
+affine.
+
+A quantity built over the CONTINUOUS SELECTIONS of the expression
+vocabulary — `abs`, `min` and `max`, each of which returns one of its
+operands exactly and is continuous where the operands meet — is PIECEWISE
+AFFINE: affine on each stretch between the points where it changes which
+operand it returns. The viewer SHALL recognise such a quantity FROM THE
+PUBLISHED EXPRESSION ITSELF and SHALL solve it on those stretches rather
+than search it. No document field is read for this, no document version
+and no viewer API version moves for it, and nothing an author writes, no
+host call, no option and no tolerance selects it.
+
+**The classification SHALL be structural, conservative, and decided per
+published quantity rather than per step.** A number and a jump node's
+branch placeholder are CONSTANT; a source name is AFFINE; a name the
+document's bindings table defines takes the shape of that table's own
+expression; a unary minus, a sum, a difference, a product with a constant
+operand and a division by a constant take the shape of their moving
+operand and are KINKED exactly when it is; one of the three continuous
+selections over operands that are each constant, affine or kinked is
+KINKED; everything else — another call, a power, a product of two moving
+operands, a moving divisor, a comparison — is UNCLASSIFIED and SHALL go
+on being searched. A continuous selection over a CURVED operand SHALL
+therefore stay unclassified, even where one of its pieces happens to be
+straight.
+
+**The viewer's classification SHALL agree with the flag the producer
+publishes.** A quantity the viewer finds constant or affine SHALL be one
+the producer published as affine, and a quantity the viewer finds kinked
+or unclassified SHALL be one the producer published as not affine. The
+viewer SHALL NOT weaken what the producer published: a quantity published
+affine SHALL be solved over the whole stretch as it already was.
+
+**A kink's own breakpoints SHALL be SOLVED, never sampled.** A continuous
+selection has a level quantity of its own — the argument of `abs`, and
+the difference of the two operands of `min` and `max` — whose single
+surface, at zero, is where it changes which operand it returns. Over a
+stretch those breakpoints SHALL be located by taking the kinks in the
+expression's own postorder, so that a kink nested inside another's level
+is cut first; by evaluating each kink's level at the two ends of each
+sub-interval the earlier kinks have already produced, where that level is
+affine in the fraction and its zero is therefore one division; by keeping
+only a zero that lies strictly inside its sub-interval and strictly
+between the two end values; and by folding the result into the
+sub-division under the SAME crossing tolerance two crossings are folded
+under. No sampling, no bisection and NO FURTHER TOLERANCE SHALL be
+introduced. A level that does not move over a sub-interval reaches
+nothing inside it.
+
+**A kink breakpoint SHALL NOT be a crossing.** The quantity is continuous
+there. A breakpoint SHALL NOT be recorded among a step's crossings, SHALL
+NOT enter any partition an increment is summed over, SHALL NOT place a
+coordinate at the far side of a surface, and SHALL NOT count toward the
+published crossing maximum. It exists only as a sub-division inside a
+solve, and this is what keeps every answer that did not sit on a
+reclassified quantity bit-identical.
+
+**A stop SHALL be solved on a kinked determiner.** Where a coordinate's
+determining law is piecewise affine, the fraction of the stretch at which
+it reaches a declared bound SHALL be located by bracketing the bound
+between two consecutive breakpoints and dividing, and not by sampling.
+Where such a law carries a jump plan, the breakpoints are the union of
+that plan's own partition and the skeleton's kinks, the kinks located
+inside each piece of the partition with that piece's branch readings
+substituted, because a branch placeholder is constant only within its own
+piece. Where such a law carries NO jump plan at all — the shape that
+otherwise divides once over the whole step and so reports a stop where
+the coordinate never was — the breakpoints are its own kinks over the
+step as one piece. Where a kinked law reaches no kink over a step, there
+are no breakpoints, the path IS affine over the whole step, and the
+single division SHALL be taken exactly as it is for an affine law.
+
+A stop on a coordinate a BLOCK determines SHALL still be searched: a
+block has no single published expression until a branch vector is fixed,
+and the order its members run in may differ from piece to piece. This
+requirement does not lift that, and a bound that READS OTHER COORDINATES
+SHALL go on being examined exactly as the requirement "A declared bound
+may read other coordinates" states.
+
+Nothing else SHALL move. Every banked value, every recorded crossing,
+every landing, every stop, every command outcome and every refusal of a
+machine none of whose followed quantities is reclassified SHALL be the
+value it was, bit for bit, and the count of points such a machine
+evaluates SHALL NOT change.
+
+#### Scenario: A stop on a kinked determiner with no jump plan is solved
+
+- **WHEN** a coordinate's only determining law carries no jump node at
+  all, its expression clamps a source into a window, a declared bound
+  lies on the sloped piece and the step's path starts on the flat one
+- **THEN** the stop is located at the fraction the bracketing division
+  gives over the piece the bound lies in, which is the producer's own
+  recorded fraction, and not at the fraction a single division over the
+  whole step would give
+
+#### Scenario: A kinked level's crossing is solved rather than searched
+
+- **WHEN** a jump node's level quantity is built over a continuous
+  selection and the step's path crosses one of that node's surfaces
+- **THEN** the crossing is located by solving on the sub-interval between
+  the level's own kinks, and the surface lying exactly on an interior
+  breakpoint is located once and not twice
+
+#### Scenario: A kink breakpoint is not recorded as a crossing
+
+- **WHEN** a step's path passes a breakpoint of a kinked quantity
+- **THEN** no crossing is recorded there, no coordinate is placed at a
+  far side, the increment is summed over the same pieces as before, and
+  the breakpoint counts toward no published limit
+
+#### Scenario: A curved quantity is still searched
+
+- **WHEN** a followed quantity is a continuous selection over a curved
+  operand, a product of two moving operands, or a quantity divided by a
+  moving one
+- **THEN** it is sampled and bisected exactly as before, at the same
+  sub-interval count, the same tolerance and the same number of rounds
+
+#### Scenario: A machine with no kink pays nothing
+
+- **WHEN** a machine none of whose followed quantities is piecewise
+  affine is stepped
+- **THEN** every value it commits is unchanged bit for bit and the number
+  of subexpression resolutions it performs per step is unchanged exactly
+
+#### Scenario: The classification agrees with the published flag
+
+- **WHEN** every law's driven end and every jump level of a published
+  document is classified by the viewer
+- **THEN** the quantities it finds constant or affine are exactly those
+  the document publishes as affine, and no quantity it finds kinked or
+  unclassified is published as affine
 

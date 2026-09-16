@@ -16,8 +16,8 @@
 import { evaluateExpression, ProgramEdge } from './program';
 import type { LoadedProgram } from './program';
 import {
-  blockCuts, blockIncrements, CrossingRecord, planCuts, planIncrement,
-  retainedCuts, retainedIncrement,
+  blockCuts, blockIncrements, CrossingRecord, kinkedEndCuts, planCuts,
+  planIncrement, retainedCuts, retainedIncrement,
 } from './jumps';
 
 /** The graph's free names bound to the values its sources hold,
@@ -184,10 +184,18 @@ export function edgeCuts(program: LoadedProgram, edge: ProgramEdge,
   }
   if (edge.kind !== 'law') return [];
   const plan = edge.plans[index];
-  if (plan === null) return [];
+  if (plan === null && edge.kinks[index] === null) return [];
   const start = inputsOf(edge, values);
   const delta: Record<string, number> = {};
   for (const key of edge.needs) delta[key] = deltas[key];
+  if (plan === null) {
+    // A law with NO jump node at all: its only breakpoints are its own
+    // KINKS, over the whole tick as one piece. Left returning `[]` here,
+    // `locate` would divide straight THROUGH the kink -- not a rounding
+    // error but a wrong stop (openspec `solve-at-the-kink`, design
+    // D4 (c)).
+    return kinkedEndCuts(program, edge.kinks[index]!, start, delta);
+  }
   const reading = edge.retained.length > 0 ? edge.retained[index] : null;
   if (reading !== null) {
     return retainedCuts(program, reading, start, delta, edge.description,
