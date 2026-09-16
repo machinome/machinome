@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 import uvicorn
 
 from solid_node_viewer import server as server_module
+from solid_node_viewer.bundle import BundleStale
 from solid_node_viewer.server import WebViewer
 
 from .support import (
@@ -123,6 +124,32 @@ class BundleRoutesTest(TestCase):
         })
         self.assertEqual(script.status_code, 503)
         self.assertEqual(script.json()['remedy'], 'run npm run build')
+
+    def test_the_bundle_route_makes_the_bundle_current_per_request(self):
+        # ADR-059: the development server is the surface a developer keeps
+        # open across edits, so currency is checked on EVERY bundle
+        # request rather than once at start.
+        with tempfile.TemporaryDirectory() as tmpdir, \
+             patch.object(server_module, 'ensure_current') as ensure:
+            client = TestClient(WebViewer(tmpdir, dev=True).app)
+            client.get('/_viewer/bundle.js')
+            client.get('/_viewer/bundle.js')
+        self.assertEqual(ensure.call_count, 2)
+
+    def test_a_stale_bundle_that_cannot_be_rebuilt_is_not_served(self):
+        # Answered exactly as an absent bundle is: the reason and the
+        # remedy, 503, and no stale script.
+        stale = BundleStale('bundle is older than src/viewer.ts: npm ci && npm run build')
+        with tempfile.TemporaryDirectory() as tmpdir, \
+             patch.object(server_module, 'api_version', return_value=1), \
+             patch.object(server_module, 'ensure_current', side_effect=stale):
+            client = TestClient(WebViewer(tmpdir, dev=True).app)
+            status = client.get('/_viewer')
+            script = client.get('/_viewer/bundle.js')
+        self.assertEqual(script.status_code, 503)
+        self.assertIn('older than', script.json()['remedy'])
+        self.assertFalse(status.json()['available'])
+        self.assertIn('older than', status.json()['remedy'])
 
     def test_a_build_artifact_is_never_cached(self):
         # A republished `viewer.json` must reach the widget's plain

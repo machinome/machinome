@@ -5,13 +5,18 @@
 """Setuptools hooks that build the frontends into the distributions.
 
 A source distribution always carries freshly built frontends, so installing
-it needs no npm. A wheel built from a checkout keeps frontends already
-built there and builds only what is missing.
+it needs no npm. A wheel built from a checkout keeps a frontend already
+built there only while it is CURRENT with the sources beside it, and
+rebuilds one that is missing or stale (ADR-059) -- otherwise a wheel cut
+from a checkout whose bundle predates its source ships that bundle, and
+`scripts/check-dist` installs and smokes it without noticing.
 """
 
 from dataclasses import dataclass
 from pathlib import Path
 import subprocess
+
+from solid_node_viewer import currency
 
 from setuptools.command.build_py import build_py
 from setuptools.command.sdist import sdist
@@ -24,6 +29,15 @@ class Frontend:
 
     def output_exists(self):
         return self.output.exists()
+
+    def output_is_stale(self):
+        """Whether the built output predates the sources it is built from.
+
+        Asked of `currency`, the same module the lookup, the development
+        server and the capture ask, so packaging carries no second opinion
+        about what stale means.
+        """
+        return currency.is_stale(self.directory)
 
 
 PACKAGE = Path(__file__).parent
@@ -50,10 +64,10 @@ def build_distribution_frontends():
         build_frontend(frontend)
 
 
-def build_missing_frontends():
-    """Build only frontend artifacts absent from a checkout."""
+def build_stale_frontends():
+    """Build frontend artifacts a checkout lacks or has let go stale."""
     for frontend in FRONTENDS:
-        if not frontend.output_exists():
+        if not frontend.output_exists() or frontend.output_is_stale():
             build_frontend(frontend)
 
 
@@ -66,8 +80,8 @@ class BuildSourceDistribution(sdist):
 
 
 class BuildPythonWithFrontend(build_py):
-    """Build a missing frontend before creating a wheel from the checkout."""
+    """Build a missing or stale frontend before creating a wheel."""
 
     def run(self):
-        build_missing_frontends()
+        build_stale_frontends()
         super().run()

@@ -16,7 +16,7 @@ import json
 import logging
 import sys
 
-from solid_node_viewer.bundle import BundleMissing, describe
+from solid_node_viewer.bundle import BundleMissing, BundleStale, describe
 
 logger = logging.getLogger('viewer.cli')
 
@@ -108,11 +108,16 @@ def build_parser():
 
 
 def run_describe(args):
+    # `BundleStale` joins `BundleMissing` with ADR-059: the two ways this
+    # package declines to answer for a bundle, reported the same way --
+    # the reason and the remedy on stderr, nothing on stdout, non-zero.
+    # A caller parses stdout, so a refusal must never put prose there.
     try:
-        print(json.dumps(describe()))
-    except BundleMissing as error:
+        described = describe()
+    except (BundleMissing, BundleStale) as error:
         sys.stderr.write(f'{error}\n')
         return 1
+    print(json.dumps(described))
     return 0
 
 

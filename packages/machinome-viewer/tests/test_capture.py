@@ -11,6 +11,7 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 
 from solid_node_viewer import capture as capture_module
+from solid_node_viewer.bundle import BundleStale
 from solid_node_viewer.capture import Capture, CaptureError, mount_options
 
 from .support import (
@@ -77,6 +78,25 @@ class CaptureFailureTest(TestCase):
             with self.assertRaises(CaptureError) as raised:
                 self.capture.add_viewer(mount_options())
         self.assertEqual(str(raised.exception), capture_module.missing_bundle_remedy())
+
+    def test_the_bundle_is_made_current_before_it_is_staged(self):
+        # ADR-059: a capture photographs the bundle it copies, so copying
+        # a stale one photographs an old renderer refusing a correct
+        # document -- with no one at a browser to notice.
+        with patch.object(capture_module, 'ensure_current') as ensure, \
+             patch.object(capture_module.shutil, 'copy2'), \
+             patch.object(self.capture, 'write_mount_page'):
+            self.capture.add_viewer(mount_options())
+        ensure.assert_called_once()
+
+    def test_a_stale_bundle_is_refused_and_nothing_is_staged(self):
+        stale = BundleStale('bundle is older than src/viewer.ts: npm ci && npm run build')
+        with patch.object(capture_module, 'ensure_current', side_effect=stale), \
+             patch.object(capture_module.shutil, 'copy2') as copied:
+            with self.assertRaises(CaptureError) as raised:
+                self.capture.add_viewer(mount_options())
+        self.assertIn('older than', str(raised.exception))
+        copied.assert_not_called()
 
     def test_a_staging_without_a_document_is_refused_before_the_browser(self):
         with patch.object(self.capture, 'capture') as browser:

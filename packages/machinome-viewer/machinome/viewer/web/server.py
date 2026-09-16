@@ -24,9 +24,10 @@ from fastapi.responses import FileResponse, JSONResponse
 from starlette.websockets import WebSocketDisconnect
 
 from solid_node_viewer.bundle import (
-    api_version, bundle_path, develop_page_path, has_bundle,
+    BundleStale, api_version, bundle_path, develop_page_path, has_bundle,
     missing_bundle_remedy,
 )
+from solid_node_viewer.currency import ensure_current
 
 
 logger = logging.getLogger('viewer.server')
@@ -136,21 +137,38 @@ class WebViewer:
             return FileResponse(candidate, headers={'Cache-Control': 'no-store'})
 
     def _setup_viewer_bundle(self):
+        # ADR-059: currency is checked PER REQUEST, not once at start.
+        # This is the surface a developer keeps open across edits -- the
+        # whole point of `solid develop` -- so a reload must serve what
+        # they just wrote. The check is a newest-mtime scan of the build
+        # inputs (a median 2.88 ms over 77 files) and the response is one
+        # per page load, so this is free; the rebuild it may trigger is
+        # ~0.35 s, and only when something actually changed.
+        def current_or_remedy():
+            """`None` when the bundle can be served, or why it cannot."""
+            if not has_bundle():
+                return missing_bundle_remedy()
+            try:
+                ensure_current()
+            except BundleStale as error:
+                logger.warning('refusing to serve a stale viewer bundle: %s', error)
+                return str(error)
+            return None
+
         @self.app.get('/_viewer')
         async def get_viewer_status():
-            available = has_bundle()
+            remedy = current_or_remedy()
             return {
-                'available': available,
+                'available': remedy is None,
                 'apiVersion': api_version(),
-                'remedy': None if available else missing_bundle_remedy(),
+                'remedy': remedy,
             }
 
         @self.app.get('/_viewer/bundle.js')
         async def get_viewer_bundle():
-            if not has_bundle():
-                return JSONResponse({
-                    'remedy': missing_bundle_remedy(),
-                }, status_code=503)
+            remedy = current_or_remedy()
+            if remedy is not None:
+                return JSONResponse({'remedy': remedy}, status_code=503)
             return FileResponse(bundle_path(), media_type='application/javascript')
 
     def _setup_development_page(self):

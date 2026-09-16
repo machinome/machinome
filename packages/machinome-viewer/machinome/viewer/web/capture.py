@@ -33,8 +33,9 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 from solid_node_viewer.bundle import (
-    BUNDLE_NAME, bundle_path, has_bundle, missing_bundle_remedy,
+    BUNDLE_NAME, BundleStale, bundle_path, has_bundle, missing_bundle_remedy,
 )
+from solid_node_viewer.currency import ensure_current
 
 PLAYWRIGHT_REMEDY = (
     "Install the browser renderer with "
@@ -153,9 +154,20 @@ class Capture:
         )
 
     def add_viewer(self, options):
-        """Put the bundle and a mount page beside the staged document."""
+        """Put the bundle and a mount page beside the staged document.
+
+        The bundle is made current first (ADR-059). A capture photographs
+        whatever it copies, with nobody at a browser to notice that an old
+        renderer refused a correct document -- so a stale bundle that
+        cannot be rebuilt fails here, writing no image, exactly as an
+        absent one does.
+        """
         if not has_bundle():
             raise CaptureError(missing_bundle_remedy())
+        try:
+            ensure_current()
+        except BundleStale as error:
+            raise CaptureError(str(error)) from error
         shutil.copy2(bundle_path(), os.path.join(self.staging, BUNDLE_NAME))
         self.write_mount_page(options)
 
