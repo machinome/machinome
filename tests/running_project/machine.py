@@ -36,7 +36,7 @@ affine. Each has its own untimed twin for the same reason.
 
 import math
 
-from solid_node.math import abs, clamp01, floor, sign, sin, wrap
+from solid_node.math import abs, clamp01, floor, min, sign, sin, wrap
 from solid_node.motion.joints import Bound, Free, Prismatic, Revolute
 from solid_node.motion.ports import RotationalPort, Time
 from solid_node.node import AssemblyNode
@@ -3230,3 +3230,86 @@ class HeldAngle(AssemblyNode):
     def simulate(self):
         if self.wheel.turn.value is None:
             self.wheel.turn = 71.99999999999996
+
+
+class KinkedStopBody(AssemblyNode):
+    """A stop on a determiner that is KINKED and carries NO jump node.
+
+    `TrainBody`'s own `tooth_window` law -- the Curta bench's
+    `4 + 72 * clamp01((lever - 113.5) / 11.25)` -- with a declared range
+    on the slide it drives. The bound sits on the law's SLOPED piece and
+    the tick starts on the FLAT one below it, so the stop cannot be
+    found by dividing once over the whole tick: the path has to be CUT
+    at the kink first.
+
+    The law has no jump in it at all, so this is the shape for which
+    `Edge.cuts` used to return `()` and `Run._locate` used to search.
+    """
+
+    lever = Driver(default=100.0, unit='deg')
+
+    slide = Carriage(travel=Prismatic(axis=(1, 0, 0), range=(None, 40.0),
+                                      unit='mm'))
+
+    lever.drives(slide.travel, law=tooth_window)
+
+    def render(self):
+        self.slide.translate([0.0, 40.0, 0.0])
+
+
+class KinkedStop(KinkedStopBody):
+    time = Time.running()
+
+
+def clamped_gate(sources, target):
+    """A gate whose LEVEL carries a KINK: the wheel follows the crank
+    only once a clamped ramp of the lever has passed its half-way mark.
+
+    `clamp01((lever - 10) / 20) - 0.5` is piecewise affine in the
+    sources -- two kinks, three affine pieces -- so the gate's surface
+    is SOLVED on the piece it actually lies in rather than bracketed and
+    bisected.
+    """
+    return lambda crank, lever: crank * (
+        clamp01((lever - 10.0) / 20.0) >= 0.5)
+
+
+def capped_count(source, target):
+    """A `floor` whose level is CAPPED: `min(lever, 20)` rises with the
+    lever and then holds. Its last surface, `20`, is reached EXACTLY at
+    the kink -- the one place a sub-divided solve could report a
+    crossing twice, from either side of the breakpoint, or lose it
+    between them."""
+    return lambda lever: 0.5 * lever + 3 * floor(min(lever, 20.0))
+
+
+class ClampedGateBody(AssemblyNode):
+    """A jump level that is kinked: the crossing this cycle solves."""
+
+    crank = Driver(default=0.0, unit='deg')
+    lever = Driver(default=5.0, unit='mm')
+
+    wheel = Arbor()
+
+    (crank & lever).drives(wheel.turn, law=clamped_gate)
+
+    def render(self):
+        self.wheel.translate([0.0, -40.0, 0.0])
+
+
+class ClampedGate(ClampedGateBody):
+    time = Time.running()
+
+
+class CappedCountBody(AssemblyNode):
+    """A kinked jump level whose surface lands ON the breakpoint."""
+
+    lever = Driver(default=15.0, unit='mm')
+
+    dial = Arbor()
+
+    lever.drives(dial.turn, law=capped_count)
+
+
+class CappedCount(CappedCountBody):
+    time = Time.running()

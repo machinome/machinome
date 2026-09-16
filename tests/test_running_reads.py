@@ -35,8 +35,9 @@ from solid_node.motion.ports import get_coordinate
 from solid_node.simulation import (Sim, TooManyCrossings, UnsupportedLaw,
                                    RunConflict)
 
-from .base import BaseNodeTest
-from .clearing_project.machine import CurtaInterface, TEETH, TOOTH
+from .base import BaseNodeTest, expression_evaluations
+from .clearing_project.machine import (CurtaInterface, ORIGIN, RESULT_START,
+                                       SWEEP, TEETH, TOOTH, station)
 from .running_project.machine import (GAP, BlockedRing, Clearing,
                                       ClearingRow, CrowdedClearing,
                                       HeldAngle, KnifeEdge, LatchedClearing,
@@ -750,3 +751,65 @@ class BlockSelfReadTest(BaseNodeTest):
         self.assertEqual(
             [edge.kind for edge in sim._run.program.edges],
             ['law'] * 6)
+
+
+class KinkedSkeletonTest(BaseNodeTest):
+    """A KINKED skeleton is cut at its kinks and solved.
+
+    OpenSpec change ``cut-at-the-kink``, design.md section 11 case B.
+    ``CurtaInterface``'s ring angle is
+    ``ORIGIN + SWEEP * clamp01((control - 0.1) / 0.8)``: piecewise
+    affine, three affine pieces, and until this cycle non-affine to
+    ``_affine_in_sources``, so every one of its six dials' self-read
+    crossings was bracketed and bisected although the level was affine
+    and an exact path existed.
+    """
+
+    DT = 1.0 / 60.0
+
+    def swept(self, record=4000):
+        sim = Sim(CurtaInterface(), self.DT, record=record)
+        sim.move('clearing', by=1.0, duration=1.0)
+        return sim
+
+    def test_the_first_dials_mesh_is_located_exactly(self):
+        """The fixture's own arithmetic, in EXACT rational numbers:
+        `result0`'s rack meshes where `ring_angle(control)` reaches the
+        dial's station, which is
+        `control == 0.1 + 0.8 * (start - ORIGIN) / SWEEP`. The clamp is
+        strictly inside its window through the whole of that tick, so
+        the level is affine there and the crossing has a closed form.
+
+        The SEARCH reached it 9.3e-14 out -- six thousand times the
+        float spacing at `0.1`. The solve reaches it to within the
+        rounding the LEVEL's own evaluation carries, which is what is
+        left when the localization adds nothing of its own.
+        """
+        from fractions import Fraction
+
+        sim = self.swept()
+        sim.run(1.0)
+        start = RESULT_START + station(0, False)
+        control = 0.1 + 0.8 * (start - ORIGIN) / SWEEP
+        tick = int(control / self.DT) + 1
+        reach = (Fraction(0.8) * (Fraction(start) - Fraction(ORIGIN))
+                 / Fraction(SWEEP))
+        left = Fraction(tick - 1) * Fraction(self.DT)
+        exact = float((Fraction(0.1) + reach - left) / Fraction(self.DT))
+        found = [one.t for one in sim.crossings
+                 if one.coordinate == 'result0.turn' and one.tick == tick]
+        self.assertEqual(len(found), 1)
+        self.assertLess(abs(found[0] - exact), 1e-15)
+
+    def test_the_sweep_costs_a_solve_and_not_a_search(self):
+        """The cost the classification buys, in the run's own units: the
+        searched kinked skeleton paid 2 861 expression evaluations per
+        tick over this sweep, where `Clearing`'s affine one pays 98.6."""
+        sim = self.swept(record=None)
+        self.assertLess(expression_evaluations(sim, 60) / 60.0, 900.0)
+        quiet = Sim(Clearing(), 0.1, record=None)
+        quiet.move('ring', by=600.0, duration=1.0)
+        # Exactly what an affine skeleton paid before this cycle: a
+        # machine with no kink in any followed quantity meets no new
+        # code at all.
+        self.assertEqual(expression_evaluations(quiet, 10), 986)

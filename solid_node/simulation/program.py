@@ -77,6 +77,23 @@ from solid_node.scad_expression import GraphValue, as_node, symbol
 _JUMP_CALLS = ('floor', 'ceil', 'sign')
 _JUMP_OPERATORS = ('%', '<', '<=', '>', '>=', '==', '!=')
 
+# The KINKS: the CONTINUOUS SELECTIONS of `SYMBOLIC_BUILTINS`. Each
+# returns ONE OF ITS OPERANDS EXACTLY -- `abs(x)` is `x` or `-x`,
+# `min(a, b)` and `max(a, b)` are `a` or `b`, bit for bit -- and is
+# continuous where the operands meet, so a quantity built over them is
+# PIECEWISE AFFINE wherever its operands are, and its pieces are solved
+# rather than searched. They are not jumps: a kink RECORDS NOTHING, and
+# its breakpoints only sub-divide a solve (design.md section 4.3).
+# `clamp`, `clamp01`, `ramp` and `piecewise` are compositions of these.
+_KINK_CALLS = ('abs', 'min', 'max')
+
+# The shapes a followed quantity can have. `'kinked'` is the one this
+# cycle adds, and it is INTERNAL: the published `affine` flag stays the
+# two-valued statement the export spec defines, so a kinked quantity
+# publishes `false`.
+_MOVABLE = ('constant', 'affine', 'kinked')
+_AFFINE = ('constant', 'affine')
+
 # A comparison's level quantity is `a - b` and its one surface is zero,
 # so its branch is the operator read against zero -- exactly what
 # `GraphValue.evaluate` computes, whose `bool` arithmetic then reads as
@@ -289,17 +306,28 @@ class _Jump:
     under.
     """
 
-    __slots__ = ('primitive', 'placeholder', 'argument', 'affine')
+    __slots__ = ('primitive', 'placeholder', 'argument', 'shape', 'affine',
+                 'kinks')
 
-    def __init__(self, primitive, placeholder, argument, affine):
+    def __init__(self, primitive, placeholder, argument, shape):
         self.primitive = primitive
         self.placeholder = placeholder
         self.argument = argument
-        self.affine = affine
+        # The level quantity's SHAPE, which decides how its crossings are
+        # located: solved from a piece's two ends when affine, solved on
+        # each sub-interval between its kinks when kinked, sampled
+        # otherwise.
+        self.shape = shape
+        # The TWO-VALUED statement the export spec defines and
+        # `_published_plan` carries: a kinked level publishes `False`,
+        # because a consumer that has not learned to cut at a kink must
+        # go on searching it rather than interpolating THROUGH it.
+        self.affine = shape in _AFFINE
+        self.kinks = _KinkCuts(argument) if shape == 'kinked' else None
 
     def __repr__(self):
         return (f'<{self.primitive} jump on {self.argument} '
-                f'{"affine" if self.affine else "searched"}>')
+                f'{self.shape or "searched"}>')
 
 
 class JumpPlan:
@@ -479,25 +507,65 @@ class JumpPlan:
                       described, coordinate):
         """Where `jump` reaches one of its surfaces between two cuts."""
         if jump.affine:
-            # An affine level quantity is determined everywhere on the
-            # piece by its two endpoint values, so every surface between
-            # them is SOLVED -- all of them, which is what makes a crank
-            # that passes three tooth windows in one tick add three
-            # throws rather than one.
-            low = self._level_at(jump, start, delta, left, inner,
-                                 described, coordinate)
-            high = self._level_at(jump, start, delta, right, inner,
-                                  described, coordinate)
-            if high == low:
-                return []
+            return self._solved(jump, start, delta, inner, left, right,
+                                described, coordinate)
+        if jump.shape == 'kinked':
+            # A KINKED level is affine on each sub-interval between its
+            # own kinks, so the piece is cut there -- recording nothing,
+            # counting toward nothing -- and each sub-piece is solved.
+            def at(t):
+                values = _along(start, delta, t)
+                values.update(inner)
+                return values
+
+            breaks = jump.kinks.between(at, left, right)
+            if not breaks:
+                # No kink is reached inside this piece, so the level IS
+                # affine over the whole of it.
+                return self._solved(jump, start, delta, inner, left, right,
+                                    described, coordinate)
+            edges = (left,) + breaks + (right,)
             found = []
-            for level in _surfaces(jump, low, high, described, coordinate,
-                                   inclusive=False):
-                found.append((left + (right - left)
-                              * (level - low) / (high - low), level))
-            return found
+            for index, (low_t, high_t) in enumerate(zip(edges, edges[1:])):
+                # The right end is INCLUSIVE for every sub-piece but the
+                # last, so a surface lying exactly on an interior
+                # breakpoint is not lost between the two sub-pieces that
+                # meet there; `_deduplicated` is what stops it being
+                # taken twice, and it exists for exactly this.
+                found.extend(self._solved(
+                    jump, start, delta, inner, low_t, high_t, described,
+                    coordinate, closed=index < len(edges) - 2))
+            return _deduplicated(found)
         return self._searched(jump, start, delta, inner, left, right,
                               described, coordinate)
+
+    def _solved(self, jump, start, delta, inner, left, right,
+                described, coordinate, closed=False):
+        """An AFFINE stretch of the level quantity: determined everywhere
+        on it by its two endpoint values, so every surface between them
+        is SOLVED -- all of them, which is what makes a crank that passes
+        three tooth windows in one tick add three throws rather than one.
+
+        `closed` takes the stretch's RIGHT end inclusively, for a
+        sub-piece another sub-piece continues from. The LEFT end is
+        exclusive either way: at the piece's own left end that surface is
+        not one the piece crosses, and at an interior breakpoint it was
+        reached by the sub-piece before.
+        """
+        low = self._level_at(jump, start, delta, left, inner,
+                             described, coordinate)
+        high = self._level_at(jump, start, delta, right, inner,
+                              described, coordinate)
+        if high == low:
+            return []
+        found = []
+        for level in _surfaces(jump, low, high, described, coordinate,
+                               inclusive=closed):
+            if closed and level == low:
+                continue
+            found.append((left + (right - left)
+                          * (level - low) / (high - low), level))
+        return found
 
     def _searched(self, jump, start, delta, inner, left, right,
                   described, coordinate):
@@ -623,16 +691,85 @@ def _deduplicated(found):
     return kept
 
 
-def _merged(cuts, found):
+def _merged(cuts, found, end=1.0):
     """The partition with `found` folded in: two cuts closer than the
-    tolerance are ONE, and the partition always ends at exactly 1."""
-    ordered = sorted(cuts + list(found))
+    tolerance are ONE, and the partition always ends at exactly `end` --
+    1 for a tick's own partition, and the bracket's right end for the
+    kink breakpoints located inside one piece of it."""
+    ordered = sorted(list(cuts) + list(found))
     kept = [ordered[0]]
     for where in ordered[1:]:
         if where - kept[-1] > _CROSSING_TOLERANCE:
             kept.append(where)
-    kept[-1] = 1.0
+    kept[-1] = end
     return kept
+
+
+def _kink_level(node):
+    """A kink node's LEVEL QUANTITY -- the continuous quantity whose one
+    surface, at zero, is where the node changes which operand it
+    returns: `x` for `abs(x)`, and `a - b` for `min(a, b)` and
+    `max(a, b)`."""
+    if node.op == 'abs':
+        return node.children[0]
+    return ExpressionNode('binop', '-', (node.children[0], node.children[1]))
+
+
+class _KinkCuts:
+    """Where a KINKED quantity's kinks cut a stretch of the tick's path.
+
+    Compiled once, beside the classification that found them: the kink
+    nodes in the graph's POSTORDER, each as the level quantity whose zero
+    is its breakpoint. A kink nested inside another's level is therefore
+    cut FIRST, and on each sub-interval the earlier kinks have already
+    produced, the level that follows is AFFINE in the fraction -- so its
+    zero is ONE DIVISION, exactly as `JumpPlan._crossings_of` solves an
+    affine level. No sampling, no bisection, no further tolerance.
+
+    A breakpoint is NOT a crossing (design.md section 4.3): the quantity
+    is continuous there, so it is recorded nowhere, enters no partition
+    an increment is summed over, lands no coordinate on a far side and
+    counts toward no maximum. It exists only inside a SOLVE.
+    """
+
+    __slots__ = ('levels',)
+
+    def __init__(self, graph):
+        root = as_node(graph)
+        self.levels = tuple(GraphValue(_kink_level(node))
+                            for node in postorder([root])
+                            if node.kind == 'call'
+                            and node.op in _KINK_CALLS)
+
+    def __bool__(self):
+        return bool(self.levels)
+
+    def __repr__(self):
+        return f'<{len(self.levels)} kinks>'
+
+    def between(self, at, left, right):
+        """The breakpoints STRICTLY INSIDE `[left, right]`, sorted and
+        merged, where `at(t)` gives the values the levels read at `t`."""
+        cuts = [left, right]
+        for level in self.levels:
+            found = []
+            for low_t, high_t in zip(cuts, cuts[1:]):
+                low = level.evaluate(at(low_t))
+                high = level.evaluate(at(high_t))
+                if high == low or not math.isfinite(low) \
+                        or not math.isfinite(high):
+                    # A level that does not MOVE over a sub-interval
+                    # reaches nothing inside it, which is the same
+                    # statement `_Walk._searched` makes of a jump level.
+                    continue
+                if not min(low, high) < 0.0 < max(low, high):
+                    continue
+                where = low_t + (high_t - low_t) * (0.0 - low) / (high - low)
+                if low_t < where < high_t:
+                    found.append(where)
+            if found:
+                cuts = _merged(cuts, found, right)
+        return tuple(cuts[1:-1])
 
 
 def _dependence(plan, own):
@@ -717,7 +854,7 @@ class _Retained:
     standing on.
     """
 
-    __slots__ = ('plan', 'own', 'dependent', 'outer', 'affine')
+    __slots__ = ('plan', 'own', 'dependent', 'outer', 'shape', 'kinks')
 
     def __init__(self, plan, own):
         dependence = _dependence(plan, own)
@@ -728,11 +865,15 @@ class _Retained:
         self.outer = JumpPlan(plan.skeleton,
                               [jump for jump in plan.jumps
                                if not dependence[jump.placeholder]])
-        # Whether the SKELETON is affine along the path, which is what
-        # makes the driven coordinate's own path affine in `t` on a
-        # piece and a dependent level's crossing SOLVABLE rather than
-        # searched.
-        self.affine = _affine_in_sources(as_node(plan.skeleton))
+        # The SKELETON's shape along the path, which is what decides
+        # whether the driven coordinate's OWN path is affine in `t` on a
+        # piece -- and so whether a dependent level's crossing is SOLVED
+        # or searched. A KINKED skeleton is affine between its own
+        # breakpoints, so the piece is cut there first and `own_at` is
+        # affine inside each sub-piece.
+        self.shape = _shape_of(as_node(plan.skeleton))
+        self.kinks = _KinkCuts(plan.skeleton) if self.shape == 'kinked' \
+            else None
 
     def __repr__(self):
         return (f'<retained reading of {self.own}: '
@@ -749,9 +890,12 @@ class _Retained:
         return increment, landing
 
     def cuts(self, start, delta, described, coordinate, forced=None):
-        """The breakpoints the two layers together put on the path."""
+        """The breakpoints the two layers together put on the path, the
+        SKELETON's own kinks included: between two of them the driven
+        coordinate's value is affine in `t`, which is what lets a stop on
+        it be solved piece by piece rather than searched."""
         walk = _Walk(self, start, delta, described, coordinate, forced)
-        return walk.run(None, 0)[2]
+        return walk.run(None, 0, cutting=True)[2]
 
 
 class _Walk:
@@ -783,7 +927,7 @@ class _Walk:
     ##############################################
     # The two layers
 
-    def run(self, crossings, tick):
+    def run(self, crossings, tick, cutting=False):
         own0 = self.start[self.own]
         if not any(value for name, value in self.delta.items()
                    if name != self.own):
@@ -817,6 +961,15 @@ class _Walk:
                     return own_left + (self._skeleton(s, branches) - base)
 
                 cut = self._first_cut(t, right, own_left, branches, own_at)
+                if cutting and self.reading.kinks:
+                    # The SKELETON's own kinks, inside the piece this
+                    # branch reading holds over: between two of them the
+                    # driven coordinate's value is affine in `t`. Asked
+                    # only when the caller WANTS the cuts -- a stop being
+                    # localized -- so an ordinary tick pays nothing for
+                    # them.
+                    cuts.extend(self._skeleton_cuts(
+                        t, right if cut is None else cut[0], branches))
                 if cut is None:
                     own_left = own_at(right)
                     break
@@ -949,19 +1102,90 @@ class _Walk:
         return first, crossed
 
     def _crossing(self, jump, t, right, own_left, branches, own_at):
-        if jump.affine and self.reading.affine:
-            low = self._level(jump, t, own_left, branches)
-            high = self._level(jump, right, own_at(right), branches)
-            if high == low:
-                return None
-            found = _surfaces(jump, low, high, self.described,
-                              self.coordinate, inclusive=False)
-            if not found:
-                return None
-            return min(((t + (right - t) * (level - low) / (high - low),
-                         level) for level in found),
-                       key=lambda entry: entry[0])
-        return self._searched(jump, t, right, own_left, branches, own_at)
+        if jump.affine and self.reading.shape in _AFFINE:
+            return self._solved(jump, t, right, own_left, own_at(right),
+                                branches)
+        if jump.shape is None or self.reading.shape is None:
+            return self._searched(jump, t, right, own_left, branches, own_at)
+        # At least one of the two is KINKED and neither is curved, so the
+        # piece is SOLVED on sub-intervals. The SKELETON's breakpoints
+        # come first, because they are what make the driven coordinate's
+        # own path `own_at` affine at all; the LEVEL's ride `own_at`, so
+        # they are located INSIDE each skeleton sub-piece, with `own_at`
+        # evaluated at that sub-piece's two ends (design.md 4.4 (b)).
+        outer = (t,) + self._skeleton_cuts(t, right, branches) + (right,)
+        for index, (left, stop) in enumerate(zip(outer, outer[1:])):
+            own_low = own_left if left == t else own_at(left)
+            own_high = own_at(stop)
+            inner = (left,) + self._level_cuts(
+                jump, left, stop, own_low, own_high, branches) + (stop,)
+            for step, (low_t, high_t) in enumerate(zip(inner, inner[1:])):
+                # Left to right, and the FIRST surface strictly inside
+                # the PIECE wins -- `_first_cut`'s own rule. The right
+                # end is inclusive for every sub-piece but the last, and
+                # the left end is exclusive throughout, which is
+                # `_searched`'s "the surface a piece STARTS on is not one
+                # it crosses".
+                found = self._solved(
+                    jump, low_t, high_t,
+                    own_low if low_t == left else own_at(low_t),
+                    own_high if high_t == stop else own_at(high_t),
+                    branches,
+                    closed=not (index == len(outer) - 2
+                                and step == len(inner) - 2))
+                if found is not None:
+                    return found
+        return None
+
+    def _solved(self, jump, left, right, own_low, own_high, branches,
+                closed=False):
+        """The first surface of `jump` an AFFINE stretch reaches, solved
+        from the stretch's two endpoint values."""
+        low = self._level(jump, left, own_low, branches)
+        high = self._level(jump, right, own_high, branches)
+        if high == low:
+            # A level that does not MOVE crosses nothing.
+            return None
+        found = [level for level
+                 in _surfaces(jump, low, high, self.described,
+                              self.coordinate, inclusive=closed)
+                 if not (closed and level == low)]
+        if not found:
+            return None
+        return min(((left + (right - left) * (level - low) / (high - low),
+                     level) for level in found),
+                   key=lambda entry: entry[0])
+
+    def _skeleton_cuts(self, left, right, branches):
+        """The SKELETON's kink breakpoints strictly inside `[left,
+        right]`, under this piece's branch reading."""
+        if not self.reading.kinks:
+            return ()
+
+        def at(t):
+            values = _along(self.start, self.delta, t)
+            values.update(branches)
+            return values
+
+        return self.reading.kinks.between(at, left, right)
+
+    def _level_cuts(self, jump, left, right, own_low, own_high, branches):
+        """A KINKED level's own breakpoints inside ONE skeleton
+        sub-piece, where the driven coordinate's path is affine and so
+        reads by interpolation between its two ends."""
+        if jump.kinks is None:
+            return ()
+        span = right - left
+
+        def at(t):
+            values = _along(self.start, self.delta, t)
+            values[self.own] = (own_low if span == 0.0 else
+                                own_low + (own_high - own_low)
+                                * (t - left) / span)
+            values.update(branches)
+            return values
+
+        return jump.kinks.between(at, left, right)
 
     def _searched(self, jump, t, right, own_left, branches, own_at):
         """A level that is not affine along the path: sampled, bracketed
@@ -1548,7 +1772,8 @@ class Edge:
 
     __slots__ = ('kind', 'needs', 'gives', 'graphs', 'plans', 'driven',
                  'names', 'factors', 'constant', 'slot_key', 'description',
-                 'stated_by', 'affine', 'retained', 'block')
+                 'stated_by', 'shapes', 'kinks', 'affine', 'retained',
+                 'block')
 
     def __init__(self, kind, needs, gives, description, stated_by,
                  graphs=(), plans=(), driven=(), names=(), factors=(),
@@ -1575,13 +1800,25 @@ class Edge:
         self.slot_key = slot_key
         self.description = description
         self.stated_by = stated_by
-        # One flag per DRIVEN END, aligned with `gives`: whether this
-        # edge's value is affine in its sources along the tick's path, so
-        # a stop on that end can be SOLVED rather than searched. A wiring
-        # and a formula are linear by construction; a law is read off its
-        # graph, or off its SKELETON where it carries a jump plan, whose
-        # branch placeholders are constants on a piece.
-        self.affine = tuple(self._affine_ends())
+        # One SHAPE per DRIVEN END, aligned with `gives`: how this edge's
+        # value moves in its sources along the tick's path, so a stop on
+        # that end is SOLVED (affine: one division; kinked: one division
+        # per sub-interval between its kinks) or searched (`None`). A
+        # wiring and a formula are linear by construction; a law is read
+        # off its graph, or off its SKELETON where it carries a jump
+        # plan, whose branch placeholders are constants on a piece.
+        self.shapes = tuple(self._end_shapes())
+        # The KINKS of a KINKED driven end -- of its SKELETON where it
+        # carries a jump plan, of its whole graph where it does not --
+        # compiled once, for `cuts` to sub-divide a stop's localization
+        # at. `None` for every end that is not kinked.
+        self.kinks = tuple(self._end_kinks())
+        # The TWO-VALUED flag the export spec defines and
+        # `_published_edge` carries unchanged: a KINKED end publishes
+        # `False`, because a consumer that has not learned to cut at a
+        # kink must go on searching it rather than interpolating THROUGH
+        # it. The third value never leaves this runtime.
+        self.affine = tuple(shape in _AFFINE for shape in self.shapes)
         # The driven ends this edge's own law READS -- the `gives` whose
         # id is also one of its `needs` -- each with the two-layer
         # reading of its plan, decided here at compile time. EMPTY for
@@ -1602,25 +1839,45 @@ class Edge:
             reads = True
         return tuple(found) if reads else ()
 
-    def _affine_ends(self):
+    def _end_kinks(self):
+        for index, shape in enumerate(self.shapes):
+            plan = self.plans[index] if self.plans else None
+            if shape != 'kinked':
+                yield None
+            elif plan is not None:
+                yield _KinkCuts(plan.skeleton)
+            elif self.graphs[index] is None:
+                yield None
+            else:
+                yield _KinkCuts(self.graphs[index])
+
+    def _end_shapes(self):
         if self.kind == 'block':
             # A block's value is piecewise in the SELECTOR partition and
-            # re-ordered across it, so a stop on one of its coordinates
+            # RE-ORDERED across it, so a stop on one of its coordinates
             # is searched, never solved.
-            return [False] * len(self.gives)
+            #
+            # `cut-at-the-kink` does NOT lift this, and the reason is
+            # that it is a different obstruction: a block has no single
+            # expression at all until a branch vector is fixed, and the
+            # ORDER its members run in may differ from piece to piece, so
+            # classifying a give would mean classifying it per branch
+            # vector AND proving the order stable on the piece -- ADR-122
+            # territory, not a kink in an expression (design.md 7).
+            return [None] * len(self.gives)
         if self.kind != 'law':
-            return [True] * len(self.gives)
+            return ['affine'] * len(self.gives)
         found = []
         for index, graph in enumerate(self.graphs):
             plan = self.plans[index] if self.plans else None
             if plan is not None:
-                found.append(_affine_in_sources(as_node(plan.skeleton)))
+                found.append(_shape_of(as_node(plan.skeleton)))
             elif graph is None:
                 # A constant law has zero slope everywhere, which is
                 # affine and moves nothing.
-                found.append(True)
+                found.append('constant')
             else:
-                found.append(_affine_in_sources(as_node(graph)))
+                found.append(_shape_of(as_node(graph)))
         return found
 
     def __repr__(self):
@@ -1710,22 +1967,63 @@ class Edge:
 
     def cuts(self, values, deltas, index):
         """The breakpoints of the driven end at `index` along the tick's
-        path, or `()` where that end carries no jump plan."""
+        path, between which its value is affine in the fraction: the jump
+        plan's own partition, and the KINKS of the law's skeleton.
+
+        `()` where the end is affine over the whole tick -- no jump plan
+        and no kink reached -- which is what keeps `Run._locate`'s
+        one-division fast path exact.
+        """
         if self.kind == 'block':
             return self.block.cuts(values, deltas, index)
-        if self.kind != 'law' or not self.plans:
+        if self.kind != 'law':
             return ()
-        plan = self.plans[index]
-        if plan is None:
+        plan = self.plans[index] if self.plans else None
+        if plan is None and self.kinks[index] is None:
             return ()
         start = self._inputs(values)
         delta = {name: deltas[key]
                  for name, key in zip(self.names, self.needs)}
+        if plan is None:
+            # A law with NO jump node at all: its only breakpoints are
+            # its own kinks, over the whole tick as one piece. Left
+            # returning `()` here, `_locate` would divide straight
+            # THROUGH the kink -- not a rounding error but a wrong stop.
+            return self._kink_cuts(index, start, delta)
         reading = self.retained[index] if self.retained else None
         if reading is not None:
+            # The walk unions the skeleton's kinks into its own cuts, in
+            # the pieces its branch readings hold over.
             return reading.cuts(start, delta, self.description,
                                 self.driven[index])
-        return plan.cuts(start, delta, self.description, self.driven[index])
+        cuts = plan.cuts(start, delta, self.description, self.driven[index])
+        if self.shapes[index] != 'kinked':
+            return cuts
+        # The skeleton reads the plan's BRANCH PLACEHOLDERS, which are
+        # constant only within ONE piece of the plan's partition, so its
+        # kinks are located inside each piece with that piece's branches
+        # substituted, and the per-piece lists are unioned with the
+        # plan's own cuts.
+        kinks = self.kinks[index]
+        found = []
+        for left, right in zip(cuts, cuts[1:]):
+            branches = plan._branches(
+                start, delta, (left + right) / 2.0, len(plan.jumps),
+                self.description, self.driven[index])
+
+            def at(t, branches=branches):
+                along = _along(start, delta, t)
+                along.update(branches)
+                return along
+
+            found.extend(kinks.between(at, left, right))
+        return tuple(_merged(list(cuts), found)) if found else cuts
+
+    def _kink_cuts(self, index, start, delta):
+        """A plan-less KINKED law's breakpoints over the whole tick."""
+        found = self.kinks[index].between(
+            lambda t: _along(start, delta, t), 0.0, 1.0)
+        return tuple(_merged([0.0, 1.0], found)) if found else ()
 
     def _linear(self, held, constant=None):
         """The linear combination this formula edge states, in the
@@ -3192,7 +3490,7 @@ def _plan_of(root, jumps):
         argument = _argument_graph(node, skeleton.replaced)
         planned.append(_Jump(node.op, placeholders[node].text,
                              GraphValue(argument),
-                             _affine_in_sources(argument)))
+                             _shape_of(argument)))
     return JumpPlan(GraphValue(skeleton.root), planned)
 
 
@@ -3248,21 +3546,35 @@ def _argument_graph(node, replaced):
     return ExpressionNode('binop', '-', (parts[0], parts[1]))
 
 
-def _affine_in_sources(root):
-    """Whether `root` is AFFINE in the sources along the path, so its
-    crossings can be solved rather than searched.
+def _shape_of(root):
+    """`root`'s SHAPE in the sources along the path: `'constant'`,
+    `'affine'`, `'kinked'` or `None`.
 
-    Structural and computed once: numbers, source names, branch
+    Structural and computed once. Numbers, source names, branch
     placeholders (constants on a piece), unary minus, `+` and `-` of
-    affine operands, `*` with a constant operand and `/` by one. A call,
-    a power, or a product of two moving operands is not affine, and
-    falls to the search -- correct but slower, which is why
-    `floor(max(x, 0))` is searched although it is piecewise affine.
+    movable operands, `*` with a constant operand and `/` by one are
+    AFFINE; a KINK -- `abs`, `min`, `max`, the continuous selections of
+    `_KINK_CALLS` -- over movable operands is KINKED, and so is anything
+    affine built over one. Anything else -- another call, a power, a
+    product of two moving operands, a moving divisor -- is `None` and
+    falls to the sampled search: correct, slower, and conservative,
+    which is why `max(0, sin(x))` stays searched although one of its
+    pieces is constant.
+
+    An AFFINE quantity is solved from the two endpoint values of a
+    piece; a KINKED one is solved on each sub-interval between its
+    breakpoints (`_KinkCuts`), with no sampling and no new tolerance.
     """
     degree = {}
     for node in postorder([root]):
         degree[node] = _degree_of(node, degree)
-    return degree[root] in ('constant', 'affine')
+    return degree[root]
+
+
+def _joined(*parts):
+    """An affine combination of movable operands is kinked exactly when
+    one of them is."""
+    return 'kinked' if 'kinked' in parts else 'affine'
 
 
 def _degree_of(node, degree):
@@ -3277,21 +3589,32 @@ def _degree_of(node, degree):
     children = [degree[child] for child in node.children]
     if all(child == 'constant' for child in children):
         return 'constant'
+    if node.kind == 'call':
+        # A kink is the ONLY call that classifies, and it classifies by
+        # its OPERANDS, never by its own node type: `max(0, sin(x))` is
+        # a kink over a curved operand and stays unclassified.
+        if node.op in _KINK_CALLS and all(child in _MOVABLE
+                                          for child in children):
+            return 'kinked'
+        return None
     if node.kind == 'unary':
-        return children[0] if children[0] == 'affine' else None
+        return children[0] if children[0] in ('affine', 'kinked') else None
     if node.kind != 'binop':
         return None
     left, right = children
-    moving = ('constant', 'affine')
+    moving = _MOVABLE
     if node.op in ('+', '-'):
-        return 'affine' if left in moving and right in moving else None
+        return _joined(left, right) if left in moving and right in moving \
+            else None
     if node.op == '*':
-        if (left == 'constant' and right in moving) \
-                or (right == 'constant' and left in moving):
-            return 'affine'
+        if left == 'constant' and right in moving:
+            return _joined(right)
+        if right == 'constant' and left in moving:
+            return _joined(left)
         return None
     if node.op == '/':
-        return 'affine' if right == 'constant' and left in moving else None
+        return _joined(left) if right == 'constant' and left in moving \
+            else None
     return None
 
 

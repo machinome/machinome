@@ -5,6 +5,39 @@ History
 Unreleased
 ----------
 
+* **A kink is a cut, and a piecewise-affine quantity is solved.** Under a
+  running root the run has to follow a quantity along each tick's path —
+  a jump node's level, a law's skeleton, a determiner's value — and it
+  SOLVED that quantity where it was affine in the sources and SEARCHED it
+  everywhere else, at 64 samples per piece plus up to 64 bisection rounds
+  behind each bracket. Every CALL counted as non-affine, so ``clamp01``,
+  which is ``min(max(x, 0), 1)`` — two kinks whose three pieces are each
+  perfectly affine — was searched. That is how the framework's own
+  ``clamp``, ``ramp`` and ``piecewise`` are built, and how a motion
+  profile is normally written. Now ``abs``, ``min`` and ``max`` are
+  recognized as the CONTINUOUS SELECTIONS they are — each returns one of
+  its operands exactly — so a quantity built over them is PIECEWISE
+  AFFINE: its breakpoints are located exactly, in the graph's postorder,
+  each from the two endpoint values of the sub-interval the kinks inside
+  it have already produced, and every piece between them is solved as any
+  affine one is. No sampling, no bisection, no new tolerance, no new
+  knob, and nothing to declare. A kink breakpoint is NOT a crossing: the
+  law is continuous there, so it is recorded nowhere, enters no partition
+  an increment is summed over, moves no coordinate to the far side of
+  anything and counts toward no limit — which is why every answer a
+  machine gave before this is the answer it gives now. A law carrying no
+  kink meets no new code. Measured on the ``CurtaInterface`` fixture, six
+  dials cleared by one ``clamp01``-gated ring: **2 861 expression
+  evaluations per tick and 28 ticks/s before, 603 and 130 after**, and
+  the crossing the search reached 9.3e-14 from its exact answer is now
+  8.9e-16 from it. A curved law — a ``sin``, a ``sqrt``, a product of two
+  moving quantities — is searched exactly as before, including a kink
+  over a curved operand: the classification is structural and
+  conservative. **Nothing in a published document changes.** The
+  document's ``affine`` flag stays the two-valued statement it always
+  was, a piecewise-affine quantity publishes ``false``, no version moves,
+  and a consumer that has not learned to cut at a kink goes on searching
+  it — correct, and slower.
 * The conformance corpus now **catches a consumer that runs a block's
   members in the order the document lists them.** The ``ShiftedCarry``
   scenario ADR-122 added to pin a block's order replayed green under

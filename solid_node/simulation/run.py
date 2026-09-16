@@ -971,12 +971,19 @@ class Run:
             # Already at or beyond it: the stop is at the very start of
             # the stretch, and the coordinate stands where it stands.
             return 0.0
-        if edge.affine[index]:
+        if edge.shapes[index] is not None:
+            # AFFINE or KINKED: either way the value is piecewise affine
+            # in `t` over the breakpoints `cuts` gives, and the stop is
+            # SOLVED there rather than searched. `edge.affine` is the
+            # two-valued flag the document publishes and says something
+            # narrower; the shape is what this decision needs.
             cuts = edge.cuts(values, deltas, index)
             if not cuts:
                 # Linear in `t`: one division, exact, no extra
                 # evaluation. This is the ratchet, the rack, every wiring
-                # edge and every derived coordinate's linear formula.
+                # edge and every derived coordinate's linear formula --
+                # and a kinked law no kink of which is reached over this
+                # tick, whose empty cut list is exactly that statement.
                 travel = deltas[key]
                 return _clamped((bound - value) / travel) if travel else 0.0
             return self._piecewise(edge, key, bound, value, values, deltas,

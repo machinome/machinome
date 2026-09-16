@@ -31,11 +31,12 @@ from solid_node.motion.ports import get_coordinate
 from solid_node.simulation import (RunConflict, Sim, Stop,
                                    UnsupportedLaw)
 
-from .base import BaseNodeTest
+from .base import BaseNodeTest, graph_evaluations
 from .running_project.machine import (ConstantBound, UnusedRead,
                                       Captured, ClassGate, Curved, CurvedBody,
                                       DriverGate, Gate, GateWide,
-                                      ImpossibleBoundBody, LoopingTrain,
+                                      ImpossibleBoundBody, KinkedStop,
+                                      LoopingTrain,
                                       OpenGate, OpenGateBody, OpenLowBody,
                                       PawlRatchet, PortRead, Ratchet,
                                       RatchetBody, Shared, SharedBody,
@@ -909,21 +910,7 @@ class ConstraintCostTest(BaseNodeTest):
 
     def graph_evaluations(self, sim, ticks):
         """How many times a compiled graph is evaluated over `ticks`."""
-        import solid_node.simulation.program as program_module
-
-        original = program_module._evaluated
-        counted = [0]
-
-        def counting(graph, inputs):
-            counted[0] += 1
-            return original(graph, inputs)
-
-        program_module._evaluated = counting
-        try:
-            sim.run(sim.dt * ticks)
-        finally:
-            program_module._evaluated = original
-        return counted[0]
+        return graph_evaluations(sim, ticks)
 
     def test_the_train_pays_what_it_always_paid(self):
         sim = Sim(Train(), 0.1)
@@ -1207,3 +1194,71 @@ class CarriageInterlockTest(BaseNodeTest):
         self.assertEqual(shift.status, 'completed')
         self.assertEqual(self.sim.state['seat'], 20.0)
         self.assertEqual(self.sim.state['lever0.travel'], 1.0)
+
+
+class KinkedDeterminerStopTest(BaseNodeTest):
+    """A stop on a determiner that is KINKED and carries no jump at all.
+
+    OpenSpec change ``cut-at-the-kink``, design.md section 11 case C.
+    ``KinkedStop`` drives its slide by the Curta bench's own
+    ``4 + 72 * clamp01((lever - 113.5) / 11.25)``. The slide's bound,
+    40 mm, lies on the law's SLOPED piece; the tick starts on the FLAT
+    one below it. So the stop is not where a single division over the
+    whole tick puts it: the path has to be cut at the kink first.
+    """
+
+    #: The fixture's own arithmetic, never the law's: the clamp is at
+    #: one half where the slide reads `4 + 72 * 0.5 == 40`, which is
+    #: `lever == 113.5 + 0.5 * 11.25`, and the tick carries the lever
+    #: from 100 by 40.
+    EXACT = (113.5 + 0.5 * 11.25 - 100.0) / 40.0
+
+    def stopped(self):
+        sim = Sim(KinkedStop(), 0.1, record=8)
+        sim.move('lever', by=40.0, duration=0.1)
+        sim.run(0.1)
+        return sim
+
+    def test_the_stop_is_located_on_the_sloped_piece(self):
+        sim = self.stopped()
+        self.assertEqual([one.coordinate for one in sim.stops],
+                         ['slide.travel'])
+        self.assertEqual(sim.stops[0].t, self.EXACT)
+        # NOT the answer one division over the whole tick gives: the
+        # slide travels 72 mm over it, so that division would put the
+        # bound at exactly half way.
+        self.assertNotEqual(sim.stops[0].t, 0.5)
+
+    def test_the_coordinate_is_committed_at_its_bound(self):
+        sim = self.stopped()
+        self.assertEqual(sim.state['slide.travel'], 40.0)
+        # And the input is admitted only as far as the stop.
+        self.assertEqual(sim.state['lever'], 100.0 + 40.0 * self.EXACT)
+
+    def test_a_kink_the_tick_does_not_reach_leaves_no_cut(self):
+        """The invariant the one-division fast path rests on: where no
+        kink is crossed over the tick, the determiner IS affine over the
+        whole of it, so its cut list is EMPTY and `Run._locate` divides
+        once.
+
+        This tick stays entirely on the sloped piece.
+        """
+        sim = Sim(KinkedStop(), 0.1, record=8, state={'lever': 115.0})
+        program = sim._run.program
+        key = sim._run.keys['slide.travel']
+        edge = program.determiner[key]
+        index = edge.gives.index(key)
+        self.assertEqual(edge.shapes[index], 'kinked')
+        self.assertFalse(edge.affine[index])
+        values = dict(sim._run._values(sim._run.bank))
+        # Two ticks of the same law: one that stays between the kinks,
+        # and one that crosses the upper kink at `lever == 124.75`.
+        inside = edge.cuts(values, {key: 0.0,
+                                    sim._run.keys['lever']: 4.0}, index)
+        self.assertEqual(inside, ())
+        across = edge.cuts(values, {key: 0.0,
+                                    sim._run.keys['lever']: 40.0}, index)
+        self.assertEqual(len(across), 3)
+        self.assertEqual(across[0], 0.0)
+        self.assertEqual(across[-1], 1.0)
+        self.assertEqual(across[1], (124.75 - 115.0) / 40.0)

@@ -884,7 +884,12 @@ postorder, over each piece the nodes before it have already produced,
 and ALL crossings of one node inside one piece SHALL be found — not
 only the difference of the piece's endpoints. Where the level quantity
 is AFFINE in the sources along the path the crossings SHALL be solved
-exactly, every surface between the endpoint values included; otherwise
+exactly, every surface between the endpoint values included. Where it is
+PIECEWISE AFFINE — the requirement "A kink is a cut, and a
+piecewise-affine quantity is solved" — the piece SHALL be SUB-DIVIDED at
+that level's own kink breakpoints and the crossings SHALL be solved
+exactly on each sub-piece, again every surface between that sub-piece's
+endpoint values included. Otherwise
 the piece SHALL be sampled at a fixed number of sub-intervals and each
 bracketed crossing located by bisection to a stated tolerance, with the
 limit of that search documented. Two crossings closer than the
@@ -1395,7 +1400,13 @@ increment here too. `t*` SHALL be the SMALLEST fraction at which that
 value reaches the bound, and SHALL be `0` when the coordinate already
 stands at or beyond it. Where the determiner is AFFINE in its sources
 along the path `t*` SHALL be SOLVED exactly, over the pieces of its own
-jump partition where it has one; otherwise the value SHALL be sampled
+jump partition where it has one. Where the determiner is PIECEWISE
+AFFINE — the requirement "A kink is a cut, and a piecewise-affine
+quantity is solved" — `t*` SHALL be SOLVED exactly over those pieces
+SUB-DIVIDED at the determiner's own kink breakpoints; those breakpoints
+SHALL be taken even where the determiner carries no jump plan at all, a
+quantity that is linear between its kinks being not linear across them.
+Otherwise the value SHALL be sampled
 at the same fixed number of sub-intervals a jump search uses and `t*`
 bracketed and bisected to the same tolerance, with the same documented
 limit. No further tolerance SHALL be introduced, and a coordinate stopped by a
@@ -2011,7 +2022,12 @@ INSIDE each of its pieces the dependent nodes SHALL then be walked:
   — through the driven coordinate's own path and through the sources —
   and the piece SHALL be CUT at the FIRST surface any of them reaches
   strictly inside it: SOLVED exactly where that level is affine along the
-  path, otherwise sampled at the same fixed number of sub-intervals and
+  path, and equally where that level and the driven coordinate's own path
+  over the piece are each affine or PIECEWISE AFFINE — the requirement
+  "A kink is a cut, and a piecewise-affine quantity is solved" — the
+  piece being SUB-DIVIDED at the kink breakpoints of BOTH before each
+  sub-piece is solved; otherwise sampled at the same fixed number of
+  sub-intervals and
   bisected to the same tolerance a jump search already uses. No further
   tolerance SHALL be introduced, and a crossing found within that
   tolerance of the piece's left end SHALL NOT be merged into it.
@@ -2277,7 +2293,9 @@ naming the relations as written and the classes that stated them:
 first.** Every selector's level SHALL be followed along the path its
 coordinates take over the stretch — the same linear path every other
 source takes — and the stretch SHALL be CUT at every surface any of them
-reaches: solved exactly where that level is affine, otherwise sampled at
+reaches: solved exactly where that level is affine or PIECEWISE AFFINE —
+the requirement "A kink is a cut, and a piecewise-affine quantity is
+solved" — otherwise sampled at
 the same fixed number of sub-intervals and bisected to the same tolerance
 a jump crossing already uses. Two cuts within that tolerance SHALL be
 ONE, a tick cut more times than the stated maximum SHALL be refused
@@ -2515,4 +2533,109 @@ direction and expression as it does any other edge's.
   tick's result equals the one the same tick gives with the selection
   frozen at each of its two branches over the corresponding parts of the
   travel
+
+### Requirement: A kink is a cut, and a piecewise-affine quantity is solved
+
+Under a running root a quantity the run has to follow along a tick's path
+— a jump node's LEVEL QUANTITY, a law's SKELETON, a determiner's value —
+SHALL be classified from its expression alone, once, at compile:
+
+- AFFINE in the sources: a number, a source name, a branch placeholder
+  (a constant on the piece being cut), a unary minus, a sum or difference
+  of affine operands, a product with a constant operand, or a quotient by
+  a constant one.
+- PIECEWISE AFFINE in the sources: the same, admitting KINK NODES whose
+  operands are themselves affine or piecewise affine. The KINK NODES
+  SHALL be exactly the CONTINUOUS SELECTIONS of the symbolic vocabulary —
+  `abs(x)`, `min(a, b)` and `max(a, b)` — each of which returns one of
+  its operands exactly and is continuous where they meet. `clamp`,
+  `clamp01`, `ramp` and `piecewise` are compositions of those over their
+  arguments and SHALL therefore be piecewise affine wherever their
+  arguments are.
+- Neither: a call outside the kinks — `sin`, `cos`, `tan`, `asin`,
+  `acos`, `atan`, `atan2`, `sqrt` — a power, or a product or quotient of
+  two operands that both move.
+
+A kink node SHALL have a LEVEL of its own — `x` for `abs(x)`, `a − b` for
+`min(a, b)` and `max(a, b)` — and ONE surface, at zero. Its BREAKPOINTS
+over a stretch of the path SHALL be the fractions at which that level
+reaches zero, computed in the graph's POSTORDER so that a kink nested
+inside another's level is cut first: on each sub-interval its inner kinks
+have already produced, the level is affine, and its zero SHALL be SOLVED
+from the sub-interval's two endpoint values. No sampling, no bisection
+and NO FURTHER TOLERANCE SHALL be introduced; two breakpoints closer than
+the crossing tolerance SHALL be one, exactly as two crossings are.
+
+**A kink breakpoint is NOT a crossing.** The quantity is CONTINUOUS
+there: the breakpoint SHALL NOT be recorded among the tick's crossings,
+SHALL NOT enter the jump partition a law's increment is summed over,
+SHALL NOT move a coordinate to the far side of anything, and SHALL NOT
+count toward the maximum number of crossings a tick admits. It is a
+sub-division used to SOLVE, and a machine whose laws carry no kink SHALL
+pay nothing for this requirement.
+
+Classification SHALL be conservative and structural: a quantity the rules
+above do not classify SHALL keep the sampled search unchanged, with the
+same sub-interval count, the same bisection and the same documented
+limit. In particular a kink over a CURVED operand — `max(0, sin(x))` —
+is not piecewise affine and SHALL be searched, even though a particular
+piece of it may happen to be constant.
+
+#### Scenario: A clamped window's crossing is solved, not searched
+
+- **WHEN** a running root's law gates on a comparison whose level reads
+  `clamp01((control − 0.1) / 0.8)` of a driver, and the gate's surface is
+  crossed strictly inside a tick in which the clamp itself is not at
+  either of its kinks
+- **THEN** the crossing is located at the fraction the affine solution
+  gives, to within a few units in the last place, rather than to the
+  bisection's own tolerance, and the tick evaluates the law a small
+  bounded number of times rather than once per sub-interval of the search
+
+#### Scenario: A path that crosses the kink is cut there before it is solved
+
+- **WHEN** the same law is driven over a tick whose path takes the clamp
+  from inside its window out past `1`, and the gate's surface lies beyond
+  the kink
+- **THEN** the crossing is located exactly on the sloped piece it
+  actually lies in, and the answer equals the one the same movement gives
+  when it is split into two ticks meeting at the kink
+
+#### Scenario: A stop on a kinked determiner that carries no jump at all
+
+- **WHEN** a coordinate declaring a range is driven by a law with no jump
+  node in it whose value is `4 + 72 * clamp01((lever − 113.5) / 11.25)`,
+  and one tick's path starts on the law's FLAT piece and would end past
+  the bound on its SLOPED one
+- **THEN** the stop is located at the fraction on the sloped piece, the
+  coordinate is committed AT its bound exactly, and the answer is not the
+  one a single linear division over the whole tick would give
+
+The classification SHALL remain INTERNAL to the run. The published
+document says, per driven end of a law and per jump, whether that
+quantity is AFFINE in its sources — a two-valued statement a consumer
+uses to choose between a solution and a search — and a PIECEWISE AFFINE
+quantity is not affine. So a kinked quantity SHALL publish that flag as
+FALSE, exactly as it does before this requirement exists, and no
+published document SHALL change and no document version SHALL move
+because a quantity is now cut at its kinks. A consumer that has not
+learned to cut at a kink SHALL therefore keep searching such a quantity,
+which is correct and slower.
+
+#### Scenario: A kinked quantity still publishes itself as not affine
+
+- **WHEN** a running root whose law has a kinked determiner, and whose
+  gate has a kinked level, is exported before and after this requirement
+  exists
+- **THEN** both documents declare the version they always did and are
+  byte-identical, the law's driven end publishing `affine` FALSE and the
+  jump publishing `affine` FALSE in each
+
+#### Scenario: A curved law is searched exactly as before
+
+- **WHEN** a running root's law carries `sin` or `cos` of a moving
+  source, or a product of two moving sources
+- **THEN** its crossings and any stop on it are located by the same
+  sampled search, at the same sub-interval count and tolerance, and the
+  number of evaluations the tick pays is unchanged
 

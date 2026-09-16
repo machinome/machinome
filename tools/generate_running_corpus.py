@@ -102,7 +102,15 @@ REQUIRED = (
     'a selection crossing inside a tick',
     'a tick carrying both a selection crossing and a stop',
     'an in-block gate crossing inside a tick',
+    'a stop on a kinked determiner inside a tick',
 )
+
+#: The CONTINUOUS SELECTIONS of the symbolic vocabulary, each of which
+#: returns one of its operands exactly: a law built over them is
+#: piecewise affine, and the framework's run cuts it at them rather than
+#: searching it. A consumer re-derives this from the published
+#: expression, exactly as `_kinked_laws` does below.
+KINKS = ('abs', 'min', 'max')
 
 COMPARISONS = ('<', '<=', '>', '>=', '==', '!=')
 
@@ -271,6 +279,19 @@ CORPUS = (
                               'duration': 0.1}, 'handle': 'h2'},
         {'tick': 14, 'restore': 'a'},
     ]},
+    # A STOP on a determiner that is KINKED and carries NO jump plan at
+    # all: the Curta bench's own `4 + 72 * clamp01((lever - 113.5)/11.25)`
+    # with a range on the slide it drives. The bound lies on the law's
+    # SLOPED piece and the tick starts on the FLAT one below it, so a
+    # consumer that divides once over the whole tick puts the stop at
+    # half way and admits 0.875 degrees of lever travel that never
+    # happened. The law publishes `affine: false`, so a consumer that has
+    # not learned to cut at a kink must SEARCH it -- which is correct,
+    # and lands inside this corpus's own comparison window.
+    {'name': 'KinkedStop', 'dt': 0.1, 'steps': 4, 'script': [
+        {'tick': 1, 'move': {'input': 'lever', 'by': 40.0,
+                             'duration': 0.1}, 'handle': 'h0'},
+    ]},
 )
 
 
@@ -397,6 +418,10 @@ def uncovered_features(machines):
         if reads:
             seen.add('a law that reads the coordinate it drives')
         sources = program.get('sources') or {}
+        # The coordinates whose determiner is a law that is PIECEWISE
+        # AFFINE and carries no jump plan: a stop on one cannot be
+        # located by dividing once over the tick.
+        kinked = _kinked_laws(program, bindings)
         # The BLOCK and its SELECTORS, re-derived from the published
         # edges exactly as a consumer must: no key carries either.
         gives, selectors = _selection(program, bindings)
@@ -463,6 +488,9 @@ def uncovered_features(machines):
                            for names in blockers):
                         continue
                     seen.add('an in-block gate crossing inside a tick')
+            for stop in tick['stops']:
+                if stop['coordinate'] in kinked and 0 < stop['t'] < 1:
+                    seen.add('a stop on a kinked determiner inside a tick')
             if tick['stops'] and tick['crossings']:
                 seen.add('a tick carrying both a crossing and a stop')
             for command in tick['commands']:
@@ -470,6 +498,47 @@ def uncovered_features(machines):
                     seen.add('a command retired blocked')
             previous = tick['bank']
     return [feature for feature in REQUIRED if feature not in seen]
+
+
+def _kinked_laws(program, bindings):
+    """The coordinates a law with NO jump plan drives whose expression
+    carries a KINK, re-derived from the published document as a consumer
+    must: the plan is `null` and the expression calls `abs`, `min` or
+    `max`."""
+    found = set()
+    for edge in program.get('edges', ()):
+        if edge.get('kind') != 'law':
+            continue
+        plans = edge.get('plans') or [None] * len(edge.get('gives', ()))
+        for index, name in enumerate(edge.get('gives', ())):
+            if plans[index] is not None:
+                continue
+            expressions = edge.get('expressions') or []
+            if index >= len(expressions) or expressions[index] is None:
+                continue
+            if _calls(expressions[index], bindings) & set(KINKS):
+                found.add(name)
+    return found
+
+
+def _calls(expression, bindings):
+    """Every function `expression` calls, through the document's own
+    ordered `bindings` table."""
+    from solid_node.core.expressions import parse
+    from solid_node.expression_graph import postorder
+
+    found, pending, seen = set(), [expression], set()
+    while pending:
+        text = str(pending.pop())
+        if text in seen:
+            continue
+        seen.add(text)
+        for item in postorder([parse(text)]):
+            if item.kind == 'call':
+                found.add(item.op)
+            elif item.kind == 'name' and item.text in bindings:
+                pending.append(bindings[item.text])
+    return found
 
 
 def _member_of(program, coordinate):

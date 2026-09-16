@@ -201,6 +201,17 @@ class CoverageGuardTest(TestCase):
         missing = uncovered_features(machines)
         self.assertIn('%', missing)
 
+    def test_a_corpus_with_no_kinked_determiner_stop_is_refused(self):
+        """`cut-at-the-kink`: a stop on a law that is piecewise affine
+        and carries no jump plan is the one shape a consumer can get
+        materially wrong by dividing once over the tick."""
+        from tools.generate_running_corpus import uncovered_features
+
+        machines = [entry for entry in corpus()['machines']
+                    if entry['name'] != 'KinkedStop']
+        self.assertIn('a stop on a kinked determiner inside a tick',
+                      uncovered_features(machines))
+
     def test_a_corpus_with_no_rate_is_refused(self):
         from tools.generate_running_corpus import uncovered_features
 

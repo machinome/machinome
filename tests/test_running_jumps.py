@@ -29,11 +29,13 @@ import tracemalloc
 from pytest import approx
 
 from solid_node.motion.ports import get_coordinate
+from solid_node.scad_expression import symbol
 from solid_node.simulation import Sim, TooManyCrossings, UnsupportedLaw
 
 from .base import BaseNodeTest
 from .running_project.machine import (Alternating, AlternatingBody,
                                       BackwardJump, Carry, CarryLead,
+                                      CappedCount, ClampedGate,
                                       Clutch, Crowded, Divisor, Kinked,
                                       NonAffine, OnlyJumps, PortDriven,
                                       PortDrivenJoint, PortDrivenSmooth,
@@ -692,3 +694,203 @@ class SelectionCrossingTest(BaseNodeTest):
         # The surface at `shift == 0.5` is a quarter of the way along a
         # stretch that carries `shift` from 0 to 2.
         self.assertEqual(sorted({one.t for one in sim.crossings}), [0.25])
+
+
+class KinkedLevelTest(BaseNodeTest):
+    """A kink is a cut, and a piecewise-affine quantity is SOLVED.
+
+    OpenSpec change ``cut-at-the-kink``. ``abs``, ``min`` and ``max``
+    are the CONTINUOUS selections of the symbolic vocabulary: each
+    returns one of its operands exactly, so a level quantity built over
+    them is piecewise affine, its breakpoints are solved in the graph's
+    postorder, and each piece between them is solved as any affine level
+    is. Before this cycle every one of them fell to the 64-sample
+    search.
+    """
+
+    def test_a_clamped_gates_crossing_is_solved(self):
+        """Case A: the gate's level is ``clamp01((lever - 10)/20) - 0.5``
+        and the tick carries the lever from 5 to 42, so the surface lies
+        on the clamp's SLOPED piece, at `lever == 20`. The fraction is
+        the fixture's own arithmetic, not the law's."""
+        sim = Sim(ClampedGate(), 0.1, record=8)
+        sim.move('crank', by=90.0, duration=0.1)
+        sim.move('lever', by=37.0, duration=0.1)
+        sim.run(0.1)
+        exact = (20.0 - 5.0) / 37.0
+        located = [one.t for one in sim.crossings]
+        self.assertEqual(len(located), 1)
+        # Within a few units in the last place of the closed form, where
+        # the search reached the bisection's own tolerance.
+        self.assertLess(abs(located[0] - exact), 4 * math.ulp(exact))
+
+    def test_a_surface_on_the_breakpoint_is_located_once(self):
+        """The one boundary a sub-divided solve can get wrong.
+
+        ``min(lever, 20)`` rises with the lever and then holds, so the
+        `floor`'s last surface, 20, is reached EXACTLY at the kink. Taken
+        with both sub-pieces closed it would be located twice; with both
+        open it would be lost between them.
+        """
+        sim = Sim(CappedCount(), 0.1, record=8)
+        sim.move('lever', by=10.0, duration=0.1)
+        sim.run(0.1)
+        self.assertEqual(
+            [(one.level, one.t) for one in sim.crossings],
+            [(16.0, 0.1), (17.0, 0.2), (18.0, 0.3), (19.0, 0.4),
+             (20.0, 0.5)])
+
+    def test_a_path_that_crosses_the_kink_is_cut_there_first(self):
+        """The surface lies BEYOND a kink the tick crosses, so it is not
+        on the piece the tick starts on.
+
+        The lever falls from 35 -- above the clamp's upper kink, where
+        the ramp is flat at 1 -- through that kink at `lever == 30` and
+        on to 10. The gate's surface is at `lever == 20`, on the sloped
+        piece. Split into two ticks meeting AT the kink, the same
+        movement gives the same answer.
+        """
+        whole = Sim(ClampedGate(), 0.1, record=8, state={'lever': 35.0})
+        whole.move('crank', by=90.0, duration=0.1)
+        whole.move('lever', by=-25.0, duration=0.1)
+        whole.run(0.1)
+        exact = (35.0 - 20.0) / 25.0
+        self.assertEqual(len(whole.crossings), 1)
+        self.assertLess(abs(whole.crossings[0].t - exact),
+                        4 * math.ulp(exact))
+        # The same movement, cut AT the kink: the same straight path in
+        # both sources, taken as a fifth of it and then the rest.
+        split = Sim(ClampedGate(), 0.2, record=8, state={'lever': 35.0})
+        split.move('crank', by=18.0, duration=0.2)
+        split.move('lever', by=-5.0, duration=0.2)
+        split.run(0.2)
+        self.assertEqual(split.crossings, [])
+        split.move('crank', by=72.0, duration=0.2)
+        split.move('lever', by=-20.0, duration=0.2)
+        split.run(0.2)
+        self.assertEqual([one.t for one in split.crossings],
+                         [(30.0 - 20.0) / 20.0])
+        # 54 degrees either way, to the last bit but one: `t*` is the
+        # same fraction of the same path, and only the arithmetic that
+        # reaches it differs.
+        self.assertEqual(split.state['wheel.turn'], 54.0)
+        self.assertLess(abs(whole.state['wheel.turn'] - 54.0),
+                        4 * math.ulp(54.0))
+
+    def test_a_kink_is_not_a_crossing(self):
+        """A kink is CONTINUOUS, so its breakpoint records nothing.
+
+        The lever crosses both of the clamp's kinks in this tick -- at
+        `lever == 10` and at `lever == 30` -- and the only crossing
+        reported is the gate's own comparison.
+        """
+        sim = Sim(ClampedGate(), 0.1, record=8)
+        sim.move('crank', by=90.0, duration=0.1)
+        sim.move('lever', by=37.0, duration=0.1)
+        sim.run(0.1)
+        self.assertEqual([one.primitive for one in sim.crossings], ['>='])
+        self.assertEqual(sim.stops, [])
+
+    def test_a_curved_level_is_searched_exactly_as_before(self):
+        """Case E: the classification is conservative. A product of two
+        moving sources pays what it always paid."""
+        sim = Sim(NonAffine(), 0.1, record=8)
+        sim.move('a', by=40.0, duration=0.1)
+        sim.move('b', by=20.0, duration=0.1)
+        sim.run(0.1)
+        self.assertEqual([one.level for one in sim.crossings],
+                         [5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0])
+
+
+class ShapeOfTest(BaseNodeTest):
+    """The classification itself, as a table.
+
+    ``cut-at-the-kink``: AFFINE as before, KINKED through ``abs``,
+    ``min`` and ``max`` over movable operands, and unclassified
+    otherwise -- including a kink over a CURVED operand, which a
+    classification by node type rather than by operands would get wrong.
+    """
+
+    def shape(self, build):
+        from solid_node.scad_expression import as_node
+        from solid_node.simulation.program import _shape_of
+
+        return _shape_of(as_node(build(symbol('x'), symbol('y'))))
+
+    def test_the_compositions_of_solid_node_math(self):
+        import solid_node.math as m
+
+        table = {
+            'clamp': (lambda x, y: m.clamp(x, 0.0, 1.0), 'kinked'),
+            'clamp01': (lambda x, y: m.clamp01(x), 'kinked'),
+            'ramp': (lambda x, y: m.ramp(x, 1.0, 2.0), 'kinked'),
+            'lerp': (lambda x, y: m.lerp(0.0, 10.0, 0.25), 'constant'),
+            'lerp of a mover': (lambda x, y: m.lerp(x, 10.0, 0.25),
+                                'affine'),
+            'piecewise': (lambda x, y: m.piecewise(
+                x, [(0.0, 0.0), (1.0, 10.0), (2.0, 10.0)]), 'kinked'),
+            'wrap': (lambda x, y: m.wrap(x, 90.0), None),
+            'bump': (lambda x, y: m.bump(x), None),
+        }
+        for name, (build, expected) in table.items():
+            with self.subTest(name):
+                self.assertEqual(self.shape(build), expected)
+
+    def test_every_symbolic_builtin(self):
+        import solid_node.math as m
+        from solid_node.math import SYMBOLIC_BUILTINS
+
+        kinks = ('abs', 'min', 'max')
+        jumps = ('floor', 'ceil', 'sign')
+        two = ('atan2', 'min', 'max')
+        for name in SYMBOLIC_BUILTINS:
+            with self.subTest(name):
+                call = getattr(m, name)
+                build = ((lambda x, y, call=call: call(x, y))
+                         if name in two else
+                         (lambda x, y, call=call: call(x)))
+                if name in kinks:
+                    expected = 'kinked'
+                else:
+                    # A jump node is planned and located, not
+                    # classified; every other call is curved. Both are
+                    # unclassified here.
+                    expected = None
+                self.assertEqual(self.shape(build), expected,
+                                 f'{name} is not {expected}')
+                self.assertIn(name, SYMBOLIC_BUILTINS if name in jumps
+                              else SYMBOLIC_BUILTINS)
+
+    def test_the_arithmetic_rules(self):
+        import solid_node.math as m
+        from solid_node.expression_graph import ExpressionNode
+        from solid_node.simulation.program import _shape_of
+
+        table = {
+            'a number': (lambda x, y: 2.0, 'constant'),
+            'a source': (lambda x, y: x, 'affine'),
+            'minus a source': (lambda x, y: -x, 'affine'),
+            'a sum': (lambda x, y: x + y, 'affine'),
+            'a constant multiple': (lambda x, y: 3.0 * x, 'affine'),
+            'a constant divisor': (lambda x, y: x / 3.0, 'affine'),
+            'a kink in a sum': (lambda x, y: x + m.abs(y), 'kinked'),
+            'a constant multiple of a kink':
+                (lambda x, y: 3.0 * m.abs(x), 'kinked'),
+            'minus a kink': (lambda x, y: -m.abs(x), 'kinked'),
+            'a product of two movers': (lambda x, y: x * y, None),
+            'a moving divisor': (lambda x, y: x / y, None),
+            'a power': (lambda x, y: x ** 2, None),
+            'a kink over a curved operand':
+                (lambda x, y: m.max(0.0, m.sin(x)), None),
+            'a kink over a product': (lambda x, y: m.abs(x * y), None),
+        }
+        for name, (build, expected) in table.items():
+            with self.subTest(name):
+                self.assertEqual(self.shape(build), expected)
+        # A branch placeholder is a CONSTANT on the piece being cut.
+        self.assertEqual(
+            _shape_of(ExpressionNode('name', text='$j0')), 'constant')
+        self.assertEqual(
+            _shape_of(ExpressionNode('binop', '*', (
+                ExpressionNode('name', text='$j0'),
+                ExpressionNode('name', text='angle')))), 'affine')

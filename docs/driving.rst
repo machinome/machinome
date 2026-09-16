@@ -754,6 +754,43 @@ mechanism shapes, and no vocabulary of gears. A returned object needs a
 ``forward(x)``, and an ``inverse(y)`` if the relation may ever be read
 backwards; a plain function is taken as forward-only.
 
+What a law costs under a running root
+-------------------------------------
+
+Under ``time = Time.running()`` the run has to FOLLOW the quantities a
+law is built from along each tick — to find where a gate opens, where a
+``floor`` steps, where a declared range is reached. How it does that is
+read off the law's own expression, once, when the machine is compiled.
+You declare nothing and there is no knob.
+
+It **solves** — one division, exact — where the quantity is affine in
+its sources: a sum, a difference, a constant multiple, a division by a
+constant. It also solves where the quantity is *piecewise* affine, which
+is what ``abs``, ``min`` and ``max`` make it. Each of those returns one
+of its operands exactly, so the path is cut where they change which one
+— nothing is recorded there, and no part moves — and each piece is
+solved like any affine one. Every profile built on them solves:
+``clamp``, ``clamp01``, ``ramp`` and ``piecewise``, which is how a
+motion profile is normally written::
+
+    def tooth_window(driver, driven):
+        # SOLVED: two kinks, three affine pieces
+        return lambda angle: 4 + 72 * clamp01((angle - 113.5) / 11.25)
+
+It **searches** everything else — ``sin``, ``cos``, ``sqrt``, a power, a
+product of two moving quantities, a moving divisor — by sampling the
+tick at 64 sub-intervals and bisecting behind each bracket it finds.
+That is correct and it is slower: tens of evaluations of the law per
+crossing instead of a handful, per tick, per relation that has one. It
+is also less exact, by the bisection's own tolerance rather than by a
+float. The classification is conservative and structural, so a kink over
+a curved operand — ``max(0, sin(phase))`` — is searched: a piece of it
+may happen to be straight, but the expression does not say so.
+
+If a running machine is slower than you expect, that is where to look
+first: a profile written with ``clamp01`` costs almost nothing, and the
+same profile written with a ``sin`` costs the search on every tick.
+
 A relation over a repeated child
 ---------------------------------
 

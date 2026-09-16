@@ -305,10 +305,15 @@ Two things are refused, and one more can refuse a tick:
 
 A level quantity that is AFFINE in the sources along the path — which is
 every periodic law in practice — has its crossings solved exactly, all of
-them. Anything else is sampled at 64 sub-intervals and each bracketed
-crossing bisected; a level quantity that turns twice inside one
-sub-interval is outside that guarantee, and the answer to it is a smaller
-``dt``.
+them. So does a PIECEWISE AFFINE one: ``abs``, ``min`` and ``max`` are
+continuous selections, each returning one of its operands exactly, so a
+level built over them — every ``clamp``, ``clamp01``, ``ramp`` and
+``piecewise`` profile — is cut at its own kinks and each piece solved,
+with nothing recorded at a kink and nothing sampled. Anything else — a
+``sin``, a ``sqrt``, a product of two moving quantities — is sampled at
+64 sub-intervals and each bracketed crossing bisected; a level quantity
+that turns twice inside one sub-interval is outside that guarantee, and
+the answer to it is a smaller ``dt``.
 
 A law that reads the coordinate it drives
 `````````````````````````````````````````
@@ -518,7 +523,9 @@ free; and the reverse after that blocks at ``36`` again. That is
 retention, and it admits the same travel whether the move is taken in one
 tick, four or forty. ``t*`` is EXACT wherever every edge between the
 pushing inputs and the stopped coordinate is affine — every ratio, every
-wiring, every linear formula; for a nonlinear upstream edge the stopped
+wiring, every linear formula — and wherever the determining law is
+PIECEWISE affine, which is solved on the piece the bound actually lies
+in; for a curved upstream edge the stopped
 coordinate is still committed at its bound exactly, while the group's
 other coordinates are stopped at a ``t*`` located on the linearized path.
 
@@ -630,5 +637,6 @@ One limit is stated rather than refused: a coordinate that leaves its
 range and RETURNS within one tick is not stopped, because the detection
 compares the tick's committed value. It cannot happen where the
 determiner is affine along the path — the common case, and every case in
-practice — and anywhere else the answer is a smaller ``dt``, as it is for
-a jump surface crossed twice inside one sub-interval.
+practice — nor where it is piecewise affine and MONOTONE between its
+kinks; anywhere else the answer is a smaller ``dt``, as it is for a jump
+surface crossed twice inside one sub-interval.

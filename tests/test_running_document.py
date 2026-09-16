@@ -52,6 +52,7 @@ from .base import BaseNodeTest
 from .running_project.machine import (Captured, ClassGate, Clearing, Clocked,
                                       ClockedBody, Columns, ColumnsBare,
                                       Crank, Derived, Gate, Gauged, Guarded,
+                                      KinkedStop, ClampedGate,
                                       LoopingTrain, NotRunning, OffCentre,
                                       OmittedControl, Optional, OptionalRead,
                                       PlainClearing,
@@ -1615,3 +1616,57 @@ class BlockDocumentTest(BaseNodeTest):
         self.assertEqual(minted,
                          [f'_j{index}' for index in range(len(minted))])
         self.assertEqual(len(minted), 2 + 4 + 3)
+
+
+class KinkedPublicationTest(BaseNodeTest):
+    """A KINKED quantity publishes itself as NOT AFFINE.
+
+    OpenSpec change ``cut-at-the-kink``, design.md sections 9 and 11 D.
+    The run learned a third shape for a followed quantity -- piecewise
+    affine -- and it stays INSIDE the run. The document says, per driven
+    end of a law and per jump, whether that quantity is AFFINE in its
+    sources, which is a two-valued statement a consumer uses to choose
+    between a solution and a search; a piecewise-affine quantity is not
+    affine, so the flag stays FALSE.
+
+    It has to. A consumer that read ``true`` there would interpolate
+    STRAIGHT THROUGH the kink -- a wrong crossing or a wrong stop in the
+    browser, which is the same trap the framework's own ``Edge.cuts``
+    had to be taught to avoid.
+    """
+
+    def edges_of(self, klass):
+        return document(klass())['program']['edges']
+
+    def test_a_kinked_law_with_no_jump_publishes_not_affine(self):
+        edges = self.edges_of(KinkedStop)
+        law = [edge for edge in edges if edge['kind'] == 'law']
+        self.assertEqual(len(law), 1)
+        self.assertEqual(law[0]['affine'], [False])
+        self.assertEqual(law[0]['plans'], [None])
+
+    def test_a_kinked_jump_level_publishes_not_affine(self):
+        edges = self.edges_of(ClampedGate)
+        law = [edge for edge in edges if edge['kind'] == 'law'][0]
+        jumps = law['plans'][0]['jumps']
+        self.assertEqual([one['primitive'] for one in jumps], ['>='])
+        self.assertFalse(jumps[0]['affine'])
+
+    def test_the_trains_law_publishes_what_it_always_published(self):
+        """`Train`'s `lever drives slide.travel` is one of the five
+        corpus determiners this cycle RECLASSIFIES -- `tooth_window` is
+        a `clamp01` -- and the flag it publishes does not move.
+
+        `ByteIdentityTest` pins the whole of that document against the
+        file captured before the change; this says which byte of it is
+        the one at risk.
+        """
+        with open(os.path.join(BASE_DOCUMENTS, 'running_train.json')) as f:
+            expected = json.load(f)
+        law = [edge for edge in self.edges_of(Train)
+               if edge['gives'] == ['slide.travel']][0]
+        self.assertEqual(law['affine'], [False])
+        self.assertEqual(law['plans'], [None])
+        committed = [edge for edge in expected['program']['edges']
+                     if edge['gives'] == ['slide.travel']][0]
+        self.assertEqual(law, committed)

@@ -954,11 +954,13 @@ ordinary solver's.
 A graph carrying a DISCONTINUOUS primitive (`floor`, `ceil`, `sign`, `%`,
 a comparison) is compiled a second time, into a JUMP PLAN (ADR-107): the
 jump nodes in the graph's postorder, each with the LEVEL QUANTITY whose
-surfaces it crosses and whether that quantity is affine in the sources,
-and a SKELETON of the whole law with every jump node replaced by a branch
+surfaces it crosses and that quantity's SHAPE in the sources, and a
+SKELETON of the whole law with every jump node replaced by a branch
 placeholder. Over a tick the plan cuts the path the sources take at every
-crossing it meets — solved exactly where the level quantity is affine,
-bracketed over 64 sub-intervals and bisected otherwise — reads one branch
+crossing it meets — solved exactly where the level quantity is affine, or
+PIECEWISE AFFINE and therefore cut at its own kinks and solved on each
+piece (ADR-123), bracketed over 64 sub-intervals and bisected otherwise —
+reads one branch
 per jump node at each piece's MIDPOINT, and sums the branch-substituted
 law's change over the pieces. So a jump never moves a part, nothing in
 the sum ever spans one, and no epsilon or direction test appears
@@ -1073,9 +1075,10 @@ is, with jumps admitted because a bound is evaluated at one point per
 tick and never integrated (ADR-109). The spans enter `Program.described()`
 and therefore the identity a snapshot is checked against. `Program.sources`
 is the inputs reaching each node key, one pass over the already ordered
-edges, a `check` edge contributing nothing; `Edge.affine` is the
+edges, a `check` edge contributing nothing; `Edge.shapes` is the
 per-driven-end classification that decides whether a stop on that end is
-solved or searched.
+solved or searched, and `Edge.affine` is the two-valued statement of it
+the document publishes.
 
 A TICK is increments only until it commits, and it is integrated in
 SEGMENTS (ADR-108): every input's increment is what its active command
@@ -1089,7 +1092,8 @@ coordinate that ends the stretch OUTSIDE a declared bound and further
 outside than it began it does not refuse anything: its bound is a
 PHYSICAL STOP. The fraction `t*` at which it reaches the bound is located
 — solved from the full-tick increment where its determiner is affine,
-solved piece by piece over its own jump partition where it has one,
+solved piece by piece over its own jump partition where it has one and
+over its own KINK BREAKPOINTS where it is piecewise affine (ADR-123),
 sampled over 64 sub-intervals and bisected otherwise, on the same three
 tolerances a jump crossing uses — the stretch is re-integrated over
 `[0, t*]`, the coordinate is committed AT its bound exactly, and every
@@ -1187,7 +1191,8 @@ coordinate qualifying to that id is refused at construction.
 Under the running mode: a crossing
 reached exactly at a tick's own boundary is integrated correctly but not
 recorded, a coordinate that leaves its range and returns within one tick
-is not stopped (impossible for an affine determiner; a smaller `dt`
+is not stopped (impossible for an affine determiner, and for a
+piecewise-affine one that is monotone between its kinks; a smaller `dt`
 otherwise), a constraint violated and relieved inside one sub-interval
 of the search is not seen either, a constraint's pushing test is net
 over the stretch rather than local at `t*` — so a push that needs TWO
@@ -2344,10 +2349,13 @@ The short list that changes must not silently break:
   reading a sibling would need that sibling's path while the sibling's
   own walk is cutting it — a joint walk over several plans that no
   mechanism has asked for yet.
-- **A kinked but piecewise-affine skeleton falls to the search**
-  (ADR-121): `clamp01` is two kinks and its pieces are affine, yet
-  `_affine_in_sources` calls it non-affine, so the Curta's own shape
-  pays 64 samples per piece where an exact path exists.
+- **A followed quantity is classified once, for the whole tick, and not
+  per PIECE** (ADR-123): a kink can pin a curved subtree to a constant on
+  one of its pieces — the Curta's detent cam is affine through its dwell
+  and curved through its rise — and a classification per piece at run
+  time would solve strictly more than a compile-time flag does. It costs
+  a classification per piece per tick and makes the answer depend on
+  which piece you are in, and nothing has measured what it would buy.
 - **A block's construction check is necessary and not sufficient**
   (ADR-122): which selector branch VECTORS are reachable is arithmetic
   about the selecting input rather than structure, so a particular

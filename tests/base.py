@@ -98,3 +98,57 @@ def preserve(test):
         test(self, *args)
 
     return new_test
+
+
+def graph_evaluations(sim, ticks):
+    """How many times a compiled graph is evaluated over `ticks` of
+    `sim` -- the run's own cost, counted where the run computes it.
+
+    Shared because it is the probe that says whether a followed quantity
+    was SOLVED or SEARCHED: a solve is a handful of evaluations and a
+    search is one per sub-interval plus the bisection behind each
+    bracket.
+    """
+    import solid_node.simulation.program as program_module
+
+    original = program_module._evaluated
+    counted = [0]
+
+    def counting(graph, inputs):
+        counted[0] += 1
+        return original(graph, inputs)
+
+    program_module._evaluated = counting
+    try:
+        sim.run(sim.dt * ticks)
+    finally:
+        program_module._evaluated = original
+    return counted[0]
+
+
+def expression_evaluations(sim, ticks):
+    """How many times an EXPRESSION GRAPH is evaluated over `ticks` --
+    `GraphValue.evaluate`, which is every skeleton and every jump level a
+    partition, a walk or a search asks for, and not only the whole-law
+    evaluations `graph_evaluations` sees.
+
+    It is the probe the `cut-at-the-kink` proposal's 2 861.3 per tick was
+    measured with (`openspec/changes/.../spikes/kink_baseline.py`), and
+    the only one that can see a self-read walk's cost at all: a law with
+    a jump plan never reaches `_evaluated`.
+    """
+    from solid_node.scad_expression import GraphValue
+
+    original = GraphValue.evaluate
+    counted = [0]
+
+    def counting(self, inputs):
+        counted[0] += 1
+        return original(self, inputs)
+
+    GraphValue.evaluate = counting
+    try:
+        sim.run(sim.dt * ticks)
+    finally:
+        GraphValue.evaluate = original
+    return counted[0]

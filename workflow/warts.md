@@ -2734,17 +2734,21 @@ and the shape item 9 needs is stated in the change's design.md §12.
   mixing a self-read end with a plain driven end would leave the plain end
   unbound at rest. Refused at class definition by name (design.md §1); no
   mechanism in the campaign has asked for the shape.
-- **A kinked but piecewise-affine skeleton falls to the 64-sample search where
-  an exact path exists.** `_affine_in_sources` calls a CALL non-affine, so a
-  skeleton gated by `clamp01` — two kinks whose pieces are each affine — is
-  not affine, the driven coordinate's own path is not affine in the fraction,
-  and every self-read crossing is SEARCHED rather than solved. That is the
-  Curta's own shape, and it is measured: `Clearing` (affine skeleton, solved)
-  runs at **1 349 ticks/s** and 99 graph evaluations per tick, `CurtaInterface`
+- **TAKEN UP as `cut-at-the-kink` (ADR-123): a kinked but piecewise-affine
+  skeleton fell to the 64-sample search where an exact path exists.**
+  `_affine_in_sources` called a CALL non-affine, so a skeleton gated by
+  `clamp01` — two kinks whose pieces are each affine — was not affine, the
+  driven coordinate's own path was not affine in the fraction, and every
+  self-read crossing was SEARCHED rather than solved. That is the Curta's own
+  shape, and it was measured: `Clearing` (affine skeleton, solved) ran at
+  **1 349 ticks/s** and 99 graph evaluations per tick, `CurtaInterface`
   (`clamp01` window, searched) at **24.4 ticks/s** and 2 861 — about 29 times
   the cost, six dials at 64 samples per piece plus the bisection behind each.
-  Re-measured at 27.2 ticks/s after the closure's fixes. A cheap exact path
-  for a piecewise-affine kink would remove it (design.md §11).
+  Re-measured at 27.2 ticks/s after the closure's fixes. `cut-at-the-kink`
+  classifies `abs`, `min` and `max` as CONTINUOUS SELECTIONS, cuts the path
+  at their breakpoints — recording nothing — and solves each piece:
+  `CurtaInterface` now pays 603 evaluations per tick at 130 ticks/s, and
+  `Clearing` and `Train` are unchanged to the evaluation.
 - **A repeated child's JOINT coordinate cannot be banked under a running root,
   so a `.repeat()` self-read cannot be a running machine.** Pre-existing and
   already recorded under the fix-warts campaign; recorded again here because
@@ -2823,12 +2827,19 @@ up; the Curta's own migration (item 6 there) and the viewer's execution of a
 version 7 document (item 7) are open in their own repositories.
 
 - **A stop on a block coordinate is never SOLVED.** A block's gives are classified
-  non-affine by construction (`Edge._affine_ends`), so `Run._locate` searches every
+  non-affine by construction (`Edge._end_shapes`), so `Run._locate` searches every
   stop on one: 64 samples plus bisection of the WHOLE block per event. Measured
   17.2 ms for the tick that drives `RangedBlock`'s lever into its range against
   1.3 ms for a quiet tick of the same block (`tools/bench_selection.py`). A later
   cycle could classify a block give affine per branch vector and take `_piecewise`.
-  Deferred; nothing has asked for the speed yet.
+  **Still open.** `cut-at-the-kink` examined it and found a DIFFERENT mechanism:
+  `_end_shapes` returns nothing for a block not because a block's value is curved
+  but because a block has no single expression until a branch vector is fixed and
+  the ORDER its members run in may differ from piece to piece, so classifying a
+  give would mean classifying it per branch vector AND proving the order stable on
+  the piece — ADR-122's territory, not a kink in an expression. That cycle
+  asserted `RangedBlock`'s tick cost does not move (16.0 ms/tick against its
+  recorded 16.1). Deferred; nothing has asked for the speed yet.
 - **`Program.sources` treats a block as ONE node.** Every input reaching any member
   is a candidate for a stop on any other (`['crank', 'shift', 'spin']` for
   `carry.travel` in `RangedBlock`); `_pushes` filters it per tick, so the answer is
@@ -2842,11 +2853,14 @@ version 7 document (item 7) are open in their own repositories.
   cannot fold it and a cycle gated only by `sign` is refused at construction —
   intended, and documented in `docs/driving.rst`, but a shape an author could
   reasonably expect to work. A comparison says the same thing and is switched.
-- **`_affine_in_sources` calls any CALL non-affine, so a `clamp01` in a selector's
-  level sends it to the 64-sample search** — pre-existing (recorded under
-  `read-the-driven-coordinate`), and the reason the Curta's own migration must write
-  its association as comparisons rather than the pose model's `1 − clamp01(abs(…))`
-  hat (`simulation/transmission.py:24`), which is not a jump node at all.
+- **FIXED by `cut-at-the-kink` (ADR-123): `_affine_in_sources` called any CALL
+  non-affine, so a `clamp01` in a selector's level sent it to the 64-sample
+  search** — pre-existing (recorded under `read-the-driven-coordinate`), and the
+  reason the Curta's own migration had to write its association as comparisons
+  rather than the pose model's `1 − clamp01(abs(…))` hat
+  (`simulation/transmission.py:24`), which is not a jump node at all. A
+  selector's level is located through `plan._partition` like any other, so a
+  kinked one is now solved for free; no block fixture has one yet.
 - **ADR-113's one-input pushing probe cannot see a push that needs TWO inputs
   moving together.** A clutch `(shaft & sleeve).drives(wheel.turn, law=s * (v > 0.5))`
   whose sleeve engages mid-tick while the shaft turns, the wheel declaring a range it
