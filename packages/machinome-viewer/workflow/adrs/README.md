@@ -64,3 +64,4 @@ both repositories. Consequences:
 - [ADR-056](EXPORT/ADR-056-a-marking-is-a-decal-in-the-parts-own-group.md) — A marking is a decal mesh in the part's own group, and the bias over the surface is the viewer's — **Accepted**, extends 035, consumes solid-node ADR-120
 - [ADR-057](EXPORT/ADR-057-a-self-read-edge-is-executed-from-the-retained-value.md) — A self-read edge is executed from the retained value, piece by piece — **Accepted**, extends 045 and 047, builds on 054, consumes solid-node ADR-121
 - [ADR-058](EXPORT/ADR-058-a-block-is-ordered-per-piece-from-the-published-edges.md) — A block is ordered per piece from the published edges — **Accepted**, extends 045 and 047, builds on 057, consumes solid-node ADR-122
+- [ADR-059](EXPORT/ADR-059-the-viewer-keeps-its-own-bundle-current.md) — The viewer keeps its own bundle current, and refuses what it cannot repair — **Proposed**
