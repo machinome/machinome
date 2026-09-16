@@ -101,6 +101,7 @@ REQUIRED = (
     'a switched source',
     'a selection crossing inside a tick',
     'a tick carrying both a selection crossing and a stop',
+    'an in-block gate crossing inside a tick',
 )
 
 COMPARISONS = ('<', '<=', '>', '>=', '==', '!=')
@@ -228,14 +229,22 @@ CORPUS = (
     # tripped by whichever wheel the carriage has brought under it, and
     # the higher wheel is advanced by the lever at one position and by
     # the crank at the other -- so each member reads a coordinate the
-    # other determines, through a comparison on a live input.
+    # other determines, through a comparison on a live input. Cranking
+    # by `2.0` over `0.3 s` at this `dt` gives six ticks of `1/3`, so the
+    # lever's `carry.travel` crosses the higher wheel's `>= 0.5` gate
+    # STRICTLY INSIDE tick 2 rather than landing on a tick boundary --
+    # which is what makes this scenario discriminate the block's order
+    # (`pin-the-block-order` design.md section 1): a consumer that
+    # executes the published members in listing order reads the lever
+    # before the lower wheel has pushed it through the detent and loses
+    # a sixth of a turn that never heals.
     {'name': 'ShiftedCarry', 'dt': 0.05, 'steps': 20, 'script': [
         {'tick': 1, 'move': {'input': 'crank', 'by': 2.0,
-                             'duration': 0.2}, 'handle': 'h0'},
+                             'duration': 0.3}, 'handle': 'h0'},
         {'tick': 8, 'move': {'input': 'shift', 'by': 1.0,
                              'duration': 0.2}, 'handle': 'h1'},
         {'tick': 14, 'move': {'input': 'crank', 'by': 2.0,
-                              'duration': 0.2}, 'handle': 'h2'},
+                              'duration': 0.3}, 'handle': 'h2'},
     ]},
     # A SELECTION CROSSING and a STOP in one tick: the lever is driven
     # into its declared range a third of the way along a tick whose
@@ -433,6 +442,27 @@ def uncovered_features(machines):
                 if tick['stops']:
                     seen.add('a tick carrying both a selection crossing '
                              'and a stop')
+            # An IN-BLOCK GATE CROSSING located strictly inside a tick:
+            # the previous tick's bank is what "moved" is measured
+            # against, so the first tick (no predecessor) is skipped.
+            if previous is not None:
+                changed = {name for name, value in tick['bank'].items()
+                           if previous.get(name) != value}
+                for crossing in tick['crossings']:
+                    if not 0 < crossing['t'] < 1:
+                        continue
+                    index = _member_of(program, crossing['coordinate'])
+                    if index not in selectors:
+                        continue
+                    gates, blockers = _in_block_names(
+                        program['edges'][index], crossing['primitive'],
+                        bindings, gives)
+                    if not any(names & changed for names in gates):
+                        continue
+                    if any(names & changed or not names <= set(tick['bank'])
+                           for names in blockers):
+                        continue
+                    seen.add('an in-block gate crossing inside a tick')
             if tick['stops'] and tick['crossings']:
                 seen.add('a tick carrying both a crossing and a stop')
             for command in tick['commands']:
@@ -507,6 +537,41 @@ def _selection(program, bindings):
                     found.add(jump['primitive'])
         selectors[index] = found - other
     return gives, selectors
+
+
+def _in_block_names(edge, primitive, bindings, gives):
+    """`(gates, selectors)` for `edge`'s jumps carrying `primitive`, each
+    a list of the free names its level reads (resolved transitively
+    through `bindings`, exactly as `_selection` resolves a level).
+
+    A GATE names a coordinate `gives` holds OTHER than `edge`'s own
+    driven end, ADR-121's self-read excluded because a self-read imposes
+    no order; a SELECTOR names none of `gives` at all. A jump naming
+    only `edge`'s own driven end is neither, and is not returned.
+    """
+    own = set(edge.get('gives', ()))
+    gates, selectors = [], []
+    for plan in edge.get('plans') or ():
+        if plan is None:
+            continue
+        levels = {jump['name']: jump['level'] for jump in plan['jumps']}
+        for jump in plan['jumps']:
+            if jump['primitive'] != primitive:
+                continue
+            names, pending = set(), [jump['level']]
+            while pending:
+                text = str(pending.pop())
+                for name in free_names(text, bindings):
+                    if name in levels:
+                        pending.append(levels[name])
+                    else:
+                        names.add(name)
+            reaches = (names & gives) - own
+            if reaches:
+                gates.append(reaches)
+            elif not names & gives:
+                selectors.append(names)
+    return gates, selectors
 
 
 def free_names(expression, bindings):

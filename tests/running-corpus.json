@@ -9357,7 +9357,7 @@
           "move": {
             "input": "crank",
             "by": 2.0,
-            "duration": 0.2
+            "duration": 0.3
           },
           "handle": "h0"
         },
@@ -9375,7 +9375,7 @@
           "move": {
             "input": "crank",
             "by": 2.0,
-            "duration": 0.2
+            "duration": 0.3
           },
           "handle": "h2"
         }
@@ -9384,11 +9384,11 @@
         {
           "tick": 1,
           "bank": {
-            "carry.travel": 0.5,
+            "carry.travel": 0.3333333333333333,
             "clearing": 0.0,
-            "crank": 0.5,
+            "crank": 0.3333333333333333,
             "higher.turn": 0.0,
-            "lower.turn": 0.5,
+            "lower.turn": 0.3333333333333333,
             "shift": 0.0
           },
           "crossings": [],
@@ -9397,12 +9397,47 @@
             {
               "handle": "h0",
               "status": "active",
-              "admitted": 0.5
+              "admitted": 0.3333333333333333
             }
           ]
         },
         {
           "tick": 2,
+          "bank": {
+            "carry.travel": 0.6666666666666667,
+            "clearing": 0.0,
+            "crank": 0.6666666666666666,
+            "higher.turn": 0.16666666666666669,
+            "lower.turn": 0.6666666666666667,
+            "shift": 0.0
+          },
+          "crossings": [
+            {
+              "relation": "(crank, shift, clearing, lower.turn) drives lower.turn",
+              "coordinate": "lower.turn",
+              "primitive": ">",
+              "level": 0.0,
+              "t": 0.5000000000000001
+            },
+            {
+              "relation": "(crank, shift, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0.0,
+              "t": 0.49999999999999994
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "active",
+              "admitted": 0.6666666666666666
+            }
+          ]
+        },
+        {
+          "tick": 3,
           "bank": {
             "carry.travel": 1.0,
             "clearing": 0.0,
@@ -9422,13 +9457,13 @@
           ]
         },
         {
-          "tick": 3,
+          "tick": 4,
           "bank": {
             "carry.travel": 1.0,
             "clearing": 0.0,
-            "crank": 1.5,
-            "higher.turn": 1.0,
-            "lower.turn": 1.5,
+            "crank": 1.3333333333333333,
+            "higher.turn": 0.8333333333333333,
+            "lower.turn": 1.3333333333333333,
             "shift": 0.0
           },
           "crossings": [],
@@ -9437,27 +9472,7 @@
             {
               "handle": "h0",
               "status": "active",
-              "admitted": 1.5
-            }
-          ]
-        },
-        {
-          "tick": 4,
-          "bank": {
-            "carry.travel": 1.0,
-            "clearing": 0.0,
-            "crank": 2.0,
-            "higher.turn": 1.5,
-            "lower.turn": 2.0,
-            "shift": 0.0
-          },
-          "crossings": [],
-          "stops": [],
-          "commands": [
-            {
-              "handle": "h0",
-              "status": "completed",
-              "admitted": 2.0
+              "admitted": 1.3333333333333333
             }
           ]
         },
@@ -9466,9 +9481,9 @@
           "bank": {
             "carry.travel": 1.0,
             "clearing": 0.0,
-            "crank": 2.0,
-            "higher.turn": 1.5,
-            "lower.turn": 2.0,
+            "crank": 1.6666666666666667,
+            "higher.turn": 1.1666666666666667,
+            "lower.turn": 1.6666666666666667,
             "shift": 0.0
           },
           "crossings": [],
@@ -9476,8 +9491,8 @@
           "commands": [
             {
               "handle": "h0",
-              "status": "completed",
-              "admitted": 2.0
+              "status": "active",
+              "admitted": 1.6666666666666667
             }
           ]
         },
@@ -9676,8 +9691,8 @@
           "bank": {
             "carry.travel": 1.0,
             "clearing": 0.0,
-            "crank": 2.5,
-            "higher.turn": 2.0,
+            "crank": 2.3333333333333335,
+            "higher.turn": 1.8333333333333335,
             "lower.turn": 2.0,
             "shift": 1.0
           },
@@ -9697,12 +9712,42 @@
             {
               "handle": "h2",
               "status": "active",
-              "admitted": 0.5
+              "admitted": 0.3333333333333335
             }
           ]
         },
         {
           "tick": 15,
+          "bank": {
+            "carry.travel": 1.0,
+            "clearing": 0.0,
+            "crank": 2.6666666666666665,
+            "higher.turn": 2.1666666666666665,
+            "lower.turn": 2.0,
+            "shift": 1.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "h0",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "h1",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "h2",
+              "status": "active",
+              "admitted": 0.6666666666666665
+            }
+          ]
+        },
+        {
+          "tick": 16,
           "bank": {
             "carry.travel": 1.0,
             "clearing": 0.0,
@@ -9732,12 +9777,12 @@
           ]
         },
         {
-          "tick": 16,
+          "tick": 17,
           "bank": {
             "carry.travel": 1.0,
             "clearing": 0.0,
-            "crank": 3.5,
-            "higher.turn": 3.0,
+            "crank": 3.333333333333333,
+            "higher.turn": 2.833333333333333,
             "lower.turn": 2.0,
             "shift": 1.0
           },
@@ -9757,37 +9802,7 @@
             {
               "handle": "h2",
               "status": "active",
-              "admitted": 1.5
-            }
-          ]
-        },
-        {
-          "tick": 17,
-          "bank": {
-            "carry.travel": 1.0,
-            "clearing": 0.0,
-            "crank": 4.0,
-            "higher.turn": 3.5,
-            "lower.turn": 2.0,
-            "shift": 1.0
-          },
-          "crossings": [],
-          "stops": [],
-          "commands": [
-            {
-              "handle": "h0",
-              "status": "completed",
-              "admitted": 2.0
-            },
-            {
-              "handle": "h1",
-              "status": "completed",
-              "admitted": 1.0
-            },
-            {
-              "handle": "h2",
-              "status": "completed",
-              "admitted": 2.0
+              "admitted": 1.333333333333333
             }
           ]
         },
@@ -9796,8 +9811,8 @@
           "bank": {
             "carry.travel": 1.0,
             "clearing": 0.0,
-            "crank": 4.0,
-            "higher.turn": 3.5,
+            "crank": 3.666666666666667,
+            "higher.turn": 3.166666666666667,
             "lower.turn": 2.0,
             "shift": 1.0
           },
@@ -9816,8 +9831,8 @@
             },
             {
               "handle": "h2",
-              "status": "completed",
-              "admitted": 2.0
+              "status": "active",
+              "admitted": 1.666666666666667
             }
           ]
         },

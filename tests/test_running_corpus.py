@@ -279,6 +279,37 @@ class CoverageGuardTest(TestCase):
                       missing)
         self.assertNotIn('a switched source', missing)
 
+    def test_a_corpus_with_no_in_block_gate_crossing_is_refused(self):
+        """OpenSpec change ``pin-the-block-order``: `RangedBlock` still
+        carries the block and its own selection crossing, but no
+        committed machine but `ShiftedCarry` crosses a GATE of a block
+        member strictly inside a tick -- so the two features are shown
+        to be independent."""
+        from tools.generate_running_corpus import uncovered_features
+
+        machines = [entry for entry in corpus()['machines']
+                    if entry['name'] != 'ShiftedCarry']
+        missing = uncovered_features(machines)
+        self.assertIn('an in-block gate crossing inside a tick', missing)
+        self.assertNotIn('a switched source', missing)
+
+    def test_a_corpus_with_no_in_block_gate_movement_is_refused(self):
+        """Every machine kept, but `ShiftedCarry`'s crossings blanked:
+        the corpus still states its block, and still loses the one
+        behaviour a consumer that orders a block by the published
+        listing cannot reproduce."""
+        from tools.generate_running_corpus import uncovered_features
+
+        machines = []
+        for entry in corpus()['machines']:
+            copy = dict(entry)
+            copy['ticks'] = [dict(tick, crossings=[]) if entry['name'] ==
+                             'ShiftedCarry' else tick
+                             for tick in entry['ticks']]
+            machines.append(copy)
+        missing = uncovered_features(machines)
+        self.assertIn('an in-block gate crossing inside a tick', missing)
+
     def test_a_corpus_whose_dial_never_holds_at_its_gate_is_refused(self):
         from tools.generate_running_corpus import uncovered_features
 
@@ -301,3 +332,97 @@ class CoverageGuardTest(TestCase):
         self.assertIn('a self-read coordinate holding at its gate while '
                       'its input moves on', missing)
         self.assertNotIn('a law that reads the coordinate it drives', missing)
+
+
+class BlockOrderTest(TestCase):
+    """OpenSpec change ``pin-the-block-order``: the corpus pins the
+    block's ORDER and not only its width. ADR-122 declares a block's
+    members as an ordered LISTING that a consumer SHALL NOT execute as
+    an execution order; this proves the corpus can tell the difference,
+    rather than trusting the feature list of `CoverageGuardTest` as a
+    proxy for it."""
+
+    def replay_banks(self, entry):
+        """Every tick's committed bank, replayed exactly as the
+        generator scripted it -- no assertion, so a divergence is
+        returned rather than raised."""
+        sim = Sim(machine_class(entry['name'])(), entry['dt'],
+                  record=len(entry['ticks']) + 1)
+        script = {}
+        for action in entry['script']:
+            script.setdefault(action['tick'], []).append(action)
+        handles, snapshots = {}, {}
+        banks = []
+        for step in range(1, len(entry['ticks']) + 1):
+            for action in script.get(step, ()):
+                if 'move' in action:
+                    request = dict(action['move'])
+                    handles[action['handle']] = sim.move(
+                        request.pop('input'), **request)
+                elif 'rate' in action:
+                    handles[action['handle']] = sim.rate(
+                        action['rate']['input'], action['rate']['rate'])
+                elif 'trigger' in action:
+                    issued = sim.trigger(action['trigger'])
+                    for handle, command in zip(action['handles'], issued):
+                        handles[handle] = command
+                elif 'snapshot' in action:
+                    snapshots[action['snapshot']] = sim.snapshot()
+                elif 'restore' in action:
+                    sim.restore(snapshots[action['restore']])
+                else:
+                    self.fail(f'unknown script action {action!r}')
+            sim.run(entry['dt'])
+            banks.append(dict(sim.state))
+        return banks
+
+    def disagreements(self, entry, banks, tolerance):
+        """Every `(tick, coordinate, corpus value, replayed value)`
+        whose two values fall outside the corpus's own tolerance
+        window."""
+        found = []
+        for expected, got in zip(entry['ticks'], banks):
+            for coordinate, value in expected['bank'].items():
+                mine = got[coordinate]
+                window = tolerance * max(1.0, abs(value), abs(mine))
+                if abs(value - mine) > window:
+                    found.append((expected['tick'], coordinate, value, mine))
+        return found
+
+    def test_a_consumer_that_executes_the_listing_order_disagrees(self):
+        from solid_node.simulation import program as program_module
+
+        fixture = corpus()
+        entry = next(one for one in fixture['machines']
+                     if one['name'] == 'ShiftedCarry')
+        tolerance = fixture['tolerance']['float']
+
+        unpatched = self.disagreements(
+            entry, self.replay_banks(entry), tolerance)
+        self.assertFalse(
+            unpatched,
+            'the UNPATCHED replay must reproduce the committed corpus '
+            f'exactly, so the first assertion below cannot pass by '
+            f'breaking the fixture instead of discriminating the order; '
+            f'found {unpatched}')
+
+        original = program_module._Block._order
+
+        def listing_order(self, forced, left, right):
+            return tuple(range(len(self.members)))
+
+        program_module._Block._order = listing_order
+        try:
+            patched = self.disagreements(
+                entry, self.replay_banks(entry), tolerance)
+        finally:
+            program_module._Block._order = original
+
+        self.assertTrue(
+            patched,
+            'a consumer that executes the block\'s members in the '
+            'PUBLISHED LISTING order (Sim ShiftedCarry, dt=0.05) must '
+            'disagree with the producer on at least one tick\'s bank '
+            '-- for example higher.turn diverging by one sixth of a '
+            'turn from tick 2 onward -- and it did not, so the corpus '
+            'no longer pins the block\'s order (ADR-122)')

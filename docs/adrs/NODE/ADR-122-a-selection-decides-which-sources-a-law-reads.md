@@ -621,3 +621,41 @@ identical values — and against `spikes/arbitrary.py`'s
   today, since the expression change already moves the identity); and
   ADR-113's pushing test, which remains net over the stretch and one
   input at a time.
+
+## Amendment, 2026-09-16 (`pin-the-block-order`)
+
+The `ShiftedCarry` scenario this decision added to pin the corpus against
+a consumer that executes a block's published listing as an execution
+order did not, in fact, discriminate it. Measured
+(`pin-the-block-order` evidence.md, `spikes/order.py`,
+`spikes/patched_corpus.py`): with `_Block._order` monkeypatched at
+runtime to return the members in the order they are LISTED — exactly
+what a version 7 consumer that ignored this ADR's own "SHALL NOT execute
+the members in the published order" would do — the committed
+`ShiftedCarry` entry replayed GREEN under both the listing order and the
+two members reversed, every bank value, crossing, stop and command
+identical over twenty ticks. Across the whole 19-scenario corpus the
+listing order reproduced every committed value; the only disagreement
+anywhere was `RangedBlock` tick 1's crossing COUNT (2 against 3), a
+different feature. The cause was the scenario's own arithmetic: cranking
+by `2.0` over `0.2 s` at `dt = 0.05` steps `carry.travel` through
+`0.5, 1.0` and lands it on the higher wheel's `>= 0.5` gate EXACTLY at a
+tick boundary, so the order in which the block's two members are read
+within a tick never has a chance to matter — reading the gate at the
+left end of a tick and reading it after the lever has advanced within
+that tick give the same answer.
+
+The decision itself is unchanged: a block's members are still an ordered
+LISTING and not an execution order, and nothing about how the run orders
+a piece moved. What changed is the scenario meant to hold a consumer to
+that promise. `pin-the-block-order` cranks the same scenario by `2.0`
+over `0.3 s` instead — six ticks of `1/3` — so `carry.travel` reaches
+`0.5` strictly inside tick 2. The listing order then loses one sixth of
+a turn of `higher.turn` from that tick onward and never heals it (`3.5`
+against `3.3333333333333335` by tick 20): 21 disagreements against zero
+before. `tests/test_running_corpus.py::BlockOrderTest` now replays
+`ShiftedCarry` under the patched order and asserts the divergence
+directly, rather than trusting the feature list of `CoverageGuardTest`
+as a proxy for it, and `uncovered_features` refuses a corpus missing the
+new `'an in-block gate crossing inside a tick'` feature. No other
+scenario, and nothing under `solid_node/`, moved.

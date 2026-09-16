@@ -5,6 +5,14 @@ History
 Unreleased
 ----------
 
+* The conformance corpus now **catches a consumer that runs a block's
+  members in the order the document lists them.** The ``ShiftedCarry``
+  scenario ADR-122 added to pin a block's order replayed green under
+  that published listing regardless: its detent landed exactly on a
+  tick boundary, so the order never mattered. Its script now crosses the
+  gate strictly inside a tick, and a framework test replays it with the
+  block ordered as published rather than per piece and asserts the two
+  disagree.
 * **A selection decides which sources a law reads.** A mechanism's
   dependencies may be SELECTED by where one of its own parts stands, so
   that the union of what it reads over every selection is cyclic although

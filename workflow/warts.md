@@ -2826,3 +2826,24 @@ version 7 document (item 7) are open in their own repositories.
   when an unrelated hoist moved); on the Curta-shaped fixture a lift moved two dials
   by an ulp. Parenthesized as `own_left + (S − base)`; every pre-existing corpus
   entry byte-identical afterwards (see the change's evidence.md).
+- **FIXED by `pin-the-block-order`: the corpus's `ShiftedCarry` scenario did
+  not discriminate the block's order.** ADR-122 named the corpus as the
+  thing that pins the published listing against a consumer that executes
+  it as an order, and added `ShiftedCarry` to be the scenario that proves
+  it. Measured: `_Block._order` monkeypatched at runtime to return the
+  members in listing order left the committed scenario GREEN — every bank
+  value, crossing, stop and command identical in twenty ticks — under
+  BOTH the listing order and the two members reversed, because the
+  crank's `2.0` over `0.2 s` landed the lever's `carry.travel >= 0.5` gate
+  exactly on a tick boundary and the run recorded no crossing at all.
+  Across the whole 19-scenario corpus the listing order reproduced every
+  bank value, stop, command status and admitted travel; the one thing it
+  got wrong anywhere was `RangedBlock` tick 1's crossing COUNT (2 against
+  3). `pin-the-block-order` changed the script alone — crank `2.0` over
+  `0.3 s` instead, six ticks of `1/3` — so the gate now crosses strictly
+  inside tick 2: the listing order loses a sixth of a turn of
+  `higher.turn` from that tick on and never heals (`3.5` against
+  `3.3333333333333335` at tick 20), 21 disagreements against zero before.
+  `tests/test_running_corpus.py::BlockOrderTest` now pins the
+  discrimination directly, and `uncovered_features` refuses a corpus
+  missing the new `'an in-block gate crossing inside a tick'` feature.

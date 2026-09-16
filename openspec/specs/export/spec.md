@@ -1155,10 +1155,21 @@ READS THE COORDINATE IT DRIVES — one whose driven coordinate holds at its
 gate while the input that reached it goes on moving — a tick in which a
 self-read crossing and a stop both fall, a SWITCHED SOURCE — a law edge
 reading a coordinate another member of its own block determines — a
-SELECTION CROSSING located inside a tick, and a tick in which a selection
-crossing and a stop both fall. The framework's suite SHALL test
-that refusal directly, so the corpus's width is visible without running the
-generator.
+SELECTION CROSSING located inside a tick, a tick in which a selection
+crossing and a stop both fall, and an IN-BLOCK GATE CROSSING located
+STRICTLY INSIDE a tick — a crossing recorded under a block member that
+only a jump reading a coordinate ANOTHER member of that block determines
+can account for, the member's own driven end excluded. The framework's
+suite SHALL test that refusal directly, so the corpus's width is visible
+without running the generator.
+
+The corpus SHALL DISCRIMINATE the order in which a block's members are
+run, because a document publishes a block's members as a listing and not
+as an execution order: a consumer that ran them in the order they are
+published, rather than ordering each piece of the tick for itself, SHALL
+disagree with the corpus by more than the stated tolerance on the bank of
+at least one tick. A framework test SHALL assert this directly, on a
+named scenario, rather than inferring it from the feature list.
 
 A framework test SHALL assert that each fixture machine's REAL published
 document reproduces the fixture's own program-bearing keys, so the fixture
@@ -1209,6 +1220,23 @@ cannot drift from the producer it claims to come from.
   machines carries a block, or none of whose ticks locates a selection
   crossing
 - **THEN** it refuses naming the uncovered feature and writes nothing
+
+#### Scenario: A corpus missing an in-block gate crossing is refused
+
+- **WHEN** the generator is asked to write a corpus none of whose ticks
+  records a crossing, strictly inside the tick, under a block member that
+  only a gate on a coordinate another member of that block determines can
+  account for
+- **THEN** it refuses naming the uncovered feature and writes nothing
+
+#### Scenario: The corpus catches a consumer that runs a block in the published order
+
+- **WHEN** a corpus scenario carrying a block is replayed through the
+  framework's run with the block's members run in the order the document
+  publishes them, instead of ordered for each piece of the tick
+- **THEN** the replay disagrees with the corpus by more than the stated
+  tolerance on the bank of at least one tick, while the same replay with
+  the members ordered per piece reproduces the corpus
 
 ### Requirement: A running document publishes the controls its parts carry
 
