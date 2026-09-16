@@ -57,6 +57,7 @@ from dataclasses import dataclass, replace
 
 from solid2.core.object_base import OpenSCADConstant
 
+from solid_node import math as motion_math
 from solid_node.expression_graph import ExpressionNode, free_names, postorder
 from solid_node.math import SYMBOLIC_BUILTINS
 from solid_node.motion.couplings import (_solved_formulas, _wirings,
@@ -379,13 +380,14 @@ class JumpPlan:
             # anything -- and must never reach the sum below, where a
             # one-point piece would read as minus a jump.
             return 0.0
+        paths = _LevelPaths(_moving_names(delta))
         cuts = self._partition(start, delta, described, coordinate,
-                               crossings, tick, forced)
+                               crossings, tick, forced, paths)
         total = 0.0
         for left, right in zip(cuts, cuts[1:]):
             branches = self._branches(start, delta, (left + right) / 2.0,
                                       len(self.jumps), described, coordinate,
-                                      forced)
+                                      forced, paths)
             total += (self._substituted(start, delta, right, branches)
                       - self._substituted(start, delta, left, branches))
         return total
@@ -396,20 +398,28 @@ class JumpPlan:
         return self.skeleton.evaluate(values)
 
     def _branches(self, start, delta, t, count, described, coordinate,
-                  forced=None):
+                  forced=None, paths=None):
         """Every jump node's branch at one point of the path, in
         postorder, so a node nested inside another's argument is
         determined first.
 
         A node the caller FORCED reads the branch it was given and its
         level is never evaluated: one of the two places a block's
-        selector is read.
+        selector is read. This is a ONE-SHOT point -- every jump here is
+        asked its branch exactly once for this `t` -- so `paths`, when
+        given, still shares a jump's decided STRUCTURE with any other use
+        of it in the same scope, but always binds.
         """
         values = _along(start, delta, t)
         found = {}
+        piece = paths.new_piece() if paths is not None else None
         for jump in self.jumps[:count]:
             if forced is not None and jump.placeholder in forced:
                 branch = forced[jump.placeholder]
+            elif paths is not None:
+                level = paths.value(jump, piece, values, described,
+                                    coordinate)
+                branch = _branch_of(jump, level)
             else:
                 level = self._level(jump, values, described, coordinate)
                 branch = _branch_of(jump, level)
@@ -418,18 +428,8 @@ class JumpPlan:
         return found
 
     def _level(self, jump, values, described, coordinate):
-        try:
-            level = jump.argument.evaluate(values)
-        except ZeroDivisionError:
-            raise _no_level(jump, described, coordinate) from None
-        if jump.primitive in ('floor', 'ceil', '%') \
-                and not math.isfinite(level):
-            # An integer branch cannot be read off an infinity or a nan,
-            # and the arithmetic that would try raises something the
-            # tick's rollback does not catch. Refuse it the same way.
-            raise _no_level(jump, described, coordinate,
-                            'a level quantity that is not a finite number')
-        return level
+        return _leveled(lambda: jump.argument.evaluate(values),
+                        jump, described, coordinate)
 
     ##############################################
     # The partition
@@ -457,7 +457,7 @@ class JumpPlan:
         return _Retained(self, own)
 
     def _partition(self, start, delta, described, coordinate,
-                   crossings, tick, forced=None):
+                   crossings, tick, forced=None, paths=None):
         """The tick's path, cut at every crossing of every jump surface.
 
         The jump nodes are taken in POSTORDER, so a node's level
@@ -466,7 +466,13 @@ class JumpPlan:
         cuts those inner branches are constant, which is what makes the
         level quantity a continuous function of `t` there and the search
         below well-posed.
+
+        `paths` is this call's own level path values (design.md section
+        3.3): built here when a caller does not already hold one for a
+        wider scope, one per jump, and re-bound every piece on `inner`.
         """
+        if paths is None:
+            paths = _LevelPaths(_moving_names(delta))
         cuts = [0.0, 1.0]
         located = []
         for index, jump in enumerate(self.jumps):
@@ -479,10 +485,12 @@ class JumpPlan:
             found = []
             for left, right in zip(cuts, cuts[1:]):
                 inner = self._branches(start, delta, (left + right) / 2.0,
-                                       index, described, coordinate, forced)
+                                       index, described, coordinate, forced,
+                                       paths)
+                piece = paths.new_piece()
                 found.extend(self._crossings_of(
                     jump, start, delta, inner, left, right,
-                    described, coordinate))
+                    described, coordinate, paths, piece))
                 if len(found) > _MAX_CROSSINGS:
                     raise _too_many(described, coordinate, jump, len(found))
             if not found:
@@ -504,15 +512,19 @@ class JumpPlan:
         return cuts
 
     def _crossings_of(self, jump, start, delta, inner, left, right,
-                      described, coordinate):
+                      described, coordinate, paths=None, piece=None):
         """Where `jump` reaches one of its surfaces between two cuts."""
         if jump.affine:
             return self._solved(jump, start, delta, inner, left, right,
-                                described, coordinate)
+                                described, coordinate, paths=paths,
+                                piece=piece)
         if jump.shape == 'kinked':
             # A KINKED level is affine on each sub-interval between its
             # own kinks, so the piece is cut there -- recording nothing,
             # counting toward nothing -- and each sub-piece is solved.
+            # The kink's own LEVEL is a DIFFERENT sub-graph (`_kink_level`
+            # builds a fresh `a - b` node for `min`/`max`) and stays on
+            # `GraphValue.evaluate` this cycle (design.md section 3.3).
             def at(t):
                 values = _along(start, delta, t)
                 values.update(inner)
@@ -523,7 +535,8 @@ class JumpPlan:
                 # No kink is reached inside this piece, so the level IS
                 # affine over the whole of it.
                 return self._solved(jump, start, delta, inner, left, right,
-                                    described, coordinate)
+                                    described, coordinate, paths=paths,
+                                    piece=piece)
             edges = (left,) + breaks + (right,)
             found = []
             for index, (low_t, high_t) in enumerate(zip(edges, edges[1:])):
@@ -531,16 +544,22 @@ class JumpPlan:
                 # last, so a surface lying exactly on an interior
                 # breakpoint is not lost between the two sub-pieces that
                 # meet there; `_deduplicated` is what stops it being
-                # taken twice, and it exists for exactly this.
+                # taken twice, and it exists for exactly this. Every
+                # sub-piece here still shares ONE `inner` (the SAME
+                # branches, and so the SAME piece token): only the
+                # kink's own level, left on `GraphValue.evaluate`,
+                # distinguishes them.
                 found.extend(self._solved(
                     jump, start, delta, inner, low_t, high_t, described,
-                    coordinate, closed=index < len(edges) - 2))
+                    coordinate, closed=index < len(edges) - 2, paths=paths,
+                    piece=piece))
             return _deduplicated(found)
         return self._searched(jump, start, delta, inner, left, right,
-                              described, coordinate)
+                              described, coordinate, paths, piece)
 
     def _solved(self, jump, start, delta, inner, left, right,
-                described, coordinate, closed=False):
+                described, coordinate, closed=False, paths=None,
+                piece=None):
         """An AFFINE stretch of the level quantity: determined everywhere
         on it by its two endpoint values, so every surface between them
         is SOLVED -- all of them, which is what makes a crank that passes
@@ -553,9 +572,9 @@ class JumpPlan:
         reached by the sub-piece before.
         """
         low = self._level_at(jump, start, delta, left, inner,
-                             described, coordinate)
+                             described, coordinate, paths, piece)
         high = self._level_at(jump, start, delta, right, inner,
-                              described, coordinate)
+                              described, coordinate, paths, piece)
         if high == low:
             return []
         found = []
@@ -568,13 +587,14 @@ class JumpPlan:
         return found
 
     def _searched(self, jump, start, delta, inner, left, right,
-                  described, coordinate):
+                  described, coordinate, paths=None, piece=None):
         """Anything else: sampled, bracketed and bisected."""
         width = (right - left) / _SUBDIVISIONS
         points = [left + width * step for step in range(_SUBDIVISIONS)]
         points.append(right)
         levels = [self._level_at(jump, start, delta, where, inner,
-                                 described, coordinate) for where in points]
+                                 described, coordinate, paths, piece)
+                 for where in points]
         found = []
         for step in range(_SUBDIVISIONS):
             low, high = levels[step], levels[step + 1]
@@ -591,31 +611,35 @@ class JumpPlan:
                 else:
                     found.append((self._bisect(
                         jump, start, delta, inner, level, points[step],
-                        points[step + 1], described, coordinate), level))
+                        points[step + 1], described, coordinate, paths,
+                        piece), level))
             if len(found) > _MAX_CROSSINGS:
                 break
         return found
 
     def _bisect(self, jump, start, delta, inner, level, low, high,
-                described, coordinate):
+                described, coordinate, paths=None, piece=None):
         below = self._level_at(jump, start, delta, low, inner,
-                               described, coordinate) - level
+                               described, coordinate, paths, piece) - level
         for _round in range(_BISECTION_ROUNDS):
             if high - low <= _CROSSING_TOLERANCE:
                 break
             middle = (low + high) / 2.0
             here = self._level_at(jump, start, delta, middle, inner,
-                                  described, coordinate) - level
+                                  described, coordinate, paths, piece) - level
             if here == 0.0 or (here < 0.0) != (below < 0.0):
                 high = middle
             else:
                 low, below = middle, here
         return (low + high) / 2.0
 
-    def _level_at(self, jump, start, delta, t, inner, described, coordinate):
+    def _level_at(self, jump, start, delta, t, inner, described, coordinate,
+                  paths=None, piece=None):
         values = _along(start, delta, t)
         values.update(inner)
-        return self._level(jump, values, described, coordinate)
+        if paths is None:
+            return self._level(jump, values, described, coordinate)
+        return paths.value(jump, piece, values, described, coordinate)
 
 
 def _is_jump(node):
@@ -772,6 +796,195 @@ class _KinkCuts:
         return tuple(cuts[1:-1])
 
 
+##############################################
+# Only what moves along a tick's path is evaluated
+
+# The same operator objects `GraphValue.evaluate` computes with -- reused
+# here rather than restated, so a standing or moving node is the
+# identical arithmetic either evaluator takes it through.
+_PATH_OPERATORS = {'+': operator.add, '-': operator.sub, '*': operator.mul,
+                   '/': operator.truediv, '%': math.fmod, '^': operator.pow,
+                   '<': operator.lt, '<=': operator.le, '>': operator.gt,
+                   '>=': operator.ge, '==': operator.eq, '!=': operator.ne}
+
+
+def _path_node_value(node, values, computed, standing=None):
+    """One node's value, read the same way `GraphValue.evaluate` reads
+    it: a child already computed on THIS walk is taken from `computed`,
+    and one this walk never visits -- because it stands -- is taken from
+    `standing`, the piece's own bound value for it. Same operators, same
+    dispatch, so the float is the one the whole-graph walk gives."""
+    if node.kind == 'num':
+        return float(node.text)
+    if node.kind == 'name':
+        if node.text not in values:
+            raise ValueError(f'Unresolved motion input {node.text[:80]!r}')
+        return float(values[node.text])
+    args = []
+    for child in node.children:
+        args.append(computed[child] if child in computed else standing[child])
+    if node.kind == 'binop':
+        return _PATH_OPERATORS[node.op](*args)
+    if node.kind == 'unary':
+        return -args[0] if node.op == '-' else +args[0]
+    if node.kind == 'call' and node.op in SYMBOLIC_BUILTINS:
+        return getattr(motion_math, node.op)(*args)
+    raise ValueError(f'Cannot numerically resolve {node!r}')
+
+
+def _visited(count):
+    """One `_PathValue.at` charges `count` node visits and reports them
+    here -- the seam `tests.base.graph_node_visits` patches, because a
+    bound path's fast walk never calls `postorder` and so is invisible to
+    a probe that only counts postorder steps."""
+
+
+class _PathValue:
+    """One compiled graph followed along ONE tick's path.
+
+    Built where the path is known, from the names the tick MOVES. Every
+    node none of whose sources move is a constant of the path -- computed
+    ONCE, from the piece's own inputs, in `bind` -- and read back at every
+    later point of that piece; only the nodes that move are evaluated per
+    point, in `at`. The arithmetic is unchanged, node for node and
+    operator for operator, so a node's value is the SAME FLOAT whether it
+    is computed once or many times.
+
+    Structure -- which nodes move -- is decided ONCE, in the walk `bind`
+    makes for the piece's own first point: the same postorder walk
+    `GraphValue.evaluate` would have made anyway, so deciding it costs a
+    boolean per node and nothing else. Standing VALUES are re-bound every
+    piece, because a branch placeholder is a constant only there; `bind`
+    is called once per piece and `at` for every later point of it. No
+    cache outlives the object, and the object itself never outlives the
+    tick that built it.
+    """
+
+    __slots__ = ('root', 'moving', 'order', 'standing')
+
+    def __init__(self, graph, moving):
+        self.root = as_node(graph)
+        self.moving = frozenset(moving)
+        self.order = None       # decided on the first `bind`; a tuple of
+                                # the nodes that MOVE, in postorder.
+        self.standing = {}      # this piece's non-moving node values.
+
+    def bind(self, values):
+        """A new piece: recompute the standing part under `values` --
+        this piece's own branches included -- deciding, the first time
+        ever, which nodes move in the very same walk. Returns the root's
+        value at `values`, exactly what `GraphValue.evaluate` would have
+        returned for this point."""
+        computed = {}
+        standing = {}
+        deciding = self.order is None
+        moves = {} if deciding else None
+        order = [] if deciding else None
+        known = None if deciding else frozenset(self.order)
+        for node in postorder([self.root]):
+            computed[node] = _path_node_value(node, values, computed)
+            if deciding:
+                if node.kind == 'name':
+                    node_moves = node.text in self.moving
+                else:
+                    node_moves = any(moves[child] for child in node.children)
+                moves[node] = node_moves
+                if node_moves:
+                    order.append(node)
+                else:
+                    standing[node] = computed[node]
+            elif node not in known:
+                standing[node] = computed[node]
+        if deciding:
+            self.order = tuple(order)
+        self.standing = standing
+        return computed[self.root]
+
+    def at(self, values):
+        """A later point of the SAME piece: walk only the nodes that
+        move, in the same postorder `bind` decided, reading a standing
+        child back from the value this piece bound. A graph with no
+        moving node at all returns its standing root without walking."""
+        if not self.order:
+            _visited(0)
+            return self.standing[self.root]
+        computed = {}
+        standing = self.standing
+        for node in self.order:
+            computed[node] = _path_node_value(node, values, computed, standing)
+        _visited(len(self.order))
+        return computed[self.root]
+
+
+def _leveled(compute, jump, described, coordinate):
+    """`JumpPlan._level`'s refusal rules, over any way of computing the
+    raw level -- a plain graph evaluation or a bound path's point --
+    unchanged either way: a division by zero refuses the tick, and an
+    integer-branch primitive refuses a level that is not a finite
+    number."""
+    try:
+        level = compute()
+    except ZeroDivisionError:
+        raise _no_level(jump, described, coordinate) from None
+    if jump.primitive in ('floor', 'ceil', '%') \
+            and not math.isfinite(level):
+        raise _no_level(jump, described, coordinate,
+                        'a level quantity that is not a finite number')
+    return level
+
+
+def _moving_names(delta):
+    """The names a tick's path MOVES: a source whose increment is
+    non-zero -- the run's own statement, never inferred."""
+    return frozenset(name for name, value in delta.items() if value)
+
+
+class _LevelPaths:
+    """One jump plan's LEVEL path values, over one caller's own scope --
+    an `increment`/`cuts` call, or the outer layer of one self-read walk.
+
+    A jump's path value is built on its first use here and kept for the
+    rest of that scope; its structure is therefore decided once even
+    though the plan itself is compiled once and reused over many ticks --
+    this object is not. Its standing part is re-bound whenever the piece
+    identifying it changes underneath it.
+
+    A piece is identified by a token from `new_piece`, a monotonic
+    counter -- NEVER a transient dict's `id()`. A piece dict such as
+    `inner` or `branches` is typically unreferenced the moment its scope
+    moves to the next piece, and CPython is then free to hand an
+    UNRELATED later dict the exact same address: keying a piece by
+    `id()` let a stale standing value from an earlier, already-freed
+    piece answer for a later one that happened to reuse its memory --
+    the actual bug this class was rewritten to close (evidence.md,
+    task 6.1's first red run against `Clearing`).
+    """
+
+    __slots__ = ('moving', 'paths', 'bound', 'counter')
+
+    def __init__(self, moving):
+        self.moving = frozenset(moving)
+        self.paths = {}
+        self.bound = {}
+        self.counter = 0
+
+    def new_piece(self):
+        """A fresh token, never reused for the life of this object."""
+        self.counter += 1
+        return self.counter
+
+    def value(self, jump, piece, values, described, coordinate):
+        path = self.paths.get(jump.placeholder)
+        if path is None:
+            path = _PathValue(jump.argument, self.moving)
+            self.paths[jump.placeholder] = path
+        bind = self.bound.get(jump.placeholder) != piece
+        if bind:
+            self.bound[jump.placeholder] = piece
+        return _leveled(lambda: path.bind(values) if bind else path.at(values),
+                        jump, described, coordinate)
+
+
 def _dependence(plan, own):
     """Which of a plan's jump nodes DEPEND on the driven coordinate.
 
@@ -902,7 +1115,9 @@ class _Walk:
     """One driven end's piece-by-piece walk over one tick."""
 
     __slots__ = ('reading', 'plan', 'own', 'start', 'delta', 'described',
-                 'coordinate', 'taken', 'forced')
+                 'coordinate', 'taken', 'forced', '_skeleton_path',
+                 '_skeleton_bound', '_level_paths', '_level_bound',
+                 '_outer_paths', '_live_branches')
 
     def __init__(self, reading, start, delta, described, coordinate,
                  forced=None):
@@ -923,6 +1138,29 @@ class _Walk:
         # whole walk through layer one alone.
         self.forced = forced
         self.taken = 0
+        # Only what moves along this WALK's path is evaluated
+        # (design.md section 3.3): the skeleton and each dependent jump's
+        # level get ONE path value each, built here and re-bound per
+        # piece on `branches`; the outer layer's own jump levels share
+        # ONE `_LevelPaths` for the whole walk, re-bound per piece on
+        # `inner`. None of this outlives the walk.
+        moving = _moving_names(self.delta)
+        self._skeleton_path = _PathValue(self.plan.skeleton, moving)
+        self._skeleton_bound = None
+        self._level_paths = {jump.placeholder:
+                             _PathValue(jump.argument, moving | {self.own})
+                             for jump in reading.dependent}
+        self._level_bound = {}
+        self._outer_paths = _LevelPaths(moving)
+        # `_skeleton`/`_level` key a piece by `id(branches)`. That is
+        # only safe as long as no two DIFFERENT `branches` dicts built
+        # during this walk can ever share an address -- which CPython
+        # would happily do the moment an earlier one is garbage
+        # collected (`_tentative`'s own docstring; the bug this walk was
+        # fixed for, evidence.md task 6.1). Keeping every `branches`
+        # dict this walk ever builds alive here, for the walk's whole
+        # life, is what makes that safe.
+        self._live_branches = []
 
     ##############################################
     # The two layers
@@ -999,7 +1237,7 @@ class _Walk:
             return (0.0, 1.0)
         return self.reading.outer._partition(
             self.start, self.delta, self.described, self.coordinate,
-            crossings, tick, self.forced)
+            crossings, tick, self.forced, self._outer_paths)
 
     def _outer_branches(self, left, right):
         if not self.reading.outer.jumps:
@@ -1007,7 +1245,7 @@ class _Walk:
         return self.reading.outer._branches(
             self.start, self.delta, (left + right) / 2.0,
             len(self.reading.outer.jumps), self.described, self.coordinate,
-            self.forced)
+            self.forced, self._outer_paths)
 
     ##############################################
     # The branches at a piece's LEFT END
@@ -1060,6 +1298,10 @@ class _Walk:
 
     def _tentative(self, t, own_left, outer_branches, forced):
         branches = dict(outer_branches)
+        # Kept alive for the rest of the walk (see `__init__`): its
+        # `id()` is this piece's key, and that key must never be handed
+        # to a later, unrelated dict.
+        self._live_branches.append(branches)
         sitting = {}
         for jump in self.reading.dependent:
             level = self._level(jump, t, own_left, branches)
@@ -1336,16 +1578,35 @@ class _Walk:
     # Evaluation
 
     def _skeleton(self, t, branches):
+        """Only what moves along this walk's path is evaluated
+        (design.md section 3): the skeleton's structure is decided once,
+        on this piece's first point, and every later point of the SAME
+        piece -- the same `branches` dict, by identity -- walks only the
+        nodes that move."""
         values = _along(self.start, self.delta, t)
         values.update(branches)
-        return self.plan.skeleton.evaluate(values)
+        key = id(branches)
+        if self._skeleton_bound != key:
+            self._skeleton_bound = key
+            return self._skeleton_path.bind(values)
+        return self._skeleton_path.at(values)
 
     def _level(self, jump, t, own_value, branches):
+        """The same mechanism for a DEPENDENT jump's level: the driven
+        coordinate is MOVING here (design.md section 3.2) -- it is handed
+        its own value at every point -- so it is in the path value's
+        moving names, added explicitly in `__init__` because `self.delta`
+        deliberately zeroes it."""
         values = _along(self.start, self.delta, t)
         values[self.own] = own_value
         values.update(branches)
-        return self.plan._level(jump, values, self.described,
-                                self.coordinate)
+        path = self._level_paths[jump.placeholder]
+        key = id(branches)
+        bind = self._level_bound.get(jump.placeholder) != key
+        if bind:
+            self._level_bound[jump.placeholder] = key
+        return _leveled(lambda: path.bind(values) if bind else path.at(values),
+                        jump, self.described, self.coordinate)
 
 
 def _too_many(described, coordinate, jump, count):

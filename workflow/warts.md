@@ -2774,7 +2774,54 @@ and the shape item 9 needs is stated in the change's design.md §12.
 
 ## Originating Curta follow-up: seconds per Python tick (2026-09-15)
 
-**Status: recorded; triage open.** The pilot explicitly chose to keep
+**Status: TAKEN UP as `evaluate-only-what-moves` (ADR-124), 2026-09-16.**
+`cut-at-the-kink` (ADR-123) measured the shape of this cost and stated
+plainly that it did not claim to move it; `evaluate-only-what-moves`
+took it up. Measured on this worktree: 83.7 % of a Curta tick was
+`GraphValue.evaluate` recomputing, at every one of 64 samples, the 89–98 %
+of a followed graph that no source moving on that tick's path can
+change. The fix computes that standing part once per graph per tick and
+reads it back at every later point, unconditionally and structurally —
+no knob, no declaration, no sampling decision.
+
+**Before → after**, read-only against the originating project (branch
+`direct-operation`, HEAD `9fb725f`):
+
+| measure | before | after |
+| --- | --- | --- |
+| `running_probe --ticks 3`, seconds per 0.1-s tick | 3.279 / 3.273 | 0.727 / 0.727 (4.5×) |
+| committed snapshot after three ticks (SHA-256) | `dda09193…` | `dda09193…`, identical |
+| `simulation/test_running.py` + `test_running_clearing.py` | 843.18 s | 274.17 s (≤ 1/3) |
+
+**Two mechanisms remain, measured and deferred to their own cycles, not
+taken up here:**
+
+- **`declared_ports` is re-walked from every call, not memoised by
+  class.** 61 % of construction (5.46 s → 1.98 s memoised alone) and
+  12.5 % of a tick (3.27 s → 2.82 s memoised alone; 0.294 s with
+  `evaluate-only-what-moves` together). Now the biggest remaining item.
+  It needs its own answer to when a class's port enumeration may be
+  trusted to stand — a declarative class is built dynamically by
+  `.repeat()`, so a memo keyed by class either holds classes alive or
+  needs a weak key. **Open.**
+- **A per-PIECE classification** (`cut-at-the-kink` design.md §8's
+  question, now measured): substituting every kink whose level keeps one
+  sign over the piece would make 192 of the Curta's 200 searched
+  skeletons solvable (160 constant, 32 kinked, 8 still curved). Not
+  taken: it MOVES a crossing located by search to the solved answer —
+  every recorded crossing would move — and it makes the classification
+  depend on which piece you are in, which ADR-123 deliberately kept
+  static. After `evaluate-only-what-moves`, its remaining prize is small
+  (21 % of the post-change tick against the port enumeration's 56 %).
+  **Open.**
+
+A finding for solid-node-viewer, not proposed there: its TypeScript run
+has the same whole-graph-walk shape and would take the same win, with no
+document or flag change owed to it.
+
+Below is the original finding, as filed, for the record.
+
+**Status (as filed): recorded; triage open.** The pilot explicitly chose to keep
 implementing the Python Curta, not prepare a performance handoff or start a
 framework fix. No viewer performance claim is made here.
 
@@ -2900,3 +2947,51 @@ version 7 document (item 7) are open in their own repositories.
   `tests/test_running_corpus.py::BlockOrderTest` now pins the
   discrimination directly, and `uncovered_features` refuses a corpus
   missing the new `'an in-block gate crossing inside a tick'` feature.
+
+# evaluate-only-what-moves (2026-09-16, found while applying)
+
+**Status: fixed inside the cycle; recorded so nobody reopens it.** A
+piece was identified by `id(branches)` / `id(inner)` in the first draft
+of `_PathValue`'s call sites. A transient `branches`/`inner` dict is
+unreferenced the moment the next piece replaces it in the caller's local
+variable, and CPython is then free to hand a LATER, unrelated piece the
+exact same address once the earlier dict is garbage collected — which it
+did, reliably, on `Clearing`'s corpus scenario: a jump's decided branch
+from an earlier piece answered for a structurally identical-looking but
+numerically different later one, moving `wheel.turn` by exactly 100 on
+tick 1 of `Clearing` (dt=0.1) and `StoppedClearing` (dt=0.05) in
+`tests/test_running_corpus.py`. Fixed two ways: `JumpPlan`'s own
+`_LevelPaths` now identifies a piece by a monotonic counter token
+(`new_piece()`), never by a dict's `id()`; `_Walk`'s skeleton/level
+tracking instead keeps every `branches` dict it ever builds alive for
+the walk's own lifetime (`_live_branches`), which makes `id()` safe
+again by construction. Both are documented at their call sites.
+
+**Findings outside this cycle's ratified scope** (tasks.md 10.1):
+
+- **`_along` builds a fresh source dict per point.** `_Walk`'s `own_at`,
+  `_level` and `_skeleton`, and `JumpPlan`'s `_level_at`, each call
+  `_along(start, delta, t)` — a fresh `{name: start[name] + delta[name]
+  * t for name in start}` dict comprehension — every single point,
+  including a point a bound path value then walks in a fraction of a
+  microsecond. Measured on the end-to-end prototype
+  (`spikes/endtoend_curta.py`): together with the walk's own bookkeeping
+  this is 17.2 % of the POST-CHANGE tick — the single largest residue
+  after this cycle and the port enumeration (design.md section 5, section
+  8). Building it incrementally (only the moving names, added to a
+  standing base) would need the SAME moving-set concept this cycle
+  introduces, applied one level up; recorded here rather than folded in,
+  because it changes a different call shape (`_along`'s callers, not a
+  graph's own evaluation) and was not in the ratified scope. **Open.**
+- **A compiled-closure path evaluation measures 58× against the current
+  walk, 3× faster again than the path value this cycle takes** (design.md
+  section 6 C, `spikes/proto_eval.py`): `exec` of generated Python source
+  over the moving cone, still bit-identical over the same 2 600 captured
+  evaluations. Rejected for this cycle because it puts run-time code
+  generation into the engine for a term (`_PathValue.at`) this change
+  already leaves at 17.8 % of the patched tick, and its own build cost
+  (3.3 evaluations against this cycle's 1.4) would need a cross-tick
+  cache the "no cache outlives the tick" decision (section 3.3) measured
+  away. Recorded so a later cycle, if the residue above and the port
+  enumeration are both taken and evaluation is STILL the bottleneck, has
+  the number. **Open.**

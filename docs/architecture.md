@@ -984,6 +984,25 @@ such a relation binds NOTHING at rest — the dial's rest value is the
 author's own guarded default — and under any other time base it is
 refused by name at the close of the enumeration.
 
+A quantity a tick follows along ONE path with ONE branch reading is
+evaluated as that path, not as an expression (ADR-124): `_PathValue`
+decides, in the same postorder walk `GraphValue.evaluate` would have
+made anyway for the piece's own first point, which of a graph's nodes
+MOVE — a source whose increment is non-zero, plus the driven coordinate
+where a level is handed its own value per sample — and computes every
+other node ONCE, from that piece's own branches. A later point of the
+same piece walks only the moving cone; a new piece re-binds the standing
+part. The arithmetic is unchanged node for node, so the value at any
+point is the same float a whole-graph evaluation gives, and the run pays
+the classification once per graph per tick rather than once per sample.
+`_Walk._skeleton` and `_Walk._level`, and `JumpPlan`'s own `_level`,
+`_level_at` and `_branches` when reached through `_LevelPaths`, are the
+call sites; `_KinkCuts.between`'s own kink levels stay on
+`GraphValue.evaluate`, because a kink's level is a separate sub-graph too
+small for this to help. No cache outlives the tick that built it, and
+a machine whose followed quantities move entirely, or whose graphs are
+small, pays only that one classification walk per graph per tick.
+
 Its tick is integrated in TWO LAYERS (`_Retained`, decided once at
 compile, and `_Walk`, which runs it). Layer one is ADR-107's own
 `_partition`, unchanged, over the jump nodes that do NOT depend on the
@@ -2350,12 +2369,36 @@ The short list that changes must not silently break:
   own walk is cutting it — a joint walk over several plans that no
   mechanism has asked for yet.
 - **A followed quantity is classified once, for the whole tick, and not
-  per PIECE** (ADR-123): a kink can pin a curved subtree to a constant on
-  one of its pieces — the Curta's detent cam is affine through its dwell
-  and curved through its rise — and a classification per piece at run
-  time would solve strictly more than a compile-time flag does. It costs
-  a classification per piece per tick and makes the answer depend on
-  which piece you are in, and nothing has measured what it would buy.
+  per PIECE** (ADR-123, measured by `evaluate-only-what-moves`): a kink
+  can pin a curved subtree to a constant on one of its pieces — the
+  Curta's detent cam is affine through its dwell and curved through its
+  rise — and a classification per piece at run time would solve strictly
+  more than a compile-time flag does. Measured on the originating
+  machine (`evaluate-only-what-moves` design.md section 7): a per-piece
+  classification would make 192 of 200 searched skeletons solvable (160
+  constant, 32 kinked, 8 still curved), but it MOVES a crossing located
+  by search to the solved answer — every recorded crossing would move —
+  and makes the classification depend on which piece you are in, which
+  ADR-123 deliberately kept static. Not taken: after ADR-124 its prize is
+  small (21 % of the post-change tick against the port enumeration's
+  56 %, next).
+- **`declared_ports` is re-walked from every call, not memoised by
+  class** (measured by `evaluate-only-what-moves` design.md section 8):
+  61 % of the originating machine's construction and 12.5 % of its tick
+  is `declared_ports(node_class)` re-walking a declarative class's tree
+  through `__getattr__` — a class's own enumeration never changes, but
+  nothing caches it. Memoising it alone took the Curta's construction
+  from 5.46 s to 1.98 s and its tick from 3.27 s to 2.82 s; with ADR-124
+  together, tick 0.294 s and construction 2.08 s. It is now the biggest
+  remaining item (`solid_node/motion/ports.py`), and it needs its own
+  answer to when a class's enumeration may be trusted to stand — a
+  declarative class is built dynamically by `.repeat()`, so a memo keyed
+  by class either holds classes alive or needs a weak key. Unscheduled.
+- **The viewer's TypeScript run keeps its whole-graph walk** (recorded by
+  `evaluate-only-what-moves`, not proposed there): its interpreter has
+  the same shape ADR-124 amortises here, and would take the same win —
+  no document, no flag and no answer changes for it either. A finding
+  for solid-node-viewer, not this repository.
 - **A block's construction check is necessary and not sufficient**
   (ADR-122): which selector branch VECTORS are reachable is arithmetic
   about the selecting input rather than structure, so a particular
@@ -2389,7 +2432,7 @@ The short list that changes must not silently break:
 | Build parameters | `solid_node/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104 |
 | Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122 |
-| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122 |
+| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124 |
 | Mechanisms | `solid_node/mechanisms/` | `mechanisms` | 022, 076 |
 | Build pipeline | `solid_node/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `solid_node/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |

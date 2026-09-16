@@ -38,6 +38,28 @@ Unreleased
   was, a piecewise-affine quantity publishes ``false``, no version moves,
   and a consumer that has not learned to cut at a kink goes on searching
   it — correct, and slower.
+* **Only what moves along a tick's path is evaluated.** A searched
+  crossing samples one graph 64 times per piece, and most of that graph
+  never changes over one path with one branch reading: a sibling
+  coordinate the tick does not move, a retained dial upstream of it, a
+  branch a jump already decided for the piece. The run now decides,
+  once per followed quantity per tick, which of a graph's nodes MOVE —
+  a source whose increment is non-zero, plus the driven coordinate
+  where a level is handed its own value per sample — and computes every
+  other node ONCE, reading it back at every later point instead of
+  recomputing it. The arithmetic is unchanged, node for node and
+  operator for operator, so every crossing, landing, branch reading,
+  increment, stop and refusal a machine gave before this is the answer
+  it gives now, bit for bit. No sampling, no bisection, no new
+  tolerance, no new knob, and nothing to declare; a machine whose
+  followed quantities move entirely, or whose graphs are small, pays
+  only the one classification walk it was going to make anyway.
+  Measured on the originating Curta's clearing dials, whose laws reach
+  through seventeen retained dials and fifteen carry sliders: **3.28 s
+  per 0.1 s tick before, 0.73 s after** — the same committed snapshot to
+  the byte. **Nothing in a published document changes**, and no
+  evaluation COUNT a probe reports moves either; what falls is the cost
+  inside one evaluation.
 * The conformance corpus now **catches a consumer that runs a block's
   members in the order the document lists them.** The ``ShiftedCarry``
   scenario ADR-122 added to pin a block's order replayed green under

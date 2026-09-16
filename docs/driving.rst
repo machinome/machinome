@@ -791,6 +791,29 @@ If a running machine is slower than you expect, that is where to look
 first: a profile written with ``clamp01`` costs almost nothing, and the
 same profile written with a ``sin`` costs the search on every tick.
 
+What a law costs when it reaches through a long chain of parts that stand
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A searched crossing samples the SAME expression sixty-four times over
+one tick, with one branch reading. Most of what that expression reads
+never changes over that stretch: every sibling coordinate the law reaches
+through that this tick does not move, every retained dial upstream of it,
+every branch a jump already decided for the piece. The run recognizes
+this on its own — nothing you write selects it, and there is no knob —
+and pays the cost of deciding which part of the expression can change
+only ONCE per followed quantity per tick, not once per sample.
+
+What this means for you: a law that reaches through a long chain of
+other parts' state — a register dial whose engagement depends on a
+detent cam, itself downstream of several other dials that happen to sit
+still this tick — is not charged for the length of that chain, only for
+the part of it that actually moves. Two laws with the same shape of
+motion cost about the same whether the sources they read are one
+coordinate away or fifteen, as long as most of them stand still on the
+tick in question. There is still no number this promises: how much a
+search costs still depends on how much of the expression moves, and a
+law whose entire chain moves on every tick is not helped by this at all.
+
 A relation over a repeated child
 ---------------------------------
 
