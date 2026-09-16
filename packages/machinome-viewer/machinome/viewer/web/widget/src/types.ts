@@ -149,6 +149,8 @@ export interface ManifestControl {
   axis: number[];
   /** The point the joint moves the part about, in the same frame. */
   origin: number[];
+  /** Half-open indices of the selected joint's complete placement. */
+  operation_span?: number[];
 }
 
 export interface Manifest {

@@ -21,6 +21,8 @@
 // pointer (design D12).
 
 import type { Manifest, ManifestControl, ManifestNode } from './types';
+import { affineCoordinate } from './expressions';
+import { bindingTable } from './bindings';
 
 export type Vec3 = readonly [number, number, number];
 
@@ -29,7 +31,7 @@ export type Vec3 = readonly [number, number, number];
 export interface LoadedControl {
   /** The table's key: the control's qualified display name. */
   name: string;
-  kind: 'button' | 'turn';
+  kind: 'button' | 'turn' | 'slide';
   part: readonly string[];
   /** A button's instruction, or null for a turn. */
   instruction: string | null;
@@ -41,6 +43,7 @@ export interface LoadedControl {
   coordinate: string;
   axis: Vec3;
   origin: Vec3;
+  operationSpan?: readonly [number, number];
 }
 
 /** As much of a loaded program as reading the table needs: the
@@ -50,7 +53,7 @@ export interface ControlProgramView {
   coordinates: Readonly<Record<string, unknown>>;
 }
 
-const KINDS = ['button', 'turn'];
+const KINDS = ['button', 'turn', 'slide'];
 
 function shown(value: unknown): string {
   if (typeof value === 'string') return JSON.stringify(value);
@@ -173,9 +176,9 @@ export function readControls(
 
     if (!KINDS.includes(control.kind)) {
       refuse(`with kind ${shown(control.kind)}, which is neither "button" `
-             + 'nor "turn"');
+             + 'nor "turn" nor "slide"');
     }
-    const kind = control.kind as 'button' | 'turn';
+    const kind = control.kind as LoadedControl['kind'];
 
     for (const field of ['part', 'joint'] as const) {
       if (!isNamePath(control[field])) {
@@ -250,8 +253,45 @@ export function readControls(
     // Both shapes the producer publishes qualify: `r` alone for a joint
     // through its node's placed origin, and `t(-a), r, t(a)` for a
     // `Revolute(at=a)`, whose entry publishes `origin = a`.
-    const placement = leadingRotation(jointNode);
-    if (placement !== control.coordinate) {
+    let operationSpan: readonly [number, number] | undefined;
+    if (control.operation_span !== undefined) {
+      const span = control.operation_span;
+      if (!Array.isArray(span) || span.length !== 2
+          || !span.every(Number.isInteger) || span[0] < 0
+          || span[1] <= span[0] || span[1] > jointNode.operations.length) {
+        refuse(`whose operation span ${shown(span)} is outside its joint placement`);
+      }
+      operationSpan = [span[0], span[1]];
+      const block = jointNode.operations.slice(span[0], span[1]);
+      const roots = bindingTable(document, sourceUrl).roots();
+      const near = (a: number, b: number): boolean => Math.abs(a - b) < 1e-9;
+      const scalar = (expression: string, slope: number, offset: number): boolean => {
+        const affine = affineCoordinate(expression, control.coordinate, roots);
+        return affine !== null && near(affine[0], slope) && near(affine[1], offset);
+      };
+      const direction = normalize3(axis);
+      const isTranslation = block.length === 1 && block[0][0] === 't'
+        && block[0][1].every((expression, i) => scalar(expression, direction[i], 0));
+      const r = block.length === 3 ? block[1] : block[0];
+      const isRotation = r[0] === 'r' && scalar(r[1], 1, 0)
+        && r[2].every((value, i) => near(value, direction[i]))
+        && (block.length === 1 && origin.every(value => near(value, 0))
+          || block.length === 3 && block[0][0] === 't' && block[2][0] === 't'
+            && block[0][1].every((expression, i) => scalar(expression, 0, -origin[i]))
+            && block[2][1].every((expression, i) => scalar(expression, 0, origin[i])));
+      const domain = (program.coordinates[control.coordinate] as { domain?: string }).domain;
+      if (kind === 'slide' && domain !== 'translational'
+          || kind === 'turn' && domain !== 'rotational') {
+        refuse(`whose ${kind} requires a ${kind === 'slide' ? 'translational' : 'rotational'} placement, not ${shown(domain)}`);
+      }
+      if (!(isTranslation && domain === 'translational'
+            || isRotation && domain === 'rotational')) {
+        refuse(`whose operation span ${shown(span)} is not the complete placement of ${shown(control.coordinate)}`);
+      }
+    } else if (kind === 'slide') {
+      refuse('whose sliding placement requires an operation span');
+    } else if (leadingRotation(jointNode) !== control.coordinate) {
+      const placement = leadingRotation(jointNode);
       refuse(`whose joint ${pathOf(joint)} is not posed by `
              + `${shown(control.coordinate)} as the leading run of its own `
              + 'operations -- zero or more translations and then one '
@@ -279,6 +319,7 @@ export function readControls(
       coordinate: control.coordinate,
       axis,
       origin,
+      ...(operationSpan === undefined ? {} : { operationSpan }),
     });
   }
 
@@ -315,6 +356,19 @@ export interface Ray {
 export interface WorldLine {
   origin: Vec3;
   axis: Vec3;
+}
+
+/** Signed position of the closest point on the rail to the pointer ray.
+ * Below ~8.6 degrees from end-on, this problem is ill-conditioned; the
+ * caller must ask for another view, not invent pixels per millimetre. */
+export function slidePosition(ray: Ray, line: WorldLine): number | null {
+  const direction = normalize3(ray.direction);
+  const axis = normalize3(line.axis);
+  const cosine = dot3(direction, axis);
+  const sineSquared = Math.max(0, 1 - cosine * cosine);
+  if (sineSquared < EDGE_ON * EDGE_ON) return null;
+  const offset = sub3(ray.origin, line.origin);
+  return (dot3(offset, axis) - cosine * dot3(offset, direction)) / sineSquared;
 }
 
 export function dot3(a: Vec3, b: Vec3): number {

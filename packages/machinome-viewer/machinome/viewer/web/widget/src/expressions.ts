@@ -916,3 +916,47 @@ export function structureOf(id: NodeId): ExpressionStructure {
       throw new Error(`Unsupported node kind ${(node as Node).kind}`);
   }
 }
+
+/** Prove a placement scalar is a * coordinate + b. This is structural,
+ * not a sampling test: nonlinear expressions cannot masquerade as a joint
+ * by agreeing at a few positions. Shared bindings use the same DAG. */
+export function affineCoordinate(expression: string, coordinate: string,
+                                 bindings?: ReadonlyMap<string, NodeId>):
+  readonly [number, number] | null {
+  type Affine = readonly [number, number];
+  const memo = new Map<NodeId, Affine | null>();
+  const visit = (id: NodeId): Affine | null => {
+    if (memo.has(id)) return memo.get(id)!;
+    memo.set(id, null); // Also refuses a cyclic binding supplied by a caller.
+    const node = nodes[id];
+    let result: Affine | null = null;
+    if (node.kind === 'const' && typeof node.value === 'number') {
+      result = [0, node.value];
+    } else if (node.kind === 'name') {
+      const binding = bindings?.get(node.name);
+      result = binding === undefined
+        ? (node.name === coordinate ? [1, 0] : null) : visit(binding);
+    } else if (node.kind === 'unary' && ['+', '-'].includes(node.op)) {
+      const a = visit(node.target);
+      const sign = node.op === '-' ? -1 : 1;
+      if (a !== null) result = [sign * a[0], sign * a[1]];
+    } else if (node.kind === 'binary') {
+      const a = visit(node.left);
+      const b = visit(node.right);
+      if (a !== null && b !== null) {
+        if (node.op === '+') result = [a[0] + b[0], a[1] + b[1]];
+        if (node.op === '-') result = [a[0] - b[0], a[1] - b[1]];
+        if (node.op === '*' && (a[0] === 0 || b[0] === 0)) {
+          result = [a[0] * b[1] + b[0] * a[1], a[1] * b[1]];
+        }
+        if (node.op === '/' && b[0] === 0 && b[1] !== 0) {
+          result = [a[0] / b[1], a[1] / b[1]];
+        }
+      }
+    }
+    if (result !== null && !result.every(Number.isFinite)) result = null;
+    memo.set(id, result);
+    return result;
+  };
+  return visit(prepare(expression));
+}

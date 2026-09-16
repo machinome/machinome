@@ -48,11 +48,11 @@ import type { CommittedFrame, Outcome } from './run/runtime';
 import type { RunState } from './run/run';
 import { posed, poseScope } from './run/pose';
 import { evaluatesTech, knownTechnologies, specRefusal } from './flexible';
-import { AssemblyNode, AssemblyPath, WidgetTree } from './tree';
+import { AssemblyNode, AssemblyPath, WidgetTree, operationsMatrix } from './tree';
 import { Manifest, ManifestDriver, ManifestInstruction, ManifestNode } from './types';
 import {
   chooseMode, intersectPlane, MIN_RADIUS, normalize3, readControls,
-  sub3, sweepAngle, TurnPlanner, visibleUpTo, worldLine,
+  sub3, sweepAngle, TurnPlanner, visibleUpTo, worldLine, slidePosition,
 } from './partControls';
 import type {
   LoadedControl, Ray, SweepMode, Vec3, WorldLine,
@@ -157,7 +157,7 @@ export interface RunHandle {
 export interface PartControlView {
   /** The table's key: the control's qualified display name. */
   name: string;
-  kind: 'button' | 'turn';
+  kind: 'button' | 'turn' | 'slide';
   part: string[];
   /** A button's instruction. */
   instruction?: string;
@@ -167,6 +167,11 @@ export interface PartControlView {
   perUnit?: number;
   joint: string[];
   coordinate: string;
+  axis: readonly number[];
+  origin: readonly number[];
+  operationSpan?: readonly [number, number];
+  /** Reachable drag handle, or the part itself for one freedom. */
+  gesturePoint: Point | null;
   /** The part's on-screen bounds, or null when the part is not visible
    * or is wholly off screen. */
   rect: { x: number; y: number; width: number; height: number } | null;
@@ -595,7 +600,11 @@ export async function mount(
     }
     scene.updateMatrixWorld(true);
     const joint = tree.requirePath(control.joint);
-    return worldLine(joint.group.matrixWorld.elements as unknown as number[],
+    const matrix = control.operationSpan === undefined
+      ? joint.group.matrixWorld
+      : (joint.group.parent?.matrixWorld.clone() ?? new THREE.Matrix4())
+        .multiply(operationsMatrix(joint.operations.slice(control.operationSpan[1]), scope()));
+    return worldLine(matrix.elements,
                      control.axis, control.origin);
   };
 
@@ -607,39 +616,42 @@ export async function mount(
    */
   const sweepReaderFor = (control: LoadedControl,
                           x: number, y: number): SweepReader | null => {
-    const line = lineOf(control);
-    if (line === null) {
-      return null;
-    }
-    const choice = chooseMode(rayAt(x, y), line,
-                              [camera.position.x, camera.position.y,
-                                camera.position.z]);
-    if (choice.mode === 'plane') {
-      let reference = choice.reference;
-      return {
-        read(nextX: number, nextY: number): number {
-          const met = intersectPlane(rayAt(nextX, nextY), line);
-          if (met === null || reference === null) {
-            return 0;
-          }
-          const radius = sub3(met, line.origin);
-          if (Math.hypot(radius[0], radius[1], radius[2]) <= MIN_RADIUS) {
-            return 0;
-          }
-          const now = normalize3(radius);
-          const delta = sweepAngle(reference, now, line.axis);
-          reference = now;
-          return delta;
-        },
-      };
-    }
-    const pivot = toClient(line.origin);
+    if (lineOf(control) === null) return null;
     let from: Point = { x, y };
+    let warned = false;
     return {
       read(nextX: number, nextY: number): number {
-        const delta = turnedBy(from, { x: nextX, y: nextY }, pivot);
+        const before = from;
         from = { x: nextX, y: nextY };
-        return delta * choice.screenSign;
+        const line = lineOf(control);
+        if (line === null) return 0;
+        // Measure BOTH pointer positions in the current committed frame.
+        // Ancestor motion alone never adds pointer travel or rotates an
+        // outer joint's line by a selected body's inner motion.
+        const previous = rayAt(before.x, before.y);
+        const next = rayAt(nextX, nextY);
+        if (control.kind === 'slide') {
+          const a = slidePosition(previous, line);
+          const b = slidePosition(next, line);
+          if (a === null || b === null) {
+            if (!warned) partLabel.show({ status: 'refused', admitted: 0,
+              unit: null, message: 'Rotate the view to drag along this rail.' }, from);
+            warned = true;
+            return 0;
+          }
+          warned = false;
+          return b - a;
+        }
+        const choice = chooseMode(previous, line,
+          [camera.position.x, camera.position.y, camera.position.z]);
+        if (choice.mode === 'plane') {
+          const met = intersectPlane(next, line);
+          if (met === null || choice.reference === null) return 0;
+          const radius = sub3(met, line.origin);
+          if (Math.hypot(...radius) <= MIN_RADIUS) return 0;
+          return sweepAngle(choice.reference, normalize3(radius), line.axis);
+        }
+        return turnedBy(before, from, toClient(line.origin)) * choice.screenSign;
       },
     };
   };
@@ -652,6 +664,18 @@ export async function mount(
     pick: pickAt,
     highlight: liftParts,
     reader: sweepReaderFor,
+    point: (control) => {
+      const rect = partRect(control);
+      return rect === null ? null : partPoint(control, rect);
+    },
+    direction: (control) => {
+      const line = lineOf(control);
+      if (line === null) return null;
+      const a = toClient(line.origin);
+      const b = toClient([line.origin[0] + line.axis[0],
+        line.origin[1] + line.axis[1], line.origin[2] + line.axis[2]]);
+      return { x: b.x - a.x, y: b.y - a.y };
+    },
     nudge: (id: string) => nudgeSettings[id] ?? DEFAULT_NUDGE,
     trigger: (name: string, at: Point) => {
       const started = runtime;
@@ -685,9 +709,9 @@ export async function mount(
         partOf.set(control.name, meshes);
         for (const mesh of meshes) {
           const naming = partMeshes.get(mesh);
-          if (naming === undefined) {
+          if (naming === undefined || naming[0].part.length < control.part.length) {
             partMeshes.set(mesh, [control]);
-          } else {
+          } else if (naming[0].part.length === control.part.length) {
             naming.push(control);
           }
         }
@@ -787,14 +811,22 @@ export async function mount(
     scene.updateMatrixWorld(true);
     return loadedControls.map((control) => {
       const rect = partRect(control);
+      const point = rect === null ? null : partPoint(control, rect);
+      const freedoms = loadedControls.filter(one => one.kind !== 'button'
+        && one.part.join('\0') === control.part.join('\0'));
       const view: PartControlView = {
         name: control.name,
         kind: control.kind,
         part: [...control.part],
         joint: [...control.joint],
         coordinate: control.coordinate,
+        axis: [...control.axis],
+        origin: [...control.origin],
+        ...(control.operationSpan ? { operationSpan: [...control.operationSpan] as [number, number] } : {}),
+        gesturePoint: control.kind === 'button' ? null : freedoms.length > 1
+          ? partSurface.gesturePoint(control) : point,
         rect,
-        point: rect === null ? null : partPoint(control, rect),
+        point,
       };
       if (control.instruction !== null) {
         view.instruction = control.instruction;
@@ -1454,6 +1486,9 @@ export interface PartSurfaceHost {
   orbit: { enabled: boolean };
   /** The controls naming the nearest VISIBLE mesh at a client point. */
   pick(x: number, y: number): readonly LoadedControl[] | null;
+  /** A presently reachable point on the part, including occlusion. */
+  point?(control: LoadedControl): Point | null;
+  direction?(control: LoadedControl): Point | null;
   /** Lift the affordance on these controls; the returned function puts
    * it back. */
   highlight(controls: readonly LoadedControl[]): () => void;
@@ -1477,6 +1512,7 @@ export interface PartSurface {
    * throttle. */
   pollHover(): void;
   engaged(): boolean;
+  gesturePoint(control: LoadedControl): Point | null;
   /** Clear the cursor, the title and the highlight. */
   clear(): void;
   dispose(): void;
@@ -1522,6 +1558,61 @@ export function partSurfaceWith(host: PartSurfaceHost): PartSurface {
   let hoverAt: Point | null = null;
   let hoverDue = false;
   let gesture: Gesture | null = null;
+  let selected: readonly LoadedControl[] = [];
+  const handles = new Map<string, HTMLButtonElement>();
+
+  const clearHandles = (): void => {
+    handles.forEach(element => element.remove());
+    handles.clear();
+    selected = [];
+  };
+  const positionHandles = (): void => {
+    const bounds = host.container.getBoundingClientRect();
+    let index = 0;
+    for (const control of selected) {
+      const element = handles.get(control.name);
+      if (!element) continue;
+      const at = host.point?.(control) ?? null;
+      element.hidden = at === null;
+      if (at !== null) {
+        const x = at.x - bounds.left + (index - (selected.length - 1) / 2) * 42;
+        const y = at.y - bounds.top - 28;
+        element.style.left = `${x - 18}px`;
+        element.style.top = `${y - 18}px`;
+        if (control.kind === 'slide') {
+          const direction = host.direction?.(control);
+          if (direction) element.style.transform =
+            `rotate(${Math.atan2(direction.y, direction.x)}rad)`;
+        }
+      }
+      index += 1;
+    }
+  };
+  const selectHandles = (naming: readonly LoadedControl[]): void => {
+    const freedoms = naming.filter(one => one.kind !== 'button');
+    if (freedoms.length < 2) {
+      if (!freedoms.some(one => selected.includes(one))) clearHandles();
+      return;
+    }
+    if (freedoms.every(one => handles.has(one.name))) return;
+    clearHandles();
+    selected = freedoms;
+    for (const control of freedoms) {
+      const element = document.createElement('button');
+      element.type = 'button';
+      element.className = 'part-gesture-handle';
+      element.dataset.control = control.name;
+      element.setAttribute('aria-label', control.name);
+      element.title = control.name;
+      element.textContent = control.kind === 'slide' ? '↔' : '↻';
+      element.style.cssText = 'position:absolute;z-index:3;width:36px;height:36px;'
+        + 'border:1px solid #91b7dc;border-radius:50%;background:#163b55;color:white;'
+        + 'font:24px system-ui;cursor:grab;touch-action:none;padding:0;';
+      host.container.append(element);
+      handles.set(control.name, element);
+    }
+    positionHandles();
+  };
 
   const clearHighlight = (): void => {
     restore?.();
@@ -1555,6 +1646,7 @@ export function partSurfaceWith(host: PartSurfaceHost): PartSurface {
     host.canvas.setAttribute('title',
                              naming.map((one) => one.name).join(' · '));
     restore = host.highlight(naming);
+    selectHandles(naming);
   };
 
   /** Issue the next quantum, if the planner says there is one -- and
@@ -1595,7 +1687,7 @@ export function partSurfaceWith(host: PartSurfaceHost): PartSurface {
 
   /** Every side a gesture can end on (design D13). Each restores the
    * camera, releases the capture and clears the affordance. */
-  const endGesture = (): void => {
+  const endGesture = (keepHandles = false): void => {
     const current = gesture;
     gesture = null;
     host.orbit.enabled = true;
@@ -1609,20 +1701,30 @@ export function partSurfaceWith(host: PartSurfaceHost): PartSurface {
       }
     }
     clear();
+    if (!keepHandles) clearHandles();
   };
 
   const onPointerDown = (event: PointerEvent): void => {
     if (!presented || gesture !== null || event.button !== 0) {
       return;
     }
-    const naming = host.pick(event.clientX, event.clientY);
+    const element = event.target instanceof Element
+      ? event.target.closest<HTMLButtonElement>('.part-gesture-handle') : null;
+    const chosen = selected.find(one => one.name === element?.dataset.control
+      && handles.get(one.name) === element && !element.hidden
+      && (!host.point || host.point(one) !== null));
+    // Overlay chrome is not a transparent window onto the mechanism.
+    if (event.target !== host.canvas && chosen === undefined) return;
+    const naming = chosen === undefined ? host.pick(event.clientX, event.clientY) : [chosen];
     if (naming === null || naming.length === 0) {
+      clearHandles();
       return;
     }
     // Capture phase on the CONTAINER, an ancestor of the canvas, so
     // this runs strictly before OrbitControls' own listener on the
     // canvas whatever registration order would otherwise decide.
     event.stopPropagation();
+    event.preventDefault();
     host.orbit.enabled = false;
     try {
       (host.canvas as Element & {
@@ -1632,7 +1734,8 @@ export function partSurfaceWith(host: PartSurfaceHost): PartSurface {
       // A browser that cannot capture still releases on pointerup.
     }
     const button = naming.find((one) => one.kind === 'button') ?? null;
-    const turn = naming.find((one) => one.kind === 'turn') ?? null;
+    const freedoms = naming.filter(one => one.kind !== 'button');
+    const turn = freedoms.length === 1 ? freedoms[0] : null;
     const turnId = turn?.input ?? null;
     const plan = turnId === null ? DEFAULT_NUDGE : host.nudge(turnId);
     const reader = turn === null || turn.perUnit === null
@@ -1695,7 +1798,7 @@ export function partSurfaceWith(host: PartSurfaceHost): PartSurface {
     if (!current.dragging && instruction !== null) {
       host.trigger(instruction, { x: event.clientX, y: event.clientY });
     }
-    endGesture();
+    endGesture(true);
   };
 
   const onRelease = (event: PointerEvent): void => {
@@ -1725,16 +1828,16 @@ export function partSurfaceWith(host: PartSurfaceHost): PartSurface {
       return;
     }
     host.container.addEventListener('pointerdown', onPointerDown, true);
-    host.canvas.addEventListener('pointermove', onPointerMove);
-    host.canvas.addEventListener('pointerup', onPointerUp);
+    host.container.addEventListener('pointermove', onPointerMove);
+    host.container.addEventListener('pointerup', onPointerUp);
     host.canvas.addEventListener('pointercancel', onRelease);
     host.canvas.addEventListener('lostpointercapture', onRelease);
     window.addEventListener('blur', onBlur);
     document.addEventListener('visibilitychange', onVisibility);
     listeners = () => {
       host.container.removeEventListener('pointerdown', onPointerDown, true);
-      host.canvas.removeEventListener('pointermove', onPointerMove);
-      host.canvas.removeEventListener('pointerup', onPointerUp);
+      host.container.removeEventListener('pointermove', onPointerMove);
+      host.container.removeEventListener('pointerup', onPointerUp);
       host.canvas.removeEventListener('pointercancel', onRelease);
       host.canvas.removeEventListener('lostpointercapture', onRelease);
       window.removeEventListener('blur', onBlur);
@@ -1744,12 +1847,16 @@ export function partSurfaceWith(host: PartSurfaceHost): PartSurface {
 
   return {
     refresh(controls: readonly LoadedControl[], present: boolean) {
+      endGesture();
       declared = controls;
       presented = present && declared.length > 0;
       clear();
       install(presented);
     },
     pollHover() {
+      positionHandles();
+      const touched = gesture?.turn ?? gesture?.button;
+      if (touched && host.point && host.point(touched) === null) endGesture();
       if (!hoverDue) {
         return;
       }
@@ -1760,7 +1867,13 @@ export function partSurfaceWith(host: PartSurfaceHost): PartSurface {
       applyHover(host.pick(hoverAt.x, hoverAt.y));
     },
     engaged: () => gesture !== null,
-    clear,
+    gesturePoint(control) {
+      const element = handles.get(control.name);
+      if (!element || element.hidden || !host.point?.(control)) return null;
+      const rect = element.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    },
+    clear: () => endGesture(),
     dispose() {
       endGesture();
       install(false);

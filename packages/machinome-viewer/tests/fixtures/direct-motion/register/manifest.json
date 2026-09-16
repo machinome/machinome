@@ -1,0 +1,267 @@
+{
+  "format": "solid-node-export",
+  "version": 5,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "shift": {
+      "default": 0.0,
+      "range": null,
+      "unit": "mm",
+      "dtype": null,
+      "scale": null
+    },
+    "spin": {
+      "default": 0.0,
+      "range": null,
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {
+    "Shift": {
+      "by": {
+        "shift": 1.0
+      },
+      "duration": 1.0
+    }
+  },
+  "controls": {
+    "shift register": {
+      "kind": "slide",
+      "part": [
+        "register",
+        "marker",
+        "knob"
+      ],
+      "input": "shift",
+      "per_unit": 1.0,
+      "joint": [
+        "register"
+      ],
+      "coordinate": "register.travel",
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "operation_span": [
+        0,
+        1
+      ]
+    },
+    "turn marker": {
+      "kind": "turn",
+      "part": [
+        "register",
+        "marker",
+        "knob"
+      ],
+      "input": "spin",
+      "per_unit": 1.0,
+      "joint": [
+        "register",
+        "marker"
+      ],
+      "coordinate": "register.marker.turn",
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "operation_span": [
+        0,
+        1
+      ]
+    }
+  },
+  "program": {
+    "identity": "de18bb9ca28cdcfd803e7ca3e3ca7c9008f9dc7bceb09bd480236aa3af767af9",
+    "clock": "time",
+    "coordinates": {
+      "shift": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "spin": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "register.marker.turn": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "register.travel": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "mm",
+        "domain": "translational"
+      }
+    },
+    "intermediates": [],
+    "edges": [
+      {
+        "kind": "law",
+        "needs": [
+          "shift"
+        ],
+        "gives": [
+          "register.travel"
+        ],
+        "description": "shift drives register.travel",
+        "stated_by": "Register",
+        "expressions": [
+          "shift"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          null
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "spin"
+        ],
+        "gives": [
+          "register.marker.turn"
+        ],
+        "description": "spin drives register.marker.turn",
+        "stated_by": "Register",
+        "expressions": [
+          "spin"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          null
+        ]
+      }
+    ],
+    "spans": {},
+    "sources": {
+      "register.marker.turn": [
+        "spin"
+      ],
+      "register.travel": [
+        "shift"
+      ],
+      "shift": [
+        "shift"
+      ],
+      "spin": [
+        "spin"
+      ]
+    },
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "subdivisions": 64,
+      "bisection_rounds": 64,
+      "max_crossings": 1000,
+      "agreement": 1e-09
+    }
+  },
+  "root": {
+    "name": "Register",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1789467080.9858892,
+    "operations": [],
+    "children": [
+      {
+        "name": "register",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": 1789467080.9858892,
+        "operations": [
+          [
+            "t",
+            [
+              "register.travel",
+              "0",
+              "0"
+            ]
+          ],
+          [
+            "t",
+            [
+              "0.0",
+              "40.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "children": [
+          {
+            "name": "marker",
+            "type": "AssemblyNode",
+            "color": null,
+            "mtime": 1789467080.9858892,
+            "operations": [
+              [
+                "r",
+                "register.marker.turn",
+                [
+                  0,
+                  0,
+                  1
+                ]
+              ]
+            ],
+            "children": [
+              {
+                "name": "knob",
+                "type": "LeafNode",
+                "color": null,
+                "mtime": 1789467080.9858892,
+                "operations": [],
+                "model": "models/running_project/parts-Dial-9f2c3557d753.stl",
+                "piece": "bea480af5d27"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "bea480af5d27",
+      "name": "Dial",
+      "sources": [
+        "running_project/parts.py"
+      ],
+      "models": [
+        "models/running_project/parts-Dial-9f2c3557d753.stl"
+      ],
+      "count": 1,
+      "size": [
+        48.0,
+        47.7370491027832,
+        3.0
+      ],
+      "volume": 5389.0709211860885,
+      "watertight": true
+    }
+  ]
+}
