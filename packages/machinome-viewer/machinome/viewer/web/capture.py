@@ -56,6 +56,22 @@ class _QuietHandler(SimpleHTTPRequestHandler):
         pass
 
 
+def carries_clocked(document):
+    """Whether a staged document carries a compiled CLOCKED machine.
+
+    Version 8 is the version a root that declares a ``State`` publishes
+    (solid-node ADR-128), and it is a property of the ROOT'S
+    DECLARATION: a clocked document is a clocked document whatever else
+    it holds, and it carries a ``clocked`` object where a running one
+    carries a ``program``.
+    """
+    if not isinstance(document, dict):
+        return False
+    version = document.get("version")
+    return (document.get("clocked") is not None
+            or (isinstance(version, int) and version >= 8))
+
+
 def carries_program(document):
     """Whether a staged document carries a compiled mechanical program.
 
@@ -64,14 +80,35 @@ def carries_program(document):
     which is the first thing the widget's loader refuses. Version 6 --
     a program one of whose laws reads the coordinate it drives -- is
     such a version, and so is any the framework publishes after it: the
-    test is the FLOOR, not the one number, because a document that
-    carries a program has no animation cycle whatever its version says.
+    test is the FLOOR, not the one number.
+
+    A CLOCKED document is the one exception, and it is not a special
+    case of the floor but the other side of an either/or: a root
+    publishes a ``program`` or a ``clocked`` machine and never both
+    (OpenSpec ``execute-the-commit``, design section 10).
     """
     if not isinstance(document, dict):
+        return False
+    if carries_clocked(document):
         return False
     version = document.get("version")
     return (document.get("program") is not None
             or (isinstance(version, int) and version >= 5))
+
+
+def animates_time(document):
+    """Whether ``$t`` sweeps over this document.
+
+    The question ``carries_program`` used to be asked in place of, and
+    the reason this cycle splits the two. A RUNNING root publishes no
+    animation cycle -- its geometry follows the bank a tick commits --
+    so an instant means nothing to it. EVERY other document publishes
+    one, a clocked document included: ADR-128 section 10 gives a version
+    8 document the ordinary ``animation`` object, so a geometry that is
+    a formula of ``$t`` animates while the bank STANDS at its initial
+    instant.
+    """
+    return not carries_program(document)
 
 
 def mount_options(time=0.0, view=None, up=None, fov=None):
@@ -139,10 +176,13 @@ class Capture:
         """Refuse an animation instant a running document cannot have.
 
         Before any browser starts, which is the posture this capability
-        already takes toward everything it cannot do.
+        already takes toward everything it cannot do. A CLOCKED document
+        is photographed at its INITIAL BANK and its ``$t`` instant is
+        honoured, because it publishes an animation cycle like any
+        document that is not running (design section 10).
         """
         time = options.get("time", 0.0)
-        if not time or not carries_program(document):
+        if not time or animates_time(document):
             return
         raise CaptureError(
             f"--time {time} means nothing to a staged document carrying a "

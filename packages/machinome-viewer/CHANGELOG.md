@@ -7,6 +7,52 @@ it carries release together and share one version.
 
 The viewer stops posing a machine and starts running one.
 
+- **A CLOCKED machine is executed: the viewer reads document version 8,
+  and API 17 says so.** solid-node's ADR-125 gave a machine MEMORY and no
+  cadence — a few retained values, a closed-form position between events,
+  and a commit of those values at each event — ADR-126 gave it
+  interlocks, and ADR-128 published the whole of it as a version 8
+  document: a `states` table beside `drivers`, and a `clocked` object
+  carrying the compiled machine. This viewer refused that document by
+  name; it now loads it, refusing field by field what it cannot execute,
+  and runs it. One gesture is one **request** — one declared input along
+  a straight path from the bank — solved SYNCHRONOUSLY on the main
+  thread, because a request is not a cadence: crossings solved (affine by
+  a division, kinked at its own breakpoints), the landing found by the
+  same far-side bit walk the run uses, only RISING steps firing, ties
+  decided by IDENTITY of the landing float and never a window, reads
+  pre-event, commits in path order, an `int` target rounded once half to
+  EVEN, and one pose from the bank afterwards. A refused request leaves
+  the bank, the tree and the pose exactly as they stood. **A declared
+  stop CLIPS the request before a single event is located** and reports
+  itself at the control that made the gesture — coordinate, side, bound,
+  value and fraction — so a request an interlock holds is ADMITTED at
+  zero travel rather than swallowed, and what the commits carried is
+  judged again at the end. The chrome is a third one: a driver is a
+  positional HANDLE with a slider where a range is declared, a state and
+  a clock are follow-only READOUTS, declared instructions are listed and
+  DISABLED (the framework publishes them under a clocked root with no
+  runtime meaning), and there is no transport. `$t` animates such a
+  document while its bank stands, and the headless capture — which used
+  to refuse `--time` on any document of version 5 or above — now asks the
+  two questions separately and photographs a clocked document at its
+  initial bank. The producer's EXACT conformance corpus is replayed bit
+  for bit with `tolerance.float` read from the file: all 30 machines
+  load, 68 of the 76 steps and 652 of the 722 recorded numbers agree
+  under `toBe`, three of its four recorded refusals are reproduced by
+  kind and by name, and a census test derives `76 = 68 + 3 + 5` from the
+  file so a regenerated corpus cannot narrow the suite. The 8 steps not
+  replayed are the CLOCK's — three requests this build refuses by name
+  and five standing downstream of them — and they are asserted as a
+  departure rather than dropped. Measured on the Curta-shaped
+  `Calculator` fixture in Chromium, a whole stroke over four digits costs
+  **0.2–0.4 ms**, a clipped selector move 0.1–0.3 ms, against the
+  operating Curta's running model at ≈42 ms per 1/240-second tick; every
+  page number is asserted under one 16 ms frame budget. Nothing of the
+  run, its worker or versions 1–7 changed, and the released document
+  versions stay `1, 2, 3, 4`. (OpenSpec change `execute-the-commit`,
+  ADR-062.)
+
 - **A quantity built over `abs`, `min` or `max` is SOLVED at its own
   kinks instead of searched.** Such a quantity is piecewise affine —
   affine between the points where it changes which operand it returns —

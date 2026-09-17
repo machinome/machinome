@@ -45,6 +45,14 @@ MARKED = FIXTURES / 'marked'
 #: test machine: a version 6 document whose six law edges each READ THE
 #: COORDINATE THEY DRIVE, beside a stand-in mesh. See its own README.
 CLEARING = FIXTURES / 'clearing'
+#: The Curta-SHAPED fixture, exported from the framework's own
+#: `tests/clocked_project/calculator.py:Calculator`: a version 8
+#: document carrying a compiled CLOCKED machine -- four wheels of one
+#: class, a stroke over four digits and an operand, a clearing relation
+#: per wheel, a selector wired through a port, an anti-reversal ratchet
+#: and an off-rest freeze -- beside the meshes it names. See its own
+#: README.
+CALCULATOR = FIXTURES / 'calculator'
 #: The Curta's own CARRIAGE, exported from the framework's own test
 #: machine: a version 7 document whose nine law edges hold ONE BLOCK of
 #: seven -- four dials on the carriage and three levers on the frame,
@@ -123,6 +131,15 @@ def published_lock(target):
     document, whose bounds read other coordinates, beside the stand-in
     meshes it names."""
     shutil.copytree(LOCK, target)
+    return Path(target)
+
+
+def published_calculator(target):
+    """Stage the CALCULATOR fixture: the Curta-shaped machine as a
+    version 8 document -- a `states` table and a compiled `clocked`
+    object with three bounds -- already named ``viewer.json``, beside
+    the meshes it names."""
+    shutil.copytree(CALCULATOR, target)
     return Path(target)
 
 

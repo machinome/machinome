@@ -34,6 +34,26 @@ export function poseScope(bank: Record<string, number>, clock: string,
   };
 }
 
+/** The evaluation scope one CLOCKED bank makes (OpenSpec
+ * `execute-the-commit`, design §10).
+ *
+ * `poseScope`'s, with ONE difference: `time` is the playback's `$t`
+ * rather than the fixed `0` a running document poses at. A version 8
+ * document publishes the ordinary `animation` object, so a geometry that
+ * is a formula of `$t` animates while the bank STANDS -- which is
+ * exactly the preview ADR-128 §10 gives a clocked model. The clock, when
+ * the root declares an elapsed base, is a BANK ID like any other and
+ * needs no injection: it is in `bank` already.
+ */
+export function clockedScope(bank: Record<string, number>, time: number,
+                             bindings: BindingTable): EvalScope {
+  return {
+    time,
+    drivers: nest(bank),
+    bindings: bindings.roots(),
+  };
+}
+
 /** What a frame's `moved` ids mean to the tree's bounded re-evaluation.
  *
  * `ChangeSet.drivers` already means "the qualified ids whose values

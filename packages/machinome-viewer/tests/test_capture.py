@@ -259,10 +259,57 @@ class RunningStagedDocumentTest(TestCase):
         # did: the gate did not move with the version, which is what a
         # floor is for.
         self.assertTrue(carries_program({"version": 7}))
-        self.assertTrue(carries_program({"version": 8}))
+        # A version 8 document carries a compiled CLOCKED machine and no
+        # program: a root publishes one or the other, and version 8 is a
+        # property of the ROOT'S DECLARATION (OpenSpec
+        # `execute-the-commit`, design section 10).
+        self.assertFalse(carries_program({"version": 8}))
+        self.assertFalse(carries_program({"version": 5, "clocked": {}}))
         self.assertFalse(carries_program({"version": 4}))
         self.assertTrue(carries_program({"version": 4, "program": {}}))
         self.assertFalse(carries_program("not a document"))
+
+    def test_a_clocked_document_honours_a_non_zero_instant(self):
+        """(8.1) A version 8 document DOES animate `$t`.
+
+        ADR-128 section 10: a clocked root publishes the ordinary
+        `animation` object, so the timeline is presented exactly as it is
+        for a version 1-4 document and a geometry that is a formula of
+        `$t` animates while the bank STANDS. A clocked staging is
+        photographed at its INITIAL BANK, and a non-zero `--time` is
+        honoured rather than refused.
+        """
+        document = json.loads((self.staging / 'viewer.json').read_text())
+        document['version'] = 8
+        document.pop('program', None)
+        document['states'] = {}
+        document['clocked'] = {}
+        (self.staging / 'viewer.json').write_text(json.dumps(document))
+        capture = Capture(str(self.staging))
+        with patch.object(capture, 'capture') as browser, \
+             patch.object(capture, 'add_viewer'):
+            capture.render(self.output, (320, 240), mount_options(time=0.5))
+        browser.assert_called_once()
+
+    def test_what_animates_time_is_a_question_of_its_own(self):
+        """(8.2) The two questions, split: "does this document carry a
+        compiled program" and "does this document animate `$t`"."""
+        from solid_node_viewer.capture import (animates_time,
+                                               carries_clocked,
+                                               carries_program)
+
+        self.assertTrue(carries_clocked({"version": 8}))
+        self.assertTrue(carries_clocked({"version": 5, "clocked": {}}))
+        self.assertFalse(carries_clocked({"version": 7}))
+        self.assertFalse(carries_clocked("not a document"))
+        # A document carrying a compiled program has no animation cycle;
+        # every other document has one, a CLOCKED document included.
+        self.assertFalse(animates_time({"version": 5}))
+        self.assertFalse(animates_time({"version": 7}))
+        self.assertFalse(animates_time({"version": 4, "program": {}}))
+        self.assertTrue(animates_time({"version": 4}))
+        self.assertTrue(animates_time({"version": 8}))
+        self.assertTrue(animates_time({"version": 8, "clocked": {}}))
 
     def test_an_animation_instant_is_refused_for_a_version_six_document(self):
         document = json.loads((self.staging / 'viewer.json').read_text())

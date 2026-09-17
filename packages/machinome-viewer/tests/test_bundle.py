@@ -47,10 +47,15 @@ class BundleLookupTest(TestCase):
         # whose law edges form a BLOCK, ordered per PIECE of a tick from
         # the published edges rather than run in the published listing --
         # is the one after that, and it is not additive either.
-        self.assertEqual(bundle.api_version(), 16)
+        # Executing a version 8 document -- a root that declares a
+        # `State`, whose document carries a compiled CLOCKED machine
+        # instead of a program -- is the one after that (OpenSpec
+        # `execute-the-commit`), and it is not additive either.
+        self.assertEqual(bundle.api_version(), 17)
 
     def test_declares_the_document_versions_this_build_reads(self):
-        self.assertEqual(bundle.document_versions(), [1, 2, 3, 4, 5, 6, 7])
+        self.assertEqual(bundle.document_versions(),
+                         [1, 2, 3, 4, 5, 6, 7, 8])
 
     def test_the_released_floor_does_not_move_with_the_build(self):
         # `RELEASED_DOCUMENT_VERSIONS` is what a viewer that PREDATES
@@ -69,7 +74,7 @@ class BundleLookupTest(TestCase):
         self.assertEqual(described['documentVersions'],
                          bundle.document_versions())
         self.assertEqual(described['documentVersions'],
-                         [1, 2, 3, 4, 5, 6, 7])
+                         [1, 2, 3, 4, 5, 6, 7, 8])
         self.assertEqual(described['apiVersion'], bundle.api_version())
 
     def test_paths_and_remedy_share_one_source(self):

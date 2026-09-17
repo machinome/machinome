@@ -25,7 +25,7 @@ import {
   ProgramLimits, ProgramPlan, TooManyCrossings, UnsupportedLaw,
 } from './program';
 import type {
-  BlockMember, LoadedProgram, ProgramBlock, RetainedReading,
+  BlockMember, LoadedProgram, PathHost, ProgramBlock, RetainedReading,
 } from './program';
 import { movingNames, PathValue, UnsupportedPathNode } from '../expressions';
 import type { KinkLevel } from '../expressions';
@@ -342,7 +342,7 @@ export class LevelPaths {
 
   private counter = 0;
 
-  constructor(private readonly program: LoadedProgram,
+  constructor(private readonly program: PathHost,
               private readonly moving: ReadonlySet<string>) {}
 
   /** A fresh, strictly increasing piece token (D6). */
@@ -380,7 +380,7 @@ export class LevelPaths {
   }
 }
 
-function levelAt(program: LoadedProgram, plan: ProgramPlan, jump: ProgramJump,
+function levelAt(program: PathHost, plan: ProgramPlan, jump: ProgramJump,
                  start: Record<string, number>, delta: Record<string, number>,
                  t: number, inner: Record<string, number>,
                  described: string, coordinate: string,
@@ -397,7 +397,7 @@ function levelAt(program: LoadedProgram, plan: ProgramPlan, jump: ProgramJump,
   return levelOf(program, plan, jump, values, described, coordinate);
 }
 
-function levelOf(program: LoadedProgram, plan: ProgramPlan, jump: ProgramJump,
+function levelOf(program: PathHost, plan: ProgramPlan, jump: ProgramJump,
                  values: Record<string, number>, described: string,
                  coordinate: string): number {
   void plan;
@@ -416,8 +416,12 @@ function levelOf(program: LoadedProgram, plan: ProgramPlan, jump: ProgramJump,
 }
 
 /** Every jump node's branch at one point of the path, in POSTORDER, so a
- * node nested inside another's argument is determined first. */
-function branchesAt(program: LoadedProgram, plan: ProgramPlan,
+ * node nested inside another's argument is determined first.
+ *
+ * Exported for the CLOCKED clip, which reads each piece's branches at
+ * its midpoint exactly as this does (`JumpPlan._branches`; OpenSpec
+ * `execute-the-commit`, design §8). */
+export function branchesAt(program: PathHost, plan: ProgramPlan,
                     start: Record<string, number>,
                     delta: Record<string, number>, t: number, count: number,
                     described: string, coordinate: string,
@@ -448,7 +452,7 @@ function branchesAt(program: LoadedProgram, plan: ProgramPlan,
   return found;
 }
 
-function substituted(program: LoadedProgram, plan: ProgramPlan,
+function substituted(program: PathHost, plan: ProgramPlan,
                      start: Record<string, number>,
                      delta: Record<string, number>, t: number,
                      branches: Record<string, number>): number {
@@ -462,7 +466,7 @@ function substituted(program: LoadedProgram, plan: ProgramPlan,
 }
 
 function crossingsOf(
-  program: LoadedProgram, plan: ProgramPlan, jump: ProgramJump,
+  program: PathHost, plan: ProgramPlan, jump: ProgramJump,
   start: Record<string, number>, delta: Record<string, number>,
   inner: Record<string, number>, left: number, right: number,
   described: string, coordinate: string,
@@ -563,7 +567,7 @@ function crossingsOf(
   return found;
 }
 
-function bisect(program: LoadedProgram, plan: ProgramPlan, jump: ProgramJump,
+function bisect(program: PathHost, plan: ProgramPlan, jump: ProgramJump,
                 start: Record<string, number>, delta: Record<string, number>,
                 inner: Record<string, number>, level: number, low: number,
                 high: number, described: string, coordinate: string,
@@ -587,7 +591,7 @@ function bisect(program: LoadedProgram, plan: ProgramPlan, jump: ProgramJump,
   return (lower + upper) / 2;
 }
 
-function partition(program: LoadedProgram, plan: ProgramPlan,
+function partition(program: PathHost, plan: ProgramPlan,
                    start: Record<string, number>,
                    delta: Record<string, number>, described: string,
                    coordinate: string, crossings: CrossingRecord[] | null,
@@ -708,6 +712,95 @@ export function onSurface(jump: ProgramJump, level: number): boolean {
 function halved(sum: bigint): bigint {
   const quotient = sum / 2n;
   return (sum < 0n && quotient * 2n !== sum) ? quotient - 1n : quotient;
+}
+
+/** The nearest representable value on the FAR side of a surface
+ * (`simulation/program.py`'s `far_side_of`).
+ *
+ * `branchAt(value)` reads the jump node's branch at one value of the
+ * quantity being landed; `near` is the branch on the side the value came
+ * from; `direction` is the sign of its travel; `unlanded` builds the
+ * invariant error for a bracket that cannot be found.
+ *
+ * Membership of a value in the far side is decided by EVALUATING the
+ * branch there, never by comparing the value to the surface: a solved
+ * value at which the branch has already changed IS the landing, a strict
+ * comparison against a representable threshold lands on the next value
+ * beyond it, and a non-strict one lands on the threshold itself. The
+ * bisection runs in FLOAT ORDINAL space, so adjacent floats differ by
+ * one at any magnitude and no tolerance is involved.
+ *
+ * `scale` is the SEGMENT the landing sits on -- the largest magnitude
+ * among the ends of the path being walked -- and it sizes the first step
+ * of the bracket search, together with the landed value's own. The step
+ * must be a distance THIS segment can express: the ulp of a value that
+ * happens to be `0.0` is a denormal, and two hundred doublings of it
+ * reach about 1e-263, which is no distance at all on a segment a
+ * millimetre long. Scaling by the segment rather than by the landed
+ * value alone is what lets a bank standing at exactly zero report its
+ * stop instead of raising a broken invariant (solid-node ADR-128,
+ * closure 2). A caller that passes no `scale` keeps the value's own ulp
+ * exactly as before, which is what `Walk.farSide` does: NO RUNNING
+ * LANDING MOVES.
+ *
+ * Extracted from `Walk.farSide`, which still calls it, so the clocked
+ * event solver and the clocked clip land by the SAME walk rather than a
+ * second one (OpenSpec `execute-the-commit`, design §5 -- the
+ * framework's own extraction, `solid_node/simulation/program.py`
+ * lines 1578-1646). */
+export function farSideOf(branchAt: (value: number) => number, near: number,
+                          ownStar: number, direction: number,
+                          unlandedError: () => Error, scale = 0): number {
+  const step = ulpOf(Math.max(Math.abs(ownStar), Math.abs(scale)));
+  let inside: number | null;
+  let far: number | null;
+  if (branchAt(ownStar) !== near) {
+    // The segment's arithmetic already landed PAST the surface, which
+    // it does about as often as it lands short, so the bracket is
+    // sought in both directions.
+    far = ownStar;
+    inside = null;
+    for (let power = 0; power < WALK_STRIDES; power += 1) {
+      const candidate = ownStar - direction * step * (2 ** power);
+      if (branchAt(candidate) === near) {
+        inside = candidate;
+        break;
+      }
+    }
+    if (inside === null) {
+      // Unreachable by construction, and loud rather than silent
+      // because of it: the cut exists because the level crossed this
+      // surface, so the branch differs somewhere on either side of it,
+      // and 200 doublings of a ulp cover every distance a double
+      // expresses. NO TEST CAN REACH THIS; committing `ownStar`
+      // instead would commit a value the design says is never
+      // committed.
+      throw unlandedError();
+    }
+  } else {
+    inside = ownStar;
+    far = null;
+    for (let power = 0; power < WALK_STRIDES; power += 1) {
+      const candidate = ownStar + direction * step * (2 ** power);
+      if (branchAt(candidate) !== near) {
+        far = candidate;
+        break;
+      }
+    }
+    if (far === null) {
+      throw unlandedError();
+    }
+  }
+  let low = ordinalOf(inside);
+  let high = ordinalOf(far);
+  for (;;) {
+    const span = high - low;
+    if ((span < 0n ? -span : span) <= 1n) break;
+    const middle = halved(low + high);
+    if (branchAt(fromOrdinal(middle)) === near) low = middle;
+    else high = middle;
+  }
+  return fromOrdinal(high);
 }
 
 /** One driven end's piece-by-piece walk over one tick (`_Walk`). */
@@ -1221,58 +1314,13 @@ class Walk {
     const branchAt = (value: number): number =>
       branchOf(jump.primitive,
                this.levelOfJump(jump, where, value, branches));
-    const step = ownStar ? ulpOf(ownStar) : 5e-324;
-    let inside: number | null;
-    let far: number | null;
-    if (branchAt(ownStar) !== near) {
-      // The segment's arithmetic already landed PAST the surface, which
-      // it does about as often as it lands short, so the bracket is
-      // sought in both directions.
-      far = ownStar;
-      inside = null;
-      for (let power = 0; power < WALK_STRIDES; power += 1) {
-        const candidate = ownStar - direction * step * (2 ** power);
-        if (branchAt(candidate) === near) {
-          inside = candidate;
-          break;
-        }
-      }
-      if (inside === null) {
-        // Unreachable by construction, and loud rather than silent
-        // because of it: the cut exists because the level crossed this
-        // surface, so the branch differs somewhere on either side of it,
-        // and 200 doublings of a ulp cover every distance a double
-        // expresses. NO TEST CAN REACH THIS; committing `ownStar`
-        // instead would commit a value the design says is never
-        // committed.
-        throw unlanded(this.described, this.coordinate, jump.primitive,
-                       WALK_STRIDES);
-      }
-    } else {
-      inside = ownStar;
-      far = null;
-      for (let power = 0; power < WALK_STRIDES; power += 1) {
-        const candidate = ownStar + direction * step * (2 ** power);
-        if (branchAt(candidate) !== near) {
-          far = candidate;
-          break;
-        }
-      }
-      if (far === null) {
-        throw unlanded(this.described, this.coordinate, jump.primitive,
-                       WALK_STRIDES);
-      }
-    }
-    let low = ordinalOf(inside);
-    let high = ordinalOf(far);
-    for (;;) {
-      const span = high - low;
-      if ((span < 0n ? -span : span) <= 1n) break;
-      const middle = halved(low + high);
-      if (branchAt(fromOrdinal(middle)) === near) low = middle;
-      else high = middle;
-    }
-    return fromOrdinal(high);
+    // NO `scale`: a running landing is walked from the landed value's
+    // own ulp, exactly as it was before the extraction (design §5). The
+    // ulp-of-zero reading is closed on the CLOCKED side alone, so no
+    // running landing moves.
+    return farSideOf(branchAt, near, ownStar, direction,
+                     () => unlanded(this.described, this.coordinate,
+                                    jump.primitive, WALK_STRIDES));
   }
 
   // ------------------------------------------------------------------
@@ -1374,14 +1422,31 @@ export function retainedCuts(
  * law whose SKELETON is affine has a value that is affine in `t` there
  * -- which is what lets a stop on it be SOLVED piece by piece rather
  * than searched. */
-export function planCuts(
-  program: LoadedProgram, plan: ProgramPlan, start: Record<string, number>,
+export function planPartition(
+  program: PathHost, plan: ProgramPlan, start: Record<string, number>,
   delta: Record<string, number>, described: string, coordinate: string,
   forced: Forced = null,
 ): number[] {
   if (!Object.values(delta).some((value) => value !== 0)) return [0, 1];
-  const cuts = partition(program, plan, start, delta, described, coordinate,
-                         null, 0, forced);
+  return partition(program, plan, start, delta, described, coordinate,
+                   null, 0, forced);
+}
+
+/** `planPartition` with the SKELETON's own kinks unioned in --
+ * `Edge.cuts`, which is what `Run.locate` solves a stop on.
+ *
+ * A CLOCKED clip wants `planPartition` alone (`Bounded.clip` calls
+ * `JumpPlan.cuts`, and cuts the skeleton's kinks INSIDE each piece with
+ * that piece's branches held), which is why the two are separate
+ * functions rather than one (OpenSpec `execute-the-commit`, design §8). */
+export function planCuts(
+  program: PathHost, plan: ProgramPlan, start: Record<string, number>,
+  delta: Record<string, number>, described: string, coordinate: string,
+  forced: Forced = null,
+): number[] {
+  if (!Object.values(delta).some((value) => value !== 0)) return [0, 1];
+  const cuts = planPartition(program, plan, start, delta, described,
+                             coordinate, forced);
   if (plan.kinks === null) return cuts;
   // The skeleton reads the plan's BRANCH PLACEHOLDERS, which are
   // constant only within ONE piece of the plan's partition, so its kinks
@@ -1418,7 +1483,7 @@ export function planCuts(
  * piece: `[]` where no kink of it is reached, which is the statement
  * that its path IS affine over the tick (design D4 (c)). */
 export function kinkedEndCuts(
-  program: LoadedProgram, kinks: readonly KinkLevel[],
+  program: PathHost, kinks: readonly KinkLevel[],
   start: Record<string, number>, delta: Record<string, number>,
 ): number[] {
   const found = kinkBreaks(

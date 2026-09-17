@@ -46,7 +46,19 @@ import type {
 import { RunRuntime } from './run/runtime';
 import type { CommittedFrame, Outcome } from './run/runtime';
 import type { RunState } from './run/run';
-import { posed, poseScope } from './run/pose';
+import { clockedScope, posed, poseScope } from './run/pose';
+import { loadClocked } from './clocked/document';
+import type { ClockedDocument, LoadedMachine } from './clocked/document';
+import { clockedMachine } from './clocked/machine';
+import type {
+  ClockedMachine, ClockedRequest, ClockedSnapshot,
+} from './clocked/machine';
+import {
+  clockedControlLayer, formatClockedOutcome,
+} from './clockedControls';
+import type {
+  ClockedControlLayer, ClockedInputControl, ClockedOutcome,
+} from './clockedControls';
 import { evaluatesTech, knownTechnologies, specRefusal } from './flexible';
 import { AssemblyNode, AssemblyPath, WidgetTree, operationsMatrix } from './tree';
 import { Manifest, ManifestDriver, ManifestInstruction, ManifestNode } from './types';
@@ -146,6 +158,15 @@ export interface RunHandle {
   runsInWorker: boolean;
 }
 
+/** What a host drives a CLOCKED document with (design §3, §12): the
+ * bank, one request per gesture, and the session verbs. Synchronous:
+ * a clocked request is one gesture, one solve, one pose, and the pose
+ * is main-thread work in any case. The cadence verbs are refused by
+ * name -- a clocked machine has none. */
+export type MachineHandle = ClockedMachine;
+
+export type { ClockedRequest, ClockedSnapshot };
+
 /** One declared control, as a host reads it (OpenSpec
  * `drive-the-run-by-touch`, design D15): its declaration carried
  * through, where its part stands on screen right now, and a point at
@@ -221,6 +242,11 @@ export interface ViewerHandle {
    * carries none -- which is every document of versions 1 to 4, so a
    * host asks one question and gets a truthful answer. */
   run(): RunHandle | null;
+  /** The CLOCKED machine of a version 8 document, or `null` for one
+   * that carries none. `run()` is null for a version 8 document and
+   * this is null for every other: one question, one truthful answer
+   * (OpenSpec `execute-the-commit`, design §4). */
+  machine(): MachineHandle | null;
   /** The controls the loaded document declares (design D15), with each
    * part's current on-screen rectangle and a point a press reaches it
    * at. `[]` for a document that declares none, and the FULL listing
@@ -342,6 +368,16 @@ export async function mount(
   let loadedProgram: LoadedProgram | null = null;
   let bank: Record<string, number> = {};
   let elapsedSeconds = 0;
+  // The CLOCKED machine of a version 8 document (OpenSpec
+  // `execute-the-commit`). A document carrying none never builds one,
+  // and every version 1 to 7 mount is untouched by all of this. The
+  // executor is SYNCHRONOUS and on this thread: a request is one
+  // gesture, one solve, one pose (design §3).
+  let loadedMachine: LoadedMachine | null = null;
+  let machine: ClockedMachine | undefined;
+  let clockedChrome: ClockedChrome | undefined;
+  const clockedNudge: Record<string, number> = {};
+  let clockedOutcomes: Record<string, ClockedOutcome | null> = {};
   // The running chrome (OpenSpec `drive-the-run-on-screen`). What a
   // maker has typed into the amount and rate fields is a REQUEST
   // setting, not a coordinate: it survives a republish and moves
@@ -382,9 +418,18 @@ export async function mount(
   // Under a run the BANK is what poses the geometry, and the program's
   // clock name binds to elapsed simulation seconds beside it. `$t` stays
   // 0 for a version 5 document, because no expression in one reads it.
-  const scope = (): EvalScope => (loadedProgram === null
-    ? { time, drivers: drivers.scope(), bindings: bindingsTable.roots() }
-    : poseScope(bank, loadedProgram.clock, elapsedSeconds, bindingsTable));
+  const scope = (): EvalScope => {
+    // Under a CLOCKED root the BANK poses the geometry and `$t` SWEEPS:
+    // a version 8 document publishes the ordinary `animation` object, so
+    // a geometry that is a formula of `$t` animates while the bank
+    // stands (design §10).
+    if (machine !== undefined) {
+      return clockedScope(machine.state(), time, bindingsTable);
+    }
+    return loadedProgram === null
+      ? { time, drivers: drivers.scope(), bindings: bindingsTable.roots() }
+      : poseScope(bank, loadedProgram.clock, elapsedSeconds, bindingsTable);
+  };
 
   // One door for a driver value, whether the maker moved a slider or
   // the host called setDriver: identical store semantics, identical
@@ -941,13 +986,113 @@ export async function mount(
     await started.ready;
   };
 
+  /** The clocked machine of a version 8 document, built once per load.
+   *
+   * The `pose` hook is what makes a request ATOMIC on this side: the
+   * machine calls it with the bank it is ABOUT to commit, so a tree that
+   * refuses the new bank leaves the machine's own bank standing
+   * (ADR-125's atomicity, design §7). */
+  const startMachine = (loaded: LoadedMachine | null) => {
+    loadedMachine = loaded;
+    clockedOutcomes = {};
+    if (loaded === null) {
+      machine = undefined;
+      return;
+    }
+    machine = clockedMachine(loaded, {
+      pose: (next) => {
+        // One pose per accepted request, through the existing change
+        // set: only the nodes the moved ids reach are re-evaluated. The
+        // machine has NOT assigned this bank yet -- that is what makes
+        // a request atomic -- so `machine.state()` here is still the
+        // bank the request started from, and the difference is exactly
+        // what moved.
+        const standing = machine === undefined ? {} : machine.state();
+        const moved = Object.keys(next).filter(
+          (id) => next[id] !== standing[id]);
+        tree?.update(clockedScope(next, time, bindingsTable), posed(moved));
+        // A request is a gesture, and a gesture that changed the pose
+        // must reach the screen -- whether it came from the panel or
+        // straight off the `machine()` handle a host holds.
+        renderer.render(scene, camera);
+      },
+    });
+  };
+
+  /** Issue ONE request and report its outcome AT THE CONTROL that made
+   * it (design §13), whatever the machine answers. A gesture an
+   * interlock holds is REPORTED, not swallowed. */
+  const clockedRequest = (id: string, request: { by?: number; to?: number }) => {
+    const started = machine;
+    if (started === undefined) return;
+    const unit = loadedMachine?.drivers[id]?.unit ?? null;
+    let report: ClockedOutcome;
+    try {
+      const answered: ClockedRequest = started.move(id, request);
+      report = {
+        status: 'completed',
+        admitted: answered.admitted,
+        unit,
+        message: null,
+        stops: answered.stops,
+      };
+    } catch (error) {
+      report = {
+        status: 'refused',
+        admitted: null,
+        unit,
+        message: error instanceof Error ? error.message : String(error),
+        stops: [],
+      };
+    }
+    clockedOutcomes[id] = report;
+    rebuildClockedChrome();
+    renderer.render(scene, camera);
+  };
+
+  function rebuildClockedChrome(): void {
+    clockedChrome?.remove();
+    clockedChrome = undefined;
+    if (machine === undefined || loadedMachine === null) return;
+    // The same switch as the posed chrome's, gating the PIXELS only: a
+    // host that suppresses them keeps the whole machine API.
+    if (!showsRunControls(resolved.driverControls, true)) return;
+    clockedChrome = buildClockedChrome(container, clockedControlLayer({
+      machine: loadedMachine,
+      values: machine.state(),
+      focus: assemblyNavigation.root(),
+      rootLabel: tree?.name ?? 'root',
+      nudge: clockedNudge,
+      outcomes: clockedOutcomes,
+    }), {
+      move(id: string, to: number) {
+        clockedRequest(id, { to });
+      },
+      nudge(id: string, amount: number) {
+        clockedRequest(id, { by: amount });
+      },
+      setNudge(id: string, amount: number) {
+        clockedNudge[id] = amount;
+      },
+      reset() {
+        machine?.reset();
+        tree?.update(scope());
+        clockedOutcomes = {};
+        rebuildClockedChrome();
+        renderer.render(scene, camera);
+      },
+      focus: focusOn,
+    });
+  }
+
   const replaceTree = async (view: View | null) => {
-    const { document, table, program, controls: declared } =
-      await loadDocument(sourceUrl);
+    const { document, table, program, machine: loaded,
+            controls: declared } = await loadDocument(sourceUrl);
     drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
     // Installed before the update that follows (design D6), in the same
     // place and order `drivers.reconcile(...)` already runs before it.
     bindingsTable = table;
+    startMachine(loaded);
     await startRuntime(document, program);
     const next = new WidgetTree(document.root, baseUrl, null, bindingsTable);
     next.update(scope());
@@ -1012,6 +1157,7 @@ export async function mount(
     // update may have reset (design D10).
     rebuildDriverChrome();
     rebuildRunChrome();
+    rebuildClockedChrome();
   };
 
   // The ONE place focus moves, whether the host called `setRoot` or the
@@ -1026,6 +1172,7 @@ export async function mount(
     applyFrame(null);
     rebuildDriverChrome();
     rebuildRunChrome();
+    rebuildClockedChrome();
     renderer.render(scene, camera);
     // Whether a host called setRoot or the maker clicked the
     // breadcrumb, this is the one place that moved -- so this is the
@@ -1344,6 +1491,9 @@ export async function mount(
     instructions: () => drivers.instructions(),
     trigger: (name: string) => drivers.trigger(name),
     controls: partControlViews,
+    machine(): MachineHandle | null {
+      return machine ?? null;
+    },
     run(): RunHandle | null {
       const started = runtime;
       const program = loadedProgram;
@@ -1930,15 +2080,18 @@ function visibleBounds(root: THREE.Object3D): THREE.Box3 {
 // version 6 (a law that reads the coordinate it drives); and
 // `execute-the-selection` adds version 7 (a program some of whose law
 // edges form a BLOCK, ordered per piece of a tick from the published
-// edges rather than run in the published listing). A version 8 document
-// is refused by name and by list -- the same sentence a version 5
-// document got from every viewer released so far.
+// edges rather than run in the published listing); and
+// `execute-the-commit` adds version 8 (a root that declares a `State`,
+// whose document carries a `states` table and a compiled `clocked`
+// machine instead of a `program`). A version 9 document is refused by
+// name and by list -- the same sentence a version 5 document got from
+// every viewer released so far.
 //
 // Exported so `version.test.ts` can pin it against the ONE declaration
 // the bundle and `bundle.py` both read (`solidNodeDocumentVersions` in
 // package.json): the number this viewer reports and the versions it
 // refuses by must not be able to drift apart.
-export const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7];
+export const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8];
 
 // The document schema this viewer evaluates. Version 2 added the
 // `drivers` table, and since ADR-056 stage 3b this viewer EVALUATES
@@ -1969,6 +2122,10 @@ export interface LoadedDocument {
    * every version 1 to 4 document -- so a host asks one question and
    * gets a truthful answer. */
   program: LoadedProgram | null;
+  /** The compiled CLOCKED machine a version 8 document carries, or
+   * `null` for every other document. A document publishes one or the
+   * other, never both. */
+  machine: LoadedMachine | null;
   /** The controls a version 5 document's parts carry, parsed and
    * checked, in the document's own key order (OpenSpec
    * `drive-the-run-by-touch`, design D1). `[]` for a document with no
@@ -2076,8 +2233,20 @@ export function assertRenderable(document: Manifest,
   // that is the first thing design §4 refuses, and a version 6 document
   // with no `program` key must meet THAT sentence rather than be read
   // as a treeful document with nothing to run.
-  const program = document.version >= 5
-      || (document as RunDocument).program !== undefined
+  // A document DECLARING VERSION 8 -- or carrying a `clocked` object at
+  // any version -- is a CLOCKED machine, and it is loaded and refused
+  // field by field here, on the surface a program is refused on. A
+  // clocked root publishes no `program`, and `loadClocked` refuses a
+  // document that carries both: version 8 is a property of the ROOT'S
+  // DECLARATION and it dominates (OpenSpec `execute-the-commit`,
+  // design §1).
+  const clocked = document.version >= 8
+    || (document as ClockedDocument).clocked !== undefined;
+  const machine = clocked
+    ? loadClocked(document as ClockedDocument, sourceUrl, table) : null;
+  const program = !clocked
+    && (document.version >= 5
+        || (document as RunDocument).program !== undefined)
     ? loadProgram(document as RunDocument, sourceUrl, table)
     : null;
   // The `controls` table, read and checked HERE (design D1): after the
@@ -2100,6 +2269,11 @@ export function assertRenderable(document: Manifest,
   const declared = new Set([
     ...Object.keys(document.drivers ?? {}),
     ...(program === null ? [] : program.declaredNames),
+    // Under version 8 the identifiers an expression may name widen with
+    // the MACHINE: its declared states and, under an elapsed base, its
+    // clock. A bound's branch placeholders are legal only inside that
+    // bound's own plan and are deliberately not admitted here.
+    ...(machine === null ? [] : machine.declaredNames),
   ]);
   const missing = new Set<string>();
   const unreadable = new Set<string>();
@@ -2181,6 +2355,16 @@ export function assertRenderable(document: Manifest,
   const insidePlan = new Set([
     ...declared,
     ...(program === null ? [] : program.placeholders.keys()),
+    ...(machine === null ? [] : machine.placeholders.keys()),
+    // And one name more under a clocked root: the RESERVED OWN-NAME a
+    // bound reads its own coordinate under, which is bound for the
+    // length of one request exactly as a placeholder is bound inside
+    // the plan that mints it (ADR-128 §7). A document's binding table
+    // carries the subexpressions its BOUNDS share, so an entry reading
+    // `_own` is an ordinary entry of a version 8 document -- the
+    // acceptance fixture publishes two. What stays refused is `_own`
+    // reached from an OPERATION, which no pose scope binds.
+    ...(machine === null ? [] : [machine.own]),
   ]);
   (document.bindings ?? []).forEach((entry) => {
     for (const name of table.closure(freeVariables(entry.expression))) {
@@ -2210,7 +2394,7 @@ export function assertRenderable(document: Manifest,
     );
   }
 
-  return { table, program, controls };
+  return { table, program, machine, controls };
 }
 
 async function loadDocument(
@@ -2231,8 +2415,9 @@ async function loadDocument(
   } catch (error) {
     throw new Error(`Failed to parse ${sourceUrl}: ${String(error)}`);
   }
-  const { table, program, controls } = assertRenderable(document, sourceUrl);
-  return { document, table, program, controls };
+  const { table, program, machine, controls } = assertRenderable(
+    document, sourceUrl);
+  return { document, table, program, machine, controls };
 }
 
 function resolveContainer(target: HTMLElement | string): HTMLElement {
@@ -2788,6 +2973,200 @@ function summarise(settled: readonly Outcome[],
     unit,
     message: null,
   };
+}
+
+// ---------------------------------------------------------------------
+// The CLOCKED chrome's DOM (OpenSpec `execute-the-commit`, design §13).
+// Everything here RENDERS a `ClockedControlLayer` and calls back through
+// the same `machine()` handle a host uses; it decides nothing itself,
+// because every decision lives in `clockedControls.ts` where plain node
+// can test it. Its proof is the live browser (the acceptance in
+// `tests/test_calculator_document.py`).
+//
+// A driver is a HANDLE -- an editable design-unit readout, a pair of
+// nudges and, where the driver declares a `range`, a slider. A state is
+// a follow-only READOUT, and so is the clock. An instruction is LISTED
+// and DISABLED. There is no transport: a clocked machine has no cadence.
+
+interface ClockedChromeActions {
+  /** One request landing the driver AT a design-unit value. */
+  move(id: string, to: number): void;
+  /** One request travelling BY a design-unit amount. */
+  nudge(id: string, amount: number): void;
+  setNudge(id: string, amount: number): void;
+  reset(): void;
+  focus(path: AssemblyPath | null): void;
+}
+
+interface ClockedChrome {
+  remove(): void;
+}
+
+const CLOCKED_PANEL_STYLE = PANEL_STYLE.replace('max-width:75%;',
+                                                'max-width:96%;');
+
+function buildClockedRow(control: ClockedInputControl,
+                         actions: ClockedChromeActions): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'clocked-input';
+  row.dataset.input = control.id;
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;'
+    + 'flex-wrap:wrap;';
+
+  const name = document.createElement('span');
+  name.textContent = control.label;
+  name.style.cssText = 'min-width:5em;';
+  row.append(name);
+
+  // The banked position, in DESIGN units, as an EDITABLE readout: a
+  // clocked driver IS positional, and committing a value here is one
+  // `move(id, {to})` from where the bank stands.
+  const field = document.createElement('input');
+  field.type = 'number';
+  field.className = 'clocked-value';
+  field.dataset.input = control.id;
+  field.value = formatDisplay(control.display);
+  field.style.cssText = 'width:7em;font:inherit;';
+  field.setAttribute('aria-label', control.unit === null
+    ? control.label : `${control.label} (${control.unit})`);
+  field.addEventListener('change', () => {
+    const asked = Number(field.value);
+    if (Number.isFinite(asked)) actions.move(control.id, asked);
+  });
+  row.append(field);
+
+  if (control.unit !== null) {
+    const unit = document.createElement('span');
+    unit.textContent = control.unit;
+    unit.style.cssText = RUN_LEGEND_STYLE;
+    row.append(unit);
+  }
+
+  for (const sign of [-1, 1]) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = sign < 0 ? 'clocked-minus' : 'clocked-plus';
+    button.dataset.input = control.id;
+    button.textContent = sign < 0 ? '-' : '+';
+    button.style.cssText = 'font:inherit;min-width:2em;';
+    button.addEventListener('click', () => {
+      actions.nudge(control.id, sign * control.nudge);
+    });
+    row.append(button);
+  }
+
+  const amount = document.createElement('input');
+  amount.type = 'number';
+  amount.className = 'clocked-nudge';
+  amount.dataset.input = control.id;
+  amount.value = formatDisplay(control.nudge);
+  amount.style.cssText = RUN_FIELD_STYLE;
+  amount.setAttribute('aria-label', `${control.label} nudge amount`);
+  amount.addEventListener('change', () => {
+    const asked = Number(amount.value);
+    if (Number.isFinite(asked)) actions.setNudge(control.id, asked);
+  });
+  row.append(amount);
+
+  if (control.slider !== null) {
+    // `range` is PRESENTATION and never a clamp: the thumb is pinned at
+    // an end while the readout stays truthful, and a request past the
+    // range is admitted exactly as the framework admits one.
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.className = 'clocked-slider';
+    slider.dataset.input = control.id;
+    slider.min = String(control.slider.min);
+    slider.max = String(control.slider.max);
+    slider.step = control.slider.step === null
+      ? 'any' : String(control.slider.step);
+    slider.value = String(control.slider.position);
+    slider.style.cssText = 'flex:1;margin:0;min-width:120px;';
+    slider.setAttribute('aria-label', `${control.label} slider`);
+    slider.addEventListener('change', () => {
+      actions.move(control.id, Number(slider.value));
+    });
+    row.append(slider);
+  }
+
+  const outcome = document.createElement('div');
+  outcome.className = 'clocked-outcome';
+  outcome.dataset.input = control.id;
+  outcome.style.cssText = `${RUN_OUTCOME_STYLE}flex-basis:100%;`;
+  outcome.textContent = formatClockedOutcome(control.outcome);
+  row.append(outcome);
+  return row;
+}
+
+function buildClockedChrome(
+  container: HTMLElement,
+  layer: ClockedControlLayer,
+  actions: ClockedChromeActions,
+): ClockedChrome {
+  const panel = document.createElement('div');
+  panel.className = 'clocked-controls';
+  panel.style.cssText = CLOCKED_PANEL_STYLE;
+  panel.append(buildBreadcrumb(layer.breadcrumb, layer.children,
+                               actions.focus, 'clocked'));
+
+  layer.inputs.forEach((control) => {
+    panel.append(buildClockedRow(control, actions));
+  });
+
+  layer.readouts.forEach((entry) => {
+    const row = document.createElement('div');
+    row.className = entry.kind === 'clock'
+      ? 'clocked-clock' : 'clocked-readout';
+    row.dataset.readout = entry.id;
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;';
+    const name = document.createElement('span');
+    name.textContent = entry.label;
+    name.style.cssText = 'min-width:5em;';
+    const value = document.createElement('span');
+    value.className = 'clocked-readout-value';
+    value.dataset.readout = entry.id;
+    value.textContent = entry.readout;
+    value.style.cssText = 'font-variant-numeric:tabular-nums;';
+    row.append(name, value);
+    if (entry.unit !== null) {
+      const unit = document.createElement('span');
+      unit.textContent = entry.unit;
+      unit.style.cssText = RUN_LEGEND_STYLE;
+      row.append(unit);
+    }
+    panel.append(row);
+  });
+
+  if (layer.instructions.length > 0) {
+    const row = document.createElement('div');
+    row.className = 'clocked-instructions';
+    row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;';
+    layer.instructions.forEach((entry) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = entry.label;
+      button.disabled = true;
+      button.title = entry.reason;
+      button.setAttribute('aria-disabled', 'true');
+      button.style.cssText = 'font:inherit;opacity:0.5;';
+      row.append(button);
+    });
+    panel.append(row);
+  }
+
+  const session = document.createElement('div');
+  session.style.cssText = 'display:flex;gap:6px;';
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'clocked-reset';
+  reset.textContent = 'Reset';
+  reset.style.cssText = 'font:inherit;';
+  reset.addEventListener('click', () => actions.reset());
+  session.append(reset);
+  panel.append(session);
+
+  container.append(panel);
+  return { remove: () => panel.remove() };
 }
 
 function buildRunChrome(

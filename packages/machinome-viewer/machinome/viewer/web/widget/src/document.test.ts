@@ -202,15 +202,17 @@ describe('assertRenderable on a flexible document', () => {
     // moved again to 7. OpenSpec `execute-the-selection`: version 7 --
     // a program carrying a BLOCK -- is rendered too, so it moves to 8:
     // the next one still refused, and the same sentence a version 5
-    // document got from every viewer released so far.
+    // document got from every viewer released so far. OpenSpec
+    // `execute-the-commit`: version 8 -- a root that declares a State --
+    // is rendered too, so it moves to 9.
     const manifest = document({
-      version: 8 as unknown as Manifest['version'],
+      version: 9 as unknown as Manifest['version'],
       root: node('root', []),
     });
 
-    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b8\b/);
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b9\b/);
     expect(() => assertRenderable(manifest, '/m.json'))
-      .toThrow(/1, 2, 3, 4, 5, 6, 7/);
+      .toThrow(/1, 2, 3, 4, 5, 6, 7, 8/);
     expect(() => assertRenderable(manifest, '/m.json')).toThrow(/m\.json/);
   });
 
@@ -490,8 +492,8 @@ function withProgram(overrides: Record<string, unknown> = {},
 }
 
 describe('assertRenderable on a document carrying a program', () => {
-  it('renders versions 5, 6 and 7 and says so in its list', () => {
-    expect(RENDERED_VERSIONS).toEqual([1, 2, 3, 4, 5, 6, 7]);
+  it('renders versions 5, 6, 7 and 8 and says so in its list', () => {
+    expect(RENDERED_VERSIONS).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
 
   it('accepts a version 6 document -- one whose program carries a law '
@@ -522,11 +524,23 @@ describe('assertRenderable on a document carrying a program', () => {
     expect(program!.identity).toBe('a-program');
   });
 
-  it('refuses a version 8 document by name, naming what it renders', () => {
+  it('refuses a version 9 document by name, naming what it renders', () => {
+    const manifest = withProgram(
+      { version: 9 as unknown as Manifest['version'] });
+    expect(() => assertRenderable(manifest, '/m.json'))
+      .toThrow(/renders versions 1, 2, 3, 4, 5, 6, 7, 8/);
+  });
+
+  it('refuses a document carrying BOTH a program and a clocked machine',
+     () => {
+    // Two machines: a root publishes one or the other, and version 8 is
+    // a property of the ROOT'S DECLARATION (OpenSpec
+    // `execute-the-commit`, design §1).
     const manifest = withProgram(
       { version: 8 as unknown as Manifest['version'] });
+    (manifest as unknown as { clocked: unknown }).clocked = {};
     expect(() => assertRenderable(manifest, '/m.json'))
-      .toThrow(/renders versions 1, 2, 3, 4, 5, 6, 7/);
+      .toThrow(/two machines/);
   });
 
   it('11.5 the PROGRAM gate is a FLOOR and does not move: a version 7 '

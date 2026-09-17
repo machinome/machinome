@@ -1,0 +1,716 @@
+{
+  "format": "solid-node-export",
+  "version": 8,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "crank": {
+      "default": 0,
+      "range": null,
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    },
+    "feed": {
+      "default": 0.0,
+      "range": null,
+      "unit": "mm",
+      "dtype": null,
+      "scale": null
+    },
+    "operand": {
+      "default": 1,
+      "range": [
+        0,
+        9
+      ],
+      "unit": null,
+      "dtype": "int",
+      "scale": null
+    },
+    "ring": {
+      "default": 0.0,
+      "range": null,
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    },
+    "setting": {
+      "default": 0.0,
+      "range": null,
+      "unit": "digit",
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "states": {
+    "halved": {
+      "default": 0,
+      "range": null,
+      "unit": null,
+      "dtype": "int",
+      "scale": null
+    },
+    "w0.digit": {
+      "default": 0,
+      "range": [
+        0,
+        9
+      ],
+      "unit": null,
+      "dtype": "int",
+      "scale": null
+    },
+    "w1.digit": {
+      "default": 0,
+      "range": [
+        0,
+        9
+      ],
+      "unit": null,
+      "dtype": "int",
+      "scale": null
+    },
+    "w2.digit": {
+      "default": 0,
+      "range": [
+        0,
+        9
+      ],
+      "unit": null,
+      "dtype": "int",
+      "scale": null
+    },
+    "w3.digit": {
+      "default": 0,
+      "range": [
+        0,
+        9
+      ],
+      "unit": null,
+      "dtype": "int",
+      "scale": null
+    }
+  },
+  "instructions": {},
+  "bindings": [
+    {
+      "name": "_b0",
+      "expression": "(6.0 * setting)"
+    },
+    {
+      "name": "_b1",
+      "expression": "(crank / 360)"
+    },
+    {
+      "name": "_b2",
+      "expression": "(10 * w1.digit)"
+    },
+    {
+      "name": "_b3",
+      "expression": "(w0.digit + _b2)"
+    },
+    {
+      "name": "_b4",
+      "expression": "(100 * w2.digit)"
+    },
+    {
+      "name": "_b5",
+      "expression": "(_b3 + _b4)"
+    },
+    {
+      "name": "_b6",
+      "expression": "(1000 * w3.digit)"
+    },
+    {
+      "name": "_b7",
+      "expression": "(_b5 + _b6)"
+    },
+    {
+      "name": "_b8",
+      "expression": "(_b7 + operand)"
+    },
+    {
+      "name": "_b9",
+      "expression": "(_b8 % 10)"
+    },
+    {
+      "name": "_b10",
+      "expression": "(10 < 0.0)"
+    },
+    {
+      "name": "_b11",
+      "expression": "(_b8 / 10)"
+    },
+    {
+      "name": "_b12",
+      "expression": "floor(_b11)"
+    },
+    {
+      "name": "_b13",
+      "expression": "(_b12 % 10)"
+    },
+    {
+      "name": "_b14",
+      "expression": "(_b8 / 100)"
+    },
+    {
+      "name": "_b15",
+      "expression": "floor(_b14)"
+    },
+    {
+      "name": "_b16",
+      "expression": "(_b15 % 10)"
+    },
+    {
+      "name": "_b17",
+      "expression": "(_b8 / 1000)"
+    },
+    {
+      "name": "_b18",
+      "expression": "floor(_b17)"
+    },
+    {
+      "name": "_b19",
+      "expression": "(_b18 % 10)"
+    },
+    {
+      "name": "_b20",
+      "expression": "(10 - w0.digit)"
+    },
+    {
+      "name": "_b21",
+      "expression": "(4.0 * _b20)"
+    },
+    {
+      "name": "_b22",
+      "expression": "(10.0 + _b21)"
+    },
+    {
+      "name": "_b23",
+      "expression": "(10 - w1.digit)"
+    },
+    {
+      "name": "_b24",
+      "expression": "(4.0 * _b23)"
+    },
+    {
+      "name": "_b25",
+      "expression": "(110.0 + _b24)"
+    },
+    {
+      "name": "_b26",
+      "expression": "(10 - w2.digit)"
+    },
+    {
+      "name": "_b27",
+      "expression": "(4.0 * _b26)"
+    },
+    {
+      "name": "_b28",
+      "expression": "(210.0 + _b27)"
+    },
+    {
+      "name": "_b29",
+      "expression": "(10 - w3.digit)"
+    },
+    {
+      "name": "_b30",
+      "expression": "(4.0 * _b29)"
+    },
+    {
+      "name": "_b31",
+      "expression": "(310.0 + _b30)"
+    },
+    {
+      "name": "_b32",
+      "expression": "(feed / 100.0)"
+    },
+    {
+      "name": "_b33",
+      "expression": "(_own / 6.0)"
+    },
+    {
+      "name": "_b34",
+      "expression": "floor(_b1)"
+    },
+    {
+      "name": "_b35",
+      "expression": "(360 * _b34)"
+    },
+    {
+      "name": "_b36",
+      "expression": "(crank - _b35)"
+    },
+    {
+      "name": "_b37",
+      "expression": "(_b36 < 1)"
+    },
+    {
+      "name": "_b38",
+      "expression": "(54.0 - _own)"
+    }
+  ],
+  "clocked": {
+    "identity": "979b1a0ef4fe214106f329844ef1c5af789dd18608b5d883eaf22bfdc73ba684",
+    "clock": null,
+    "own": "_own",
+    "commits": [
+      {
+        "sources": [
+          "crank",
+          "operand",
+          "w0.digit",
+          "w1.digit",
+          "w2.digit",
+          "w3.digit"
+        ],
+        "targets": [
+          "w0.digit",
+          "w1.digit",
+          "w2.digit",
+          "w3.digit"
+        ],
+        "at": {
+          "primitive": "floor",
+          "level": "_b1"
+        },
+        "law": [
+          "(_b9 + (10 * ((_b9 != 0.0) * ((_b9 < 0.0) != _b10))))",
+          "(_b13 + (10 * ((_b13 != 0.0) * ((_b13 < 0.0) != _b10))))",
+          "(_b16 + (10 * ((_b16 != 0.0) * ((_b16 < 0.0) != _b10))))",
+          "(_b19 + (10 * ((_b19 != 0.0) * ((_b19 < 0.0) != _b10))))"
+        ],
+        "shapes": {
+          "crank": "affine"
+        },
+        "description": "(crank, operand, w0.digit, w1.digit, w2.digit, w3.digit) commits (w0.digit, w1.digit, w2.digit, w3.digit)",
+        "stated_by": "Calculator"
+      },
+      {
+        "sources": [
+          "ring",
+          "w0.digit"
+        ],
+        "targets": [
+          "w0.digit"
+        ],
+        "at": {
+          "primitive": ">=",
+          "level": "(ring - _b22)"
+        },
+        "law": [
+          "(w0.digit * (ring < _b22))"
+        ],
+        "shapes": {
+          "ring": "affine"
+        },
+        "description": "(ring, w0.digit) commits w0.digit",
+        "stated_by": "Calculator"
+      },
+      {
+        "sources": [
+          "ring",
+          "w1.digit"
+        ],
+        "targets": [
+          "w1.digit"
+        ],
+        "at": {
+          "primitive": ">=",
+          "level": "(ring - _b25)"
+        },
+        "law": [
+          "(w1.digit * (ring < _b25))"
+        ],
+        "shapes": {
+          "ring": "affine"
+        },
+        "description": "(ring, w1.digit) commits w1.digit",
+        "stated_by": "Calculator"
+      },
+      {
+        "sources": [
+          "ring",
+          "w2.digit"
+        ],
+        "targets": [
+          "w2.digit"
+        ],
+        "at": {
+          "primitive": ">=",
+          "level": "(ring - _b28)"
+        },
+        "law": [
+          "(w2.digit * (ring < _b28))"
+        ],
+        "shapes": {
+          "ring": "affine"
+        },
+        "description": "(ring, w2.digit) commits w2.digit",
+        "stated_by": "Calculator"
+      },
+      {
+        "sources": [
+          "ring",
+          "w3.digit"
+        ],
+        "targets": [
+          "w3.digit"
+        ],
+        "at": {
+          "primitive": ">=",
+          "level": "(ring - _b31)"
+        },
+        "law": [
+          "(w3.digit * (ring < _b31))"
+        ],
+        "shapes": {
+          "ring": "affine"
+        },
+        "description": "(ring, w3.digit) commits w3.digit",
+        "stated_by": "Calculator"
+      },
+      {
+        "sources": [
+          "feed",
+          "halved"
+        ],
+        "targets": [
+          "halved"
+        ],
+        "at": {
+          "primitive": "floor",
+          "level": "_b32"
+        },
+        "law": [
+          "(((floor(_b32) * 2) + 1) / 2)"
+        ],
+        "shapes": {
+          "feed": "affine"
+        },
+        "description": "(feed, halved) commits halved",
+        "stated_by": "Calculator"
+      }
+    ],
+    "bounds": [
+      {
+        "coordinate": "crank_dial.turn",
+        "side": "low",
+        "unit": "deg",
+        "value": "crank",
+        "bound": "(6.0 * floor(_b33))",
+        "plan": {
+          "skeleton": "((6.0 * _j0) - crank)",
+          "jumps": [
+            {
+              "name": "_j0",
+              "primitive": "floor",
+              "level": "_b33",
+              "affine": true
+            }
+          ]
+        },
+        "shapes": {
+          "crank": {
+            "level": "affine",
+            "jumps": [
+              "constant"
+            ]
+          }
+        },
+        "node": "Dial",
+        "joint": "turn",
+        "description": "the low bound of 'crank_dial.turn'"
+      },
+      {
+        "coordinate": "knob.travel",
+        "side": "low",
+        "unit": "mm",
+        "value": "_b0",
+        "bound": "(_own * (1 - _b37))",
+        "plan": {
+          "skeleton": "((_own * (1 - _j2)) - _b0)",
+          "jumps": [
+            {
+              "name": "_j1",
+              "primitive": "floor",
+              "level": "_b1",
+              "affine": true
+            },
+            {
+              "name": "_j2",
+              "primitive": "<",
+              "level": "((crank - (360 * _j1)) - 1)",
+              "affine": true
+            }
+          ]
+        },
+        "shapes": {
+          "crank": {
+            "level": "constant",
+            "jumps": [
+              "affine",
+              "affine"
+            ]
+          },
+          "setting": {
+            "level": "affine",
+            "jumps": [
+              "constant",
+              "constant"
+            ]
+          }
+        },
+        "node": "Slide",
+        "joint": "travel",
+        "description": "the low bound of 'knob.travel'"
+      },
+      {
+        "coordinate": "knob.travel",
+        "side": "high",
+        "unit": "mm",
+        "value": "_b0",
+        "bound": "(_own + (_b38 * _b37))",
+        "plan": {
+          "skeleton": "(_b0 - (_own + (_b38 * _j4)))",
+          "jumps": [
+            {
+              "name": "_j3",
+              "primitive": "floor",
+              "level": "_b1",
+              "affine": true
+            },
+            {
+              "name": "_j4",
+              "primitive": "<",
+              "level": "((crank - (360 * _j3)) - 1)",
+              "affine": true
+            }
+          ]
+        },
+        "shapes": {
+          "crank": {
+            "level": "constant",
+            "jumps": [
+              "affine",
+              "affine"
+            ]
+          },
+          "setting": {
+            "level": "affine",
+            "jumps": [
+              "constant",
+              "constant"
+            ]
+          }
+        },
+        "node": "Slide",
+        "joint": "travel",
+        "description": "the high bound of 'knob.travel'"
+      }
+    ],
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "max_crossings": 1000
+    }
+  },
+  "root": {
+    "name": "Calculator",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1789650979.3041816,
+    "operations": [],
+    "children": [
+      {
+        "name": "w0",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": 1789650979.3031814,
+        "operations": [],
+        "children": [
+          {
+            "name": "face",
+            "type": "LeafNode",
+            "color": null,
+            "mtime": 1789650979.3011813,
+            "operations": [
+              [
+                "r",
+                "(36.0 * w0.digit)",
+                [
+                  0,
+                  0,
+                  1
+                ]
+              ]
+            ],
+            "model": "models/clocked_project/parts-Dial-9f2c3557d753.stl",
+            "piece": "696adce9d1f7"
+          }
+        ]
+      },
+      {
+        "name": "w1",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": 1789650979.3031814,
+        "operations": [],
+        "children": [
+          {
+            "name": "face",
+            "type": "LeafNode",
+            "color": null,
+            "mtime": 1789650979.3011813,
+            "operations": [
+              [
+                "r",
+                "(36.0 * w1.digit)",
+                [
+                  0,
+                  0,
+                  1
+                ]
+              ]
+            ],
+            "model": "models/clocked_project/parts-Dial-9f2c3557d753.stl",
+            "piece": "696adce9d1f7"
+          }
+        ]
+      },
+      {
+        "name": "w2",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": 1789650979.3031814,
+        "operations": [],
+        "children": [
+          {
+            "name": "face",
+            "type": "LeafNode",
+            "color": null,
+            "mtime": 1789650979.3011813,
+            "operations": [
+              [
+                "r",
+                "(36.0 * w2.digit)",
+                [
+                  0,
+                  0,
+                  1
+                ]
+              ]
+            ],
+            "model": "models/clocked_project/parts-Dial-9f2c3557d753.stl",
+            "piece": "696adce9d1f7"
+          }
+        ]
+      },
+      {
+        "name": "w3",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": 1789650979.3031814,
+        "operations": [],
+        "children": [
+          {
+            "name": "face",
+            "type": "LeafNode",
+            "color": null,
+            "mtime": 1789650979.3011813,
+            "operations": [
+              [
+                "r",
+                "(36.0 * w3.digit)",
+                [
+                  0,
+                  0,
+                  1
+                ]
+              ]
+            ],
+            "model": "models/clocked_project/parts-Dial-9f2c3557d753.stl",
+            "piece": "696adce9d1f7"
+          }
+        ]
+      },
+      {
+        "name": "crank_dial",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789650979.3011813,
+        "operations": [
+          [
+            "r",
+            "crank",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "model": "models/clocked_project/parts-Dial-9f2c3557d753.stl",
+        "piece": "696adce9d1f7"
+      },
+      {
+        "name": "knob",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789650979.3011813,
+        "operations": [
+          [
+            "t",
+            [
+              "0",
+              "_b0",
+              "0"
+            ]
+          ]
+        ],
+        "model": "models/clocked_project/parts-Slide-6bb4c1177681.stl",
+        "piece": "7b37025f2e28"
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "696adce9d1f7",
+      "name": "Dial",
+      "sources": [
+        "clocked_project/parts.py"
+      ],
+      "models": [
+        "models/clocked_project/parts-Dial-9f2c3557d753.stl"
+      ],
+      "count": 5,
+      "size": [
+        20.0,
+        19.890438079833984,
+        3.0
+      ],
+      "volume": 935.6026067153634,
+      "watertight": true
+    },
+    {
+      "id": "7b37025f2e28",
+      "name": "Slide",
+      "sources": [
+        "clocked_project/parts.py"
+      ],
+      "models": [
+        "models/clocked_project/parts-Slide-6bb4c1177681.stl"
+      ],
+      "count": 1,
+      "size": [
+        20.0,
+        6.0,
+        6.0
+      ],
+      "volume": 720.0,
+      "watertight": true
+    }
+  ]
+}

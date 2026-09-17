@@ -19,7 +19,10 @@ something a person can look at in a browser:
   of run, pause, step, speed, elapsed time and reset**, **the machine's
   own parts made touchable wherever the document declares controls on
   them — a press submits the instruction a part declares and a drag
-  turns it by whole quanta**, and the
+  turns it by whole quanta**, **a CLOCKED machine — one with memory and
+  no cadence — operated a gesture at a time, each gesture one request
+  solved in thread and stopped where the machine's own interlocks stop
+  it**, and the
   `SolidNodeWidget.mount()` API a host page drives it through;
 - the **standalone export page** a `solid export` directory ships with,
   and the **inspector layout** (`SolidNodeWidget.mountInspector`) it can
@@ -383,6 +386,55 @@ photograph is the last place a hover affordance should appear.
 Not in this: no `Slide` (a prismatic drag), no dialling by position, no
 keyboard gesture, and nothing anywhere writes a coordinate.
 
+## Operating a clocked machine
+
+A machine may have **memory and no cadence**: a few retained values, a
+closed-form position between events, and a commit of those values at each
+event. solid-node publishes such a root as a **version 8** document — a
+`states` table beside `drivers`, and a `clocked` object carrying the
+compiled machine: its identity, its clock, its committing relations, its
+declared stops and its limits. A Curta is one of these; so is a counter,
+a register, a ratchet.
+
+The viewer reads that document and **executes it**. There is no cadence
+to run, so there is no transport and no worker: one gesture is one
+**request** — one declared input moving along a straight path from where
+the bank holds it — solved synchronously and posed once. A request costs
+well under a frame (fractions of a millisecond on the Curta-shaped
+fixture, measured in Chromium), which is what lets a drag be a series of
+requests and still stay smooth.
+
+Per declared input the chrome shows a **handle**: the banked position as
+an editable readout in design units, a nudge pair, and a slider where the
+document declares a range. Per declared state it shows a **readout**,
+follow-only — a state is what the machine remembers, not something a
+person may set — and a clock reads out the same way. Every gesture
+reports at the control that made it: the travel the machine admitted, the
+**stops** an interlock held it at, naming the coordinate, the side and
+the bound, or the request's own refusal. **A gesture an interlock holds
+is reported, not swallowed**: a knob that will not move says why, which
+is the difference between an operable machine and a broken control.
+
+A declared stop **clips the request before any event is located**, so
+events are never found on a path the machine never travels, and what the
+commits carried is judged again at the end — a commit that carries a
+coordinate out of range refuses the whole request, leaving the bank, the
+tree and the pose exactly as they stood. `handle.machine()` exposes the
+same surface to a host building its own panel: the bank, the two tables,
+`move`, and session-local `snapshot`, `restore` and `reset`, where a
+restore of a bank taken against another machine is refused by identity.
+
+What this build does **not** yet do is advance a clock: a version 8
+document that declares a time base loads, poses, animates and takes every
+request on its ordinary inputs, with its clock standing at its initial
+instant, and only `move('time', …)` is refused by name. Declared
+instructions are listed and **disabled**, because the framework publishes
+the table under a clocked root and gives it no runtime meaning yet.
+
+`$t` animates a clocked document while its bank stands, exactly as it
+does for a posed one, and the headless capture photographs it at its
+initial bank.
+
 ## What a part carries
 
 A rigid part may declare what it **carries on its surface** — the digits
@@ -450,10 +502,11 @@ build reads rather than infer it.
 | solid-node-viewer | viewer API | reads document versions |
 | --- | --- | --- |
 | 0.1.0 | 7 | 1, 2, 3, 4 |
-| 0.2.0 | 16 | 1, 2, 3, 4, 5, 6, 7 |
+| 0.2.0 | 17 | 1, 2, 3, 4, 5, 6, 7, 8 |
 
-(13 is skipped deliberately: the in-flight `slide-and-turn-parts`
-cycle claims it, and integration reconciles this row.)
+(13 is skipped: the `slide-and-turn-parts` work claimed it while it was in
+flight, and merged still in progress without taking the number. Nothing
+was ever published at API 13, and the number stays unused.)
 
 ## Working on the viewer
 
@@ -505,7 +558,9 @@ explicit decision.
 ## Status and process
 
 Version 0.1.0 is the viewer exactly as it shipped inside solid-node 0.6.0,
-relicensed and repackaged; see `CHANGELOG.md`. Behavioural specs live under
+relicensed and repackaged; see `CHANGELOG.md`. Neither version is on an
+index yet: 0.1.0 is founded and unpublished, and 0.2.0 is in progress
+here. Behavioural specs live under
 `openspec/specs/`, changes go through `openspec/changes/`, and the decisions
 that shaped the viewer — most of them made while it still lived in the
 framework — are in `docs/adrs/`.

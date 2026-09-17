@@ -182,7 +182,7 @@ class ViewerMountApiTest(TestCase):
           const host = document.getElementById('host');
           const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
           return { bundle: SolidNodeWidget.apiVersion, handle: viewer.apiVersion,
-                   run: viewer.run() };
+                   run: viewer.run(), machine: viewer.machine() };
         }""")
         self.assertEqual(result['bundle'], api_version())
         self.assertEqual(result['bundle'], result['handle'])
@@ -199,11 +199,17 @@ class ViewerMountApiTest(TestCase):
         # whose law edges form a BLOCK, ordered per PIECE of a tick from
         # the published edges rather than run in the published listing --
         # is the one after that, and it is not additive either, so this
-        # moves to 16 and the document list moves with it again.
-        self.assertEqual(result['bundle'], 16)
-        # And a document carrying no program has no run, which is what a
-        # host asking one question is answered with.
+        # moves to 16 and the document list moves with it again. OpenSpec
+        # `execute-the-commit`: executing a version 8 document -- a root
+        # that declares a `State`, whose document carries a compiled
+        # CLOCKED machine instead of a program -- is the one after that,
+        # and it is not additive either, so this moves to 17 and the
+        # document list moves with it again.
+        self.assertEqual(result['bundle'], 17)
+        # And a document carrying no program has no run and no machine,
+        # which is what a host asking one question is answered with.
         self.assertIsNone(result['run'])
+        self.assertIsNone(result['machine'])
 
     def test_the_mount_handle_exposes_and_controls_the_assembly(self):
         result = self.in_page("""async () => {

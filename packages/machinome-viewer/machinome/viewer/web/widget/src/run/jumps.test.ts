@@ -14,8 +14,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   along, blockCuts, blockIncrements, branchOf, copySign, CrossingRecord,
-  deduplicated, fromOrdinal, kinkBreaks, merged, nextAfter, onSurface,
-  ordinalOf, planCuts,
+  deduplicated, farSideOf, fromOrdinal, kinkBreaks, merged, nextAfter,
+  onSurface, ordinalOf, planCuts,
   planIncrement, retainedCuts, retainedIncrement, surfacesOf, ulpOf, unlanded,
 } from './jumps';
 import { edgeIncrements } from './edges';
@@ -1968,5 +1968,63 @@ describe('a curved quantity is still searched', () => {
     // skeleton over the pieces.
     expect(expressionMetrics().resolutions).toBe(278);
     expect(crossings.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------
+// `farSideOf`, EXTRACTED from `Walk.farSide` with a `scale` argument
+// (OpenSpec `execute-the-commit`, design §5; solid-node ADR-128 closure
+// 2). The running walk passes no scale and keeps the landed value's own
+// ulp exactly as it was; a CLOCKED caller passes the SEGMENT, which is
+// what lets a value standing at exactly `0.0` be landed at all.
+// ---------------------------------------------------------------------
+
+describe('farSideOf and the segment scale', () => {
+  /** A `>=` gate at 1.0: the branch is 0 below it and 1 at or above. */
+  const gate = (value: number) => (value >= 1 ? 1 : 0);
+
+  const broken = () => new LandingInvariantError('no bracket');
+
+  it('lands a value standing at exactly 0.0 when the SEGMENT sizes the '
+     + 'first step', () => {
+    // The ulp of zero is a denormal: 200 doublings of it reach about
+    // 4e-264, which is no distance at all on a segment 2 long, so the
+    // bracket search fails without a scale.
+    expect(() => farSideOf(gate, 0, 0, 1, broken)).toThrow(
+      LandingInvariantError);
+    expect(ulpOf(0)).toBe(5e-324);
+    expect(5e-324 * (2 ** 199)).toBeLessThan(1e-263);
+    // With the segment, the step starts at the ulp of 2 and the walk
+    // lands on the first representable value the gate reads 1 at, which
+    // for a NON-STRICT comparison is the threshold itself.
+    expect(farSideOf(gate, 0, 0, 1, broken, 2)).toBe(1);
+  });
+
+  it('walks BACKWARDS too, which is what a clip does', () => {
+    // The clip runs the same walk with `-direction` and a `satisfied`
+    // predicate, so it lands on the last value that still satisfies.
+    const satisfied = (value: number) => Number(value <= 1);
+    expect(() => farSideOf(satisfied, 0, 0, -1, broken)).toThrow(
+      LandingInvariantError);
+    // From a star at 3, walking back, the last value reading 1 is 1
+    // itself.
+    expect(farSideOf(satisfied, 0, 3, -1, broken, 3)).toBe(1);
+    // And from a star standing at exactly zero, with the segment
+    // scaling the step: the predicate reads 1 there already, so the walk
+    // goes forward to the far side of the surface.
+    expect(farSideOf(satisfied, 1, 0, 1, broken, 4))
+      .toBe(nextAfter(1, Infinity));
+  });
+
+  it('with no scale is the walk the run already had, value for value',
+     () => {
+    // A STRICT comparison lands on the next value beyond its threshold;
+    // a non-strict one lands on the threshold itself. Both are read by
+    // EVALUATING the branch, never by comparing to the surface.
+    const strict = (value: number) => (value > 1 ? 1 : 0);
+    expect(farSideOf(strict, 0, 1, 1, broken)).toBe(nextAfter(1, Infinity));
+    expect(farSideOf(gate, 0, 0.9999999999999999, 1, broken)).toBe(1);
+    // The default IS zero: passing it explicitly changes nothing.
+    expect(farSideOf(gate, 0, 0.9999999999999999, 1, broken, 0)).toBe(1);
   });
 });

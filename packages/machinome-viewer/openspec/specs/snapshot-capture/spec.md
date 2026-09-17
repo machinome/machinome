@@ -22,14 +22,21 @@ and the model pixels opaque. `--imgsize WxH` (default `1920x1080`) sets the
 image size and `--time` (0.0 to 1.0, default 0.0) the animation instant;
 `--time` outside the cycle SHALL be refused before any browser starts.
 
-A staged document carrying a mechanical program SHALL be photographed at
-its REST STATE: no step of the run SHALL be taken, and the program's
-published clock name SHALL resolve to zero, the instant the rest state is
-defined at. A non-zero `--time` on such a document SHALL be refused by
-name before any browser starts: a running document publishes no animation
-cycle, and honouring an animation instant on one would photograph the rest
-state while claiming another. A still of a state the machine reached is a
-different picture and is not offered here.
+A staged document carrying a mechanical `program` object SHALL be
+photographed at its REST STATE: no step of the run SHALL be taken, and the
+program's published clock name SHALL resolve to zero, the instant the rest
+state is defined at. A non-zero `--time` on such a document SHALL be
+refused by name before any browser starts: a running document publishes no
+animation cycle, and honouring an animation instant on one would
+photograph the rest state while claiming another. A still of a state the
+machine reached is a different picture and is not offered here.
+
+A staged CLOCKED document SHALL be photographed at its INITIAL BANK --
+every declared driver and state at its default, and the clock, where it
+declares one, at zero -- with no request made. Such a document publishes an
+ordinary animation cycle, so a non-zero `--time` SHALL be HONOURED on it
+and SHALL NOT be refused: the bank stands while `$t` sweeps, which is the
+instant the document itself describes.
 
 A staged document whose parts carry markings SHALL be photographed WITH them:
 the marking artifacts are staged beside the models the document names, and the
@@ -70,6 +77,19 @@ than producing a picture with a marking silently absent.
 - **THEN** the photograph shows the marking's colour where the marking is and
   the part's where it is not, and the same staging with its markings removed
   produces the picture without it
+
+#### Scenario: A clocked document is photographed at its initial bank
+
+- **WHEN** the capture is asked for a staged document declaring version 8
+- **THEN** the picture shows every part where its drivers' and states'
+  declared defaults put it, and no request was made to produce it
+
+#### Scenario: An animation instant means something to a clocked document
+
+- **WHEN** the capture is asked for a staged clocked document with a
+  non-zero `--time`
+- **THEN** it photographs that animation instant with the bank standing,
+  rather than refusing the option
 
 ### Requirement: A requested camera is honoured, never approximated
 

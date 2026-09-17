@@ -110,3 +110,101 @@ document interactive.
   because each gets its own fresh scope by the D11 rule this finding does
   not dispute — is unaddressed, and a document whose followed quantities
   overlap more than the Curta's own could still pay for it.
+
+# The clocked machine (2026-09-17, `execute-the-commit`, ADR-062)
+
+Four findings met while mirroring solid-node's clocked executor (ADR-125,
+ADR-126, ADR-128) into the viewer. They are recorded HERE rather than only
+in the change's own `evidence.md` — which is where a finding met while
+applying a cycle normally lives, and which holds each one's full text —
+because none of them belongs to a viewer cycle to fix: two are the
+PRODUCER's, one is the producer's CORPUS's, and one is a property of this
+repository's suite rather than of any change in it. **Status: recorded;
+triage the pilot's.**
+
+## A machine's identity is not a function of the machine
+
+- **Symptom.** The same class exported two ways publishes two
+  `clocked.identity` hashes, so a bank snapshotted against one export is
+  refused when restored against the other. That is not what solid-node
+  ADR-128 §13 means by "a bank taken against one machine is refused
+  against another".
+
+- **Cause.** `Clocked.described` opens its digest with
+  `root {klass.__module__}.{klass.__qualname__}`. The module path is a
+  property of how the class was IMPORTED, not of the machine.
+
+- **Evidence.** The corpus's `Calculator` (imported as
+  `tests.clocked_project.calculator`) publishes
+  `6eb8e57724cde8a15bc10a2966d02e039ba6fa4aee8c3392bb02c951064eb4a7`; the
+  same class exported by `solid export
+  tests/clocked_project/calculator.py:Calculator` publishes
+  `979b1a0ef4fe214106f329844ef1c5af789dd18608b5d883eaf22bfdc73ba684`.
+  **Every other field of the two `clocked` objects is byte-identical** —
+  `clock`, `own`, all six `commits`, all three `bounds`, `limits` — as are
+  the `drivers`, `states`, `instructions` and `bindings` tables. Importing
+  the class the corpus's way in a throwaway copy reproduces the corpus's
+  hash exactly.
+
+- **Not the viewer's.** It is PRODUCER-side, and it is shared with the
+  running half: `Program.described` opens the same way, which ADR-057
+  already recorded for a program's `identity`. Nothing in the viewer works
+  around it; the acceptance fixture's README records both strings.
+
+## The clocked corpus does not discriminate the landing walk's segment scale
+
+- **Symptom.** solid-node ADR-128's closure 2 — the far-side walk's first
+  step is sized by the SEGMENT rather than by the ulp of a value that
+  happens to be `0.0` — is unpinned by the corpus. Dropping the scale in
+  BOTH clocked callers (the event landing and the stop landing) leaves all
+  104 of this cycle's clocked tests green.
+
+- **Cause.** Structural, and the framework's own: the ulp-of-zero hazard is
+  reached only where the walk starts from zero, and the clip says the
+  zero-travel case OFF the crossing (closure 1) rather than leaving it to
+  the walk — which masks closure 2 on every corpus fixture.
+
+- **Evidence.** One of ten mutations in the cycle's battery, each applied
+  and reverted; this one and its stop-side twin were the only two that bit
+  NOTHING. The behaviour is pinned here instead by a direct unit test of
+  `farSideOf` in both directions (`src/run/jumps.test.ts`), where it is
+  unambiguous.
+
+- **Not the viewer's to fix.** The gap is in the producer's corpus, and the
+  same is presumably true of the framework's own suite: a corpus fixture
+  whose landing walk starts from zero at a crossing the clip does not
+  short-circuit would close it on both sides at once.
+
+## What an instruction MEANS under a clocked root
+
+- **Symptom.** solid-node ADR-128 §14 publishes a clocked root's declared
+  instructions in the version 5 shape and gives the table NO runtime
+  meaning. A consumer can neither honour one nor honestly hide it.
+
+- **What this build does.** Lists them, DISABLED, with the reason available
+  to a reader and to assistive tools, and refuses `machine().trigger()` by
+  name. Hiding them would make the panel disagree with a document the maker
+  can read; showing them live would offer a gesture nothing can honour.
+
+- **Open, in both repositories.** The framework records it as its own wart
+  and the cycle's design as its one open question. If the answer is "an
+  instruction is a request on its targets", it is a later cycle here and
+  there.
+
+## One vitest run in six failed and was never reproduced
+
+- **Symptom.** During `execute-the-commit`, one full `npx vitest run` —
+  started while the Python suite's Chromium was still settling — reported
+  `1 failed | 1138 passed` without the run being captured. Five consecutive
+  runs before and after it, and three consecutive runs of
+  `src/clocked/cost.test.ts` alone, are clean at 1139/1139.
+
+- **The one candidate.** The only load-sensitive assertions in the suite are
+  the cost floors, and this cycle's are the ratified design's own: 4 ms
+  against a measured 0.26–0.95 ms, which is four to fifteen times' headroom
+  on an idle box and less on a loaded one.
+
+- **Left at the ratified number rather than quietly widened.** Recorded so
+  that the next unexplained red in this suite is met with a known suspect
+  rather than a fresh investigation, and so the pilot knows which assertion
+  in this repository can be made to fail by load alone.

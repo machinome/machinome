@@ -112,15 +112,23 @@ describe('API_VERSION', () => {
   // commit a different machine silently. A host that means to present
   // such a machine has to be able to ask before it mounts. 13 stays
   // SKIPPED: the in-flight cycle `slide-and-turn-parts` claims it.
-  it('declares the selection API as version 16', () => {
-    expect(API_VERSION).toBe(16);
+  // Executing a CLOCKED machine (OpenSpec `execute-the-commit`) is the
+  // one after that (17): a version 8 document -- a root that declares a
+  // `State` -- carries a compiled `clocked` machine instead of a
+  // `program`, and a host that means to put the Curta in a browser has
+  // to be able to ask before it mounts a bundle that would refuse the
+  // document by name. 13 stays SKIPPED: the in-flight cycle
+  // `slide-and-turn-parts` claims it.
+  it('declares the clocked API as version 17', () => {
+    expect(API_VERSION).toBe(17);
   });
 });
 
 describe('DOCUMENT_VERSIONS', () => {
   it('is declared in package.json, where a Python caller can read it', () => {
     expect(Array.isArray(pkg.solidNodeDocumentVersions)).toBe(true);
-    expect(pkg.solidNodeDocumentVersions).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(pkg.solidNodeDocumentVersions)
+      .toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
 
   it('is the list the package declares, not a second copy', () => {

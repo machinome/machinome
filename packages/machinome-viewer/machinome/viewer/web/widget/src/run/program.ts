@@ -299,7 +299,25 @@ export interface Constraint {
   candidates: readonly string[];
 }
 
-export interface LoadedProgram {
+/** As much of a loaded document as the PATH primitives need: the level
+ * limits, the bindings table an expression resolves through, and the
+ * interned root of one published expression.
+ *
+ * Extracted so `partition`, `planCuts`, `branchesAt`, `kinkLevel` and
+ * `evaluateExpression` can be called by a CLOCKED machine, which carries
+ * no coordinates, no edges and no program at all (OpenSpec
+ * `execute-the-commit`, design §8 task 6.2). `LoadedProgram` satisfies
+ * it, so the running engine's every call site is unchanged and the
+ * running corpus replays byte for byte. */
+export interface PathHost {
+  limits: ProgramLimits;
+  bindings: BindingTable;
+  /** One interned root per published expression, re-prepared when the
+   * shared store's generation moves (design D12). */
+  nodeOf(expression: string): NodeId;
+}
+
+export interface LoadedProgram extends PathHost {
   identity: string;
   clock: string;
   /** The bank's id order, fixed at load: the published coordinate order,
@@ -323,14 +341,10 @@ export interface LoadedProgram {
   placeholders: ReadonlyMap<string, ProgramPlan>;
   drivers: Readonly<Record<string, ManifestDriver>>;
   instructions: Readonly<Record<string, ManifestInstruction>>;
-  bindings: BindingTable;
   /** Every id an expression of this document may name: the clock, the
    * bank's coordinates and the published computed values. A plan's own
    * placeholders are legal only inside that plan and are not here. */
   declaredNames: ReadonlySet<string>;
-  /** One interned root per published expression, re-prepared when the
-   * shared store's generation moves (design D12). */
-  nodeOf(expression: string): NodeId;
 }
 
 /** A version 5 document, as far as the run is concerned. The tree, the
@@ -386,7 +400,7 @@ export function uncomputedValues(program: LoadedProgram): ReadonlySet<string> {
  * shape the ratified bindings requirement does not describe; design §15
  * finding 2) costs this viewer nothing. */
 export function evaluateExpression(
-  program: LoadedProgram,
+  program: PathHost,
   expression: string,
   values: Record<string, number>,
 ): number {
@@ -407,7 +421,7 @@ export function evaluateExpression(
  * evaluator through this module ALONE -- `edges.test.ts` asserts it
  * structurally -- and on the PLAIN evaluator, as the producer left
  * `_KinkCuts` on `GraphValue.evaluate` (design D5). */
-export function kinkLevel(program: LoadedProgram, kink: KinkLevel,
+export function kinkLevel(program: PathHost, kink: KinkLevel,
                           values: Record<string, number>): number {
   const scope = {
     time: 0,
