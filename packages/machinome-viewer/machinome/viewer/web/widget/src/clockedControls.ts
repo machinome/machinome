@@ -185,10 +185,30 @@ export interface ClockedControlLayer {
   transport: ClockTransportPlan | null;
 }
 
-/** One design unit a press. A clocked request is instantaneous by
- * construction -- there is no cadence for it to be spread over -- so a
- * nudge is a travel and nothing else. */
+/** One design unit a press. A clocked nudge is an AMOUNT and nothing
+ * else: what it asks for is a travel, and how long the viewer DRAWS
+ * that travel is `GESTURE_SECONDS` below -- the same fifth of a second
+ * whatever the amount, so there is nothing per-input to scale. */
 export const DEFAULT_NUDGE = 1;
+
+/** How long a gesture on a HANDLE is drawn over, in WALL seconds
+ * (OpenSpec `draw-every-request`, design D2).
+ *
+ * A declared instruction states its own duration; a handle declares
+ * none, so the viewer states one. It is the running chrome's own number
+ * and the running chrome's own reason (`runControls.ts`'s
+ * `DEFAULT_NUDGE = {amount: 1, seconds: 0.2}`): *a nudge that teleports
+ * is a nudge nobody can watch. A fifth of a second is long enough to see
+ * the carry throw and short enough to feel like a button.*
+ *
+ * It is a DURATION and never a rate. The running chrome can afford a
+ * rate because its nudge is a travel over SIMULATED time inside a
+ * cadence; a clocked gesture has no cadence, and one design unit per
+ * 0.2 s would draw the Curta's 360-degree crank nudge over 72 seconds.
+ * The playback speed does not scale it either: the speed means machine
+ * time (ADR-063) and a drawing is wall time (ADR-064). A maker who wants
+ * the two-second stroke presses the declared instruction. */
+export const GESTURE_SECONDS = 0.2;
 
 /** How many seconds one press of STEP asks for. A second is the clock's
  * own unit, and the speed ladder is what makes a long watch short. */

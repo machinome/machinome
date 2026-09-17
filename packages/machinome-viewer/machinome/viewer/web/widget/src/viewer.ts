@@ -58,7 +58,7 @@ import { drawing } from './clocked/drawing';
 import type { Drawing, DrawnFrame } from './clocked/drawing';
 import {
   clockedControlLayer, clockedFollowing, clockStepAmount,
-  DEFAULT_CLOCK_STEP, formatClockedOutcome,
+  DEFAULT_CLOCK_STEP, formatClockedOutcome, GESTURE_SECONDS,
 } from './clockedControls';
 import type {
   ClockedControlLayer, ClockedInputControl, ClockedInstructionControl,
@@ -410,15 +410,20 @@ export async function mount(
   let clockStep = DEFAULT_CLOCK_STEP;
   let clockRefusal: string | null = null;
   let clockWidth = 0;
-  // The DRAWING of one pressed instruction (OpenSpec
-  // `play-the-instruction`, design §3). At most ONE runs at a time and
+  // The DRAWING of one request (OpenSpec `play-the-instruction`, design
+  // §3; `draw-every-request`, design D1). At most ONE runs at a time and
   // it is the only authority over the pose while it does: the machine
-  // was solved once, at the press, and every frame here is a POSE of a
+  // was solved once, at the gesture, and every frame here is a POSE of a
   // transition that has already happened. `drawnBank` is what the model
   // is SHOWING, which is what every scope must read while a drawing
   // runs -- the machine's own bank stands at the transition's end from
-  // the instant of the press.
-  let clockedDrawing: { name: string; drawn: Drawing;
+  // the instant of the request.
+  //
+  // `name` is an INDICATOR KEY and not the request: an instruction
+  // BUTTON carries `aria-busy` because nothing else on it moves, while a
+  // handle's gesture passes `null` and indicates by the thing the maker
+  // is watching -- its own reading and thumb sweeping under `follow`.
+  let clockedDrawing: { name: string | null; drawn: Drawing;
                         elapsed: number } | null = null;
   let drawnBank: Record<string, number> | null = null;
   // The running chrome (OpenSpec `drive-the-run-on-screen`). What a
@@ -1108,23 +1113,39 @@ export async function mount(
     clockedDrawing = null;
     drawFrame(running.drawn.land());
     drawnBank = null;
-    clockedChrome?.indicate(running.name, false);
+    if (running.name !== null) clockedChrome?.indicate(running.name, false);
   };
 
-  /** Issue ONE request and report its outcome AT THE CONTROL that made
-   * it (design §13), whatever the machine answers. A gesture an
-   * interlock holds is REPORTED, not swallowed. */
-  const clockedRequest = (id: string, request: { by?: number; to?: number }):
-  ClockedOutcome | null => {
+  /** Issue ONE request, report its outcome AT THE CONTROL that made it
+   * (design §13) whatever the machine answers, and DRAW the transition
+   * it reports over `draw` wall seconds (OpenSpec `draw-every-request`,
+   * design D3). A gesture an interlock holds is REPORTED, not swallowed.
+   *
+   * ONE DOOR with `clockedPlay`, in the same order for the same reason:
+   * the panel is rebuilt ONCE, carrying the report, and the drawing's
+   * frame 0 is posed in this same task, so the readings are corrected to
+   * the transition's ORIGIN before the browser paints.
+   *
+   * `draw` is zero for the CLOCK's own requests -- a played frame and a
+   * step -- which land at once: a clock has seconds to spend per frame,
+   * and a drawn step would be a transport control that pauses the
+   * transport (design D4). */
+  const clockedRequest = (id: string, request: { by?: number; to?: number },
+                          draw = 0): ClockedOutcome | null => {
     const started = machine;
     if (started === undefined) return null;
     // A gesture LANDS a running drawing and then acts, on a bank the
     // maker can read (design §8).
     landDrawing();
     const unit = loadedMachine?.drivers[id]?.unit ?? null;
+    // The bank the machine stands at BEFORE the request: what a drawing
+    // draws from. Taken only where one will be drawn, so the transport's
+    // sixty requests a second cost no copy they cannot use.
+    const before = draw > 0 ? started.state() : null;
     let report: ClockedOutcome;
+    let answered: ClockedRequest | null = null;
     try {
-      const answered: ClockedRequest = started.move(id, request);
+      answered = started.move(id, request);
       report = {
         status: 'completed',
         admitted: answered.admitted,
@@ -1143,6 +1164,9 @@ export async function mount(
     }
     clockedOutcomes[id] = report;
     rebuildClockedChrome();
+    if (answered !== null && before !== null) {
+      startDrawing(null, answered, before, draw, id);
+    }
     renderer.render(scene, camera);
     return report;
   };
@@ -1207,7 +1231,7 @@ export async function mount(
    * at zero travel that committed nothing has no transition, and a
    * duration of zero lands the transition in the one pose the request
    * already made. */
-  const startDrawing = (name: string, answered: ClockedRequest,
+  const startDrawing = (name: string | null, answered: ClockedRequest,
                         before: Record<string, number>, duration: number,
                         inputId: string | null): void => {
     if (!(duration > 0)) return;
@@ -1225,7 +1249,7 @@ export async function mount(
       && loadedMachine?.drivers[inputId]?.dtype === 'int';
     const drawn = drawing(answered, before, duration, integer);
     clockedDrawing = { name, drawn, elapsed: 0 };
-    clockedChrome?.indicate(name, true);
+    if (name !== null) clockedChrome?.indicate(name, true);
     drawFrame(drawn.advance(0));
   };
 
@@ -1241,7 +1265,7 @@ export async function mount(
     if (frame.done) {
       clockedDrawing = null;
       drawnBank = null;
-      clockedChrome?.indicate(running.name, false);
+      if (running.name !== null) clockedChrome?.indicate(running.name, false);
     }
   };
 
@@ -1318,11 +1342,16 @@ export async function mount(
     // still as the clock grows.
     clockWidth = Math.max(clockWidth, layer.transport?.elapsed.length ?? 0);
     clockedChrome = buildClockedChrome(container, layer, {
+      // EVERY request a maker's gesture makes on an input is DRAWN over
+      // the chrome's own gesture duration (OpenSpec
+      // `draw-every-request`): the number field's commit, the slider's,
+      // and the nudge pair. A handle declares no duration, so the viewer
+      // states one -- the same for every travel.
       move(id: string, to: number) {
-        clockedRequest(id, { to });
+        clockedRequest(id, { to }, GESTURE_SECONDS);
       },
       nudge(id: string, amount: number) {
-        clockedRequest(id, { by: amount });
+        clockedRequest(id, { by: amount }, GESTURE_SECONDS);
       },
       setNudge(id: string, amount: number) {
         clockedNudge[id] = amount;
@@ -3441,19 +3470,12 @@ function buildClockedRow(control: ClockedInputControl,
     row.append(unit);
   }
 
-  for (const sign of [-1, 1]) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = sign < 0 ? 'clocked-minus' : 'clocked-plus';
-    button.dataset.input = control.id;
-    button.textContent = sign < 0 ? '-' : '+';
-    button.style.cssText = 'font:inherit;min-width:2em;';
-    button.addEventListener('click', () => {
-      actions.nudge(control.id, sign * control.nudge);
-    });
-    row.append(button);
-  }
-
+  // The amount box is made BEFORE the buttons so a press reads the
+  // amount the maker just typed, not the one the row was built with: a
+  // maker who types 360 and presses `+` gets 360 the first time (the
+  // stale-amount finding of ADR-065, closed here). The remembered
+  // amount is still written through `setNudge`, so a rebuilt row shows
+  // it.
   const amount = document.createElement('input');
   amount.type = 'number';
   amount.className = 'clocked-nudge';
@@ -3465,6 +3487,23 @@ function buildClockedRow(control: ClockedInputControl,
     const asked = Number(amount.value);
     if (Number.isFinite(asked)) actions.setNudge(control.id, asked);
   });
+  const currentAmount = (): number => {
+    const typed = Number(amount.value);
+    return Number.isFinite(typed) && amount.value !== '' ? typed : control.nudge;
+  };
+
+  for (const sign of [-1, 1]) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = sign < 0 ? 'clocked-minus' : 'clocked-plus';
+    button.dataset.input = control.id;
+    button.textContent = sign < 0 ? '-' : '+';
+    button.style.cssText = 'font:inherit;min-width:2em;';
+    button.addEventListener('click', () => {
+      actions.nudge(control.id, sign * currentAmount());
+    });
+    row.append(button);
+  }
   row.append(amount);
 
   if (control.slider !== null) {

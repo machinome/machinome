@@ -360,3 +360,64 @@ unchanged and are not restated (this cycle moved no floor).
   frame rate. What it means in practice: a per-frame FPS figure measured in
   this repository's headless harness is a figure about the harness, and a
   claim about how a document FEELS needs hardware the pilot has.
+
+## The clocked nudge AMOUNT reaches a row's buttons only at the next rebuild
+
+**CLOSED 2026-09-17 at the orchestrator's review of `draw-every-request`:** the
+amount box is now built before the `±` buttons and a press reads the amount
+the box holds at that instant (falling back to the remembered one), so the
+first press after typing 360 moves 360. The finding below is kept as its
+record.
+
+- **Symptom.** A maker types `360` into a clocked row's amount box and presses
+  `+`. The machine moves **1 degree**. The next press moves 360. It is the
+  pilot's own sequence on the Curta — the one that project's record prescribes
+  (`simulation/docs/clocked-curta-2026-09-17.md:42`) — and it was measured
+  while writing `draw-every-request`'s acceptance:
+  `the first press after setting the amount moved to 1 (moved 1 deg)`.
+
+- **Cause.** `setNudge` writes `clockedNudge[id]` and rebuilds nothing, while
+  the `±` buttons of a built row carry `control.nudge` — the amount the panel
+  was BUILT with (`viewer.ts:3446-3455`). The setting therefore reaches the
+  button only at the next rebuild, which any request performs, so the second
+  press is correct and the first is not. The RUNNING chrome does not have this:
+  its amount lives in a live closure its nudge button reads
+  (`viewer.ts:4038-4048`).
+
+- **Pre-existing**, ADR-062's, and untouched by ADR-064 and ADR-065 — it is a
+  SETTING that does not reach a control, not a request that does the wrong
+  thing. It is more visible now that the gesture is drawn: a maker watches a
+  one-degree transition and reads `moved 1 deg`.
+
+- **Not worked around silently.** Both new harnesses ARM the amount with a
+  reset — the rebuild the setting needs — and the acceptance records the
+  stale press rather than skipping it.
+
+- **Cheap to fix when the pilot wants it**: `setNudge` rebuilding the panel, or
+  the row reading the setting at click time, red-first against "type an amount
+  and press once".
+
+## A value committed with the field still focused loses the field
+
+- **Symptom.** A maker types a value into a clocked handle's number field and
+  presses Enter. The request is made, and the element they typed into is gone:
+  `document.activeElement` is the body a moment later, and the new field
+  follows the drawing rather than keeping what was typed (measured at `30.06`
+  one frame after a commit of 360).
+
+- **Cause.** Every clocked request rebuilds the whole panel
+  (`rebuildClockedChrome`), which removes the focused `<input>` and builds a
+  new one. The focus guard that protects a control a maker is editing
+  (`viewer.ts:3502`) can only protect an element that still exists.
+
+- **What is still true.** The requirement's clause is met and reachable: a
+  maker whose cursor is in a field WHILE a drawing runs keeps what they typed,
+  pinned by `test_calculator_document.py`'s section 5, where `42` survives
+  twelve frames of a whole turn. What the guard does NOT protect is the field
+  a value was committed FROM. `draw-every-request`'s design said otherwise in
+  its open item 3 and was wrong.
+
+- **It is the rebuild, not the drawing.** The same rebuild also destroys
+  selection and scroll position on every request, and ADR-064 already chose a
+  narrow per-frame writer over a per-frame rebuild for exactly that reason.
+  The per-REQUEST rebuild is what remains, and shrinking it is its own cycle.

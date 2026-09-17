@@ -214,6 +214,30 @@ DRIVE = """async () => {
   // the CLOCK and the COUNT, asserted off the bank below.
   const steppedShot = await shot();
 
+  // 4b. THE CLOCK'S OWN REQUESTS ARE NEVER DRAWN (OpenSpec
+  // `draw-every-request`, design D4). A gesture on a HANDLE is drawn
+  // over the viewer's own fifth of a second; a step and a played frame
+  // pass a ZERO duration through the same door, because a drawn step
+  // would PAUSE the transport that asked for it -- a transport control
+  // that stops the transport -- and a drawn played frame would fight
+  // itself sixty times a second.
+  const readoutBeforeStep = readout();
+  at('.clocked-step').click();
+  // The readout advances with the step, and the bank by the stated
+  // seconds. (What DISCRIMINATES a drawn step is the transport below:
+  // the panel is rebuilt before a drawing starts, so the elapsed
+  // reading would stand at the end either way.)
+  const steppedUndrawn = { readout: readout(), bank: machine.state() };
+  at('.clocked-play').click();
+  const playingBeforeStep = machine.clockPlaying();
+  at('.clocked-step').click();
+  const steppedWhilePlaying = { playing: machine.clockPlaying(),
+                                bank: machine.state() };
+  await sleep(200);
+  const stillPlaying = { playing: machine.clockPlaying(),
+                         bank: machine.state() };
+  at('.clocked-play').click();
+
   // 5. RESET returns the whole bank to its published defaults, with the
   // clock at zero, and STOPS the transport.
   at('.clocked-play').click();
@@ -331,6 +355,8 @@ DRIVE = """async () => {
   return {
     mounted, opened, startedPlaying, played, pausedAt, pausedLabel, heldAt,
     hostMoved, askedToRun, refused, stillRefused,
+    readoutBeforeStep, steppedUndrawn, playingBeforeStep,
+    steppedWhilePlaying, stillPlaying,
     beforeStep, stepped, runningBeforeReset, afterReset, backwards,
     afterRefusal, timed, hosted,
     apiVersion: viewer.apiVersion,
@@ -457,6 +483,31 @@ class RegulatorInABrowserTest(TestCase):
         self.assertAlmostEqual(stepped['time'] - before['time'], 2.0,
                                places=12)
         self.assertEqual(stepped['count'] - before['count'], 2)
+
+        # 5b. THE CLOCK'S OWN REQUESTS ARE NEVER DRAWN. A step
+        # advances the readout and the bank by the stated seconds, and
+        # a step taken WHILE THE TRANSPORT PLAYS leaves it playing --
+        # where a drawn request would have stopped it, being the second
+        # authority over the pose. (Mutation-checked: routing the step
+        # or the played frame through the gesture duration fails these
+        # two.)
+        self.assertNotEqual(result['steppedUndrawn']['readout'],
+                            result['readoutBeforeStep'])
+        self.assertAlmostEqual(
+            result['steppedUndrawn']['bank']['time'] - stepped['time'],
+            2.0, places=12)
+        self.assertTrue(result['playingBeforeStep'])
+        self.assertTrue(result['steppedWhilePlaying']['playing'],
+                        'a step stopped the transport that asked for it')
+        self.assertAlmostEqual(
+            result['steppedWhilePlaying']['bank']['time']
+            - result['steppedUndrawn']['bank']['time'], 2.0, places=1)
+        # And a PLAYED FRAME starts none either: 200 ms later the
+        # transport is still playing and the clock has advanced.
+        self.assertTrue(result['stillPlaying']['playing'],
+                        'a played frame stopped the transport')
+        self.assertGreater(result['stillPlaying']['bank']['time'],
+                           result['steppedWhilePlaying']['bank']['time'])
 
         # 6. RESET returns the whole bank to its published defaults with
         # the clock at zero, and STOPS the transport.

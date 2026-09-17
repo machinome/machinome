@@ -547,11 +547,18 @@ PLAY = """async () => {
   await frame();
   const midDrawing = field('crank');
   panel().querySelector('.clocked-plus[data-input="feed"]').click();
+  // The gesture LANDS the instruction's drawing -- the crank stands at
+  // its end -- and STARTS ITS OWN: `feed` reads the transition's ORIGIN
+  // although the machine already banks its end (OpenSpec
+  // `draw-every-request`).
   const landedByGesture = {
     crank: field('crank'),
+    feed: field('feed'),
     busy: button().getAttribute('aria-busy'),
     bank: machine.state(),
   };
+  for (let at = 0; at < 60; at += 1) await frame();
+  const feedLanded = { feed: field('feed'), bank: machine.state() };
 
   // ---- 5. A RESTORE during a drawing lands it too -----------------
   machine.reset();
@@ -605,7 +612,8 @@ PLAY = """async () => {
     byHand: { admitted: byHand.admitted, origin: byHand.origin,
               end: byHand.end, commits: byHand.commits.length,
               bank: handBank },
-    twice, afterTwice, midDrawing, landedByGesture, landedByRestore,
+    twice, afterTwice, midDrawing, landedByGesture, feedLanded,
+    landedByRestore,
     digits, posedTrigger, unknown,
     instructions: Object.keys(machine.instructions ? {} : {}),
     moved: midShot !== null && midShot !== endShot,
@@ -741,11 +749,18 @@ class InstructionDrawnInABrowserTest(TestCase):
         self.assertEqual(result['afterTwice']['bank']['crank'], 720)
         self.assertEqual(result['afterTwice']['bank']['w0.digit'], 2)
 
-        # 7. A GESTURE on a handle LANDS the drawing and then acts.
+        # 7. A GESTURE on a handle LANDS the drawing and then acts --
+        # and its own request is drawn in turn: `feed` reads the
+        # transition's ORIGIN while the machine already banks its end,
+        # and stands at that end a drawing later.
         self.assertLess(result['midDrawing'], 360)
         self.assertEqual(result['landedByGesture']['crank'], 360)
         self.assertIsNone(result['landedByGesture']['busy'])
         self.assertEqual(result['landedByGesture']['bank']['crank'], 360)
+        self.assertEqual(result['landedByGesture']['feed'], 0)
+        self.assertEqual(result['landedByGesture']['bank']['feed'], 1)
+        self.assertEqual(result['feedLanded']['feed'], 1)
+        self.assertEqual(result['feedLanded']['bank']['feed'], 1)
 
         # 8. And so does a RESTORE: the drawing lands, then the snapshot
         # takes the machine back to rest.
@@ -788,3 +803,408 @@ class InstructionDrawnInABrowserTest(TestCase):
         self.assertTrue(
             (SHOTS / 'clocked-instruction-mid-stroke.png').is_file())
         self.assertTrue((SHOTS / 'clocked-instruction-landed.png').is_file())
+
+
+#: A GESTURE on a HANDLE, drawn (OpenSpec `draw-every-request`). The
+#: pilot's own gesture: the nudge amount set to a whole turn and the plus
+#: button pressed, on a machine whose crank declares no range -- which is
+#: the Curta's `crank_rotation` shape exactly.
+#:
+#: Everything is sampled PER ANIMATION FRAME, because the claim is a
+#: property of frames: the panel's reading rises from the transition's
+#: ORIGIN, the model changes, and the machine's own bank is the SAME bank
+#: at every one of them.
+GESTURE = """async () => {
+  const host = document.getElementById('host');
+  const raw = window.requestAnimationFrame.bind(window);
+  const frameCosts = [];
+  let timing = false;
+  window.requestAnimationFrame = (callback) => raw((stamp) => {
+    const began = performance.now();
+    callback(stamp);
+    if (timing) frameCosts.push(performance.now() - began);
+  });
+  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  // Kept for the REAL POINTER gesture the harness drives afterwards.
+  window.__gesture = viewer;
+  const machine = viewer.machine();
+  const panel = () => host.querySelector('.clocked-controls');
+  const at = (selector) => panel().querySelector(selector);
+  const box = (id) => at(`.clocked-value[data-input="${id}"]`);
+  const field = (id) => Number(box(id).value);
+  const outcome = (id) => at(
+    `.clocked-outcome[data-input="${id}"]`).textContent;
+  const plus = (id) => at(`.clocked-plus[data-input="${id}"]`);
+  const shot = () => host.querySelector('canvas').toDataURL();
+  const frame = () => new Promise((resolve) => raw(() => resolve()));
+  const setAmount = (id, amount) => {
+    const amountBox = at(`.clocked-nudge[data-input="${id}"]`);
+    amountBox.value = String(amount);
+    amountBox.dispatchEvent(new Event('change'));
+  };
+  // Sampled BEFORE each frame, so the first entry is the pose the
+  // gesture's own task made and the last is a landed one.
+  const watch = async (id, frames) => {
+    const samples = [];
+    for (let n = 0; n < frames; n += 1) {
+      samples.push({ value: field(id), bank: machine.state() });
+      await frame();
+    }
+    return samples;
+  };
+
+  // ---- 0. The nudge AMOUNT reaches the button only at the next
+  // rebuild (a FINDING, recorded rather than worked around silently):
+  // the row's buttons carry the amount the panel was BUILT with.
+  setAmount('crank', 360);
+  plus('crank').click();
+  const firstPress = { admitted: outcome('crank'),
+                       crank: machine.state().crank };
+  for (let n = 0; n < 40; n += 1) await frame();
+  at('.clocked-reset').click();
+  const rebuilt = { crank: machine.state().crank };
+
+  // ---- 1. ONE NUDGE of a whole turn, sampled every frame ----------
+  const start = machine.state();
+  timing = true;
+  const startedAt = performance.now();
+  plus('crank').click();
+  const crankAtOnce = field('crank');
+  const bankAtOnce = machine.state();
+  const nudged = [];
+  let midShot = null;
+  for (let n = 0; n < 60; n += 1) {
+    nudged.push({ value: field('crank'), bank: machine.state() });
+    if (n === 3) midShot = shot();
+    await frame();
+  }
+  const wall = (performance.now() - startedAt) / 1000;
+  timing = false;
+  const costs = frameCosts.slice();
+  const endShot = shot();
+  const landedNudge = { crank: field('crank'), bank: machine.state(),
+                        outcome: outcome('crank') };
+
+  // ---- 2. A TYPED value is drawn too: the second stroke, to 720 ----
+  box('crank').value = '720';
+  box('crank').dispatchEvent(new Event('change'));
+  const typedAtOnce = field('crank');
+  const typed = await watch('crank', 60);
+  const landedTyped = { crank: field('crank'), bank: machine.state() };
+
+  // ---- 3. A field the maker is EDITING is not rewritten ------------
+  // A gesture REBUILDS the panel, so a value committed with Enter loses
+  // the element it was typed into; the reachable case is a maker whose
+  // cursor is in the field WHILE a drawing runs, which is what the
+  // guard is for. Both are recorded.
+  machine.reset();
+  box('crank').focus();
+  box('crank').value = '360';
+  box('crank').dispatchEvent(new Event('change'));
+  const committedFocus = {
+    active: document.activeElement === null
+      ? null : document.activeElement.className,
+    text: box('crank').value,
+  };
+  await frame();
+  const followedAfterCommit = box('crank').value;
+  for (let n = 0; n < 40; n += 1) await frame();
+
+  machine.reset();
+  plus('crank').click();
+  box('crank').focus();
+  box('crank').value = '42';
+  const edited = [];
+  for (let n = 0; n < 12; n += 1) {
+    await frame();
+    edited.push({ text: box('crank').value,
+                  crank: machine.state().crank });
+  }
+  const editedStill = box('crank').value;
+  for (let n = 0; n < 40; n += 1) await frame();
+
+  // ---- 4. A RANGED, WHOLE-NUMBER input: the slider's commit --------
+  machine.reset();
+  const slider = at('.clocked-slider[data-input="operand"]');
+  slider.value = '9';
+  slider.dispatchEvent(new Event('change'));
+  const operandAtOnce = field('operand');
+  const operand = await watch('operand', 40);
+  const landedOperand = { operand: field('operand'),
+                          bank: machine.state(),
+                          thumb: Number(at(
+                            '.clocked-slider[data-input="operand"]').value) };
+
+  // ---- 5. The landing IS one move('crank', {by: 360}) by hand ------
+  machine.reset();
+  const byHand = machine.move('crank', { by: 360 });
+  const handBank = machine.state();
+
+  // ---- 6. The HOST's own handle lands at once ----------------------
+  machine.reset();
+  machine.move('crank', { by: 360 });
+  const hostAtOnce = { crank: field('crank'), bank: machine.state() };
+  await frame();
+  const hostNext = { crank: field('crank'), bank: machine.state() };
+
+  return {
+    firstPress, rebuilt, start, crankAtOnce, bankAtOnce, nudged, wall,
+    costs, landedNudge, typedAtOnce, typed, landedTyped,
+    committedFocus, followedAfterCommit, edited, editedStill,
+    operandAtOnce, operand, landedOperand,
+    byHand: { admitted: byHand.admitted, origin: byHand.origin,
+              end: byHand.end, commits: byHand.commits.length,
+              bank: handBank },
+    hostAtOnce, hostNext,
+    moved: midShot !== null && midShot !== endShot,
+    apiVersion: viewer.apiVersion,
+  };
+}"""
+
+#: A recorder for the gesture a REAL POINTER makes: the panel's reading
+#: of `operand`, once per animation frame, while the harness clicks the
+#: slider's track with the browser's own mouse. The row is re-queried
+#: every frame because a request rebuilds the panel.
+WATCH_TRACK = """() => {
+  window.__gesture.machine().reset();
+  window.__watch = [];
+  const raw = window.requestAnimationFrame.bind(window);
+  const read = () => {
+    const box = document.querySelector(
+      '.clocked-value[data-input="operand"]');
+    return box === null ? null : Number(box.value);
+  };
+  const tick = () => {
+    window.__watch.push(read());
+    if (window.__watch.length < 45) raw(tick);
+  };
+  raw(tick);
+}"""
+
+#: The PHOTOGRAPH: one nudge, FROZEN part-way. The page's animation loop
+#: is given a budget of frames and stops scheduling when it runs out, so
+#: the last painted frame stands still for the camera -- a drawing of a
+#: fifth of a second is otherwise over before a screenshot is taken.
+FREEZE = """async (frames) => {
+  const host = document.getElementById('host');
+  host.replaceChildren();
+  // The wrapper is installed for THIS mount only and handed back at the
+  // end: a frozen one left in place would stop the next page's loop
+  // before it drew anything.
+  const previous = window.requestAnimationFrame;
+  const raw = previous.bind(window);
+  let budget = Infinity;
+  window.requestAnimationFrame = (callback) => raw((stamp) => {
+    if (budget <= 0) return;
+    budget -= 1;
+    callback(stamp);
+  });
+  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const panel = () => host.querySelector('.clocked-controls');
+  const at = (selector) => panel().querySelector(selector);
+  viewer.machine().move('operand', { to: 4 });
+  const amount = at('.clocked-nudge[data-input="crank"]');
+  amount.value = '360';
+  amount.dispatchEvent(new Event('change'));
+  // The amount reaches the button at the next rebuild, so the reset
+  // that follows is what arms this nudge.
+  at('.clocked-reset').click();
+  viewer.machine().move('operand', { to: 4 });
+  budget = frames;
+  at('.clocked-plus[data-input="crank"]').click();
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const read = { crank: Number(at('.clocked-value[data-input="crank"]').value),
+                 bank: viewer.machine().state() };
+  window.requestAnimationFrame = previous;
+  return read;
+}"""
+
+
+@needs_bundle
+@needs_playwright
+class GestureDrawnInABrowserTest(TestCase):
+    """(4) EVERY request the clocked panel makes is DRAWN.
+
+    The pilot's own gesture -- the nudge amount set to a whole turn and
+    the plus button pressed -- a typed value, and a ranged input's
+    slider commit, each ONE request made at the gesture and drawn over
+    the viewer's own fifth of a second.
+    """
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        self.out_dir = Path(self.tempdir.name) / 'calculator'
+        shutil.copytree(CALCULATOR, self.out_dir)
+        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
+        server = serve_directory(self.out_dir)
+        base = server.__enter__()
+        self.addCleanup(server.__exit__, None, None, None)
+        self.harness_url = f'{base}/harness.html'
+
+    def test_a_gesture_on_a_handle_is_one_request_drawn_over_a_fifth(self):
+        SHOTS.mkdir(exist_ok=True)
+        errors = []
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 800,
+                                                  'height': 600})
+                page.set_default_timeout(300_000)
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.on('console', lambda message: errors.append(message.text)
+                        if message.type == 'error' else None)
+                page.goto(self.harness_url)
+                page.wait_for_function(
+                    'typeof SolidNodeWidget !== "undefined"')
+                result = page.evaluate(GESTURE)
+                # A REAL POINTER on the slider's TRACK, driven by the
+                # browser itself rather than by a dispatched event: one
+                # request, and drawn like every other.
+                page.evaluate(WATCH_TRACK)
+                track_box = page.locator(
+                    '.clocked-slider[data-input="operand"]').bounding_box()
+                page.mouse.click(
+                    track_box['x'] + track_box['width'] * 0.95,
+                    track_box['y'] + track_box['height'] / 2)
+                page.wait_for_timeout(900)
+                track = page.evaluate(
+                    '() => ({ watch: window.__watch,'
+                    ' bank: window.__gesture.machine().state() })')
+                # PIXELS ARE EVIDENCE: the nudge FROZEN four frames in,
+                # and the same nudge landed.
+                frozen = page.evaluate(FREEZE, 4)
+                page.screenshot(
+                    path=str(SHOTS / 'clocked-gesture-mid-nudge.png'))
+                landed = page.evaluate(FREEZE, 10_000)
+                page.screenshot(
+                    path=str(SHOTS / 'clocked-gesture-landed.png'))
+            finally:
+                browser.close()
+
+        self.assertEqual(errors, [], f'the page logged errors: {errors}')
+
+        # 1. ONE NUDGE of a whole turn is DRAWN: the first frame stands
+        # at the transition's ORIGIN although the machine already stands
+        # at its end, the reading rises through the frames, and it lands
+        # on 360.
+        self.assertEqual(result['start']['crank'], 0)
+        self.assertEqual(result['crankAtOnce'], 0)
+        self.assertEqual(result['bankAtOnce']['crank'], 360)
+        readings = [one['value'] for one in result['nudged']]
+        self.assertEqual(readings, sorted(readings),
+                         'the drawn crank did not rise monotonically')
+        self.assertGreater(len(set(readings)), 5,
+                           'the gesture drew one pose, not many')
+        self.assertEqual(readings[0], 0)
+        self.assertEqual(readings[-1], 360)
+        self.assertEqual(result['landedNudge']['crank'], 360)
+        self.assertIn('moved 360', result['landedNudge']['outcome'])
+        self.assertTrue(result['moved'],
+                        'the model did not move on screen during the nudge')
+
+        # 2. ONE SOLVE: the bank is the same bank at every frame of the
+        # drawing -- final from the gesture, never touched again.
+        banks = [one['bank'] for one in result['nudged']]
+        for bank in banks:
+            self.assertEqual(bank, banks[0])
+        self.assertEqual(banks[0]['crank'], 360)
+        self.assertEqual(banks[0]['w0.digit'], 1)
+
+        # 3. And the landing IS one `move('crank', {by: 360})` from the
+        # same start, value for value.
+        by_hand = result['byHand']
+        self.assertEqual(by_hand['admitted'], 360)
+        self.assertEqual(by_hand['origin'], 0)
+        self.assertEqual(by_hand['end'], 360)
+        self.assertEqual(result['landedNudge']['bank'], by_hand['bank'])
+
+        # 4. A TYPED value is drawn as well: the second stroke, from 360
+        # to 720, with the reading starting at where the input stood.
+        self.assertEqual(result['typedAtOnce'], 360)
+        typed = [one['value'] for one in result['typed']]
+        self.assertEqual(typed, sorted(typed))
+        self.assertGreater(len(set(typed)), 5,
+                           'the typed value drew one pose, not many')
+        self.assertEqual(typed[-1], 720)
+        self.assertEqual(result['landedTyped']['bank']['crank'], 720)
+        self.assertEqual(result['landedTyped']['bank']['w0.digit'], 2)
+
+        # 5. A field the maker is EDITING is not rewritten by a drawing
+        # that runs: the maker's `42` survives every frame while the
+        # machine draws the whole turn behind it.
+        edited = result['edited']
+        self.assertGreater(len(edited), 5)
+        self.assertEqual({one['text'] for one in edited}, {'42'})
+        self.assertEqual(result['editedStill'], '42')
+        self.assertEqual({one['crank'] for one in edited}, {360})
+
+        # 6. A RANGED, whole-number input's slider commit is drawn, and
+        # every drawn frame is a WHOLE number that never passes the end.
+        self.assertEqual(result['operandAtOnce'], 1)
+        operand = [one['value'] for one in result['operand']]
+        self.assertEqual(operand, sorted(operand))
+        self.assertGreater(len(set(operand)), 2,
+                           'the slider commit drew one pose, not many')
+        for value in operand:
+            self.assertEqual(value, int(value),
+                             'a whole-number input was drawn fractional')
+            self.assertLessEqual(value, 9)
+        self.assertEqual(operand[-1], 9)
+        self.assertEqual(result['landedOperand']['bank']['operand'], 9)
+        # The thumb follows the drawing too, and stands at the end.
+        self.assertEqual(result['landedOperand']['thumb'], 9)
+
+        # 6b. And a REAL POINTER on the track is the same one drawn
+        # request: the reading starts where the input stood, rises
+        # through whole numbers, and lands on the bank the click made.
+        watched = [one for one in track['watch'] if one is not None]
+        self.assertGreater(len(watched), 10)
+        self.assertEqual(watched[0], 1)
+        self.assertEqual(watched, sorted(watched))
+        self.assertGreater(len(set(watched)), 2,
+                           'the track click drew one pose, not many')
+        for value in watched:
+            self.assertEqual(value, int(value))
+        self.assertGreater(track['bank']['operand'], 1)
+        self.assertEqual(watched[-1], track['bank']['operand'])
+
+        # 7. The HOST's own handle is NOT drawn and lands at once: the
+        # panel reads the transition's end in the same task.
+        self.assertEqual(result['hostAtOnce']['crank'], 360)
+        self.assertEqual(result['hostAtOnce']['bank']['crank'], 360)
+        self.assertEqual(result['hostNext']['crank'], 360)
+
+        # 8. WHAT A FRAME COSTS, printed rather than asserted into a
+        # budget: a measurement is not a contract.
+        costs = sorted(result['costs'])
+        median = costs[len(costs) // 2]
+        fps = len(result['costs']) / result['wall']
+        print(f'  calculator gesture: {len(result["costs"])} frames over '
+              f'{result["wall"]:.2f} s ({fps:.1f} fps), per-frame pose '
+              f'median {median:.2f} ms, worst {costs[-1]:.2f} ms')
+
+        # 9. TWO FINDINGS, recorded rather than worked around. The nudge
+        # AMOUNT reaches the button only at the next rebuild of the
+        # panel, so the pilot's first press after typing 360 moves the
+        # amount the row was built with; and a value committed with the
+        # field still focused loses that element to the rebuild, so the
+        # focus guard cannot protect it.
+        print(f'  the first press after setting the amount moved to '
+              f'{result["firstPress"]["crank"]} '
+              f'({result["firstPress"]["admitted"]})')
+        print('  the element focused when a value was committed became '
+              f'{result["committedFocus"]["active"]!r}, the field then '
+              f'reading {result["followedAfterCommit"]!r}')
+
+        print(f'  frozen mid-nudge at crank {frozen["crank"]}, '
+              f'landed at {landed["crank"]}')
+        self.assertGreater(frozen['crank'], 0)
+        self.assertLess(frozen['crank'], 360)
+        self.assertEqual(landed['crank'], 360)
+        self.assertTrue((SHOTS / 'clocked-gesture-mid-nudge.png').is_file())
+        self.assertTrue((SHOTS / 'clocked-gesture-landed.png').is_file())
+        self.assertEqual(result['apiVersion'], 19)

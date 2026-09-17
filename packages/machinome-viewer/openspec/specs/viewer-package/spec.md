@@ -3906,10 +3906,23 @@ and readouts SHALL follow THE DRAWING rather than the bank, so that what a
 maker reads beside the model is what the model is showing; when the drawing
 lands the two are the same values again.
 
-A gesture on a HANDLE SHALL remain ONE immediate request, posed once: a
-duration is something a declared instruction states, and a handle declares
-none. A handle SHALL stay usable while a drawing runs; a gesture on one lands
-the drawing and then acts.
+A gesture on a HANDLE SHALL be ONE request, and the transition that request
+reports SHALL BE DRAWN under the requirement "The viewer plays a clocked
+instruction as one drawn transition", exactly as a pressed instruction's is:
+the machine is solved once, at the gesture, and what follows is a picture of a
+transition that has already happened. A handle declares no duration, so the
+viewer SHALL draw such a transition over ONE SHORT DURATION OF ITS OWN — the
+same duration for every handle and every travel, so that a gesture is watched
+rather than jumped. That duration SHALL NOT be derived from the travel asked
+for, and the playback speed SHALL NOT scale it.
+
+A handle SHALL stay usable while a drawing runs; a gesture on one LANDS the
+running drawing and then draws its own, so repeated gestures give consecutive
+transitions, each drawn. A gesture whose request admits no travel and commits
+nothing SHALL draw nothing and SHALL report its outcome exactly as it does now.
+
+A control a maker is EDITING SHALL NOT be rewritten by a drawing that is
+running; every other handle and readout follows it.
 
 The chrome SHALL offer snapshot, restore and reset of the machine's bank.
 It SHALL NOT offer a transport over the machine's DRIVERS — a clocked
@@ -3923,8 +3936,8 @@ different values and neither moves the other.
 
 - **WHEN** a maker moves a clocked machine's crank handle to a new value
 - **THEN** one request is submitted to move that input to that value, the
-  model poses at the resulting bank, and the handle reports the travel
-  admitted
+  model is drawn from where it stood to the resulting bank, and the handle
+  reports the travel admitted
 
 #### Scenario: A register is read, never driven
 
@@ -3964,6 +3977,40 @@ different values and neither moves the other.
 - **WHEN** a clocked document carries geometry that is a formula of `$t`
 - **THEN** the timeline plays it exactly as it does for a document
   carrying no machine, and the bank stands throughout
+
+#### Scenario: A nudge is drawn rather than jumped
+
+- **WHEN** a maker sets a handle's nudge amount to a whole turn of a crank and
+  presses the plus button
+- **THEN** the crank's value rises through successive frames and the geometry
+  follows it, rather than arriving in one frame, and the handle reports the
+  whole turn admitted
+
+#### Scenario: A typed value is drawn
+
+- **WHEN** a maker types an absolute value into a handle's field and commits it
+- **THEN** the transition from where the input stood to that value is drawn
+  frame by frame, with every commit along the way drawn where it falls
+
+#### Scenario: A slider's commit is drawn
+
+- **WHEN** a maker drags a ranged input's slider and releases it, or clicks its
+  track away from the thumb
+- **THEN** the one request that gesture makes is drawn from where the input
+  stood to where the gesture put it, rather than posed in a single frame
+
+#### Scenario: Consecutive gestures are consecutive drawings
+
+- **WHEN** a maker presses the same nudge button again while its drawing is
+  still running
+- **THEN** the first drawing lands at its own end, the second request is made
+  from there, and both transitions are drawn one after the other
+
+#### Scenario: A field a maker is editing is left alone
+
+- **WHEN** a drawing runs while the maker's cursor is in a handle's own field
+- **THEN** that field keeps what the maker typed, while the model, the other
+  handles and the readouts follow the drawing
 
 ### Requirement: A maker runs an elapsed clocked machine on screen
 
@@ -4051,6 +4098,21 @@ executor every other request goes through and under the requirement "The
 viewer executes a clocked machine's requests", SHALL return that request, and
 SHALL then DRAW the transition the request describes over the declared
 duration.
+
+The viewer SHALL draw, in the same way and by the same rule, the transition a
+maker's GESTURE on a handle produces, under the requirement "A maker operates
+a clocked machine on screen": one request, made once at the gesture, drawn over
+the viewer's own short duration because a handle declares none. Everything
+this requirement states about a drawing — the one solve, the bank that is final
+from the request, the fraction that decides a commit, the landing, the stopped
+and refused cases, and the one authority over the pose — SHALL hold for such a
+drawing exactly as it does for a pressed instruction's.
+
+A request the CLOCK'S OWN TRANSPORT makes — a played frame, or a step of a
+stated number of seconds — SHALL NOT be drawn: it advances a clock the maker is
+already watching, and a drawing would take the pose from the transport that
+asked for it. A request made on the mount HANDLE rather than on screen SHALL
+NOT be drawn either, and SHALL land at once.
 
 The machine SHALL be solved exactly ONCE per press, BEFORE the first frame of
 the drawing. The bank SHALL be FINAL from the moment the request is made: a
@@ -4159,3 +4221,25 @@ the two being two authorities over one pose.
 - **THEN** the refusal is reported where it was pressed, listing the declared
   names where the name was unknown, and the bank, the pose and the model
   stand exactly as they did
+
+#### Scenario: A handle's gesture is drawn like an instruction's press
+
+- **WHEN** a maker's gesture on a handle makes a request that travels
+- **THEN** exactly one request is made before the first frame, the transition
+  is drawn frame by frame over the viewer's own short duration with each commit
+  at its own fraction, and the drawing lands on the bank the machine has held
+  since the gesture
+
+#### Scenario: A step of the clock is not drawn
+
+- **WHEN** a maker steps a clocked machine's clock by a stated number of
+  seconds, or the transport advances it on a rendered frame
+- **THEN** the machine poses once for that request, the transport keeps
+  running where it was running, and no drawing is started
+
+#### Scenario: A host's request lands at once
+
+- **WHEN** a host moves an input through the mount handle
+- **THEN** the machine poses once at the resulting bank and nothing is drawn,
+  whatever the panel would have done for the same request
+

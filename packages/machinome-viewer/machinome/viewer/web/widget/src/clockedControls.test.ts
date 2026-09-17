@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import {
   clockedControlLayer, clockedFollowing, clockedInputControl,
   clockStepAmount, DEFAULT_CLOCK_STEP, DEFAULT_NUDGE, formatClockedOutcome,
+  GESTURE_SECONDS,
 } from './clockedControls';
 import type { ClockedMachineView, ClockedOutcome } from './clockedControls';
 
@@ -195,6 +196,21 @@ describe('the clocked chrome', () => {
     });
     expect(layer.transport?.playing).toBe(false);
     expect(layer.transport?.refusal).toBe('would cross 3600 surfaces');
+  });
+
+  it("states how long a drawn GESTURE takes: one short duration of the "
+     + "viewer's own, the same for every travel", () => {
+    // A handle declares no duration -- only an instruction does -- so
+    // the chrome states one: the running chrome's own fifth of a second
+    // (`runControls.ts`'s `DEFAULT_NUDGE.seconds`), for the reason
+    // recorded there.
+    expect(GESTURE_SECONDS).toBe(0.2);
+    // A DURATION and not a rate: the clocked nudge is an AMOUNT alone,
+    // so there is nothing per-input for a travel to scale, and a nudge
+    // of 360 degrees is drawn over the same fifth of a second as a
+    // nudge of one.
+    expect(typeof GESTURE_SECONDS).toBe('number');
+    expect(typeof DEFAULT_NUDGE).toBe('number');
   });
 
   it('takes a step AMOUNT and never a negative one: the clock has no '

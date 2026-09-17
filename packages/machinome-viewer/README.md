@@ -21,8 +21,9 @@ something a person can look at in a browser:
   them — a press submits the instruction a part declares and a drag
   turns it by whole quanta**, **a CLOCKED machine — one with memory and
   no cadence — operated a gesture at a time, each gesture one request
-  solved in thread and stopped where the machine's own interlocks stop
-  it, and RUN where it declares a clock: play, step and speed over
+  solved in thread, DRAWN over a short transition, and stopped where the
+  machine's own interlocks stop it, and RUN where it declares a clock:
+  play, step and speed over
   elapsed seconds, one request per rendered frame, with a declared
   instruction pressed as one request and DRAWN over its duration**, and the
   `SolidNodeWidget.mount()` API a host page drives it through;
@@ -401,10 +402,11 @@ a register, a ratchet.
 The viewer reads that document and **executes it**. There is no cadence
 over its drivers to run, and no worker: one gesture is one **request** —
 one declared input moving along a straight path from where the bank holds
-it — solved synchronously and posed once. A request costs
-well under a frame (fractions of a millisecond on the Curta-shaped
-fixture, measured in Chromium), which is what lets a drag be a series of
-requests and still stay smooth.
+it — solved synchronously, once, before anything is drawn. A request
+costs well under a frame (fractions of a millisecond on the Curta-shaped
+fixture, measured in Chromium), so a gesture is answered in the task that
+made it; what the page does afterwards is DRAW the transition that
+request reports, over a fifth of a second.
 
 Per declared input the chrome shows a **handle**: the banked position as
 an editable readout in design units, a nudge pair, and a slider where the
@@ -456,10 +458,16 @@ host drives the same transport through `handle.machine()`, which carries
 the session verbs. A machine that declares no clock is offered no
 transport at all.
 
-Declared instructions are **pressable**, and a press is **drawn**. An
-instruction under a clocked root is one request over the one driver it
-names, and its declared duration says how long a consumer draws the
-transition. So a press makes that request ONCE, before the first frame:
+Declared instructions are **pressable**, and a press is **drawn** — and
+so is every gesture on a handle. An instruction under a clocked root is
+one request over the one driver it names, and its declared duration says
+how long a consumer draws the transition; a handle declares none, so the
+viewer draws its gestures — the nudge pair, a value typed into the field,
+a slider's commit — over **a fifth of a second**, the same for every
+travel, never derived from the amount asked for and never scaled by the
+playback speed. A maker who wants a longer stroke presses the declared
+instruction, which states its own. Everything below holds for both. So a
+gesture makes its request ONCE, before the first frame:
 the machine is solved there and stands at the transition's end from that
 instant, and what follows is a picture of it. Each frame poses the tree
 from the bank the machine stood at before, with the moved input at the
@@ -476,11 +484,17 @@ draws nothing and says why where it was pressed.
 
 A drawing is the only thing posing the machine while it runs: another
 press, a handle gesture, a host request, a restore or a reset **lands**
-it first and then acts, so two presses are two strokes, and starting one
-stops the clock's transport where the machine declares a clock. The panel
-follows the drawing rather than showing the end bank the machine already
-holds — though a readback through `handle.machine()` reports that end,
-because the request has already been made. An instruction the viewer
+it first and then acts, so two presses are two strokes and two nudges are
+two transitions, and starting one stops the clock's transport where the
+machine declares a clock. The clock's own requests are NOT drawn — a
+played frame and a step land at once, because a drawn step would pause
+the transport that asked for it — and neither is a request a host makes
+through `handle.machine()`, which lands at once whatever the panel would
+have done with it. The panel follows the drawing rather than showing the
+end bank the machine already holds — though a readback through
+`handle.machine()` reports that end, because the request has already been
+made — and a control a maker is EDITING is left with what they typed
+while every other handle and readout follows. An instruction the viewer
 could not play — both forms or neither, no driver or several, a state,
 the clock, an id nothing declares, or a travel or duration that is not a
 finite number — is refused at load by name, mirroring what the framework

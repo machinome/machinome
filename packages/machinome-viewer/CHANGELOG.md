@@ -7,6 +7,39 @@ it carries release together and share one version.
 
 The viewer stops posing a machine and starts running one.
 
+- **EVERY request a maker's gesture makes on a clocked machine is now
+  DRAWN, not only a pressed instruction.** A press was drawn from the
+  day before; a nudge, a value typed into a handle's field and a
+  slider's commit still teleported — which on the Curta, whose
+  `crank_rotation` publishes no range and is operated by its `+` button,
+  meant a whole turn of the crank arriving in one frame. Each of those
+  gestures is still exactly ONE request, made once at the gesture and
+  solved before the first frame; what follows is the same picture of it
+  a pressed instruction gets, frame by frame, with each commit at its
+  own fraction, the panel following the drawing and the outcome reported
+  where the gesture was made. A handle declares no duration, so the
+  viewer states one: **a fifth of a second, the same for every travel**
+  — the running chrome's own number and reason, never derived from the
+  amount asked for and never scaled by the playback speed. A maker who
+  wants a longer stroke presses the declared instruction, which states
+  its own. A gesture made while a drawing runs lands that drawing and
+  draws its own, so repeated presses give consecutive transitions; a
+  gesture that admits no travel draws nothing and reports its stop; and
+  a control a maker is EDITING is not rewritten by a drawing that is
+  running. The CLOCK's own transport is unchanged and undrawn — a played
+  frame and a step land at once, because a drawn step would pause the
+  transport that asked for it — and a host's `machine().move(...)` still
+  lands at once, with no new option and no new verb: the panel draws,
+  the handle does not. Measured on the Curta's own clocked build: one
+  request per gesture at 40–55 ms, the panel reading the transition's
+  origin on the gesture's own frame while the machine banks its end, and
+  a drawn frame costing +11.00 ms over that page's idle frame. **No API
+  bump** — nothing a host can call behaves differently — so
+  `solidNodeViewerApi` stays 19 and the document versions stay `1 … 8`,
+  and the drawing module, the machine, the conformance corpus, the run
+  and the posed `Ramp` are untouched. (OpenSpec change
+  `draw-every-request`, ADR-065, amending ADR-064.)
+
 - **A clocked machine's declared instructions are PRESSABLE, and a press
   is drawn over its duration: API 19 says so.** solid-node's ADR-129
   decided what an instruction means under a clocked root — ONE request

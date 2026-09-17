@@ -159,6 +159,138 @@ PLAY = """async (kind) => {
 }"""
 
 
+#: The PILOT'S OWN GESTURE, on the Curta's own clocked build: the nudge
+#: amount set to a whole turn of `crank_rotation` and the plus button
+#: pressed, then the same stroke typed into the field, then the declared
+#: `'Turn crank'` for comparison -- all three in ONE session on one page,
+#: so the numbers are comparable.
+#:
+#: `crank_rotation` publishes `range: null`, so its row has no slider at
+#: all: a number field, `-`, `+` and the amount box. That is the row the
+#: project's own record tells a maker to operate
+#: (`simulation/docs/clocked-curta-2026-09-17.md:42`).
+GESTURE = """async (amount) => {
+  const host = document.getElementById('host');
+  const raw = window.requestAnimationFrame.bind(window);
+  const costs = [];
+  let timing = false;
+  window.requestAnimationFrame = (callback) => raw((stamp) => {
+    const began = performance.now();
+    callback(stamp);
+    if (timing) costs.push(performance.now() - began);
+  });
+  const frame = () => new Promise((resolve) => raw(() => resolve()));
+  const mountedAt = performance.now();
+  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const mount = performance.now() - mountedAt;
+  // 54 MB of meshes arrive after the mount resolves, so the timed phase
+  // waits for the scene to settle.
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  const settled = host.querySelector('canvas').toDataURL().length;
+  const machine = viewer.machine();
+  const panel = () => host.querySelector('.clocked-controls');
+  const at = (selector) => panel().querySelector(selector);
+  const box = () => at('.clocked-value[data-input="crank_rotation"]');
+  const field = () => Number(box().value);
+
+  // The nudge AMOUNT reaches the row's buttons only at the next rebuild
+  // of the panel, so the reset that follows is what ARMS this gesture.
+  const amountBox = at('.clocked-nudge[data-input="crank_rotation"]');
+  amountBox.value = String(amount);
+  amountBox.dispatchEvent(new Event('change'));
+  at('.clocked-reset').click();
+
+  // IDLE FIRST, on the same page: frames with NO drawing running, so
+  // what a frame of a drawing costs can be told from what a frame of
+  // this page costs.
+  timing = true;
+  const idleAt = performance.now();
+  for (let n = 0; n < 12; n += 1) await frame();
+  const idleWall = (performance.now() - idleAt) / 1000;
+  const idle = costs.splice(0, costs.length);
+  timing = false;
+
+  const watch = async (gesture, seconds) => {
+    const readings = [];
+    const solvedAt = performance.now();
+    gesture();
+    const solve = performance.now() - solvedAt;
+    const atOnce = field();
+    timing = true;
+    const startedAt = performance.now();
+    while ((performance.now() - startedAt) / 1000 < seconds) {
+      readings.push(field());
+      await frame();
+    }
+    const wall = (performance.now() - startedAt) / 1000;
+    timing = false;
+    readings.push(field());
+    return { readings, atOnce, wall, solve, distinct: new Set(readings).size,
+             costs: costs.splice(0, costs.length), bank: machine.state() };
+  };
+
+  const nudged = await watch(() => {
+    at('.clocked-plus[data-input="crank_rotation"]').click();
+  }, 1.0);
+  const typed = await watch(() => {
+    box().value = String(amount * 2);
+    box().dispatchEvent(new Event('change'));
+  }, 1.0);
+  const declared = await watch(() => {
+    machine.trigger('Turn crank');
+  }, 3.0);
+
+  return { mount, settled, idle, idleWall, nudged, typed, declared,
+           painted: host.querySelector('canvas').toDataURL().length,
+           apiVersion: viewer.apiVersion };
+}"""
+
+#: The PHOTOGRAPH: one nudge, FROZEN after a stated number of frames.
+#: The page's animation loop stops scheduling when its budget runs out,
+#: so the last painted frame stands still for the camera -- a drawing of
+#: a fifth of a second is otherwise over before a screenshot is taken.
+#:
+#: `stride` hands the loop its timestamps at a STATED spacing in
+#: milliseconds instead of the wall's. This host renders 54 MB of meshes
+#: on a software rasteriser at about two frames a second, so a 0.2 s
+#: gesture gets ONE frame after its origin and lands in it; a stride of
+#: 50 ms shows what the same gesture draws on a page that renders at
+#: 20 fps. Nothing in the viewer is changed by it -- the drawing advances
+#: on the elapsed seconds the loop reports, whatever reports them.
+FREEZE = """async ({frames, stride}) => {
+  const host = document.getElementById('host');
+  host.replaceChildren();
+  const previous = window.requestAnimationFrame;
+  const raw = previous.bind(window);
+  let budget = Infinity;
+  let clock = null;
+  window.requestAnimationFrame = (callback) => raw((stamp) => {
+    if (budget <= 0) return;
+    budget -= 1;
+    if (!(stride > 0)) return callback(stamp);
+    clock = clock === null ? stamp : clock + stride;
+    return callback(clock);
+  });
+  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  const panel = () => host.querySelector('.clocked-controls');
+  const at = (selector) => panel().querySelector(selector);
+  const amount = at('.clocked-nudge[data-input="crank_rotation"]');
+  amount.value = '360';
+  amount.dispatchEvent(new Event('change'));
+  at('.clocked-reset').click();
+  budget = frames;
+  at('.clocked-plus[data-input="crank_rotation"]').click();
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  const read = {
+    crank: Number(at('.clocked-value[data-input="crank_rotation"]').value),
+    bank: viewer.machine().state().crank_rotation,
+  };
+  window.requestAnimationFrame = previous;
+  return read;
+}"""
+
+
 def middle(values):
     ordered = sorted(values)
     return ordered[len(ordered) // 2] if ordered else float('nan')
@@ -260,3 +392,120 @@ class CurtaDrawingTest(TestCase):
         print(f'  canvas bytes: clocked {clocked["settled"]} settled / '
               f'{clocked["painted"]} landed, posed {fast["settled"]} / '
               f'{fast["painted"]}; shots under {SHOTS}')
+
+
+def gesture_report(name, result):
+    """Print what one gesture drew and cost, and answer in numbers."""
+    costs = sorted(result['costs'])
+    median = middle(costs)
+    fps = len(result['costs']) / result['wall'] if result['wall'] else 0
+    print(f'  {name}:')
+    print(f'    one solve {result["solve"]:.2f} ms; the panel read '
+          f'{result["atOnce"]} on the gesture\'s own frame, the bank '
+          f'{result["bank"]["crank_rotation"]}')
+    print(f'    {len(result["costs"])} frames over {result["wall"]:.2f} s '
+          f'({fps:.1f} fps), per-frame median {median:.2f} ms, '
+          f'{result["distinct"]} distinct poses drawn')
+    print(f'    readings: {result["readings"]}')
+    return median
+
+
+@needs_bundle
+@needs_playwright
+@needs_curta
+class CurtaGestureTest(TestCase):
+    """(5) The PILOT'S OWN GESTURE on the Curta, drawn and measured.
+
+    SKIPPED where the pilot's builds are not on this machine. Nothing is
+    copied out of that project: the harness serves a temporary directory
+    of SYMLINKS to the build's own files.
+    """
+
+    def serve(self, build):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        out = Path(tempdir.name)
+        for entry in build.iterdir():
+            (out / entry.name).symlink_to(entry)
+        shutil.copy2(bundle_path(), out / 'solid-widget.js')
+        (out / 'harness.html').write_text(HARNESS_PAGE)
+        server = serve_directory(out)
+        base = server.__enter__()
+        self.addCleanup(server.__exit__, None, None, None)
+        return f'{base}/harness.html'
+
+    def test_the_pilots_own_nudge_is_drawn_on_the_curta_and_timed(self):
+        url = self.serve(CLOCKED_CURTA)
+        errors = []
+        SHOTS.mkdir(parents=True, exist_ok=True)
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 800,
+                                                  'height': 600})
+                page.set_default_timeout(600_000)
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.on('console', lambda message: errors.append(message.text)
+                        if message.type == 'error' else None)
+                page.goto(url)
+                page.wait_for_function(
+                    'typeof SolidNodeWidget !== "undefined"')
+                result = page.evaluate(GESTURE, 360)
+                frozen = page.evaluate(FREEZE,
+                                       {'frames': 2, 'stride': 50})
+                page.screenshot(path=str(SHOTS / 'curta-nudge-drawing.png'))
+                landed = page.evaluate(FREEZE,
+                                       {'frames': 100_000, 'stride': 0})
+                page.screenshot(path=str(SHOTS / 'curta-nudge-landed.png'))
+            finally:
+                browser.close()
+
+        self.assertEqual(errors, [], f'the page logged errors: {errors}')
+
+        idle = middle(result['idle'])
+        idle_fps = len(result['idle']) / result['idleWall'] \
+            if result['idleWall'] else 0
+        print(f'  mounted in {result["mount"] / 1000:.2f} s; IDLE (no '
+              f'drawing): {len(result["idle"])} frames over '
+              f'{result["idleWall"]:.2f} s ({idle_fps:.1f} fps), per-frame '
+              f'median {idle:.2f} ms')
+        nudged = gesture_report("the NUDGE of 360 deg (0.2 s)",
+                                result['nudged'])
+        typed = gesture_report('the TYPED 720 (0.2 s)', result['typed'])
+        declared = gesture_report("the declared 'Turn crank' (2 s)",
+                                  result['declared'])
+        print(f'    the POSE, by difference: nudge {nudged - idle:+.2f} ms, '
+              f'typed {typed - idle:+.2f} ms, '
+              f'declared {declared - idle:+.2f} ms a frame')
+        print(f'  canvas bytes: {result["settled"]} settled / '
+              f'{result["painted"]} landed; shots under {SHOTS}')
+        print(f'  frozen two 50 ms frames in: the panel read '
+              f'{frozen["crank"]} with the bank at {frozen["bank"]}; '
+              f'landed at {landed["crank"]}')
+
+        # The assertions are the CONTRACT and nothing else: the gesture
+        # is ONE request, made at the gesture, and the panel reads the
+        # transition's ORIGIN on its own frame while the machine already
+        # banks the end. How many frames that transition is drawn over on
+        # THIS host is a measurement, and a measurement is not a
+        # contract.
+        self.assertEqual(result['nudged']['atOnce'], 0)
+        self.assertEqual(result['nudged']['bank']['crank_rotation'], 360)
+        self.assertEqual(result['nudged']['readings'][-1], 360)
+        self.assertEqual(result['typed']['atOnce'], 360)
+        self.assertEqual(result['typed']['bank']['crank_rotation'], 720)
+        self.assertEqual(result['typed']['readings'][-1], 720)
+        self.assertEqual(result['declared']['bank']['crank_rotation'], 1080)
+        self.assertGreater(result['declared']['distinct'], 1,
+                           'the declared stroke drew one pose, not many')
+        # The frozen picture is MID-TRAVEL: the model shows a crank
+        # part-way round while the machine already banks the whole turn.
+        self.assertGreater(frozen['crank'], 0)
+        self.assertLess(frozen['crank'], 360)
+        self.assertEqual(frozen['bank'], 360)
+        self.assertEqual(landed['crank'], 360)
+        self.assertEqual(result['apiVersion'], 19)
+        self.assertTrue((SHOTS / 'curta-nudge-drawing.png').is_file())
+        self.assertTrue((SHOTS / 'curta-nudge-landed.png').is_file())
