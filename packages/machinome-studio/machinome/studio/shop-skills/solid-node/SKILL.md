@@ -341,9 +341,15 @@ def per_unit_phase(cylinders, unit):
   and `instructions` buttons at the layer that declares them, so declare
   a whole-machine move on the machine. `self.time` is
   the shared clock: `$t` from 0 through 1 without a declaration,
-  seconds with `Time(loop=...)`, and elapsed seconds under a root's
-  `Time.running()`. The latter gets command controls and retained joint
-  state, as described below and in the API skill.
+  seconds with `Time(loop=...)`, and elapsed seconds under either of the
+  two unwrapping bases, `Time.running()` and `Time.elapsed()`. Running
+  time gets command controls and retained joint state; `Time.elapsed()`
+  is the same seconds with none of that machinery, and says only what
+  `time` means. Both are described below and in the API skill.
+- **A value the MACHINE writes is a `State`**, declared beside the
+  drivers, and a tree that declares one is a CLOCKED model — a different
+  discipline from a running root, not a different clock. See "Machines
+  that keep a few values" below.
 - Kinematic math imports from `solid_node.math` (`sin, cos, tan, asin,
   acos, atan, atan2, sqrt`), NEVER stdlib math: time and drivers are
   symbolic in the viewer, and these functions compute numerically on
@@ -423,6 +429,83 @@ migrating a pose model.
   viewer as evidence. See the API skill for parts, refusals and the
   published table.
 
+### Machines that keep a few values
+
+A running root retains EVERY coordinate and integrates EVERY law at a
+fixed cadence. Some machines do not need that generality and cannot
+afford it. Declare `State` and `commits` — a CLOCKED model — when all
+three hold:
+
+1. the machine's memory is a FEW named values (registers, a counter, a
+   selected position), not the whole tree;
+2. between events every position is a CLOSED FORM of those values and the
+   inputs — you can write the pose from the state, and it is right at
+   every intermediate angle, not only at rest;
+3. the values change only AT events you can state as one jump node of a
+   driver (or of the clock): the end of a stroke, a rack reached, a
+   release crossed.
+
+A machine whose arithmetic must EMERGE from local laws is a running root
+and stays one. A machine that counts, registers, indexes or latches — a
+calculator, an odometer, a stepping switch, a combination lock — is the
+clocked shape, and the Curta is the worked example the discipline was cut
+from. Read the API skill's "Clocked simulations" section before writing
+one. The method in full is the Curta project's own spike record, in the
+`Calculators/Curta-Type-I-3x` project on branch `clocked-spike` at
+`simulation/docs/clocked-spike-2026-09-16.md` — read it, do not edit it.
+
+- **Running is the oracle.** The clocked commit law is a CLAIM that the
+  machine's arithmetic equals what the parts do, and the parts are what a
+  running model already proves. Where a project has both, record the
+  running model's readouts ONCE over a shared corpus of scenarios, then
+  replay the same neutral action vocabulary through the clocked model and
+  compare at EVERY stroke end — and compare the POSE too, not just the
+  readout, because "between events nothing is retained" is a measurable
+  claim about dial angles and not an assumption. The Curta spike did
+  exactly this: 18 scenarios, 574 recorded ticks, agreement at every
+  stroke end and dial angles to 0.000000 digits except inside the
+  clearing model's own documented capture band. Carrying BOTH models is a
+  documented pattern for a machine whose arithmetic was earned that way,
+  not a default: a machine with no running twin states its law from the
+  drawing and proves it by hand-computed expectations.
+- **Mid-stroke reads are not disagreements.** A running model reads moving
+  dials; a clocked model answers with the same moving dials from its pose
+  while its committed state has not moved yet. Compare at stroke ENDS,
+  and treat a mid-stroke difference as evidence about the pose formula.
+- **Audit the interlocks, one at a time, from the source.** Start with
+  every lock OPEN and close one only when a scenario DEMANDS it, quoting
+  the manufacturer's own words in the record. A lock nothing demands
+  moves the model away from the machine — the Curta spike found two the
+  booklet documents that this machine does not need, and said so. Every
+  lock is a `Bound` on a joint and needs no new idea: a numeric `range`
+  for a stroke, a one-argument bound for a ratchet, `Bound(..., reads=)`
+  for a comparison against another part's position, and BOTH bounds
+  reading the coordinate's own value for a freeze (a part that may not
+  MOVE while another is off rest). Do not state a freeze as "must STAND
+  at zero off rest": that forbids every mid-stroke pose there is and
+  stops the wrong part.
+- **Decide the direction, in the model.** Only RISING steps of `at` fire.
+  `floor(crank / 360)` dragged backwards commits nothing — which is what
+  an anti-reversal pawl gives — and a mechanism that commits on the other
+  edge negates its own level, `floor(-crank / 360)`. If a mechanism must
+  not be reversed at all, declare the bound that makes the reverse
+  unreachable and prove it: the spike measured that without the pawl an
+  additive law commits a SECOND addition, 9 → 18.
+- **A request is the unit, so state the request the maker performs.** The
+  clip is read once per request and the bound's own coordinate at the
+  request's start, so a long sweep and two short ones split at an event
+  can admit different travels. Where the finer reading is the mechanism's,
+  split the request — it is exact either way.
+- **Keep the state out of the control surface.** A state is written by the
+  machine; `Sim(model, state={...})`, `snapshot` and `restore` are session
+  setup and nothing else. If a demo wants to "set the register", it is
+  setting up a session, not operating the machine.
+- **A clocked model reaches no browser yet.** Version 8 is published and
+  warned about; `solid snapshot --renderer web` is refused. Evidence for
+  a clocked increment is `solid test`, hand-computed expectations, and the
+  OpenSCAD snapshot of the initial bank. Do not promise the pilot a
+  browser demo of one.
+
 ## Testing
 
 Tests for `foo.py` live in `test_foo.py` beside it (for a package,
@@ -456,6 +539,15 @@ longer exist at all.
   `sim.at(t).trigger(...)` and `sim.every(period, assertion, ...)`, run a
   bounded slice, and write the run that must fail as well as the one that
   must pass — a scenario that only ever passes is not evidence.
+- A CLOCKED machine has no cadence and therefore no `ScenarioTest`: test
+  it in an ordinary `TestCase`, driving a fresh `Sim(model)` per test and
+  asserting `sim.state`, the commits' landings, `request.admitted` and
+  `request.stops`. Compute every expectation BY HAND — a test that asks
+  the law what the answer is passes whatever the code did. Assert each
+  interlock from BOTH sides (the travel it admits, and the zero travel it
+  admits when it holds), assert a refused request left the bank
+  unchanged, and pin the equivalence of one long request against several
+  short ones over the same travel.
 - Perturbation tests (prove a part is blocked/free):
   `assertBlockedBeyond(node, amount, against)` — perturbed by
   ±amount, `node` must foul `against` in BOTH directions.
