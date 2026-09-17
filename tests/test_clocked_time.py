@@ -750,11 +750,14 @@ class RefusedNamesTest(BaseNodeTest):
     ADR-125's refused list this cycle lifts, and only under this base.
     Every other name stays refused under an elapsed clocked root."""
 
-    REFUSED = ('run', 'at', 'every', 'tick', 'rate', 'trigger', 'commands',
+    # `trigger` left this list with `play-the-instruction`: an
+    # instruction under a clocked root is ONE REQUEST under EVERY time
+    # base, so it is refused here no more than `move` is.
+    REFUSED = ('run', 'at', 'every', 'tick', 'rate', 'commands',
                'program', 'crossings')
 
     CALLS = {'run': (0.0,), 'at': (0.0,), 'every': (1.0, print),
-             'rate': ('engaged', 1.0), 'trigger': ('Home',)}
+             'rate': ('engaged', 1.0)}
 
     def test_every_cadence_name_is_still_refused(self):
         sim = Sim(Regulator())
@@ -770,7 +773,7 @@ class RefusedNamesTest(BaseNodeTest):
 
     def test_the_clocked_surface_and_the_clock_are_admitted(self):
         sim = Sim(Regulator())
-        for name in ('move', 'snapshot', 'restore', 'reset', 'initial',
-                     'state', 'commits', 'stops', 'time'):
+        for name in ('move', 'trigger', 'snapshot', 'restore', 'reset',
+                     'initial', 'state', 'commits', 'stops', 'time'):
             with self.subTest(name=name):
                 self.assertTrue(hasattr(sim, name))

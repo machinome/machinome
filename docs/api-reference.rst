@@ -379,6 +379,31 @@ imported only when such a simulation is constructed.
 
 .. autofunction:: solid_node.simulation.qualified_instructions
 
+Clocked simulation
+------------------
+
+Under a root whose tree declares a ``State`` a simulation holds a BANK of
+every driver and every state and moves it on REQUESTS, each a straight
+path whose every rising event is solved exactly. There is no ``dt``, and
+the executor below is imported only when such a simulation is
+constructed.
+
+``sim.trigger(name)`` under such a root is one request — the one the
+named instruction states — and returns it.
+
+.. autoclass:: solid_node.simulation.clocked.Clocked
+   :members: move, state, commits, stops, snapshot, restore, reset,
+             initial
+
+.. autoclass:: solid_node.simulation.clocked.Request
+
+.. autoclass:: solid_node.simulation.clocked.Commit
+   :members: relation
+
+.. autoclass:: solid_node.simulation.clocked.ClockedSnapshot
+
+.. autoexception:: solid_node.simulation.clocked.ClockedError
+
 The conformance corpus
 ----------------------
 

@@ -108,6 +108,26 @@ shipped viewer reads `targets` off every entry; a root whose instructions
 are all relative SHALL publish an empty table, and the rest of the
 document SHALL be unchanged.
 
+Under a CLOCKED root triggering SHALL instead make ONE REQUEST, under the
+requirement "A clocked simulation solves a request path event by event":
+`targets=` a `move` TO the named driver's target and `by=` a `move` BY its
+travel, both in design units, and `trigger` SHALL RETURN that request's own
+value object, so a caller that presses a button holds exactly what a caller
+that moved the input holds. An instruction under a clocked root SHALL name
+EXACTLY ONE driver: a request names exactly one moving input, an instruction
+naming two would be a SEQUENCE, and sequencing is a program and out of scope
+for an instruction under every base. An instruction that names none, or more
+than one, SHALL be refused where the clocked machine is COMPILED — at
+simulation construction, and therefore before any document exists — by name,
+naming the instruction, the inputs it names and the rule; an instruction
+naming a STATE SHALL remain refused in the same place. The instruction's
+`duration` SHALL be carried and given NO meaning by the machine: a request
+is a path and not an interval, so a clocked `trigger` SHALL make the same
+request and the same bank whatever the declared duration, and what the
+duration says is how long a CONSUMER draws the transition. Triggering an
+unknown name under a clocked root SHALL fail listing the known qualified
+instruction names, exactly as it does under every other base.
+
 #### Scenario: Millimetre target reaches a microstep driver
 
 - **WHEN** an instruction targets `x=0` (mm) for a driver declared
@@ -177,6 +197,44 @@ document SHALL be unchanged.
   `crank` and a second input is triggered
 - **THEN** the trigger is refused naming `crank` and the owning command,
   and no command was started on either input
+
+#### Scenario: Under a clocked root an instruction is a request
+
+- **WHEN** a clocked root declaring `'Stroke': Instruction(by={'crank': 360.0},
+  duration=2.0)` over a register whose stroke commits at every completed
+  revolution triggers `Stroke` from rest
+- **THEN** `trigger` returns the request `sim.move('crank', by=360.0)` returns
+  from the same bank — the same events in the same path order, the same
+  admitted travel and the same two ends — and the bank after it is the same
+  bank, entry for entry
+
+#### Scenario: A clocked instruction lands an absolute target
+
+- **WHEN** the same root declares `'Set four': Instruction({'operand': 4},
+  duration=0.5)` over an integer driver and triggers it
+- **THEN** the request is the one `sim.move('operand', to=4)` makes, the
+  driver stands at its converted native target, and `trigger` reports it
+
+#### Scenario: The declared duration does not reach the machine
+
+- **WHEN** one clocked root declares an instruction with `duration=2.0` and an
+  otherwise identical root declares it with `duration=0.0`, and each is
+  triggered from rest
+- **THEN** both requests are equal value for value and both banks are equal
+  entry for entry: nothing in the machine reads the duration
+
+#### Scenario: A clocked instruction naming two drivers is refused
+
+- **WHEN** a clocked root declares `Instruction(by={'crank': 360.0, 'ring':
+  90.0}, duration=1.0)`, or one whose `by` names no driver at all
+- **THEN** simulation construction is refused naming the instruction, the
+  inputs it names and the one-input rule, and the model publishes no document
+
+#### Scenario: An unknown instruction is refused by name under a clocked root
+
+- **WHEN** a clocked simulation triggers a name nothing declares
+- **THEN** it fails listing the declared qualified instruction names, and the
+  bank and the tree stand exactly as they did
 
 ### Requirement: Fixed-dt stepping loop with deferred actions
 
@@ -3137,9 +3195,18 @@ written, the count reached and the maximum, and SHALL say that the request
 can be split into shorter ones.
 
 `move` SHALL return a value object naming the input, the travel REQUESTED,
-the travel ADMITTED, the bounds met and the events it fired, each event entry
+the travel ADMITTED, BOTH ENDS OF THE PATH IT TRAVELLED, the bounds met and
+the events it fired, each event entry
 carrying the relation as written, the fraction of the path, the moving
-input's value at the event, and the targets with their new values. The admitted
+input's value at the event, and the targets with their new values. The two
+ENDS SHALL be the value the moving input stood at when the request began and
+the value it ended at, each taken VERBATIM from the bank and therefore in the
+input's own NATIVE units — the units each event entry's value speaks — so
+that every event's value lies on the segment they span. Neither end SHALL be
+left for a caller to recompute: the admitted travel is in DESIGN units, a
+`by=` request's `by` is the ASK and not the travel, and a caller
+reconstructing an end by arithmetic could land on a float the machine never
+stood at and so read a fired event as unfired. The admitted
 travel and the stops are stated by the requirement "A bound stops a clocked
 request on its path"; where no bound is met the admitted travel SHALL be the
 requested one and the stops SHALL be empty. `record=N` SHALL keep a bounded
@@ -3151,8 +3218,11 @@ the whole bank by qualified id as a fresh mapping. `sim.snapshot()`,
 anything.
 
 A clocked simulation has no CADENCE: `run`, `at`, `every`, `tick`, `rate`,
-`trigger`, `commands`, `program` and `crossings`
-SHALL each be refused by name, under every time base. `sim.time` SHALL be
+`commands`, `program` and `crossings`
+SHALL each be refused by name, under every time base. `sim.trigger(name)`
+SHALL NOT be refused: an instruction under a clocked root is ONE request and
+nothing else, under the requirement "Instructions carry design-unit targets",
+and it is the one verb of that list with a meaning here. `sim.time` SHALL be
 refused by name under a clocked root that declares NO time base, naming
 `Time.elapsed()` as the way to have one, and SHALL read the banked seconds
 under a clocked root that declares it. `sim.stops` SHALL NOT be refused: it
@@ -3287,8 +3357,8 @@ and never poses.
 
 #### Scenario: The cadence surface is refused
 
-- **WHEN** a clocked simulation calls `run`, `every`, `tick`, `trigger` or
-  `rate`, and a clocked simulation over a root declaring no time base also
+- **WHEN** a clocked simulation calls `run`, `every`, `tick`, `rate` or
+  `commands`, and a clocked simulation over a root declaring no time base also
   calls `time`
 - **THEN** each is refused by name, saying a clocked model has no cadence,
   and the `time` refusal names `Time.elapsed()` as the way to have a clock
@@ -3309,6 +3379,15 @@ and never poses.
 - **THEN** the request admits ZERO travel, fires nothing, commits nothing and
   reports its stop, exactly as the same machine's HIGH bound does from a
   coordinate whose magnitude is large
+
+#### Scenario: A request reports both ends of its path
+
+- **WHEN** a request is made `by=` a travel over an input standing away from
+  zero, and another is CLIPPED at a declared bound
+- **THEN** each request reports the value the input stood at before it and the
+  value it stands at after it, both equal to the bank's own entries before and
+  after, every event's value lies between them, and the clipped request's
+  second end is the landing the stop gave it and not the value asked for
 
 ### Requirement: A bound stops a clocked request on its path
 

@@ -17,6 +17,7 @@ of task 4 beside it. The originating project is
 """
 
 from solid_node.motion.joints import JointRangeError
+from solid_node.node import AssemblyNode
 from solid_node.scad_expression import GraphValue
 from solid_node.simulation import Sim
 from solid_node.simulation.clocked import ClockedError
@@ -291,13 +292,16 @@ class CadenceRefusalTest(BaseNodeTest):
     # `stops` is deliberately NOT here: the change
     # ``a-bound-stops-the-request`` LIFTS cycle 1's refusal of that name,
     # because a clocked model has no clock but it does have stops.
-    REFUSED = ('run', 'at', 'every', 'time', 'tick', 'rate', 'trigger',
+    # `trigger` is not here either, since `play-the-instruction`: an
+    # instruction under a clocked root is ONE REQUEST, which is the one
+    # verb of this list with a meaning here.
+    REFUSED = ('run', 'at', 'every', 'time', 'tick', 'rate',
                'commands', 'program', 'crossings')
 
     #: How each refused name is reached: a property is read, and a
     #: method is called with arguments it would otherwise accept.
     CALLS = {'run': (0.0,), 'at': (0.0,), 'every': (1.0, print),
-             'rate': ('crank', 1.0), 'trigger': ('Home',)}
+             'rate': ('crank', 1.0)}
 
     def test_every_cadence_name_is_refused(self):
         sim = Sim(Counter())
@@ -313,10 +317,22 @@ class CadenceRefusalTest(BaseNodeTest):
 
     def test_the_clocked_surface_is_admitted(self):
         sim = Sim(Counter())
-        for name in ('move', 'snapshot', 'restore', 'reset', 'initial',
-                     'state', 'commits', 'stops'):
+        for name in ('move', 'trigger', 'snapshot', 'restore', 'reset',
+                     'initial', 'state', 'commits', 'stops'):
             with self.subTest(name=name):
                 self.assertTrue(hasattr(sim, name))
+
+    def test_trigger_is_not_refused_as_a_cadence(self):
+        """Task 3.7: `trigger` LEFT this list. A root declaring no
+        instruction refuses the NAME it was given, by the instruction
+        resolver -- never by the cadence refusal."""
+        sim = Sim(Counter())
+        with self.assertRaises(KeyError) as caught:
+            sim.trigger('Home')
+        message = str(caught.exception)
+        self.assertIn('Home', message)
+        self.assertIn('no instruction', message)
+        self.assertNotIn('CLOCKED', message)
 
 
 class BoundTest(BaseNodeTest):
@@ -461,3 +477,218 @@ class TimeTest(BaseNodeTest):
         twin.set_state(**{'crank': 0.0, 'value': value})
         self.assertEqual(str(sim.node.face.turn.value),
                          str(twin.face.turn.value))
+
+
+class TriggerTest(BaseNodeTest):
+    """Tasks 3 and 4 of `play-the-instruction`: an instruction under a
+    clocked root is ONE REQUEST, and `trigger` makes it.
+
+    The originating project is
+    `projects/Calculators/Curta-Type-I-3x`, whose `ClockedCurta`
+    declares `'Turn crank': Instruction(by={'crank_rotation': 360},
+    duration=2)` and could not play it. `Calculator` carries that
+    instruction on its own crank, and its ABSOLUTE twin over an
+    integer driver.
+    """
+
+    def fixture(self):
+        from .clocked_project.calculator import Calculator
+
+        return Sim(Calculator())
+
+    def same(self, found, want, where):
+        """Field for field, and EXACTLY: a request is a value object and
+        two equal requests differ in no float."""
+        for name in ('input', 'by', 'to', 'admitted', 'origin', 'end'):
+            self.assertEqual(getattr(found, name), getattr(want, name),
+                             f'{where} {name}')
+            self.assertEqual(type(getattr(found, name)),
+                             type(getattr(want, name)), f'{where} {name}')
+        self.assertEqual(len(found.commits), len(want.commits), where)
+        for one, other in zip(found.commits, want.commits):
+            self.assertEqual(one, other, where)
+        self.assertEqual(len(found.stops), len(want.stops), where)
+
+    def test_a_relative_instruction_is_the_move_it_states(self):
+        """Task 3.1: `by={'crank': 360.0}` IS `move('crank', by=360.0)`,
+        made from the same bank."""
+        pressed = self.fixture()
+        moved = self.fixture()
+        found = pressed.trigger('Stroke')
+        want = moved.move('crank', by=360.0)
+        self.same(found, want, 'Stroke')
+        self.assertEqual(pressed.state, moved.state)
+        # And it really fired the stroke: one commit, the register at 1.
+        self.assertEqual(len(found.commits), 1)
+        self.assertEqual(pressed.state['w0.digit'], 1)
+
+    def test_an_absolute_instruction_is_the_move_it_states(self):
+        """Task 3.2: the `targets=` branch, over an `int` driver."""
+        pressed = self.fixture()
+        moved = self.fixture()
+        found = pressed.trigger('Set four')
+        want = moved.move('operand', to=4)
+        self.same(found, want, 'Set four')
+        self.assertEqual(pressed.state, moved.state)
+        self.assertEqual(pressed.state['operand'], 4)
+
+    def test_the_declared_duration_does_not_reach_the_machine(self):
+        """Task 3.3: a request is a PATH and not an interval, so two
+        roots differing ONLY in the declared duration make equal
+        requests and equal banks."""
+        from solid_node.simulation import Driver, Instruction, State
+
+        from .clocked_project.counter import advance, strokes
+        from .clocked_project.parts import Dial
+
+        def root(duration):
+            class Timed(AssemblyNode):
+                crank = Driver(default=0, unit='deg')
+                units = State(default=0, range=(0, 9), dtype=int)
+                tens = State(default=0, range=(0, 9), dtype=int)
+
+                units_dial = Dial()
+                tens_dial = Dial()
+
+                instructions = {'Stroke': Instruction(by={'crank': 720.0},
+                                                      duration=duration)}
+
+                (crank & units & tens).commits((units, tens), at=strokes,
+                                               law=advance)
+
+                units.drives(units_dial.turn, ratio=36.0)
+                tens.drives(tens_dial.turn, ratio=36.0)
+
+            return Sim(Timed())
+
+        slow, instant = root(2.0), root(0.0)
+        self.same(slow.trigger('Stroke'), instant.trigger('Stroke'),
+                  'duration')
+        self.assertEqual(slow.state, instant.state)
+
+    def test_an_unknown_instruction_is_refused_by_name(self):
+        """Task 3.4: the running path's own `KeyError`, by construction
+        and not by imitation -- and the bank and the pose stand."""
+        sim = self.fixture()
+        before = dict(sim.state)
+        posed = sim.node.crank_dial.turn.value
+        with self.assertRaises(KeyError) as caught:
+            sim.trigger('nothing')
+        message = str(caught.exception)
+        self.assertIn('nothing', message)
+        self.assertIn('Stroke', message)
+        self.assertIn('Set four', message)
+        self.assertEqual(sim.state, before)
+        self.assertEqual(sim.node.crank_dial.turn.value, posed)
+
+    def test_a_child_declared_instruction_keeps_its_qualified_name(self):
+        """The resolution is the EXISTING one: an instruction declared
+        on a child is `child.Name` and its class-local target resolves
+        against the declaring node's own path."""
+        from solid_node.simulation import Driver, Instruction, State
+
+        from .clocked_project.counter import advance, strokes
+        from .clocked_project.parts import Dial
+
+        class Wheel(AssemblyNode):
+            crank = Driver(default=0, unit='deg')
+            units = State(default=0, range=(0, 9), dtype=int)
+            tens = State(default=0, range=(0, 9), dtype=int)
+
+            units_dial = Dial()
+            tens_dial = Dial()
+
+            instructions = {'Stroke': Instruction(by={'crank': 360.0},
+                                                  duration=1.0)}
+
+            (crank & units & tens).commits((units, tens), at=strokes,
+                                           law=advance)
+
+            units.drives(units_dial.turn, ratio=36.0)
+            tens.drives(tens_dial.turn, ratio=36.0)
+
+        class Pair(AssemblyNode):
+            left = Wheel()
+            right = Wheel()
+
+        sim = Sim(Pair())
+        request = sim.trigger('left.Stroke')
+        self.assertEqual(request.input, 'left.crank')
+        self.assertEqual(sim.state['left.units'], 1)
+        self.assertEqual(sim.state['right.units'], 0)
+        self.assertEqual(sim.state['right.crank'], 0)
+
+
+class PathEndsTest(BaseNodeTest):
+    """Task 4 of `play-the-instruction`: a request reports BOTH ENDS of
+    the path it travelled, verbatim from the bank and therefore in the
+    input's own NATIVE units -- the units every commit's `value`
+    speaks."""
+
+    def test_a_request_from_a_non_zero_start_reports_both_ends(self):
+        """Task 4.2: `origin` is the bank before it, `end` the bank
+        after it, and every commit's value lies between them."""
+        from .clocked_project.calculator import Calculator
+
+        sim = Sim(Calculator())
+        sim.move('crank', by=100.0)
+        before = sim.state['crank']
+        self.assertEqual(before, 100.0)
+        request = sim.move('crank', by=740.0)
+        after = sim.state['crank']
+        self.assertEqual(request.origin, before)
+        self.assertEqual(request.end, after)
+        self.assertEqual(request.end, 840.0)
+        self.assertTrue(request.commits)
+        for commit in request.commits:
+            self.assertGreaterEqual(commit.value, request.origin)
+            self.assertLessEqual(commit.value, request.end)
+
+    def test_a_clipped_request_ends_at_the_stop_and_not_at_the_ask(self):
+        """Task 4.3: the lift is asked for 12 mm and stopped at 9."""
+        from .clocked_project.pawl import Stroke
+
+        sim = Sim(Stroke())
+        request = sim.move('lift', by=12.0)
+        self.assertTrue(request.stops)
+        self.assertEqual(request.by, 12.0)
+        self.assertEqual(request.origin, 0.0)
+        self.assertEqual(request.end, 9.0)
+        self.assertEqual(request.end, sim.state['lift'])
+
+    def test_a_request_admitted_at_zero_travel_reports_one_value_twice(self):
+        """Task 4.3: nothing moved, so the two ends are the same
+        value."""
+        from .clocked_project.calculator import Standing
+
+        sim = Sim(Standing())
+        request = sim.move('feed', by=-1.0)
+        self.assertEqual(request.admitted, 0.0)
+        self.assertTrue(request.stops)
+        self.assertEqual(request.origin, request.end)
+        self.assertEqual(request.origin, sim.state['feed'])
+
+    def test_an_absolute_request_over_an_int_driver_ends_native(self):
+        """Task 4.3: `end` is the CONVERTED native value, not the design
+        one the caller asked for."""
+        from .clocked_project.calculator import Calculator
+
+        sim = Sim(Calculator())
+        request = sim.move('operand', to=4)
+        self.assertEqual(request.to, 4)
+        self.assertEqual(request.origin, 1)
+        self.assertEqual(request.end, 4)
+        self.assertEqual(request.end, sim.state['operand'])
+
+    def test_a_scaled_request_ends_in_native_units_while_admitted_is_design(
+            self):
+        """The documented asymmetry, PROVED: `admitted` speaks the units
+        `by=` speaks and the two ends speak the bank's."""
+        from .clocked_project.pawl import ScaledStroke
+
+        sim = Sim(ScaledStroke())
+        request = sim.move('lift', by=3.0)
+        self.assertEqual(request.admitted, 3.0)
+        self.assertEqual(request.origin, 0.0)
+        self.assertEqual(request.end, 6.0)
+        self.assertEqual(request.end, sim.state['lift'])

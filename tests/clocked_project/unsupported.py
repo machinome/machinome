@@ -167,6 +167,42 @@ class Instructed(AssemblyNode):
     value.drives(face.turn, ratio=1.0)
 
 
+class TwoInputs(AssemblyNode):
+    """An instruction naming TWO declared drivers.
+
+    An instruction under a clocked root is ONE request, and a request
+    names exactly one moving input, so two drivers would be a SEQUENCE
+    -- which is a program and out of scope for an instruction under
+    every base (OpenSpec change ``play-the-instruction``, design
+    section 2).
+    """
+
+    crank = Driver(default=0.0, unit='deg')
+    ring = Driver(default=0.0, unit='deg')
+    value = State(default=0, dtype=int)
+    face = Dial()
+
+    instructions = {'Sweep': Instruction(by={'crank': 360.0, 'ring': 90.0},
+                                         duration=1.0)}
+
+    (crank & value).commits(value, at=stroke, law=bump)
+    value.drives(face.turn, ratio=1.0)
+
+
+class NoInput(AssemblyNode):
+    """An instruction naming NO driver at all: a button that would move
+    nothing, refused where the two-driver one is."""
+
+    crank = Driver(default=0.0, unit='deg')
+    value = State(default=0, dtype=int)
+    face = Dial()
+
+    instructions = {'Nothing': Instruction(by={}, duration=1.0)}
+
+    (crank & value).commits(value, at=stroke, law=bump)
+    value.drives(face.turn, ratio=1.0)
+
+
 class Stop(Solid2Node):
     """A dial that cannot turn past a quarter."""
 

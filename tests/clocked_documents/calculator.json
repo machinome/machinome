@@ -466,7 +466,20 @@
     }
   },
   "format": "solid-node-export",
-  "instructions": {},
+  "instructions": {
+    "Set four": {
+      "duration": 0.5,
+      "targets": {
+        "operand": 4
+      }
+    },
+    "Stroke": {
+      "by": {
+        "crank": 360.0
+      },
+      "duration": 2.0
+    }
+  },
   "root": {
     "children": [
       {

@@ -35,7 +35,7 @@ from solid_node.math import ceil, floor, sign
 from solid_node.motion.joints import Bound, Prismatic, Revolute
 from solid_node.motion.ports import TranslationalPort
 from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, State
+from solid_node.simulation import Driver, Instruction, State
 
 from .freeze import rest
 from .parts import Dial, Plate, Slide
@@ -175,6 +175,19 @@ class Calculator(AssemblyNode):
     feed = Driver(default=0.0, unit='mm')
 
     halved = State(default=0, dtype=int)
+
+    #: The Curta's own instruction on this fixture's crank, and its
+    #: ABSOLUTE twin. Under a clocked root each is ONE REQUEST -- `by`
+    #: a `move` BY that travel, `targets` a `move` TO that value -- so
+    #: the corpus pins what a BUTTON does and not merely that one
+    #: exists (OpenSpec change ``play-the-instruction``, design section
+    #: 8). `Stroke` crosses a stroke event on its way, so the recorded
+    #: step carries commits; `Set four` lands an `int`-typed driver
+    #: through `native()`.
+    instructions = {
+        'Stroke': Instruction(by={'crank': 360.0}, duration=2.0),
+        'Set four': Instruction({'operand': 4}, duration=0.5),
+    }
 
     w0 = Wheel()
     w1 = Wheel()

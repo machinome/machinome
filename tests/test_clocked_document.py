@@ -963,13 +963,22 @@ class ClockAndAnimationVariableTest(BaseNodeTest):
         self.assertNotIn('controls', published(Counter))
 
 
-def _instructed():
+def _instructed(declare=True):
     """A clocked root declaring an ABSOLUTE and a RELATIVE instruction,
     each naming a declared DRIVER.
 
     Declared here rather than in `clocked_project/` because it exists to
-    pin a behaviour this cycle does not change, and a fixture whose own
-    cycle's tests say what it means should not grow one.
+    pin a behaviour `publish-the-clocked-machine` did not change, and a
+    fixture whose own cycle's tests say what it means should not grow
+    one.
+
+    `declare=False` gives the SAME CLASS without the two declarations,
+    which is how `play-the-instruction` checks that the meaning an
+    instruction now has reaches no key of the document. The class name
+    is the same either way on purpose: a published commit names the
+    assembly that stated it, so two differently named classes would
+    differ in `clocked` for a reason that has nothing to do with
+    instructions.
     """
     from solid_node.node import AssemblyNode
     from solid_node.simulation import Driver, Instruction, State
@@ -985,10 +994,11 @@ def _instructed():
         units_dial = Dial()
         tens_dial = Dial()
 
-        instructions = {
-            'Park': Instruction({'crank': 360.0}, duration=0.5),
-            'Advance': Instruction(by={'crank': 10.0}, duration=0.5),
-        }
+        if declare:
+            instructions = {
+                'Park': Instruction({'crank': 360.0}, duration=0.5),
+                'Advance': Instruction(by={'crank': 10.0}, duration=0.5),
+            }
 
         (crank & units & tens).commits((units, tens), at=strokes, law=advance)
 
@@ -999,23 +1009,32 @@ def _instructed():
 
 
 class InstructionsUnderAClockedRootTest(BaseNodeTest):
-    """(6.1, 6.3, 6.4) An instruction targeting a DRIVER is admitted
-    today, and this cycle publishes it and gives it no meaning.
+    """(6.1, 6.3, 6.4) An instruction targeting a DRIVER is admitted,
+    published, and -- since `play-the-instruction` -- MEANS one request.
 
-    This cycle's brief said "an instruction under a clocked root is
-    refused today; keep it". It is not: `compile_clocked` refuses one
-    only where its TARGET is a State. The probe is recorded here as a
-    test so the correction is pinned rather than remembered (design
-    section 14).
+    `publish-the-clocked-machine`'s brief said "an instruction under a
+    clocked root is refused today; keep it". It was not: `compile_clocked`
+    refused one only where its TARGET is a State. That correction is
+    still pinned here, and the meaning the next cycle gave it is pinned
+    beside it.
     """
 
-    def test_both_forms_construct_and_only_trigger_is_refused(self):
-        """(6.1) The probe, as a test."""
+    def test_both_forms_construct_and_both_are_played(self):
+        """(6.1) The probe, as a test -- and what `play-the-instruction`
+        made of its second half: `trigger` is no longer refused, it
+        makes the request the instruction states, and it returns it."""
         sim = Sim(_instructed()())
         self.assertEqual(sorted(sim.instructions), ['Advance', 'Park'])
-        with self.assertRaises(TypeError) as caught:
-            sim.trigger('Park')
-        self.assertIn('trigger', str(caught.exception))
+        parked = sim.trigger('Park')
+        self.assertEqual(parked.input, 'crank')
+        self.assertEqual(parked.to, 360.0)
+        self.assertEqual(parked.origin, 0)
+        self.assertEqual(parked.end, 360.0)
+        advanced = sim.trigger('Advance')
+        self.assertEqual(advanced.input, 'crank')
+        self.assertEqual(advanced.by, 10.0)
+        self.assertEqual(advanced.origin, 360.0)
+        self.assertEqual(advanced.end, 370.0)
 
     def test_a_version_eight_document_publishes_every_instruction(self):
         """(6.3) A RELATIVE instruction is not omitted here: the
@@ -1075,12 +1094,53 @@ class InstructionsUnderAClockedRootTest(BaseNodeTest):
         self.assertIn('units', message)
         self.assertIn('State', message)
 
-    def test_a_published_instruction_has_no_execution_meaning(self):
-        """(6.4) A clocked simulation has no command surface, and this
-        version settles nothing about what a consumer may do with one."""
-        sim = Sim(_instructed()())
-        with self.assertRaises(TypeError):
-            sim.trigger('Advance')
+    def test_the_meaning_reaches_no_key_of_the_document(self):
+        """(6.1 of `play-the-instruction`) A published instruction MEANS
+        one request, and the document says NOTHING about it: declaring
+        the two instructions changes the published document in its
+        `instructions` table and nowhere else.
+
+        This is the design's claim that a version 8 document published
+        after an instruction has a meaning is byte for byte the one the
+        same root published before it had one -- checked structurally
+        here, and against the committed golden by `GoldenDocumentTest`.
+        """
+        def plain(root):
+            # `mtime` is the SOURCE FILE's, and the root's own `name` is
+            # the class's: neither is what this test is about.
+            root['mtime'] = None
+            root['name'] = None
+            for child in root.get('children', ()):
+                plain(child)
+            return root
+
+        speaking = published(_instructed())
+        silent = published(_instructed(declare=False))
+        plain(speaking['root'])
+        plain(silent['root'])
+        self.assertEqual(sorted(speaking), sorted(silent))
+        self.assertNotEqual(speaking['instructions'], silent['instructions'])
+        for key in sorted(speaking):
+            if key == 'instructions':
+                continue
+            self.assertEqual(json.dumps(speaking[key], sort_keys=True),
+                             json.dumps(silent[key], sort_keys=True), key)
+
+    def test_an_instruction_naming_two_drivers_reaches_no_document(self):
+        """(6.2 of `play-the-instruction`) An instruction under a
+        clocked root is ONE request, a request names exactly one moving
+        input, and the machine's COMPILE refuses the others where it
+        refuses a State -- so no producer can write a document carrying
+        one."""
+        from solid_node.simulation.clocked import ClockedError
+
+        from .clocked_project import unsupported
+
+        for klass in (unsupported.TwoInputs, unsupported.NoInput):
+            with self.subTest(model=klass.__name__):
+                with self.assertRaises(ClockedError) as caught:
+                    published(klass)
+                self.assertIn('exactly one', str(caught.exception))
 
 
 class CalculatorFixtureTest(BaseNodeTest):

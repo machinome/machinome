@@ -3287,10 +3287,12 @@ CALLABLE versus GRAPH, and the framework is on both sides:
   simulation construction; one targeting a driver is admitted and now
   PUBLISHES, in the version 5 shape, with `duration` and exactly one of
   `targets` and `by`. Pinned as a test rather than left as prose.
-  **What it MEANS under a clocked root is still open** — `trigger` stays
-  refused by name, and whether a clocked consumer may turn an
-  instruction into a `move` request is the viewer's question. **Open,
-  waiting on the viewer cycles.**
+  **What it MEANS under a clocked root is now settled**: an instruction
+  under a clocked root IS one request over the one driver it names,
+  `trigger` makes it and returns it, and the document does not change.
+  **CLOSED 2026-09-17** by `play-the-instruction` (ADR-129), which also
+  narrowed the declaration to exactly one driver; see that cycle's
+  findings below.
 - **The parity fixture does not pin the document's `%`.** Design section
   16 said it does. `%` is an OPERATOR and not one of
   `SYMBOLIC_BUILTINS`, and no parity case carries a remainder. What pins
@@ -3401,3 +3403,88 @@ than deferred.
   because the coordinate happens to stand near zero. Recorded because it
   is a behaviour decision and not only a bug fix. **Closed by decision.**
 
+
+## Findings from the framework cycle `play-the-instruction` (2026-09-17)
+
+What this cycle deliberately narrowed, what it left asymmetric, and what
+its implementation found beyond the ratified design. The full write-up is
+`openspec/changes/archive/2026-09-17-play-the-instruction/evidence.md`,
+the decision is ADR-129, and the originating project is
+`projects/Calculators/Curta-Type-I-3x` (branch `direct-operation`, HEAD
+`9fb725f`), whose `ClockedCurta` declares `'Turn crank':
+Instruction(by={'crank_rotation': 360}, duration=2)` and could not be
+watched turning it. Nothing here is a defect.
+
+- **An instruction under a clocked root names EXACTLY ONE driver, and
+  that is a deliberate, liftable narrowing.** One naming two would be a
+  SEQUENCE and one naming none would move nothing; both are now refused
+  where the machine is compiled, which is before any document exists, so
+  every instruction a version 8 document carries is one a consumer can
+  play. A multi-input instruction on a clocked root was legal before this
+  cycle — published as a disabled button — and is now a construction
+  refusal. No model in this repository, in the Curta or in any fixture
+  declares one; checked. **What lifting it costs, stated so a later cycle
+  does not have to rediscover it:** requests are atomic INDIVIDUALLY
+  (ADR-125) and a sequence of them is not, so it needs a
+  snapshot/restore envelope, a rule for a STOP in the middle of the
+  sequence, and two more corpus features; it would be a THIRD meaning for
+  one declaration, since a running root moves the named inputs
+  CONCURRENTLY over one duration; and it changes `trigger`'s return
+  shape, which is a `Request` today precisely because one input means one
+  request. Lift it when a project writes the machine, not before.
+  **Open as a shape, not as a defect.**
+- **`trigger` under an UNTIMED root still returns `None`.** It ramps, as
+  it always did, and reports nothing; a RUNNING root returns its tuple of
+  command handles, and a CLOCKED one now returns its single `Request`.
+  Three bases, three return shapes. The asymmetry is recorded rather than
+  fixed because no project needs an untimed ramp's handle, and it is now
+  pinned by a test (`test_an_untimed_trigger_still_returns_nothing`) so
+  it cannot drift unnoticed. **Open, a question, small.**
+- **`trigger`'s clocked return shape is not future-proof, knowingly.** It
+  is the `Request` itself, not a one-element tuple and not a
+  `Triggered(name, requests)` wrapper: the name is what the caller typed
+  and the duration is what the document publishes. If the multi-input
+  narrowing above is ever lifted, this shape changes with it. Accepted at
+  ratification as cheaper than ceremony in every caller today for a
+  machine nobody has written. **Closed by decision, recorded because it
+  is a decision.**
+- **`origin`/`end` are NATIVE while `admitted` is DESIGN, inside one
+  value object.** A genuine asymmetry, and the honest one: the two ends
+  must match `Commit.value`, which is native, and `admitted` must match
+  what `by=` asked, which is design. Both are documented in one sentence
+  of `Request`'s own docstring, and the scaled case is proved rather than
+  asserted (a `by=3.0` request on a scale-2 driver reports `admitted`
+  `3.0` and `end` `6.0`). A consumer that rebuilds an end through the
+  scale can land on a float the machine never stood at, and a commit
+  landing exactly ON the end would then read as unfired. **Closed by
+  decision.**
+- **Each end is the bank entry VERBATIM, so `origin` carries the bank's
+  own type.** An integer-typed driver standing at its integer default
+  reports `origin` as an `int`; everything else reports a float. A
+  consumer treats both ends as numbers. Stated rather than normalized,
+  because normalizing would mean the machine publishing a float it did
+  not stand at. **Closed by decision.**
+- **`docs/api-reference.rst` documented NO clocked API at all** until
+  this cycle. `Request`, `Commit`, `Clocked` and `ClockedError` were
+  never added by ADR-125..128, and `Request` is still not exported from
+  `solid_node.simulation`. A short **Clocked simulation** section was
+  added here because this is the first cycle to hand a `Request` to a
+  consumer and the two new fields needed somewhere to live; it is more
+  surface than the ratified task named, reported rather than assumed, and
+  accepted at review. **Whether `Request` should be exported from the
+  package is open, and unasked by any project.** **Open, small.**
+- **The clocked cadence refusal list lives in TWO test modules**, not
+  one: `tests/test_clocked_sim.py:CadenceRefusalTest` for an untimed
+  clocked root and `tests/test_clocked_time.py:RefusedNamesTest` for the
+  elapsed root's own copy. Both had to lose `trigger`. The second is what
+  proves the meaning holds under EVERY time base, which the simulation
+  requirement states; a later cycle changing that surface must change
+  both. **Recorded so it is not found twice.**
+- **Nothing contradicted the ratified design's substance.**
+  `compile_clocked` already had the facts the arity refusal needs;
+  `Clocked.move` already held both floats at its return; `Sim.trigger`'s
+  existing `_instruction`/`_driver` resolvers gave the unknown-name and
+  unknown-driver messages by construction; and the design's own
+  prediction that `solid_node/core/serializer.py` would not change held
+  exactly. What the viewer's own cycle inherits is stated in ADR-129's
+  consequences and is not framework work. **Closed.**

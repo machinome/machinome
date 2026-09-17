@@ -288,9 +288,10 @@ class Sim:
             f'{what} belongs to a simulation with a CLOCK, and '
             f'{type(self.node).__name__} is CLOCKED: its tree declares a '
             f'State, it declares no time base, and it has no cadence. A '
-            f'clocked model moves on requests -- sim.move(input, by=...) '
-            f'-- and every event on a request path is solved exactly. '
-            f'Read sim.state, sim.commits and the request move() returns.')
+            f'clocked model moves on requests -- sim.move(input, by=...), '
+            f'and sim.trigger(name) for the one an instruction states -- '
+            f'and every event on a request path is solved exactly. '
+            f'Read sim.state, sim.commits and the request they return.')
 
     def _running(self, what):
         self._not_clocked(what)
@@ -519,9 +520,31 @@ class Sim:
         keeps its bare name. Its targets are class-local, so they
         resolve against the declaring node's own path -- which is what
         makes "home the X axis" home only the X axis.
+
+        Under a CLOCKED root the instruction is ONE REQUEST and this
+        RETURNS it: `by=` a `move` BY that travel, `targets=` a `move`
+        TO that value, both in design units, so a caller that pressed a
+        button holds exactly what a caller that moved the input holds.
+        The declared `duration` is not read -- a request is a path and
+        not an interval, and the duration says how long a CONSUMER draws
+        the transition (OpenSpec change ``play-the-instruction``, design
+        sections 1, 3, 4 and 6).
         """
-        self._not_clocked('trigger()')
         path, instruction = self._instruction(name)
+        if self._clocked is not None:
+            # ONE driver, because the machine's compile refused every
+            # other arity before this simulation existed. The resolution
+            # is the SAME `_instruction` and `_driver` the running and
+            # untimed paths use, so the unknown-name message is theirs
+            # by construction and not by imitation.
+            named = (instruction.by if instruction.relative
+                     else instruction.targets)
+            driver_name, amount = next(iter(named.items()))
+            input_id = '.'.join(path + (driver_name,))
+            self._driver(input_id, name)
+            if instruction.relative:
+                return self._clocked.move(input_id, by=amount)
+            return self._clocked.move(input_id, to=amount)
         if self._run is not None:
             # Under a running root an instruction is the run's own
             # command: `targets=` a move TO each target, `by=` a move BY

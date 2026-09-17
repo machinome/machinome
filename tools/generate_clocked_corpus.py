@@ -127,6 +127,8 @@ REQUIRED = (
     'an end-of-request judgement refusing a request',
     'a chain composed through an intermediate port',
     'a snapshot', 'a restore', 'a reset',
+    'an instruction played as a request BY a travel',
+    'an instruction played as a request TO a target',
     'a banked clock',
     'an event located on the clock',
     'a time request refused for running backwards',
@@ -325,6 +327,18 @@ CORPUS = (
         {'move': {'input': 'feed', 'by': 200.0}},
         {'restore': 'c'},
         {'reset': True},
+        # An INSTRUCTION played as a request, in each of its two forms,
+        # and -- from the same bank -- the relative one made BY HAND, so
+        # the fixture pins that the two are the same request and not
+        # merely that both were accepted (OpenSpec change
+        # ``play-the-instruction``, design section 8). `Stroke` crosses
+        # the stroke event at 360, so the triggered step carries commits
+        # and not merely a bank.
+        {'trigger': 'Set four'},
+        {'snapshot': 'd'},
+        {'trigger': 'Stroke'},
+        {'restore': 'd'},
+        {'move': {'input': 'crank', 'by': 360.0}},
     ]},
 )
 
@@ -373,6 +387,14 @@ def run_machine(entry):
 def apply_step(sim, step, snapshots):
     """One script step, as the fixture records it.
 
+    A TRIGGER is recorded in exactly the shape a request is recorded in,
+    because an instruction under a clocked root IS one request -- so the
+    fixture pins what a BUTTON does and not merely that one was accepted
+    (OpenSpec change ``play-the-instruction``, design section 8). The
+    declared `duration` is deliberately not recorded: it is published in
+    the document this fixture already carries verbatim, and the machine
+    does not read it.
+
     A step the executor REFUSED is recorded as the refusal's KIND and the
     qualified names its message must name, with the bank AFTER it -- which
     is the bank before it, a refused request committing nothing. The
@@ -381,12 +403,20 @@ def apply_step(sim, step, snapshots):
     regeneration, while the KIND and the NAMES are the contract a second
     runtime must reproduce.
     """
-    if 'move' in step:
-        request = dict(step['move'])
-        input_id = request.pop('input')
+    if 'move' in step or 'trigger' in step:
         before = dict(sim.state)
+        if 'move' in step:
+            request = dict(step['move'])
+            input_id = request.pop('input')
+
+            def made():
+                return sim.move(input_id, **request)
+        else:
+            def made():
+                return sim.trigger(step['trigger'])
+
         try:
-            result = sim.move(input_id, **request)
+            result = made()
         except Exception as failure:
             named = sorted(name for name in before
                            if name in str(failure))
@@ -399,6 +429,11 @@ def apply_step(sim, step, snapshots):
         return {
             'bank': dict(sim.state),
             'admitted': result.admitted,
+            # BOTH ENDS of the path travelled, in the input's NATIVE
+            # units -- the units every commit's `value` speaks, so a
+            # consumer drawing the transition compares like with like.
+            'origin': result.origin,
+            'end': result.end,
             'commits': [{'relations': list(one.relations),
                          'fraction': one.fraction,
                          'value': one.value,
@@ -683,6 +718,22 @@ def uncovered_features(machines):
             before = banks[-1]
             banks.append(step['bank'])
             moved = script_step.get('move')
+            played = script_step.get('trigger')
+            if played is not None:
+                # An instruction under a clocked root is ONE request over
+                # the driver it names, so a triggered step is read here
+                # exactly as a request step is -- and which FORM was
+                # played is read off the published table, the way a
+                # consumer reads it.
+                declared = document['instructions'][played]
+                if 'by' in declared:
+                    seen.add('an instruction played as a request BY a '
+                             'travel')
+                    moved = {'input': next(iter(declared['by']))}
+                else:
+                    seen.add('an instruction played as a request TO a '
+                             'target')
+                    moved = {'input': next(iter(declared['targets']))}
             if moved is not None:
                 origin = before.get(moved['input'])
                 if (origin == 0.0 and step.get('stops')

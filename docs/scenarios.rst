@@ -907,6 +907,15 @@ path only.
     request.stops[0].bound              # 9.0
 
 ``by`` stays what you asked for; ``admitted`` is what the machine made.
+``origin`` and ``end`` are the two ENDS of the path travelled — the value
+the input stood at when the request began and the value it stands at now,
+each taken verbatim from the bank and so in the input's NATIVE units, the
+units every commit's ``value`` speaks. A clipped request ends where the
+stop put it and not where it was asked for, and a request admitted at
+zero travel reports one value twice. They are reported rather than left
+to you because ``admitted`` is in DESIGN units: rebuilding an end through
+the scale can land on a float the machine never stood at, and a commit
+landing exactly ON the end would then read as unfired.
 ``stops`` is empty exactly when the whole travel was made, and each entry
 names the bounded coordinate, the side, the bound as it evaluated at the
 landing, what the coordinate is worth there, where the input landed and
@@ -989,6 +998,47 @@ again. A pose that is NOT a request — construction, ``state=``,
 ``restore`` — is judged by the ordinary enumeration, unchanged: a machine
 cannot be PUT where it cannot BE.
 
+A button is a request
+---------------------
+
+.. code-block:: python
+
+    class Calculator(AssemblyNode):
+        crank = Driver(default=0, unit='deg')
+        operand = Driver(default=1, range=(0, 9), dtype=int)
+        ...
+        instructions = {
+            'Stroke': Instruction(by={'crank': 360.0}, duration=2.0),
+            'Set four': Instruction({'operand': 4}, duration=0.5),
+        }
+
+    request = sim.trigger('Stroke')     # the request it states, made
+    request.origin, request.end         # 0, 360.0
+
+Under a clocked root an instruction is ONE REQUEST and nothing else:
+``by={id: travel}`` is ``move(id, by=travel)`` and ``targets={id: value}``
+is ``move(id, to=value)``, both in design units, through the same
+resolution every other base uses. ``trigger`` RETURNS that request, so a
+caller that pressed a button holds exactly what a caller that moved the
+input holds.
+
+An instruction under a clocked root names EXACTLY ONE driver. A request
+names exactly one moving input, so an instruction naming two would be a
+SEQUENCE — which is a program, and the G-code layer's job — and one
+naming none would move nothing. Both are refused where the machine is
+COMPILED, at simulation construction, naming the instruction, the inputs
+and the rule; so no document carries an instruction a consumer cannot
+play.
+
+The declared ``duration`` is carried and means NOTHING to the machine. A
+request is a path, not an interval: it has no dt and nothing to spend
+seconds on, and two roots differing only in the declared duration make
+the identical request and the identical bank. What the duration says is
+how long a CONSUMER draws the transition — walking the moved input from
+``origin`` to ``end`` and applying every commit already reached, one pose
+per frame, with the machine solving once and doing no work in the frame
+loop. Zero means "draw nothing, land".
+
 What a clocked model publishes
 ------------------------------
 
@@ -1039,15 +1089,16 @@ What a clocked model refuses today
   deliberately not implemented. Under ``Time.elapsed()`` it is
   ADMITTED, and that is the root that banks a clock.
 * **The cadence surface.** ``run``, ``at``, ``every``,
-  ``tick``, ``rate``, ``trigger``, ``commands``, ``program`` and
+  ``tick``, ``rate``, ``commands``, ``program`` and
   ``crossings`` are each refused by name, and so is ``time`` unless the
-  root declares ``Time.elapsed()``. A clocked model has ``stops``, and a
-  clocked model with an elapsed base has a clock.
+  root declares ``Time.elapsed()``. A clocked model has ``stops``, a
+  clocked model with an elapsed base has a clock, and ``trigger`` is not
+  on that list: an instruction is one request (below).
 * **A clip in TIME.** A time request makes its whole travel or is
   refused whole; it is never stopped at a bound. A coordinate whose
   chain carries the clock is refused at construction.
-* **An advance of a named duration.** There is no ``Instruction``, no
-  control and no ``move(duration=)`` over the clock, and no request
+* **An advance of a named duration.** There is no instruction over the
+  CLOCK, no control and no ``move(duration=)`` over it, and no request
   moves a driver and the clock together.
 * **A bound reading a plain PORT**, refused with the same message a
   running root gives it; a bound whose level the moving driver curves;
@@ -1062,8 +1113,8 @@ What a clocked model refuses today
 * A port, joint coordinate or derived coordinate as a SOURCE; a
   broadcast ``commits`` over a ``.repeat()`` child; a request naming more
   than one input; a CONTROL under a clocked root, which is why a version 8
-  document never carries a ``controls`` key; and an instruction whose
-  TARGET is a state, refused at simulation construction. An instruction
-  over a DRIVER is ADMITTED and published in the version 5 shape, with no
-  execution meaning — a clocked model has no cadence to run it on, and
-  ``trigger`` stays refused by name.
+  document never carries a ``controls`` key; an instruction whose TARGET
+  is a state; and an instruction naming NONE or MORE THAN ONE driver —
+  the last three refused at simulation construction, which is before any
+  document exists. An instruction over exactly one DRIVER is ADMITTED,
+  published in the version 5 shape, and PLAYED (below).

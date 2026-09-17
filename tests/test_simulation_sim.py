@@ -240,6 +240,17 @@ class DeferredActionTest(BaseNodeTest):
         self.assertEqual(sim.trajectory[50], (51, {'motor': 7920}))
         self.assertEqual(sim.state['motor'], 0)
 
+    def test_an_untimed_trigger_still_returns_nothing(self):
+        """Task 7.2 of `play-the-instruction`, REGRESSION: only a
+        CLOCKED root's `trigger` gained a return value. An untimed root
+        starts a ramp and answers `None`, exactly as it always has --
+        the asymmetry is recorded rather than quietly widened."""
+        sim = Sim(Carriage(), DT)
+
+        self.assertIsNone(sim.trigger('Home X'))
+        sim.run(2.0)
+        self.assertEqual(sim.state['motor'], 0)
+
     def test_an_unknown_instruction_is_reported_by_name(self):
         sim = Sim(Carriage(), DT)
 

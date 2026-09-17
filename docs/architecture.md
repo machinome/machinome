@@ -1344,7 +1344,7 @@ with its meaning defined and not implemented, and a `State` under
 `Time.elapsed()` ADMITTED.
 
 `Sim(model)` takes NO `dt`, and the whole cadence surface — `run`, `at`,
-`every`, `tick`, `rate`, `trigger`, `crossings`, `commands`,
+`every`, `tick`, `rate`, `crossings`, `commands`,
 `program`, and `time` under every base but the elapsed one — is refused
 by name. `sim.move(input, by=|to=)`
 moves ONE declared driver, or the CLOCK, along a straight path: each
@@ -1458,10 +1458,15 @@ agreement between chain and pose is a TEST at `rel_tol=abs_tol=1e-12` and
 never a runtime refusal, because an ulp of disagreement is not a maker's
 bug. A pose that is NOT a request — construction, `state=`, `restore` — is
 marked by nothing and judged by the enumeration, unchanged. `move` reports
-`admitted` (design units) and `stops` (ADR-108's vocabulary: coordinate,
-side, evaluated bound, value, input, fraction), and `record=N` keeps
-`sim.stops` beside `sim.commits`, which is why `stops` alone is missing
-from the refused cadence names above.
+`admitted` (design units), BOTH ENDS of the path travelled — `origin` and
+`end`, the bank's own entries before and after, and so in the input's
+NATIVE units, the units every commit's value speaks (ADR-129) — and
+`stops` (ADR-108's vocabulary: coordinate, side, evaluated bound, value,
+input, fraction), and `record=N` keeps
+`sim.stops` beside `sim.commits`, which is why `stops` is missing
+from the refused cadence names above; `trigger` is missing from them
+because an instruction under a clocked root IS one such request
+(ADR-129), and it returns it.
 
 A clocked model is **published at version 8** (ADR-128), carrying the
 machine compile time decided: every committing relation as its sources,
@@ -2716,10 +2721,19 @@ The short list that changes must not silently break:
   negative poses through the callable and publishes through the graph,
   in every document version from 2 upward — are recorded and unfixed,
   because reconciling either moves versions 5, 6 and 7.
-- **An instruction under a clocked root has no meaning** (ADR-128): a
-  version 8 document publishes every declared instruction in the version
-  5 shape, and `trigger` stays refused by name. Whether a clocked
-  consumer may turn one into a request is open.
+- **An instruction under a clocked root names exactly ONE driver**
+  (ADR-129): it MEANS one request over that driver, `trigger` makes it
+  and returns it, and the version 8 document is unchanged — so one
+  naming two drivers would be a SEQUENCE, which is a program, and one
+  naming none would move nothing; both are refused where the machine is
+  compiled. No clocked machine anywhere in this repository or in the
+  originating Curta declares one, and the refusal is a deliberate
+  narrowing kept until a project writes the machine that needs it —
+  lifting it costs a snapshot/restore envelope around the sequence, a
+  rule for a STOP in the middle, a third meaning for one declaration and
+  a changed return shape. An instruction over the CLOCK, and a `trigger`
+  that returns anything under an UNTIMED root, stay unwritten for the
+  same reason.
 - **The RUNNING landing walk still scales its first step by the ulp of
   the value it starts from** (ADR-128): the clocked callers now size it
   by the segment, which is what lets a bank standing at exactly zero
@@ -2784,11 +2798,11 @@ The short list that changes must not silently break:
 | Build parameters | `solid_node/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104, 127 |
 | Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122, 125, 126, 127 |
-| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128 |
+| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128, 129 |
 | Mechanisms | `solid_node/mechanisms/` | `mechanisms` | 022, 076 |
 | Build pipeline | `solid_node/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `solid_node/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |
 | Test framework | `solid_node/test.py`, `manager/test.py` | `test-framework` | 009–011, 025, 029, 040, 048, 052, 070, 073 |
 | Viewer lookup & snapshot staging | `solid_node/viewers/bundle.py`, `viewers/browser.py`, `viewers/openscad.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: solid-node-viewer) |
-| Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128 |
+| Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128, 129 |
 | Sphinx embedding | `solid_node/sphinx.py` | `sphinx-embedding` | 020 |

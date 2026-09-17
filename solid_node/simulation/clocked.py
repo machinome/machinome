@@ -419,7 +419,29 @@ def compile_clocked(root, drivers, states, instructions, clock=False):
                 f'could never change. State the commit, or declare a '
                 f'Driver instead.')
     for name, (_node, path, instruction) in sorted(instructions.items()):
-        for target in (instruction.targets or instruction.by or {}):
+        named = (instruction.by if instruction.relative
+                 else instruction.targets)
+        if len(named) != 1:
+            # An instruction under a clocked root is ONE REQUEST, and a
+            # request names exactly one moving input. Two would be a
+            # SEQUENCE -- a program, and the G-code layer's job, as
+            # `Instruction`'s own docstring says -- and none would be a
+            # button that moves nothing. Refused HERE, where the facts
+            # first exist, so no document can carry an instruction a
+            # consumer cannot play (OpenSpec change
+            # ``play-the-instruction``, design section 2).
+            qualified = sorted('.'.join(path + (target,)) for target in named)
+            raise ClockedError(
+                f"the instruction '{name}' names "
+                f'{len(named)} drivers'
+                f'{": " + ", ".join(qualified) if qualified else ""}. '
+                f'Under a CLOCKED root an instruction is ONE REQUEST, and '
+                f'a request names exactly one moving input, so an '
+                f'instruction here names exactly one driver. Two drivers '
+                f'would be a sequence, which is a program and not an '
+                f'instruction; none would move nothing. State one '
+                f'instruction per driver.')
+        for target in named:
             identifier = '.'.join(path + (target,))
             if identifier in states:
                 raise ClockedError(
@@ -1587,21 +1609,40 @@ class Commit:
 
 
 class Request:
-    """What one `move` did: the input, its travel, the events it fired
-    in path order, how much of the travel the machine ADMITTED, and the
-    bounds it STOPPED at.
+    """What one `move` did: the input, its travel, BOTH ENDS of the path
+    it travelled, the events it fired in path order, how much of the
+    travel the machine ADMITTED, and the bounds it STOPPED at.
 
     `by` stays what the caller asked for; `admitted` is what was made,
     in DESIGN units -- the units `by=` speaks -- and `stops` is empty
     exactly when the whole travel was made.
+
+    `origin` and `end` are the value the moving input STOOD AT when the
+    request began and the value it ENDED at, each taken verbatim from
+    the bank and therefore in the input's own NATIVE units -- the units
+    every `Commit.value` speaks, so that every event's value lies on the
+    segment they span. That is a deliberate asymmetry with `admitted`,
+    which speaks design units because that is what `by=` asked in.
+
+    Neither end is left for a caller to recompute. `to` is `None` for a
+    relative request, `by` is the ASK and not the travel, and a caller
+    reconstructing an end as `origin + admitted / scale` can land on a
+    float this machine never stood at -- and a commit landing exactly ON
+    the endpoint would then read as unfired. The two floats the machine
+    actually used are published instead (OpenSpec change
+    ``play-the-instruction``, design section 5).
     """
 
-    __slots__ = ('input', 'by', 'to', 'commits', 'admitted', 'stops')
+    __slots__ = ('input', 'by', 'to', 'origin', 'end', 'commits',
+                 'admitted', 'stops')
 
-    def __init__(self, input_id, by, to, commits, admitted=0.0, stops=()):
+    def __init__(self, input_id, by, to, origin, end, commits,
+                 admitted=0.0, stops=()):
         self.input = input_id
         self.by = by
         self.to = to
+        self.origin = origin
+        self.end = end
         self.commits = tuple(commits)
         self.admitted = admitted
         self.stops = tuple(stops)
@@ -2052,6 +2093,16 @@ class Clocked:
         The path is solved again from each landing with the new bank, so
         an event surface that reads a committed state moves with it. The
         tree is bound ONCE, at the end.
+
+        The `Request` returned reports BOTH ENDS of the path travelled:
+        `origin`, the bank entry this input stood at when the request
+        began, and `end`, the CLIPPED landing the bank holds afterwards.
+        Both are in the input's NATIVE units, which is what every
+        `Commit.value` speaks, so every event's value lies on the
+        segment between them. They are reported rather than left to a
+        caller because `admitted` is in DESIGN units and a caller
+        rebuilding an end through the scale can land on a float this
+        machine never stood at (design section 5).
         """
         _enter()
         declaration = self._input(input_id)
@@ -2142,7 +2193,13 @@ class Clocked:
             self._stops.extend(stops)
         scale = getattr(declaration, 'scale', None)
         admitted = (target - origin) * (1.0 if scale is None else scale)
-        return Request(input_id, by, to, commits, admitted, stops)
+        # BOTH ENDS, verbatim: `origin` is the bank entry this request
+        # started from and `target` is the CLIPPED landing the bank
+        # holds now. Neither is recomputed from `admitted`, which speaks
+        # design units and would reintroduce the scale a consumer must
+        # not divide by (design section 5).
+        return Request(input_id, by, to, origin, target, commits, admitted,
+                       stops)
 
     ##############################################
     # The clip, and the judgement that closes a request

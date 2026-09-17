@@ -5,6 +5,43 @@ History
 Unreleased
 ----------
 
+* **A clocked stroke can be WATCHED: an instruction is one request.** A
+  clocked machine could compute a whole stroke exactly and could not show
+  it happening. The originating project is
+  ``projects/Calculators/Curta-Type-I-3x``, whose ``ClockedCurta``
+  declares ``'Turn crank': Instruction(by={'crank_rotation': 360},
+  duration=2)`` and got nothing for it: the table was published with no
+  meaning, ``trigger`` was refused BY NAME under a clocked root, and the
+  only way to turn the crank was one ``move`` that jumped a whole
+  revolution and posed the tree once at the end. Under a clocked root an
+  instruction is now ONE REQUEST and nothing else — ``by={id: travel}``
+  is ``move(id, by=travel)``, ``targets={id: value}`` is ``move(id,
+  to=value)``, through the same resolution every other base uses — and
+  ``trigger`` RETURNS that request, so a caller that pressed a button
+  holds exactly what a caller that moved the input holds. Such an
+  instruction names EXACTLY ONE driver: a request names exactly one
+  moving input, so an instruction naming two would be a SEQUENCE, which
+  is a program, and one naming none would move nothing; both are refused
+  where the machine is COMPILED, which is before any document exists, so
+  every instruction a version 8 document carries is one a consumer can
+  PLAY. The declared ``duration`` is carried and means NOTHING to the
+  machine — a request is a path, not an interval — and says how long a
+  CONSUMER draws the transition. A request now reports BOTH ENDS of the
+  path it travelled, ``origin`` and ``end``, taken verbatim from the bank
+  and so in the input's NATIVE units, the units every commit's ``value``
+  speaks: a drawer walks the moved input between them, applies every
+  commit already reached and poses from the bank, one solve and N poses,
+  with no machine work in the frame loop. The same project measured the
+  alternative and ruled it out: one stroke costs 0.07875 s in Python and
+  36.95 ms in Chromium, and the same stroke sliced into twenty
+  requests costs 1.56363 s and 647.7 ms. The DOCUMENT does not change:
+  no field, no key, no version bump, no producer change, and a version 8
+  document published after an instruction has a meaning is byte for byte
+  the one the same root published before it had one. The clocked
+  conformance corpus records a ``trigger`` step in each instruction form,
+  and both ends of every path, so the two runtimes are pinned to what a
+  BUTTON does and not merely to what a hand-made request does.
+
 * **A clocked machine publishes what it IS: document version 8.** A
   machine with MEMORY could be built, tested and photographed, and could
   not leave the process: every document producer refused a tree that
@@ -41,7 +78,7 @@ Unreleased
   directory; the OpenSCAD renderer, ``render()``, ``assemble()``,
   ``build_stls()`` and ``solid test`` are untouched. The two runtimes now
   share a clocked conformance corpus that is **exact, bit for bit** —
-  thirty machines, seventy-six steps, no tolerance window anywhere — with
+  thirty machines, eighty-one steps, no tolerance window anywhere — with
   its basis stated operation by operation and a coverage inventory the
   generator refuses to write below. A tree that declares no ``State``
   pays nothing and publishes a byte-identical document, and versions 5,

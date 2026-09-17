@@ -1520,9 +1520,23 @@ consumer of this version is a new consumer, so omitting one would be a producer
 discarding a declaration for a reason that does not apply. An instruction
 naming a STATE as a target SHALL NOT appear in any document: the machine's
 compile refuses it before a document exists, and every producer compiles before
-it publishes. This version SHALL give a published instruction NO execution
-meaning — a clocked machine has no command surface — and what a consumer may do
-with one is not settled by this capability.
+it publishes. An instruction naming NONE or MORE THAN ONE driver SHALL NOT
+appear in any document either, and for the same reason: an instruction under a
+clocked root is ONE request, a request names exactly one moving input, and the
+machine's compile refuses the others where it refuses a state. Every
+instruction a version 8 document carries is therefore one a consumer can
+PLAY.
+
+A published instruction MEANS one request over the driver it names —
+`targets` a move TO that value and `by` a move BY that travel — stated by the
+simulation capability's requirement "Instructions carry design-unit targets"
+and executed by the same published machine every other request is executed by.
+The document SHALL carry NO field, key or version saying so: a version 8
+document published after an instruction has that meaning SHALL be byte for
+byte the document the same root published before it had one. `duration` SHALL
+remain what it is published as — seconds — and the document SHALL say nothing
+about how a consumer spends them: drawing the transition is the consumer's,
+and no frame, cadence or clock is stated here.
 
 `clocked` SHALL NOT carry a table of the BANK. A clocked bank holds no joint
 coordinate — it is every declared driver and every declared state at its
@@ -1607,12 +1621,21 @@ compile happens, so a model that declares no `State` loads none of it.
   each naming a declared driver
 - **THEN** the version 8 document's `instructions` table carries both, the
   first with `targets` and no `by` and the second with `by` and no `targets`,
-  and the document gives neither any execution meaning
+  and the document is byte for byte the one that root published when an
+  instruction had no execution meaning
 
 #### Scenario: A stateless tree enters no clocked path when published
 
 - **WHEN** a driven, stateless model is published
 - **THEN** no clocked code path is entered at any point
+
+#### Scenario: A clocked document carries no instruction a consumer cannot play
+
+- **WHEN** a clocked root declaring an instruction that names two drivers is
+  published through any producer
+- **THEN** no document is written, the refusal comes from the machine's
+  compile naming the instruction, and every instruction of every document that
+  IS written names exactly one driver
 
 ### Requirement: A clocked document publishes its states beside its drivers
 
@@ -1917,14 +1940,22 @@ second way, so a disagreement means the other runtime drifted.
 
 The fixture SHALL carry, per machine: its name; the published document's
 machine-bearing keys — `format`, `version`, `drivers`, `states`,
-`instructions`, `bindings` and `clocked` — VERBATIM; a SCRIPT of steps, each
-a request naming one input and exactly one of a travel and a target value, or
-a snapshot, a restore or a reset; and, per step, the whole bank after it, the
-travel ADMITTED, every event fired in path order — each carrying the relations
-that fired, the fraction of the requested travel, the input's value there and
-the targets with their new values — and every bound met, each carrying the
-coordinate, the side, the bound evaluated at the landing, the coordinate's
-value there, the input's value and the fraction.
+`instructions`, `bindings` and `clocked` — VERBATIM; a SCRIPT of steps, each a
+request naming one input and exactly one of a travel and a target value, a
+TRIGGER naming one declared instruction, or a snapshot, a restore or a reset;
+and, per step, the whole bank after it, the travel ADMITTED, BOTH ENDS OF THE
+PATH, every event fired in path order — each carrying the relations that fired,
+the fraction of the requested travel, the input's value there and the targets
+with their new values — and every bound met, each carrying the coordinate, the
+side, the bound evaluated at the landing, the coordinate's value there, the
+input's value and the fraction.
+
+A TRIGGER step SHALL be recorded exactly as the request it makes, in the same
+shape a request step is recorded, so that the fixture pins what an instruction
+MEANS under a clocked root and not merely that it was accepted. The declared
+`duration` SHALL NOT appear in a recorded step: it is published in the
+document the fixture already carries verbatim, and the machine does not read
+it.
 
 A step the executor REFUSED SHALL be recorded as the refusal's KIND and the
 qualified names its message must name, together with the bank AFTER it, which
@@ -1976,13 +2007,14 @@ level; a request admitted at ZERO travel; a declared range nothing binds; a
 bank standing outside a bound and moving back inside it; an end-of-request
 judgement refusing a request whose own commit carried a coordinate out of
 range; a chain composed through an intermediate port; a snapshot; a restore; a
-reset; a banked clock; an event located on the clock; a time request refused
-for running backwards; a time request no bound clips; a request refused
-for exceeding the crossing maximum; a STRICT surface reached exactly at a
-request's endpoint and fired by the request that begins on it; and a request
-stopped at a bound from a coordinate standing at exactly ZERO. The framework's
-suite SHALL test that refusal directly, so the corpus's width is visible
-without running the generator.
+reset; an instruction played as a request BY a travel; an instruction played
+as a request TO a target; a banked clock; an event located on the clock; a
+time request refused for running backwards; a time request no bound clips; a
+request refused for exceeding the crossing maximum; a STRICT surface reached
+exactly at a request's endpoint and fired by the request that begins on it;
+and a request stopped at a bound from a coordinate standing at exactly ZERO.
+The framework's suite SHALL test that refusal directly, so the corpus's width
+is visible without running the generator.
 
 A framework test SHALL assert that each fixture machine's REAL published
 document reproduces the fixture's own copy, so the fixture cannot drift from
@@ -2000,8 +2032,8 @@ machines that each carry one feature exercises none of them.
 
 - **WHEN** the committed fixture is replayed through the framework's clocked
   executor, machine by machine, applying each script step in order
-- **THEN** every bank, admitted travel, event and stop matches the fixture
-  exactly, floats included
+- **THEN** every bank, admitted travel, path end, event and stop matches the
+  fixture exactly, floats included
 
 #### Scenario: The corpus carries the document it was run against
 
@@ -2052,3 +2084,17 @@ machines that each carry one feature exercises none of them.
   carries out of range
 - **THEN** the fixture records the refusal's kind and the coordinate and side
   its message names, and the bank after the step equals the bank before it
+
+#### Scenario: A corpus missing a triggered instruction is refused
+
+- **WHEN** the generator is asked to write a corpus none of whose machines
+  plays a declared instruction, or one that plays only the relative form
+- **THEN** it refuses naming the uncovered feature and writes nothing
+
+#### Scenario: A triggered step records the request the instruction made
+
+- **WHEN** a corpus script triggers an instruction declared `by` a travel over
+  a machine whose stroke commits on the way
+- **THEN** the fixture records that step exactly as it records the same
+  request made by hand — the bank, the admitted travel, both ends of the path,
+  the events and the stops — and the replay reproduces it

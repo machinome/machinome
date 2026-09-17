@@ -287,3 +287,59 @@ class CommitDeclarationRefusalTest(TestCase):
                 def render(self):
                     return None
         self.assertIn('not an assembly', str(caught.exception))
+
+
+class InstructionArityRefusalTest(TestCase):
+    """Task 2 of `play-the-instruction`: an instruction under a clocked
+    root names EXACTLY ONE driver.
+
+    Not a new rule. The ratified requirement "A clocked simulation
+    solves a request path event by event" already says a request names
+    exactly one moving input; this cycle makes an instruction under a
+    clocked root ONE request, so the rule reaches the declaration. The
+    refusal is raised where the facts first exist -- `compile_clocked`,
+    beside the refusal of an instruction naming a State -- so no
+    document can carry an instruction a consumer cannot play.
+    """
+
+    def test_an_instruction_naming_two_drivers_is_refused(self):
+        from solid_node.simulation import Sim
+        from solid_node.simulation.clocked import ClockedError
+
+        from .clocked_project import unsupported
+
+        with self.assertRaises(ClockedError) as caught:
+            Sim(unsupported.TwoInputs())
+        message = str(caught.exception)
+        self.assertIn('Sweep', message)
+        self.assertIn('crank', message)
+        self.assertIn('ring', message)
+        self.assertIn('exactly one', message)
+
+    def test_an_instruction_naming_no_driver_is_refused(self):
+        from solid_node.simulation import Sim
+        from solid_node.simulation.clocked import ClockedError
+
+        from .clocked_project import unsupported
+
+        with self.assertRaises(ClockedError) as caught:
+            Sim(unsupported.NoInput())
+        message = str(caught.exception)
+        self.assertIn('Nothing', message)
+        self.assertIn('exactly one', message)
+
+    def test_the_state_target_refusal_is_not_absorbed_by_the_arity_one(self):
+        """Task 2.4, REGRESSION: `Instructed` names exactly one target
+        and that target is a State, so it must still be refused by the
+        State message and not by the new count."""
+        from solid_node.simulation import Sim
+        from solid_node.simulation.clocked import ClockedError
+
+        from .clocked_project import unsupported
+
+        with self.assertRaises(ClockedError) as caught:
+            Sim(unsupported.Instructed())
+        message = str(caught.exception)
+        self.assertIn('Reset', message)
+        self.assertIn('which is a State', message)
+        self.assertNotIn('exactly one', message)

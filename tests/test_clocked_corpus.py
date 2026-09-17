@@ -76,14 +76,27 @@ class CorpusReplayTest(BaseNodeTest):
             self.apply(sim, step, snapshots, expected, where)
 
     def apply(self, sim, step, snapshots, expected, where):
-        if 'move' in step:
-            request = dict(step['move'])
-            input_id = request.pop('input')
+        if 'move' in step or 'trigger' in step:
+            # A TRIGGER is replayed exactly as a request, because an
+            # instruction under a clocked root IS one: the same fields
+            # are compared, so a second runtime that agreed about `move`
+            # and disagreed about what a BUTTON does fails here
+            # (OpenSpec change ``play-the-instruction``).
+            if 'move' in step:
+                request = dict(step['move'])
+                input_id = request.pop('input')
+
+                def made():
+                    return sim.move(input_id, **request)
+            else:
+                def made():
+                    return sim.trigger(step['trigger'])
+
             before = dict(sim.state)
             refused = expected.get('refused')
             if refused is not None:
                 with self.assertRaises(Exception) as caught:
-                    sim.move(input_id, **request)
+                    made()
                 self.assertEqual(type(caught.exception).__name__,
                                  refused['kind'], where)
                 for name in refused['names']:
@@ -93,9 +106,15 @@ class CorpusReplayTest(BaseNodeTest):
                 self.assertEqual(sim.state, before, where)
                 self.assertEqual(sim.state, expected['bank'], where)
                 return
-            result = sim.move(input_id, **request)
+            result = made()
             self.exactly(result.admitted, expected['admitted'],
                          f'{where} admitted')
+            # BOTH ENDS of the path, in the input's NATIVE units: the
+            # segment every commit's value lies on, and what a consumer
+            # interpolates between.
+            self.exactly(result.origin, expected['origin'],
+                         f'{where} origin')
+            self.exactly(result.end, expected['end'], f'{where} end')
             self.assertEqual(len(result.commits), len(expected['commits']),
                              where)
             for found, want in zip(result.commits, expected['commits']):
@@ -456,3 +475,156 @@ class ExactnessGuardTest(TestCase):
                       for entry in machine['document'].get('bindings', ())
                       if '%' in entry['expression']]
         self.assertTrue(remainders)
+
+
+class TriggeredStepTest(BaseNodeTest):
+    """Task 5 of `play-the-instruction`: the corpus records what a
+    BUTTON does.
+
+    If the corpus recorded only hand-made requests, the two runtimes
+    could agree about `move` and disagree about what an instruction
+    means. A `trigger` step is therefore recorded exactly as the request
+    it makes, in the same shape, so a divergence in the instruction's
+    meaning is a replay failure like any other.
+    """
+
+    def steps(self):
+        """Every `(machine, script step, recorded step)` the corpus
+        carries, so a trigger can be found without knowing where it
+        was put."""
+        for entry in corpus()['machines']:
+            for step, recorded in zip(entry['script'], entry['requests']):
+                yield entry, step, recorded
+
+    def test_the_corpus_plays_an_instruction_in_each_form(self):
+        found = {'by': [], 'targets': []}
+        for entry, step, _recorded in self.steps():
+            name = step.get('trigger')
+            if name is None:
+                continue
+            declared = entry['document']['instructions'][name]
+            for form in found:
+                if form in declared:
+                    found[form].append((entry['name'], name))
+        self.assertTrue(found['by'], 'no instruction played BY a travel')
+        self.assertTrue(found['targets'], 'no instruction played TO a target')
+
+    def test_a_recorded_trigger_carries_the_request_it_made(self):
+        for entry, step, recorded in self.steps():
+            if 'trigger' not in step:
+                continue
+            with self.subTest(machine=entry['name'],
+                              instruction=step['trigger']):
+                for key in ('bank', 'admitted', 'origin', 'end', 'commits',
+                            'stops'):
+                    self.assertIn(key, recorded)
+
+    def test_every_recorded_request_carries_both_ends_of_its_path(self):
+        """The two ends are recorded on every step that made a request,
+        not only on a triggered one: a consumer draws a hand-made
+        request the same way."""
+        for entry, step, recorded in self.steps():
+            if 'move' not in step and 'trigger' not in step:
+                continue
+            if 'refused' in recorded:
+                continue
+            with self.subTest(machine=entry['name'], step=step):
+                self.assertIn('origin', recorded)
+                self.assertIn('end', recorded)
+                for one in recorded['commits']:
+                    low, high = sorted((recorded['origin'],
+                                        recorded['end']))
+                    self.assertGreaterEqual(one['value'], low)
+                    self.assertLessEqual(one['value'], high)
+
+    def test_a_triggered_step_equals_the_same_request_made_by_hand(self):
+        """Task 5.5: the `Calculator` script triggers `Stroke`, restores
+        the bank it triggered from, and makes the same request by hand.
+        The two steps are recorded identically, field for field."""
+        entry = next(one for one in corpus()['machines']
+                     if one['name'] == 'Calculator')
+        pairs = list(zip(entry['script'], entry['requests']))
+        index = next(position for position, (step, _one)
+                     in enumerate(pairs) if step.get('trigger') == 'Stroke')
+        _step, triggered = pairs[index]
+        # The step after the restore that follows it is the same request
+        # by hand.
+        self.assertEqual(pairs[index + 1][0].get('restore'), 'd')
+        by_hand_step, by_hand = pairs[index + 2]
+        self.assertEqual(by_hand_step['move'],
+                         {'input': 'crank', 'by': 360.0})
+        self.assertEqual(triggered, by_hand)
+
+
+class TriggerInventoryTest(TestCase):
+    """Task 5.2: the two new inventory entries, tested directly as the
+    existing ones are."""
+
+    def doctored(self, keep):
+        """The committed corpus with the `Calculator`'s trigger steps
+        filtered to `keep`, the recorded steps kept in step."""
+        machines = []
+        for entry in corpus()['machines']:
+            copy = dict(entry)
+            script, requests = [], []
+            for step, recorded in zip(entry['script'], entry['requests']):
+                name = step.get('trigger')
+                if name is not None and name not in keep:
+                    continue
+                script.append(step)
+                requests.append(recorded)
+            copy['script'], copy['requests'] = script, requests
+            machines.append(copy)
+        return machines
+
+    def test_a_corpus_playing_no_instruction_is_refused(self):
+        from tools.generate_clocked_corpus import uncovered_features
+
+        missing = uncovered_features(self.doctored(()))
+        self.assertIn('an instruction played as a request BY a travel',
+                      missing)
+        self.assertIn('an instruction played as a request TO a target',
+                      missing)
+
+    def test_a_corpus_playing_only_the_relative_form_is_refused(self):
+        from tools.generate_clocked_corpus import uncovered_features
+
+        missing = uncovered_features(self.doctored(('Stroke',)))
+        self.assertNotIn('an instruction played as a request BY a travel',
+                         missing)
+        self.assertIn('an instruction played as a request TO a target',
+                      missing)
+
+
+class CorpusDocumentAgreesWithTheGoldenTest(TestCase):
+    """Task 5.6 of `play-the-instruction`: the corpus's own copy of the
+    `Calculator` document is the committed golden one, and the only
+    table this cycle moved is `instructions`.
+
+    Asserted rather than inspected: the golden document was recorded
+    before the fixture declared an instruction, and every other key of
+    it must still be the one it was -- which is the design's claim that
+    the meaning an instruction now has reaches no key of the document.
+    """
+
+    def test_the_corpus_copy_is_the_committed_golden_document(self):
+        import os
+
+        from tools.generate_clocked_corpus import DOCUMENT_KEYS
+
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            'clocked_documents', 'calculator.json')
+        with open(path) as handle:
+            golden = json.load(handle)
+        entry = next(one for one in corpus()['machines']
+                     if one['name'] == 'Calculator')
+        for key in DOCUMENT_KEYS:
+            self.assertEqual(entry['document'].get(key), golden.get(key), key)
+
+    def test_the_instructions_table_carries_exactly_the_two_declared(self):
+        entry = next(one for one in corpus()['machines']
+                     if one['name'] == 'Calculator')
+        self.assertEqual(entry['document']['instructions'], {
+            'Set four': {'targets': {'operand': 4}, 'duration': 0.5},
+            'Stroke': {'by': {'crank': 360.0}, 'duration': 2.0},
+        })

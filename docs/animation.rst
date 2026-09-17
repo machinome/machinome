@@ -296,6 +296,16 @@ clock, and ``self.time`` is the symbolic ``$t`` it has always been. The
 bank ADVANCES only on a request, which is a simulation's doing and not
 the timeline's.
 
+An instruction such a root declares is one REQUEST — see
+:doc:`scenarios`, "A button is a request" — and `Sim.trigger` returns it,
+carrying both ends of the path it travelled and every commit it fired in
+path order. That is what a consumer needs to DRAW the transition over the
+instruction's declared ``duration``: one solve, a pose per frame, and no
+machine work in the frame loop. The framework states the ends and the
+landings and stops there; it names no frame and no cadence, and playing a
+returned request in a browser is the viewer package's own work, on its own
+timetable, and is not part of this release.
+
 What the base changes is what a :doc:`simulation <scenarios>` over the
 root owns. Under it `Sim` owns every driver **and every joint
 coordinate** of the linked tree, keeps their history, and moves them by
