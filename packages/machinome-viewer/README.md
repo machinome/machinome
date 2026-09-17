@@ -226,6 +226,15 @@ is left around a viewer that never existed. The sidebar remembers
 nothing: no `localStorage`, no cookie, no URL rewriting, so a page
 reloaded shows exactly the state its own options declare.
 
+The viewer's on-screen machine controls occupy a bounded, internally
+scrollable rail at the left of their pane: normally 30%, with a 260px floor
+and a 420px ceiling, so a large control table cannot cover the model or extend
+the page. In the inspector the assembly navigator owns descent into children,
+so the chrome keeps its ancestor breadcrumb but omits the duplicate child
+buttons. The inspector also omits the clocked panel's Reset button; the full
+`machine().reset()` API remains on `inspector.viewer`, and a plain `mount()`
+keeps both its child buttons and Reset.
+
 **The class contract**, under its own prefix, distinct from the
 navigator's:
 
@@ -418,6 +427,9 @@ reports at the control that made it: the travel the machine admitted, the
 the bound, or the request's own refusal. **A gesture an interlock holds
 is reported, not swallowed**: a knob that will not move says why, which
 is the difference between an operable machine and a broken control.
+The chrome is the same bounded side rail described by the inspector above;
+a machine with more handles and readouts than fit scrolls inside that rail
+while the model remains visible beside it.
 
 A declared stop **clips the request before any event is located**, so
 events are never found on a path the machine never travels, and what the

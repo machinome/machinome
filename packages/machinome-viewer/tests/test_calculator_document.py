@@ -445,6 +445,79 @@ class CalculatorInABrowserTest(TestCase):
         self.assertTrue((SHOTS / 'clocked-calculator-stroked.png').is_file())
         self.assertTrue((SHOTS / 'clocked-calculator-frozen.png').is_file())
 
+    def test_the_inspector_keeps_clocked_controls_in_a_side_rail(self):
+        """The inspector's navigator replaces duplicate chrome navigation."""
+        errors = []
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 800,
+                                                  'height': 600})
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.on('console', lambda message: errors.append(message.text)
+                        if message.type == 'error' else None)
+                page.goto(self.harness_url)
+                page.wait_for_function(
+                    'typeof SolidNodeWidget !== "undefined"')
+                result = page.evaluate("""async () => {
+                  const host = document.getElementById('host');
+                  const mounted = await SolidNodeWidget.mountInspector(
+                    host, 'viewer.json', { sidebar: 'collapsed' });
+                  const panel = host.querySelector('.clocked-controls');
+                  const pane = host.querySelector('.solid-inspector-viewer');
+                  const style = getComputedStyle(panel);
+                  const shown = (selector) => getComputedStyle(
+                    panel.querySelector(selector)).display !== 'none';
+                  const descenders = Array.from(
+                    panel.querySelectorAll('.clocked-descend'));
+                  const answer = {
+                    panelWidth: panel.getBoundingClientRect().width,
+                    paneWidth: pane.getBoundingClientRect().width,
+                    panelHeight: panel.getBoundingClientRect().height,
+                    paneHeight: pane.getBoundingClientRect().height,
+                    overflow: style.overflow,
+                    descenders: descenders.length,
+                    visibleDescenders: descenders.filter(
+                      (one) => getComputedStyle(one).display !== 'none').length,
+                    visibleDescenderSeparators: Array.from(panel.querySelectorAll(
+                      '.clocked-descend-separator')).filter(
+                        (one) => getComputedStyle(one).display !== 'none').length,
+                    resetVisible: shown('.clocked-reset'),
+                    inputVisible: shown('.clocked-input'),
+                    instructionVisible: shown('.clocked-instruction'),
+                    canReset: typeof mounted.viewer.machine().reset === 'function',
+                  };
+                  mounted.dispose();
+                  const plain = await SolidNodeWidget.mount(
+                    host, 'viewer.json', {});
+                  const plainPanel = host.querySelector('.clocked-controls');
+                  answer.plainDescenderVisible = getComputedStyle(
+                    plainPanel.querySelector('.clocked-descend')).display !== 'none';
+                  answer.plainResetVisible = getComputedStyle(
+                    plainPanel.querySelector('.clocked-reset')).display !== 'none';
+                  plain.dispose();
+                  return answer;
+                }""")
+            finally:
+                browser.close()
+
+        self.assertEqual(errors, [])
+        self.assertGreater(result['descenders'], 0)
+        self.assertEqual(result['visibleDescenders'], 0)
+        self.assertEqual(result['visibleDescenderSeparators'], 0)
+        self.assertFalse(result['resetVisible'])
+        self.assertTrue(result['inputVisible'])
+        self.assertTrue(result['instructionVisible'])
+        self.assertTrue(result['canReset'])
+        self.assertTrue(result['plainDescenderVisible'])
+        self.assertTrue(result['plainResetVisible'])
+        self.assertLessEqual(result['panelWidth'], 420)
+        self.assertLess(result['panelWidth'], result['paneWidth'] * 0.5)
+        self.assertLessEqual(result['panelHeight'], result['paneHeight'])
+        self.assertEqual(result['overflow'], 'auto')
+
 
 #: A DRAWING of the fixture's own `'Stroke'` -- one request, made at the
 #: press, and its transition drawn over the declared two seconds

@@ -104,6 +104,14 @@ const INSPECTOR_STYLESHEET = `
   min-width: 0;
   position: relative;
 }
+.solid-inspector :is(
+  .driver-descend, .run-descend, .clocked-descend,
+  .driver-descend-separator, .run-descend-separator,
+  .clocked-descend-separator
+),
+.solid-inspector .clocked-reset {
+  display: none;
+}
 `;
 
 function injectStylesheet(doc: Document): void {

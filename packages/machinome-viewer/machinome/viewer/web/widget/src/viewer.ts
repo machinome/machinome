@@ -2859,7 +2859,8 @@ type ControlUpdate = (value: number, fromChrome: boolean) => void;
 
 const PANEL_STYLE =
   'position:absolute;left:0;top:0;display:flex;flex-direction:column;' +
-  'gap:6px;padding:8px 10px;max-width:75%;' +
+  'box-sizing:border-box;width:clamp(260px,30%,420px);max-width:100%;' +
+  'max-height:100%;overflow:auto;gap:6px;padding:8px 10px;' +
   'background:rgba(30,33,38,0.65);color:#fff;' +
   'font:13px system-ui,sans-serif;';
 
@@ -2932,7 +2933,9 @@ function buildBreadcrumb(
 
   const focused = trail[trail.length - 1].path;
   children.forEach((name) => {
-    nav.append(separator('|'));
+    const marker = separator('|');
+    marker.className = `${prefix}-descend-separator`;
+    nav.append(marker);
     const button = document.createElement('button');
     button.className = `${prefix}-descend`;
     button.textContent = `${name} ▸`;
@@ -3343,11 +3346,10 @@ interface RunChrome {
   remove(): void;
 }
 
-// A running document's panel carries more per row than a posed one --
-// a readout, two control pairs and the three fields those pairs will
-// ask with -- so it is given the width to keep one input on one line.
-const RUN_PANEL_STYLE = PANEL_STYLE.replace('max-width:75%;',
-                                            'max-width:96%;');
+// All three kinds share one bounded side rail. Dense running rows wrap
+// inside it rather than widening over the machine; a long panel scrolls
+// without extending the page (OpenSpec `compact-clocked-controls`).
+const RUN_PANEL_STYLE = PANEL_STYLE;
 
 const RUN_FIELD_STYLE =
   'width:3.6em;font:inherit;background:rgba(255,255,255,0.08);'
@@ -3426,8 +3428,7 @@ interface ClockedChrome {
   remove(): void;
 }
 
-const CLOCKED_PANEL_STYLE = PANEL_STYLE.replace('max-width:75%;',
-                                                'max-width:96%;');
+const CLOCKED_PANEL_STYLE = PANEL_STYLE;
 
 /** What one field of the panel does when a drawn frame moves it. */
 type FieldWriter = (moved: FollowedInput) => void;

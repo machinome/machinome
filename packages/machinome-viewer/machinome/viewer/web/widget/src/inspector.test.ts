@@ -316,6 +316,19 @@ describe('the stylesheet', () => {
     expect(container.querySelector('.solid-inspector')!.className.split(' '))
       .not.toContain('my-canvas');
   });
+
+  it('suppresses chrome controls the inspector navigator and host API make redundant', async () => {
+    await mount();
+    const stylesheet = document.getElementById('solid-node-inspector-style')!;
+
+    expect(stylesheet.textContent).toContain(
+      '.driver-descend, .run-descend, .clocked-descend');
+    expect(stylesheet.textContent).toContain(
+      '.driver-descend-separator, .run-descend-separator');
+    expect(stylesheet.textContent).toContain(
+      '.solid-inspector .clocked-reset');
+    expect(stylesheet.textContent).toContain('display: none');
+  });
 });
 
 describe('a refused mount', () => {

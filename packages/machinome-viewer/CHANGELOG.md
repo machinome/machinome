@@ -7,6 +7,21 @@ it carries release together and share one version.
 
 The viewer stops posing a machine and starts running one.
 
+- **Large machine controls stay in a compact side rail instead of covering
+  the model.** The operating `Calculators/Curta-Type-I-3x` clocked build
+  exposed the failure: 23 inputs, 18 states and the inspector's duplicate
+  `result_*` / `turns_*` child buttons widened the clocked panel over 96% of
+  its pane. All posed, running and clocked panels now prefer 30%, with a
+  260px floor, a 420px ceiling, the pane as their hard bound and internal
+  vertical scrolling. In the composed inspector, the assembly navigator is
+  the one child-focus surface, so the chrome retains its ancestor breadcrumb
+  but hides the duplicate child buttons; the clocked Reset button is omitted
+  there as requested, while `machine().reset()` and the plain viewer's Reset
+  remain. On the Curta at 1440×900 the rail is 343.8px of an 1146px viewer
+  pane, its 1835px control content scrolls inside the 900px pane, and the
+  machine remains fully visible beside it. **No API or document-version
+  bump.** (OpenSpec change `compact-clocked-controls`.)
+
 - **EVERY request a maker's gesture makes on a clocked machine is now
   DRAWN, not only a pressed instruction.** A press was drawn from the
   day before; a nudge, a value typed into a handle's field and a
