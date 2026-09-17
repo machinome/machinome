@@ -3097,6 +3097,17 @@ knob:
    bank, so an event surface that reads a committed state moves with it. The
    process SHALL repeat until the path is exhausted.
 
+A commit value that is not a FINITE number — an infinity or a NaN — SHALL
+refuse the WHOLE request, naming the relation as written, the state by its
+qualified id and the value, and SHALL commit nothing: a bank holding such a
+value poses nothing, satisfies no bound and carries no later event. The
+judgement SHALL be made BEFORE an integer state's rounding, so a
+`dtype=int` target SHALL refuse by that message rather than by the
+rounding's own overflow. A document cannot express a raise, and the export
+requirement "A published commit says what it reads, writes and fires on"
+therefore has a CONSUMER that computes a non-finite commit value refuse the
+request rather than bank it; the two runtimes refuse the same request.
+
 A request SHALL NOT pose the tree between events: `at` and `law` read only
 banked values, and the tree SHALL be bound exactly once, at the end of the
 request. A request SHALL be ATOMIC — a refused request SHALL commit nothing
@@ -3257,6 +3268,14 @@ and never poses.
   their far-side landings on one request are the same floating-point value
 - **THEN** the request is refused naming that state, both relations and the
   landing, and the bank, the tree and the record stand exactly as they did
+  before it
+
+#### Scenario: A non-finite commit refuses the request
+
+- **WHEN** a committing relation's law computes an infinity or a NaN for a
+  state it writes, whether that state declares `dtype=int` or not
+- **THEN** the request is refused naming the relation, the state and the
+  value, and the bank, the tree and the record stand exactly as they did
   before it
 
 #### Scenario: A relation no driver can reach is refused

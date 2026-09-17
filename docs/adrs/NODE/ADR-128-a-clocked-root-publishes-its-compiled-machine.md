@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-17
+**Corrected:** 2026-09-17 — the framework's own commit path REFUSES a non-finite commit value (`ClockedError` naming the relation, the state and the value, judged before an integer state's rounding, the request refused whole), which this decision's export requirement already required of a CONSUMER and the implementation did not do on either side; the corpus generator refuses to write a fixture recording one, and `tests/clocked-corpus.json` is byte-identical. Narrow adjustment under this decision, not an amendment of it: the document, its version, its keys and every value it carries stand as written (`openspec/changes/archive/2026-09-17-publish-the-clocked-machine/evidence.md`, section 10).
 **Depends on:**
 - [ADR-125: A state is a driver the machine writes, committed at an event](./ADR-125-a-state-is-a-driver-the-machine-writes.md) — the clocked root, its bank, its request, its exact event solve, its landing rule, its commit and the publication refusal this decision LIFTS; it is also the decision this one CLARIFIES on one point, below
 - [ADR-126: A bound stops a clocked request on its path](./ADR-126-a-bound-stops-a-clocked-request-on-its-path.md) — the compiled constraint per (coordinate, side), its chain, its own-coordinate read, its jump plan and its threshold, all of which this decision publishes; clarified on one point, below

@@ -541,6 +541,40 @@ def _level(bound, bank, bindings, own):
 # The two refusals
 
 
+def non_finite_records(machines):
+    """Every `(machine, step, where)` a machine RECORDS that is not a
+    finite number.
+
+    A commit that computes an infinity or a NaN refuses the request and
+    banks nothing (`clocked.py`'s `_not_a_value`, and the export
+    requirement's rule for a consumer), so no recorded bank, commit or
+    admitted travel can carry one. Asserted here rather than assumed:
+    `json.dump` would write such a value as the non-standard token
+    `Infinity` or `NaN`, which a strict JSON reader in a second runtime
+    refuses to parse at all -- the fixture would fail as a FILE, with
+    nothing to say why (follow-up of 2026-09-17 to ADR-128).
+    """
+    found = []
+
+    def walk(value, machine, step, where):
+        if isinstance(value, bool):
+            return
+        if isinstance(value, (int, float)):
+            if not math.isfinite(value):
+                found.append((machine, step, where))
+        elif isinstance(value, dict):
+            for key, entry in value.items():
+                walk(entry, machine, step, f'{where}.{key}')
+        elif isinstance(value, (list, tuple)):
+            for index, entry in enumerate(value):
+                walk(entry, machine, step, f'{where}[{index}]')
+
+    for entry in machines:
+        for step, recorded in enumerate(entry['requests']):
+            walk(recorded, entry['name'], step, 'the step')
+    return found
+
+
 def inexact_operations(machines):
     """Every `(machine, where, operation)` a machine publishes that the
     EXACTNESS claim does not cover.
@@ -804,6 +838,16 @@ def build():
             f'does not require to be correctly rounded, so two runtimes '
             f'need not agree in the last bit; state that machine with a '
             f'tolerance of its own, or keep it out of the corpus')
+    banked = non_finite_records(found)
+    if banked:
+        named = ', '.join(f'{machine} records a non-finite value at '
+                          f'{where} of step {step}'
+                          for machine, step, where in banked)
+        raise SystemExit(
+            f'a clocked machine can stand at no infinity and no NaN, and '
+            f'{named}: a commit computing one refuses its request and '
+            f'banks nothing, and a fixture carrying one is not even JSON '
+            f'a second runtime can parse')
     missing = uncovered_features(found)
     if missing:
         raise SystemExit(

@@ -388,6 +388,54 @@ class UnitsTest(BaseNodeTest):
         self.assertEqual(sim.state['value'], NEARLY_NINE)
 
 
+class NonFiniteCommitTest(BaseNodeTest):
+    """A commit value that is not a finite number refuses the request.
+
+    Follow-up of 2026-09-17 to the change ``publish-the-clocked-machine``
+    (ADR-128). The export requirement "A published commit says what it
+    reads, writes and fires on" states that a CONSUMER computing a
+    non-finite commit value refuses the request rather than banking it,
+    because a document cannot express a raise. The framework is the
+    other runtime of that same contract, and was banking one: the
+    Curta's registers would then hold a value no pose, no bound and no
+    later event can read.
+    """
+
+    def refusal(self, node, expected):
+        sim = Sim(node)
+        before = dict(sim.state)
+        posed = sim.node.face.turn.value
+        with self.assertRaises(ClockedError) as caught:
+            sim.move('crank', by=360.0)
+        message = str(caught.exception)
+        # By NAME: the relation as written, the state, and the value.
+        self.assertIn('commits', message)
+        self.assertIn('value', message)
+        self.assertIn(expected, message)
+        # ADR-125's atomicity: bank, pose and record stand.
+        self.assertEqual(sim.state, before)
+        self.assertEqual(sim.node.face.turn.value, posed)
+        self.assertEqual(sim.commits, ())
+
+    def test_an_infinite_commit_refuses_the_request(self):
+        self.refusal(unsupported.Infinite(), 'inf')
+
+    def test_a_nan_commit_refuses_the_request(self):
+        self.refusal(unsupported.NotANumber(), 'nan')
+
+    def test_an_integer_state_is_judged_before_it_is_rounded(self):
+        """`round(float('inf'))` raises `OverflowError`, which names
+        neither the relation nor the state: the finiteness judgement
+        runs first, so an integer state refuses exactly as a float one
+        does."""
+        self.refusal(unsupported.InfiniteCount(), 'inf')
+
+    def test_a_finite_commit_is_untouched(self):
+        sim = Sim(Unrounded())
+        sim.move('crank', by=360.0)
+        self.assertEqual(sim.state['value'], NEARLY_NINE)
+
+
 class TimeTest(BaseNodeTest):
     """Task 6.15: a clocked pose leaves `time` symbolic."""
 

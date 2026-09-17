@@ -669,7 +669,9 @@ carries the same instance-qualified id. Everything that differs is about
 who WRITES it: ``set_state`` refuses one by name, an ``Instruction`` and
 a control cannot target one, and ``crank.drives(units)`` is refused. A
 state may be a SOURCE of ``drives`` — that is how the pose is fed from
-it — and it is written by exactly one thing.
+it — and a committing relation is the only thing that writes it: SEVERAL
+of them may write one state, and two writing it at ONE landing refuse the
+request.
 
 The verb that writes it
 -----------------------
@@ -1051,6 +1053,17 @@ What a clocked model refuses today
   running root gives it; a bound whose level the moving driver curves;
   and a request whose level would cross more than a thousand of its own
   jump surfaces, which is refused naming the request and the maximum.
+* **A commit that is not a number the machine can stand at.** A law
+  computing an infinity or a NaN refuses its WHOLE request, naming the
+  relation, the state and the value, and commits nothing — before an
+  integer state's rounding, so a ``dtype=int`` target refuses by that
+  message too. A consumer of the published document refuses such a commit
+  for the same reason, a document being unable to express a raise.
 * A port, joint coordinate or derived coordinate as a SOURCE; a
   broadcast ``commits`` over a ``.repeat()`` child; a request naming more
-  than one input; an instruction or a control under a clocked root.
+  than one input; a CONTROL under a clocked root, which is why a version 8
+  document never carries a ``controls`` key; and an instruction whose
+  TARGET is a state, refused at simulation construction. An instruction
+  over a DRIVER is ADMITTED and published in the version 5 shape, with no
+  execution meaning — a clocked model has no cadence to run it on, and
+  ``trigger`` stays refused by name.

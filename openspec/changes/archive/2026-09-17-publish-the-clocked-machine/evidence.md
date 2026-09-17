@@ -478,3 +478,73 @@ segment-sized step in item 4; ADR-128, which states both as clarifications
 of ADR-125 and ADR-126; and `workflow/warts.md`, where both are marked
 CLOSED with their origin and where the running walk's untouched ulp-of-zero
 step is filed.
+
+## 10. Follow-up (2026-09-17): a non-finite commit is banked
+
+Found by the shop-skill writer running this branch to check every example
+the public API skill states, and fixed as a NARROW ADJUSTMENT on the same
+branch (commit message `fix(simulation): a non-finite commit refuses the
+request; correct two scenario sentences`).
+
+**The defect.** The export requirement "A published commit says what it
+reads, writes and fires on" states that a document cannot express a raise,
+so a CONSUMER that computes a non-finite commit value refuses the request
+rather than banking it (design section 16; this cycle's own commit message
+claimed the framework did the same). It did not. `Committing.commit` passed
+whatever the law returned to `State.committed`, which touches nothing but an
+integer's rounding, so a law returning `float('inf')` or `math.nan` to a
+FLOAT state was BANKED — silently, with the pose, every bound and every
+later event then reading a value no arithmetic recovers from. A `dtype=int`
+state was no better: `round(float('inf'))` raised `OverflowError` from
+`state.py`, naming neither the relation, nor the state, nor the value. The
+two runtimes of one exact corpus refused different requests.
+
+**The red.** `tests/test_clocked_sim.py::NonFiniteCommitTest`, over three
+new fixtures in `tests/clocked_project/unsupported.py` (`Infinite`,
+`NotANumber`, `InfiniteCount`): before the change, `ClockedError not
+raised` for the two float states — `sim.state['value']` held `inf` and
+`nan` — and `OverflowError: cannot convert float infinity to integer` for
+the integer one.
+
+**The change.** `Committing.commit` judges each returned value BEFORE
+`State.committed` rounds it: a numeric value that is not finite raises
+`_not_a_value`, a `ClockedError` naming the relation as written, the state
+by its qualified id and the value. The request is refused WHOLE — the
+executor's working bank is a copy and the pose is taken after it, so
+ADR-125's atomicity carries the refusal with nothing added. A non-numeric
+return is untouched, a value slot still accepting whatever is put into it.
+Mutation: with the finiteness test forced to `False`, all three reds return.
+
+**The corpus.** `tools/generate_clocked_corpus.py` gained the guard
+`non_finite_records`, refusing to WRITE a fixture in which any recorded
+bank, commit, admitted travel or stop is non-finite — such a file is not
+even JSON a strict reader in a second runtime can parse, `json.dump`
+writing the non-standard `Infinity`/`NaN` tokens. No committed machine
+records one, so `tests/clocked-corpus.json` regenerates BYTE-IDENTICAL
+(`build()` compared against the committed file); the guard is covered by
+`tests/test_clocked_corpus.py::NonFiniteGuardTest`, whose doctored case
+fails when the check is removed.
+
+**The record.** One sentence and one scenario ("A non-finite commit refuses
+the request") were added to the requirement "A clocked simulation solves a
+request path event by event", in the baseline `openspec/specs/simulation/
+spec.md` and in this change's own `specs/simulation/spec.md` delta, which
+remain identical block for block. ADR-128 carries an implementation-note
+line. `docs/scenarios.rst` gained the refusal in "What a clocked model
+refuses today" and `HISTORY.rst` one sentence.
+
+Two further defects the same reading found were documentation-only and are
+corrected in the same commit, both in `docs/scenarios.rst`:
+
+1. "What a clocked model refuses today" ended with "an instruction or a
+   control under a clocked root", which is the brief this cycle's design
+   section 14 and ADR-128 explicitly OVERTURNED: a control is refused, an
+   instruction naming a STATE is refused at simulation construction, and an
+   instruction over a DRIVER is admitted and published in the version 5
+   shape with no execution meaning, `trigger` staying refused by name.
+2. "Running a machine that keeps a FEW values" said a state "is written by
+   exactly one thing" and then, eleven paragraphs later, "SEVERAL relations
+   may write one state" — the ratified rule (ADR-125 closure 1). The first
+   sentence was pre-amendment text and now states the ratified rule: a
+   committing relation is the only writer, several may write one state, and
+   two writing it at ONE landing refuse the request.

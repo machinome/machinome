@@ -347,6 +347,31 @@ class CoverageGuardTest(TestCase):
                           'Standing')))
 
 
+class NonFiniteGuardTest(TestCase):
+    """Follow-up of 2026-09-17: no corpus machine records a value that is
+    not a finite number."""
+
+    def test_the_committed_corpus_records_only_finite_values(self):
+        from tools.generate_clocked_corpus import non_finite_records
+
+        self.assertEqual(non_finite_records(corpus()['machines']), [])
+
+    def test_a_machine_banking_an_infinity_is_refused(self):
+        """The fixture is not edited on disk: one committed machine is
+        doctored in memory, exactly as the exactness guard's cases
+        are."""
+        from tools.generate_clocked_corpus import non_finite_records
+
+        entry = dict(next(one for one in corpus()['machines']
+                          if one['name'] == 'Counter'))
+        requests = json.loads(json.dumps(entry['requests']))
+        banked = sorted(requests[0]['bank'])[0]
+        requests[0]['bank'][banked] = float('inf')
+        entry['requests'] = requests
+        self.assertEqual(non_finite_records([entry]),
+                         [('Counter', 0, f'the step.bank.{banked}')])
+
+
 class ExactnessGuardTest(TestCase):
     """(9.8) A machine whose published machinery is not exactly
     reproducible is refused, naming the operation the claim does not

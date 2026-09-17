@@ -288,9 +288,41 @@ class Committing:
             returned = (returned,)
         else:
             returned = _checked_shape(self, returned)
-        return {identifier: declaration.committed(value)
-                for identifier, declaration, value
-                in zip(self.target_ids, self.targets, returned)}
+        written = {}
+        for identifier, declaration, value in zip(
+                self.target_ids, self.targets, returned):
+            if isinstance(value, (int, float)) and not math.isfinite(value):
+                raise _not_a_value(self, identifier, value)
+            written[identifier] = declaration.committed(value)
+        return written
+
+
+def _not_a_value(relation, identifier, value):
+    """A commit that computed an infinity or a NaN.
+
+    Judged BEFORE `State.committed` rounds, so an integer state refuses
+    by the same message rather than by `round`'s own `OverflowError`,
+    which names neither the relation nor the state. The REQUEST is
+    refused whole and commits nothing, ADR-125's atomicity: a bank
+    holding a non-finite value poses nothing, satisfies no bound and
+    carries no later event.
+
+    It is also the contract the DOCUMENT states. A document cannot
+    express a raise, so the export requirement "A published commit says
+    what it reads, writes and fires on" has a consumer that computes a
+    non-finite commit value refuse the request rather than bank it; the
+    framework is the other runtime of that contract, and the two must
+    refuse the same request (ADR-128, design section 16; follow-up of
+    2026-09-17).
+    """
+    return ClockedError(
+        f'{relation.described}: the law {relation.law!r} computed '
+        f"{value!r} for the state '{identifier}', which is not a value a "
+        f'machine can stand at -- a bank holding it poses nothing, '
+        f'satisfies no bound and carries no later event. The request '
+        f'committed nothing: the bank and the tree stand as they were. A '
+        f'consumer of the published document refuses such a commit for '
+        f'the same reason, a document being unable to express a raise.')
 
 
 def _checked_shape(relation, returned):

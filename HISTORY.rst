@@ -30,7 +30,10 @@ Unreleased
   remainder, since the executor CALLS the project's callable rather than
   evaluating the graph, while a chain, a bound and a constraint level
   keep the document's truncated ``%``, which is what the framework
-  evaluates them by. Every declared ``Instruction`` is published in the
+  evaluates them by. A commit that computes an INFINITY or a NaN refuses
+  its whole request, naming the relation, the state and the value: that is
+  the rule the document states for a consumer, and the framework keeps it
+  on its own side too. Every declared ``Instruction`` is published in the
   version 5 shape and given no runtime meaning; a control stays refused.
   A build and an export WARN and publish where the installed viewer
   cannot read version 8; ``solid snapshot --renderer web`` is refused

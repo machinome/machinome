@@ -11,6 +11,8 @@ and refused when a simulation is constructed over it, which is the first
 moment those facts exist.
 """
 
+import math
+
 from solid_node.math import floor, sin
 from solid_node.motion.joints import Revolute
 from solid_node.node import AssemblyNode, Solid2Node
@@ -293,4 +295,56 @@ class Apart(AssemblyNode):
 
     (crank & value).commits(value, at=stroke, law=bump)
     (ring & value).commits(value, at=swept, law=wipe)
+    value.drives(face.turn, ratio=1.0)
+
+
+def infinite(sources, targets):
+    """A commit law whose value is not a number a machine can stand at.
+
+    A real one overflows, or divides a zero by a zero through a
+    document's `fmod`; this one says so directly, because Python's own
+    `/` and `%` RAISE where the document's expression semantics return
+    an infinity or a NaN (ADR-128, design section 16).
+    """
+    return lambda crank, value: float('inf')
+
+
+def not_a_number(sources, targets):
+    """The same defect in its other shape."""
+    return lambda crank, value: math.nan
+
+
+class Infinite(AssemblyNode):
+    """A FLOAT state whose commit law computes an infinity."""
+
+    crank = Driver(default=0.0, unit='deg')
+    value = State(default=0.0)
+    face = Dial()
+
+    (crank & value).commits(value, at=stroke, law=infinite)
+    value.drives(face.turn, ratio=1.0)
+
+
+class NotANumber(AssemblyNode):
+    """A FLOAT state whose commit law computes a NaN."""
+
+    crank = Driver(default=0.0, unit='deg')
+    value = State(default=0.0)
+    face = Dial()
+
+    (crank & value).commits(value, at=stroke, law=not_a_number)
+    value.drives(face.turn, ratio=1.0)
+
+
+class InfiniteCount(AssemblyNode):
+    """The same law over an INTEGER state: the value is judged BEFORE
+    the commit's rounding, which would raise `OverflowError` on an
+    infinity and `ValueError` on a NaN -- neither of which names the
+    relation, the state or the value."""
+
+    crank = Driver(default=0.0, unit='deg')
+    value = State(default=0, dtype=int)
+    face = Dial()
+
+    (crank & value).commits(value, at=stroke, law=infinite)
     value.drives(face.turn, ratio=1.0)
