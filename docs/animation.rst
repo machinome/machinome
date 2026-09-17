@@ -284,6 +284,18 @@ banked value a request may move (see :doc:`scenarios`, "A machine with a
 CLOCK"). `mode` reads ``'elapsed'``; `Time.running()` and
 `Time.elapsed()` are never equal, though both read `loop` `None`.
 
+A clocked root's own preview is stated plainly, because it is not a new
+behaviour: the build poses the INITIAL BANK — every driver and every
+state at its declared default — and ``$t`` sweeps the timeline exactly as
+it does for an untimed root, so a geometry that is a formula of time
+animates while the bank stands. Under ``Time.elapsed()`` the published
+document carries the banked seconds under the free name ``time``, which
+is what lets a consumer pose the machine at the instant it stands at;
+under a clocked root declaring no base the document says so with a null
+clock, and ``self.time`` is the symbolic ``$t`` it has always been. The
+bank ADVANCES only on a request, which is a simulation's doing and not
+the timeline's.
+
 What the base changes is what a :doc:`simulation <scenarios>` over the
 root owns. Under it `Sim` owns every driver **and every joint
 coordinate** of the linked tree, keeps their history, and moves them by

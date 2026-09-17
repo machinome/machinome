@@ -266,3 +266,59 @@ class CrossingMaximumTest(BaseNodeTest):
         request = sim.move('crank', by=360.0 * 5000)
         self.assertEqual(len(request.commits), 10)
         self.assertEqual(sim.state['value'], 10)
+
+
+class LandingContainmentTest(BaseNodeTest):
+    """Closure 1(a) of the change `publish-the-clocked-machine`: a
+    crossing belongs to the request whose path CONTAINS its landing.
+
+    ADR-125 stated the containment by FRACTION -- right end inclusive,
+    left end exclusive -- and that reading loses an event. A request
+    that ends exactly ON a STRICT comparison's surface solves its
+    crossing at fraction 1.0, but the landing is the first representable
+    value BEYOND the endpoint, which this request's path does not
+    contain; and the next request, resuming from that endpoint, excluded
+    its own left end by fraction and so never saw the surface at all.
+
+    The corpus of this cycle is what found it. The rule is stated by
+    LANDING in both directions: a landing beyond the endpoint is the
+    next request's, and a crossing solved at fraction 0 whose far side
+    lies inside the path IS this request's event.
+    """
+
+    def test_a_request_ending_on_a_strict_surface_fires_nothing(self):
+        sim = Sim(Strict())
+        request = sim.move('crank', to=T)
+        self.assertEqual(request.commits, ())
+        self.assertEqual(sim.state['crank'], T)
+        self.assertEqual(sim.state['a'], 0)
+
+    def test_the_next_request_fires_the_strict_surface_it_stands_on(self):
+        sim = Sim(Strict())
+        sim.move('crank', to=T)
+        following = sim.move('crank', by=1.0)
+        self.assertEqual(values(following), [UP])
+        self.assertEqual(sim.state['a'], 1)
+        # And only once: the surface is behind the bank now.
+        self.assertEqual(sim.move('crank', by=1.0).commits, ())
+        self.assertEqual(sim.state['a'], 1)
+
+    def test_the_non_strict_twin_fires_on_the_first_request(self):
+        sim = Sim(NonStrict())
+        request = sim.move('crank', to=T)
+        self.assertEqual(values(request), [T])
+        self.assertEqual(sim.state['a'], 1)
+        # Its landing IS the endpoint, so the next request resuming from
+        # it fires nothing: the surface was taken by the request whose
+        # path contained the landing.
+        self.assertEqual(sim.move('crank', by=1.0).commits, ())
+        self.assertEqual(sim.state['a'], 1)
+
+    def test_a_floor_surface_reached_exactly_still_fires_on_arrival(self):
+        # The non-strict reading of `floor`: `move('crank', by=360)` with
+        # `at = floor(crank / 360)` IS one stroke, and the request that
+        # resumes from that landing fires nothing.
+        sim = Sim(Counter())
+        self.assertEqual(values(sim.move('crank', to=360.0)), [360.0])
+        self.assertEqual(sim.move('crank', by=0.0).commits, ())
+        self.assertEqual(sim.state['units'], 1)

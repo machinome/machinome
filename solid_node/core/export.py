@@ -25,8 +25,8 @@ import tempfile
 
 from solid_node._artifact import ArtifactChanged
 from .serializer import (
-    DOCUMENT_FORMAT, DOCUMENT_VERSION, compiled_controls, compiled_program,
-    document_body,
+    DOCUMENT_FORMAT, DOCUMENT_VERSION, compiled_clocked, compiled_controls,
+    compiled_program, document_body,
     drivers_table, instructions_table, serialize_node, symbolic_document,
 )
 from .builder import get_build_dir, project_build_lock
@@ -140,6 +140,12 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True):
                 # one -- so a model that declares no running time loads
                 # none of the simulation compiler.
                 program, initial = compiled_program(node)
+                # And the CLOCKED machine beside it, `(None, None)`
+                # under any root but a clocked one -- so a model that
+                # declares no `State` loads none of the clocked
+                # compiler (OpenSpec change
+                # ``publish-the-clocked-machine``, design section 15).
+                clocked, bank = compiled_clocked(node)
                 with symbolic_document(node) as (declarations, instructions):
                     root = serialize_node(
                         node,
@@ -156,11 +162,15 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True):
                     )
                     drivers = drivers_table(declarations)
                     events = instructions_table(
-                        instructions, running=program is not None)
+                        instructions,
+                        version_five_or_above=(program is not None
+                                               or clocked is not None))
 
                 manifest = document_body(
-                    node, root, drivers, events, program, initial, fps,
-                    frames, controls=compiled_controls(program, initial))
+                    node, root, drivers, events, program,
+                    initial if program is not None else bank, fps, frames,
+                    controls=compiled_controls(program, initial),
+                    clocked=clocked)
                 manifest['root'] = root
                 manifest['pieces'] = inventory.pieces()
                 _warn_unreadable(manifest['version'])

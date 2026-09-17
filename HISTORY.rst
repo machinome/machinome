@@ -5,6 +5,53 @@ History
 Unreleased
 ----------
 
+* **A clocked machine publishes what it IS: document version 8.** A
+  machine with MEMORY could be built, tested and photographed, and could
+  not leave the process: every document producer refused a tree that
+  declared a ``State``, because a clocked pose reads its states as FREE
+  NAMES and a consumer that believed it could read the document would
+  resolve them to nothing. Such a tree now publishes **version 8**, a
+  rung read off the ROOT'S DECLARATION and DOMINATING every other, with a
+  top-level ``clocked`` object carrying the machine compile time decided:
+  every committing relation as its sources in written order, its ``at``
+  as ONE jump node and its level, one law expression per target and the
+  structural SHAPE of every input that can move that level; every
+  compiled constraint as its chain, its bound read under a minted
+  own-name, its jump plan and its per-input shapes, with the level left
+  as the consumer's own subtraction; the banked clock as the free name
+  ``time`` under ``Time.elapsed()`` and ``null`` otherwise; an
+  ``identity`` digest, so a bank taken against one machine is refused
+  against another; and the two ``limits`` a clocked path reaches.
+  ``states`` joins ``drivers`` as a SECOND table, because every key of
+  ``drivers`` is a handle a person may move and no key of ``states``
+  ever is, and there is no ``coordinates`` table, because a clocked bank
+  holds no joint coordinate and every number in it is already published.
+  A ``%`` in a published commit LAW is desugared to Python's floored
+  remainder, since the executor CALLS the project's callable rather than
+  evaluating the graph, while a chain, a bound and a constraint level
+  keep the document's truncated ``%``, which is what the framework
+  evaluates them by. Every declared ``Instruction`` is published in the
+  version 5 shape and given no runtime meaning; a control stays refused.
+  A build and an export WARN and publish where the installed viewer
+  cannot read version 8; ``solid snapshot --renderer web`` is refused
+  before the browser starts, writing no image and leaving no staging
+  directory; the OpenSCAD renderer, ``render()``, ``assemble()``,
+  ``build_stls()`` and ``solid test`` are untouched. The two runtimes now
+  share a clocked conformance corpus that is **exact, bit for bit** —
+  thirty machines, seventy-six steps, no tolerance window anywhere — with
+  its basis stated operation by operation and a coverage inventory the
+  generator refuses to write below. A tree that declares no ``State``
+  pays nothing and publishes a byte-identical document, and versions 5,
+  6 and 7, the running corpus and ``Time.running()`` are untouched.
+  Two landings the shared solver had no answer for were closed with it:
+  a crossing belongs to the request whose path CONTAINS its landing — so
+  a request ending exactly on a STRICT surface leaves it for the request
+  that begins there, which fires it, and a ``sign`` level moved off zero
+  now takes both of its rising steps — and the landing walk sizes its
+  first step by the SEGMENT it walks, so a bank standing outside a bound
+  with its coordinate at exactly zero reports its stop instead of
+  raising.
+
 * **A clock without a run: ``Time.elapsed()``, and an event on it.** A
   machine that is OPERATED has elapsed seconds; a machine on a timeline
   has a loop. Until now "elapsed seconds that never wrap" could be said

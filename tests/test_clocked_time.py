@@ -402,14 +402,33 @@ class EventsOnTheClockTest(BaseNodeTest):
         self.assertIn('Split it', message)
         self.assertEqual(sim.state, {'count': 0, 'engaged': 1, 'time': 0.0})
 
-    def test_no_tolerance_reaches_the_clock(self):
+    def test_no_tolerance_is_introduced_on_the_clock(self):
         """Design section 5: a pendulum's release is AFFINE in time, so
-        nothing here needs a searched crossing. The clocked module names
-        no tolerance at all, and this cycle did not give it one."""
+        nothing here needs a searched crossing, and this cycle did not
+        give the clocked path a tolerance.
+
+        `publish-the-clocked-machine` (design section 9) CORRECTED what
+        this test used to assert. "Introduces no NEW use" and "reaches
+        none" are different claims and only the first is true: a KINKED
+        event level's crossings are merged by `_deduplicated` and a
+        jumped constraint level's cuts are folded by `JumpPlan.cuts`,
+        both inside the SHARED locator, both by that constant. So the
+        module now NAMES it -- to PUBLISH it as `clocked.limits`, so a
+        consumer cannot silently differ from the producer -- and names
+        it in no other place: the import and the published object, and
+        nothing on the request path.
+        """
         import inspect
 
         source = inspect.getsource(clocked_module)
-        self.assertNotIn('_CROSSING_TOLERANCE', source)
+        lines = [line.strip() for line in source.splitlines()
+                 if '_CROSSING_TOLERANCE' in line
+                 and not line.strip().startswith('#')]
+        self.assertEqual(
+            lines,
+            ["from .program import (JumpPlan, TooManyCrossings, "
+             "_CROSSING_TOLERANCE,",
+             "'limits': {'crossing_tolerance': _CROSSING_TOLERANCE,"])
 
 
 class ClockAsASourceTest(BaseNodeTest):

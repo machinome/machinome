@@ -1575,7 +1575,7 @@ class _Walk:
                         jump, self.described, self.coordinate)
 
 
-def far_side_of(branch_at, near, own_star, direction, unlanded):
+def far_side_of(branch_at, near, own_star, direction, unlanded, scale=0.0):
     """The nearest representable value on the FAR side of a surface.
 
     `branch_at(value)` reads the jump node's branch at one value of the
@@ -1591,11 +1591,24 @@ def far_side_of(branch_at, near, own_star, direction, unlanded):
     itself. The bisection runs in FLOAT ORDINAL space, so adjacent
     floats differ by one at any magnitude and no tolerance is involved.
 
+    `scale` is the SEGMENT the landing sits on -- the largest magnitude
+    among the ends of the path being walked -- and it sizes the first
+    step of the bracket search, together with the landed value's own.
+    The step must be a distance THIS segment can express: the ulp of a
+    value that happens to be `0.0` is a denormal, and two hundred
+    doublings of it reach about 1e-263, which is no distance at all on a
+    segment a millimetre long. Scaling by the segment rather than by the
+    landed value alone is what lets a bank standing at exactly zero
+    report its stop instead of raising a broken invariant (OpenSpec
+    change ``publish-the-clocked-machine``, closure 1). A caller that
+    passes no `scale` keeps the value's own ulp exactly as before, which
+    is what `_Walk._far_side` does: no running landing moves.
+
     Extracted from `_Walk._far_side`, which still calls it, so the
     clocked event solver lands a request path by the SAME walk rather
     than a second one (OpenSpec change ``declare-the-state``).
     """
-    step = math.ulp(own_star) if own_star else 5e-324
+    step = math.ulp(max(abs(own_star), abs(scale)))
     if branch_at(own_star) != near:
         # The segment's arithmetic already landed PAST the surface,
         # which it does about as often as it lands short, so the

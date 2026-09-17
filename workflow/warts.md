@@ -3056,7 +3056,15 @@ the machinery it needs is already in place.
 - **A clocked model cannot be PUBLISHED or VIEWED.** Every document
   producer refuses one by name. The document version that carries
   declared states, and the viewer that executes `at` and `law` on its
-  expression DAG, are the next two cycles. **Open, and owned.**
+  expression DAG, are the next two cycles.
+  **PUBLISHED: CLOSED** by the change `publish-the-clocked-machine`
+  (2026-09-17, ADR-128): a clocked root publishes document version 8
+  with its compiled machine, and `document_body`'s refusal is re-aimed
+  at a producer that publishes WITHOUT compiling.
+  **VIEWED: open, the viewer's own cycle** — no released viewer reports
+  version 8, so a build and an export warn, a web snapshot is refused
+  before the browser starts, and the model still does not reach a
+  browser.
 - **A `Bound` does not clip a request path.** A request that would drive
   a mechanism through a stop is REFUSED WHOLE: the events are solved, the
   final pose raises `JointRangeError` exactly as an untimed pose does,
@@ -3227,3 +3235,169 @@ was unsayable. Nothing below was closed by this cycle.
   third spelling; the passing mentions in `docs/api-reference.rst`,
   `docs/declaring.rst` and `docs/driving.rst` are statements about the
   RUNNING base specifically and stay true.
+
+## Findings from the framework cycle `publish-the-clocked-machine` (2026-09-17)
+
+What the implementation and its adversarial review found beyond the
+ratified design, and what this cycle deliberately did not fix. The full
+write-up is
+`openspec/changes/archive/2026-09-17-publish-the-clocked-machine/evidence.md`,
+the decision is ADR-128, and the originating project is
+`projects/Calculators/Curta-Type-I-3x` (branch `direct-operation`, HEAD
+`9fb725f`; spike worktree `WTs/clocked-spike`), whose clocked model
+reproduces the operating model's registers at every stroke end and is
+worth nothing to its pilot until a browser can crank it.
+
+### The framework's two meanings of `%`
+
+Not Python-versus-JavaScript. The DOCUMENT's `%` is TRUNCATED in all
+three runtimes that read one (`math.fmod` in the framework's two
+evaluators, JavaScript's native `%` in the viewer's). What differs is
+CALLABLE versus GRAPH, and the framework is on both sides:
+
+- **Cross-mode, and newly visible.** A commit LAW is CALLED with the
+  bank's numbers, so its `%` is Python's FLOORED remainder; a RUNNING law
+  edge of the same text is evaluated as a GRAPH, so its `%` is `fmod`.
+  The same law text therefore means two different things under a clocked
+  root and under a running one. This cycle publishes the truth of the
+  place it publishes from — a published commit law is DESUGARED to the
+  floored remainder, verified against CPython's `float_rem` over 500 000
+  random double pairs with zero value mismatches — and does not
+  reconcile the two modes, because doing so would change what a running
+  law edge MEANS and move version 5. **Open.**
+- **Pose versus graph, framework-wide and PRE-EXISTING — for the
+  pilot.** A `drives(law=)` whose law takes `%` of a negative POSES
+  through the Python callable and PUBLISHES the graph applied to
+  symbols, so the rendered pose and the published expression already
+  disagree, in **every document version from 2 upward**. Nothing in this
+  cycle caused it and nothing in this cycle could fix it: the fix moves
+  what a published pose expression means, which moves versions 2 through
+  7. It needs the pilot's decision about which side is right before any
+  cycle touches it. **Open, held for the pilot.**
+- The one stated exception to the desugaring is the SIGN of a zero
+  result under a negative divisor — Python's `copysign(0.0, b)` gives
+  `-0.0` where the desugaring gives `+0.0` — which compares equal as a
+  number in both runtimes and which nothing in the published vocabulary
+  distinguishes. Counted and asserted, not hidden.
+
+### What the cycle's brief assumed wrongly
+
+- **An instruction under a clocked root is NOT refused.** The brief said
+  it was. Only an instruction whose TARGET is a state is refused, at
+  simulation construction; one targeting a driver is admitted and now
+  PUBLISHES, in the version 5 shape, with `duration` and exactly one of
+  `targets` and `by`. Pinned as a test rather than left as prose.
+  **What it MEANS under a clocked root is still open** — `trigger` stays
+  refused by name, and whether a clocked consumer may turn an
+  instruction into a `move` request is the viewer's question. **Open,
+  waiting on the viewer cycles.**
+- **The parity fixture does not pin the document's `%`.** Design section
+  16 said it does. `%` is an OPERATOR and not one of
+  `SYMBOLIC_BUILTINS`, and no parity case carries a remainder. What pins
+  the document's own `%` is the RUNNING corpus (its inventory requires
+  it, within that corpus's `1e-9`); what pins the DESUGARED commit form
+  is this cycle's corpus, exactly. Recorded as a test. **Closed by
+  evidence; the design sentence is corrected there and not re-edited.**
+
+### Two things the document had to invent, and what they cost
+
+- **`$own` cannot travel, so the own-name is MINTED and DECLARED.** The
+  document's expression language admits exactly ONE `$`-name, `$t`, so
+  the spelling a constraint level reads its own coordinate under does
+  not even tokenize. Widening that shared regex — the language every
+  document and every consumer shares — for one producer's private
+  convention was rejected. Instead `clocked.own` publishes the name
+  (`_own`, lengthened by a leading underscore for as long as any
+  published id equals it) and a consumer binds each bound's `value` at
+  the request's start to it for the whole request. It is the published
+  clock's pattern exactly: a reserved free name published as a string,
+  not a convention a consumer has to know. **Closed by decision.**
+- **The exactness claim is stated, not assumed.** The clocked corpus
+  agrees BIT FOR BIT and carries `"tolerance": {"float": 0.0}` as a
+  field of the file. It rests on IEEE `+ - * /` and `sqrt` (correctly
+  rounded by the standard), the truncated remainder (exact) and the
+  floored one composed from it (one further rounding), the selecting
+  operations (`floor`, `ceil`, `abs`, `sign`, `min`, `max`, the six
+  comparisons), and the landing walk, a bisection in the ORDINAL space
+  of a double's own bits. It does NOT cover a TRANSCENDENTAL or a POWER,
+  neither correctly rounded, and the generator REFUSES a machine
+  carrying one in a published commit law, event level, constraint level
+  or chain — so the limitation is enforced rather than remembered. A
+  project that ever needs a transcendental commit law needs a
+  per-machine tolerance field beside the file's own, one machine opting
+  out by name, and not a window the whole file relaxes into. **Open as a
+  shape, not as a defect.**
+
+### Non-goals of this cycle, with the shape a later one takes
+
+- **Executing a version 8 document** (the viewer's cycle) and **the
+  browser's clock and clip** (the one after). Both are
+  `solid-node-viewer`'s own repository and its own OpenSpec records; the
+  contract between the packages is this cycle's design plus the corpus.
+  A consumer owes a BIT WALK for the landing, not an epsilon walk: a
+  walk by a small quantity lands on a different float at exactly the
+  surfaces the corpus is built on. **Open, and owned.**
+- **`identity` has no consumer yet.** It is a digest of a canonical
+  listing, published so a bank taken against one machine is refused
+  against another — which is what a viewer persisting a bank across a
+  reload will need. If that cycle wants a different granularity, the
+  listing is the only thing that moves. **Open, a question.**
+- **A structural pre-check for two writers at one event** (ADR-125's own
+  follow-up, above) stays open: publishing it would mean publishing a
+  claim the framework does not make.
+- **`Sim(model, state={...})` is not published.** A document says where
+  the machine RESTS; where a particular session opened it is session
+  setup. Stated rather than hidden. **Closed by decision.**
+- **A `Committing.jumps` entry may classify `constant`.** `_compiled`
+  classifies EVERY driver among a relation's sources, so a driver the
+  level does not read answers True to `moves_with`. The published
+  `shapes` omits those entries, because the export requirement admits
+  `affine` and `kinked` and a consumer needs the inputs that can MOVE
+  the level; `moves_with` and the request path are untouched. Tightening
+  `moves_with` itself would save a wasted solve per unrelated driver and
+  is worth its own measurement. **Open, small.**
+
+### Closure 1: two landings the shared locator had no answer for
+
+Both were found by THIS cycle's corpus, both LOST or REFUSED a request
+the ratified rules already describe, and both were closed here rather
+than deferred.
+
+- **A crossing belongs to the request whose path CONTAINS its landing.**
+  ADR-125 stated the containment by FRACTION, and that reading lost an
+  event: a request ending exactly on a STRICT comparison's surface
+  solved its crossing at fraction 1.0 but landed one representable value
+  BEYOND its own endpoint, then resumed backwards from there and raised
+  `LandingInvariantError`, while the next request excluded its own left
+  end by fraction and never saw the surface at all. Now: a landing on
+  the endpoint is this request's, a landing beyond it is the next
+  request's, and the left end is excluded by LANDING — a crossing solved
+  at fraction zero whose far side lies ahead inside the path IS an
+  event. A `sign` level moved off zero consequently takes BOTH of its
+  rising steps, which the corpus's `Signed` machine now records.
+  **CLOSED** by `publish-the-clocked-machine`; ADR-125 carries the
+  amendment note.
+- **The landing walk's first step was the ulp of the value it started
+  from.** From a coordinate standing at exactly `0.0` that is a denormal,
+  and two hundred doublings reach about 1e-263 — no distance on a
+  segment a millimetre long — so a bank standing outside a LOW bound
+  with its coordinate at zero raised instead of stopping, where the
+  HIGH-bound mirror admitted zero travel and reported its stop. The two
+  CLOCKED callers now size the step by the SEGMENT. **CLOSED** by
+  `publish-the-clocked-machine`; ADR-126 carries the amendment note.
+- **The RUNNING walk still scales by the ulp of the value it starts
+  from.** `_Walk._far_side` passes no segment, deliberately, so that
+  `tests/running-corpus.json` and every running landing stay
+  byte-identical — which they are, by construction and not merely by
+  measurement. The same latent defect therefore remains on the running
+  path, unmeasured and unreachable by any current fixture. Fixing it
+  means regenerating the running corpus, which is another cycle's
+  ratified artifact. **Open.**
+- **A zero-travel stop is now said off the CROSSING.** `Bounded.clip`
+  returns zero travel as soon as the crossing solves at fraction 0,
+  rather than walking. Left to the walk, the LOW side of a bound admits
+  half an ulp OF THE LEVEL of travel (`-2.22e-16`, measured on
+  `Standing`) where the HIGH side of the same bound admits nothing, only
+  because the coordinate happens to stand near zero. Recorded because it
+  is a behaviour decision and not only a bug fix. **Closed by decision.**
+

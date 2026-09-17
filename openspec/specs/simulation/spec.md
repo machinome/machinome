@@ -3048,7 +3048,11 @@ knob:
    THE LANDING, the nearest representable point of the piece the path
    enters, which is the only reading available when the crossing is the
    request's own endpoint. A falling step SHALL fire nothing. A mechanism that
-   commits on the other edge states it by negating its own level.
+   commits on the other edge states it by negating its own level. Where the
+   crossing is the path's own OPENING — the level standing exactly on a
+   surface at the value the request starts from — there is no piece behind
+   it, and the branch before SHALL be read AT THE START and the far side
+   asked for at the next representable value the path reaches.
 3. The earliest rising crossing over all committing relations SHALL be the
    next event. Two crossings SHALL be ONE event exactly when their far-side
    landings are the SAME floating-point value, and SHALL otherwise be two
@@ -3064,8 +3068,23 @@ knob:
    BRANCH at that value, never by comparing it to the surface: a solved value
    at which the branch has already changed IS the landing, a strict
    comparison against a representable threshold lands on the next value
-   beyond it, and a non-strict comparison lands on the threshold itself.
-5. Every relation firing at that event SHALL evaluate its `at` and `law`
+   beyond it, and a non-strict comparison lands on the threshold itself. The
+   walk SHALL bracket in a first step sized by the SEGMENT it walks on — the
+   larger of the landed value's own magnitude and the magnitudes of the
+   path's ends — and never by the magnitude of a value that happens to be
+   zero, whose own step is a denormal no segment can express.
+5. **A crossing belongs to the request whose path CONTAINS its landing.** A
+   landing ON the request's endpoint is that request's, so a request that
+   ends exactly on a NON-STRICT surface has reached it. A landing one
+   representable value BEYOND the endpoint — which a STRICT comparison
+   reached exactly produces — is NOT that request's, and SHALL be fired by
+   the NEXT request, which begins on that surface and whose path contains
+   the landing. Containment SHALL therefore be judged by the LANDING and not
+   by the fraction at which the crossing was solved: a crossing solved at
+   fraction ZERO whose far side lies ahead inside the path IS an event, and
+   a request resuming from its OWN landing still fires nothing, because
+   there the landing IS the value the request starts from.
+6. Every relation firing at that event SHALL evaluate its `at` and `law`
    callables at that input value and at the PRE-EVENT value of every state —
    including a state the same relation writes and a state another relation
    writes at the same event — and the targets SHALL take the results
@@ -3074,7 +3093,7 @@ knob:
    firing at one event and writing the SAME state is a CONFLICT, and the
    whole REQUEST SHALL be refused, naming the state by its qualified id,
    both relations as written and the landing, and committing nothing.
-6. The remaining path SHALL be solved again from the landing with the new
+7. The remaining path SHALL be solved again from the landing with the new
    bank, so an event surface that reads a committed state moves with it. The
    process SHALL repeat until the path is exhausted.
 
@@ -3254,6 +3273,23 @@ and never poses.
   calls `time`
 - **THEN** each is refused by name, saying a clocked model has no cadence,
   and the `time` refusal names `Time.elapsed()` as the way to have a clock
+
+#### Scenario: A request ending exactly on a strict surface leaves it for the next request
+
+- **WHEN** a committing relation states `at` as a STRICT comparison against a
+  representable threshold and a request ends exactly ON that threshold
+- **THEN** the request fires nothing, and the next request, beginning on that
+  threshold, fires the event once at the first representable value past it,
+  while the non-strict twin of the same relation fires on the FIRST request,
+  at the threshold itself, and fires nothing on the one that resumes from it
+
+#### Scenario: A stop from a coordinate standing at zero admits no travel
+
+- **WHEN** a bank stands outside a LOW bound with the moving input at exactly
+  `0.0`, and a request pushes it further outside
+- **THEN** the request admits ZERO travel, fires nothing, commits nothing and
+  reports its stop, exactly as the same machine's HIGH bound does from a
+  coordinate whose magnitude is large
 
 ### Requirement: A bound stops a clocked request on its path
 

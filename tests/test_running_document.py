@@ -83,7 +83,7 @@ def document(node):
         root = serialize_node(node, lambda rigid: rigid.name,
                               graph_values=True)
         drivers = drivers_table(declarations)
-        events = instructions_table(instructions, running=program is not None)
+        events = instructions_table(instructions, version_five_or_above=program is not None)
     body = document_body(node, root, drivers, events, program, initial,
                          controls=compiled_controls(program, initial))
     body['root'] = root

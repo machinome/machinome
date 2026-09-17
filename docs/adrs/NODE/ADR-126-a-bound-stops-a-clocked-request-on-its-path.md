@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-17
+**Amended:** 2026-09-17 by [ADR-128](./ADR-128-a-clocked-root-publishes-its-compiled-machine.md) — every compiled constraint is PUBLISHED (chain, bound, jump plan, per-input shapes, the own-name and the consumer's own subtraction), and the landing walk is CLARIFIED: its first step is sized by the SEGMENT and never by the ulp of a coordinate standing at zero, and a level already at its limit and pushed further admits zero travel off the CROSSING rather than off the walk. The clip, its threshold, its stop report and the end-of-request judgement stand as written.
 **Depends on:**
 - [ADR-106: One law, two readings](./ADR-106-one-law-two-readings.md) — the symbolic inspection of a law applied to one token per source, through `program.checked_expression`, which is what turns a `law=` relation into a link of a chain
 - [ADR-107: A jump is located inside the tick and subtracted](./ADR-107-a-jump-is-located-inside-the-tick-and-subtracted.md) — `JumpPlan`, its surfaces, its `cuts` partition and `_MAX_CROSSINGS`, which partition a jumped constraint level exactly as they partition an event level

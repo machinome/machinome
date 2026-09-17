@@ -23,7 +23,8 @@ from solid_node.core.builder import get_build_dir, project_build_lock
 from solid_node.core.camera import parse_camera
 from solid_node.core.pieces import PieceInventory
 from solid_node.core.serializer import (
-    compiled_program, document_body, drivers_table, serialize_node,
+    compiled_clocked, compiled_program, document_body, drivers_table,
+    serialize_node,
 )
 from solid_node.viewers import bundle as viewer_bundle
 
@@ -82,6 +83,14 @@ class BrowserRenderer:
         # the drivers table it carries under a running root is the
         # declaration beside the program, not a scope for expressions.
         program, initial = compiled_program(node)
+        # And the CLOCKED machine beside it. A capture of a clocked
+        # model is refused below -- version 8 is not a version the
+        # installed viewer reports until its own cycle adds it -- but
+        # the refusal is the VERSION COMPARISON's and not a refusal of
+        # its own, so the document is assembled exactly as any other
+        # producer assembles it (OpenSpec change
+        # ``publish-the-clocked-machine``, design section 15).
+        clocked, bank = compiled_clocked(node)
         with PieceInventory(publish_facts=False) as inventory:
             root = serialize_node(
                 node,
@@ -95,10 +104,15 @@ class BrowserRenderer:
                     artifact, self.artifact_path(artifact, build_dir),
                 ),
             )
-            drivers = ({} if program is None
-                       else drivers_table(dict(program.inputs)))
-            document = document_body(node, root, drivers, {},
-                                     program, initial)
+            if program is not None:
+                drivers = drivers_table(dict(program.inputs))
+            elif clocked is not None:
+                drivers = drivers_table(clocked.drivers)
+            else:
+                drivers = {}
+            document = document_body(node, root, drivers, {}, program,
+                                     initial if program is not None else bank,
+                                     clocked=clocked)
             self.refuse_unreadable(document['version'])
             document["root"] = root
             document["pieces"] = inventory.pieces()

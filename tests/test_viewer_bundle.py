@@ -120,3 +120,47 @@ class DocumentVersionsTest(TestCase):
                           return_value=[fake_entry(report)]):
             self.assertIsNone(bundle.unreadable_document(5))
             self.assertIsNone(bundle.unreadable_document(4))
+
+
+class ClockedDocumentVersionTest(TestCase):
+    """(7.5) The framework needs NO new way to detect that the installed
+    viewer cannot read a clocked document: `documentVersions` already
+    carries the fact, and version 8 is simply not in the list until the
+    viewer's own cycle adds it.
+
+    `bundle.py` itself is UNCHANGED by the OpenSpec change
+    ``publish-the-clocked-machine`` -- these are added tests only.
+    """
+
+    def test_a_viewer_reporting_eight_reads_a_clocked_document(self):
+        report = dict(REPORT, documentVersions=[1, 2, 3, 4, 5, 8])
+        with patch.object(bundle, 'entry_points',
+                          return_value=[fake_entry(report)]):
+            self.assertIsNone(bundle.unreadable_document(8))
+            self.assertIsNone(bundle.unreadable_document(5))
+
+    def test_a_viewer_that_does_not_report_it_names_the_three_facts(self):
+        report = dict(REPORT, documentVersions=[1, 2, 3, 4, 5])
+        with patch.object(bundle, 'entry_points',
+                          return_value=[fake_entry(report)]):
+            message = bundle.unreadable_document(8)
+        self.assertIn('8', message)
+        self.assertIn('1, 2, 3, 4, 5', message)
+        self.assertIn('0.1.0', message)
+
+    def test_a_viewer_reporting_none_at_all_is_read_as_one_to_four(self):
+        with patch.object(bundle, 'entry_points',
+                          return_value=[fake_entry(REPORT)]):
+            self.assertEqual(bundle.document_versions(), [1, 2, 3, 4])
+            message = bundle.unreadable_document(8)
+        self.assertIn('1, 2, 3, 4', message)
+
+    def test_bundle_itself_is_unchanged_by_this_cycle(self):
+        """The version comparison is the ONE thing consulted, and this
+        cycle adds nothing to it: no clocked name appears in the module
+        at all."""
+        import inspect
+
+        source = inspect.getsource(bundle)
+        for named in ('clocked', 'State', 'states'):
+            self.assertNotIn(named, source)

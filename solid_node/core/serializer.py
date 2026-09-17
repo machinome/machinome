@@ -138,6 +138,22 @@ SELF_READ_DOCUMENT_VERSION = 6
 #: chosen.
 BLOCK_DOCUMENT_VERSION = 7
 
+#: The version a CLOCKED root's document declares -- one in whose tree
+#: anything declares a `State` (OpenSpec change
+#: ``publish-the-clocked-machine``). A property of the ROOT'S
+#: DECLARATION, exactly as version 5 is: a clocked root with one state,
+#: no flexible leaf and nothing shared is still a machine a lower
+#: consumer would animate wrongly. It DOMINATES every other rung, a
+#: clocked document being a clocked document whatever else it holds.
+#: The bump is not additive -- a clocked tree's pose expressions read
+#: its declared states as FREE NAMES, which a lower consumer can bind
+#: to nothing -- so a consumer that cannot read version 8 refuses it by
+#: name rather than rendering a wrong pose. Publishing a clocked model
+#: at a lower version with its states rendered as their initial values
+#: was rejected outright: the geometry would be right only at the
+#: initial state and would then silently stop following the machine.
+CLOCKED_DOCUMENT_VERSION = 8
+
 
 _MISSING = object()
 
@@ -222,6 +238,17 @@ def symbolic_document(node):
 
     previous = {}
     instructions = {}
+    # The CLOCKED root that declares the ELAPSED base: its document
+    # carries the free name `time` wherever the model reads the clock,
+    # never the animation variable, because a version 8 consumer poses
+    # the machine at its BANKED instant and `$t` is a 0..1 animation
+    # timeline (OpenSpec change ``publish-the-clocked-machine``, design
+    # section 10). The base is asked FIRST, so a tree that declares no
+    # elapsed base pays for no walk: a stateless untimed root reaches
+    # this line and stops at the `and`.
+    base = declared_time(type(node))
+    elapsed = (not running and base is not None and base.mode == 'elapsed'
+               and _tree_declares_states(node))
     delivery = _coordinate_publication(node) if running else None
     held = (node.__dict__.get('_run_binder', _MISSING) if running
             else _MISSING)
@@ -251,6 +278,16 @@ def symbolic_document(node):
             # empties the table reads False.
             if getattr(type(target), '_declares_controls', False):
                 _refuse_control_without_a_run(node, target)
+            if elapsed:
+                # The ONE line the clocked branch adds, and the line the
+                # running branch already has: `time` is global by
+                # contract and propagates flat, so every node holding a
+                # snapshot gets it. No coordinate delivery and no run
+                # binder -- a clocked bank holds no joint coordinate, so
+                # a joint's placement publishes as the expression over
+                # drivers and states the untimed enumeration produces.
+                remember(target)
+                target._states[CLOCK_NAME] = symbol(CLOCK_NAME)
             return
         remember(target)
         # `time` is global by contract and propagates flat, so every node
@@ -304,6 +341,12 @@ def symbolic_document(node):
                for name in declared_drivers_of(type(target))):
             drive_tree(node, lambda target, path, name, declaration:
                        target._states[name])
+
+
+def _tree_declares_states(node):
+    from solid_node.simulation.enumeration import tree_declares_states
+
+    return tree_declares_states(node)
 
 
 def _refuse_control_without_a_run(root, target):
@@ -376,7 +419,27 @@ def drivers_table(declarations):
     }
 
 
-def instructions_table(instructions, running=False):
+def states_table(states):
+    """The document's ``states`` table: each declared state's qualified
+    id and its declaration, under exactly ``drivers_table``'s rules.
+
+    A ``State`` takes exactly ``Driver``'s five fields with exactly
+    their meanings, so the two tables follow ONE rule and this delegates
+    rather than restating it: ``default`` NATIVE, ``range`` in DESIGN
+    units and never a clamp, ``dtype`` by name because a document is
+    JSON, ``unit`` and ``scale`` verbatim, keys sorted.
+
+    They are TWO tables and not one, and the SPLIT is the handle rule:
+    every key of ``drivers`` is an input a person may move, and no key
+    of ``states`` ever is -- a state is written by the machine at an
+    event, ``move`` naming one is refused by name, and one table with a
+    ``kind`` field would put that mistake one field-read away (OpenSpec
+    change ``publish-the-clocked-machine``, design section 3).
+    """
+    return drivers_table(states)
+
+
+def instructions_table(instructions, version_five_or_above=False):
     """The document's ``instructions`` table: what the machine can be told.
 
     ``instructions`` is what ``symbolic_document`` collected --
@@ -397,12 +460,17 @@ def instructions_table(instructions, running=False):
     off every entry of this table and would fail on one without them, so
     a root whose instructions are all relative publishes an empty table
     and the rest of its document is unchanged (OpenSpec change
-    ``run-owns-the-coordinates``).  ``running`` says the document is the
-    version 5 one a running root publishes, where EVERY declared
+    ``run-owns-the-coordinates``).  ``version_five_or_above`` says the
+    document is one of those a NEW consumer reads -- version 5 for a
+    running root, version 8 for a clocked one -- where EVERY declared
     instruction travels and each entry carries exactly one of ``targets``
     (where the drivers land) and ``by`` (how far they travel from where
-    they stand) -- both keyed by qualified driver id and both in design
-    units.
+    they stand), both keyed by qualified driver id and both in design
+    units.  The flag never meant "running": it means the version is
+    high enough that omitting a relative instruction would be a producer
+    discarding a declaration for a reason that does not apply to this
+    consumer (OpenSpec change ``publish-the-clocked-machine``, design
+    section 14).
     """
     table = {}
     for name, (path, instruction) in sorted(instructions.items()):
@@ -410,7 +478,7 @@ def instructions_table(instructions, running=False):
             stated = {'targets': {driver_id(path, target): value
                                   for target, value
                                   in instruction.targets.items()}}
-        elif running:
+        elif version_five_or_above:
             stated = {'by': {driver_id(path, target): value
                              for target, value in instruction.by.items()}}
         else:
@@ -443,7 +511,7 @@ def animation_block(root, fps=30, frames=360):
     return block
 
 
-def document_version(root, bindings=(), program=None):
+def document_version(root, bindings=(), program=None, clocked=None):
     """The LOWEST schema version the serialized tree ``root`` needs.
 
     Read off the document rather than tracked while building it, so the
@@ -472,7 +540,17 @@ def document_version(root, bindings=(), program=None):
     document, and one with neither is the byte-identical version 5 it
     always was. Seven dominates six, because a block says nothing about
     self-reads and a self-read says nothing about blocks.
+
+    ``clocked``, when given, always wins and is the other step read off
+    the ROOT'S DECLARATION rather than the content: a clocked document
+    is a clocked document whatever else it holds, so a clocked tree
+    carrying a flexible leaf and a non-empty ``bindings`` table still
+    declares 8. ``clocked`` and ``program`` can never both be given: a
+    ``State`` under a root declaring ``Time.running()`` is refused where
+    declared defaults are bound, so the two ladders never meet.
     """
+    if clocked is not None:
+        return CLOCKED_DOCUMENT_VERSION
     if program is not None:
         if _carries_a_block(program):
             return BLOCK_DOCUMENT_VERSION
@@ -596,7 +674,33 @@ def _collect_program_slots(program, slots):
                 slots.append(_Slot(span[side], 'expression'))
 
 
-def bind_document(root, driver_ids, program=None):
+def _collect_clocked_slots(clocked, slots):
+    """Every expression location the published clocked object carries: a
+    commit's event level and its laws, and a compiled constraint's
+    chain, its bound, its jump plan's skeleton and each of its jumps'
+    level quantities.
+
+    A NUMERIC bound is a number and not an expression, so it is not a
+    slot; the binding pass would pass it through untouched either way,
+    and not collecting it says so.
+    """
+    for commit in clocked['commits']:
+        slots.append(_Slot(commit['at'], 'level'))
+        for index in range(len(commit['law'])):
+            slots.append(_Slot(commit['law'], index))
+    for bound in clocked['bounds']:
+        slots.append(_Slot(bound, 'value'))
+        if not isinstance(bound['bound'], (int, float)):
+            slots.append(_Slot(bound, 'bound'))
+        plan = bound['plan']
+        if plan is None:
+            continue
+        slots.append(_Slot(plan, 'skeleton'))
+        for jump in plan['jumps']:
+            slots.append(_Slot(jump, 'level'))
+
+
+def bind_document(root, driver_ids, program=None, clocked=None):
     """Publish each subexpression that repeats across ``root``'s operation
     and flexible ``params`` expressions once, named, and rewrite every
     occurrence to reference it in place (ADR-080).
@@ -610,7 +714,9 @@ def bind_document(root, driver_ids, program=None):
     expression slots are compiled in the SAME pass: the whole document
     shares one table, so a subexpression a law shares with its own jump
     plan's level quantity is published once and nothing anywhere carries
-    producer-local ``let(...)`` syntax.
+    producer-local ``let(...)`` syntax.  ``clocked`` is the same for the
+    published clocked object, so a subexpression a COMMIT LAW shares
+    with the pose expression that displays it is published once.
 
     Returns the ordered ``bindings`` list: ``[]`` when nothing in the tree
     repeats, in which case ``root`` is left untouched and the caller omits
@@ -621,6 +727,8 @@ def bind_document(root, driver_ids, program=None):
     _collect_slots(root, slots)
     if program is not None:
         _collect_program_slots(program, slots)
+    if clocked is not None:
+        _collect_clocked_slots(clocked, slots)
     expressions = [slot.get() for slot in slots]
     rewritten, bindings, _warnings = bind_expressions(expressions, driver_ids)
     for slot, text in zip(slots, rewritten):
@@ -643,6 +751,30 @@ def compiled_program(node):
     return program_of(node)
 
 
+def compiled_clocked(node):
+    """``(clocked machine, rest bank)`` for a CLOCKED root, ``(None,
+    None)`` for every other root.
+
+    ``compiled_program``'s twin, and the ONE place in the producers that
+    imports the clocked compiler: a model that declares no ``State``
+    loads none of it (capability ``cli-startup-cost``).
+    """
+    from solid_node.simulation.enumeration import tree_declares_states
+
+    if not tree_declares_states(node):
+        return None, None
+    from solid_node.simulation.clocked import clocked_of
+
+    return clocked_of(node)
+
+
+def clocked_block(clocked, initial):
+    """The document's ``clocked`` object: what compile time decided
+    about the machine, with its expression slots still native graphs for
+    ``bind_document`` to compile with the tree's."""
+    return clocked.published(initial)
+
+
 def program_block(program, initial):
     """The document's ``program`` object: what compile time decided about
     the machine, with its expression slots still native graphs for
@@ -651,12 +783,13 @@ def program_block(program, initial):
 
 
 class ClockedDocumentError(ValueError):
-    """A tree that declares a `State` cannot be published: the document
-    version that carries declared states is not defined yet."""
+    """A clocked tree reached a document body WITHOUT its compiled
+    machine: a producer error, not a model error."""
 
 
-def _refuse_a_clocked_model(node):
-    """Refuse publication of a CLOCKED model, by name.
+def _refuse_an_uncompiled_clocked_model(node, clocked):
+    """Refuse a CLOCKED model published without its compiled machine, by
+    name.
 
     Placed in ``document_body`` -- the one function EVERY document
     producer passes through -- rather than in ``symbolic_document``,
@@ -666,15 +799,24 @@ def _refuse_a_clocked_model(node):
     that producer publishing a document a consumer would animate wrongly
     (OpenSpec change ``declare-the-state``, design section 10).
 
-    Publishing at an existing version, with the states rendered as their
-    initial values, was rejected outright: the geometry would be correct
-    only at the initial state and would then silently stop following the
-    machine, which is the failure the non-additive version rule exists to
-    prevent.
+    The gate is not deleted; it is RE-AIMED. It asks the one structural
+    question it has always asked -- does this tree declare a ``State``?
+    -- and refuses when the answer is yes and no compiled machine was
+    passed. That is what stops a fifth producer, added later, from
+    reaching a lower-version document by a route nobody re-checked
+    (OpenSpec change ``publish-the-clocked-machine``, design section 2).
+
+    A clocked model is still never published at a lower version with its
+    states rendered as their initial values: the geometry would be
+    correct only at the initial state and would then silently stop
+    following the machine, which is the failure the non-additive version
+    rule exists to prevent.
 
     A tree that declares no state is answered by one structural walk that
     renders nothing, exactly as ``tree_declares_drivers`` answers its own.
     """
+    if clocked is not None:
+        return
     from solid_node.simulation.enumeration import tree_declares_states
 
     if not tree_declares_states(node):
@@ -684,19 +826,19 @@ def _refuse_a_clocked_model(node):
     named = ', '.join(sorted(qualified_states(node)))
     raise ClockedDocumentError(
         f'{type(node).__name__} is a CLOCKED model -- its tree declares '
-        f'the state(s) {named} -- and cannot be published: the document '
-        f'version that carries declared states is not defined yet. The '
-        f'model is correct and the wire format is missing, not the other '
-        f'way round. Publishing it at an existing version, with the '
-        f'states rendered as their initial values, would give geometry '
-        f'that is right only at the initial state and then silently '
-        f'stops following the machine. Render it, assemble it, build its '
-        f'STLs, test it and photograph it with the OpenSCAD renderer; '
-        f'operate it in Python with Sim(model) and sim.move(...).')
+        f'the state(s) {named} -- and this document body was assembled '
+        f'without its compiled machine. A clocked model publishes '
+        f'version {CLOCKED_DOCUMENT_VERSION}, whose `clocked` object is '
+        f'what a consumer binds those states through, and a document '
+        f'published without it would carry pose expressions reading '
+        f'free names nothing resolves. This is a PRODUCER error: call '
+        f'compiled_clocked(node) beside compiled_program(node) and pass '
+        f'the machine as clocked=.')
 
 
 def document_body(node, root, drivers, instructions, program=None,
-                  initial=None, fps=30, frames=360, controls=None):
+                  initial=None, fps=30, frames=360, controls=None,
+                  clocked=None):
     """Everything a published document carries except the two keys a
     producer owns -- the model paths it resolves in ``root``, and
     ``pieces``.
@@ -704,6 +846,14 @@ def document_body(node, root, drivers, instructions, program=None,
     One place, so the three producers that share this walk cannot
     disagree about what they just emitted. ``root``'s expressions are
     rewritten in place by the binding pass.
+
+    ``clocked`` is the compiled CLOCKED machine, beside ``program``
+    and mutually exclusive with it: a ``State`` under a running root is
+    refused where declared defaults are bound. Given one, the body
+    carries a ``states`` table beside ``drivers`` and a ``clocked``
+    object beside ``program``'s position, and declares version
+    ``CLOCKED_DOCUMENT_VERSION``. Given a clocked TREE and no machine,
+    this refuses: see ``_refuse_an_uncompiled_clocked_model``.
 
     ``controls`` is the table ``Program.published_controls`` compiled,
     published beside ``instructions`` and ADDITIVELY: the key is absent
@@ -716,25 +866,33 @@ def document_body(node, root, drivers, instructions, program=None,
     declarations the document already published and still renders the
     truth.
     """
-    _refuse_a_clocked_model(node)
+    _refuse_an_uncompiled_clocked_model(node, clocked)
     block = None if program is None else program_block(program, initial)
+    machine = None if clocked is None else clocked_block(clocked, initial)
+    states = None if clocked is None else states_table(clocked.states)
     identifiers = set(drivers)
     if program is not None:
         identifiers |= program.published_names()
-    bindings = bind_document(root, sorted(identifiers), block)
+    if clocked is not None:
+        identifiers |= set(states) | clocked.published_names()
+    bindings = bind_document(root, sorted(identifiers), block, machine)
     body = {
         'format': DOCUMENT_FORMAT,
-        'version': document_version(root, bindings, block),
+        'version': document_version(root, bindings, block, machine),
         'animation': animation_block(node, fps, frames),
         'drivers': drivers,
-        'instructions': instructions,
     }
+    if states is not None:
+        body['states'] = states
+    body['instructions'] = instructions
     if controls:
         body['controls'] = controls
     if bindings:
         body['bindings'] = bindings
     if block is not None:
         body['program'] = block
+    if machine is not None:
+        body['clocked'] = machine
     return body
 
 

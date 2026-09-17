@@ -1279,7 +1279,7 @@ drives a block coordinate into its declared range — the searched stop —
 17.186, some 22x a quiet tick of the same machine. No test pins any of
 these numbers.
 
-**The clocked mode** (ADR-125, ADR-126, ADR-127) is the third branch, taken when
+**The clocked mode** (ADR-125, ADR-126, ADR-127, ADR-128) is the third branch, taken when
 anything in the linked tree declares a `State` — `simulation/state.py`'s
 declaration, reached only through the package's lazy export when a
 project names it, and `simulation/clocked.py`'s solver, imported inside
@@ -1361,7 +1361,15 @@ take their results together, and the solve resumes from the landing.
 Relations are ONE synchronous event exactly when their landings are the
 SAME float — identity, not `_CROSSING_TOLERANCE`, whose tick-fraction
 units cannot be carried onto a path whose travel the author chooses — so
-the clocked path adds no new use of any tolerance and introduces none.
+the clocked path adds no NEW use of any tolerance and introduces none. It
+does REACH one (ADR-128): a kinked event level's crossings are merged and
+a jumped constraint level's cuts are folded by `_CROSSING_TOLERANCE`
+inside the shared locator, which is why a version 8 document publishes it
+under `clocked.limits` rather than claiming there is none. The landing
+walk itself has none: it bisects in the ORDINAL space of a double's own
+bits, and its first step is sized by the SEGMENT it walks — never by the
+ulp of a coordinate standing at exactly zero, which is a denormal no
+segment can express.
 SEVERAL relations may write one state (the Curta's digit is written at
 the stroke end and again at the clearing reach); two of them at ONE
 landing refuse the REQUEST by name, which is the only place a landing
@@ -1455,13 +1463,29 @@ side, evaluated bound, value, input, fraction), and `record=N` keeps
 `sim.stops` beside `sim.commits`, which is why `stops` alone is missing
 from the refused cadence names above.
 
-Publishing a clocked model is **refused by name** in
-`serializer.document_body` — the one function `solid build`, `solid
-develop`, `solid export` and `solid snapshot --renderer web` all reach —
-because the document version that carries a state is not defined yet and
-ADR-110's ladder refuses a document a consumer would animate wrongly.
-`render()`, `assemble()`, `build_stls()`, `solid test` and an OpenSCAD
-snapshot are untouched, so a clocked model still tests and photographs.
+A clocked model is **published at version 8** (ADR-128), carrying the
+machine compile time decided: every committing relation as its sources,
+its `at` jump node and level, one law expression per target and its
+per-input shapes; every compiled constraint as its chain, its bound
+under the minted own-name, its jump plan and its per-input shapes, the
+LEVEL left as the consumer's own subtraction; the banked clock as the
+free name `time` under an elapsed base and `null` otherwise; and the two
+`limits` a clocked path reaches. A `%` in a published commit LAW is
+DESUGARED to Python's floored remainder, because the executor CALLS the
+project's callable rather than evaluating the graph, while a chain, a
+bound and a constraint level keep the document's truncated `%`, which is
+what the framework evaluates them by. `serializer.document_body` — the
+one function `solid build`, `solid develop`, `solid export` and `solid
+snapshot --renderer web` all reach — still refuses by name, but now
+refuses a clocked tree published WITHOUT its compiled machine, which is
+a PRODUCER error and is what stops a producer added later from reaching
+a lower version by an unchecked route. A build and an export warn and
+publish where the installed viewer cannot read 8; a web snapshot is
+refused before the browser starts, leaving no image and no staging
+directory; `render()`, `assemble()`, `build_stls()`, `solid test` and an
+OpenSCAD snapshot are untouched. The two runtimes share a clocked
+conformance corpus that is EXACT, bit for bit, with a stated basis and
+an inventory the generator refuses to write below.
 A tree that declares no `State` pays nothing structurally: the states
 come from the walk `qualified_declarations` already makes, every clocked
 path is entered only when that table is non-empty, and the package's
@@ -2354,6 +2378,20 @@ none but a law edge that reads the coordinate it drives is version 6
 always was — seven dominating six, since a block says nothing about
 self-reads and a self-read nothing about blocks.
 
+**Version 8 is the CLOCKED rung** (ADR-128), read off the declaration by
+the same rule and DOMINATING every other: a tree in which anything
+declares a `State` publishes 8 whatever its content, because its pose
+expressions read those states as FREE NAMES and a lower consumer would
+resolve them to nothing. Such a document carries a top-level `clocked`
+object — `identity`, `clock`, the minted own-name, `commits`, `bounds`
+and `limits` — beside a second table, `states`, which joins `drivers`
+without merging with it, the split being the handle rule: every key of
+`drivers` is an input a person may move and no key of `states` ever is.
+There is no `coordinates` table, because a clocked bank holds no joint
+coordinate and every number in it is already published. A root that
+declares no `State` never declares 8 and publishes what it always
+published, byte for byte.
+
 The framework asks the installed viewer what it can read, through the
 existing `solid_node.viewer` entry point: `bundle.document_versions()`
 returns the report's `documentVersions`, or `[1, 2, 3, 4]` when the field
@@ -2661,12 +2699,33 @@ The short list that changes must not silently break:
   turns leaves the stop with no moving input to stop and the tick is
   refused `StopInvariantError`. Pre-existing and identical with no block
   anywhere.
-- **A clocked model cannot be published or viewed** (ADR-125): the
-  document version that carries a `State` is not defined — nor is one
-  that carries a CLOCK (ADR-127) — so `document_body` refuses one by
-  name. Rendering, `assemble()`,
-  `build_stls()`, `solid test` and an OpenSCAD snapshot are untouched, so
-  such a model tests and photographs but does not reach a browser.
+- **A clocked model is published but not yet VIEWED** (ADR-128): a
+  clocked root publishes version 8 with its compiled machine, and the
+  corpus is the contract a second runtime must reproduce — but no
+  released viewer reports version 8, so a build and an export warn, a
+  web snapshot is refused before the browser starts, and such a model
+  still does not reach a browser. Executing a version 8 document is the
+  viewer's own cycle, in its own repository.
+- **The framework has TWO meanings of `%`** (ADR-128): a commit law is
+  CALLED, so its `%` is Python's floored remainder, while a chain, a
+  bound, a constraint level and a running law edge are EVALUATED as
+  graphs, whose `%` is `fmod`. A published commit law is desugared so
+  the document says what the executor computed; the cross-mode
+  divergence (the same law text means two things under the two roots)
+  and the POSE-versus-GRAPH one — a `drives(law=)` taking `%` of a
+  negative poses through the callable and publishes through the graph,
+  in every document version from 2 upward — are recorded and unfixed,
+  because reconciling either moves versions 5, 6 and 7.
+- **An instruction under a clocked root has no meaning** (ADR-128): a
+  version 8 document publishes every declared instruction in the version
+  5 shape, and `trigger` stays refused by name. Whether a clocked
+  consumer may turn one into a request is open.
+- **The RUNNING landing walk still scales its first step by the ulp of
+  the value it starts from** (ADR-128): the clocked callers now size it
+  by the segment, which is what lets a bank standing at exactly zero
+  report its stop, but `_Walk._far_side` passes no segment so that
+  `tests/running-corpus.json` stays byte-identical. The same defect is
+  therefore latent on the running path, unmeasured.
 - **A clock is not clipped, and a chain may not follow one** (ADR-127):
   a time request makes its whole travel or is refused whole, and a clip
   IN time is deliberately not half-built — it needs the animation symbol
@@ -2725,11 +2784,11 @@ The short list that changes must not silently break:
 | Build parameters | `solid_node/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104, 127 |
 | Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122, 125, 126, 127 |
-| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127 |
+| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128 |
 | Mechanisms | `solid_node/mechanisms/` | `mechanisms` | 022, 076 |
 | Build pipeline | `solid_node/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `solid_node/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |
 | Test framework | `solid_node/test.py`, `manager/test.py` | `test-framework` | 009–011, 025, 029, 040, 048, 052, 070, 073 |
 | Viewer lookup & snapshot staging | `solid_node/viewers/bundle.py`, `viewers/browser.py`, `viewers/openscad.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: solid-node-viewer) |
-| Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125 |
+| Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128 |
 | Sphinx embedding | `solid_node/sphinx.py` | `sphinx-embedding` | 020 |

@@ -40,6 +40,7 @@ from .clocked_project.bounds_unsupported import (Chattering, Curved,
 from .clocked_project.decorative import Decorative, Untouchable
 from .clocked_project.gate import Gate, Shut
 from .clocked_project.lock import Kinked, Lock
+from .clocked_project.calculator import Standing
 from .clocked_project.outside import Outside
 from .clocked_project.freeze import Freeze
 from .clocked_project.pawl import (PITCH, Pawl, ScaledStroke, Stroke,
@@ -279,6 +280,35 @@ class ClipTest(BaseNodeTest):
         back = sim.move('feed', by=15.0)
         self.assertEqual(back.admitted, 4.0)
         self.assertEqual(sim.state['feed'], 9.0)
+
+    def test_a_stop_from_a_coordinate_standing_at_zero_admits_nothing(self):
+        """Closure 1(b) of `publish-the-clocked-machine`: the low-side
+        mirror of the test above, from a coordinate whose value is
+        exactly `0.0`.
+
+        `Standing` rests with `slide.travel` at 0 and its low bound at
+        3, so the bank stands OUTSIDE and a request pushing further out
+        must admit zero travel and report its stop -- exactly what
+        `Outside` does at its high bound. The landing walk scaled its
+        first step by the ulp of the value it started from, and the ulp
+        of zero is a denormal: two hundred doublings of it reach about
+        1e-263, never a distance this segment can express, so the walk
+        found no bracket and the clip raised its own broken-invariant
+        error instead of stopping. This cycle's corpus is what found it.
+        """
+        sim = Sim(Standing())
+        self.assertEqual(sim.state['feed'], 0.0)
+        further = sim.move('feed', by=-1.0)
+        self.assertEqual(further.admitted, 0.0)
+        self.assertEqual(sim.state['feed'], 0.0)
+        self.assertEqual(len(further.stops), 1)
+        self.assertEqual(further.stops[0].coordinate, 'slide.travel')
+        self.assertEqual(further.stops[0].side, 'low')
+        # And it may still come back inside, from zero, as freely as the
+        # high-bound fixture does.
+        inward = sim.move('feed', by=5.0)
+        self.assertEqual(inward.admitted, 5.0)
+        self.assertEqual(sim.state['feed'], 5.0)
 
     def test_a_constant_level_outside_its_pair_stops_nothing(self):
         sim = Sim(Untouchable())

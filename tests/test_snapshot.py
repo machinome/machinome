@@ -1224,3 +1224,67 @@ class SnapshotDriveTest(TestCase):
         self.assertEqual(raised.exception.code, 1)
         drawn.assert_not_called()
         self.assertIn('--drive', errors.getvalue())
+
+
+class ClockedSnapshotTest(TestCase):
+    """(7.4) `solid snapshot --renderer openscad` on a CLOCKED model
+    renders the INITIAL BANK -- every state at its declared default --
+    and is otherwise untouched by the document cycle: it never reaches a
+    document body at all.
+
+    OpenSpec change ``publish-the-clocked-machine``, design section 15.
+    """
+
+    def setUp(self):
+        from tests.base import BUILD_DIR as TESTS_BUILD_DIR
+
+        if os.path.exists(TESTS_BUILD_DIR):
+            shutil.rmtree(TESTS_BUILD_DIR)
+        self.addCleanup(shutil.rmtree, TESTS_BUILD_DIR, ignore_errors=True)
+
+    def prepared(self, node, drives=()):
+        snapshot = Snapshot.__new__(Snapshot)
+        snapshot.path = 'model.py'
+        snapshot.time = 0.0
+        snapshot.overrides = []
+        snapshot.drives = list(drives)
+        with patch('solid_node.manager.snapshot.load_node',
+                   return_value=node), \
+             patch('solid_node.manager.snapshot.project_build_lock'), \
+             patch.object(node, 'assemble'):
+            return snapshot._load_and_prepare_node()
+
+    def test_the_initial_bank_is_what_is_photographed(self):
+        from solid_node.simulation.enumeration import bind_declared_defaults
+        from tests.clocked_project.register import DIGIT, Register
+
+        node = Register()
+        # What the loader's own `assemble` does, which this test patches
+        # out: bind every declared default, states included.
+        bind_declared_defaults(node)
+        self.prepared(node)
+        self.assertEqual(node.crank, 0)
+        self.assertEqual(node.ring, 0.0)
+        for wheel in (node.w0, node.w1, node.w2):
+            self.assertEqual(wheel.digit, 0)
+            self.assertEqual(wheel.face.turn.value, 0.0 * DIGIT)
+
+    def test_a_declared_driver_is_posed_and_the_states_stand(self):
+        from tests.clocked_project.register import Register
+
+        node = Register()
+        self.prepared(node, drives=['ring=120'])
+        self.assertEqual(node.ring, 120.0)
+        self.assertEqual(node.w0.digit, 0)
+
+    def test_a_state_named_there_is_refused_by_name(self):
+        from solid_node.manager.snapshot import SnapshotOptionError
+        from tests.clocked_project.register import Register
+
+        node = Register()
+        with self.assertRaises(SnapshotOptionError) as raised:
+            self.prepared(node, drives=['w0.digit=4'])
+        message = str(raised.exception)
+        self.assertIn('w0.digit', message)
+        self.assertIn('crank', message)
+        self.assertIn('ring', message)

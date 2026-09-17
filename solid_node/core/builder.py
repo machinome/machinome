@@ -19,7 +19,7 @@ from watchdog.events import FileSystemEventHandler
 from .loader import (ProjectManifestError, load_node,
                      project_root, project_source_generation, read_project)
 from .serializer import (
-    compiled_controls, compiled_program, document_body,
+    compiled_clocked, compiled_controls, compiled_program, document_body,
     DOCUMENT_FORMAT, drivers_table, instructions_table,
     serialize_node, symbolic_document,
 )
@@ -650,6 +650,12 @@ class Builder(FileSystemEventHandler):
         # Compiled off the NUMERIC rest render, before the symbolic walk,
         # and `(None, None)` under any root but a running one.
         program, initial = compiled_program(self.node)
+        # And the CLOCKED machine beside it, `(None, None)` under any
+        # root but a clocked one. The two are mutually exclusive: a
+        # `State` under a running root is refused where declared
+        # defaults are bound (OpenSpec change
+        # ``publish-the-clocked-machine``, design section 15).
+        clocked, bank = compiled_clocked(self.node)
         with symbolic_document(self.node) as (declarations, instructions):
             root = serialize_node(
                 self.node,
@@ -661,8 +667,10 @@ class Builder(FileSystemEventHandler):
                     artifact, self.build_dir),
             )
             drivers = drivers_table(declarations)
-            events = instructions_table(instructions,
-                                        running=program is not None)
+            events = instructions_table(
+                instructions,
+                version_five_or_above=(program is not None
+                                       or clocked is not None))
         # The version its content needs, or 5 where the ROOT declares a
         # running base; `bindings` and `program` beside `drivers` and
         # `instructions`, ahead of `root`, and deterministically ordered
@@ -670,8 +678,10 @@ class Builder(FileSystemEventHandler):
         # correct: rebuilding an unchanged model must not republish
         # merely because a name was minted differently.
         snapshot = document_body(self.node, root, drivers, events,
-                                 program, initial,
-                                 controls=compiled_controls(program, initial))
+                                 program,
+                                 initial if program is not None else bank,
+                                 controls=compiled_controls(program, initial),
+                                 clocked=clocked)
         snapshot['root'] = root
         snapshot['pieces'] = inventory.pieces()
         _warn_unreadable(snapshot['version'])

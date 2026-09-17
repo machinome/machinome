@@ -38,6 +38,7 @@ Three things follow from that and are worth stating before the code:
   tree; the tree is bound ONCE, at the end of the request.
 """
 
+import hashlib
 import math
 from collections import deque
 
@@ -49,9 +50,11 @@ from solid_node.motion.ports import CLOCK_NAME, clocked_marking
 from solid_node.node.qualified import (driver_id, drive_tree, instance_path)
 from solid_node.scad_expression import GraphValue, as_node, symbol
 
-from .program import (JumpPlan, TooManyCrossings, _KinkCuts, _MAX_CROSSINGS,
-                      _Jump, _along, _argument_graph, _branch_of,
-                      _deduplicated, _plan_of, _shape_of, checked_expression,
+from .program import (JumpPlan, TooManyCrossings, _CROSSING_TOLERANCE,
+                      _KinkCuts, _MAX_CROSSINGS, _Jump, _along,
+                      _argument_graph, _branch_of, _deduplicated,
+                      _on_surface, _placeholder_prefix, _plan_of,
+                      _published_plan, _shape_of, checked_expression,
                       far_side_of)
 
 
@@ -103,7 +106,7 @@ class Committing:
     """
 
     def __init__(self, record, source_ids, target_ids, primitive, level,
-                 jumps, at, law):
+                 jumps, at, law, law_graphs=()):
         self.record = record
         self.source_ids = tuple(source_ids)
         self.target_ids = tuple(target_ids)
@@ -112,6 +115,14 @@ class Committing:
         self.jumps = jumps
         self.at = at
         self.law = law
+        #: The law applied ONCE to a symbolic token per source, one
+        #: graph per target in written order: what `_checked_law` has
+        #: always built to check the shape, RETAINED rather than thrown
+        #: away, because it is what a version 8 document publishes. A
+        #: target whose law returns a plain number holds that number
+        #: here (OpenSpec change ``publish-the-clocked-machine``,
+        #: design section 6).
+        self.law_graphs = tuple(law_graphs)
         self.described = record.described()
         #: What a message from the shared locator calls the thing being
         #: moved. A clocked event lands the INPUT, not a coordinate, so
@@ -162,12 +173,37 @@ class Committing:
             return _branch_of(jump, level_at(value))
 
         direction = math.copysign(1.0, delta)
+        endpoint = start + delta
+        scale = max(abs(start), abs(endpoint))
         for index, (where, _level) in enumerate(found):
-            before = _branch_of(jump, self._level_at(
-                jump, standing, steps, (edges[index] + where) / 2.0))
+            if where == 0.0:
+                # The path BEGINS on this surface, so there is no piece
+                # behind it to read a branch from: the branch the
+                # request stands in is read AT THE START, and the far
+                # side is asked for at the NEXT REPRESENTABLE VALUE the
+                # path reaches. Where that reads the same branch the
+                # machine already stands on the far side -- a request
+                # resuming from its own landing -- and the surface is
+                # not this request's. Where it differs, the landing is
+                # that value and the surface is this request's first
+                # event (closure 1).
+                before = branch_at(start)
+                if branch_at(math.nextafter(
+                        start, math.copysign(math.inf, delta))) == before:
+                    continue
+            else:
+                before = _branch_of(jump, self._level_at(
+                    jump, standing, steps, (edges[index] + where) / 2.0))
             landing = far_side_of(
                 branch_at, before, start + delta * where, direction,
-                lambda: _unlanded(self, jump))
+                lambda: _unlanded(self, jump), scale=scale)
+            if direction * (landing - endpoint) > 0.0:
+                # The landing lies BEYOND this request's endpoint, which
+                # a STRICT comparison reached exactly does: the crossing
+                # belongs to the request whose PATH CONTAINS its
+                # landing, and that is the next one, which begins on
+                # this surface and takes it at fraction zero.
+                continue
             # RISING is read from the branch the path came from and the
             # branch AT THE LANDING -- which is the nearest point of the
             # piece the path is going into, and the only reading
@@ -181,11 +217,22 @@ class Committing:
         """Every crossing of this relation's level on the path, in path
         order.
 
-        The right end is INCLUSIVE and the left end exclusive: a request
-        that ends exactly ON a surface has reached it -- `move('crank',
-        by=360)` with `at = floor(crank / 360)` IS one stroke -- and one
-        that RESUMES from a landing has already taken the surface it
-        stands on.
+        BOTH ends are taken: a request that ends exactly ON a surface
+        has reached it -- `move('crank', by=360)` with `at =
+        floor(crank / 360)` IS one stroke -- and a request that BEGINS
+        on one has reached it too when its far side lies ahead. Which
+        of the two requests a surface belongs to is decided by the
+        LANDING and not here: `next_event` keeps the crossing whose
+        landing its own path contains, so a request resuming from its
+        own landing takes nothing and a STRICT surface reached exactly
+        at an endpoint is left for the request that begins on it
+        (closure 1 of ``publish-the-clocked-machine``; the fraction
+        reading ADR-125 stated lost that event entirely).
+
+        `_solved` excludes a piece's left end, which is right for an
+        interior breakpoint -- the sub-piece before it reached that
+        surface -- so the path's OWN opening surface is added here,
+        read with `_on_surface` off the level the path starts at.
         """
         plan = JumpPlan(None, (jump,))
         inner = {}
@@ -211,7 +258,11 @@ class Committing:
                                    getattr(failure, 'count', None)) from None
         if len(found) > _MAX_CROSSINGS:
             raise _too_many_events(self, input_id, delta, len(found))
-        return sorted(found, key=lambda entry: entry[0])
+        found = sorted(found, key=lambda entry: entry[0])
+        opening = self._level_at(jump, standing, steps, 0.0)
+        if _on_surface(jump, opening) and not (found and found[0][0] == 0.0):
+            found.insert(0, (0.0, opening))
+        return found
 
     def _level_at(self, jump, standing, steps, fraction):
         return jump.argument.evaluate(_along(standing, steps, fraction))
@@ -323,7 +374,7 @@ def compile_clocked(root, drivers, states, instructions, clock=False):
     # is judged by the request, which is the only place a landing exists
     # (design section 3, amended 2026-09-17).
     written = set()
-    for record in records:
+    for _node, record in records:
         for target in record.targets:
             written.add(_identifier(root, target))
     for identifier in sorted(states):
@@ -345,13 +396,15 @@ def compile_clocked(root, drivers, states, instructions, clock=False):
                     f'a target over a duration, and a state is written by '
                     f'the machine at an event, never ramped to a value a '
                     f'declaration names.')
-    return tuple(_compiled(root, record, drivers, states, clock)
-                 for record in records)
+    return tuple(_compiled(root, node, record, drivers, states, clock)
+                 for node, record in records)
 
 
 def _records_of(root, node=None, found=None):
     """Every resolved committing relation in `root`'s tree, in tree
-    order.
+    order, each with the ASSEMBLY that states it -- which is what a
+    published commit's `stated_by` names, so a consumer's refusal names
+    what a reader can find in the model.
 
     Walked over `_rest_children`, the linked rest structure every
     qualified pass descends -- idempotent, and already built by the
@@ -363,7 +416,8 @@ def _records_of(root, node=None, found=None):
     if found is None:
         found = []
     node = root if node is None else node
-    found.extend(node.__dict__.get('_commitments', ()))
+    found.extend((node, record)
+                 for record in node.__dict__.get('_commitments', ()))
     if getattr(node, '_states', None) is None:
         # A leaf holds no snapshot and no children of its own, and
         # cannot declare a state.
@@ -379,9 +433,9 @@ def _identifier(root, end):
     return driver_id(instance_path(end.node, root), end.name)
 
 
-def _compiled(root, record, drivers, states, clock=False):
-    """One committing relation, compiled: its ids, its event level and
-    its two callables."""
+def _compiled(root, stated_by, record, drivers, states, clock=False):
+    """One committing relation, compiled: its ids, its event level,
+    its two callables and the assembly class that stated it."""
     source_ids = tuple(_identifier(root, end) for end in record.sources)
     target_ids = tuple(_identifier(root, end) for end in record.targets)
 
@@ -404,7 +458,7 @@ def _compiled(root, record, drivers, states, clock=False):
                    f'driver nor a declared state of this tree.')
     tokens = [symbol(identifier) for identifier in source_ids]
     primitive, level = _event_level(record, tokens, refuse)
-    law = _checked_law(record, tokens, target_ids, refuse)
+    law, law_graphs = _checked_law(record, tokens, target_ids, refuse)
     jumps = {}
     for identifier in source_ids:
         if identifier not in drivers and not (clock
@@ -440,9 +494,10 @@ def _compiled(root, record, drivers, states, clock=False):
                f'input whose motion reaches this event among the '
                f'sources.')
     relation = Committing(record, source_ids, target_ids, primitive, level,
-                          jumps, record.at, law)
+                          jumps, record.at, law, law_graphs)
     relation.targets = tuple(states[identifier]
                              for identifier in target_ids)
+    relation.stated_by = type(stated_by).__name__
     return relation
 
 
@@ -488,9 +543,9 @@ def _event_level(record, tokens, refuse):
 
 
 def _checked_law(record, tokens, target_ids, refuse):
-    """`law`'s callable, with its expression checked exactly as a
-    running law's is, and with ONE difference: no jump plan, no skeleton
-    and no refusal of a law made entirely of jumps.
+    """`law`'s callable AND its graphs, with the expression checked
+    exactly as a running law's is, and with ONE difference: no jump
+    plan, no skeleton and no refusal of a law made entirely of jumps.
 
     A commit is evaluated at a POINT and never integrated, so every jump
     primitive in it means what it says and nothing is subtracted --
@@ -501,7 +556,10 @@ def _checked_law(record, tokens, target_ids, refuse):
     the executor calls the project's own callable with the bank's
     numbers. Checking the shape now is what stops a project from writing
     a commit law the framework accepts and the document cycle cannot
-    publish.
+    publish -- and RETAINING what the check built is the whole of what
+    the simulation layer owes the document, because the graph is what a
+    version 8 document carries (OpenSpec change
+    ``publish-the-clocked-machine``, design section 6).
     """
     try:
         returned = record.law(*tokens)
@@ -532,14 +590,19 @@ def _checked_law(record, tokens, target_ids, refuse):
                    f'({", ".join(target_ids)}), which is not a sequence '
                    f'of exactly {len(target_ids)} values.')
         values = returned
+    graphs = []
     for value in values:
         if isinstance(value, bool):
             refuse(f'the law returned {value!r}, which is neither a '
                    f'number nor an expression.')
         if isinstance(value, (int, float)):
+            # A law returning a plain number: the commit writes that
+            # value, so the graph is the literal and never an absence.
+            graphs.append(float(value))
             continue
-        checked_expression(value, refuse, 'a commit law')
-    return record.law
+        root, _jumps = checked_expression(value, refuse, 'a commit law')
+        graphs.append(root)
+    return record.law, tuple(graphs)
 
 
 def _standing_except(level, moving):
@@ -603,6 +666,124 @@ _AUTHORITY = 'the clocked simulation'
 #: deliberately NOT `$`-prefixed, so a leak would be seen as a moving
 #: name rather than silently read as a constant.
 _TOKEN = '__source%d__'
+
+
+def _text(graph):
+    """One expression graph as the document's own text.
+
+    Used where a LISTING is taken of a graph -- the identity's canonical
+    lines -- and nowhere a document is written: a published slot holds
+    the native graph, which the document's binding pass compiles.
+    """
+    return str(GraphValue(as_node(graph)))
+
+
+def _floored_remainder(graph):
+    """`graph` with every `%` node replaced by the FLOORED remainder the
+    clocked executor actually computes.
+
+    The executor does not evaluate a commit law's graph at all: it calls
+    the project's own Python callable with the bank's numbers, and
+    Python's float `%` takes the sign of the DIVISOR. The document's `%`
+    is the truncated remainder -- the sign of the DIVIDEND -- which both
+    runtimes already evaluate identically (`GraphValue.evaluate` spells
+    it `math.fmod`, and the viewer's is JavaScript's native `%`). So a
+    law graph published as written would not mean what the executor
+    computed, and the breach is INSIDE the framework rather than between
+    the runtimes.
+
+    CPython's `float_rem` is `mod = fmod(a, b); if (mod) { if ((b < 0)
+    != (mod < 0)) mod += b; } else mod = copysign(0.0, b);` -- `fmod` is
+    exact and the correction is a single IEEE addition -- so the
+    document's own vocabulary reproduces it, with the same one rounding,
+    as
+
+        r + b * ((r != 0) * ((r < 0) != (b < 0)))
+
+    The ONE divergence is the SIGN of a zero result under a negative
+    divisor, which compares equal as a number in both runtimes and which
+    nothing in the published vocabulary distinguishes.
+
+    This applies to a LAW graph and to nothing else. An `at` cannot
+    carry a `%` in any position -- `%` IS a jump and an event admits one
+    jump node which must be a floor, ceil, sign or comparison -- and a
+    CHAIN, a BOUND and a constraint LEVEL keep the document's `%`,
+    because the framework EVALUATES those through the graph, so their
+    published form already says exactly what the clip computed (design
+    section 16).
+    """
+    root = as_node(graph)
+    replaced = {}
+    for node in postorder([root]):
+        children = tuple(replaced.get(child, child) for child in node.children)
+        if node.kind == 'binop' and node.op == '%':
+            left, right = children
+            remainder = _binop('%', left, right)
+            correction = _binop(
+                '*',
+                _binop('!=', remainder, _num(0.0)),
+                _binop('!=', _binop('<', remainder, _num(0.0)),
+                       _binop('<', right, _num(0.0))))
+            replaced[node] = _binop('+', remainder,
+                                    _binop('*', right, correction))
+        elif children != node.children:
+            replaced[node] = ExpressionNode(node.kind, node.op, children,
+                                            node.text)
+    return replaced.get(root, root)
+
+
+def _published_law(graph):
+    """One commit law expression, as the document carries it.
+
+    A law returning a plain NUMBER publishes the number as a literal
+    expression and never a null: a commit's law IS the value written,
+    so a constant is an answer and not an absence -- the asymmetry with
+    a running law edge, whose `null` means "contributes no increment".
+    """
+    if isinstance(graph, float):
+        return GraphValue(_num(graph))
+    return GraphValue(_floored_remainder(graph))
+
+
+def _published_bound_value(bound, own):
+    """One compiled bound, as the document carries it: a NUMBER where it
+    is numeric, and otherwise the graph with `$own` replaced by the
+    document's published own-name.
+
+    `$own` cannot travel: the document's expression language admits
+    exactly one `$`-name, `$t` (`core/expressions.py`), so a bound
+    published with it would not even tokenize (design section 8).
+    """
+    node = as_node(bound)
+    if node.kind == 'num':
+        return float(node.text)
+    return GraphValue(_substituted(node, {_OWN: _free(own)}))
+
+
+def _renamed_plan(plan, own):
+    """`plan` with `$own` replaced by the published own-name throughout
+    its skeleton and every jump's level."""
+    mapping = {_OWN: _free(own)}
+    return JumpPlan(
+        GraphValue(_substituted(as_node(plan.skeleton), mapping)),
+        tuple(_Jump(jump.primitive, jump.placeholder,
+                    GraphValue(_substituted(as_node(jump.argument), mapping)),
+                    jump.shape)
+              for jump in plan.jumps))
+
+
+def _own_name(published):
+    r"""The free name a published bound reads its own coordinate under.
+
+    `_own`, lengthened by a leading underscore for as long as some
+    published id EQUALS it -- `_placeholder_prefix`'s own rule with the
+    digit-suffix match replaced by equality, there being one own-name
+    and not a series (design section 8).
+    """
+    name = '_own'
+    while name in published:
+        name = '_' + name
+    return name
 
 
 def _num(value):
@@ -947,8 +1128,8 @@ class Bounded:
     """
 
     __slots__ = ('coordinate', 'side', 'node', 'joint', 'unit', 'chain',
-                 'bound', 'level', 'names', 'chain_names', 'plans', 'shapes',
-                 'kinks', 'described')
+                 'bound', 'level', 'names', 'chain_names', 'plan', 'plans',
+                 'shapes', 'kinks', 'described')
 
     def __init__(self, coordinate, side, node, joint, unit, chain, bound,
                  level):
@@ -962,6 +1143,14 @@ class Bounded:
         self.level = GraphValue(level)
         self.names = tuple(sorted(free_names(level) - {_OWN}))
         self.chain_names = tuple(sorted(free_names(chain)))
+        #: The level's own JUMP PLAN, before any input classifies it:
+        #: the skeleton and the jump nodes in the graph's postorder, as
+        #: `_plan_of` built them. `None` where the level carries no
+        #: jump. This is what the document publishes; `plans` below is
+        #: the same plan re-shaped per moving input, which is what a
+        #: request solves over (OpenSpec change
+        #: ``publish-the-clocked-machine``, design section 7).
+        self.plan = None
         self.plans = {}
         #: The level's SHAPE in each driver that moves it, decided once,
         #: structurally: `affine` is one division, `kinked` is cut at its
@@ -1054,6 +1243,18 @@ class Bounded:
                 break
         if crossed is None:
             return None
+        if crossed == 0.0:
+            # A level already AT its limit and pushed FURTHER admits
+            # ZERO travel: the request moves nothing, fires nothing and
+            # reports its stop (design section 9). Said here, off the
+            # crossing, rather than left to the walk: where the input
+            # stands at a value whose ulp is finer than the LEVEL's,
+            # the walk finds a landing half an ulp of the level beyond
+            # the start -- a travel the level cannot express -- and the
+            # low side of a bound would then admit what the high side
+            # of the same bound refuses, only because the coordinate
+            # happens to stand near zero (closure 1).
+            return 0.0, start
         star = start + delta * crossed
         direction = math.copysign(1.0, delta)
 
@@ -1061,7 +1262,8 @@ class Bounded:
             return float(self.at(values, input_id, value) <= threshold)
 
         landing = far_side_of(satisfied, 0.0, star, -direction,
-                              lambda: _unstopped(self, input_id))
+                              lambda: _unstopped(self, input_id),
+                              scale=max(abs(start), abs(start + delta)))
         fraction = (landing - start) / delta
         if fraction <= 0.0:
             # A level already at its limit and pushed further admits
@@ -1186,6 +1388,7 @@ def _constrained(chains, drivers, identifier, node, joint, unit, side, bound,
     skeleton = as_node(plan.skeleton)
     entry = Bounded(identifier, side, node, joint, unit, chain, compiled,
                     root)
+    entry.plan = plan if plan.jumps else None
     moving = free_names(root)
     for input_id in sorted(drivers):
         if input_id not in moving:
@@ -1466,6 +1669,17 @@ class Clocked:
             # refused at class definition for shadowing the assembly
             # member (design section 3).
             self.bank[CLOCK_NAME] = 0.0
+        #: The free name every published bound reads its own
+        #: coordinate's start-of-request value under. `$own` cannot
+        #: travel -- the document's expression language admits exactly
+        #: one `$`-name, `$t` -- so the name is MINTED here and
+        #: DECLARED as `clocked.own`, which is `program.clock`'s pattern
+        #: (design section 8).
+        self.own = _own_name(set(self.bank))
+        #: A digest over the canonical listing `described` writes: a
+        #: bank taken against one machine is refused against another.
+        self.identity = hashlib.sha256(
+            self.described().encode()).hexdigest()
         self.model = (f'{type(node).__name__}'
                       f'({",".join(sorted(self.bank))})')
         for identifier, value in (state or {}).items():
@@ -1588,6 +1802,191 @@ class Clocked:
                 self.pose(previous)
                 raise
         self.bank = bank
+
+    ##############################################
+    # Publication
+
+    def published_names(self):
+        """Every id the published clocked object's expressions may read:
+        the declared drivers, the declared states, the clock where there
+        is one, and the minted OWN name.
+
+        The set a minted name must not collide with, and the set the
+        document's binding pass is given so it cannot mint one either --
+        `Program.published_names`'s part, for its reason.
+        """
+        found = set(self.drivers) | set(self.states)
+        if self.clock:
+            found.add(CLOCK_NAME)
+        found.add(self.own)
+        return found
+
+    def described(self):
+        """The canonical listing the identity is taken of.
+
+        `Program.described`'s shape and purpose: a bank taken against one
+        machine is refused against another. A changed RANGE changes it,
+        through the constraint levels below, so a snapshot cannot be
+        restored into a machine whose stops have moved (design
+        section 13).
+        """
+        klass = type(self.node)
+        lines = [f'root {klass.__module__}.{klass.__qualname__}']
+        for identifier, declaration in sorted(self.drivers.items()):
+            lines.append(f'input {identifier} dtype={declaration.dtype!r} '
+                         f'scale={declaration.scale!r}')
+        for identifier, declaration in sorted(self.states.items()):
+            lines.append(f'state {identifier} dtype={declaration.dtype!r} '
+                         f'scale={declaration.scale!r}')
+        if self.clock:
+            lines.append(f'clock {CLOCK_NAME}')
+        for relation in self.relations:
+            laws = ' | '.join(_text(graph) for graph in relation.law_graphs)
+            lines.append(
+                f'commit {list(relation.source_ids)} -> '
+                f'{list(relation.target_ids)} {relation.primitive} '
+                f'{_text(relation.level)} | {laws}')
+        for bounded in self.bounds:
+            lines.append(f'bound {bounded.coordinate} {bounded.side} '
+                         f'{_text(bounded.level)}')
+        return '\n'.join(lines)
+
+    def published(self, initial=None):
+        """The projection a version 8 document carries: what COMPILE
+        TIME decided about this machine, and nothing a request computes.
+
+        `initial` is the machine's REST BANK, taken for
+        `Program.published`'s symmetry and deliberately NOT published: a
+        clocked bank holds no joint coordinate, so it is every declared
+        driver and every declared state at its declared default with the
+        clock at zero, and every one of those numbers is already in the
+        document's own `drivers` and `states` tables. Repeating a
+        declaration inside `clocked` is forbidden for the reason it is
+        forbidden inside `program` (design section 4).
+
+        Every expression slot holds a NATIVE GRAPH rather than text: the
+        document's own binding pass compiles them together with the
+        tree's, so a subexpression a commit law shares with the geometry
+        that displays it is published ONCE and nothing carries
+        producer-local `let(...)` syntax. Branch placeholders are minted
+        HERE, across the whole document, because two plans naming their
+        first jump alike would let the binding pass share one subtree
+        between two different jump nodes.
+        """
+        placeholders = self._placeholders()
+        return {
+            'identity': self.identity,
+            'clock': CLOCK_NAME if self.clock else None,
+            'own': self.own,
+            'commits': [self._published_commit(relation)
+                        for relation in self.relations],
+            'bounds': [self._published_bound(bounded, minted)
+                       for bounded, minted in zip(self.bounds, placeholders)],
+            'limits': {'crossing_tolerance': _CROSSING_TOLERANCE,
+                       'max_crossings': _MAX_CROSSINGS},
+        }
+
+    def _placeholders(self):
+        """One `{compiler name: published name}` map per compiled
+        constraint, in constraint order and then the level's own
+        postorder, under a prefix lengthened while any published id
+        matches `<prefix>` followed by digits.
+
+        `Program._placeholders`' rule, minted across the WHOLE document:
+        two plans naming their first jump alike would let the binding
+        pass share one subtree between two different jump nodes.
+        """
+        prefix = _placeholder_prefix(self.published_names())
+        minted = 0
+        found = []
+        for bounded in self.bounds:
+            mapping = {}
+            if bounded.plan is not None:
+                for jump in bounded.plan.jumps:
+                    mapping[jump.placeholder] = f'{prefix}{minted}'
+                    minted += 1
+            found.append(mapping)
+        return found
+
+    def _published_bound(self, bounded, placeholders):
+        """One compiled constraint, as the document carries it.
+
+        `value` is the CHAIN -- one expression over the bank's ids,
+        composed by substitution down to declared drivers and states,
+        with every intermediate port composed THROUGH and never named.
+        `bound` is the declared bound with its own coordinate read under
+        the published OWN name and every `reads=` coordinate already
+        substituted by its own chain; a NUMERIC bound publishes a
+        number.
+
+        The LEVEL is not published: it is `value - bound` on the high
+        side and `bound - value` on the low side, `side` says which, and
+        publishing it as well would publish the bound twice.
+
+        `plan` is the level's jump plan in exactly the shape a published
+        program's has, through the same `_published_plan` and the same
+        `_renamed`, and `null` where the level carries no jump.
+        `shapes` carries, per input that can move the level, the
+        SKELETON's shape and one shape per published jump, aligned with
+        `plan.jumps` (design section 7).
+        """
+        return {
+            'coordinate': bounded.coordinate,
+            'side': bounded.side,
+            'unit': bounded.unit,
+            'value': bounded.chain,
+            'bound': _published_bound_value(bounded.bound, self.own),
+            'plan': _published_plan(
+                None if bounded.plan is None
+                else _renamed_plan(bounded.plan, self.own), placeholders),
+            'shapes': {identifier: {
+                'level': shape,
+                'jumps': [jump.shape
+                          for jump in bounded.plans[identifier].jumps],
+            } for identifier, shape in sorted(bounded.shapes.items())},
+            'node': type(bounded.node).__name__,
+            'joint': bounded.joint.name,
+            'description': bounded.described,
+        }
+
+    def _published_commit(self, relation):
+        """One committing relation, as the document carries it.
+
+        `sources` is in WRITTEN ORDER, because that is the order the
+        law's positional arguments are in; a consumer reads them by
+        NAME anyway. `at` is ONE jump node and its LEVEL QUANTITY,
+        whose surfaces and branch the published jump vocabulary already
+        defines -- no key is added for them, exactly as the running
+        document adds none. `law` is one expression per target, aligned
+        with `targets`. `shapes` carries what compile time decided per
+        INPUT THAT CAN MOVE the level; an input absent from it cannot
+        move the level at all and is not examined for it (design
+        section 6).
+
+        The published set is the inputs whose shape is `affine` or
+        `kinked`, which is NOT literally `jumps`' key set: `_compiled`
+        classifies EVERY driver among the sources, and a driver the
+        level does not read at all classifies `constant`. `moves_with`
+        therefore answers True for such a driver and the request path
+        is untouched -- it locates no crossing on a level that cannot
+        move. Publishing a `constant` entry would state a third value
+        the export capability does not admit, and would tell a consumer
+        to examine a relation that can never fire.
+        """
+        return {
+            'sources': list(relation.source_ids),
+            'targets': list(relation.target_ids),
+            'at': {'primitive': relation.primitive,
+                   'level': GraphValue(relation.level)},
+            'law': [_published_law(graph)
+                    for graph in relation.law_graphs],
+            'shapes': {identifier: jump.shape
+                       for identifier, jump
+                       in sorted(relation.jumps.items())
+                       if jump.shape in ('affine', 'kinked')},
+            'description': relation.described,
+            'stated_by': relation.stated_by,
+        }
 
     ##############################################
     # Session setup
@@ -1817,3 +2216,38 @@ class Clocked:
             f"driver by its qualified id -- a joint coordinate's value "
             f'comes from the pose the drivers and the states produce, '
             f'never from a request; declared: {known}.')
+
+
+##############################################
+# What a producer takes from a clocked root
+
+
+def clocked_of(root):
+    """The compiled clocked machine of a clocked root and its REST BANK,
+    taken WITHOUT taking the tree over.
+
+    `program_of`'s shape: the machine is COMPILED by constructing the
+    simulation, so the published machine is the simulation's by
+    construction rather than by two implementations agreeing, and every
+    refusal `compile_clocked` and `compile_bounds` make is made before a
+    document exists. Every node's snapshot is put back and the tree
+    re-rendered afterwards, so a caller that held a posed tree still
+    holds one -- which is what the browser-snapshot capture needs, that
+    producer arriving with the tree posed at `--drive` values.
+
+    There is no `release_tree`: a clocked simulation does not own the
+    tree the way a run does, and `Sim.__init__`'s clocked branch returns
+    before any binder is installed.
+
+    A root the simulation cannot be constructed over has no machine to
+    publish, and this raises exactly what `Sim` raises.
+    """
+    from .program import _restore, _snapshots
+    from .sim import Sim
+
+    snapshots = _snapshots(root)
+    try:
+        sim = Sim(root)
+        return sim._clocked, dict(sim.initial.values)
+    finally:
+        _restore(snapshots, root)

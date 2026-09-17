@@ -1,0 +1,199 @@
+{
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "bindings": [
+    {
+      "expression": "(units + 1)",
+      "name": "_b0"
+    },
+    {
+      "expression": "(_b0 % 10)",
+      "name": "_b1"
+    },
+    {
+      "expression": "(10 < 0.0)",
+      "name": "_b2"
+    },
+    {
+      "expression": "(units == 9)",
+      "name": "_b3"
+    },
+    {
+      "expression": "(tens + _b3)",
+      "name": "_b4"
+    },
+    {
+      "expression": "(_b4 % 10)",
+      "name": "_b5"
+    },
+    {
+      "expression": "(_own / 6.0)",
+      "name": "_b6"
+    }
+  ],
+  "clocked": {
+    "bounds": [
+      {
+        "bound": "(6.0 * floor(_b6))",
+        "coordinate": "crank_dial.turn",
+        "description": "the low bound of 'crank_dial.turn'",
+        "joint": "turn",
+        "node": "Dial",
+        "plan": {
+          "jumps": [
+            {
+              "affine": true,
+              "level": "_b6",
+              "name": "_j0",
+              "primitive": "floor"
+            }
+          ],
+          "skeleton": "((6.0 * _j0) - crank)"
+        },
+        "shapes": {
+          "crank": {
+            "jumps": [
+              "constant"
+            ],
+            "level": "affine"
+          }
+        },
+        "side": "low",
+        "unit": "deg",
+        "value": "crank"
+      }
+    ],
+    "clock": null,
+    "commits": [
+      {
+        "at": {
+          "level": "(crank / 360)",
+          "primitive": "floor"
+        },
+        "description": "(crank, units, tens) commits (units, tens)",
+        "law": [
+          "(_b1 + (10 * ((_b1 != 0.0) * ((_b1 < 0.0) != _b2))))",
+          "(_b5 + (10 * ((_b5 != 0.0) * ((_b5 < 0.0) != _b2))))"
+        ],
+        "shapes": {
+          "crank": "affine"
+        },
+        "sources": [
+          "crank",
+          "units",
+          "tens"
+        ],
+        "stated_by": "Pawl",
+        "targets": [
+          "units",
+          "tens"
+        ]
+      }
+    ],
+    "identity": "cd2936e14a4c0cca213f97247d29808187bcd14625d1e3fa805139c8652393a7",
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "max_crossings": 1000
+    },
+    "own": "_own"
+  },
+  "drivers": {
+    "crank": {
+      "default": 0,
+      "dtype": null,
+      "range": null,
+      "scale": null,
+      "unit": "deg"
+    }
+  },
+  "format": "solid-node-export",
+  "instructions": {},
+  "root": {
+    "children": [
+      {
+        "color": null,
+        "model": "units_dial",
+        "mtime": null,
+        "name": "units_dial",
+        "operations": [
+          [
+            "r",
+            "(36.0 * units)",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "type": "LeafNode"
+      },
+      {
+        "color": null,
+        "model": "tens_dial",
+        "mtime": null,
+        "name": "tens_dial",
+        "operations": [
+          [
+            "r",
+            "(36.0 * tens)",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "type": "LeafNode"
+      },
+      {
+        "color": null,
+        "model": "crank_dial",
+        "mtime": null,
+        "name": "crank_dial",
+        "operations": [
+          [
+            "r",
+            "crank",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "type": "LeafNode"
+      }
+    ],
+    "color": null,
+    "mtime": null,
+    "name": "Pawl",
+    "operations": [],
+    "type": "AssemblyNode"
+  },
+  "states": {
+    "tens": {
+      "default": 0,
+      "dtype": "int",
+      "range": [
+        0,
+        9
+      ],
+      "scale": null,
+      "unit": null
+    },
+    "units": {
+      "default": 0,
+      "dtype": "int",
+      "range": [
+        0,
+        9
+      ],
+      "scale": null,
+      "unit": null
+    }
+  },
+  "version": 8
+}

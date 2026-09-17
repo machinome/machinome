@@ -1,0 +1,5772 @@
+{
+  "generated_by": "tools/generate_clocked_corpus.py",
+  "corpus": "tests/clocked_project/",
+  "tolerance": {
+    "float": 0.0
+  },
+  "machines": [
+    {
+      "name": "Counter",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "tens": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "units": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(units + 1)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(_b0 % 10)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(10 < 0.0)"
+          },
+          {
+            "name": "_b3",
+            "expression": "(units == 9)"
+          },
+          {
+            "name": "_b4",
+            "expression": "(tens + _b3)"
+          },
+          {
+            "name": "_b5",
+            "expression": "(_b4 % 10)"
+          }
+        ],
+        "clocked": {
+          "identity": "4f5ec72a59a519db348226dded9144aade1a015586d63421118888472b4c4edc",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "units",
+                "tens"
+              ],
+              "targets": [
+                "units",
+                "tens"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(crank / 360)"
+              },
+              "law": [
+                "(_b1 + (10 * ((_b1 != 0.0) * ((_b1 < 0.0) != _b2))))",
+                "(_b5 + (10 * ((_b5 != 0.0) * ((_b5 < 0.0) != _b2))))"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, units, tens) commits (units, tens)",
+              "stated_by": "Counter"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 3700.0
+          }
+        },
+        {
+          "snapshot": "a"
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": -800.0
+          }
+        },
+        {
+          "restore": "a"
+        },
+        {
+          "move": {
+            "input": "crank",
+            "to": 4000.0
+          }
+        },
+        {
+          "reset": true
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 400000.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "crank": 3700.0,
+            "tens": 1,
+            "units": 0
+          },
+          "admitted": 3700.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.0972972972972973,
+              "value": 360.0,
+              "targets": {
+                "units": 1,
+                "tens": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.1945945945945946,
+              "value": 720.0,
+              "targets": {
+                "units": 2,
+                "tens": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.2918918918918919,
+              "value": 1080.0,
+              "targets": {
+                "units": 3,
+                "tens": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.3891891891891892,
+              "value": 1440.0,
+              "targets": {
+                "units": 4,
+                "tens": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.4864864864864865,
+              "value": 1800.0,
+              "targets": {
+                "units": 5,
+                "tens": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.5837837837837838,
+              "value": 2160.0,
+              "targets": {
+                "units": 6,
+                "tens": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.6810810810810811,
+              "value": 2520.0,
+              "targets": {
+                "units": 7,
+                "tens": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.7783783783783784,
+              "value": 2880.0,
+              "targets": {
+                "units": 8,
+                "tens": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.8756756756756757,
+              "value": 3240.0,
+              "targets": {
+                "units": 9,
+                "tens": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.972972972972973,
+              "value": 3600.0,
+              "targets": {
+                "units": 0,
+                "tens": 1
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 3700.0,
+            "tens": 1,
+            "units": 0
+          }
+        },
+        {
+          "bank": {
+            "crank": 2900.0,
+            "tens": 1,
+            "units": 0
+          },
+          "admitted": -800.0,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 3700.0,
+            "tens": 1,
+            "units": 0
+          }
+        },
+        {
+          "bank": {
+            "crank": 4000.0,
+            "tens": 1,
+            "units": 1
+          },
+          "admitted": 300.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.8666666666666667,
+              "value": 3960.0,
+              "targets": {
+                "units": 1,
+                "tens": 1
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 0,
+            "tens": 0,
+            "units": 0
+          }
+        },
+        {
+          "bank": {
+            "crank": 0,
+            "tens": 0,
+            "units": 0
+          },
+          "refused": {
+            "kind": "TooManyEvents",
+            "names": [
+              "crank",
+              "tens",
+              "units"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "KinkedCounter",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "tens": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "units": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(units + 1)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(_b0 % 10)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(10 < 0.0)"
+          },
+          {
+            "name": "_b3",
+            "expression": "(units == 9)"
+          },
+          {
+            "name": "_b4",
+            "expression": "(tens + _b3)"
+          },
+          {
+            "name": "_b5",
+            "expression": "(_b4 % 10)"
+          }
+        ],
+        "clocked": {
+          "identity": "6a66b57e3640620bc52648f6e6cc1b45eb8eadd97f0629e395de4692ce40887c",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "units",
+                "tens"
+              ],
+              "targets": [
+                "units",
+                "tens"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(max(crank, 0.0) / 360)"
+              },
+              "law": [
+                "(_b1 + (10 * ((_b1 != 0.0) * ((_b1 < 0.0) != _b2))))",
+                "(_b5 + (10 * ((_b5 != 0.0) * ((_b5 < 0.0) != _b2))))"
+              ],
+              "shapes": {
+                "crank": "kinked"
+              },
+              "description": "(crank, units, tens) commits (units, tens)",
+              "stated_by": "KinkedCounter"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": -400.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 1500.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "crank": -400.0,
+            "tens": 0,
+            "units": 0
+          },
+          "admitted": -400.0,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 1100.0,
+            "tens": 0,
+            "units": 3
+          },
+          "admitted": 1500.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.5066666666666667,
+              "value": 360.0,
+              "targets": {
+                "units": 1,
+                "tens": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.7466666666666667,
+              "value": 720.0,
+              "targets": {
+                "units": 2,
+                "tens": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.9866666666666667,
+              "value": 1080.0,
+              "targets": {
+                "units": 3,
+                "tens": 0
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Register",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "operand": {
+            "default": 1,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "ring": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "w0.digit": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "w1.digit": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "w2.digit": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(10 * w1.digit)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(w0.digit + _b0)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(100 * w2.digit)"
+          },
+          {
+            "name": "_b3",
+            "expression": "(_b1 + _b2)"
+          },
+          {
+            "name": "_b4",
+            "expression": "(_b3 + operand)"
+          },
+          {
+            "name": "_b5",
+            "expression": "(_b4 % 10)"
+          },
+          {
+            "name": "_b6",
+            "expression": "(10 < 0.0)"
+          },
+          {
+            "name": "_b7",
+            "expression": "(_b4 / 10)"
+          },
+          {
+            "name": "_b8",
+            "expression": "floor(_b7)"
+          },
+          {
+            "name": "_b9",
+            "expression": "(_b8 % 10)"
+          },
+          {
+            "name": "_b10",
+            "expression": "(_b4 / 100)"
+          },
+          {
+            "name": "_b11",
+            "expression": "floor(_b10)"
+          },
+          {
+            "name": "_b12",
+            "expression": "(_b11 % 10)"
+          },
+          {
+            "name": "_b13",
+            "expression": "(4.0 * w0.digit)"
+          },
+          {
+            "name": "_b14",
+            "expression": "(10.0 + _b13)"
+          },
+          {
+            "name": "_b15",
+            "expression": "(4.0 * w1.digit)"
+          },
+          {
+            "name": "_b16",
+            "expression": "(110.0 + _b15)"
+          },
+          {
+            "name": "_b17",
+            "expression": "(4.0 * w2.digit)"
+          },
+          {
+            "name": "_b18",
+            "expression": "(210.0 + _b17)"
+          }
+        ],
+        "clocked": {
+          "identity": "dcd1df0d08a3d8a5dfb5b66b4fef8eb4a4d15de698a68d9c0b1dc728556cfba4",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "operand",
+                "w0.digit",
+                "w1.digit",
+                "w2.digit"
+              ],
+              "targets": [
+                "w0.digit",
+                "w1.digit",
+                "w2.digit"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(crank / 360)"
+              },
+              "law": [
+                "(_b5 + (10 * ((_b5 != 0.0) * ((_b5 < 0.0) != _b6))))",
+                "(_b9 + (10 * ((_b9 != 0.0) * ((_b9 < 0.0) != _b6))))",
+                "(_b12 + (10 * ((_b12 != 0.0) * ((_b12 < 0.0) != _b6))))"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, operand, w0.digit, w1.digit, w2.digit) commits (w0.digit, w1.digit, w2.digit)",
+              "stated_by": "Register"
+            },
+            {
+              "sources": [
+                "ring",
+                "w0.digit"
+              ],
+              "targets": [
+                "w0.digit"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "(ring - _b14)"
+              },
+              "law": [
+                "(w0.digit * (ring < _b14))"
+              ],
+              "shapes": {
+                "ring": "affine"
+              },
+              "description": "(ring, w0.digit) commits w0.digit",
+              "stated_by": "Register"
+            },
+            {
+              "sources": [
+                "ring",
+                "w1.digit"
+              ],
+              "targets": [
+                "w1.digit"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "(ring - _b16)"
+              },
+              "law": [
+                "(w1.digit * (ring < _b16))"
+              ],
+              "shapes": {
+                "ring": "affine"
+              },
+              "description": "(ring, w1.digit) commits w1.digit",
+              "stated_by": "Register"
+            },
+            {
+              "sources": [
+                "ring",
+                "w2.digit"
+              ],
+              "targets": [
+                "w2.digit"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "(ring - _b18)"
+              },
+              "law": [
+                "(w2.digit * (ring < _b18))"
+              ],
+              "shapes": {
+                "ring": "affine"
+              },
+              "description": "(ring, w2.digit) commits w2.digit",
+              "stated_by": "Register"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "operand",
+            "to": 4
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 1100.0
+          }
+        },
+        {
+          "move": {
+            "input": "ring",
+            "by": 500.0
+          }
+        },
+        {
+          "reset": true
+        },
+        {
+          "move": {
+            "input": "operand",
+            "to": -1
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 400.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "crank": 0,
+            "operand": 4,
+            "ring": 0.0,
+            "w0.digit": 0,
+            "w1.digit": 0,
+            "w2.digit": 0
+          },
+          "admitted": 3.0,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 1100.0,
+            "operand": 4,
+            "ring": 0.0,
+            "w0.digit": 2,
+            "w1.digit": 1,
+            "w2.digit": 0
+          },
+          "admitted": 1100.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, operand, w0.digit, w1.digit, w2.digit) commits (w0.digit, w1.digit, w2.digit)"
+              ],
+              "fraction": 0.32727272727272727,
+              "value": 360.0,
+              "targets": {
+                "w0.digit": 4,
+                "w1.digit": 0,
+                "w2.digit": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, operand, w0.digit, w1.digit, w2.digit) commits (w0.digit, w1.digit, w2.digit)"
+              ],
+              "fraction": 0.6545454545454545,
+              "value": 720.0,
+              "targets": {
+                "w0.digit": 8,
+                "w1.digit": 0,
+                "w2.digit": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, operand, w0.digit, w1.digit, w2.digit) commits (w0.digit, w1.digit, w2.digit)"
+              ],
+              "fraction": 0.9818181818181818,
+              "value": 1080.0,
+              "targets": {
+                "w0.digit": 2,
+                "w1.digit": 1,
+                "w2.digit": 0
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 1100.0,
+            "operand": 4,
+            "ring": 500.0,
+            "w0.digit": 0,
+            "w1.digit": 0,
+            "w2.digit": 0
+          },
+          "admitted": 500.0,
+          "commits": [
+            {
+              "relations": [
+                "(ring, w0.digit) commits w0.digit"
+              ],
+              "fraction": 0.036,
+              "value": 18.0,
+              "targets": {
+                "w0.digit": 0
+              }
+            },
+            {
+              "relations": [
+                "(ring, w1.digit) commits w1.digit"
+              ],
+              "fraction": 0.228,
+              "value": 114.0,
+              "targets": {
+                "w1.digit": 0
+              }
+            },
+            {
+              "relations": [
+                "(ring, w2.digit) commits w2.digit"
+              ],
+              "fraction": 0.42,
+              "value": 210.0,
+              "targets": {
+                "w2.digit": 0
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 0,
+            "operand": 1,
+            "ring": 0.0,
+            "w0.digit": 0,
+            "w1.digit": 0,
+            "w2.digit": 0
+          }
+        },
+        {
+          "bank": {
+            "crank": 0,
+            "operand": -1,
+            "ring": 0.0,
+            "w0.digit": 0,
+            "w1.digit": 0,
+            "w2.digit": 0
+          },
+          "admitted": -2.0,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 400.0,
+            "operand": -1,
+            "ring": 0.0,
+            "w0.digit": 9,
+            "w1.digit": 9,
+            "w2.digit": 9
+          },
+          "admitted": 400.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, operand, w0.digit, w1.digit, w2.digit) commits (w0.digit, w1.digit, w2.digit)"
+              ],
+              "fraction": 0.9,
+              "value": 360.0,
+              "targets": {
+                "w0.digit": 9,
+                "w1.digit": 9,
+                "w2.digit": 9
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Clearer",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "ring": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "dial.digit": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(10 - dial.digit)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(4.0 * _b0)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(10.0 + _b1)"
+          }
+        ],
+        "clocked": {
+          "identity": "4c342dfc756bd669b1fc8f0aa72c4ad7ec2846d228ab2d7cebc8f25d48b9b8f0",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "ring",
+                "dial.digit"
+              ],
+              "targets": [
+                "dial.digit"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "(ring - _b2)"
+              },
+              "law": [
+                "(dial.digit * (ring < _b2))"
+              ],
+              "shapes": {
+                "ring": "affine"
+              },
+              "description": "(ring, dial.digit) commits dial.digit",
+              "stated_by": "Clearer"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "ring",
+            "by": 60.0
+          }
+        },
+        {
+          "move": {
+            "input": "ring",
+            "by": -60.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "dial.digit": 0,
+            "ring": 60.0
+          },
+          "admitted": 60.0,
+          "commits": [
+            {
+              "relations": [
+                "(ring, dial.digit) commits dial.digit"
+              ],
+              "fraction": 0.8333333333333334,
+              "value": 50.0,
+              "targets": {
+                "dial.digit": 0
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "dial.digit": 0,
+            "ring": 0.0
+          },
+          "admitted": -60.0,
+          "commits": [],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Pawl",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "tens": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "units": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(units + 1)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(_b0 % 10)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(10 < 0.0)"
+          },
+          {
+            "name": "_b3",
+            "expression": "(units == 9)"
+          },
+          {
+            "name": "_b4",
+            "expression": "(tens + _b3)"
+          },
+          {
+            "name": "_b5",
+            "expression": "(_b4 % 10)"
+          },
+          {
+            "name": "_b6",
+            "expression": "(_own / 6.0)"
+          }
+        ],
+        "clocked": {
+          "identity": "cd2936e14a4c0cca213f97247d29808187bcd14625d1e3fa805139c8652393a7",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "units",
+                "tens"
+              ],
+              "targets": [
+                "units",
+                "tens"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(crank / 360)"
+              },
+              "law": [
+                "(_b1 + (10 * ((_b1 != 0.0) * ((_b1 < 0.0) != _b2))))",
+                "(_b5 + (10 * ((_b5 != 0.0) * ((_b5 < 0.0) != _b2))))"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, units, tens) commits (units, tens)",
+              "stated_by": "Pawl"
+            }
+          ],
+          "bounds": [
+            {
+              "coordinate": "crank_dial.turn",
+              "side": "low",
+              "unit": "deg",
+              "value": "crank",
+              "bound": "(6.0 * floor(_b6))",
+              "plan": {
+                "skeleton": "((6.0 * _j0) - crank)",
+                "jumps": [
+                  {
+                    "name": "_j0",
+                    "primitive": "floor",
+                    "level": "_b6",
+                    "affine": true
+                  }
+                ]
+              },
+              "shapes": {
+                "crank": {
+                  "level": "affine",
+                  "jumps": [
+                    "constant"
+                  ]
+                }
+              },
+              "node": "Dial",
+              "joint": "turn",
+              "description": "the low bound of 'crank_dial.turn'"
+            }
+          ],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 1100.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": -30.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "crank": 1100.0,
+            "tens": 0,
+            "units": 3
+          },
+          "admitted": 1100.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.32727272727272727,
+              "value": 360.0,
+              "targets": {
+                "units": 1,
+                "tens": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.6545454545454545,
+              "value": 720.0,
+              "targets": {
+                "units": 2,
+                "tens": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.9818181818181818,
+              "value": 1080.0,
+              "targets": {
+                "units": 3,
+                "tens": 0
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 1098.0,
+            "tens": 0,
+            "units": 3
+          },
+          "admitted": -2.0,
+          "commits": [],
+          "stops": [
+            {
+              "coordinate": "crank_dial.turn",
+              "side": "low",
+              "bound": 1098.0,
+              "value": 1098.0,
+              "input": 1098.0,
+              "fraction": 0.06666666666666667
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Stroke",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "lift": {
+            "default": 0.0,
+            "range": null,
+            "unit": "mm",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "tens": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "units": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(units + 1)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(_b0 % 10)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(10 < 0.0)"
+          },
+          {
+            "name": "_b3",
+            "expression": "(units == 9)"
+          },
+          {
+            "name": "_b4",
+            "expression": "(tens + _b3)"
+          },
+          {
+            "name": "_b5",
+            "expression": "(_b4 % 10)"
+          }
+        ],
+        "clocked": {
+          "identity": "3bbcf98c79763a39a31c87478ff332439196c1595231f5f7844d35a3aa57ad9c",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "units",
+                "tens"
+              ],
+              "targets": [
+                "units",
+                "tens"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(crank / 360)"
+              },
+              "law": [
+                "(_b1 + (10 * ((_b1 != 0.0) * ((_b1 < 0.0) != _b2))))",
+                "(_b5 + (10 * ((_b5 != 0.0) * ((_b5 < 0.0) != _b2))))"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, units, tens) commits (units, tens)",
+              "stated_by": "Stroke"
+            }
+          ],
+          "bounds": [
+            {
+              "coordinate": "plate.lift",
+              "side": "low",
+              "unit": "mm",
+              "value": "lift",
+              "bound": 0.0,
+              "plan": null,
+              "shapes": {
+                "lift": {
+                  "level": "affine",
+                  "jumps": []
+                }
+              },
+              "node": "Plate",
+              "joint": "lift",
+              "description": "the low bound of 'plate.lift'"
+            },
+            {
+              "coordinate": "plate.lift",
+              "side": "high",
+              "unit": "mm",
+              "value": "lift",
+              "bound": 9.0,
+              "plan": null,
+              "shapes": {
+                "lift": {
+                  "level": "affine",
+                  "jumps": []
+                }
+              },
+              "node": "Plate",
+              "joint": "lift",
+              "description": "the high bound of 'plate.lift'"
+            }
+          ],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "lift",
+            "by": 12.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 400.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "crank": 0,
+            "lift": 9.0,
+            "tens": 0,
+            "units": 0
+          },
+          "admitted": 9.0,
+          "commits": [],
+          "stops": [
+            {
+              "coordinate": "plate.lift",
+              "side": "high",
+              "bound": 9.0,
+              "value": 9.0,
+              "input": 9.0,
+              "fraction": 0.75
+            }
+          ]
+        },
+        {
+          "bank": {
+            "crank": 400.0,
+            "lift": 9.0,
+            "tens": 0,
+            "units": 1
+          },
+          "admitted": 400.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "fraction": 0.9,
+              "value": 360.0,
+              "targets": {
+                "units": 1,
+                "tens": 0
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "ScaledStroke",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "lift": {
+            "default": 0.0,
+            "range": null,
+            "unit": "mm",
+            "dtype": null,
+            "scale": 0.5
+          }
+        },
+        "states": {
+          "tens": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "units": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(units + 1)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(_b0 % 10)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(10 < 0.0)"
+          },
+          {
+            "name": "_b3",
+            "expression": "(units == 9)"
+          },
+          {
+            "name": "_b4",
+            "expression": "(tens + _b3)"
+          },
+          {
+            "name": "_b5",
+            "expression": "(_b4 % 10)"
+          }
+        ],
+        "clocked": {
+          "identity": "528e554f57c07abc5d15c5ff983f44fb2e9e33aa2a1f9a3adbc49c62af0f9565",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "units",
+                "tens"
+              ],
+              "targets": [
+                "units",
+                "tens"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(crank / 360)"
+              },
+              "law": [
+                "(_b1 + (10 * ((_b1 != 0.0) * ((_b1 < 0.0) != _b2))))",
+                "(_b5 + (10 * ((_b5 != 0.0) * ((_b5 < 0.0) != _b2))))"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, units, tens) commits (units, tens)",
+              "stated_by": "ScaledStroke"
+            }
+          ],
+          "bounds": [
+            {
+              "coordinate": "plate.lift",
+              "side": "low",
+              "unit": "mm",
+              "value": "lift",
+              "bound": 0.0,
+              "plan": null,
+              "shapes": {
+                "lift": {
+                  "level": "affine",
+                  "jumps": []
+                }
+              },
+              "node": "Plate",
+              "joint": "lift",
+              "description": "the low bound of 'plate.lift'"
+            },
+            {
+              "coordinate": "plate.lift",
+              "side": "high",
+              "unit": "mm",
+              "value": "lift",
+              "bound": 9.0,
+              "plan": null,
+              "shapes": {
+                "lift": {
+                  "level": "affine",
+                  "jumps": []
+                }
+              },
+              "node": "Plate",
+              "joint": "lift",
+              "description": "the high bound of 'plate.lift'"
+            }
+          ],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "lift",
+            "by": 30.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "crank": 0,
+            "lift": 9.0,
+            "tens": 0,
+            "units": 0
+          },
+          "admitted": 4.5,
+          "commits": [],
+          "stops": [
+            {
+              "coordinate": "plate.lift",
+              "side": "high",
+              "bound": 9.0,
+              "value": 9.0,
+              "input": 9.0,
+              "fraction": 0.15
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lock",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "selector": {
+            "default": 0.0,
+            "range": null,
+            "unit": "digit",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "count": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(6.0 * selector)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(crank / 360)"
+          }
+        ],
+        "clocked": {
+          "identity": "a1653c63f833be1186f1249affb66856c5ea6d1a5cfbc4148af6c341d129f8f8",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "_b1"
+              },
+              "law": [
+                "(count + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, count) commits count",
+              "stated_by": "Lock"
+            }
+          ],
+          "bounds": [
+            {
+              "coordinate": "knob.travel",
+              "side": "low",
+              "unit": "mm",
+              "value": "_b0",
+              "bound": 0.0,
+              "plan": null,
+              "shapes": {
+                "selector": {
+                  "level": "affine",
+                  "jumps": []
+                }
+              },
+              "node": "Slide",
+              "joint": "travel",
+              "description": "the low bound of 'knob.travel'"
+            },
+            {
+              "coordinate": "knob.travel",
+              "side": "high",
+              "unit": "mm",
+              "value": "_b0",
+              "bound": "(54.0 * ((crank - (360 * floor(_b1))) < 1))",
+              "plan": {
+                "skeleton": "(_b0 - (54.0 * _j1))",
+                "jumps": [
+                  {
+                    "name": "_j0",
+                    "primitive": "floor",
+                    "level": "_b1",
+                    "affine": true
+                  },
+                  {
+                    "name": "_j1",
+                    "primitive": "<",
+                    "level": "((crank - (360 * _j0)) - 1)",
+                    "affine": true
+                  }
+                ]
+              },
+              "shapes": {
+                "crank": {
+                  "level": "constant",
+                  "jumps": [
+                    "affine",
+                    "affine"
+                  ]
+                },
+                "selector": {
+                  "level": "affine",
+                  "jumps": [
+                    "constant",
+                    "constant"
+                  ]
+                }
+              },
+              "node": "Slide",
+              "joint": "travel",
+              "description": "the high bound of 'knob.travel'"
+            }
+          ],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "selector",
+            "by": 3.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 400.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "count": 0,
+            "crank": 0.0,
+            "selector": 3.0
+          },
+          "admitted": 3.0,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "count": 0,
+            "crank": 0.9999999999999999,
+            "selector": 3.0
+          },
+          "admitted": 0.9999999999999999,
+          "commits": [],
+          "stops": [
+            {
+              "coordinate": "knob.travel",
+              "side": "high",
+              "bound": 54.0,
+              "value": 18.0,
+              "input": 0.9999999999999999,
+              "fraction": 0.0024999999999999996
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kinked",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "selector": {
+            "default": 0.0,
+            "range": null,
+            "unit": "digit",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "count": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(6.0 * selector)"
+          }
+        ],
+        "clocked": {
+          "identity": "f25bd9653bd97e9bffe1796e9bc8acfc53f9adb351cc5971351b14059259ed5c",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(crank / 360)"
+              },
+              "law": [
+                "(count + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, count) commits count",
+              "stated_by": "Kinked"
+            }
+          ],
+          "bounds": [
+            {
+              "coordinate": "knob.travel",
+              "side": "high",
+              "unit": "mm",
+              "value": "_b0",
+              "bound": "(54.0 - max(crank, 30.0))",
+              "plan": null,
+              "shapes": {
+                "crank": {
+                  "level": "kinked",
+                  "jumps": []
+                },
+                "selector": {
+                  "level": "affine",
+                  "jumps": []
+                }
+              },
+              "node": "Slide",
+              "joint": "travel",
+              "description": "the high bound of 'knob.travel'"
+            }
+          ],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "selector",
+            "by": 9.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 90.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "count": 0,
+            "crank": 0.0,
+            "selector": 4.0
+          },
+          "admitted": 4.0,
+          "commits": [],
+          "stops": [
+            {
+              "coordinate": "knob.travel",
+              "side": "high",
+              "bound": 24.0,
+              "value": 24.0,
+              "input": 4.0,
+              "fraction": 0.4444444444444444
+            }
+          ]
+        },
+        {
+          "bank": {
+            "count": 0,
+            "crank": 30.0,
+            "selector": 4.0
+          },
+          "admitted": 30.0,
+          "commits": [],
+          "stops": [
+            {
+              "coordinate": "knob.travel",
+              "side": "high",
+              "bound": 24.0,
+              "value": 24.0,
+              "input": 30.0,
+              "fraction": 0.3333333333333333
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Freeze",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "selector": {
+            "default": 0.0,
+            "range": null,
+            "unit": "digit",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "count": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(6.0 * selector)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(crank / 360)"
+          },
+          {
+            "name": "_b2",
+            "expression": "floor(_b1)"
+          },
+          {
+            "name": "_b3",
+            "expression": "(360 * _b2)"
+          },
+          {
+            "name": "_b4",
+            "expression": "(crank - _b3)"
+          },
+          {
+            "name": "_b5",
+            "expression": "(_b4 < 1)"
+          },
+          {
+            "name": "_b6",
+            "expression": "(54.0 - _own)"
+          }
+        ],
+        "clocked": {
+          "identity": "ba8bf0b0509aef3a9970db8150ca18a73f78c59ef90070a254aaf812cbb6741b",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "_b1"
+              },
+              "law": [
+                "(count + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, count) commits count",
+              "stated_by": "Freeze"
+            }
+          ],
+          "bounds": [
+            {
+              "coordinate": "knob.travel",
+              "side": "low",
+              "unit": "mm",
+              "value": "_b0",
+              "bound": "(_own * (1 - _b5))",
+              "plan": {
+                "skeleton": "((_own * (1 - _j1)) - _b0)",
+                "jumps": [
+                  {
+                    "name": "_j0",
+                    "primitive": "floor",
+                    "level": "_b1",
+                    "affine": true
+                  },
+                  {
+                    "name": "_j1",
+                    "primitive": "<",
+                    "level": "((crank - (360 * _j0)) - 1)",
+                    "affine": true
+                  }
+                ]
+              },
+              "shapes": {
+                "crank": {
+                  "level": "constant",
+                  "jumps": [
+                    "affine",
+                    "affine"
+                  ]
+                },
+                "selector": {
+                  "level": "affine",
+                  "jumps": [
+                    "constant",
+                    "constant"
+                  ]
+                }
+              },
+              "node": "Slide",
+              "joint": "travel",
+              "description": "the low bound of 'knob.travel'"
+            },
+            {
+              "coordinate": "knob.travel",
+              "side": "high",
+              "unit": "mm",
+              "value": "_b0",
+              "bound": "(_own + (_b6 * _b5))",
+              "plan": {
+                "skeleton": "(_b0 - (_own + (_b6 * _j3)))",
+                "jumps": [
+                  {
+                    "name": "_j2",
+                    "primitive": "floor",
+                    "level": "_b1",
+                    "affine": true
+                  },
+                  {
+                    "name": "_j3",
+                    "primitive": "<",
+                    "level": "((crank - (360 * _j2)) - 1)",
+                    "affine": true
+                  }
+                ]
+              },
+              "shapes": {
+                "crank": {
+                  "level": "constant",
+                  "jumps": [
+                    "affine",
+                    "affine"
+                  ]
+                },
+                "selector": {
+                  "level": "affine",
+                  "jumps": [
+                    "constant",
+                    "constant"
+                  ]
+                }
+              },
+              "node": "Slide",
+              "joint": "travel",
+              "description": "the high bound of 'knob.travel'"
+            }
+          ],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "selector",
+            "by": 3.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 200.0
+          }
+        },
+        {
+          "move": {
+            "input": "selector",
+            "by": 3.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 160.0
+          }
+        },
+        {
+          "move": {
+            "input": "selector",
+            "by": 3.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "count": 0,
+            "crank": 0.0,
+            "selector": 3.0
+          },
+          "admitted": 3.0,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "count": 0,
+            "crank": 200.0,
+            "selector": 3.0
+          },
+          "admitted": 200.0,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "count": 0,
+            "crank": 200.0,
+            "selector": 3.0
+          },
+          "admitted": 0.0,
+          "commits": [],
+          "stops": [
+            {
+              "coordinate": "knob.travel",
+              "side": "high",
+              "bound": 18.0,
+              "value": 18.0,
+              "input": 3.0,
+              "fraction": 0.0
+            }
+          ]
+        },
+        {
+          "bank": {
+            "count": 1,
+            "crank": 360.0,
+            "selector": 3.0
+          },
+          "admitted": 160.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, count) commits count"
+              ],
+              "fraction": 1.0,
+              "value": 360.0,
+              "targets": {
+                "count": 1
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "count": 1,
+            "crank": 360.0,
+            "selector": 6.0
+          },
+          "admitted": 3.0,
+          "commits": [],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Gate",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "opened": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(crank / 100.0)"
+          }
+        ],
+        "clocked": {
+          "identity": "c99e3b816f979e52e4add1f4f856926e2ee475e964880e2ba72d4a6d864bea49",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "opened"
+              ],
+              "targets": [
+                "opened"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(crank / 200.0)"
+              },
+              "law": [
+                "1.0"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, opened) commits opened",
+              "stated_by": "Gate"
+            }
+          ],
+          "bounds": [
+            {
+              "coordinate": "shutter.travel",
+              "side": "low",
+              "unit": "mm",
+              "value": "_b0",
+              "bound": 0.0,
+              "plan": null,
+              "shapes": {
+                "crank": {
+                  "level": "affine",
+                  "jumps": []
+                }
+              },
+              "node": "Slide",
+              "joint": "travel",
+              "description": "the low bound of 'shutter.travel'"
+            },
+            {
+              "coordinate": "shutter.travel",
+              "side": "high",
+              "unit": "mm",
+              "value": "_b0",
+              "bound": "(3 + (9 * opened))",
+              "plan": null,
+              "shapes": {
+                "crank": {
+                  "level": "affine",
+                  "jumps": []
+                }
+              },
+              "node": "Slide",
+              "joint": "travel",
+              "description": "the high bound of 'shutter.travel'"
+            }
+          ],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 1000.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 800.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "crank": 300.0,
+            "opened": 1
+          },
+          "admitted": 300.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, opened) commits opened"
+              ],
+              "fraction": 0.6666666666666666,
+              "value": 200.0,
+              "targets": {
+                "opened": 1
+              }
+            }
+          ],
+          "stops": [
+            {
+              "coordinate": "shutter.travel",
+              "side": "high",
+              "bound": 3.0,
+              "value": 3.0,
+              "input": 300.0,
+              "fraction": 0.3
+            }
+          ]
+        },
+        {
+          "bank": {
+            "crank": 1100.0,
+            "opened": 1
+          },
+          "admitted": 800.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, opened) commits opened"
+              ],
+              "fraction": 0.125,
+              "value": 400.0,
+              "targets": {
+                "opened": 1
+              }
+            },
+            {
+              "relations": [
+                "(crank, opened) commits opened"
+              ],
+              "fraction": 0.375,
+              "value": 600.0,
+              "targets": {
+                "opened": 1
+              }
+            },
+            {
+              "relations": [
+                "(crank, opened) commits opened"
+              ],
+              "fraction": 0.625,
+              "value": 800.0,
+              "targets": {
+                "opened": 1
+              }
+            },
+            {
+              "relations": [
+                "(crank, opened) commits opened"
+              ],
+              "fraction": 0.875,
+              "value": 1000.0,
+              "targets": {
+                "opened": 1
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Shut",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "shutting": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(crank / 100.0)"
+          }
+        ],
+        "clocked": {
+          "identity": "ecbaa53d75fee7d5aabb9c03a4f715055b2b8b2f9d75117e8383bc0bf6aa99f7",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "shutting"
+              ],
+              "targets": [
+                "shutting"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(crank / 200.0)"
+              },
+              "law": [
+                "1.0"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, shutting) commits shutting",
+              "stated_by": "Shut"
+            }
+          ],
+          "bounds": [
+            {
+              "coordinate": "shutter.travel",
+              "side": "low",
+              "unit": "mm",
+              "value": "_b0",
+              "bound": 0.0,
+              "plan": null,
+              "shapes": {
+                "crank": {
+                  "level": "affine",
+                  "jumps": []
+                }
+              },
+              "node": "Slide",
+              "joint": "travel",
+              "description": "the low bound of 'shutter.travel'"
+            },
+            {
+              "coordinate": "shutter.travel",
+              "side": "high",
+              "unit": "mm",
+              "value": "_b0",
+              "bound": "(3 - (3 * shutting))",
+              "plan": null,
+              "shapes": {
+                "crank": {
+                  "level": "affine",
+                  "jumps": []
+                }
+              },
+              "node": "Slide",
+              "joint": "travel",
+              "description": "the high bound of 'shutter.travel'"
+            }
+          ],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 1000.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "crank": 0.0,
+            "shutting": 0
+          },
+          "refused": {
+            "kind": "JointRangeError",
+            "names": [
+              "crank",
+              "shutter.travel",
+              "travel"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "SamePair",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "a": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "b": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(crank - 100.0)"
+          }
+        ],
+        "clocked": {
+          "identity": "ab00dc5f12e8c3ad387c7f993958ba1a6b1939276ffb9dcc7167056e023a525a",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "a",
+                "b"
+              ],
+              "targets": [
+                "a"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "_b0"
+              },
+              "law": [
+                "(a + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, a, b) commits a",
+              "stated_by": "SamePair"
+            },
+            {
+              "sources": [
+                "crank",
+                "a",
+                "b"
+              ],
+              "targets": [
+                "b"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "_b0"
+              },
+              "law": [
+                "((a * 10) + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, a, b) commits b",
+              "stated_by": "SamePair"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 200.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "a": 1,
+            "b": 1,
+            "crank": 200.0
+          },
+          "admitted": 200.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, a, b) commits a",
+                "(crank, a, b) commits b"
+              ],
+              "fraction": 0.5,
+              "value": 100.0,
+              "targets": {
+                "a": 1,
+                "b": 1
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "SwappedPair",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "a": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "b": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(crank - 100.0)"
+          }
+        ],
+        "clocked": {
+          "identity": "bc7db7836a98d6c52a67e9d51f8d06708a9b14361775236e6c36d594fdbd8502",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "a",
+                "b"
+              ],
+              "targets": [
+                "b"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "_b0"
+              },
+              "law": [
+                "((a * 10) + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, a, b) commits b",
+              "stated_by": "SwappedPair"
+            },
+            {
+              "sources": [
+                "crank",
+                "a",
+                "b"
+              ],
+              "targets": [
+                "a"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "_b0"
+              },
+              "law": [
+                "(a + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, a, b) commits a",
+              "stated_by": "SwappedPair"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 200.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "a": 1,
+            "b": 1,
+            "crank": 200.0
+          },
+          "admitted": 200.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, a, b) commits b",
+                "(crank, a, b) commits a"
+              ],
+              "fraction": 0.5,
+              "value": 100.0,
+              "targets": {
+                "b": 1,
+                "a": 1
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "UlpPair",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "a": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "b": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "17809d98f5405bc8eeebf51b72f39a5e6c2933ee483ac89cb6c02cef81430948",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "a",
+                "b"
+              ],
+              "targets": [
+                "a"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "(crank - 100.0)"
+              },
+              "law": [
+                "(a + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, a, b) commits a",
+              "stated_by": "UlpPair"
+            },
+            {
+              "sources": [
+                "crank",
+                "a",
+                "b"
+              ],
+              "targets": [
+                "b"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "(crank - 100.00000000000001)"
+              },
+              "law": [
+                "((a * 10) + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, a, b) commits b",
+              "stated_by": "UlpPair"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 200.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "a": 1,
+            "b": 11,
+            "crank": 200.0
+          },
+          "admitted": 200.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, a, b) commits a"
+              ],
+              "fraction": 0.5,
+              "value": 100.0,
+              "targets": {
+                "a": 1
+              }
+            },
+            {
+              "relations": [
+                "(crank, a, b) commits b"
+              ],
+              "fraction": 0.5000000000000001,
+              "value": 100.00000000000001,
+              "targets": {
+                "b": 11
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Strict",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "a": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "908c0e4023df7078d5d025180cd44e7b3316331841229e3a5e03fac42682b5e2",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "a"
+              ],
+              "targets": [
+                "a"
+              ],
+              "at": {
+                "primitive": ">",
+                "level": "(crank - 100.0)"
+              },
+              "law": [
+                "(a + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, a) commits a",
+              "stated_by": "Strict"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "to": 150.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 50.0
+          }
+        },
+        {
+          "reset": true
+        },
+        {
+          "move": {
+            "input": "crank",
+            "to": 100.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 1.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 1.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "a": 1,
+            "crank": 150.0
+          },
+          "admitted": 150.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, a) commits a"
+              ],
+              "fraction": 0.6666666666666667,
+              "value": 100.00000000000001,
+              "targets": {
+                "a": 1
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "a": 1,
+            "crank": 200.0
+          },
+          "admitted": 50.0,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "a": 0,
+            "crank": 0.0
+          }
+        },
+        {
+          "bank": {
+            "a": 0,
+            "crank": 100.0
+          },
+          "admitted": 100.0,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "a": 1,
+            "crank": 101.0
+          },
+          "admitted": 1.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, a) commits a"
+              ],
+              "fraction": 1.4210854715202004e-14,
+              "value": 100.00000000000001,
+              "targets": {
+                "a": 1
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "a": 1,
+            "crank": 102.0
+          },
+          "admitted": 1.0,
+          "commits": [],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "NonStrict",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "a": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "1b980b7659a68a165619cf180e140fa89ed3fd1b7ef782ac7ce4b629ad95cdb2",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "a"
+              ],
+              "targets": [
+                "a"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "(crank - 100.0)"
+              },
+              "law": [
+                "(a + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, a) commits a",
+              "stated_by": "NonStrict"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "to": 100.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 1.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "a": 1,
+            "crank": 100.0
+          },
+          "admitted": 100.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, a) commits a"
+              ],
+              "fraction": 1.0,
+              "value": 100.0,
+              "targets": {
+                "a": 1
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "a": 1,
+            "crank": 101.0
+          },
+          "admitted": 1.0,
+          "commits": [],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Regulator",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "engaged": {
+            "default": 1,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "states": {
+          "count": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "2e172caadb36e7a531d000a95ebbd99d13492a6f6e17dbd31abe2788445e65e4",
+          "clock": "time",
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "time",
+                "engaged",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "((time + 0.5) / 1.0)"
+              },
+              "law": [
+                "(count + engaged)"
+              ],
+              "shapes": {
+                "time": "affine"
+              },
+              "description": "(time, engaged, count) commits count",
+              "stated_by": "Regulator"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "time",
+            "by": 5.0
+          }
+        },
+        {
+          "snapshot": "b"
+        },
+        {
+          "move": {
+            "input": "time",
+            "by": -1.0
+          }
+        },
+        {
+          "move": {
+            "input": "time",
+            "by": 0.0
+          }
+        },
+        {
+          "restore": "b"
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "count": 5,
+            "engaged": 1,
+            "time": 5.0
+          },
+          "admitted": 5.0,
+          "commits": [
+            {
+              "relations": [
+                "(time, engaged, count) commits count"
+              ],
+              "fraction": 0.09999999999999999,
+              "value": 0.49999999999999994,
+              "targets": {
+                "count": 1
+              }
+            },
+            {
+              "relations": [
+                "(time, engaged, count) commits count"
+              ],
+              "fraction": 0.3,
+              "value": 1.5,
+              "targets": {
+                "count": 2
+              }
+            },
+            {
+              "relations": [
+                "(time, engaged, count) commits count"
+              ],
+              "fraction": 0.5,
+              "value": 2.5,
+              "targets": {
+                "count": 3
+              }
+            },
+            {
+              "relations": [
+                "(time, engaged, count) commits count"
+              ],
+              "fraction": 0.7,
+              "value": 3.5,
+              "targets": {
+                "count": 4
+              }
+            },
+            {
+              "relations": [
+                "(time, engaged, count) commits count"
+              ],
+              "fraction": 0.9,
+              "value": 4.5,
+              "targets": {
+                "count": 5
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "count": 5,
+            "engaged": 1,
+            "time": 5.0
+          }
+        },
+        {
+          "bank": {
+            "count": 5,
+            "engaged": 1,
+            "time": 5.0
+          },
+          "refused": {
+            "kind": "ValueError",
+            "names": [
+              "time"
+            ]
+          }
+        },
+        {
+          "bank": {
+            "count": 5,
+            "engaged": 1,
+            "time": 5.0
+          },
+          "admitted": 0.0,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "count": 5,
+            "engaged": 1,
+            "time": 5.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lift",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "engaged": {
+            "default": 1,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "lift": {
+            "default": 0.0,
+            "range": null,
+            "unit": "mm",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "count": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "a924dae7043f4c1cb38c8917f42138c8b9703630089516b3180259cbcbddbd7a",
+          "clock": "time",
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "time",
+                "engaged",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "((time + 0.5) / 1.0)"
+              },
+              "law": [
+                "(count + engaged)"
+              ],
+              "shapes": {
+                "time": "affine"
+              },
+              "description": "(time, engaged, count) commits count",
+              "stated_by": "Lift"
+            }
+          ],
+          "bounds": [
+            {
+              "coordinate": "plate.lift",
+              "side": "low",
+              "unit": "mm",
+              "value": "lift",
+              "bound": 0.0,
+              "plan": null,
+              "shapes": {
+                "lift": {
+                  "level": "affine",
+                  "jumps": []
+                }
+              },
+              "node": "Plate",
+              "joint": "lift",
+              "description": "the low bound of 'plate.lift'"
+            },
+            {
+              "coordinate": "plate.lift",
+              "side": "high",
+              "unit": "mm",
+              "value": "lift",
+              "bound": 9.0,
+              "plan": null,
+              "shapes": {
+                "lift": {
+                  "level": "affine",
+                  "jumps": []
+                }
+              },
+              "node": "Plate",
+              "joint": "lift",
+              "description": "the high bound of 'plate.lift'"
+            }
+          ],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "time",
+            "by": 4.0
+          }
+        },
+        {
+          "move": {
+            "input": "lift",
+            "by": 12.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "count": 4,
+            "engaged": 1,
+            "lift": 0.0,
+            "time": 4.0
+          },
+          "admitted": 4.0,
+          "commits": [
+            {
+              "relations": [
+                "(time, engaged, count) commits count"
+              ],
+              "fraction": 0.12499999999999999,
+              "value": 0.49999999999999994,
+              "targets": {
+                "count": 1
+              }
+            },
+            {
+              "relations": [
+                "(time, engaged, count) commits count"
+              ],
+              "fraction": 0.375,
+              "value": 1.5,
+              "targets": {
+                "count": 2
+              }
+            },
+            {
+              "relations": [
+                "(time, engaged, count) commits count"
+              ],
+              "fraction": 0.625,
+              "value": 2.5,
+              "targets": {
+                "count": 3
+              }
+            },
+            {
+              "relations": [
+                "(time, engaged, count) commits count"
+              ],
+              "fraction": 0.875,
+              "value": 3.5,
+              "targets": {
+                "count": 4
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "count": 4,
+            "engaged": 1,
+            "lift": 9.0,
+            "time": 4.0
+          },
+          "admitted": 9.0,
+          "commits": [],
+          "stops": [
+            {
+              "coordinate": "plate.lift",
+              "side": "high",
+              "bound": 9.0,
+              "value": 9.0,
+              "input": 9.0,
+              "fraction": 0.75
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ClockAlone",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {},
+        "states": {
+          "count": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "c40db8e557b31859b49c51ded3f49aa46abed8a9bbdedb0de1c96637ea32d44d",
+          "clock": "time",
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "time",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "((time + 0.5) / 1.0)"
+              },
+              "law": [
+                "(count + 1)"
+              ],
+              "shapes": {
+                "time": "affine"
+              },
+              "description": "(time, count) commits count",
+              "stated_by": "ClockAlone"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "time",
+            "by": 3.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "count": 3,
+            "time": 3.0
+          },
+          "admitted": 3.0,
+          "commits": [
+            {
+              "relations": [
+                "(time, count) commits count"
+              ],
+              "fraction": 0.16666666666666666,
+              "value": 0.49999999999999994,
+              "targets": {
+                "count": 1
+              }
+            },
+            {
+              "relations": [
+                "(time, count) commits count"
+              ],
+              "fraction": 0.5,
+              "value": 1.5,
+              "targets": {
+                "count": 2
+              }
+            },
+            {
+              "relations": [
+                "(time, count) commits count"
+              ],
+              "fraction": 0.8333333333333334,
+              "value": 2.5,
+              "targets": {
+                "count": 3
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Decorative",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "count": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "bd9dfb401c8b517eb266182f70aac4cecfcdfd2e13f93243062888b5b6426c94",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(crank / 360)"
+              },
+              "law": [
+                "(count + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, count) commits count",
+              "stated_by": "Decorative"
+            }
+          ],
+          "bounds": [
+            {
+              "coordinate": "plate.lift",
+              "side": "low",
+              "unit": "mm",
+              "value": "0.0",
+              "bound": 0.0,
+              "plan": null,
+              "shapes": {},
+              "node": "Plate",
+              "joint": "lift",
+              "description": "the low bound of 'plate.lift'"
+            },
+            {
+              "coordinate": "plate.lift",
+              "side": "high",
+              "unit": "mm",
+              "value": "0.0",
+              "bound": 5.0,
+              "plan": null,
+              "shapes": {},
+              "node": "Plate",
+              "joint": "lift",
+              "description": "the high bound of 'plate.lift'"
+            }
+          ],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 800.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "count": 2,
+            "crank": 800.0
+          },
+          "admitted": 800.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, count) commits count"
+              ],
+              "fraction": 0.45,
+              "value": 360.0,
+              "targets": {
+                "count": 1
+              }
+            },
+            {
+              "relations": [
+                "(crank, count) commits count"
+              ],
+              "fraction": 0.9,
+              "value": 720.0,
+              "targets": {
+                "count": 2
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Untouchable",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "count": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "853964e572959b32a11898e561641a4fdb9bb3845a6fbf514b537b8c2c29025e",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(crank / 360)"
+              },
+              "law": [
+                "(count + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, count) commits count",
+              "stated_by": "Untouchable"
+            }
+          ],
+          "bounds": [
+            {
+              "coordinate": "plate.lift",
+              "side": "low",
+              "unit": "mm",
+              "value": "0.0",
+              "bound": 2.0,
+              "plan": null,
+              "shapes": {},
+              "node": "Plate",
+              "joint": "lift",
+              "description": "the low bound of 'plate.lift'"
+            },
+            {
+              "coordinate": "plate.lift",
+              "side": "high",
+              "unit": "mm",
+              "value": "0.0",
+              "bound": 5.0,
+              "plan": null,
+              "shapes": {},
+              "node": "Plate",
+              "joint": "lift",
+              "description": "the high bound of 'plate.lift'"
+            }
+          ],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 800.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "count": 2,
+            "crank": 800.0
+          },
+          "admitted": 800.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, count) commits count"
+              ],
+              "fraction": 0.45,
+              "value": 360.0,
+              "targets": {
+                "count": 1
+              }
+            },
+            {
+              "relations": [
+                "(crank, count) commits count"
+              ],
+              "fraction": 0.9,
+              "value": 720.0,
+              "targets": {
+                "count": 2
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Scaled",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "value": {
+            "default": 0.0,
+            "range": null,
+            "unit": "digit",
+            "dtype": null,
+            "scale": 10.0
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "f6743e9a3898285d19858f50762241ad6c476b42dc955a1be8f6ca44a5665de5",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "value"
+              ],
+              "targets": [
+                "value"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(crank / 360)"
+              },
+              "law": [
+                "4.0"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, value) commits value",
+              "stated_by": "Scaled"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 400.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "crank": 400.0,
+            "value": 4.0
+          },
+          "admitted": 400.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, value) commits value"
+              ],
+              "fraction": 0.9,
+              "value": 360.0,
+              "targets": {
+                "value": 4.0
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Rounded",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "value": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "1051b6e8820636586c04b265236efc0f4559c21ac37cdbc8256d33407c5825c8",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "value"
+              ],
+              "targets": [
+                "value"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(crank / 360)"
+              },
+              "law": [
+                "8.999999999999"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, value) commits value",
+              "stated_by": "Rounded"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 400.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "crank": 400.0,
+            "value": 9
+          },
+          "admitted": 400.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, value) commits value"
+              ],
+              "fraction": 0.9,
+              "value": 360.0,
+              "targets": {
+                "value": 9
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "JumpsOnly",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "value": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(crank / 360)"
+          },
+          {
+            "name": "_b1",
+            "expression": "floor(_b0)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(_b1 % 10)"
+          }
+        ],
+        "clocked": {
+          "identity": "5d0bdae3f12386a31e4bcee79f5b664b27c2d3c3b5c6cd7cd6614c6f553907f5",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "value"
+              ],
+              "targets": [
+                "value"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "_b0"
+              },
+              "law": [
+                "(_b2 + (10 * ((_b2 != 0.0) * ((_b2 < 0.0) != (10 < 0.0)))))"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, value) commits value",
+              "stated_by": "JumpsOnly"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 4000.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "crank": 4000.0,
+            "value": 1
+          },
+          "admitted": 4000.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, value) commits value"
+              ],
+              "fraction": 0.09,
+              "value": 360.0,
+              "targets": {
+                "value": 1
+              }
+            },
+            {
+              "relations": [
+                "(crank, value) commits value"
+              ],
+              "fraction": 0.18,
+              "value": 720.0,
+              "targets": {
+                "value": 2
+              }
+            },
+            {
+              "relations": [
+                "(crank, value) commits value"
+              ],
+              "fraction": 0.27,
+              "value": 1080.0,
+              "targets": {
+                "value": 3
+              }
+            },
+            {
+              "relations": [
+                "(crank, value) commits value"
+              ],
+              "fraction": 0.36,
+              "value": 1440.0,
+              "targets": {
+                "value": 4
+              }
+            },
+            {
+              "relations": [
+                "(crank, value) commits value"
+              ],
+              "fraction": 0.45,
+              "value": 1800.0,
+              "targets": {
+                "value": 5
+              }
+            },
+            {
+              "relations": [
+                "(crank, value) commits value"
+              ],
+              "fraction": 0.54,
+              "value": 2160.0,
+              "targets": {
+                "value": 6
+              }
+            },
+            {
+              "relations": [
+                "(crank, value) commits value"
+              ],
+              "fraction": 0.63,
+              "value": 2520.0,
+              "targets": {
+                "value": 7
+              }
+            },
+            {
+              "relations": [
+                "(crank, value) commits value"
+              ],
+              "fraction": 0.72,
+              "value": 2880.0,
+              "targets": {
+                "value": 8
+              }
+            },
+            {
+              "relations": [
+                "(crank, value) commits value"
+              ],
+              "fraction": 0.81,
+              "value": 3240.0,
+              "targets": {
+                "value": 9
+              }
+            },
+            {
+              "relations": [
+                "(crank, value) commits value"
+              ],
+              "fraction": 0.9,
+              "value": 3600.0,
+              "targets": {
+                "value": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, value) commits value"
+              ],
+              "fraction": 0.99,
+              "value": 3960.0,
+              "targets": {
+                "value": 1
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Standing",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "feed": {
+            "default": 0.0,
+            "range": null,
+            "unit": "mm",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "count": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "ba5cb23acd35e0dc58a73a21ed84095164c37ce8f217588e5a6a4ee4195a873f",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "(crank / 360)"
+              },
+              "law": [
+                "(count + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, count) commits count",
+              "stated_by": "Standing"
+            }
+          ],
+          "bounds": [
+            {
+              "coordinate": "slide.travel",
+              "side": "low",
+              "unit": "mm",
+              "value": "feed",
+              "bound": "(3.0 + 0.0)",
+              "plan": null,
+              "shapes": {
+                "feed": {
+                  "level": "affine",
+                  "jumps": []
+                }
+              },
+              "node": "Slide",
+              "joint": "travel",
+              "description": "the low bound of 'slide.travel'"
+            }
+          ],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "feed",
+            "by": -1.0
+          }
+        },
+        {
+          "move": {
+            "input": "feed",
+            "by": 5.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 400.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "count": 0,
+            "crank": 0.0,
+            "feed": 0.0
+          },
+          "admitted": 0.0,
+          "commits": [],
+          "stops": [
+            {
+              "coordinate": "slide.travel",
+              "side": "low",
+              "bound": 3.0,
+              "value": 0.0,
+              "input": 0.0,
+              "fraction": -0.0
+            }
+          ]
+        },
+        {
+          "bank": {
+            "count": 0,
+            "crank": 0.0,
+            "feed": 5.0
+          },
+          "admitted": 5.0,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "count": 1,
+            "crank": 400.0,
+            "feed": 5.0
+          },
+          "admitted": 400.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, count) commits count"
+              ],
+              "fraction": 0.9,
+              "value": 360.0,
+              "targets": {
+                "count": 1
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Ceiling",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "count": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "169e46cf9d4e3d4396a6fb716e319791b32dfc230ada06a6572a2e2559d7ee4c",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": "ceil",
+                "level": "(crank / 360)"
+              },
+              "law": [
+                "(count + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, count) commits count",
+              "stated_by": "Ceiling"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 500.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "count": 1,
+            "crank": 500.0
+          },
+          "admitted": 500.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, count) commits count"
+              ],
+              "fraction": 0.7200000000000001,
+              "value": 360.00000000000006,
+              "targets": {
+                "count": 1
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Signed",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "shuttle": {
+            "default": -5.0,
+            "range": null,
+            "unit": "mm",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "count": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "clocked": {
+          "identity": "33f57750965380ccd0adbda9c31f880e77859df7bf36a9faea398d15f563a4cd",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "shuttle",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": "sign",
+                "level": "shuttle"
+              },
+              "law": [
+                "(count + 1)"
+              ],
+              "shapes": {
+                "shuttle": "affine"
+              },
+              "description": "(shuttle, count) commits count",
+              "stated_by": "Signed"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "shuttle",
+            "by": 10.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "count": 2,
+            "shuttle": 5.0
+          },
+          "admitted": 10.0,
+          "commits": [
+            {
+              "relations": [
+                "(shuttle, count) commits count"
+              ],
+              "fraction": 0.5,
+              "value": 0.0,
+              "targets": {
+                "count": 1
+              }
+            },
+            {
+              "relations": [
+                "(shuttle, count) commits count"
+              ],
+              "fraction": 0.5,
+              "value": 5e-324,
+              "targets": {
+                "count": 2
+              }
+            }
+          ],
+          "stops": []
+        }
+      ]
+    },
+    {
+      "name": "Conflict",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "count": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(crank - 180)"
+          }
+        ],
+        "clocked": {
+          "identity": "ae5aa66ad3119c3e6887715133dc8d3c52794ecea081e082fcff77982f378894",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "_b0"
+              },
+              "law": [
+                "(count + 1)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, count) commits count",
+              "stated_by": "Conflict"
+            },
+            {
+              "sources": [
+                "crank",
+                "count"
+              ],
+              "targets": [
+                "count"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "_b0"
+              },
+              "law": [
+                "(count + 2)"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, count) commits count",
+              "stated_by": "Conflict"
+            }
+          ],
+          "bounds": [],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "crank",
+            "by": 200.0
+          }
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "count": 0,
+            "crank": 0.0
+          },
+          "refused": {
+            "kind": "ClockedError",
+            "names": [
+              "count",
+              "crank"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Calculator",
+      "document": {
+        "format": "solid-node-export",
+        "version": 8,
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "feed": {
+            "default": 0.0,
+            "range": null,
+            "unit": "mm",
+            "dtype": null,
+            "scale": null
+          },
+          "operand": {
+            "default": 1,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "ring": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "setting": {
+            "default": 0.0,
+            "range": null,
+            "unit": "digit",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "states": {
+          "halved": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "w0.digit": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "w1.digit": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "w2.digit": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          },
+          "w3.digit": {
+            "default": 0,
+            "range": [
+              0,
+              9
+            ],
+            "unit": null,
+            "dtype": "int",
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(6.0 * setting)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(crank / 360)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(10 * w1.digit)"
+          },
+          {
+            "name": "_b3",
+            "expression": "(w0.digit + _b2)"
+          },
+          {
+            "name": "_b4",
+            "expression": "(100 * w2.digit)"
+          },
+          {
+            "name": "_b5",
+            "expression": "(_b3 + _b4)"
+          },
+          {
+            "name": "_b6",
+            "expression": "(1000 * w3.digit)"
+          },
+          {
+            "name": "_b7",
+            "expression": "(_b5 + _b6)"
+          },
+          {
+            "name": "_b8",
+            "expression": "(_b7 + operand)"
+          },
+          {
+            "name": "_b9",
+            "expression": "(_b8 % 10)"
+          },
+          {
+            "name": "_b10",
+            "expression": "(10 < 0.0)"
+          },
+          {
+            "name": "_b11",
+            "expression": "(_b8 / 10)"
+          },
+          {
+            "name": "_b12",
+            "expression": "floor(_b11)"
+          },
+          {
+            "name": "_b13",
+            "expression": "(_b12 % 10)"
+          },
+          {
+            "name": "_b14",
+            "expression": "(_b8 / 100)"
+          },
+          {
+            "name": "_b15",
+            "expression": "floor(_b14)"
+          },
+          {
+            "name": "_b16",
+            "expression": "(_b15 % 10)"
+          },
+          {
+            "name": "_b17",
+            "expression": "(_b8 / 1000)"
+          },
+          {
+            "name": "_b18",
+            "expression": "floor(_b17)"
+          },
+          {
+            "name": "_b19",
+            "expression": "(_b18 % 10)"
+          },
+          {
+            "name": "_b20",
+            "expression": "(10 - w0.digit)"
+          },
+          {
+            "name": "_b21",
+            "expression": "(4.0 * _b20)"
+          },
+          {
+            "name": "_b22",
+            "expression": "(10.0 + _b21)"
+          },
+          {
+            "name": "_b23",
+            "expression": "(10 - w1.digit)"
+          },
+          {
+            "name": "_b24",
+            "expression": "(4.0 * _b23)"
+          },
+          {
+            "name": "_b25",
+            "expression": "(110.0 + _b24)"
+          },
+          {
+            "name": "_b26",
+            "expression": "(10 - w2.digit)"
+          },
+          {
+            "name": "_b27",
+            "expression": "(4.0 * _b26)"
+          },
+          {
+            "name": "_b28",
+            "expression": "(210.0 + _b27)"
+          },
+          {
+            "name": "_b29",
+            "expression": "(10 - w3.digit)"
+          },
+          {
+            "name": "_b30",
+            "expression": "(4.0 * _b29)"
+          },
+          {
+            "name": "_b31",
+            "expression": "(310.0 + _b30)"
+          },
+          {
+            "name": "_b32",
+            "expression": "(feed / 100.0)"
+          },
+          {
+            "name": "_b33",
+            "expression": "(_own / 6.0)"
+          },
+          {
+            "name": "_b34",
+            "expression": "floor(_b1)"
+          },
+          {
+            "name": "_b35",
+            "expression": "(360 * _b34)"
+          },
+          {
+            "name": "_b36",
+            "expression": "(crank - _b35)"
+          },
+          {
+            "name": "_b37",
+            "expression": "(_b36 < 1)"
+          },
+          {
+            "name": "_b38",
+            "expression": "(54.0 - _own)"
+          }
+        ],
+        "clocked": {
+          "identity": "6eb8e57724cde8a15bc10a2966d02e039ba6fa4aee8c3392bb02c951064eb4a7",
+          "clock": null,
+          "own": "_own",
+          "commits": [
+            {
+              "sources": [
+                "crank",
+                "operand",
+                "w0.digit",
+                "w1.digit",
+                "w2.digit",
+                "w3.digit"
+              ],
+              "targets": [
+                "w0.digit",
+                "w1.digit",
+                "w2.digit",
+                "w3.digit"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "_b1"
+              },
+              "law": [
+                "(_b9 + (10 * ((_b9 != 0.0) * ((_b9 < 0.0) != _b10))))",
+                "(_b13 + (10 * ((_b13 != 0.0) * ((_b13 < 0.0) != _b10))))",
+                "(_b16 + (10 * ((_b16 != 0.0) * ((_b16 < 0.0) != _b10))))",
+                "(_b19 + (10 * ((_b19 != 0.0) * ((_b19 < 0.0) != _b10))))"
+              ],
+              "shapes": {
+                "crank": "affine"
+              },
+              "description": "(crank, operand, w0.digit, w1.digit, w2.digit, w3.digit) commits (w0.digit, w1.digit, w2.digit, w3.digit)",
+              "stated_by": "Calculator"
+            },
+            {
+              "sources": [
+                "ring",
+                "w0.digit"
+              ],
+              "targets": [
+                "w0.digit"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "(ring - _b22)"
+              },
+              "law": [
+                "(w0.digit * (ring < _b22))"
+              ],
+              "shapes": {
+                "ring": "affine"
+              },
+              "description": "(ring, w0.digit) commits w0.digit",
+              "stated_by": "Calculator"
+            },
+            {
+              "sources": [
+                "ring",
+                "w1.digit"
+              ],
+              "targets": [
+                "w1.digit"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "(ring - _b25)"
+              },
+              "law": [
+                "(w1.digit * (ring < _b25))"
+              ],
+              "shapes": {
+                "ring": "affine"
+              },
+              "description": "(ring, w1.digit) commits w1.digit",
+              "stated_by": "Calculator"
+            },
+            {
+              "sources": [
+                "ring",
+                "w2.digit"
+              ],
+              "targets": [
+                "w2.digit"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "(ring - _b28)"
+              },
+              "law": [
+                "(w2.digit * (ring < _b28))"
+              ],
+              "shapes": {
+                "ring": "affine"
+              },
+              "description": "(ring, w2.digit) commits w2.digit",
+              "stated_by": "Calculator"
+            },
+            {
+              "sources": [
+                "ring",
+                "w3.digit"
+              ],
+              "targets": [
+                "w3.digit"
+              ],
+              "at": {
+                "primitive": ">=",
+                "level": "(ring - _b31)"
+              },
+              "law": [
+                "(w3.digit * (ring < _b31))"
+              ],
+              "shapes": {
+                "ring": "affine"
+              },
+              "description": "(ring, w3.digit) commits w3.digit",
+              "stated_by": "Calculator"
+            },
+            {
+              "sources": [
+                "feed",
+                "halved"
+              ],
+              "targets": [
+                "halved"
+              ],
+              "at": {
+                "primitive": "floor",
+                "level": "_b32"
+              },
+              "law": [
+                "(((floor(_b32) * 2) + 1) / 2)"
+              ],
+              "shapes": {
+                "feed": "affine"
+              },
+              "description": "(feed, halved) commits halved",
+              "stated_by": "Calculator"
+            }
+          ],
+          "bounds": [
+            {
+              "coordinate": "crank_dial.turn",
+              "side": "low",
+              "unit": "deg",
+              "value": "crank",
+              "bound": "(6.0 * floor(_b33))",
+              "plan": {
+                "skeleton": "((6.0 * _j0) - crank)",
+                "jumps": [
+                  {
+                    "name": "_j0",
+                    "primitive": "floor",
+                    "level": "_b33",
+                    "affine": true
+                  }
+                ]
+              },
+              "shapes": {
+                "crank": {
+                  "level": "affine",
+                  "jumps": [
+                    "constant"
+                  ]
+                }
+              },
+              "node": "Dial",
+              "joint": "turn",
+              "description": "the low bound of 'crank_dial.turn'"
+            },
+            {
+              "coordinate": "knob.travel",
+              "side": "low",
+              "unit": "mm",
+              "value": "_b0",
+              "bound": "(_own * (1 - _b37))",
+              "plan": {
+                "skeleton": "((_own * (1 - _j2)) - _b0)",
+                "jumps": [
+                  {
+                    "name": "_j1",
+                    "primitive": "floor",
+                    "level": "_b1",
+                    "affine": true
+                  },
+                  {
+                    "name": "_j2",
+                    "primitive": "<",
+                    "level": "((crank - (360 * _j1)) - 1)",
+                    "affine": true
+                  }
+                ]
+              },
+              "shapes": {
+                "crank": {
+                  "level": "constant",
+                  "jumps": [
+                    "affine",
+                    "affine"
+                  ]
+                },
+                "setting": {
+                  "level": "affine",
+                  "jumps": [
+                    "constant",
+                    "constant"
+                  ]
+                }
+              },
+              "node": "Slide",
+              "joint": "travel",
+              "description": "the low bound of 'knob.travel'"
+            },
+            {
+              "coordinate": "knob.travel",
+              "side": "high",
+              "unit": "mm",
+              "value": "_b0",
+              "bound": "(_own + (_b38 * _b37))",
+              "plan": {
+                "skeleton": "(_b0 - (_own + (_b38 * _j4)))",
+                "jumps": [
+                  {
+                    "name": "_j3",
+                    "primitive": "floor",
+                    "level": "_b1",
+                    "affine": true
+                  },
+                  {
+                    "name": "_j4",
+                    "primitive": "<",
+                    "level": "((crank - (360 * _j3)) - 1)",
+                    "affine": true
+                  }
+                ]
+              },
+              "shapes": {
+                "crank": {
+                  "level": "constant",
+                  "jumps": [
+                    "affine",
+                    "affine"
+                  ]
+                },
+                "setting": {
+                  "level": "affine",
+                  "jumps": [
+                    "constant",
+                    "constant"
+                  ]
+                }
+              },
+              "node": "Slide",
+              "joint": "travel",
+              "description": "the high bound of 'knob.travel'"
+            }
+          ],
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "max_crossings": 1000
+          }
+        }
+      },
+      "script": [
+        {
+          "move": {
+            "input": "operand",
+            "to": 4
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 1100.0
+          }
+        },
+        {
+          "move": {
+            "input": "setting",
+            "by": 1.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": -30.0
+          }
+        },
+        {
+          "move": {
+            "input": "crank",
+            "by": 10.0
+          }
+        },
+        {
+          "move": {
+            "input": "setting",
+            "by": 2.0
+          }
+        },
+        {
+          "move": {
+            "input": "ring",
+            "by": 500.0
+          }
+        },
+        {
+          "move": {
+            "input": "feed",
+            "by": 350.0
+          }
+        },
+        {
+          "snapshot": "c"
+        },
+        {
+          "move": {
+            "input": "feed",
+            "by": 200.0
+          }
+        },
+        {
+          "restore": "c"
+        },
+        {
+          "reset": true
+        }
+      ],
+      "requests": [
+        {
+          "bank": {
+            "crank": 0,
+            "feed": 0.0,
+            "halved": 0,
+            "operand": 4,
+            "ring": 0.0,
+            "setting": 0.0,
+            "w0.digit": 0,
+            "w1.digit": 0,
+            "w2.digit": 0,
+            "w3.digit": 0
+          },
+          "admitted": 3.0,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 1100.0,
+            "feed": 0.0,
+            "halved": 0,
+            "operand": 4,
+            "ring": 0.0,
+            "setting": 0.0,
+            "w0.digit": 2,
+            "w1.digit": 1,
+            "w2.digit": 0,
+            "w3.digit": 0
+          },
+          "admitted": 1100.0,
+          "commits": [
+            {
+              "relations": [
+                "(crank, operand, w0.digit, w1.digit, w2.digit, w3.digit) commits (w0.digit, w1.digit, w2.digit, w3.digit)"
+              ],
+              "fraction": 0.32727272727272727,
+              "value": 360.0,
+              "targets": {
+                "w0.digit": 4,
+                "w1.digit": 0,
+                "w2.digit": 0,
+                "w3.digit": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, operand, w0.digit, w1.digit, w2.digit, w3.digit) commits (w0.digit, w1.digit, w2.digit, w3.digit)"
+              ],
+              "fraction": 0.6545454545454545,
+              "value": 720.0,
+              "targets": {
+                "w0.digit": 8,
+                "w1.digit": 0,
+                "w2.digit": 0,
+                "w3.digit": 0
+              }
+            },
+            {
+              "relations": [
+                "(crank, operand, w0.digit, w1.digit, w2.digit, w3.digit) commits (w0.digit, w1.digit, w2.digit, w3.digit)"
+              ],
+              "fraction": 0.9818181818181818,
+              "value": 1080.0,
+              "targets": {
+                "w0.digit": 2,
+                "w1.digit": 1,
+                "w2.digit": 0,
+                "w3.digit": 0
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 1100.0,
+            "feed": 0.0,
+            "halved": 0,
+            "operand": 4,
+            "ring": 0.0,
+            "setting": 0.0,
+            "w0.digit": 2,
+            "w1.digit": 1,
+            "w2.digit": 0,
+            "w3.digit": 0
+          },
+          "admitted": 0.0,
+          "commits": [],
+          "stops": [
+            {
+              "coordinate": "knob.travel",
+              "side": "high",
+              "bound": 0.0,
+              "value": 0.0,
+              "input": 0.0,
+              "fraction": 0.0
+            }
+          ]
+        },
+        {
+          "bank": {
+            "crank": 1098.0,
+            "feed": 0.0,
+            "halved": 0,
+            "operand": 4,
+            "ring": 0.0,
+            "setting": 0.0,
+            "w0.digit": 2,
+            "w1.digit": 1,
+            "w2.digit": 0,
+            "w3.digit": 0
+          },
+          "admitted": -2.0,
+          "commits": [],
+          "stops": [
+            {
+              "coordinate": "crank_dial.turn",
+              "side": "low",
+              "bound": 1098.0,
+              "value": 1098.0,
+              "input": 1098.0,
+              "fraction": 0.06666666666666667
+            }
+          ]
+        },
+        {
+          "bank": {
+            "crank": 1108.0,
+            "feed": 0.0,
+            "halved": 0,
+            "operand": 4,
+            "ring": 0.0,
+            "setting": 0.0,
+            "w0.digit": 2,
+            "w1.digit": 1,
+            "w2.digit": 0,
+            "w3.digit": 0
+          },
+          "admitted": 10.0,
+          "commits": [],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 1108.0,
+            "feed": 0.0,
+            "halved": 0,
+            "operand": 4,
+            "ring": 0.0,
+            "setting": 0.0,
+            "w0.digit": 2,
+            "w1.digit": 1,
+            "w2.digit": 0,
+            "w3.digit": 0
+          },
+          "admitted": 0.0,
+          "commits": [],
+          "stops": [
+            {
+              "coordinate": "knob.travel",
+              "side": "high",
+              "bound": 0.0,
+              "value": 0.0,
+              "input": 0.0,
+              "fraction": 0.0
+            }
+          ]
+        },
+        {
+          "bank": {
+            "crank": 1108.0,
+            "feed": 0.0,
+            "halved": 0,
+            "operand": 4,
+            "ring": 500.0,
+            "setting": 0.0,
+            "w0.digit": 0,
+            "w1.digit": 0,
+            "w2.digit": 0,
+            "w3.digit": 0
+          },
+          "admitted": 500.0,
+          "commits": [
+            {
+              "relations": [
+                "(ring, w0.digit) commits w0.digit"
+              ],
+              "fraction": 0.084,
+              "value": 42.0,
+              "targets": {
+                "w0.digit": 0
+              }
+            },
+            {
+              "relations": [
+                "(ring, w0.digit) commits w0.digit"
+              ],
+              "fraction": 0.1,
+              "value": 50.0,
+              "targets": {
+                "w0.digit": 0
+              }
+            },
+            {
+              "relations": [
+                "(ring, w1.digit) commits w1.digit"
+              ],
+              "fraction": 0.292,
+              "value": 146.0,
+              "targets": {
+                "w1.digit": 0
+              }
+            },
+            {
+              "relations": [
+                "(ring, w1.digit) commits w1.digit"
+              ],
+              "fraction": 0.3,
+              "value": 150.0,
+              "targets": {
+                "w1.digit": 0
+              }
+            },
+            {
+              "relations": [
+                "(ring, w2.digit) commits w2.digit"
+              ],
+              "fraction": 0.5,
+              "value": 250.0,
+              "targets": {
+                "w2.digit": 0
+              }
+            },
+            {
+              "relations": [
+                "(ring, w3.digit) commits w3.digit"
+              ],
+              "fraction": 0.7,
+              "value": 350.0,
+              "targets": {
+                "w3.digit": 0
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 1108.0,
+            "feed": 350.0,
+            "halved": 4,
+            "operand": 4,
+            "ring": 500.0,
+            "setting": 0.0,
+            "w0.digit": 0,
+            "w1.digit": 0,
+            "w2.digit": 0,
+            "w3.digit": 0
+          },
+          "admitted": 350.0,
+          "commits": [
+            {
+              "relations": [
+                "(feed, halved) commits halved"
+              ],
+              "fraction": 0.2857142857142857,
+              "value": 100.0,
+              "targets": {
+                "halved": 2
+              }
+            },
+            {
+              "relations": [
+                "(feed, halved) commits halved"
+              ],
+              "fraction": 0.5714285714285714,
+              "value": 200.0,
+              "targets": {
+                "halved": 2
+              }
+            },
+            {
+              "relations": [
+                "(feed, halved) commits halved"
+              ],
+              "fraction": 0.8571428571428571,
+              "value": 300.0,
+              "targets": {
+                "halved": 4
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 1108.0,
+            "feed": 350.0,
+            "halved": 4,
+            "operand": 4,
+            "ring": 500.0,
+            "setting": 0.0,
+            "w0.digit": 0,
+            "w1.digit": 0,
+            "w2.digit": 0,
+            "w3.digit": 0
+          }
+        },
+        {
+          "bank": {
+            "crank": 1108.0,
+            "feed": 550.0,
+            "halved": 6,
+            "operand": 4,
+            "ring": 500.0,
+            "setting": 0.0,
+            "w0.digit": 0,
+            "w1.digit": 0,
+            "w2.digit": 0,
+            "w3.digit": 0
+          },
+          "admitted": 200.0,
+          "commits": [
+            {
+              "relations": [
+                "(feed, halved) commits halved"
+              ],
+              "fraction": 0.25,
+              "value": 400.0,
+              "targets": {
+                "halved": 4
+              }
+            },
+            {
+              "relations": [
+                "(feed, halved) commits halved"
+              ],
+              "fraction": 0.75,
+              "value": 500.0,
+              "targets": {
+                "halved": 6
+              }
+            }
+          ],
+          "stops": []
+        },
+        {
+          "bank": {
+            "crank": 1108.0,
+            "feed": 350.0,
+            "halved": 4,
+            "operand": 4,
+            "ring": 500.0,
+            "setting": 0.0,
+            "w0.digit": 0,
+            "w1.digit": 0,
+            "w2.digit": 0,
+            "w3.digit": 0
+          }
+        },
+        {
+          "bank": {
+            "crank": 0,
+            "feed": 0.0,
+            "halved": 0,
+            "operand": 1,
+            "ring": 0.0,
+            "setting": 0.0,
+            "w0.digit": 0,
+            "w1.digit": 0,
+            "w2.digit": 0,
+            "w3.digit": 0
+          }
+        }
+      ]
+    }
+  ]
+}

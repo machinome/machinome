@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-17
+**Amended:** 2026-09-17 by [ADR-128](./ADR-128-a-clocked-root-publishes-its-compiled-machine.md) — the publication refusal is LIFTED (a clocked root publishes version 8), and the containment of a crossing in a request is CLARIFIED: "the right end is inclusive and the left end exclusive" is a reading by fraction that loses an event, and a crossing belongs to the request whose path CONTAINS its LANDING. Everything else — the bank, the request, the exact solve, the far-side landing, the tie rule, the synchronous reads, the path order, the conflict refusal, the atomicity — stands as written.
 **Depends on:**
 - [ADR-056: Signals, drivers, ports, and stepped simulation](./ADR-056-signals-drivers-ports-and-stepped-simulation.md) — the `Driver` declaration whose five fields, attribute read and qualified id a `State` takes unchanged
 - [ADR-099: The enumeration's simulate phases are one tree pass](./ADR-099-the-enumerations-simulate-phases-are-one-tree-pass.md) — the one pass the declared states are collected in, rather than a second descent

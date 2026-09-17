@@ -1,0 +1,147 @@
+{
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "bindings": [
+    {
+      "expression": "(units + 1)",
+      "name": "_b0"
+    },
+    {
+      "expression": "(_b0 % 10)",
+      "name": "_b1"
+    },
+    {
+      "expression": "(10 < 0.0)",
+      "name": "_b2"
+    },
+    {
+      "expression": "(units == 9)",
+      "name": "_b3"
+    },
+    {
+      "expression": "(tens + _b3)",
+      "name": "_b4"
+    },
+    {
+      "expression": "(_b4 % 10)",
+      "name": "_b5"
+    }
+  ],
+  "clocked": {
+    "bounds": [],
+    "clock": null,
+    "commits": [
+      {
+        "at": {
+          "level": "(crank / 360)",
+          "primitive": "floor"
+        },
+        "description": "(crank, units, tens) commits (units, tens)",
+        "law": [
+          "(_b1 + (10 * ((_b1 != 0.0) * ((_b1 < 0.0) != _b2))))",
+          "(_b5 + (10 * ((_b5 != 0.0) * ((_b5 < 0.0) != _b2))))"
+        ],
+        "shapes": {
+          "crank": "affine"
+        },
+        "sources": [
+          "crank",
+          "units",
+          "tens"
+        ],
+        "stated_by": "Counter",
+        "targets": [
+          "units",
+          "tens"
+        ]
+      }
+    ],
+    "identity": "4f5ec72a59a519db348226dded9144aade1a015586d63421118888472b4c4edc",
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "max_crossings": 1000
+    },
+    "own": "_own"
+  },
+  "drivers": {
+    "crank": {
+      "default": 0,
+      "dtype": null,
+      "range": null,
+      "scale": null,
+      "unit": "deg"
+    }
+  },
+  "format": "solid-node-export",
+  "instructions": {},
+  "root": {
+    "children": [
+      {
+        "color": null,
+        "model": "units_dial",
+        "mtime": null,
+        "name": "units_dial",
+        "operations": [
+          [
+            "r",
+            "(36.0 * units)",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "type": "LeafNode"
+      },
+      {
+        "color": null,
+        "model": "tens_dial",
+        "mtime": null,
+        "name": "tens_dial",
+        "operations": [
+          [
+            "r",
+            "(36.0 * tens)",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "type": "LeafNode"
+      }
+    ],
+    "color": null,
+    "mtime": null,
+    "name": "Counter",
+    "operations": [],
+    "type": "AssemblyNode"
+  },
+  "states": {
+    "tens": {
+      "default": 0,
+      "dtype": "int",
+      "range": [
+        0,
+        9
+      ],
+      "scale": null,
+      "unit": null
+    },
+    "units": {
+      "default": 0,
+      "dtype": "int",
+      "range": [
+        0,
+        9
+      ],
+      "scale": null,
+      "unit": null
+    }
+  },
+  "version": 8
+}

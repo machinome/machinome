@@ -987,14 +987,50 @@ again. A pose that is NOT a request — construction, ``state=``,
 ``restore`` — is judged by the ordinary enumeration, unchanged: a machine
 cannot be PUT where it cannot BE.
 
+What a clocked model publishes
+------------------------------
+
+A tree that declares a ``State`` publishes **document version 8**,
+carrying a top-level ``clocked`` object beside ``drivers``, ``states``,
+``instructions`` and ``bindings``. That object is what COMPILE TIME
+decided and nothing a request computes: every committing relation with
+its sources in written order, its ``at`` as one jump node and its level,
+one law expression per target and the shape of each input that can move
+the level; every declared ``range`` that reaches the bank as its chain,
+its bound, its jump plan and its shapes; the banked clock as the free
+name ``time`` under ``Time.elapsed()``; an ``identity`` digest, so a bank
+saved against one machine is refused against another; and the two limits
+a clocked path reaches.
+
+``states`` is a table of its own and does not merge with ``drivers``:
+every key of ``drivers`` is a handle a person may move, and no key of
+``states`` ever is. A consumer that offered a state as a slider would be
+offering a handle the framework refuses.
+
+The version is read off the ROOT'S DECLARATION, and it DOMINATES: a
+clocked root publishes 8 whatever else its tree holds, and a root that
+declares no ``State`` publishes exactly what it published before, byte
+for byte. The bump is not additive — a clocked pose reads its states as
+free names, which a lower consumer resolves to nothing — so a consumer
+that cannot read 8 must REFUSE the document rather than render it.
+
+**What that means for the browser today.** No released viewer reports
+version 8 yet. ``solid build``, ``solid develop`` and ``solid export``
+publish the document and WARN that the installed viewer cannot read it;
+``solid snapshot --renderer web`` is refused before the browser starts,
+writing no image and leaving no staging directory behind, and never
+falling back to OpenSCAD. ``render()``, ``assemble()``,
+``build_stls()``, ``solid test`` and ``solid snapshot --renderer
+openscad`` are untouched, so a clocked model is built, tested and
+photographed exactly as any other — the OpenSCAD snapshot rendering the
+tree as posed, which is the INITIAL BANK.
+
 What a clocked model refuses today
 ----------------------------------
 
-* **Publication.** A tree that declares a ``State`` is refused by every
-  document producer, naming the states: the document version that
-  carries them is not defined yet. Rendering, assembling, STL building,
-  ``solid test`` and an OpenSCAD snapshot are untouched, so a clocked
-  model is built, tested and photographed exactly as any other.
+* **A browser.** Executing a version 8 document is the viewer's own
+  work, in its own repository; until a viewer reports that version, a
+  clocked model does not reach a browser.
 * **A time base.** A ``State`` under ``Time(loop=)`` is refused — a loop
   replays from zero and would replay every commit — and under
   ``Time.running()`` it is refused too, with its meaning named and
