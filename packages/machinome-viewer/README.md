@@ -229,9 +229,11 @@ reloaded shows exactly the state its own options declare.
 The viewer's on-screen machine controls occupy a bounded, internally
 scrollable rail at the left of their pane: normally 30%, with a 260px floor
 and a 420px ceiling, so a large control table cannot cover the model or extend
-the page. In the inspector the assembly navigator owns descent into children,
-so the chrome keeps its ancestor breadcrumb but omits the duplicate child
-buttons. The inspector also omits the clocked panel's Reset button; the full
+the page. A gesture that rebuilds a clocked panel retains the rail's scroll
+position; deliberately focusing another assembly starts its layer at the top.
+In the inspector the assembly navigator owns descent into children, so the
+chrome keeps its ancestor breadcrumb but omits the duplicate child buttons.
+The inspector also omits the clocked panel's Reset button; the full
 `machine().reset()` API remains on `inspector.viewer`, and a plain `mount()`
 keeps both its child buttons and Reset.
 

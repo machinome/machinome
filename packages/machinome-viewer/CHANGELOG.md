@@ -20,7 +20,10 @@ The viewer stops posing a machine and starts running one.
   remain. On the Curta at 1440×900 the rail is 343.8px of an 1146px viewer
   pane, its 1835px control content scrolls inside the 900px pane, and the
   machine remains fully visible beside it. **No API or document-version
-  bump.** (OpenSpec change `compact-clocked-controls`.)
+  bump.** A follow-up correction keeps that scroll position when a slider,
+  nudge, typed value or instruction rebuilds the clocked panel; changing
+  assembly focus still begins the new layer at the top. (OpenSpec change
+  `compact-clocked-controls`.)
 
 - **EVERY request a maker's gesture makes on a clocked machine is now
   DRAWN, not only a pressed instruction.** A press was drawn from the

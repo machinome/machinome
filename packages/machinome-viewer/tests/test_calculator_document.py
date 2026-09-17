@@ -463,6 +463,7 @@ class CalculatorInABrowserTest(TestCase):
                     'typeof SolidNodeWidget !== "undefined"')
                 result = page.evaluate("""async () => {
                   const host = document.getElementById('host');
+                  host.style.height = '260px';
                   const mounted = await SolidNodeWidget.mountInspector(
                     host, 'viewer.json', { sidebar: 'collapsed' });
                   const panel = host.querySelector('.clocked-controls');
@@ -489,6 +490,14 @@ class CalculatorInABrowserTest(TestCase):
                     instructionVisible: shown('.clocked-instruction'),
                     canReset: typeof mounted.viewer.machine().reset === 'function',
                   };
+                  panel.scrollTop = panel.scrollHeight - panel.clientHeight;
+                  answer.scrollBeforeSlider = panel.scrollTop;
+                  const slider = panel.querySelector(
+                    '.clocked-slider[data-input="operand"]');
+                  slider.value = '4';
+                  slider.dispatchEvent(new Event('change', { bubbles: true }));
+                  answer.scrollAfterSlider = host.querySelector(
+                    '.clocked-controls').scrollTop;
                   mounted.dispose();
                   const plain = await SolidNodeWidget.mount(
                     host, 'viewer.json', {});
@@ -513,6 +522,9 @@ class CalculatorInABrowserTest(TestCase):
         self.assertTrue(result['canReset'])
         self.assertTrue(result['plainDescenderVisible'])
         self.assertTrue(result['plainResetVisible'])
+        self.assertGreater(result['scrollBeforeSlider'], 0)
+        self.assertEqual(result['scrollAfterSlider'],
+                         result['scrollBeforeSlider'])
         self.assertLessEqual(result['panelWidth'], 420)
         self.assertLess(result['panelWidth'], result['paneWidth'] * 0.5)
         self.assertLessEqual(result['panelHeight'], result['paneHeight'])

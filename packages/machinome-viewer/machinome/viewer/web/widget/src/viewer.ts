@@ -1315,7 +1315,15 @@ export async function mount(
     rebuildClockedChrome();
   };
 
-  function rebuildClockedChrome(): void {
+  function rebuildClockedChrome(preserveScroll = true): void {
+    // A clocked gesture rebuilds the panel to carry the request's outcome.
+    // The panel is its own scrollport, so replacing it without carrying this
+    // position throws the maker back to the first handle after every slider,
+    // nudge or typed value. A deliberate focus change starts its new layer at
+    // the top; every other rebuild keeps the place the maker was operating.
+    const scrollTop = preserveScroll
+      ? clockedChrome?.element.scrollTop ?? 0
+      : 0;
     clockedChrome?.remove();
     clockedChrome = undefined;
     if (machine === undefined || loadedMachine === null) return;
@@ -1403,6 +1411,7 @@ export async function mount(
       setSpeed,
       focus: focusOn,
     });
+    clockedChrome.element.scrollTop = scrollTop;
   }
 
   const replaceTree = async (view: View | null) => {
@@ -1492,7 +1501,7 @@ export async function mount(
     applyFrame(null);
     rebuildDriverChrome();
     rebuildRunChrome();
-    rebuildClockedChrome();
+    rebuildClockedChrome(false);
     renderer.render(scene, camera);
     // Whether a host called setRoot or the maker clicked the
     // breadcrumb, this is the one place that moved -- so this is the
@@ -3418,6 +3427,8 @@ interface ClockedChromeActions {
 }
 
 interface ClockedChrome {
+  /** The panel's scrollport, retained across data-driven rebuilds. */
+  element: HTMLElement;
   /** Rewrite the fields a drawn frame moved, and nothing else (design
    * §9). The panel is NOT rebuilt per frame: the Curta's is 23 inputs
    * and 18 readouts, and this cycle claims a frame costs a pose. */
@@ -3764,6 +3775,7 @@ function buildClockedChrome(
 
   container.append(panel);
   return {
+    element: panel,
     follow(following: Following) {
       for (const moved of following.inputs) fields.get(moved.id)?.(moved);
       for (const moved of following.readouts) {
