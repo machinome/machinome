@@ -59,7 +59,7 @@
 
 ## 1. The tempo, red first, in node
 
-- [ ] 1.1 `src/clockedControls.test.ts`, red: the module exports a
+- [x] 1.1 `src/clockedControls.test.ts`, red: the module exports a
       function answering how long a gesture on a named input is drawn,
       given the admitted travel and a document's instruction table. Record
       the failure (the base exports `GESTURE_SECONDS` and nothing else).
@@ -76,41 +76,41 @@
       - an instruction whose duration is 0 → 0 s at every travel;
       - a non-finite or absurd travel is never answered with a non-finite
         duration.
-- [ ] 1.2 Implement it beside `GESTURE_SECONDS` in `clockedControls.ts`,
+- [x] 1.2 Implement it beside `GESTURE_SECONDS` in `clockedControls.ts`,
       which keeps its value, its comment's reason and its name, and
       becomes the fallback. Green.
 
 ## 2. The one door, on the admitted travel
 
-- [ ] 2.1 The RED for the wiring is a BROWSER one, as it was for ADR-065:
+- [x] 2.1 The RED for the wiring is a BROWSER one, as it was for ADR-065:
       `viewer.ts` has no node-level harness in this package. Write §4.1's
       acceptance FIRST, run it on the base, and record it failing for the
       stated reason (every gesture drawn over 0.2 s, whatever the input
       and whatever the travel).
-- [ ] 2.2 `clockedRequest` (`viewer.ts:1133`) takes whether this request
+- [x] 2.2 `clockedRequest` (`viewer.ts:1133`) takes whether this request
       is DRAWN rather than a duration, and asks §1's function for the
       seconds after the machine answers and before `startDrawing`, from
       `answered.admitted` and the loaded instruction table. The order
       ADR-064 fixed is unchanged: report, rebuild the panel once, frame 0
       in the same task, render. The bank BEFORE is still taken only where
       a drawing will be drawn.
-- [ ] 2.3 The clock's played frame and its `step`, and the mount handle,
+- [x] 2.3 The clock's played frame and its `step`, and the mount handle,
       are UNDRAWN exactly as ADR-065 left them — no drawing started, the
       transport not stopped, `machine().move` landing at once. Proved by
       the same means ADR-065 used (no red is possible: mutate the
       implementation, watch each guard fail, revert, record it in
       `evidence.md`).
-- [ ] 2.4 `clockedPlay` still draws a pressed instruction over its OWN
+- [x] 2.4 `clockedPlay` still draws a pressed instruction over its OWN
       declared duration, unscaled: a press of `Stroke` is 2 s whatever
       travel it admits. Asserted, so the two paths cannot be confused.
 
 ## 3. What must not have changed
 
-- [ ] 3.1 `git diff --stat src/clocked/drawing.ts src/clocked/machine.ts
+- [x] 3.1 `git diff --stat src/clocked/drawing.ts src/clocked/machine.ts
       src/clocked-corpus.json src/run/ src/drivers.ts src/runControls.ts`
       is EMPTY at the end of implementation, and the corpus md5 is still
       `bc4174cf47f844b035125ed3afcee3aa`. Recorded in the report.
-- [ ] 3.2 `solidNodeViewerApi` is still 19 and `solidNodeDocumentVersions`
+- [x] 3.2 `solidNodeViewerApi` is still 19 and `solidNodeDocumentVersions`
       still `[1..8]`; `src/version.test.ts` untouched and green (design
       D6).
 
@@ -122,30 +122,35 @@ over 0.5 s) beside `feed`, `ring` and `setting`, which no instruction
 names — one bench carrying every case this cycle distinguishes. Sampled
 per animation frame, as the existing sections do.
 
-- [ ] 4.1 `tests/test_calculator_document.py`, red first: a `+` on `crank`
+- [x] 4.1 `tests/test_calculator_document.py`, red first: a `+` on `crank`
       with the nudge amount armed at 360 is drawn over the DECLARED two
       seconds — the elapsed wall time and the frame count of the drawing
       both an order above the base's 0.2 s — and lands on the same bank
       one `move('crank', {by: 360})` gives from the same start.
-- [ ] 4.2 Same file: a nudge of 30 on `crank` is drawn over about a
+- [x] 4.2 Same file: a nudge of 30 on `crank` is drawn over about a
       twelfth of that (asserted as a RATIO against 4.1's measurement on
       the same page, not as an absolute this harness cannot promise), and
       a typed 720 over about twice it.
-- [ ] 4.3 Same file: a gesture on `operand` — named only by a `targets`
+- [x] 4.3 Same file: a gesture on `operand` — named only by a `targets`
       instruction — and a gesture on `feed` — named by none — are each
       drawn over the viewer's own 0.2 s, measurably shorter than 4.1's on
       the same page, with the whole-number rule still holding at every
       frame of `operand`'s.
-- [ ] 4.4 Same file: a press of `Stroke` is still drawn over 2 s
+- [x] 4.4 Same file: a gesture an interlock CLIPS on a tempo-governed input
+      is drawn for the travel the machine admitted, over the declared duration
+      in that proportion — the declared RATE, a shorter picture — and reports
+      its stop as it does today (the fixture's own stops are already exercised
+      by `test_the_machine_cranks_carries_clears_and_is_held_by_its_stops`).
+- [x] 4.5 Same file: a press of `Stroke` is still drawn over 2 s
       (task 2.4), and the existing sections of this file still pass
       unchanged in meaning — the gesture that lands a running drawing, the
       field a maker is editing, the panel following.
-- [ ] 4.5 One screenshot kept beside the existing ones (`tests/_shots/`):
+- [x] 4.6 One screenshot kept beside the existing ones (`tests/_shots/`):
       the calculator part-way through a tempo-drawn stroke.
 
 ## 5. The Curta, where the finding came from
 
-- [ ] 5.1 `tests/test_curta_drawing.py` (skippable, a MEASUREMENT and not
+- [x] 5.1 `tests/test_curta_drawing.py` (skippable, a MEASUREMENT and not
       a contract), served through the directory of SYMLINKS it already
       builds, copying nothing into this repository: record the document as
       found (its instruction, duration and clock), then the pilot's own
@@ -155,20 +160,20 @@ per animation frame, as the existing sections do.
       declared instruction's own press. Report the numbers; do not assert
       a frame rate this host cannot promise (headless Chromium on
       `swiftshader` idles that page at ~2.2 fps, ADR-065).
-- [ ] 5.2 Answer, in those numbers, whether a TOOTH PASSAGE is now drawn
+- [x] 5.2 Answer, in those numbers, whether a TOOTH PASSAGE is now drawn
       across more than one frame where it was not: the passage is
       `11.25 / 360` of the stroke, so at the declared duration it should
       occupy that fraction of the drawing's frames. Record what the page
       actually managed, and say plainly where the host's frame rate rather
       than this cycle is the limit.
-- [ ] 5.3 Two pictures kept OUTSIDE this repository (a measurement is not
+- [x] 5.3 Two pictures kept OUTSIDE this repository (a measurement is not
       a contract), beside ADR-065's, in the scratchpad's
       `viewer-acceptance/` directory: the Curta part-way through a
       tempo-drawn nudge and at its landing.
 
 ## 6. The record
 
-- [ ] 6.1 `docs/adrs/EXPORT/ADR-066`, written after implementation from
+- [x] 6.1 `docs/adrs/EXPORT/ADR-066`, written after implementation from
       what was actually built and measured: a gesture is drawn at the
       tempo its input's declared instruction states; the admitted travel
       scales it; `targets` and a zero travel give no tempo; the first
@@ -176,12 +181,12 @@ per animation frame, as the existing sections do.
       fallback; no API bump. **Amends** ADR-065 (its fixed duration),
       extends ADR-064. Index row in `docs/adrs/README.md` in chronological
       order.
-- [ ] 6.2 `CHANGELOG.md` under `0.2.0 — unreleased`, beside ADR-065's
+- [x] 6.2 `CHANGELOG.md` under `0.2.0 — unreleased`, beside ADR-065's
       entry, saying what a maker now sees and what still keeps 0.2 s.
-- [ ] 6.3 `openspec validate draw-at-the-declared-tempo --strict`; sync
+- [x] 6.3 `openspec validate draw-at-the-declared-tempo --strict`; sync
       the delta into `openspec/specs/viewer-package/spec.md` and archive
       the change.
-- [ ] 6.4 Closing suites recorded: `npx tsc --noEmit`, `npx vitest run`
+- [x] 6.4 Closing suites recorded: `npx tsc --noEmit`, `npx vitest run`
       (from 46 files / 1219 tests), `pytest tests` from the worktree root
       on the workspace venv, and `npm run build` for
       `dist/solid-widget.js` (byte size before and after, from

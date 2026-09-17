@@ -151,3 +151,8 @@ cycle earlier. Written after implementation from what was built and measured.
 2. **Is the fallback still 0.2 s** for an input no instruction states a travel
    for, now that it is a fallback rather than the rule? Unchanged here; one
    constant if the floor says otherwise.
+
+**ANSWERED at ratification (2026-09-17), before implementation.** 1: no — a
+clipped PRESS keeps ADR-064's declared duration, as D4 proposed; the asymmetry
+stands and is stated in the spec. 2: yes — 0.2 s stays the fallback. Both are
+implemented as proposed, with no departure.

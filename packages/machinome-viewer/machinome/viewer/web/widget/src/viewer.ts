@@ -58,7 +58,7 @@ import { drawing } from './clocked/drawing';
 import type { Drawing, DrawnFrame } from './clocked/drawing';
 import {
   clockedControlLayer, clockedFollowing, clockStepAmount,
-  DEFAULT_CLOCK_STEP, formatClockedOutcome, GESTURE_SECONDS,
+  DEFAULT_CLOCK_STEP, formatClockedOutcome, gestureSeconds,
 } from './clockedControls';
 import type {
   ClockedControlLayer, ClockedInputControl, ClockedInstructionControl,
@@ -1118,7 +1118,7 @@ export async function mount(
 
   /** Issue ONE request, report its outcome AT THE CONTROL that made it
    * (design §13) whatever the machine answers, and DRAW the transition
-   * it reports over `draw` wall seconds (OpenSpec `draw-every-request`,
+   * it reports where `draw` says so (OpenSpec `draw-every-request`,
    * design D3). A gesture an interlock holds is REPORTED, not swallowed.
    *
    * ONE DOOR with `clockedPlay`, in the same order for the same reason:
@@ -1126,12 +1126,18 @@ export async function mount(
    * frame 0 is posed in this same task, so the readings are corrected to
    * the transition's ORIGIN before the browser paints.
    *
-   * `draw` is zero for the CLOCK's own requests -- a played frame and a
+   * `draw` is WHETHER, not how long: how long is `gestureSeconds`, and
+   * it cannot be known before the request is made because it scales with
+   * the travel the machine ADMITTED (OpenSpec
+   * `draw-at-the-declared-tempo`, design D1, D5). So the seconds are
+   * computed HERE, from the answer, between the rebuild and the drawing.
+   *
+   * `draw` is false for the CLOCK's own requests -- a played frame and a
    * step -- which land at once: a clock has seconds to spend per frame,
    * and a drawn step would be a transport control that pauses the
    * transport (design D4). */
   const clockedRequest = (id: string, request: { by?: number; to?: number },
-                          draw = 0): ClockedOutcome | null => {
+                          draw = false): ClockedOutcome | null => {
     const started = machine;
     if (started === undefined) return null;
     // A gesture LANDS a running drawing and then acts, on a bank the
@@ -1141,7 +1147,7 @@ export async function mount(
     // The bank the machine stands at BEFORE the request: what a drawing
     // draws from. Taken only where one will be drawn, so the transport's
     // sixty requests a second cost no copy they cannot use.
-    const before = draw > 0 ? started.state() : null;
+    const before = draw ? started.state() : null;
     let report: ClockedOutcome;
     let answered: ClockedRequest | null = null;
     try {
@@ -1165,7 +1171,13 @@ export async function mount(
     clockedOutcomes[id] = report;
     rebuildClockedChrome();
     if (answered !== null && before !== null) {
-      startDrawing(null, answered, before, draw, id);
+      // THE TEMPO its own input's declared instruction states, in the
+      // proportion the ADMITTED travel bears to the declared one, or the
+      // viewer's own short duration where the document declares no
+      // travel on this input.
+      startDrawing(null, answered, before,
+                   gestureSeconds(id, answered.admitted,
+                                  loadedMachine?.instructions ?? {}), id);
     }
     renderer.render(scene, camera);
     return report;
@@ -1342,16 +1354,20 @@ export async function mount(
     // still as the clock grows.
     clockWidth = Math.max(clockWidth, layer.transport?.elapsed.length ?? 0);
     clockedChrome = buildClockedChrome(container, layer, {
-      // EVERY request a maker's gesture makes on an input is DRAWN over
-      // the chrome's own gesture duration (OpenSpec
-      // `draw-every-request`): the number field's commit, the slider's,
-      // and the nudge pair. A handle declares no duration, so the viewer
-      // states one -- the same for every travel.
+      // EVERY request a maker's gesture makes on an input is DRAWN
+      // (OpenSpec `draw-every-request`): the number field's commit, the
+      // slider's, and the nudge pair. A handle declares no duration, so
+      // the viewer takes one from the DOCUMENT where the document states
+      // one -- the tempo of a declared instruction stating a travel on
+      // this same input -- and states its own where it does not
+      // (`draw-at-the-declared-tempo`). How long cannot be decided here:
+      // it scales with the travel the machine admits, which is not known
+      // until the request is made, so `clockedRequest` decides it.
       move(id: string, to: number) {
-        clockedRequest(id, { to }, GESTURE_SECONDS);
+        clockedRequest(id, { to }, true);
       },
       nudge(id: string, amount: number) {
-        clockedRequest(id, { by: amount }, GESTURE_SECONDS);
+        clockedRequest(id, { by: amount }, true);
       },
       setNudge(id: string, amount: number) {
         clockedNudge[id] = amount;

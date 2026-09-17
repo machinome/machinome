@@ -406,7 +406,7 @@ it — solved synchronously, once, before anything is drawn. A request
 costs well under a frame (fractions of a millisecond on the Curta-shaped
 fixture, measured in Chromium), so a gesture is answered in the task that
 made it; what the page does afterwards is DRAW the transition that
-request reports, over a fifth of a second.
+request reports, at the tempo the document declares for that input.
 
 Per declared input the chrome shows a **handle**: the banked position as
 an editable readout in design units, a nudge pair, and a slider where the
@@ -462,11 +462,22 @@ Declared instructions are **pressable**, and a press is **drawn** — and
 so is every gesture on a handle. An instruction under a clocked root is
 one request over the one driver it names, and its declared duration says
 how long a consumer draws the transition; a handle declares none, so the
-viewer draws its gestures — the nudge pair, a value typed into the field,
-a slider's commit — over **a fifth of a second**, the same for every
-travel, never derived from the amount asked for and never scaled by the
-playback speed. A maker who wants a longer stroke presses the declared
-instruction, which states its own. Everything below holds for both. So a
+viewer takes one from the document where the document states one. Where a
+declared instruction states a TRAVEL on that same input, a gesture on it —
+the nudge pair, a value typed into the field, a slider's commit — is drawn
+at **that instruction's tempo**: the declared duration in the proportion
+the travel the machine ADMITTED bears to the travel declared. So a whole
+turn of a crank whose instruction states `by 360 over 2 s` is drawn over
+those two seconds whether it was pressed or nudged, a twelfth of that
+travel over a twelfth of the time, and twice it over twice — uncapped,
+because that is the stroke the maker asked to watch at the rate the
+document declares. Where NO declared instruction states a travel on that
+input — no instruction names it, or the one that does states a landing
+rather than a travel — the gesture is drawn over **a fifth of a second**
+of the viewer's own, the same for every such travel. A PRESSED
+instruction is always drawn over the duration it declares, whatever its
+request admits. Neither duration is scaled by the playback speed.
+Everything below holds for both. So a
 gesture makes its request ONCE, before the first frame:
 the machine is solved there and stands at the transition's end from that
 instant, and what follows is a picture of it. Each frame poses the tree

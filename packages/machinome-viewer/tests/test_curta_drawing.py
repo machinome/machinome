@@ -32,6 +32,7 @@ absent the test SKIPS with its reason, because this repository depends
 on nothing outside itself.
 """
 
+import json
 import os
 import shutil
 import tempfile
@@ -210,37 +211,57 @@ GESTURE = """async (amount) => {
   const idle = costs.splice(0, costs.length);
   timing = false;
 
+  // Watched UNTIL IT LANDS -- the reading reaching the bank the request
+  // already stands at -- with `seconds` as a cap and not a window. A
+  // gesture is now drawn at the TEMPO the document declares (OpenSpec
+  // `draw-at-the-declared-tempo`): this build's `'Turn crank': by
+  // crank_rotation 360 over 2 s` makes a nudge of a whole turn a
+  // two-second drawing where it was a fifth of a second, so a fixed
+  // one-second window would stop half-way through the picture.
   const watch = async (gesture, seconds) => {
     const readings = [];
     const solvedAt = performance.now();
     gesture();
     const solve = performance.now() - solvedAt;
     const atOnce = field();
+    const end = machine.state().crank_rotation;
     timing = true;
     const startedAt = performance.now();
     while ((performance.now() - startedAt) / 1000 < seconds) {
       readings.push(field());
       await frame();
+      if (field() === end) break;
     }
     const wall = (performance.now() - startedAt) / 1000;
     timing = false;
     readings.push(field());
-    return { readings, atOnce, wall, solve, distinct: new Set(readings).size,
+    return { readings, atOnce, wall, solve, end,
+             distinct: new Set(readings).size,
              costs: costs.splice(0, costs.length), bank: machine.state() };
   };
 
   const nudged = await watch(() => {
     at('.clocked-plus[data-input="crank_rotation"]').click();
-  }, 1.0);
+  }, 8.0);
   const typed = await watch(() => {
     box().value = String(amount * 2);
     box().dispatchEvent(new Event('change'));
-  }, 1.0);
+  }, 8.0);
   const declared = await watch(() => {
     machine.trigger('Turn crank');
-  }, 3.0);
+  }, 8.0);
 
-  return { mount, settled, idle, idleWall, nudged, typed, declared,
+  // A TWELFTH of the declared travel, on the same page: the rate the
+  // document states, on a gesture nobody declared.
+  const smallBox = at('.clocked-nudge[data-input="crank_rotation"]');
+  smallBox.value = '30';
+  smallBox.dispatchEvent(new Event('change'));
+  at('.clocked-reset').click();
+  const small = await watch(() => {
+    at('.clocked-plus[data-input="crank_rotation"]').click();
+  }, 8.0);
+
+  return { mount, settled, idle, idleWall, nudged, typed, declared, small,
            painted: host.querySelector('canvas').toDataURL().length,
            apiVersion: viewer.apiVersion };
 }"""
@@ -257,7 +278,7 @@ GESTURE = """async (amount) => {
 #: 50 ms shows what the same gesture draws on a page that renders at
 #: 20 fps. Nothing in the viewer is changed by it -- the drawing advances
 #: on the elapsed seconds the loop reports, whatever reports them.
-FREEZE = """async ({frames, stride}) => {
+FREEZE = """async ({frames, stride, wait}) => {
   const host = document.getElementById('host');
   host.replaceChildren();
   const previous = window.requestAnimationFrame;
@@ -281,9 +302,20 @@ FREEZE = """async ({frames, stride}) => {
   at('.clocked-reset').click();
   budget = frames;
   at('.clocked-plus[data-input="crank_rotation"]').click();
-  await new Promise((resolve) => setTimeout(resolve, 1500));
+  // Waited UNTIL IT LANDS rather than for a fixed 1500 ms: a gesture of
+  // a whole turn is now drawn over the two seconds this build declares
+  // (OpenSpec `draw-at-the-declared-tempo`), and at this host's frame
+  // rate 1500 ms caught the picture part-way through. The FROZEN case
+  // never lands -- its budget runs out first -- and waits out the cap.
+  const reading = () => Number(
+    at('.clocked-value[data-input="crank_rotation"]').value);
+  const until = performance.now() + wait;
+  while (performance.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    if (reading() === viewer.machine().state().crank_rotation) break;
+  }
   const read = {
-    crank: Number(at('.clocked-value[data-input="crank_rotation"]').value),
+    crank: reading(),
     bank: viewer.machine().state().crank_rotation,
   };
   window.requestAnimationFrame = previous;
@@ -453,16 +485,26 @@ class CurtaGestureTest(TestCase):
                 page.wait_for_function(
                     'typeof SolidNodeWidget !== "undefined"')
                 result = page.evaluate(GESTURE, 360)
-                frozen = page.evaluate(FREEZE,
-                                       {'frames': 2, 'stride': 50})
+                frozen = page.evaluate(
+                    FREEZE, {'frames': 2, 'stride': 50, 'wait': 1500})
                 page.screenshot(path=str(SHOTS / 'curta-nudge-drawing.png'))
-                landed = page.evaluate(FREEZE,
-                                       {'frames': 100_000, 'stride': 0})
+                landed = page.evaluate(
+                    FREEZE,
+                    {'frames': 100_000, 'stride': 0, 'wait': 15_000})
                 page.screenshot(path=str(SHOTS / 'curta-nudge-landed.png'))
             finally:
                 browser.close()
 
         self.assertEqual(errors, [], f'the page logged errors: {errors}')
+
+        # THE DOCUMENT AS FOUND, read at run time rather than assumed:
+        # this project is the pilot's and republishes on its own clock.
+        found = json.loads((CLOCKED_CURTA / 'viewer.json').read_text())
+        declared_instructions = found.get('instructions') or {}
+        print(f'  the build as found: version {found["version"]}, '
+              f'clock {found["clocked"].get("clock")!r}, '
+              f'{len(found.get("drivers") or {})} drivers, instructions '
+              f'{json.dumps(declared_instructions)}')
 
         idle = middle(result['idle'])
         idle_fps = len(result['idle']) / result['idleWall'] \
@@ -471,14 +513,50 @@ class CurtaGestureTest(TestCase):
               f'drawing): {len(result["idle"])} frames over '
               f'{result["idleWall"]:.2f} s ({idle_fps:.1f} fps), per-frame '
               f'median {idle:.2f} ms')
-        nudged = gesture_report("the NUDGE of 360 deg (0.2 s)",
-                                result['nudged'])
-        typed = gesture_report('the TYPED 720 (0.2 s)', result['typed'])
-        declared = gesture_report("the declared 'Turn crank' (2 s)",
-                                  result['declared'])
+        stroke = declared_instructions.get('Turn crank') or {}
+        tempo = stroke.get('duration')
+        travel = (stroke.get('by') or {}).get('crank_rotation')
+        nudged = gesture_report(
+            f'the NUDGE of 360 deg (the declared tempo: {tempo} s)',
+            result['nudged'])
+        typed = gesture_report(
+            f'the TYPED 720, a travel of 360 (tempo: {tempo} s)',
+            result['typed'])
+        declared = gesture_report(
+            f"the declared 'Turn crank' ({tempo} s)", result['declared'])
+        small = gesture_report(
+            f'the NUDGE of 30 deg, a twelfth of the declared travel '
+            f'(tempo: {tempo / 12 if tempo else None} s)', result['small'])
         print(f'    the POSE, by difference: nudge {nudged - idle:+.2f} ms, '
               f'typed {typed - idle:+.2f} ms, '
-              f'declared {declared - idle:+.2f} ms a frame')
+              f'declared {declared - idle:+.2f} ms, '
+              f'small {small - idle:+.2f} ms a frame')
+
+        # 5.2 ANSWERED IN NUMBERS. A one-tooth advance is TOOTH_PITCH =
+        # 11.25 degrees of crank wide (the project's own
+        # `simulation/cycle.py:7`), so at the declared tempo it occupies
+        # 11.25 / 360 of the drawing's frames. Whether that is more than
+        # one frame is a property of the PAGE'S FRAME RATE, not of this
+        # cycle, and this host renders 54 MB of meshes on a software
+        # rasteriser.
+        frames = len(result['nudged']['costs'])
+        fps = frames / result['nudged']['wall'] if result['nudged']['wall'] \
+            else 0
+        passage = frames * 11.25 / 360
+        print(f'  THE TOOTH PASSAGE: the nudge of a whole turn drew '
+              f'{frames} frames over {result["nudged"]["wall"]:.2f} s '
+              f'({fps:.1f} fps), so 11.25 deg of 360 is {passage:.2f} '
+              f'frames. At the fifth of a second ADR-065 drew it over, '
+              f'the same page would have given the whole turn about '
+              f'{max(1, round(fps * 0.2))} frame(s) and the passage '
+              f'{fps * 0.2 * 11.25 / 360:.2f} of one.')
+        print(f'  At 60 Hz the same tempo is {60 * (tempo or 0):.0f} frames '
+              f'a stroke and {60 * (tempo or 0) * 11.25 / 360:.1f} frames a '
+              f'passage; what this host managed is bounded by its own '
+              f'frame rate and not by the rule.')
+        if travel is not None:
+            self.assertEqual(travel, result['nudged']['end'],
+                             'the nudge did not ask for the declared travel')
         print(f'  canvas bytes: {result["settled"]} settled / '
               f'{result["painted"]} landed; shots under {SHOTS}')
         print(f'  frozen two 50 ms frames in: the panel read '
@@ -500,6 +578,18 @@ class CurtaGestureTest(TestCase):
         self.assertEqual(result['declared']['bank']['crank_rotation'], 1080)
         self.assertGreater(result['declared']['distinct'], 1,
                            'the declared stroke drew one pose, not many')
+        # The TWELFTH lands where it was asked, drawn at the same rate.
+        self.assertEqual(result['small']['bank']['crank_rotation'], 30)
+        self.assertEqual(result['small']['readings'][-1], 30)
+        # A gesture of the DECLARED travel and the instruction's own
+        # PRESS are two ways of asking for one stroke: on this page they
+        # take the same wall time, within a frame of it.
+        print(f'  the nudge of the declared travel took '
+              f'{result["nudged"]["wall"]:.2f} s and the press '
+              f'{result["declared"]["wall"]:.2f} s')
+        self.assertLess(
+            abs(result['nudged']['wall'] - result['declared']['wall']),
+            max(0.75, result['declared']['wall'] / 2))
         # The frozen picture is MID-TRAVEL: the model shows a crank
         # part-way round while the machine already banks the whole turn.
         self.assertGreater(frozen['crank'], 0)

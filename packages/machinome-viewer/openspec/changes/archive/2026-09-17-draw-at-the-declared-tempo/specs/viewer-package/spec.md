@@ -43,7 +43,9 @@ declared instruction states a TRAVEL on that same input over a duration, the
 viewer SHALL draw the gesture's transition AT THAT INSTRUCTION'S TEMPO, so that
 the same travel takes the same time however a maker asks for it — the duration
 drawn being the declared duration in the proportion the travel admitted bears
-to the travel declared. Where NO declared instruction states a travel on that
+to the travel declared. Where SEVERAL declared instructions state a travel on
+one input, the FIRST the document declares SHALL be the one whose tempo the
+gesture takes. Where NO declared instruction states a travel on that
 input, the viewer SHALL draw the transition over ONE SHORT DURATION OF ITS OWN,
 the same for every such handle and every travel, so that a gesture is watched
 rather than jumped. Neither duration SHALL be scaled by the playback speed.
@@ -179,6 +181,13 @@ different values and neither moves the other.
 - **THEN** the drawing takes the declared duration in the proportion the
   ADMITTED travel bears to the declared travel, so the input is drawn at the
   declared rate and stops where the machine stopped
+
+#### Scenario: The first declared travel gives the tempo
+
+- **WHEN** a document declares two instructions that each state a travel on one
+  input, over different durations
+- **THEN** a gesture on that input is drawn at the tempo of the one the document
+  declares FIRST, whatever the second states
 
 ### Requirement: The viewer plays a clocked instruction as one drawn transition
 

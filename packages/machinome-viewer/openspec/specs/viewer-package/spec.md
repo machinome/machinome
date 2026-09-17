@@ -3911,10 +3911,22 @@ reports SHALL BE DRAWN under the requirement "The viewer plays a clocked
 instruction as one drawn transition", exactly as a pressed instruction's is:
 the machine is solved once, at the gesture, and what follows is a picture of a
 transition that has already happened. A handle declares no duration, so the
-viewer SHALL draw such a transition over ONE SHORT DURATION OF ITS OWN — the
-same duration for every handle and every travel, so that a gesture is watched
-rather than jumped. That duration SHALL NOT be derived from the travel asked
-for, and the playback speed SHALL NOT scale it.
+viewer SHALL take one from the document where the document states one: where a
+declared instruction states a TRAVEL on that same input over a duration, the
+viewer SHALL draw the gesture's transition AT THAT INSTRUCTION'S TEMPO, so that
+the same travel takes the same time however a maker asks for it — the duration
+drawn being the declared duration in the proportion the travel admitted bears
+to the travel declared. Where SEVERAL declared instructions state a travel on
+one input, the FIRST the document declares SHALL be the one whose tempo the
+gesture takes. Where NO declared instruction states a travel on that
+input, the viewer SHALL draw the transition over ONE SHORT DURATION OF ITS OWN,
+the same for every such handle and every travel, so that a gesture is watched
+rather than jumped. Neither duration SHALL be scaled by the playback speed.
+
+A gesture on an input a tempo governs SHALL take proportionally long however
+far it travels, WITHOUT CAP: a maker who asks for twice the declared travel has
+asked to watch twice the declared stroke, and a picture drawn at one rate for
+its first half and another for the rest would be a picture of neither.
 
 A handle SHALL stay usable while a drawing runs; a gesture on one LANDS the
 running drawing and then draws its own, so repeated gestures give consecutive
@@ -4012,6 +4024,44 @@ different values and neither moves the other.
 - **THEN** that field keeps what the maker typed, while the model, the other
   handles and the readouts follow the drawing
 
+#### Scenario: A nudge is drawn at the tempo the document declares
+
+- **WHEN** a maker nudges an input by the whole travel a declared instruction
+  states for it, the instruction declaring that travel over two seconds
+- **THEN** the transition is drawn over those two seconds, the same stroke the
+  instruction's own button draws, rather than over the duration a handle gets
+  where the document declares nothing
+
+#### Scenario: Half the declared travel is drawn in half the declared time
+
+- **WHEN** a maker nudges that same input by a twelfth of the declared travel
+- **THEN** the transition is drawn over a twelfth of the declared duration, so
+  the input moves at the rate the document declared for it whatever the
+  gesture asked for
+
+#### Scenario: An input no declared travel names keeps the viewer's own duration
+
+- **WHEN** a maker nudges an input that no declared instruction states a travel
+  on — because no instruction names it, or because the one that does states a
+  landing rather than a travel
+- **THEN** the transition is drawn over the viewer's own short duration, the
+  same for every such gesture
+
+#### Scenario: A stopped gesture is drawn only for the travel it admitted
+
+- **WHEN** an interlock clips a gesture on an input a tempo governs, so the
+  machine admits less travel than the gesture asked for
+- **THEN** the drawing takes the declared duration in the proportion the
+  ADMITTED travel bears to the declared travel, so the input is drawn at the
+  declared rate and stops where the machine stopped
+
+#### Scenario: The first declared travel gives the tempo
+
+- **WHEN** a document declares two instructions that each state a travel on one
+  input, over different durations
+- **THEN** a gesture on that input is drawn at the tempo of the one the document
+  declares FIRST, whatever the second states
+
 ### Requirement: A maker runs an elapsed clocked machine on screen
 
 For a clocked machine that declares a CLOCK, the viewer SHALL offer a
@@ -4102,7 +4152,12 @@ duration.
 The viewer SHALL draw, in the same way and by the same rule, the transition a
 maker's GESTURE on a handle produces, under the requirement "A maker operates
 a clocked machine on screen": one request, made once at the gesture, drawn over
-the viewer's own short duration because a handle declares none. Everything
+the duration that requirement gives it — the tempo of a declared instruction
+that states a travel on the same input, or the viewer's own short duration
+where the document states none. A PRESSED instruction SHALL still be drawn over
+the duration it DECLARES, whatever travel its request admits: an instruction
+states its own duration and the viewer honours it, and a tempo is derived only
+where nothing is declared. Everything
 this requirement states about a drawing — the one solve, the bank that is final
 from the request, the fraction that decides a commit, the landing, the stopped
 and refused cases, and the one authority over the pose — SHALL hold for such a
@@ -4226,9 +4281,17 @@ the two being two authorities over one pose.
 
 - **WHEN** a maker's gesture on a handle makes a request that travels
 - **THEN** exactly one request is made before the first frame, the transition
-  is drawn frame by frame over the viewer's own short duration with each commit
+  is drawn frame by frame over the duration the panel gives it with each commit
   at its own fraction, and the drawing lands on the bank the machine has held
   since the gesture
+
+#### Scenario: A gesture of the declared travel takes the declared duration
+
+- **WHEN** a maker's gesture on a handle asks for exactly the travel a declared
+  instruction states on that input, and the instruction is pressed for the same
+  travel from the same bank
+- **THEN** both transitions are drawn over the same duration and land on the
+  same bank, the gesture and the button being two ways of asking for one stroke
 
 #### Scenario: A step of the clock is not drawn
 

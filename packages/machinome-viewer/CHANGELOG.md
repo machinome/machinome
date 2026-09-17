@@ -7,6 +7,42 @@ it carries release together and share one version.
 
 The viewer stops posing a machine and starts running one.
 
+- **A gesture on a handle is now drawn at the TEMPO the document
+  declares for that input, not over a fixed fifth of a second.** A whole
+  turn of the Curta's crank drawn over 0.2 s moves 30 degrees a frame on
+  a 60 Hz page, and a one-tooth digit advance is 11.25 degrees of crank
+  wide: the crank swept and the digits still teleported, inside a single
+  frame of the very drawing that was moving the crank. The document
+  already states the rate that makes it visible — the same machine
+  declares `'Turn crank': by crank_rotation 360 over 2 s` — so the
+  viewer reads it. Where a declared instruction states a TRAVEL on an
+  input, a gesture on that input is drawn over the declared duration in
+  the proportion the travel the machine ADMITTED bears to the travel
+  declared: the declared travel takes the declared duration (the same
+  stroke the instruction's own button draws), a twelfth of it a twelfth
+  of the time, twice it twice — **uncapped**, because that is the stroke
+  the maker asked to watch at the rate the document declares — and a
+  gesture an interlock clips is drawn for as far as the machine went,
+  at that same rate. **`GESTURE_SECONDS` keeps its fifth of a second as
+  the FALLBACK**: an input no declared instruction states a travel on is
+  drawn exactly as it was, whether no instruction names it or the one
+  that does states a LANDING (`targets`) rather than a travel — a
+  landing implies a different rate at every bank and none at its own.
+  Where several declared travels name one input, the FIRST the document
+  declares wins, which is the button nearest the top of the panel. A
+  PRESSED instruction is unchanged: drawn over the duration it declares,
+  whatever travel its request admits. On the Curta, measured on the
+  pilot's own build, the pilot's nudge went from one frame reading
+  `[0, 360]` to a drawn stroke; frozen 100 ms into the same gesture at a
+  fixed page rate, the crank stood at 180 degrees before and **18
+  degrees** after. **No API bump** — the tempo is read from the
+  `instructions` table this viewer already loads and lists, nothing a
+  host calls behaves differently — so `solidNodeViewerApi` stays 19 and
+  the document versions stay `1 … 8`; the drawing module, the machine,
+  the conformance corpus, the run and the posed `Ramp` are untouched.
+  (OpenSpec change `draw-at-the-declared-tempo`, ADR-066, amending
+  ADR-065.)
+
 - **EVERY request a maker's gesture makes on a clocked machine is now
   DRAWN, not only a pressed instruction.** A press was drawn from the
   day before; a nudge, a value typed into a handle's field and a

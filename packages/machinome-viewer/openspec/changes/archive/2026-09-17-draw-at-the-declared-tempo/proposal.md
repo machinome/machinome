@@ -71,6 +71,11 @@ long.
   make depends on where the input stands when it is pressed, so it states a
   different rate at every bank and none at all at its own landing. A rate needs
   a travel and a duration, and only `by=` publishes one.
+- **Where SEVERAL `by=` instructions name one input, the FIRST the document
+  declares gives the tempo.** That order is the producer's own declaration
+  order, preserved by the loader and by the panel's list, so the tempo is the
+  one the maker reads first; picking by the smallest or largest travel would
+  infer an intent the document never states.
 - **There is no cap.** A nudge of 720 on an input declaring 360 over 6 s takes
   12 s, because that is the stroke the maker asked to watch at the rate the
   document declares. A cap would draw the beginning of a long stroke at one
