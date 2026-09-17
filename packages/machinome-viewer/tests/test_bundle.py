@@ -51,7 +51,13 @@ class BundleLookupTest(TestCase):
         # `State`, whose document carries a compiled CLOCKED machine
         # instead of a program -- is the one after that (OpenSpec
         # `execute-the-commit`), and it is not additive either.
-        self.assertEqual(bundle.api_version(), 18)
+        # Advancing that machine's CLOCK (OpenSpec `run-the-clock`) is
+        # the one after that, and PLAYING one of its declared
+        # INSTRUCTIONS -- one request solved before the first frame and
+        # its transition drawn over the declared duration, where a build
+        # at 18 lists the same button and refuses it (OpenSpec
+        # `play-the-instruction`) -- is the one after that.
+        self.assertEqual(bundle.api_version(), 19)
 
     def test_declares_the_document_versions_this_build_reads(self):
         self.assertEqual(bundle.document_versions(),

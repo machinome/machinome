@@ -54,13 +54,15 @@ import { clockedMachine } from './clocked/machine';
 import type {
   ClockedMachine, ClockedRequest, ClockedSnapshot,
 } from './clocked/machine';
+import { drawing } from './clocked/drawing';
+import type { Drawing, DrawnFrame } from './clocked/drawing';
 import {
-  clockedControlLayer, clockStepAmount, DEFAULT_CLOCK_STEP,
-  formatClockedOutcome,
+  clockedControlLayer, clockedFollowing, clockStepAmount,
+  DEFAULT_CLOCK_STEP, formatClockedOutcome,
 } from './clockedControls';
 import type {
-  ClockedControlLayer, ClockedInputControl, ClockedOutcome,
-  ClockTransportPlan,
+  ClockedControlLayer, ClockedInputControl, ClockedInstructionControl,
+  ClockedOutcome, ClockTransportPlan, FollowedInput, Following,
 } from './clockedControls';
 import { evaluatesTech, knownTechnologies, specRefusal } from './flexible';
 import { AssemblyNode, AssemblyPath, WidgetTree, operationsMatrix } from './tree';
@@ -408,6 +410,17 @@ export async function mount(
   let clockStep = DEFAULT_CLOCK_STEP;
   let clockRefusal: string | null = null;
   let clockWidth = 0;
+  // The DRAWING of one pressed instruction (OpenSpec
+  // `play-the-instruction`, design §3). At most ONE runs at a time and
+  // it is the only authority over the pose while it does: the machine
+  // was solved once, at the press, and every frame here is a POSE of a
+  // transition that has already happened. `drawnBank` is what the model
+  // is SHOWING, which is what every scope must read while a drawing
+  // runs -- the machine's own bank stands at the transition's end from
+  // the instant of the press.
+  let clockedDrawing: { name: string; drawn: Drawing;
+                        elapsed: number } | null = null;
+  let drawnBank: Record<string, number> | null = null;
   // The running chrome (OpenSpec `drive-the-run-on-screen`). What a
   // maker has typed into the amount and rate fields is a REQUEST
   // setting, not a coordinate: it survives a republish and moves
@@ -454,7 +467,12 @@ export async function mount(
     // a geometry that is a formula of `$t` animates while the bank
     // stands (design §10).
     if (machine !== undefined) {
-      return clockedScope(machine.state(), time, bindingsTable);
+      // While a drawing runs, the bank the model SHOWS is the drawing's
+      // -- not the machine's, which stands at the transition's end. One
+      // scope, so the timeline's own `$t` frames pose from the same
+      // values the drawing does.
+      return clockedScope(drawnBank ?? machine.state(), time,
+                          bindingsTable);
     }
     return loadedProgram === null
       ? { time, drivers: drivers.scope(), bindings: bindingsTable.roots() }
@@ -1025,6 +1043,10 @@ export async function mount(
   const startMachine = (loaded: LoadedMachine | null) => {
     loadedMachine = loaded;
     clockedOutcomes = {};
+    // A republish rebuilds the machine at its initial bank, so a drawing
+    // of the old one is over: there is nothing left for it to draw.
+    clockedDrawing = null;
+    drawnBank = null;
     // A republish rebuilds the machine at its INITIAL bank, so it stops
     // the clock and returns it to zero, exactly as it restarts a run
     // (design §12). A maker watching a pendulum while editing its model
@@ -1056,6 +1078,39 @@ export async function mount(
     });
   };
 
+  /** POSE one frame of a drawing, and take the panel with it (OpenSpec
+   * `play-the-instruction`, design §3, §9).
+   *
+   * What a frame costs is this: `tree.update` over the ids the frame
+   * moved, and one narrow write per field that changed. The machine is
+   * not called, and the panel is not rebuilt. */
+  const drawFrame = (frame: DrawnFrame) => {
+    drawnBank = frame.bank;
+    tree?.update(clockedScope(frame.bank, time, bindingsTable),
+                 posed(frame.moved));
+    if (loadedMachine !== null && clockedChrome !== undefined) {
+      clockedChrome.follow(clockedFollowing(loadedMachine, frame.bank,
+                                            frame.moved));
+    }
+  };
+
+  /** LAND the running drawing, if there is one: the drawn pose takes the
+   * transition's end -- which is where the machine's bank already stands
+   * -- and the drawing is over (design §8).
+   *
+   * A drawing owns the pose while it runs, so EVERY other thing that
+   * would move or repose the machine calls this first. Landing loses
+   * nothing: the transition already happened, and the alternative is a
+   * maker who cannot act for two seconds. */
+  const landDrawing = (): void => {
+    const running = clockedDrawing;
+    if (running === null) return;
+    clockedDrawing = null;
+    drawFrame(running.drawn.land());
+    drawnBank = null;
+    clockedChrome?.indicate(running.name, false);
+  };
+
   /** Issue ONE request and report its outcome AT THE CONTROL that made
    * it (design §13), whatever the machine answers. A gesture an
    * interlock holds is REPORTED, not swallowed. */
@@ -1063,6 +1118,9 @@ export async function mount(
   ClockedOutcome | null => {
     const started = machine;
     if (started === undefined) return null;
+    // A gesture LANDS a running drawing and then acts, on a bank the
+    // maker can read (design §8).
+    landDrawing();
     const unit = loadedMachine?.drivers[id]?.unit ?? null;
     let report: ClockedOutcome;
     try {
@@ -1089,6 +1147,104 @@ export async function mount(
     return report;
   };
 
+  /** PLAY a declared instruction: ONE request, made once and before the
+   * first frame, and the transition it describes DRAWN over the declared
+   * duration (OpenSpec `play-the-instruction`, design §1, §7).
+   *
+   * One door for the panel's button and the host's own
+   * `machine().trigger(name)`: identical semantics, and the panel
+   * follows whoever pressed. The request is made in THIS task and the
+   * drawing's frame 0 posed in it too, before the browser paints, so the
+   * end pose the request necessarily made (ADR-125's atomicity) is
+   * computed and never seen. */
+  const clockedPlay = (name: string): ClockedRequest => {
+    const started = machine as ClockedMachine;
+    landDrawing();
+    const declared = loadedMachine?.instructions[name];
+    const stated = declared === undefined
+      ? undefined : declared.by ?? declared.targets;
+    const inputId = stated === undefined
+      ? null : Object.keys(stated)[0] ?? null;
+    const unit = inputId === null
+      ? null : loadedMachine?.drivers[inputId]?.unit ?? null;
+    // The bank the machine stands at BEFORE the request: what the
+    // drawing draws from. Taken here, because `trigger` moves it.
+    const before = started.state();
+    let answered: ClockedRequest;
+    try {
+      answered = started.trigger(name);
+    } catch (error) {
+      clockedOutcomes[name] = {
+        status: 'refused',
+        admitted: null,
+        unit,
+        message: error instanceof Error ? error.message : String(error),
+        stops: [],
+      };
+      rebuildClockedChrome();
+      renderer.render(scene, camera);
+      throw error;
+    }
+    clockedOutcomes[name] = {
+      status: 'completed',
+      admitted: answered.admitted,
+      unit,
+      message: null,
+      stops: answered.stops,
+    };
+    // The panel is rebuilt ONCE, here, carrying the report; the frames
+    // that follow only rewrite the fields they move.
+    rebuildClockedChrome();
+    startDrawing(name, answered, before, declared?.duration ?? 0, inputId);
+    renderer.render(scene, camera);
+    return answered;
+  };
+
+  /** Begin drawing `answered` from `before` over `duration` wall
+   * seconds, and pose its first frame at once.
+   *
+   * Nothing is drawn where there is nothing to draw: a request admitted
+   * at zero travel that committed nothing has no transition, and a
+   * duration of zero lands the transition in the one pose the request
+   * already made. */
+  const startDrawing = (name: string, answered: ClockedRequest,
+                        before: Record<string, number>, duration: number,
+                        inputId: string | null): void => {
+    if (!(duration > 0)) return;
+    if (answered.origin === answered.end && answered.commits.length === 0) {
+      return;
+    }
+    // TWO AUTHORITIES OVER ONE POSE is the one conflict a maker cannot
+    // read, so starting a drawing stops the clock's transport where the
+    // machine declares one -- as a reset already does.
+    if (clockPlaying) {
+      clockPlaying = false;
+      rebuildClockedChrome();
+    }
+    const integer = inputId !== null
+      && loadedMachine?.drivers[inputId]?.dtype === 'int';
+    const drawn = drawing(answered, before, duration, integer);
+    clockedDrawing = { name, drawn, elapsed: 0 };
+    clockedChrome?.indicate(name, true);
+    drawFrame(drawn.advance(0));
+  };
+
+  /** ONE POSE per rendered frame while a drawing runs (design §3),
+   * advanced on the wall seconds the loop already knows. The machine is
+   * not called at all. */
+  const drawingFrame = (elapsedWallSeconds: number) => {
+    const running = clockedDrawing;
+    if (running === null) return;
+    running.elapsed += elapsedWallSeconds;
+    const frame = running.drawn.advance(running.elapsed);
+    drawFrame(frame);
+    if (frame.done) {
+      clockedDrawing = null;
+      drawnBank = null;
+      clockedChrome?.indicate(running.name, false);
+    }
+  };
+
   /** ONE request per rendered frame while the transport plays (design
    * §5). Every event inside the frame is located exactly and in order --
    * a long frame is simply a long request -- and the advance is CAPPED,
@@ -1100,6 +1256,10 @@ export async function mount(
   const clockFrame = (elapsedWallSeconds: number) => {
     const started = machine;
     if (started === undefined || !clockPlaying) return;
+    // A playing clock and a running drawing are two authorities over one
+    // pose. Starting a drawing stops the transport, so this is the
+    // belt-and-braces half of that rule rather than its whole.
+    landDrawing();
     const clock = started.clock();
     if (clock === null) return;
     const by = clockAdvance(elapsedWallSeconds, speed);
@@ -1140,7 +1300,10 @@ export async function mount(
     if (!showsRunControls(resolved.driverControls, true)) return;
     const layer = clockedControlLayer({
       machine: loadedMachine,
-      values: machine.state(),
+      // What the panel reads is what the model is SHOWING: while a
+      // drawing runs that is the drawing's own bank, not the machine's,
+      // which stands at the transition's end from the press (design §9).
+      values: drawnBank ?? machine.state(),
       focus: assemblyNavigation.root(),
       rootLabel: tree?.name ?? 'root',
       nudge: clockedNudge,
@@ -1164,7 +1327,18 @@ export async function mount(
       setNudge(id: string, amount: number) {
         clockedNudge[id] = amount;
       },
+      trigger(name: string) {
+        // A refusal is REPORTED at the button, not thrown at the page:
+        // `clockedPlay` has already written it into the outcome table
+        // and rebuilt the panel.
+        try {
+          clockedPlay(name);
+        } catch (error) {
+          void error;
+        }
+      },
       reset() {
+        landDrawing();
         machine?.reset();
         tree?.update(scope());
         clockedOutcomes = {};
@@ -1504,6 +1678,11 @@ export async function mount(
     // and the transport advance different values and neither moves the
     // other's.
     clockFrame(elapsed);
+    // And the DRAWING of a pressed instruction, in the same loop and on
+    // the same wall seconds (OpenSpec `play-the-instruction`, design
+    // §3). What this costs is a POSE of the ids the frame moved: the
+    // machine was solved once, at the press, and is not called here.
+    drawingFrame(elapsed);
     if (playing) {
       setTime(advance(time, elapsed, cycleSeconds));
     }
@@ -1519,6 +1698,8 @@ export async function mount(
       }
       disposed = true;
       renderer.setAnimationLoop(null);
+      clockedDrawing = null;
+      drawnBank = null;
       observer.disconnect();
       controls.dispose();
       unsubscribeDrivers();
@@ -1623,7 +1804,24 @@ export async function mount(
     onDriverChange: (listener: DriverListener) =>
       drivers.onDriverChange(listener),
     instructions: () => drivers.instructions(),
-    trigger: (name: string) => drivers.trigger(name),
+    trigger: (name: string) => {
+      // A version 8 document is posed from the MACHINE'S BANK, so the
+      // driver-table ramp this verb starts would move nothing anybody
+      // could see. It was a silent no-op before an instruction had a
+      // meaning under a clocked root; now that it has one, it is a trap
+      // -- one handle, one word, two meanings, and the wrong one doing
+      // nothing at all (OpenSpec `play-the-instruction`, design §11).
+      if (machine !== undefined) {
+        throw new Error(
+          `trigger('${name}') ramps this document's DRIVER TABLE, and a `
+          + 'document carrying a clocked machine is posed from the '
+          + "machine's BANK: the ramp would move nothing you could see. "
+          + `Play it on the machine instead -- machine().trigger('${name}')`
+          + ' -- which makes the one request the instruction states and '
+          + 'draws it over the declared duration.');
+      }
+      return drivers.trigger(name);
+    },
     controls: partControlViews,
     machine(): MachineHandle | null {
       const started = machine;
@@ -1637,12 +1835,23 @@ export async function mount(
         // the states, the drivers and the clock's own seconds -- showing
         // an instant the machine has left. The panel is pure data
         // rendered whole, so this is the same rebuild a gesture makes.
+        // Every one of these LANDS a running drawing first (OpenSpec
+        // `play-the-instruction`, design §8): a drawing is the only
+        // authority over the pose while it runs, and the transition it
+        // draws has already happened, so landing it loses nothing and
+        // every gesture acts on a bank the maker can read.
         move: (input, request) => {
+          landDrawing();
           const answered = started.move(input, request);
           rebuildClockedChrome();
           return answered;
         },
+        // PLAYING an instruction, from the handle exactly as from the
+        // button: one request, made once, and its transition drawn over
+        // the declared duration.
+        trigger: (name: string) => clockedPlay(name),
         restore: (state) => {
+          landDrawing();
           started.restore(state);
           rebuildClockedChrome();
         },
@@ -1650,6 +1859,7 @@ export async function mount(
         // nobody could read, so a reset stops the transport -- from the
         // panel and from the handle alike.
         reset: () => {
+          landDrawing();
           started.reset();
           clockPlaying = false;
           clockRefusal = null;
@@ -3162,6 +3372,9 @@ interface ClockedChromeActions {
   /** One request travelling BY a design-unit amount. */
   nudge(id: string, amount: number): void;
   setNudge(id: string, amount: number): void;
+  /** PLAY a declared instruction: one request, drawn over its declared
+   * duration (OpenSpec `play-the-instruction`). */
+  trigger(name: string): void;
   reset(): void;
   /** The CLOCK's transport (OpenSpec `run-the-clock`, design §5): start
    * or stop it, advance it by the stated seconds, change the amount, and
@@ -3174,14 +3387,25 @@ interface ClockedChromeActions {
 }
 
 interface ClockedChrome {
+  /** Rewrite the fields a drawn frame moved, and nothing else (design
+   * §9). The panel is NOT rebuilt per frame: the Curta's is 23 inputs
+   * and 18 readouts, and this cycle claims a frame costs a pose. */
+  follow(following: Following): void;
+  /** Mark an instruction's button busy for as long as its drawing runs,
+   * on the running chrome's own `aria-busy` treatment. */
+  indicate(name: string, busy: boolean): void;
   remove(): void;
 }
 
 const CLOCKED_PANEL_STYLE = PANEL_STYLE.replace('max-width:75%;',
                                                 'max-width:96%;');
 
+/** What one field of the panel does when a drawn frame moves it. */
+type FieldWriter = (moved: FollowedInput) => void;
+
 function buildClockedRow(control: ClockedInputControl,
-                         actions: ClockedChromeActions): HTMLElement {
+                         actions: ClockedChromeActions,
+                         fields: Map<string, FieldWriter>): HTMLElement {
   const row = document.createElement('div');
   row.className = 'clocked-input';
   row.dataset.input = control.id;
@@ -3270,7 +3494,71 @@ function buildClockedRow(control: ClockedInputControl,
   outcome.style.cssText = `${RUN_OUTCOME_STYLE}flex-basis:100%;`;
   outcome.textContent = formatClockedOutcome(control.outcome);
   row.append(outcome);
+  // The one narrow write a drawn frame makes to this row (design §9):
+  // the field's reading and, where there is one, the thumb. A maker's
+  // own focus and selection survive it, which a rebuild would destroy.
+  fields.set(control.id, (moved) => {
+    // A maker editing the field is not overwritten mid-keystroke; every
+    // other frame writes the reading the rebuilt panel would have shown.
+    if (document.activeElement !== field) {
+      field.value = formatDisplay(moved.display);
+    }
+    const thumb = row.querySelector('.clocked-slider');
+    if (thumb instanceof HTMLInputElement && moved.slider !== null) {
+      thumb.value = String(moved.slider.position);
+    }
+  });
   return row;
+}
+
+/** One declared instruction, PRESSABLE (OpenSpec `play-the-instruction`,
+ * design §9): a button that plays it, and the outcome of the last press
+ * reported where it was made. The button INDICATES for as long as its
+ * own drawing runs, on the running chrome's own `aria-busy`
+ * treatment. */
+function buildClockedInstruction(
+  entry: ClockedInstructionControl,
+  actions: ClockedChromeActions,
+  indicators: Map<string, (busy: boolean) => void>,
+): HTMLElement {
+  const cell = document.createElement('div');
+  cell.className = 'clocked-instruction-control';
+  cell.dataset.instruction = entry.name;
+  cell.style.cssText = 'display:flex;flex-direction:column;gap:2px;';
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'clocked-instruction';
+  button.dataset.instruction = entry.name;
+  button.textContent = entry.label;
+  button.setAttribute('aria-label', `Play ${entry.label}`);
+  button.style.cssText = BUTTON_STYLE;
+  button.addEventListener('click', () => { actions.trigger(entry.name); });
+
+  const outcome = document.createElement('div');
+  outcome.className = 'clocked-outcome';
+  outcome.dataset.instruction = entry.name;
+  outcome.setAttribute('aria-live', 'polite');
+  outcome.style.cssText = RUN_OUTCOME_STYLE;
+  outcome.textContent = formatClockedOutcome(entry.outcome);
+  outcome.title = entry.outcome?.message ?? '';
+  if (entry.outcome !== null && entry.outcome.status === 'refused') {
+    outcome.style.color = '#ffd166';
+  }
+
+  indicators.set(entry.name, (busy) => {
+    if (busy) {
+      button.setAttribute('aria-busy', 'true');
+      button.style.cssText = BUTTON_STYLE
+        + 'background:rgba(127,209,255,0.35);';
+    } else {
+      button.removeAttribute('aria-busy');
+      button.style.cssText = BUTTON_STYLE;
+    }
+  });
+
+  cell.append(button, outcome);
+  return cell;
 }
 
 /** The CLOCK's transport, beside its readout (OpenSpec `run-the-clock`,
@@ -3367,6 +3655,13 @@ function buildClockedChrome(
   layer: ClockedControlLayer,
   actions: ClockedChromeActions,
 ): ClockedChrome {
+  // The two narrow seams a DRAWING writes through (design §9), mirroring
+  // the running chrome's own `rows`/`reports` maps rather than inventing
+  // a shape: one writer per field, one indicator per instruction.
+  const fields = new Map<string, FieldWriter>();
+  const readings = new Map<string, (text: string) => void>();
+  const indicators = new Map<string, (busy: boolean) => void>();
+
   const panel = document.createElement('div');
   panel.className = 'clocked-controls';
   panel.style.cssText = CLOCKED_PANEL_STYLE;
@@ -3374,7 +3669,7 @@ function buildClockedChrome(
                                actions.focus, 'clocked'));
 
   layer.inputs.forEach((control) => {
-    panel.append(buildClockedRow(control, actions));
+    panel.append(buildClockedRow(control, actions, fields));
   });
 
   layer.readouts.forEach((entry) => {
@@ -3391,6 +3686,7 @@ function buildClockedChrome(
     value.dataset.readout = entry.id;
     value.textContent = entry.readout;
     value.style.cssText = 'font-variant-numeric:tabular-nums;';
+    readings.set(entry.id, (text) => { value.textContent = text; });
     row.append(name, value);
     if (entry.unit !== null) {
       const unit = document.createElement('span');
@@ -3406,14 +3702,7 @@ function buildClockedChrome(
     row.className = 'clocked-instructions';
     row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;';
     layer.instructions.forEach((entry) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = entry.label;
-      button.disabled = true;
-      button.title = entry.reason;
-      button.setAttribute('aria-disabled', 'true');
-      button.style.cssText = 'font:inherit;opacity:0.5;';
-      row.append(button);
+      row.append(buildClockedInstruction(entry, actions, indicators));
     });
     panel.append(row);
   }
@@ -3434,7 +3723,18 @@ function buildClockedChrome(
   panel.append(session);
 
   container.append(panel);
-  return { remove: () => panel.remove() };
+  return {
+    follow(following: Following) {
+      for (const moved of following.inputs) fields.get(moved.id)?.(moved);
+      for (const moved of following.readouts) {
+        readings.get(moved.id)?.(moved.readout);
+      }
+    },
+    indicate(name: string, busy: boolean) {
+      indicators.get(name)?.(busy);
+    },
+    remove: () => panel.remove(),
+  };
 }
 
 function buildRunChrome(

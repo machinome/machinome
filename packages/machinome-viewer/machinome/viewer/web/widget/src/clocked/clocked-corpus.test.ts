@@ -43,7 +43,9 @@ import { bindingTable } from '../bindings';
 import type { Manifest } from '../types';
 import { loadClocked } from './document';
 import { clockedMachine } from './machine';
-import type { ClockedMachine, ClockedSnapshot } from './machine';
+import type {
+  ClockedMachine, ClockedRequest, ClockedSnapshot,
+} from './machine';
 
 interface CorpusMove {
   input: string;
@@ -53,6 +55,9 @@ interface CorpusMove {
 
 interface CorpusStep {
   move?: CorpusMove;
+  /** A declared instruction PRESSED by name. What it MEANS is part of
+   * the contract, not merely that the name was accepted. */
+  trigger?: string;
   snapshot?: string;
   restore?: string;
   reset?: boolean;
@@ -76,6 +81,12 @@ interface CorpusStop {
 
 interface CorpusRequest {
   bank: Record<string, number>;
+  /** BOTH ENDS of the path the request travelled, verbatim from the
+   * producer's bank and in the input's own NATIVE units. Recorded on
+   * every step the producer admitted -- 65 of them -- and on none it
+   * refused. */
+  origin?: number;
+  end?: number;
   admitted?: number;
   commits?: CorpusCommit[];
   stops?: CorpusStop[];
@@ -169,9 +180,9 @@ describe('the clocked corpus', () => {
   });
 
   it('is the producer\'s file, byte for byte', () => {
-    expect(CORPUS_BYTES.length).toBe(139262);
+    expect(CORPUS_BYTES.length).toBe(145673);
     expect(createHash('md5').update(CORPUS_BYTES).digest('hex'))
-      .toBe('852b86b804ebd785f6e6b1f5568fb01a');
+      .toBe('bc4174cf47f844b035125ed3afcee3aa');
   });
 
   it('carries a NEGATIVE ZERO, which the reader must preserve', () => {
@@ -209,9 +220,9 @@ describe('the census this build claims', () => {
   const clocked = fixture.machines
     .filter((entry) => clockMoves(entry).length > 0);
 
-  it('is 76 steps over 30 machines', () => {
+  it('is 81 steps over 30 machines', () => {
     expect(fixture.machines.length).toBe(30);
-    expect(steps).toBe(76);
+    expect(steps).toBe(81);
   });
 
   it('names the three machines that move a clock, off the file', () => {
@@ -222,12 +233,12 @@ describe('the census this build claims', () => {
     for (const entry of clocked) expect(clockMoves(entry)[0]).toBe(0);
   });
 
-  it('carries 722 recorded numbers in all', () => {
+  it('carries 917 recorded numbers in all', () => {
     let recorded = 0;
     for (const entry of fixture.machines) {
       for (const request of entry.requests) recorded += numbersIn(request);
     }
-    expect(recorded).toBe(722);
+    expect(recorded).toBe(917);
   });
 
   it('counts the 13 machines whose interlocks this build must execute',
@@ -236,7 +247,7 @@ describe('the census this build claims', () => {
          ((entry.document.clocked as { bounds: unknown[] }).bounds).length > 0));
        expect(bounded.length).toBe(13);
        expect(bounded.reduce((total, entry) => total + entry.script.length, 0))
-         .toBe(36);
+         .toBe(41);
      });
 
   it('is derived from the file: a machine added to it is counted', () => {
@@ -251,7 +262,7 @@ describe('the census this build claims', () => {
     const grown = widened.machines.reduce(
       (total, entry) => total + entry.script.length, 0);
     expect(widened.machines.length).toBe(31);
-    expect(grown).toBe(76 + extra.script.length);
+    expect(grown).toBe(81 + extra.script.length);
     expect(grown).not.toBe(steps);
   });
 
@@ -281,13 +292,23 @@ function replayStep(machine: ClockedMachine, step: CorpusStep,
     compared.steps += 1;
     compared.numbers += numbersIn(expected);
   }
-  if (step.move !== undefined) {
-    const { input, ...request } = step.move;
+  // A `move` and a `trigger` are compared by the SAME code: an
+  // instruction is one request and nothing else, so a branch that
+  // compared it differently would be a place for the two meanings to
+  // drift apart.
+  const asked: (() => ClockedRequest) | null = step.move !== undefined
+    ? (() => {
+      const { input, ...request } = step.move as CorpusMove;
+      return machine.move(input, request);
+    })
+    : (step.trigger !== undefined
+      ? (() => machine.trigger(step.trigger as string)) : null);
+  if (asked !== null) {
     const before = machine.state();
     if (expected.refused !== undefined) {
       let caught: unknown;
       try {
-        machine.move(input, request);
+        asked();
         throw new Error(`${where}: expected a refusal and got a request`);
       } catch (error) {
         caught = error;
@@ -301,8 +322,10 @@ function replayStep(machine: ClockedMachine, step: CorpusStep,
       // before it.
       expect(machine.state(), where).toEqual(before);
     } else {
-      const result = machine.move(input, request);
+      const result = asked();
       exactly(result.admitted, expected.admitted, `${where} admitted`);
+      exactly(result.origin, expected.origin, `${where} origin`);
+      exactly(result.end, expected.end, `${where} end`);
       expect(result.commits.length, `${where} commits`)
         .toBe((expected.commits as CorpusCommit[]).length);
       result.commits.forEach((found, index) => {
@@ -377,8 +400,8 @@ describe('the viewer reproduces the framework\'s own clocked corpus', () => {
 describe('the census, closed', () => {
   it('replayed every machine, every step and every recorded number', () => {
     expect(compared.machines.size).toBe(30);
-    expect(compared.steps).toBe(76);
-    expect(compared.numbers).toBe(722);
+    expect(compared.steps).toBe(81);
+    expect(compared.numbers).toBe(917);
   });
 });
 
@@ -450,4 +473,54 @@ describe('the exactness claim, proved rather than declared', () => {
          machine, one, entry.requests[index], snapshots,
          `Pawl step ${index}`))).toThrow();
      });
+});
+
+// ---------------------------------------------------------------------
+// A TRIGGERED step and the same request BY HAND (OpenSpec
+// `play-the-instruction`, design §13). The producer's own gift: step 14
+// presses `'Stroke'`, step 15 restores the bank it was pressed from, and
+// step 16 makes `move('crank', {by: 360})` by hand from there. If an
+// instruction is one request and nothing else, the two recorded results
+// are the same values -- and this engine reproduces both.
+// ---------------------------------------------------------------------
+
+describe('a triggered step and the same request by hand', () => {
+  const entry = fixture.machines.find(
+    (one) => one.name === 'Calculator') as CorpusMachine;
+
+  it('is what the corpus records: a trigger, a restore, and the move', () => {
+    expect(entry.script[12]).toEqual({ trigger: 'Set four' });
+    expect(entry.script[13]).toEqual({ snapshot: 'd' });
+    expect(entry.script[14]).toEqual({ trigger: 'Stroke' });
+    expect(entry.script[15]).toEqual({ restore: 'd' });
+    expect(entry.script[16]).toEqual({ move: { input: 'crank', by: 360 } });
+  });
+
+  it('records the SAME values for both', () => {
+    const pressed = entry.requests[14];
+    const byHand = entry.requests[16];
+    exactly(pressed.origin, byHand.origin, 'origin');
+    exactly(pressed.end, byHand.end, 'end');
+    exactly(pressed.admitted, byHand.admitted, 'admitted');
+    expect(pressed.commits).toEqual(byHand.commits);
+    expect(pressed.stops).toEqual(byHand.stops);
+    expect(pressed.bank).toEqual(byHand.bank);
+  });
+
+  it('is reproduced by this engine, both ways', () => {
+    const machine = machineOf(entry);
+    const snapshots = new Map<string, ClockedSnapshot>();
+    entry.script.slice(0, 14).forEach((step, index) => replayStep(
+      machine, step, entry.requests[index], snapshots,
+      `Calculator step ${index}`));
+    const pressed = machine.trigger('Stroke');
+    const bankPressed = machine.state();
+    machine.restore(snapshots.get('d') as ClockedSnapshot);
+    const byHand = machine.move('crank', { by: 360 });
+    expect(pressed).toEqual(byHand);
+    expect(bankPressed).toEqual(machine.state());
+    // And against what the PRODUCER recorded for each.
+    exactly(pressed.end, entry.requests[14].end, 'pressed end');
+    exactly(byHand.end, entry.requests[16].end, 'by-hand end');
+  });
 });

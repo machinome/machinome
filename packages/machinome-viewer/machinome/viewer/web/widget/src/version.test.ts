@@ -133,8 +133,20 @@ describe('API_VERSION', () => {
   // declarations are independent, a capability gate moving while the
   // schema list stands still. 13 stays SKIPPED: the in-flight cycle
   // `slide-and-turn-parts` claims it.
-  it('declares the running clock as version 18', () => {
-    expect(API_VERSION).toBe(18);
+  // PLAYING a clocked machine's declared instruction (OpenSpec
+  // `play-the-instruction`) is the one after that (19). A build at 18
+  // mounts the same version 8 document, LISTS the same instruction and
+  // refuses it -- a working page with a dead control rather than a loud
+  // failure -- and a host that means to offer a maker the buttons a
+  // clocked document declares, and to have the stroke WATCHED rather
+  // than jumped, has no way to tell the two builds apart except by
+  // pressing. Like 18 and unlike 15, 16 and 17, the DOCUMENT list does
+  // not move with it: solid-node's ADR-129 changed no field, no key and
+  // no version, and a version 8 document published after it is byte for
+  // byte the one published before. 13 stays SKIPPED: the in-flight
+  // cycle `slide-and-turn-parts` claims it.
+  it('declares the played instruction as version 19', () => {
+    expect(API_VERSION).toBe(19);
   });
 });
 

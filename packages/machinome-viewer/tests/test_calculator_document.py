@@ -79,7 +79,7 @@ class CalculatorFixtureTest(TestCase):
         self.assertEqual(missing, [], 'the fixture names meshes it lacks')
 
     def test_the_document_is_the_framework_s_own_clocked_machine(self):
-        self.assertEqual((CALCULATOR / 'viewer.json').stat().st_size, 15000)
+        self.assertEqual((CALCULATOR / 'viewer.json').stat().st_size, 15159)
         self.assertEqual(self.document['version'], 8)
         self.assertEqual(sorted(self.document['drivers']),
                          ['crank', 'feed', 'operand', 'ring', 'setting'])
@@ -96,6 +96,17 @@ class CalculatorFixtureTest(TestCase):
                    for one in clocked['bounds']),
             [('crank_dial.turn', 'low'), ('knob.travel', 'high'),
              ('knob.travel', 'low')])
+
+    def test_it_declares_exactly_the_two_instructions_this_cycle_plays(self):
+        # Re-exported for OpenSpec `play-the-instruction` from a
+        # throwaway copy of solid-node at `2ab9505`: `'Stroke'` is the
+        # Curta's own `'Turn crank'` on a fixture that also carries three
+        # bounds, and `'Set four'` is its absolute twin -- the `targets=`
+        # form the corpus requires this runtime to reproduce.
+        self.assertEqual(self.document['instructions'], {
+            'Set four': {'targets': {'operand': 4}, 'duration': 0.5},
+            'Stroke': {'by': {'crank': 360.0}, 'duration': 2.0},
+        })
 
     def test_it_carries_no_program_and_no_controls(self):
         # A root publishes ONE machine or the other, and ADR-128 section
@@ -329,7 +340,7 @@ class CalculatorInABrowserTest(TestCase):
                          self.document['clocked']['identity'])
         self.assertIsNone(mounted['clock'])
         self.assertIsNone(mounted['run'])
-        self.assertEqual(result['apiVersion'], 18)
+        self.assertEqual(result['apiVersion'], 19)
         # The bank's id order is DERIVED: drivers, then states.
         self.assertEqual(mounted['order'],
                          ['crank', 'feed', 'operand', 'ring', 'setting',
@@ -433,3 +444,347 @@ class CalculatorInABrowserTest(TestCase):
 
         self.assertTrue((SHOTS / 'clocked-calculator-stroked.png').is_file())
         self.assertTrue((SHOTS / 'clocked-calculator-frozen.png').is_file())
+
+
+#: A DRAWING of the fixture's own `'Stroke'` -- one request, made at the
+#: press, and its transition drawn over the declared two seconds
+#: (OpenSpec `play-the-instruction`, design §20).
+#:
+#: Everything here is sampled PER ANIMATION FRAME, because what this
+#: cycle claims is a property of frames: the crank's reading rises, the
+#: model changes, and the machine's own bank is the SAME bank at every
+#: one of them -- the proof that nothing was solved per frame.
+PLAY = """async () => {
+  const host = document.getElementById('host');
+  // WHAT A FRAME COSTS: the viewer's own animation-loop callback, timed
+  // from the outside by wrapping `requestAnimationFrame` before the
+  // mount. A pose and a render are what a frame of a drawing IS, and
+  // nothing else runs in that callback.
+  const raw = window.requestAnimationFrame.bind(window);
+  const frameCosts = [];
+  let timing = false;
+  window.requestAnimationFrame = (callback) => raw((stamp) => {
+    const began = performance.now();
+    callback(stamp);
+    if (timing) frameCosts.push(performance.now() - began);
+  });
+  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const machine = viewer.machine();
+  const panel = () => host.querySelector('.clocked-controls');
+  const field = (id) => Number(panel().querySelector(
+    `.clocked-value[data-input="${id}"]`).value);
+  const readout = (id) => panel().querySelector(
+    `.clocked-readout-value[data-readout="${id}"]`).textContent;
+  const button = () => panel().querySelector(
+    '.clocked-instruction[data-instruction="Stroke"]');
+  const outcome = () => panel().querySelector(
+    '.clocked-outcome[data-instruction="Stroke"]').textContent;
+  const shot = () => host.querySelector('canvas').toDataURL();
+  // The test's own waits go through the RAW callback, so waiting for a
+  // frame is never counted as the cost of one.
+  const frame = () => new Promise((resolve) => raw(() => resolve()));
+
+  // The BUTTON is pressable: no `disabled`, no `aria-disabled`.
+  const before = {
+    disabled: button().disabled,
+    ariaDisabled: button().getAttribute('aria-disabled'),
+    ariaBusy: button().getAttribute('aria-busy'),
+    outcome: outcome(),
+    bank: machine.state(),
+  };
+
+  // ---- 1. ONE PRESS, sampled every frame --------------------------
+  const start = machine.state();
+  timing = true;
+  const startedAt = performance.now();
+  button().click();
+  const busyAtOnce = button().getAttribute('aria-busy');
+  const crankAtOnce = field('crank');
+  const samples = [];
+  let midShot = null;
+  for (let at = 0; at < 240; at += 1) {
+    await frame();
+    samples.push({
+      crank: field('crank'),
+      bank: machine.state(),
+      busy: button().getAttribute('aria-busy'),
+    });
+    if (at === 30) midShot = shot();
+    if (button().getAttribute('aria-busy') === null && at > 2) break;
+  }
+  const wall = (performance.now() - startedAt) / 1000;
+  timing = false;
+  const costs = frameCosts.slice();
+  const landed = {
+    crank: field('crank'),
+    bank: machine.state(),
+    outcome: outcome(),
+    ariaBusy: button().getAttribute('aria-busy'),
+  };
+  const endShot = shot();
+
+  // ---- 2. The landing IS one `move('crank', {by: 360})` ------------
+  machine.reset();
+  const byHand = machine.move('crank', { by: 360 });
+  const handBank = machine.state();
+
+  // ---- 3. TWO PRESSES in quick succession are TWO strokes ---------
+  machine.reset();
+  button().click();
+  await frame();
+  button().click();
+  const twice = { crank: machine.state().crank, bank: machine.state() };
+  // Let the second drawing finish so nothing is left running.
+  for (let at = 0; at < 240; at += 1) {
+    await frame();
+    if (button().getAttribute('aria-busy') === null) break;
+  }
+  const afterTwice = { crank: field('crank'), bank: machine.state() };
+
+  // ---- 4. A GESTURE lands a running drawing -----------------------
+  machine.reset();
+  button().click();
+  await frame();
+  const midDrawing = field('crank');
+  panel().querySelector('.clocked-plus[data-input="feed"]').click();
+  const landedByGesture = {
+    crank: field('crank'),
+    busy: button().getAttribute('aria-busy'),
+    bank: machine.state(),
+  };
+
+  // ---- 5. A RESTORE during a drawing lands it too -----------------
+  machine.reset();
+  const rest = machine.snapshot();
+  button().click();
+  await frame();
+  machine.restore(rest);
+  const landedByRestore = {
+    crank: field('crank'),
+    busy: button().getAttribute('aria-busy'),
+    bank: machine.state(),
+  };
+
+  // ---- 6. A COMMIT is drawn at the frame the fraction reaches it ---
+  // `w0.digit` is a state of the `w0` layer, so the panel shows it when
+  // that layer is focused; the instruction is played from the handle,
+  // which is the same door the button uses.
+  machine.reset();
+  viewer.setRoot(['w0']);
+  const digits = [];
+  machine.trigger('Stroke');
+  for (let at = 0; at < 240; at += 1) {
+    // Sampled BEFORE the next frame, so the first entry is the pose the
+    // press itself made and the last is the first frame that reached
+    // the commit.
+    digits.push(readout('w0.digit'));
+    if (digits[digits.length - 1] !== '0') break;
+    await frame();
+  }
+  viewer.setRoot(null);
+
+  // ---- 7. The POSED trigger is refused under a clocked document ----
+  let posedTrigger = null;
+  try {
+    viewer.trigger('Stroke');
+  } catch (error) {
+    posedTrigger = String(error.message);
+  }
+
+  // ---- 8. An unknown instruction is refused, listing the declared --
+  machine.reset();
+  let unknown = null;
+  try {
+    machine.trigger('Turn crank');
+  } catch (error) {
+    unknown = String(error.message);
+  }
+
+  return {
+    before, busyAtOnce, crankAtOnce, samples, costs, wall, landed,
+    byHand: { admitted: byHand.admitted, origin: byHand.origin,
+              end: byHand.end, commits: byHand.commits.length,
+              bank: handBank },
+    twice, afterTwice, midDrawing, landedByGesture, landedByRestore,
+    digits, posedTrigger, unknown,
+    instructions: Object.keys(machine.instructions ? {} : {}),
+    moved: midShot !== null && midShot !== endShot,
+    apiVersion: viewer.apiVersion,
+  };
+}"""
+
+
+@needs_bundle
+@needs_playwright
+class InstructionDrawnInABrowserTest(TestCase):
+    """(7.2) The fixture's own `'Stroke'` PRESSED and WATCHED.
+
+    One request, made once and before the first frame; the transition
+    drawn over the declared two seconds; the machine's bank final from
+    the press; and every other gesture landing the drawing first.
+    """
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        self.out_dir = Path(self.tempdir.name) / 'calculator'
+        shutil.copytree(CALCULATOR, self.out_dir)
+        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
+        server = serve_directory(self.out_dir)
+        base = server.__enter__()
+        self.addCleanup(server.__exit__, None, None, None)
+        self.harness_url = f'{base}/harness.html'
+
+    def test_a_pressed_instruction_is_one_request_drawn_over_its_duration(
+            self):
+        SHOTS.mkdir(exist_ok=True)
+        errors = []
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 800,
+                                                  'height': 600})
+                page.set_default_timeout(300_000)
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.on('console', lambda message: errors.append(message.text)
+                        if message.type == 'error' else None)
+                page.goto(self.harness_url)
+                page.wait_for_function(
+                    'typeof SolidNodeWidget !== "undefined"')
+                result = page.evaluate(PLAY)
+                # PIXELS ARE EVIDENCE: one shot mid-stroke and one at the
+                # end of it, of a fresh mount so the shot is of a drawing
+                # rather than of whatever the drive left behind.
+                page.evaluate("""async () => {
+                  const host = document.getElementById('host');
+                  // A CLEAN HOST for the shots: the drive above left its
+                  // own canvas and panel here, and two panels stacked on
+                  // one host make a photograph nobody can read.
+                  host.replaceChildren();
+                  window.__play = await SolidNodeWidget.mount(
+                    host, 'viewer.json', {});
+                  window.__play.machine().move('operand', { to: 4 });
+                  host.querySelector(
+                    '.clocked-instruction[data-instruction="Stroke"]')
+                    .click();
+                }""")
+                page.wait_for_timeout(900)
+                page.screenshot(
+                    path=str(SHOTS / 'clocked-instruction-mid-stroke.png'))
+                page.wait_for_timeout(1600)
+                page.screenshot(
+                    path=str(SHOTS / 'clocked-instruction-landed.png'))
+            finally:
+                browser.close()
+
+        self.assertEqual(errors, [], f'the page logged errors: {errors}')
+
+        # 1. The button is PRESSABLE, and indicates the moment it is
+        # pressed.
+        before = result['before']
+        self.assertFalse(before['disabled'])
+        self.assertIsNone(before['ariaDisabled'])
+        self.assertIsNone(before['ariaBusy'])
+        self.assertEqual(before['outcome'], '')
+        self.assertEqual(result['busyAtOnce'], 'true')
+
+        # 2. The FIRST frame is the transition's ORIGIN, posed in the
+        # press's own task: the crank reads 0, not 360, although the
+        # machine already stands at 360.
+        self.assertEqual(result['crankAtOnce'], 0)
+
+        samples = result['samples']
+        self.assertGreater(len(samples), 10,
+                           'the transition was not drawn over frames')
+
+        # 3. The crank's reading RISES through the frames and ends at
+        # 360.
+        readings = [one['crank'] for one in samples]
+        self.assertEqual(readings, sorted(readings),
+                         'the drawn crank did not rise monotonically')
+        self.assertGreater(len(set(readings)), 5,
+                           'the drawing produced one pose, not many')
+        self.assertEqual(readings[-1], 360)
+        self.assertEqual(result['landed']['crank'], 360)
+        self.assertIsNone(result['landed']['ariaBusy'])
+
+        # 4. ONE SOLVE: the machine's bank is the SAME bank at every
+        # frame of the drawing -- final from the press, and never
+        # touched again.
+        banks = [one['bank'] for one in samples]
+        for bank in banks:
+            self.assertEqual(bank, banks[0])
+        self.assertEqual(banks[0]['crank'], 360)
+        self.assertEqual(banks[0]['w0.digit'], 1)
+
+        # 5. The landing IS one `move('crank', {by: 360})` from the same
+        # start, value for value.
+        by_hand = result['byHand']
+        self.assertEqual(by_hand['admitted'], 360)
+        self.assertEqual(by_hand['origin'], 0)
+        self.assertEqual(by_hand['end'], 360)
+        self.assertEqual(by_hand['commits'], 1)
+        self.assertEqual(result['landed']['bank'], by_hand['bank'])
+        # And the panel says what the bank says.
+        self.assertEqual(result['landed']['crank'],
+                         result['landed']['bank']['crank'])
+        self.assertIn('moved 360', result['landed']['outcome'])
+
+        # 6. TWO PRESSES are TWO STROKES: the first drawing lands, the
+        # second is made from the bank it left, and the crank ends at
+        # 720.
+        self.assertEqual(result['twice']['crank'], 720)
+        self.assertEqual(result['afterTwice']['crank'], 720)
+        self.assertEqual(result['afterTwice']['bank']['crank'], 720)
+        self.assertEqual(result['afterTwice']['bank']['w0.digit'], 2)
+
+        # 7. A GESTURE on a handle LANDS the drawing and then acts.
+        self.assertLess(result['midDrawing'], 360)
+        self.assertEqual(result['landedByGesture']['crank'], 360)
+        self.assertIsNone(result['landedByGesture']['busy'])
+        self.assertEqual(result['landedByGesture']['bank']['crank'], 360)
+
+        # 8. And so does a RESTORE: the drawing lands, then the snapshot
+        # takes the machine back to rest.
+        self.assertEqual(result['landedByRestore']['crank'], 0)
+        self.assertIsNone(result['landedByRestore']['busy'])
+        self.assertEqual(result['landedByRestore']['bank']['crank'], 0)
+
+        # 9. A COMMIT is drawn at the frame the transition reaches it,
+        # and at its old value in every frame before: `'Stroke'` commits
+        # at fraction 1.0 -- the corpus's own number -- so the digit
+        # reads 0 for the whole stroke and 1 at the end.
+        digits = result['digits']
+        self.assertGreater(len(digits), 5)
+        self.assertEqual(set(digits[:-1]), {'0'})
+        self.assertEqual(digits[-1], '1')
+
+        # 10. The POSED trigger is refused under a clocked document,
+        # pointing at the machine's own.
+        self.assertIsNotNone(result['posedTrigger'])
+        self.assertIn("machine().trigger('Stroke')", result['posedTrigger'])
+        self.assertIn('DRIVER TABLE', result['posedTrigger'])
+
+        # 11. An unknown name is refused, listing the declared ones.
+        self.assertIn('Turn crank', result['unknown'])
+        self.assertIn('Set four', result['unknown'])
+        self.assertIn('Stroke', result['unknown'])
+
+        # 12. WHAT A FRAME COSTS, in the page. Printed rather than
+        # asserted into a budget: a measurement is not a contract, and
+        # the number belongs in `evidence.md` whatever it says.
+        costs = sorted(result['costs'])
+        median = costs[len(costs) // 2]
+        fps = len(result['costs']) / result['wall']
+        print(f'  calculator drawing: {len(result["costs"])} frames over '
+              f'{result["wall"]:.2f} s ({fps:.1f} fps), per-frame pose '
+              f'median {median:.2f} ms, worst {costs[-1]:.2f} ms')
+        self.assertTrue(result['moved'], 'the model did not move on screen')
+        self.assertEqual(result['apiVersion'], 19)
+
+        self.assertTrue(
+            (SHOTS / 'clocked-instruction-mid-stroke.png').is_file())
+        self.assertTrue((SHOTS / 'clocked-instruction-landed.png').is_file())

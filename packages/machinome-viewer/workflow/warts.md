@@ -277,3 +277,86 @@ frame budget, and said so.
   speed. Producer-side if it is ever to change: the machine would have to
   publish something it does not — an event rate, or a `max_crossings` a
   consumer could reason about per second rather than per request.
+
+# The drawn instruction (2026-09-17, `play-the-instruction`, ADR-064)
+
+Three findings met while giving a clocked root's declared instructions a
+runtime meaning (solid-node ADR-129), recorded HERE rather than only in the
+change's own `evidence.md` — which holds each one's full text — for the same
+exception the entries above name: none belongs to a viewer cycle to fix. One
+is this package's own but is NOT this cycle's surface, one is the PRODUCER's,
+and one is a property of the host the measurement ran on rather than of any
+change in it. **Status: recorded; triage the pilot's.**
+
+**One wart above is CLOSED by this cycle and is not carried forward.** "What
+an instruction MEANS under a clocked root", open under both `execute-the-commit`
+and `run-the-clock`, is answered: solid-node ADR-129 decided that an
+instruction under a clocked root is ONE REQUEST over the ONE driver it names,
+with the declared duration saying how long a consumer draws the transition,
+and this cycle implements it — the buttons are pressable, a press is drawn,
+and an instruction this build could not play is refused at load. The two
+identity findings and the load-sensitive cost floors are carried forward
+unchanged and are not restated (this cycle moved no floor).
+
+## `dispose()` does not remove the clocked panel
+
+- **Symptom.** Mounting a widget twice on one host element leaves TWO clocked
+  panels stacked, the older one reading a bank nothing updates. It bit this
+  cycle's screenshots, which now clear the host before mounting.
+
+- **Cause.** Pre-existing and ADR-062's: `dispose()` removes `driverChrome`
+  and `runChrome` and never `clockedChrome`. The clocked panel was added as a
+  third chrome and the teardown was not extended with it.
+
+- **Not this cycle's surface.** `play-the-instruction` changes what the panel's
+  instruction rows DO; it does not own the mount lifecycle, and fixing teardown
+  inside it would have been a second change riding on a cycle's evidence.
+  Nothing here works around it: the acceptance clears the host, which is what
+  any host remounting a widget would do anyway.
+
+- **Cheap to fix when the pilot wants it**: one removal beside the two that
+  already run, red-first against a double mount.
+
+## A machine's identity does not cover its instruction table
+
+- **Symptom.** A clocked root that GAINS declared instructions publishes the
+  same `clocked.identity` as before. A snapshot taken against the old export
+  restores into the new one, although pressing a button on the new one makes a
+  request the old machine had no name for.
+
+- **Evidence.** The acceptance fixture re-exported from the producer's own
+  `tests/clocked_project/calculator.py:Calculator` at `2ab9505`, which now
+  declares `'Stroke'` and `'Set four'`, publishes the UNCHANGED identity
+  `979b1a0e…`; the two exports differ in the `instructions` key and in the
+  `mtime` fields alone, and both meshes are byte for byte identical.
+  `Clocked.described` does not hash the instruction table.
+
+- **Producer-side, and smaller than it looks.** An instruction is one request
+  over a declared driver, so a bank restored across the difference is still a
+  bank of the same drivers and states — the identity guards what a bank MEANS,
+  and that has not changed. It is recorded because ADR-128 §13's promise is
+  about what the identity covers, and this is a published field it does not.
+  It sits beside the identity finding this file already records (a machine's
+  identity is not a function of the machine).
+
+## The Curta's clocked page renders at 3 fps IDLE on this host
+
+- **Symptom.** The measurement of a drawn stroke on
+  `Calculators/Curta-Type-I-3x`'s own clocked build reports **3.0 fps before
+  anything is drawn**, and 2.0 fps while drawing.
+
+- **Cause: the rasteriser, not the pose.** Headless Chromium on `swiftshader`
+  software rendering, with 54 MB of meshes in the page. The measurement takes
+  an IDLE phase on the same page first precisely so the two can be told apart:
+  a frame of the DRAWING costs **9.20 ms** more than a frame of that idle page,
+  against **9.50 ms** for the posed `fast_curta`'s ramp in the same session —
+  so the clocked pose is not more expensive than the posed one, and both are
+  inside a 60 Hz budget. For a document this host can render at 60 Hz, the
+  committed calculator acceptance draws 120 frames over 2.02 s (59.4 fps) with
+  a per-frame pose median of 0.40 ms.
+
+- **Recorded rather than explained away.** The number on a machine with a GPU
+  is not known from here, and no claim in ADR-064 rests on the page's own
+  frame rate. What it means in practice: a per-frame FPS figure measured in
+  this repository's headless harness is a figure about the harness, and a
+  claim about how a document FEELS needs hardware the pilot has.

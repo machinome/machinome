@@ -209,7 +209,13 @@ class ViewerMountApiTest(TestCase):
         # build at 17 banks, poses from and refuses every request on --
         # is the one after that, and this moves to 18; the document list
         # does NOT move with it, because no new document shape is read.
-        self.assertEqual(result['bundle'], 18)
+        # OpenSpec `play-the-instruction`: PLAYING a clocked machine's
+        # declared instruction -- one request solved before the first
+        # frame and its transition drawn over the declared duration,
+        # where a build at 18 lists the same button and refuses it -- is
+        # the one after that, and this moves to 19; the document list
+        # does NOT move with it either.
+        self.assertEqual(result['bundle'], 19)
         # And a document carrying no program has no run and no machine,
         # which is what a host asking one question is answered with.
         self.assertIsNone(result['run'])

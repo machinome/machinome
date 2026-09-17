@@ -368,12 +368,18 @@ describe('a request this machine has no meaning for', () => {
     expect(machine.state()).toEqual({ crank: 0, units: 0, tens: 0 });
   });
 
-  it('refuses the cadence verbs by name (design §4)', () => {
-    const machine = corpusMachine('Counter');
-    expect(() => machine.trigger('go')).toThrow(/NO runtime meaning/);
-    expect(() => machine.step()).toThrow(/has no cadence/);
-    expect(() => machine.rate('crank', 1)).toThrow(/no cadence for one/);
-  });
+  it('refuses the cadence verbs by name (design §4), and `trigger` is no '
+     + 'longer one of them', () => {
+       const machine = corpusMachine('Counter');
+       expect(() => machine.step()).toThrow(/has no cadence/);
+       expect(() => machine.rate('crank', 1)).toThrow(/no cadence for one/);
+       // `trigger` left the list (OpenSpec `play-the-instruction`): it
+       // now refuses the NAME, listing what this machine declares, and
+       // says nothing about a runtime meaning an instruction has not
+       // got.
+       expect(() => machine.trigger('go')).toThrow(/no declared instruction/);
+       expect(() => machine.trigger('go')).not.toThrow(/NO runtime meaning/);
+     });
 
   it('carries the four KINDS the corpus records', () => {
     // The corpus records a refused step as `{kind, names}` and nothing
@@ -600,5 +606,172 @@ describe('a request that moves the CLOCK', () => {
     const shorter = machine.move('time', { by: 2 });
     expect(shorter.admitted).toBe(2);
     expect(machine.state().count).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------
+// BOTH ENDS of the path (OpenSpec `play-the-instruction`, design §2)
+// ---------------------------------------------------------------------
+
+describe('a request reports both ends of the path it travelled', () => {
+  it('takes them VERBATIM from the bank, before and after', () => {
+    const machine = handMade('(n + 1)');
+    const first = machine.move('x', { by: 3 });
+    expect(first.origin).toBe(0);
+    expect(first.end).toBe(3);
+    // And from a NON-ZERO start: the second request begins where the
+    // first left the bank.
+    const before = machine.state().x;
+    const second = machine.move('x', { by: 2 });
+    expect(second.origin).toBe(before);
+    expect(second.origin).toBe(3);
+    expect(second.end).toBe(5);
+    expect(second.end).toBe(machine.state().x);
+  });
+
+  it('puts every event\'s value on the segment the two ends span', () => {
+    const machine = corpusMachine('Pawl');
+    const request = machine.move('crank', { by: 1100 });
+    expect(request.origin).toBe(0);
+    expect(request.end).toBe(1100);
+    for (const commit of request.commits) {
+      expect(commit.value).toBeGreaterThanOrEqual(request.origin);
+      expect(commit.value).toBeLessThanOrEqual(request.end);
+    }
+  });
+
+  it('reports the STOP\'s landing as its second end, not the value '
+     + 'asked for', () => {
+       const machine = corpusMachine('Pawl');
+       machine.move('crank', { by: 1100 });
+       const clipped = machine.move('crank', { by: -30 });
+       expect(clipped.origin).toBe(1100);
+       // Asked for 1070; the ratchet gave it 1098.
+       expect(clipped.end).toBe(1098);
+       expect(clipped.end).toBe(machine.state().crank);
+       expect(clipped.admitted).toBe(-2);
+     });
+
+  it('reports the two ends EQUAL for a request admitted at zero travel',
+     () => {
+       const machine = corpusMachine('Standing');
+       const held = machine.move('feed', { by: -1 });
+       expect(held.admitted).toBe(0);
+       expect(held.origin).toBe(0);
+       expect(held.end).toBe(0);
+     });
+
+  it('reports NATIVE units, which a scaled driver tells from `admitted`',
+     () => {
+       // `ScaledStroke`'s lift is published at scale 0.5: a request of 30
+       // design units is 60 native, clipped at the plate's high bound of
+       // 9 native. `admitted` is 4.5 DESIGN and `end` is 9 NATIVE -- the
+       // producer's own asymmetry, and the reason a caller cannot
+       // reconstruct an end from `origin + admitted`.
+       const machine = corpusMachine('ScaledStroke');
+       const request = machine.move('lift', { by: 30 });
+       expect(request.admitted).toBe(4.5);
+       expect(request.origin).toBe(0);
+       expect(request.end).toBe(9);
+       expect(request.end).toBe(machine.state().lift);
+     });
+
+  it('reports a `to` request over an INTEGER driver at its converted '
+     + 'native value', () => {
+       const machine = corpusMachine('Register');
+       const request = machine.move('operand', { to: -1 });
+       expect(request.to).toBe(-1);
+       expect(request.origin).toBe(1);
+       expect(request.end).toBe(-1);
+       expect(Number.isInteger(request.end)).toBe(true);
+     });
+});
+
+// ---------------------------------------------------------------------
+// `trigger` EXECUTES (OpenSpec `play-the-instruction`, design §1)
+// ---------------------------------------------------------------------
+
+describe('a declared instruction is ONE request and nothing else', () => {
+  it('makes the request its `by` states, field for field', () => {
+    // `Calculator` declares `'Stroke': by crank 360 over 2 s`.
+    const pressed = corpusMachine('Calculator');
+    const byHand = corpusMachine('Calculator');
+    const triggered = pressed.trigger('Stroke');
+    const moved = byHand.move('crank', { by: 360 });
+    expect(triggered.input).toBe('crank');
+    expect(triggered.by).toBe(360);
+    expect(triggered.to).toBe(null);
+    expect(triggered).toEqual(moved);
+    expect(pressed.state()).toEqual(byHand.state());
+  });
+
+  it('makes the request its `targets` states, field for field', () => {
+    // `'Set four': targets operand 4 over 0.5 s`.
+    const pressed = corpusMachine('Calculator');
+    const byHand = corpusMachine('Calculator');
+    const triggered = pressed.trigger('Set four');
+    const moved = byHand.move('operand', { to: 4 });
+    expect(triggered.input).toBe('operand');
+    expect(triggered.to).toBe(4);
+    expect(triggered.by).toBe(null);
+    expect(triggered.origin).toBe(1);
+    expect(triggered.end).toBe(4);
+    expect(triggered).toEqual(moved);
+    expect(pressed.state()).toEqual(byHand.state());
+  });
+
+  it('does not read the declared DURATION: a request is a path', () => {
+    // `'Stroke'` declares 2 seconds and `'Set four'` declares 0.5; what
+    // each MAKES is the same request a hand-written `move` makes, and
+    // the duration reaches the request nowhere.
+    const machine = corpusMachine('Calculator');
+    const request = machine.trigger('Stroke');
+    expect(Object.keys(request).sort()).toEqual(
+      ['admitted', 'by', 'commits', 'end', 'input', 'origin', 'stops', 'to']);
+  });
+
+  it('poses its transition ONCE, through the same hook a `move` poses on',
+     () => {
+       const banks: Record<string, number>[] = [];
+       const machine = clockedMachine(corpusLoaded('Calculator'),
+                                      { pose: (next) => banks.push(next) });
+       machine.trigger('Stroke');
+       expect(banks).toHaveLength(1);
+       expect(banks[0].crank).toBe(360);
+     });
+
+  it('refuses a name the document does not declare, listing the ones it '
+     + 'does, and the bank stands', () => {
+       const machine = corpusMachine('Calculator');
+       const before = machine.state();
+       let caught: { kind?: string; message?: string } = {};
+       try {
+         machine.trigger('Turn crank');
+       } catch (error) {
+         caught = error as { kind?: string; message?: string };
+       }
+       expect(caught.kind).toBe('ValueError');
+       expect(caught.message).toContain('Turn crank');
+       expect(caught.message).toContain('Set four');
+       expect(caught.message).toContain('Stroke');
+       expect(machine.state()).toEqual(before);
+     });
+
+  it('refuses by name on a machine that declares NO instruction', () => {
+    const machine = corpusMachine('Counter');
+    let caught: { message?: string } = {};
+    try {
+      machine.trigger('Stroke');
+    } catch (error) {
+      caught = error as { message?: string };
+    }
+    expect(caught.message).toContain('Stroke');
+    expect(caught.message).toContain('none');
+  });
+
+  it('leaves the CADENCE refusals exactly where they were', () => {
+    const machine = corpusMachine('Calculator');
+    expect(() => machine.step()).toThrow(/no cadence/);
+    expect(() => machine.rate('crank', 1)).toThrow(/continuing/);
   });
 });

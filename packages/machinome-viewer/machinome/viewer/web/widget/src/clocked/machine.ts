@@ -53,14 +53,34 @@ export interface ClockedCommit {
   targets: Record<string, number>;
 }
 
-/** What one `move` did: the input, its travel, the events it fired in
- * path order, how much of the travel the machine ADMITTED (in DESIGN
- * units, the units `by` speaks), and the bounds it STOPPED at. `stops`
- * is empty exactly when the whole travel was made. */
+/** What one `move` did: the input, its travel, BOTH ENDS of the path it
+ * travelled, the events it fired in path order, how much of the travel
+ * the machine ADMITTED (in DESIGN units, the units `by` speaks), and the
+ * bounds it STOPPED at. `stops` is empty exactly when the whole travel
+ * was made.
+ *
+ * Mirrors the producer's `Request` field for field (`clocked.py`'s
+ * `Request`). */
 export interface ClockedRequest {
   input: string;
   by: number | null;
   to: number | null;
+  /** The value the moving input STOOD AT when the request began, taken
+   * verbatim from the bank and therefore in that input's own NATIVE
+   * units -- the units every `ClockedCommit.value` speaks, so that every
+   * event's value lies on the segment the two ends span.
+   *
+   * A deliberate asymmetry with `admitted`, which speaks DESIGN units
+   * because that is what `by=` asked in. Neither end is left for a
+   * caller to recompute: `origin + admitted / scale` can land on a float
+   * this machine never stood at, and a commit landing exactly ON the
+   * endpoint would then read as unfired (OpenSpec
+   * `play-the-instruction`, design §2). */
+  origin: number;
+  /** The value it ENDED at: the CLIPPED landing the bank holds
+   * afterwards, native, equal to `origin` for a request admitted at zero
+   * travel. */
+  end: number;
   commits: ClockedCommit[];
   admitted: number;
   stops: ClockedStop[];
@@ -91,9 +111,13 @@ export interface ClockedMachine {
   snapshot(): ClockedSnapshot;
   restore(state: ClockedSnapshot): void;
   reset(): void;
-  /** Refused by name: ADR-128 §14 publishes an instruction table under a
-   * clocked root and gives it NO runtime meaning. */
-  trigger(name: string): never;
+  /** PLAY a declared instruction: the ONE request it states, made
+   * through the same executor every other request goes through, and
+   * RETURNED. `by` is a `move(id, {by})`, `targets` a `move(id, {to})`,
+   * both in design units. The declared `duration` is not read here -- a
+   * request is a path and not an interval, and the duration says how
+   * long a CONSUMER draws the transition (`src/clocked/drawing.ts`). */
+  trigger(name: string): ClockedRequest;
   /** Refused by name: a clocked machine has no cadence to run, step or
    * speed (design §4). */
   step(): never;
@@ -371,6 +395,8 @@ export function clockedMachine(machine: LoadedMachine,
         input: inputId,
         by,
         to,
+        origin,
+        end: clippedTarget,
         commits,
         admitted: (clippedTarget - origin) * (scale === null ? 1 : scale),
         stops,
@@ -399,12 +425,29 @@ export function clockedMachine(machine: LoadedMachine,
       posed({ ...machine.initial });
     },
 
-    trigger(name: string): never {
-      throw new ClockedRequestError(
-        `trigger('${name}') asks this machine to run a declared ` +
-        'instruction. A clocked document publishes its instruction table ' +
-        'and gives it NO runtime meaning: what an instruction MEANS under ' +
-        'a clocked root is open in the framework. Move a driver instead.');
+    trigger(name: string): ClockedRequest {
+      // The producer's own verb, mirrored where the producer put it
+      // (`Sim.trigger` under a clocked root): resolve the instruction,
+      // take its ONE entry, and delegate to `move`. Nothing converts,
+      // rounds or clamps on the way -- `move` performs the one
+      // `native()` conversion -- so the half-to-even agreement is
+      // inherited rather than re-stated.
+      const instruction = machine.instructions[name];
+      if (instruction === undefined) {
+        const declared = Object.keys(machine.instructions).sort()
+          .map((one) => `'${one}'`).join(', ') || 'none';
+        throw new ClockedRequestError(
+          `trigger('${name}') names no declared instruction of this ` +
+          `machine; declared: ${declared}.`);
+      }
+      // ONE driver, and exactly one form: the producer's compile refused
+      // every other arity before this document existed, and this
+      // viewer's loader refuses a document carrying one (design §10).
+      const relative = instruction.by !== undefined;
+      const stated = (relative ? instruction.by : instruction.targets) as
+        Record<string, number>;
+      const [inputId, amount] = Object.entries(stated)[0];
+      return this.move(inputId, relative ? { by: amount } : { to: amount });
     },
 
     step(): never {

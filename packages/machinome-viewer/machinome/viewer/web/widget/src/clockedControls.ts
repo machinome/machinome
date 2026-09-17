@@ -96,16 +96,16 @@ export interface ClockedReadout {
   kind: 'state' | 'clock';
 }
 
-/** One declared instruction, LISTED and DISABLED: ADR-128 §14 publishes
- * the table in the version 5 shape and gives it no runtime meaning.
- * Hiding it would make the panel disagree with the document a maker can
- * read; showing it live would offer a gesture that cannot be honoured. */
+/** One declared instruction, LISTED and PRESSABLE (OpenSpec
+ * `play-the-instruction`, design §9). A press is ONE request the machine
+ * makes at once and the viewer DRAWS over the declared duration, so the
+ * control carries the outcome of the last press exactly as
+ * `RunInstructionControl` does -- the travel admitted, the stops that
+ * truncated it, or the refusal's own message -- and nothing else. */
 export interface ClockedInstructionControl {
   name: string;
   label: string;
-  disabled: true;
-  /** The reason, for a reader and for assistive tools. */
-  reason: string;
+  outcome: ClockedOutcome | null;
 }
 
 /** As much of a loaded machine as the chrome reads. `LoadedMachine`
@@ -154,7 +154,8 @@ export interface ClockedControlsInput {
   rootLabel?: string;
   /** Per-input nudge amounts a maker has edited, in DESIGN units. */
   nudge?: Readonly<Record<string, number>>;
-  /** The last outcome of each control, by input id. */
+  /** The last outcome of each control, by input id or by instruction
+   * name. */
   outcomes?: Readonly<Record<string, ClockedOutcome | null>>;
   /** Whether the clock's transport is running (design §5). */
   clockPlaying?: boolean;
@@ -202,10 +203,6 @@ export const DEFAULT_CLOCK_STEP = 1;
 export function clockStepAmount(asked: number, current: number): number {
   return Number.isFinite(asked) && asked > 0 ? asked : current;
 }
-
-const INSTRUCTIONS_DISABLED =
-  'A clocked machine publishes its instruction table and gives it no '
-  + 'runtime meaning: move a driver instead.';
 
 function segments(id: string): string[] {
   return id.split('.');
@@ -342,16 +339,82 @@ export function clockedControlLayer(
       outcomes[id] ?? null,
     )),
     readouts,
+    // An instruction's outcome is keyed by its NAME, in the same table a
+    // driver's is keyed by its id: one press, one report, where it was
+    // made.
     instructions: scopedIds(instructionNames, input.focus).map((name) => ({
       name,
       label: segments(name).slice(-1)[0],
-      disabled: true as const,
-      reason: INSTRUCTIONS_DISABLED,
+      outcome: outcomes[name] ?? null,
     })),
     children: navigableChildren(
       [...driverIds, ...stateIds, ...clockIds, ...instructionNames],
       input.focus),
   };
+}
+
+/** One handle the panel must rewrite while a drawing runs, and one
+ * readout. A narrow pair, not a control: the panel is NOT rebuilt per
+ * frame (design §9), so what a frame changes is a field's text and a
+ * thumb's position and nothing else. */
+export interface FollowedInput {
+  id: string;
+  /** The position in DESIGN units, as the field shows it. */
+  display: number;
+  readout: string;
+  /** The thumb, where the driver declares a range. The range bounds the
+   * THUMB and never the value, exactly as it does in a rebuilt panel. */
+  slider: SliderPlan | null;
+}
+
+export interface FollowedReadout {
+  id: string;
+  display: number;
+  readout: string;
+}
+
+export interface Following {
+  inputs: FollowedInput[];
+  readouts: FollowedReadout[];
+}
+
+/** What a drawn frame rewrites in the panel: the moved ids, split into
+ * the handles and the readouts that carry them, each saying what the
+ * rebuilt panel would have said (OpenSpec `play-the-instruction`, design
+ * §9).
+ *
+ * `moved` comes from the drawing's own frame, so no comparison is made
+ * twice, and an id the focused machine declares nowhere is passed over
+ * rather than invented. */
+export function clockedFollowing(machine: ClockedMachineView,
+                                 bank: Record<string, number>,
+                                 moved: readonly string[]): Following {
+  const inputs: FollowedInput[] = [];
+  const readouts: FollowedReadout[] = [];
+  for (const id of moved) {
+    const value = bank[id];
+    if (value === undefined) continue;
+    const driver = machine.drivers[id];
+    if (driver !== undefined) {
+      const display = displayValue(value, driver);
+      inputs.push({
+        id,
+        display,
+        readout: formatReadout(display),
+        slider: sliderPlan(display, driver),
+      });
+      continue;
+    }
+    const declaration = machine.states[id]
+      ?? (machine.clock !== null && id === machine.clock
+        ? CLOCK_DECLARATION : undefined);
+    if (declaration === undefined) continue;
+    const display = displayValue(value, declaration);
+    readouts.push({
+      id, display, readout: readoutText(display, declaration),
+    });
+  }
+  return { inputs, readouts };
 }
 
 /** What a control says about its last request (design §13).

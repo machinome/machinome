@@ -7,6 +7,55 @@ it carries release together and share one version.
 
 The viewer stops posing a machine and starts running one.
 
+- **A clocked machine's declared instructions are PRESSABLE, and a press
+  is drawn over its duration: API 19 says so.** solid-node's ADR-129
+  decided what an instruction means under a clocked root — ONE request
+  over the ONE driver it names, with the declared duration saying how
+  long a CONSUMER draws the transition — so the buttons this viewer used
+  to list and disable now play. Press one and the machine makes that
+  request ONCE, before the first frame: `machine().trigger(name)` returns
+  it, the bank stands at the transition's end from that instant, and what
+  follows is a PICTURE of it. Each frame poses the tree from the bank the
+  machine stood at before, with the moved input at the value the elapsed
+  fraction places between the two ends the request now reports (`origin`
+  and `end`, taken verbatim from the bank) and every commit whose
+  fraction the drawing has reached applied in path order — so **what a
+  frame costs is a pose, and the machine is never called in the frame
+  loop**. The line is linear like the posed `Ramp` and the last frame
+  stands on the request's own end, so the picture finishes ON the
+  machine's bank rather than near it; a whole-number input stays whole at
+  every frame and never passes the end the machine reported; a downward
+  transition is drawn by the same rule. A stopped request is drawn only
+  as far as the machine went and the button reports the stop; a request
+  an interlock held at zero draws nothing; a duration of zero lands in
+  one pose; a refusal draws nothing and is reported where it was pressed.
+  **A drawing is the only thing posing the machine while it runs**: any
+  other press, handle gesture, host request, restore or reset LANDS it
+  first and then acts, so two presses are two strokes, and starting one
+  pauses the clock's transport where the machine declares a clock. The
+  panel FOLLOWS the drawing rather than jumping to the end bank, through
+  a narrow writer instead of a rebuild per frame. An instruction this
+  build could not play — both forms or neither, no driver or several, a
+  state, the clock, an undeclared id, a travel or duration that is not a
+  finite number of the right kind — is **refused at load, by name**,
+  mirroring what the producer refuses before a document exists, so every
+  button a loaded document shows is one a maker may press. The posed
+  `handle.trigger()` is now refused under a clocked document, pointing at
+  `machine().trigger()`, rather than silently ramping a driver table
+  nothing poses from. Measured on the Curta's own two builds in one
+  browser session: the clocked build's per-frame pose — 41 bank values
+  over a 39-commit machine — costs **9.20 ms** against the posed
+  `fast_curta`'s **9.50 ms**, and the committed calculator acceptance
+  draws **120 frames over 2.02 s (59.4 fps)** with a median per-frame
+  pose of **0.40 ms**; a `trigger` costs what the same `move` costs
+  within the bench's noise. The conformance corpus grew to **81 steps and
+  917 recorded numbers over 30 machines** — the producer's `trigger`
+  steps and `origin`/`end` on all 65 recorded requests — and every one
+  replays bit for bit. Nothing of the clock's transport, the run, its
+  worker, the posed `Ramp` or document versions 1–7 changed, and the
+  document versions this build reads stay `1 … 8`. (OpenSpec change
+  `play-the-instruction`, ADR-064.)
+
 - **An elapsed clocked machine RUNS: the clock is an input a request
   moves, and API 18 says so.** solid-node's ADR-127 gave a clocked root a
   third time base: under `Time.elapsed()` the machine banks `time` in

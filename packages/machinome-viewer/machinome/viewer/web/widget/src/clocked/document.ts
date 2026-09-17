@@ -395,7 +395,8 @@ export function loadClocked(document: ClockedDocument, sourceUrl: string,
     order,
     drivers,
     states,
-    instructions: readInstructions(document.instructions, refuse),
+    instructions: readInstructions(document.instructions, refuse, drivers,
+                                   states, clock),
     initial,
     commits,
     bounds,
@@ -465,7 +466,22 @@ function readDeclarations(raw: unknown, key: string,
   return found;
 }
 
-function readInstructions(raw: unknown, refuse: Refuse):
+/** The instruction table of a version 8 document, read and VALIDATED
+ * against what this viewer can play (OpenSpec `play-the-instruction`,
+ * design §10).
+ *
+ * `drivers`, `states` and `clock` are the machine's own tables, already
+ * read: an instruction naming a state, the clock, or a name nothing
+ * declares is refused HERE, by name, on the surface a malformed
+ * `clocked` object is already refused on. A producer's compile refuses
+ * each of these before a document exists, so a document carrying one is
+ * one this viewer cannot trust to say what a press MEANS -- and
+ * refusing it keeps `published implies playable` reaching the chrome,
+ * which therefore needs no arity logic of its own. */
+function readInstructions(raw: unknown, refuse: Refuse,
+                          drivers: Record<string, ManifestDriver>,
+                          states: Record<string, ManifestDriver>,
+                          clock: string | null):
 Record<string, ManifestInstruction> {
   if (raw === undefined) return {};
   if (!isObject(raw)) {
@@ -475,6 +491,56 @@ Record<string, ManifestInstruction> {
   for (const [name, entry] of Object.entries(raw as Record<string, unknown>)) {
     if (!isObject(entry)) {
       refuse(`its \`instructions.${name}\` is ${quoted(entry)}`);
+    }
+    const where = `its \`instructions.${name}\``;
+    const at = (key: string): string => `its \`instructions.${name}.${key}\``;
+    const instruction = entry as Record<string, unknown>;
+    const relative = instruction.by !== undefined;
+    if (relative === (instruction.targets !== undefined)) {
+      refuse(`${where} states ${relative ? 'BOTH a travel AND a landing'
+        : 'NEITHER a travel NOR a landing'}: an instruction states ` +
+             'exactly one of `by` and `targets` -- how far its driver ' +
+             'travels, or where it lands');
+    }
+    const stated = relative ? instruction.by : instruction.targets;
+    if (!isObject(stated)) {
+      refuse(`${at(relative ? 'by' : 'targets')} is ` +
+             `${quoted(stated)}, not an object`);
+    }
+    const named = Object.keys(stated as Record<string, unknown>);
+    if (named.length !== 1) {
+      refuse(`${where} names ${named.length} drivers ` +
+             `(${named.map((one) => `"${one}"`).join(', ') || 'none'}); ` +
+             'an instruction under a clocked root is ONE request over ONE ' +
+             'driver, and sequencing several is a program\'s job');
+    }
+    const [inputId] = named;
+    if (!Object.prototype.hasOwnProperty.call(drivers, inputId)) {
+      if (Object.prototype.hasOwnProperty.call(states, inputId)) {
+        refuse(`${where} names "${inputId}", which is a declared state ` +
+               'and not a driver: a state is written by the machine at an ' +
+               'event, and a request moves a DRIVER');
+      }
+      if (clock !== null && inputId === clock) {
+        refuse(`${where} names "${inputId}", which is this machine\'s ` +
+               'clock: elapsed seconds are advanced by the transport and ' +
+               'by nothing else, and no instruction may name them');
+      }
+      refuse(`${where} names "${inputId}", which this machine declares ` +
+             `nowhere; declared: ${Object.keys(drivers).sort().join(', ')
+               || 'none'}`);
+    }
+    const amount = (stated as Record<string, unknown>)[inputId];
+    if (typeof amount !== 'number' || !Number.isFinite(amount)) {
+      refuse(`${where} states ${quoted(amount)} for "${inputId}", which is ` +
+             'not a finite number of design units');
+    }
+    const duration = instruction.duration;
+    if (typeof duration !== 'number' || !Number.isFinite(duration)
+        || duration < 0) {
+      refuse(`${at('duration')} is ${quoted(duration)}, not a finite ` +
+             'number of seconds at or above zero; a duration is how long a ' +
+             'consumer DRAWS the transition, and zero lands it at once');
     }
     found[name] = entry as unknown as ManifestInstruction;
   }

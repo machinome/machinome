@@ -92,6 +92,72 @@ function cost(label: string, machine: ClockedMachine,
   return runs;
 }
 
+/** Two requests timed ALTERNATELY, from the same bank each time, and
+ * each reported as its own median. Printed, not asserted into a budget:
+ * at a tenth of a millisecond a run's order is worth more than its
+ * arithmetic, so neither path is allowed to go first. */
+function interleaved(leftLabel: string, left: () => void,
+                     rightLabel: string, right: () => void,
+                     before: () => void, runs = 40): [number, number] {
+  const times: [number[], number[]] = [[], []];
+  for (let at = 0; at < runs; at += 1) {
+    for (const [index, one] of [left, right].entries()) {
+      before();
+      const started = performance.now();
+      one();
+      times[index].push(performance.now() - started);
+    }
+  }
+  const middles = times.map((all) => {
+    all.sort((a, b) => a - b);
+    return all[Math.floor(all.length / 2)];
+  }) as [number, number];
+  for (const [index, label] of [leftLabel, rightLabel].entries()) {
+    // eslint-disable-next-line no-console
+    console.log(`  ${label}: median of ${runs} = `
+      + `${middles[index].toFixed(4)} ms`);
+  }
+  return middles;
+}
+
+describe('what a PRESSED instruction costs against the same request',
+         () => {
+           it('is the same request and two dictionary lookups (OpenSpec '
+              + '`play-the-instruction`, task 8.2)', () => {
+                // "An instruction is one request and nothing else" is
+                // false if this is not so: `trigger` resolves the
+                // declaration, takes its one entry and delegates to
+                // `move`. The producer measured its own at +0.22%.
+                const machine = machineOf('Calculator');
+                const rest = machine.snapshot();
+                // Both paths warmed FIRST: whichever ran first would
+                // otherwise pay the JIT's bill and the comparison would
+                // measure the order of the two calls.
+                for (let at = 0; at < 20; at += 1) {
+                  machine.restore(rest);
+                  machine.move('crank', { by: 360 });
+                  machine.restore(rest);
+                  machine.trigger('Stroke');
+                }
+                // INTERLEAVED, so a drift in the machine's own speed
+                // over the run cannot be read as a difference between
+                // the two.
+                const [moved, pressed] = interleaved(
+                  "Calculator move('crank', {by: 360})",
+                  () => machine.move('crank', { by: 360 }),
+                  "Calculator trigger('Stroke')",
+                  () => machine.trigger('Stroke'),
+                  () => machine.restore(rest));
+                // eslint-disable-next-line no-console
+                console.log('  the difference: '
+                  + `${((pressed / moved - 1) * 100).toFixed(1)}%`);
+                // A tenfold floor, as everywhere in this file: this
+                // catches a `trigger` that re-solved something, never a
+                // slow machine.
+                expect(pressed).toBeLessThan(Math.max(moved * 10, 4));
+              });
+         });
+
 describe('what a clocked request costs', () => {
   it('cranks the Curta-shaped Calculator ONE STROKE', () => {
     const machine = machineOf('Calculator');
@@ -214,7 +280,8 @@ describe('what a clocked request costs', () => {
     // The main-thread decision (design §3) measured over EVERY machine
     // the corpus carries, rather than over the one that happens to be
     // fast. Cycle 5 recorded 13.6 ms for the 68 steps it replayed; this
-    // build EXECUTES all 76, the three clock machines included.
+    // build EXECUTES all 81, the three clock machines and the two
+    // TRIGGERS included.
     const started = performance.now();
     let steps = 0;
     for (const entry of fixture.machines) {
@@ -226,6 +293,7 @@ describe('what a clocked request costs', () => {
       }).script) {
         const one = step as unknown as {
           move?: { input: string; by?: number; to?: number };
+          trigger?: string;
           snapshot?: string; restore?: string; reset?: boolean;
         };
         steps += 1;
@@ -233,6 +301,10 @@ describe('what a clocked request costs', () => {
           if (one.move !== undefined) {
             const { input, ...request } = one.move;
             machine.move(input, request);
+          } else if (one.trigger !== undefined) {
+            // A pressed instruction is ONE request and nothing else, so
+            // it belongs in the same measured loop as a `move`.
+            machine.trigger(one.trigger);
           } else if (one.snapshot !== undefined) {
             snapshots.set(one.snapshot, machine.snapshot());
           } else if (one.restore !== undefined) {
@@ -250,7 +322,7 @@ describe('what a clocked request costs', () => {
     // eslint-disable-next-line no-console
     console.log(`  the whole corpus: ${steps} steps over `
       + `${fixture.machines.length} machines in ${elapsed.toFixed(1)} ms`);
-    expect(steps).toBe(76);
+    expect(steps).toBe(81);
     expect(elapsed).toBeLessThan(2000);
   });
 });

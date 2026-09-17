@@ -23,7 +23,8 @@ something a person can look at in a browser:
   no cadence — operated a gesture at a time, each gesture one request
   solved in thread and stopped where the machine's own interlocks stop
   it, and RUN where it declares a clock: play, step and speed over
-  elapsed seconds, one request per rendered frame**, and the
+  elapsed seconds, one request per rendered frame, with a declared
+  instruction pressed as one request and DRAWN over its duration**, and the
   `SolidNodeWidget.mount()` API a host page drives it through;
 - the **standalone export page** a `solid export` directory ships with,
   and the **inspector layout** (`SolidNodeWidget.mountInspector`) it can
@@ -455,9 +456,36 @@ host drives the same transport through `handle.machine()`, which carries
 the session verbs. A machine that declares no clock is offered no
 transport at all.
 
-Declared instructions are listed and **disabled**, because the framework
-publishes the table under a clocked root and gives it no runtime meaning
-yet.
+Declared instructions are **pressable**, and a press is **drawn**. An
+instruction under a clocked root is one request over the one driver it
+names, and its declared duration says how long a consumer draws the
+transition. So a press makes that request ONCE, before the first frame:
+the machine is solved there and stands at the transition's end from that
+instant, and what follows is a picture of it. Each frame poses the tree
+from the bank the machine stood at before, with the moved input at the
+value the elapsed fraction places between the two ends the request
+reports and every commit the fraction has reached applied in path order —
+so **a frame of a drawing costs a pose, and the machine is not called in
+the frame loop**. The line is linear, as a posed instruction's ramp is,
+and the last frame stands on the request's own end, so what was watched
+and what was committed are one state; a whole-number input is whole at
+every frame and never passes the end the machine reported. A stopped
+request is drawn only as far as the machine went and the button reports
+the stop; a duration of zero lands in one pose; a refused instruction
+draws nothing and says why where it was pressed.
+
+A drawing is the only thing posing the machine while it runs: another
+press, a handle gesture, a host request, a restore or a reset **lands**
+it first and then acts, so two presses are two strokes, and starting one
+stops the clock's transport where the machine declares a clock. The panel
+follows the drawing rather than showing the end bank the machine already
+holds — though a readback through `handle.machine()` reports that end,
+because the request has already been made. An instruction the viewer
+could not play — both forms or neither, no driver or several, a state,
+the clock, an id nothing declares, or a travel or duration that is not a
+finite number — is refused at load by name, mirroring what the framework
+refuses before such a document exists, so every button a loaded document
+shows is one a maker may press.
 
 `$t` animates a clocked document while its bank stands, exactly as it
 does for a posed one, and the headless capture photographs it at its
@@ -532,7 +560,7 @@ build reads rather than infer it.
 | solid-node-viewer | viewer API | reads document versions |
 | --- | --- | --- |
 | 0.1.0 | 7 | 1, 2, 3, 4 |
-| 0.2.0 | 18 | 1, 2, 3, 4, 5, 6, 7, 8 |
+| 0.2.0 | 19 | 1, 2, 3, 4, 5, 6, 7, 8 |
 
 (13 is skipped: the `slide-and-turn-parts` work claimed it while it was in
 flight, and merged still in progress without taking the number. Nothing

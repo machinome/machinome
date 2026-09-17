@@ -494,10 +494,13 @@ the canvas. Absent a host choice, it SHALL add no such attributes.
 The package SHALL declare one API version, expose it on every mount handle and
 the browser global, and make it readable without executing the bundle. It SHALL
 be raised whenever the mount interface or handle changes incompatibly, and when
-a capability a host may require is added. The declared version SHALL be 18,
-reflecting the advance of a clocked machine's CLOCK — the elapsed seconds a
-build at the previous version banks, poses from and refuses every request on —
-on top of the execution of a clocked machine's requests, of the
+a capability a host may require is added. The declared version SHALL be 19,
+reflecting the PLAYING of a clocked machine's declared instruction — one
+request solved before the first frame and its transition drawn over the
+declared duration, where a build at the previous version lists the same
+instruction and refuses it — on top of
+the advance of a clocked machine's CLOCK,
+of the execution of a clocked machine's requests, of the
 ordering of a block of the compiled program once per piece of a step, and of the execution of a law that reads the coordinate it drives, the
 drawing of the markings a document's parts carry, part controls, the inspector
 layout, the mountable assembly navigator, the published assembly-navigation
@@ -624,6 +627,14 @@ version is the only capability gate either moves.
   document truthfully at one instant and refuses every request that would
   move it off that instant
 
+#### Scenario: A host requires a clocked instruction played
+
+- **WHEN** a host means to offer a maker the buttons a clocked document
+  declares — "Turn crank" on a calculator that holds its registers — and to
+  have the stroke WATCHED rather than jumped
+- **THEN** the declared API version tells it whether this bundle plays one,
+  before it mounts a bundle that lists the same instruction and refuses it
+
 ### Requirement: A host reads and drives the document's drivers
 
 The mounted viewer SHALL hold one driver state per mount, keyed by the
@@ -690,6 +701,13 @@ resolving when every target lands or the run is cancelled) and
 instruction name SHALL fail loudly listing the known qualified names.
 Disposing the viewer SHALL cancel active ramps.
 
+That ramp is what an instruction means for a document the viewer POSES from
+its driver table. For a document carrying a CLOCKED machine the handle's own
+`trigger` SHALL be REFUSED by name, saying that a clocked machine's
+instructions are played on the machine and pointing at it: such a document is
+posed from the machine's BANK, so a ramp over the driver table would move
+nothing a maker could see.
+
 #### Scenario: A button-shaped call homes one axis
 
 - **WHEN** a host calls `trigger('x_axis.Home')` (target 0.0 mm over
@@ -710,6 +728,13 @@ Disposing the viewer SHALL cancel active ramps.
 - **WHEN** a host triggers a name the document does not declare
 - **THEN** the call fails listing the declared qualified instruction
   names and no driver changes
+
+#### Scenario: A posed trigger on a clocked document is refused
+
+- **WHEN** a host calls the viewer handle's own `trigger` on a document
+  carrying a clocked machine
+- **THEN** the call is refused naming the machine's own trigger as the way
+  to play that instruction, and no ramp is started
 
 ### Requirement: Client evaluation matches producer numerics
 
@@ -3389,9 +3414,20 @@ Executing a request SHALL, without posing anything until it is done:
 - refuse the request when a law produces a value that is not finite.
 
 The request SHALL then pose the tree ONCE from the resulting bank, and
-SHALL report the travel it admitted, the stops that truncated it, and the
+SHALL report the travel it admitted, BOTH ENDS OF THE PATH IT TRAVELLED,
+the stops that truncated it, and the
 events it fired, each with the relations that fired it, the fraction of
 the path, the input's value there and the values written.
+
+The two ENDS SHALL be the value the moving input stood at when the request
+began and the value it ended at, each taken VERBATIM from the bank and
+therefore in that input's own NATIVE units — the units each event's value
+speaks — so that every event's value lies on the segment they span. Neither
+end SHALL be left for a caller to recompute: the admitted travel is in DESIGN
+units, and a caller reconstructing an end by arithmetic could land on a value
+the machine never stood at and so read a fired event as unfired. A request
+that a stop truncated SHALL report as its second end the landing the stop
+gave it, and one admitted at zero travel SHALL report its two ends equal.
 
 A request the viewer refuses for any reason SHALL leave the bank, the
 pose and the model exactly as they stood.
@@ -3460,6 +3496,15 @@ published identity — and a RESET to every published default.
   machine
 - **THEN** the restore is refused naming the two identities, and the
   machine stands where it stood
+
+#### Scenario: A request reports both ends of the path it travelled
+
+- **WHEN** a request is made BY a travel over an input standing away from
+  zero, and another is clipped at a declared stop
+- **THEN** each reports the value the input stood at before it and the value
+  it stands at after it, both equal to the bank's own entries before and
+  after, every event's value lies between them, and the clipped request's
+  second end is the landing the stop gave it rather than the value asked for
 
 ### Requirement: A request may advance a clocked machine's clock
 
@@ -3678,12 +3723,25 @@ whose names collide with the declared drivers or with the machine's clock;
 an expression naming an
 identifier neither table nor the machine's own reserved names declare.
 
+It SHALL refuse at load, in the same place and by the same naming, an
+INSTRUCTION this viewer could not play: one stating neither a travel nor a
+target or both, one naming no driver or more than one, one naming something
+the drivers table does not declare — a state, the machine's clock, or a name
+nothing declares — or one whose duration is not a finite number of seconds at
+or above zero. A producer's own compile refuses each of these before a
+document exists, so a document carrying one is a document this viewer cannot
+trust to say what a press means, and every instruction a loaded version 8
+document carries is one a maker may press.
+
 The viewer SHALL refuse a REQUEST, leaving the document loaded and the
 model posed, when the request names a CLOCK on a machine that declares
-none, and when a host asks a clocked machine for a cadence it does
-not have: a rate, a triggered instruction, or a step of a run. A request
+none, when a TRIGGER names an instruction the document does not declare —
+listing the declared names — and when a host asks a clocked machine for a
+cadence it does not have: a rate, or a step of a run. A request
 that ADVANCES a declared clock is not such a refusal and SHALL be executed
-under the clock requirement above.
+under the clock requirement above; neither is a TRIGGER of a declared
+instruction, which is executed under the requirement "The viewer plays a
+clocked instruction as one drawn transition".
 
 #### Scenario: A malformed clocked machine is refused by name
 
@@ -3704,16 +3762,31 @@ under the clock requirement above.
 
 #### Scenario: A cadence a clocked machine does not have is refused
 
-- **WHEN** a host asks a clocked machine to trigger a declared
-  instruction, or to run at a rate
+- **WHEN** a host asks a clocked machine to run at a rate, or to step a
+  run
 - **THEN** the call is refused naming what was asked and what a clocked
   machine offers instead, and nothing about the machine changes
+
+#### Scenario: An instruction this viewer could not play is refused at load
+
+- **WHEN** a mounted version 8 document declares an instruction naming two
+  drivers, or one naming a state
+- **THEN** mounting fails naming that instruction and what it names, rather
+  than listing a button whose meaning the viewer would have to guess
+
+#### Scenario: A trigger of a name nothing declares is refused
+
+- **WHEN** a host triggers an instruction name the document does not carry
+- **THEN** the call is refused listing the declared instruction names, the
+  document stays loaded, and the model stays posed at the bank it showed
 
 ### Requirement: The two runtimes agree on the clocked corpus
 
 The producer publishes a clocked conformance corpus: one document per
-machine, embedded verbatim, a script of requests and session operations,
-and — per step — the whole bank afterwards, the travel admitted, the
+machine, embedded verbatim, a script of requests, TRIGGERS of declared
+instructions, and session operations,
+and — per step — the whole bank afterwards, the travel admitted, BOTH ENDS
+OF THE PATH, the
 events fired with their landings and the values written, and, for a step
 the producer refused, the KIND of refusal and the qualified names its
 message carries.
@@ -3728,10 +3801,13 @@ fixture or omitting a scenario.
 
 The replay SHALL load and execute EVERY machine of the corpus and EVERY
 step of every script, and SHALL compare, per step, the whole bank, the
-travel admitted, the events fired, the STOPS met and the refusals by kind
+travel admitted, BOTH ENDS OF THE PATH, the events fired, the STOPS met and
+the refusals by kind
 and by name. No step SHALL be departed from, deferred or passed over: a
 request that advances a machine's CLOCK is replayed exactly as a request on
-a driver is.
+a driver is, and so is a step that TRIGGERS a declared instruction — what
+the instruction MEANS is part of the contract, not merely that the name was
+accepted.
 
 A CENSUS of the machines, the steps and the recorded numbers SHALL be
 asserted and SHALL be DERIVED from the corpus file itself rather than from a
@@ -3775,6 +3851,21 @@ without also moving that number.
   representable value
 - **THEN** the replay fails, rather than accepting a value within any window
 
+#### Scenario: A step that triggers an instruction is replayed like any other
+
+- **WHEN** the corpus records a step that triggers a declared instruction,
+  one stating a travel and one stating a target
+- **THEN** each is replayed step by step like every other machine's, the
+  request the instruction makes is compared field for field against the
+  recorded one, and the steps after it are compared against the bank it left
+
+#### Scenario: A triggered step and the same request by hand agree
+
+- **WHEN** the corpus records a trigger and, from the same restored bank,
+  the request that instruction states made by hand
+- **THEN** this engine reproduces both, and the two recorded results are the
+  same values — the same ends, the same admitted travel and the same events
+
 #### Scenario: A regenerated corpus is loud
 
 - **WHEN** a corpus is copied in carrying more machines or more steps than
@@ -3805,10 +3896,20 @@ never as a positional handle; it is advanced by the transport of the
 requirement "A maker runs an elapsed clocked machine on screen" and by
 nothing else.
 
-Declared instructions SHALL be listed and SHALL be presented as
-unavailable, with the reason available to a reader and to assistive
-tools: a clocked document publishes its instructions and this build gives
-them no meaning.
+Declared instructions SHALL be listed and SHALL be PRESSABLE. A press SHALL
+play that instruction under the requirement "The viewer plays a clocked
+instruction as one drawn transition"; the button SHALL indicate for as long
+as its drawing runs, and SHALL report the outcome where it was pressed — the
+travel admitted, the stops that truncated it, or the refusal's own message —
+exactly as a handle's gesture does. While a drawing runs the panel's handles
+and readouts SHALL follow THE DRAWING rather than the bank, so that what a
+maker reads beside the model is what the model is showing; when the drawing
+lands the two are the same values again.
+
+A gesture on a HANDLE SHALL remain ONE immediate request, posed once: a
+duration is something a declared instruction states, and a handle declares
+none. A handle SHALL stay usable while a drawing runs; a gesture on one lands
+the drawing and then acts.
 
 The chrome SHALL offer snapshot, restore and reset of the machine's bank.
 It SHALL NOT offer a transport over the machine's DRIVERS — a clocked
@@ -3844,11 +3945,19 @@ different values and neither moves the other.
   travel it admitted, the model does not move, and nothing is reported as
   an error
 
-#### Scenario: A declared instruction is shown and unavailable
+#### Scenario: A declared instruction is pressed and played
 
-- **WHEN** a clocked document declares instructions
-- **THEN** each is listed and presented as unavailable, rather than hidden
-  or offered as a gesture that cannot be honoured
+- **WHEN** a maker presses a listed instruction of a clocked document
+- **THEN** the machine makes that instruction's one request, the transition
+  is drawn over the declared duration, and the button indicates while it runs
+  and reports the travel admitted when it lands
+
+#### Scenario: The panel follows the drawing
+
+- **WHEN** a drawing is running
+- **THEN** the moved handle's reading and the readouts of the states its
+  commits write follow what the model is showing, frame by frame, and stand
+  at the machine's own bank when the drawing lands
 
 #### Scenario: A clocked model animates while its bank stands
 
@@ -3929,3 +4038,124 @@ be offered a way to move backwards, elapsed seconds having no reverse.
 - **THEN** no on-screen transport appears while the clock advances, poses and
   commits exactly as it does when the transport is shown
 
+### Requirement: The viewer plays a clocked instruction as one drawn transition
+
+A clocked machine's document publishes its declared instructions, each naming
+exactly ONE driver — a travel from where it stands, or a value to land on,
+in that driver's design units — and a DURATION in seconds. The machine gives
+the duration no meaning; it is how long a consumer draws the transition.
+
+The viewer SHALL PLAY such an instruction. Triggering one by name on the
+machine SHALL make the ONE REQUEST the instruction states, through the same
+executor every other request goes through and under the requirement "The
+viewer executes a clocked machine's requests", SHALL return that request, and
+SHALL then DRAW the transition the request describes over the declared
+duration.
+
+The machine SHALL be solved exactly ONCE per press, BEFORE the first frame of
+the drawing. The bank SHALL be FINAL from the moment the request is made: a
+readback taken while the drawing runs SHALL report the transition's END, and
+NO FURTHER REQUEST SHALL be made by the drawing. What a frame of a drawing
+costs SHALL be a POSE and nothing else.
+
+At each frame the viewer SHALL pose the tree from the bank the machine stood
+at BEFORE the request, with
+
+- the moved input at the value the elapsed FRACTION of the duration places
+  between the two ends the request reports, and
+- every commit whose reported fraction is at or before that fraction applied,
+  in the order the request reports them, at the values it reports.
+
+The fraction SHALL be what decides which commits are applied, so a transition
+that runs DOWNWARD is drawn by the same rule as one that runs upward and the
+rounding of a drawn value can neither anticipate a commit nor delay one. The
+LAST frame SHALL stand at the request's own reported end with every commit
+applied, so the bank the drawing finishes on and the bank the machine holds
+are the same values. An input declared as a whole number SHALL be whole at
+every frame and SHALL never pass the end the machine reported.
+
+A request the machine STOPPED SHALL be drawn only as far as the machine went,
+and the control SHALL report the stop as it does for any other request. A
+request that admitted ZERO travel SHALL draw nothing and SHALL report its
+stop. A duration of zero SHALL land at once, in one pose. An instruction the
+machine REFUSES SHALL draw nothing, SHALL leave the bank and the pose exactly
+as they stood, and SHALL report the refusal where it was pressed. Triggering
+a name the document does not declare SHALL be refused listing the declared
+names.
+
+A drawing SHALL be the only thing posing the machine while it runs. Any other
+thing that would move or repose the machine — another instruction, a gesture
+on a handle, a request from the host's own handle, a snapshot restore, a reset
+— SHALL LAND the drawing first, the drawn pose taking the transition's end,
+and then act. Triggering while a drawing runs SHALL therefore land that
+drawing and draw the new one, so two presses give two transitions. Starting a
+drawing SHALL stop the clock's transport where the machine declares a clock,
+the two being two authorities over one pose.
+
+#### Scenario: A press draws the transition the machine solved
+
+- **WHEN** a maker presses an instruction that turns a clocked machine's
+  crank one whole turn over two seconds
+- **THEN** the crank's value rises through successive frames for those two
+  seconds and the geometry follows it, while a readback of the bank reports
+  the whole turn from the first frame
+
+#### Scenario: A commit is drawn at the frame the transition reaches it
+
+- **WHEN** the transition carries a commit partway along the path
+- **THEN** the parts that commit writes are posed at their new values from
+  the first frame whose fraction reaches it, and at their old values in
+  every frame before it
+
+#### Scenario: The drawing lands on the machine's own bank
+
+- **WHEN** a drawing finishes
+- **THEN** the pose stands at the request's reported end with every commit
+  applied, value for value the bank the machine has held since the request
+  was made
+
+#### Scenario: One press is one solve
+
+- **WHEN** a drawing of many frames runs to its end
+- **THEN** exactly one request was made, before the first frame, and the
+  bank read at every frame of the drawing is the same bank
+
+#### Scenario: A stopped instruction is drawn only as far as the machine went
+
+- **WHEN** an interlock clips the request an instruction makes
+- **THEN** the drawing ends at the landing the stop gave it, the control
+  reports the stop by coordinate and side beside the travel admitted, and
+  nothing is drawn beyond it
+
+#### Scenario: An instruction an interlock holds draws nothing
+
+- **WHEN** an instruction's request is admitted at zero travel
+- **THEN** nothing moves, the control reports the stop that held it, and no
+  drawing runs
+
+#### Scenario: A zero-duration instruction lands at once
+
+- **WHEN** an instruction declaring a duration of zero is pressed
+- **THEN** the machine stands at the transition's end in one pose, with no
+  frames between
+
+#### Scenario: A second press lands the first drawing
+
+- **WHEN** a maker presses the same instruction twice in quick succession
+- **THEN** the first drawing lands at its own end, the second request is
+  made from there, and the machine has made both transitions
+
+#### Scenario: Another gesture lands the drawing
+
+- **WHEN** a maker moves a handle, or a host restores a snapshot, while a
+  drawing is running
+- **THEN** the drawing lands first and the gesture acts on the machine as it
+  stands, rather than two things posing the tree at once
+
+#### Scenario: A refused instruction draws nothing
+
+- **WHEN** an instruction's request is refused by the machine, or a name
+  nothing declares is triggered
+- **THEN** the refusal is reported where it was pressed, listing the declared
+  names where the name was unknown, and the bank, the pose and the model
+  stand exactly as they did

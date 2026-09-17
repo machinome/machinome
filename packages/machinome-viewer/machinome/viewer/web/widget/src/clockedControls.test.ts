@@ -9,8 +9,8 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  clockedControlLayer, clockedInputControl, clockStepAmount,
-  DEFAULT_CLOCK_STEP, DEFAULT_NUDGE, formatClockedOutcome,
+  clockedControlLayer, clockedFollowing, clockedInputControl,
+  clockStepAmount, DEFAULT_CLOCK_STEP, DEFAULT_NUDGE, formatClockedOutcome,
 } from './clockedControls';
 import type { ClockedMachineView, ClockedOutcome } from './clockedControls';
 
@@ -105,14 +105,40 @@ describe('the clocked chrome', () => {
     expect(layer.inputs.map((one) => one.id)).not.toContain('time');
   });
 
-  it('LISTS declared instructions, DISABLED, with the reason', () => {
+  it('LISTS declared instructions PRESSABLE, carrying the outcome of the '
+     + 'last press and nothing else', () => {
+       // OpenSpec `play-the-instruction`, design §9: the disabled flag
+       // and its reason are GONE -- an instruction under a clocked root
+       // is one request the viewer draws -- and the control carries an
+       // `outcome` exactly as `RunInstructionControl` does.
+       const layer = clockedControlLayer({
+         machine: MACHINE, values: {}, focus: null,
+       });
+       expect(layer.instructions).toHaveLength(1);
+       const pressed = layer.instructions[0];
+       expect(pressed.name).toBe('Turn crank');
+       expect(pressed.label).toBe('Turn crank');
+       expect(pressed.outcome).toBe(null);
+       expect(Object.keys(pressed).sort())
+         .toEqual(['label', 'name', 'outcome']);
+     });
+
+  it('reports a press WHERE IT WAS MADE, by the instruction\'s name', () => {
+    const held: ClockedOutcome = {
+      status: 'completed', admitted: 12, unit: 'deg', message: null,
+      stops: [{ coordinate: 'knob.travel', side: 'high', bound: 0, value: 0,
+                input: 12, fraction: 1 }],
+    };
     const layer = clockedControlLayer({
       machine: MACHINE, values: {}, focus: null,
+      outcomes: { 'Turn crank': held },
     });
-    expect(layer.instructions).toHaveLength(1);
-    expect(layer.instructions[0].name).toBe('Turn crank');
-    expect(layer.instructions[0].disabled).toBe(true);
-    expect(layer.instructions[0].reason).toContain('no runtime meaning');
+    expect(layer.instructions[0].outcome).toBe(held);
+    expect(formatClockedOutcome(layer.instructions[0].outcome))
+      .toBe('moved 12 deg, held by knob.travel (high 0)');
+    // And an instruction's outcome does NOT leak onto a driver of the
+    // same layer: the two are keyed in one table, by different names.
+    for (const input of layer.inputs) expect(input.outcome).toBe(null);
   });
 
   it('has NO transport over its DRIVERS, and none at all for a machine '
@@ -236,5 +262,62 @@ describe('the clocked chrome', () => {
       machine, values: {}, focus: ['x_axis'],
     });
     expect(layer.inputs.map((one) => one.id)).toEqual(['x_axis.motor']);
+  });
+});
+
+// ---------------------------------------------------------------------
+// The panel FOLLOWS a drawing (OpenSpec `play-the-instruction`, design
+// §9). While a drawing runs the panel is not rebuilt -- the Curta's is
+// 23 inputs and 18 readouts, and this cycle claims a frame costs a pose
+// -- so one narrow writer rewrites the fields the frame changed. What
+// is decided here is WHICH fields, and what each says; `viewer.ts` puts
+// the strings in the DOM.
+// ---------------------------------------------------------------------
+
+describe('what a drawn frame rewrites in the panel', () => {
+  it('names only the ids the frame moved, split into handles and '
+     + 'readouts', () => {
+       const following = clockedFollowing(
+         MACHINE, { crank: 360, operand: 4, 'w0.digit': 7 },
+         ['crank', 'w0.digit']);
+       expect(following.inputs.map((one) => one.id)).toEqual(['crank']);
+       expect(following.readouts.map((one) => one.id)).toEqual(['w0.digit']);
+     });
+
+  it('says what each says, in the SAME words the rebuilt panel uses', () => {
+    const following = clockedFollowing(
+      MACHINE, { crank: 360, 'w0.digit': 7 }, ['crank', 'w0.digit']);
+    const crank = following.inputs[0];
+    expect(crank.display).toBe(360);
+    expect(crank.readout).toBe('360.0000');
+    expect(crank.slider).toBe(null);
+    // An integer state reads as the whole number it is, as the rebuilt
+    // panel's own readout does.
+    expect(following.readouts[0].readout).toBe('7');
+  });
+
+  it('carries the slider position where the driver declares a range, '
+     + 'PINNED at the end rather than clamping the value', () => {
+       const following = clockedFollowing(MACHINE, { operand: 12 },
+                                          ['operand']);
+       expect(following.inputs[0].display).toBe(12);
+       expect(following.inputs[0].slider?.position).toBe(9);
+     });
+
+  it('ignores an id the focused machine declares nowhere', () => {
+    const following = clockedFollowing(MACHINE, { crank: 1 },
+                                       ['crank', 'nothing.at.all']);
+    expect(following.inputs.map((one) => one.id)).toEqual(['crank']);
+    expect(following.readouts).toEqual([]);
+  });
+
+  it('follows a CLOCK as a readout, never as a handle', () => {
+    const clocked: ClockedMachineView = {
+      ...MACHINE, clock: 'time',
+    };
+    const following = clockedFollowing(clocked, { time: 2.5 }, ['time']);
+    expect(following.inputs).toEqual([]);
+    expect(following.readouts[0].id).toBe('time');
+    expect(following.readouts[0].readout).toBe('2.5000');
   });
 });

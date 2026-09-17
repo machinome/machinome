@@ -94,7 +94,20 @@
       "scale": null
     }
   },
-  "instructions": {},
+  "instructions": {
+    "Set four": {
+      "targets": {
+        "operand": 4
+      },
+      "duration": 0.5
+    },
+    "Stroke": {
+      "by": {
+        "crank": 360.0
+      },
+      "duration": 2.0
+    }
+  },
   "bindings": [
     {
       "name": "_b0",
@@ -521,21 +534,21 @@
     "name": "Calculator",
     "type": "AssemblyNode",
     "color": null,
-    "mtime": 1789650979.3041816,
+    "mtime": 1789664459.9788888,
     "operations": [],
     "children": [
       {
         "name": "w0",
         "type": "AssemblyNode",
         "color": null,
-        "mtime": 1789650979.3031814,
+        "mtime": 1789663087.4711,
         "operations": [],
         "children": [
           {
             "name": "face",
             "type": "LeafNode",
             "color": null,
-            "mtime": 1789650979.3011813,
+            "mtime": 1789663087.4691,
             "operations": [
               [
                 "r",
@@ -556,14 +569,14 @@
         "name": "w1",
         "type": "AssemblyNode",
         "color": null,
-        "mtime": 1789650979.3031814,
+        "mtime": 1789663087.4711,
         "operations": [],
         "children": [
           {
             "name": "face",
             "type": "LeafNode",
             "color": null,
-            "mtime": 1789650979.3011813,
+            "mtime": 1789663087.4691,
             "operations": [
               [
                 "r",
@@ -584,14 +597,14 @@
         "name": "w2",
         "type": "AssemblyNode",
         "color": null,
-        "mtime": 1789650979.3031814,
+        "mtime": 1789663087.4711,
         "operations": [],
         "children": [
           {
             "name": "face",
             "type": "LeafNode",
             "color": null,
-            "mtime": 1789650979.3011813,
+            "mtime": 1789663087.4691,
             "operations": [
               [
                 "r",
@@ -612,14 +625,14 @@
         "name": "w3",
         "type": "AssemblyNode",
         "color": null,
-        "mtime": 1789650979.3031814,
+        "mtime": 1789663087.4711,
         "operations": [],
         "children": [
           {
             "name": "face",
             "type": "LeafNode",
             "color": null,
-            "mtime": 1789650979.3011813,
+            "mtime": 1789663087.4691,
             "operations": [
               [
                 "r",
@@ -640,7 +653,7 @@
         "name": "crank_dial",
         "type": "LeafNode",
         "color": null,
-        "mtime": 1789650979.3011813,
+        "mtime": 1789663087.4691,
         "operations": [
           [
             "r",
@@ -659,7 +672,7 @@
         "name": "knob",
         "type": "LeafNode",
         "color": null,
-        "mtime": 1789650979.3011813,
+        "mtime": 1789663087.4691,
         "operations": [
           [
             "t",

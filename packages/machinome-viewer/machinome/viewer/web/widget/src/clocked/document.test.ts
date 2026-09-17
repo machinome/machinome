@@ -458,3 +458,130 @@ describe('the producer\'s own corpus passes the clock guard', () => {
     expect(bounded).toBe(2);
   });
 });
+
+// ---------------------------------------------------------------------
+// An INSTRUCTION this viewer could not play, refused at LOAD (OpenSpec
+// `play-the-instruction`, design §10).
+//
+// The producer's own compile refuses every one of these before a
+// document exists, so a document carrying one is not a document with a
+// quirk: it is one this viewer cannot trust to say what a press means.
+// Refusing here keeps the invariant the producer bought -- every
+// instruction a loaded version 8 document carries is one a maker may
+// press -- so the chrome needs no arity logic.
+// ---------------------------------------------------------------------
+
+/** `Calculator`'s own document with ONE instruction, as given. */
+function withInstruction(entry: Record<string, unknown>):
+Record<string, unknown> {
+  const document = documentOf('Calculator');
+  document.instructions = { Play: entry };
+  return document;
+}
+
+describe('an instruction this viewer could not play is refused at load',
+         () => {
+           it('accepts the two the producer publishes', () => {
+             const machine = load(documentOf('Calculator'));
+             expect(Object.keys(machine.instructions).sort())
+               .toEqual(['Set four', 'Stroke']);
+             expect(machine.instructions.Stroke)
+               .toEqual({ by: { crank: 360 }, duration: 2 });
+             expect(machine.instructions['Set four'])
+               .toEqual({ targets: { operand: 4 }, duration: 0.5 });
+           });
+
+           it('refuses one stating NEITHER a travel nor a target', () => {
+             const message = refusal(withInstruction({ duration: 1 }));
+             expect(message).toContain('`instructions.Play`');
+             expect(message).toContain('exactly one of `by` and `targets`');
+           });
+
+           it('refuses one stating BOTH', () => {
+             const message = refusal(withInstruction({
+               by: { crank: 360 }, targets: { crank: 360 }, duration: 1,
+             }));
+             expect(message).toContain('`instructions.Play`');
+             expect(message).toContain('exactly one of `by` and `targets`');
+           });
+
+           it('refuses one naming NO driver', () => {
+             const message = refusal(withInstruction({
+               by: {}, duration: 1,
+             }));
+             expect(message).toContain('`instructions.Play`');
+             expect(message).toContain('names 0 drivers');
+           });
+
+           it('refuses one naming TWO drivers', () => {
+             const message = refusal(withInstruction({
+               by: { crank: 360, ring: 500 }, duration: 1,
+             }));
+             expect(message).toContain('`instructions.Play`');
+             expect(message).toContain('names 2 drivers');
+             expect(message).toContain('crank');
+             expect(message).toContain('ring');
+           });
+
+           it('refuses one naming a STATE', () => {
+             const message = refusal(withInstruction({
+               targets: { 'w0.digit': 4 }, duration: 1,
+             }));
+             expect(message).toContain('`instructions.Play`');
+             expect(message).toContain('"w0.digit"');
+             expect(message).toContain('declared state');
+           });
+
+           it('refuses one naming the machine\'s CLOCK', () => {
+             const document = documentOf('Regulator');
+             document.instructions = { Play: { by: { time: 1 },
+                                               duration: 1 } };
+             const message = refusal(document);
+             expect(message).toContain('`instructions.Play`');
+             expect(message).toContain('"time"');
+             expect(message).toContain('clock');
+           });
+
+           it('refuses one naming an id nothing declares', () => {
+             const message = refusal(withInstruction({
+               by: { handle: 1 }, duration: 1,
+             }));
+             expect(message).toContain('`instructions.Play`');
+             expect(message).toContain('"handle"');
+             expect(message).toContain('declares nowhere');
+           });
+
+           it('refuses a travel that is not a finite number', () => {
+             for (const amount of [null, 'far', Number.NaN]) {
+               const message = refusal(withInstruction({
+                 by: { crank: amount }, duration: 1,
+               }));
+               expect(message).toContain('`instructions.Play`');
+               expect(message).toContain('not a finite number');
+             }
+           });
+
+           it('refuses a duration that is negative, infinite, NaN or not a '
+              + 'number', () => {
+                for (const duration of [-1, Number.POSITIVE_INFINITY,
+                                        Number.NaN, '2', null, undefined]) {
+                  const message = refusal(withInstruction({
+                    by: { crank: 360 }, duration,
+                  }));
+                  expect(message).toContain('`instructions.Play.duration`');
+                  expect(message).toContain('seconds');
+                }
+                // ZERO is a duration: it lands the transition at once.
+                expect(() => load(withInstruction({
+                  by: { crank: 360 }, duration: 0,
+                }))).not.toThrow();
+              });
+
+           it('leaves every one of the corpus\'s thirty documents loading',
+              () => {
+                for (const entry of fixture.machines) {
+                  expect(() => load(JSON.parse(JSON.stringify(
+                    entry.document))), entry.name).not.toThrow();
+                }
+              });
+         });
