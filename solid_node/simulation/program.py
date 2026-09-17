@@ -3327,7 +3327,15 @@ def _declared_coordinates(coordinates):
 # The span table
 
 
-def _compiled_spans(root, inputs, coordinates):
+#: What a refusal from the bound compile calls the authority it speaks
+#: for. A clocked simulation banks no coordinate, so a refusal raised on
+#: its behalf must not say "the run"; the running messages are this
+#: default and are unchanged character for character (OpenSpec change
+#: ``a-bound-stops-the-request``, task 2.5).
+_THE_RUN = 'the run'
+
+
+def _compiled_spans(root, inputs, coordinates, authority=_THE_RUN):
     """`(qualified id, low, high, unit)` for every banked coordinate
     whose joint declares a range, resolved ONCE -- and, per bound that
     READS other coordinates, the ids it reads.
@@ -3360,7 +3368,8 @@ def _compiled_spans(root, inputs, coordinates):
                     bound = span[index]
                     if isinstance(bound, Bound):
                         read_ids = _qualified_reads(
-                            root, bank, bound, node, joint, side, identifier)
+                            root, bank, bound, node, joint, side, identifier,
+                            authority)
                         reads[(identifier,
                                'low' if side == 'lower' else 'high')] = \
                             read_ids
@@ -3374,7 +3383,8 @@ def _compiled_spans(root, inputs, coordinates):
     return tuple(found), reads
 
 
-def _qualified_reads(root, bank, bound, node, joint, side, identifier):
+def _qualified_reads(root, bank, bound, node, joint, side, identifier,
+                     authority=_THE_RUN):
     """A `Bound`'s reads as the qualified ids the BANK keys by.
 
     A read that is not a bank entry -- a plain port, a derived
@@ -3391,7 +3401,7 @@ def _qualified_reads(root, bank, bound, node, joint, side, identifier):
     for end in joint.bound_reads(node, side):
         read_id, qualified = _qualified(root, end)
         if not qualified or read_id not in bank:
-            refuse(f"reads '{read_id}', which the run does not bank. A "
+            refuse(f"reads '{read_id}', which {authority} does not bank. A "
                    f"bound reads the STATE -- a joint coordinate or a "
                    f"declared input -- and a plain port or a derived "
                    f"coordinate is a calculation the enumeration "

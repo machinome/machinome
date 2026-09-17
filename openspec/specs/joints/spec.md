@@ -355,16 +355,19 @@ refused at CLASS DEFINITION by the same rules: a declaration held in a
 list, a repeated child, a child whose class declares no joint or
 several, a driver read sideways, and, additionally, a read that names
 the bounded coordinate itself. Under a RUNNING root a read SHALL
-additionally be a coordinate the run banks, a read of a plain port or a
-derived coordinate being refused at simulation construction under the
-simulation requirement "A range bound may read other coordinates"; under
-every other root such a read is resolved and judged like any other. A
+additionally be a coordinate the run banks, and under a CLOCKED root a
+declared driver, a declared state or a joint coordinate a chain from the
+bank reaches — a read of a plain port or a derived coordinate being
+refused at simulation construction under the simulation requirements "A
+range bound may read other coordinates" and "A bound stops a clocked
+request on its path"; under every other root such a read is resolved and
+judged like any other. A
 `Bound`'s reads SHALL be resolved against the joint's DECLARER — the
 node itself for a class-declared joint, the declaring parent for a
 site-declared one — where the values
 are needed and never at realization: at the close of the enumeration
 that bound the coordinate untimed, and at simulation construction
-under a running root. A callable given as the whole `range` and a
+under a running or a clocked root. A callable given as the whole `range` and a
 callable or `Bound` given as one of its bounds SHALL be told apart by
 POSITION and SHALL keep their separate meanings. A site-declared
 joint's callable SHALL be able to read the declaring parent's resolved
@@ -514,8 +517,11 @@ forbids every value and says so by name at the first binding. Under a
 RUNNING root the same declaration is additionally a physical stop,
 evaluated once per tick from the committed state, under the simulation
 requirement "A declared range is a physical stop located inside the
-tick"; under every other root a range refuses a binding and never
-clamps or stops.
+tick"; under a CLOCKED root it is additionally a stop on a REQUEST'S
+PATH, evaluated from the state the request starts at and clipping the
+travel that request admits, under the simulation requirement "A bound
+stops a clocked request on its path"; under every other root a range
+refuses a binding and never clamps or stops.
 
 A bound stated as a `Bound` that reads other coordinates SHALL NOT be
 applied at the moment of binding, because the coordinates it reads
@@ -531,7 +537,15 @@ read with the value it read. A read that holds no value or a symbolic
 one at the close SHALL NOT be judged, on the rule a symbolic binding
 already has. A coordinate a RUNNING simulation owns SHALL NOT be judged
 by the enumeration: the run located its stop and committed inside it,
-and one authority judges one binding. A binding made outside any
+and one authority judges one binding. On that same rule, a coordinate a
+CLOCKED simulation compiled a constraint for SHALL NOT be judged by the
+enumeration at the pose a REQUEST makes — neither at the moment of
+binding nor at the close of that enumeration — because the clocked
+simulation clipped the request at that bound and judges the constraint
+itself, over the bank the request ends at, under the simulation
+requirement "A bound stops a clocked request on its path". Every pose
+that is NOT a request — construction, `state=`, `restore` — SHALL be
+judged here as it is judged today. A binding made outside any
 enumeration SHALL place the body and SHALL NOT be judged there, no pass
 being open to record it on — exactly as a read of an unbound coordinate
 made outside an enumeration is not recorded; it SHALL be judged at the
@@ -604,6 +618,22 @@ close of the next enumeration that binds the coordinate again.
   bound to any number
 - **THEN** the binding is refused naming the joint, the value and the
   evaluated bound
+
+#### Scenario: A clocked request stops at the bound instead of being refused
+
+- **WHEN** a clocked simulation's request would carry a coordinate declaring
+  `range=(0, 9)` to `20`
+- **THEN** the request admits only the travel that leaves the coordinate at
+  `9`, the pose binds `9` without judging it here, no joint range error is
+  raised, and the request reports the bound it met
+
+#### Scenario: A pose that is not a request is judged here as before
+
+- **WHEN** the same clocked model is constructed with a `state=` whose bank
+  poses that coordinate at `20`
+- **THEN** the binding is refused here, naming the node, the joint, `20` and
+  the range, because a construction has no path to clip and a machine cannot
+  be put where it cannot be
 
 ### Requirement: A joint takes part in a relation
 

@@ -764,6 +764,113 @@ a commit costs microseconds.
 state={...})`` opens a session at chosen values. Those two are the only
 ways to set a state: everything else about it is the machine's.
 
+A bound STOPS a request
+-----------------------
+
+A declared joint ``range`` is a physical STOP on a clocked request path.
+A request that would carry a bounded coordinate past its bound stops AT
+the bound: the moving driver's travel is clipped to the point where the
+bound is met, exactly, and the events are then located on the CLIPPED
+path only.
+
+.. code-block:: python
+
+    class Stroke(AssemblyNode):
+        lift = Driver(default=0.0, unit='mm')
+        plate = Plate(lift=Prismatic(axis=(0, 0, 1), unit='mm',
+                                     range=(0, 9)))
+        lift.drives(plate.lift)
+
+    request = sim.move('lift', by=20.0)
+
+    request.admitted                    # 9.0, in DESIGN units
+    request.stops[0].coordinate         # 'plate.lift'
+    request.stops[0].side               # 'high'
+    request.stops[0].bound              # 9.0
+
+``by`` stays what you asked for; ``admitted`` is what the machine made.
+``stops`` is empty exactly when the whole travel was made, and each entry
+names the bounded coordinate, the side, the bound as it evaluated at the
+landing, what the coordinate is worth there, where the input landed and
+the fraction of the requested travel that was. Several constraints met at
+ONE landing are several entries. Under ``record=N``, ``sim.stops`` keeps
+a bounded ring of them beside ``sim.commits``.
+
+**A request stopped at ZERO travel is admitted, not refused.** It moves
+nothing, fires nothing and reports its stop. That is what an interlock
+does: the selector does not move while the crank is off rest, and the
+maker is told why.
+
+The bound is read exactly as ``Time.running()`` reads it. The bounded
+coordinate's OWN value is the value it held when the REQUEST STARTED, so
+a ratchet's floor is the last seated tooth:
+
+.. code-block:: python
+
+    crank_dial = Dial(turn=Revolute(
+        axis=(0, 0, 1), unit='deg',
+        range=(lambda turn: 6 * floor(turn / 6), None)))
+
+Dragging the crank backwards gives ONE tooth of backlash and no more,
+whether it is one long request or ten short ones: the next request starts
+ON that tooth, where the bound evaluates to the tooth itself and the
+request admits nothing.
+
+Each ``reads=`` coordinate takes its value ALONG the path, and a read of
+a declared driver or a declared STATE is admitted. An interlock that
+freezes a part while another one moves is stated by letting the bound
+read the coordinate's own committed value:
+
+.. code-block:: python
+
+    def rest(turn):
+        return turn - 360 * floor(turn / 360) < 1
+
+    knob = Slide(travel=Prismatic(
+        axis=(0, 1, 0), unit='mm',
+        range=(Bound(lambda travel, turn: travel * (1 - rest(turn)),
+                     reads=(crank_dial.turn,)),
+               Bound(lambda travel, turn: travel + (54 - travel) * rest(turn),
+                     reads=(crank_dial.turn,)))))
+
+At rest the pair is ``(0, 54)`` and the knob is free; off rest both
+bounds evaluate to the value the knob HELD when the request started, so
+it may not move in either direction while the crank runs its whole
+stroke. Writing ``range=(0, Bound(lambda travel, turn: 54 * rest(turn),
+...))`` instead says something else and something wrong: it forbids the
+knob to STAND anywhere but zero off rest, so it stops the CRANK the
+moment it leaves rest with the knob set.
+
+The stop is located EXACTLY and never searched. Each bound is compiled
+once, at construction, into one expression over the bank, by composing
+the relations that determine the coordinate — wirings, derived
+coordinates, ``law=`` relations and intermediate ports alike. The level
+that results is classified per driver: affine is solved by one division,
+kinked is cut at its own breakpoints, and a level that JUMPS is
+partitioned at its own surfaces and solved piece by piece. A level the
+moving driver CURVES is refused at construction, naming the driver and
+the primitive.
+
+A coordinate the bank cannot reach that way is refused at construction
+too, naming the joint, the side and where the chain broke: a joint posed
+BY HAND in ``simulate()``, a chain through a law that is not an
+expression, or a ``Bound`` reading something no chain reaches. A stop
+that can never stop is a mistake in the model. A ranged joint NOTHING
+binds — a decorative range on a part that rests — is admitted instead,
+compiled as the constant it is and examined by no request.
+
+The clip is computed ONCE, over the bank the request started from, so a
+state a commit inside the request writes does not move a bound the clip
+has already read: one long request and two short ones split at that event
+can admit different travels. Where such a commit carries a coordinate out
+of its range the request is refused whole, by name, and commits nothing.
+
+During a request the clocked simulation is the sole authority for the
+constraints it compiled: the pose that ends a request does not judge them
+again. A pose that is NOT a request — construction, ``state=``,
+``restore`` — is judged by the ordinary enumeration, unchanged: a machine
+cannot be PUT where it cannot BE.
+
 What a clocked model refuses today
 ----------------------------------
 
@@ -776,16 +883,14 @@ What a clocked model refuses today
   replays from zero and would replay every commit — and under
   ``Time.running()`` it is refused too, with its meaning named and
   deliberately not implemented.
-* **A bound as a stop on a request path.** A violated joint ``range`` is
-  still an impossible POSE, raised on the pose the request ends at — and a
-  refused pose refuses the whole REQUEST: the bank, the tree and the
-  recorded events stand exactly as they stood, rather than the request
-  stopping where the machine stops and keeping what it committed on the
-  way.
 * **The cadence surface.** ``run``, ``at``, ``every``, ``time``,
-  ``tick``, ``rate``, ``trigger``, ``commands``, ``program``,
-  ``crossings`` and ``stops`` are each refused by name. A clocked model
-  has no clock.
+  ``tick``, ``rate``, ``trigger``, ``commands``, ``program`` and
+  ``crossings`` are each refused by name. A clocked model has no clock —
+  though it does have ``stops``.
+* **A bound reading a plain PORT**, refused with the same message a
+  running root gives it; a bound whose level the moving driver curves;
+  and a request whose level would cross more than a thousand of its own
+  jump surfaces, which is refused naming the request and the maximum.
 * A port, joint coordinate or derived coordinate as a SOURCE; a
   broadcast ``commits`` over a ``.repeat()`` child; a request naming more
   than one input; an instruction or a control under a clocked root.

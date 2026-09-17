@@ -52,8 +52,9 @@ from dataclasses import dataclass
 from solid_node.motion.ports import (BoundPort, Port, RotationalPort,
                                      RunBinder, SignalPort,
                                      TranslationalPort, bind, binding_as,
-                                     declared_ports, run_owned,
-                                     set_coordinate, wiring_binding)
+                                     clocked_owned, declared_ports,
+                                     run_owned, set_coordinate,
+                                     wiring_binding)
 from solid_node.node.phase import current as _current_phase
 from solid_node.node.phase import current_enumeration as _current_enumeration
 
@@ -2493,13 +2494,22 @@ def refuse_bounds(enumeration):
     ground: its value is not known here. A coordinate a RUNNING
     simulation owns is not judged either: the run located its stop,
     committed inside it and asserted it, and one authority judges one
-    binding.
+    binding. A coordinate a CLOCKED simulation compiled a constraint for
+    is not judged at the pose a REQUEST makes, for exactly that reason.
     """
     from solid_node.motion.joints import Bound, JointRangeError, _where
 
     for node, joint, value in enumeration.bounds:
         slot = joint.coordinate.__get__(node)
         if run_owned(slot):
+            continue
+        if clocked_owned(node, joint.name):
+            # And the same statement for a CLOCKED request's pose: the
+            # clocked simulation compiled a constraint for this
+            # coordinate, clipped the request to it and judged the final
+            # bank through the same chain. One authority judges one
+            # binding (OpenSpec change ``a-bound-stops-the-request``,
+            # design section 10).
             continue
         span = joint.arguments(node)[2]
         if span is None:

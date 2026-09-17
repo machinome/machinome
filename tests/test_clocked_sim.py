@@ -288,8 +288,11 @@ class SessionSetupTest(BaseNodeTest):
 class CadenceRefusalTest(BaseNodeTest):
     """Task 6.9: a clocked model has no clock."""
 
+    # `stops` is deliberately NOT here: the change
+    # ``a-bound-stops-the-request`` LIFTS cycle 1's refusal of that name,
+    # because a clocked model has no clock but it does have stops.
     REFUSED = ('run', 'at', 'every', 'time', 'tick', 'rate', 'trigger',
-               'commands', 'program', 'crossings', 'stops')
+               'commands', 'program', 'crossings')
 
     #: How each refused name is reached: a property is read, and a
     #: method is called with arguments it would otherwise accept.
@@ -311,7 +314,7 @@ class CadenceRefusalTest(BaseNodeTest):
     def test_the_clocked_surface_is_admitted(self):
         sim = Sim(Counter())
         for name in ('move', 'snapshot', 'restore', 'reset', 'initial',
-                     'state', 'commits'):
+                     'state', 'commits', 'stops'):
             with self.subTest(name=name):
                 self.assertTrue(hasattr(sim, name))
 

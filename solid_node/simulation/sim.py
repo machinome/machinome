@@ -421,14 +421,22 @@ class Sim:
 
     @property
     def stops(self):
-        """Every declared bound reached inside a tick, oldest first.
+        """Every declared bound reached, oldest first.
 
         The bounded ring `record=` asked for, and `[]` when it asked for
-        none: each entry names the tick, the coordinate that stopped,
-        which bound it reached and that bound's evaluated value, the
-        fraction of the tick at which it was reached, and the inputs the
-        stop blocked.
+        none. Under a RUNNING root each entry names the tick, the
+        coordinate that stopped, which bound it reached and that bound's
+        evaluated value, the fraction of the tick at which it was
+        reached, and the inputs the stop blocked.
+
+        Under a CLOCKED root it is the bounds requests stopped at, beside
+        `sim.commits`: a clocked model has no clock, but it does have
+        STOPS, and a reader counting strokes must not have to filter out
+        interlocks (OpenSpec change ``a-bound-stops-the-request``, design
+        section 11).
         """
+        if self._clocked is not None:
+            return self._clocked.stops
         return self._running('stops').stops
 
     @property

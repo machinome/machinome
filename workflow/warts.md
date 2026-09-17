@@ -3068,7 +3068,10 @@ the machinery it needs is already in place.
   The Curta's eight interlocks are all of this shape,
   so its clocked model is not complete until that cycle. The solver is
   written so the clip is a truncation of the request's travel before the
-  first location, not a second locator. **Open, and owned.**
+  first location, not a second locator. **CLOSED** by the change
+  `a-bound-stops-the-request` (2026-09-17): a declared range is now a
+  stop on a clocked request path, the travel is clipped before the events
+  are located, and a request stopped at zero travel is admitted.
 - **A `State` under `Time.running()` is refused, with its meaning
   defined.** Under a run a value committed at an event is an ADR-121
   self-read law whose value changes only through a switch — exactly how
@@ -3078,3 +3081,65 @@ the machinery it needs is already in place.
   meaning now is PORTABILITY: a project writes "this register is a state
   committed at the stroke end" once and has it mean the same under both
   roots. **Open, deliberately.**
+
+## Findings from the framework cycle `a-bound-stops-the-request` (2026-09-17)
+
+What the implementation found that its own ratified design did not state,
+and the questions that survive it. The full write-up is
+`openspec/changes/archive/2026-09-17-a-bound-stops-the-request/evidence.md`,
+and the decision is ADR-126; the originating project is
+`projects/Calculators/Curta-Type-I-3x`.
+
+- **The direction test and "a request back to exactly where it started".**
+  The design's decision (section 7) is `h = max(0, g(0))`, read at the
+  start of EACH request; its planned proof (section 17) asks for a
+  request "back to exactly where it started" to be admitted. Those
+  contradict: once a request has carried a coordinate back INSIDE its
+  bound, the next request reads `h = 0` and is clipped at the bound, so
+  it cannot return to an illegal starting point — measured at 4 of 15
+  admitted on the `outside` fixture. The decision was implemented and the
+  proof text is what moved. If the intended behaviour is a threshold that
+  is REMEMBERED across requests rather than read per request, that is a
+  different design and needs its own evidence. **Open, recorded.**
+- **Two rows of the construction refusal table are unreachable.** A chain
+  that reads the coordinate it drives, and a chain that is CYCLIC, are
+  both refused by the RELATION layer under every non-running root
+  (`CouplingError` for the self-read, `UnreachedCoordinate` for the
+  cycle) long before the clocked compile is reached. The guards remain as
+  backstops, untested and untestable from a fixture. A structural blind
+  spot, reported rather than hidden. **Open.**
+- **A relation binding into a SCALED sink.** `ports.bind` multiplies by
+  the sink's declared `scale` for every binder alike, while the running
+  compile applies a scale factor only for a WIRING edge. The clocked
+  chain applies it uniformly, because it is asserted against the pose. No
+  existing model can tell the two readings apart — a joint's own
+  coordinate never carries a scale — but if one ever does, the running
+  compile is the side that looks wrong. **Open, not acted on.**
+- **The clip is not re-computed between events**, deliberately (design
+  section 8). A bound that reads a STATE a commit inside the same request
+  writes is read at its pre-request value, so one long request and two
+  short ones split at that event admit different travels, and a commit
+  that carries a compiled coordinate out of range refuses the request
+  whole. The spike's corpus contains no mechanism that needs the finer
+  reading; a project that does splits the request, which is exact.
+  **Open, deliberately.**
+- **A request does not report the constraints it EXAMINED.** A maker
+  asking "why did the knob not move" is answered by `stops`; one asking
+  "which interlocks are live right now" is not. Deferred to the cycle
+  that gives a clocked model a panel. **Open.**
+- **An author's REST-DEFAULT GUARD on a ranged joint is refused.** The
+  framework cannot tell a guard's constant (`if self.wheel.turn is None:
+  self.wheel.turn = 0`) from a `simulate()` that computes a coordinate
+  from three other things, so a ranged joint held by a guard falls on the
+  refused side of "the author binds it by hand". The message names the
+  joint and the one-line fix. A common shape; recorded rather than
+  solved. **Open.**
+- **The clocked authority MARK is process-wide.** `ports._clocked_marked`
+  is a module-level `frozenset` holding the `(id(node), joint name)`
+  identities one request's pose is judged under — the shape `run_owned`
+  already has, empty everywhere else, opened and closed by
+  `Clocked._posed`. A per-simulation mark would be cleaner: two clocked
+  simulations posing on two threads would share this one, and the
+  identity is a `id(node)` rather than the simulation that compiled it.
+  Nothing in the corpus does that today, so it is recorded rather than
+  fixed. **Open, a follow-up.**

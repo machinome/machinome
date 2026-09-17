@@ -672,7 +672,11 @@ A rest placement that is not numeric is refused by name rather than
 placing the body about a wrong line, and a numeric binding outside the
 declared range raises `JointRangeError` — a callable bound being
 evaluated AT THE VALUE BEING BOUND, so a bound no value satisfies forbids
-every value and says so by name at the first binding.
+every value and says so by name at the first binding. Two simulations
+judge their own instead, and the site steps aside for exactly them: a
+coordinate the RUNNING simulation owns (ADR-113) and a coordinate a
+CLOCKED simulation compiled a constraint for, at the pose one of its
+requests makes (ADR-126). One authority judges one binding.
 
 Several joints on one body — a disk that spins on its own centre while an
 orbit carries it round another line, say — compose in **declaration
@@ -1260,7 +1264,7 @@ drives a block coordinate into its declared range — the searched stop —
 17.186, some 22x a quiet tick of the same machine. No test pins any of
 these numbers.
 
-**The clocked mode** (ADR-125) is the third branch, taken when anything
+**The clocked mode** (ADR-125, ADR-126) is the third branch, taken when anything
 in the linked tree declares a `State` — `simulation/state.py`'s
 declaration, reached only through the package's lazy export when a
 project names it, and `simulation/clocked.py`'s solver, imported inside
@@ -1300,8 +1304,8 @@ writes it), an `Instruction` target, a control input, a `.drives` driven
 end, and a `State` under `Time(loop=)` or `Time.running()`.
 
 `Sim(model)` takes NO `dt`, and the whole cadence surface — `run`, `at`,
-`every`, `time`, `tick`, `rate`, `trigger`, `crossings`, `stops`,
-`commands`, `program` — is refused by name. `sim.move(input, by=|to=)`
+`every`, `time`, `tick`, `rate`, `trigger`, `crossings`, `commands`,
+`program` — is refused by name. `sim.move(input, by=|to=)`
 moves ONE declared driver along a straight path: each relation's level
 is bound at the standing sources, classified by `_shape_of` and solved —
 by one division where affine, at ADR-123's own breakpoints where kinked
@@ -1327,10 +1331,68 @@ against 60.0 us per pose, and ten events adding 320 us and no further
 pose. A refused request commits NOTHING, the FINAL POSE included: the
 executor poses the working bank and assigns it only if the tree accepted
 it, re-posing the previous bank on failure, and `restore()` is the same
-shape. A `Bound` does not clip a request path — a violated one is still
-the untimed `JointRangeError` on the pose the request ends at, so a
-request through a stop is refused whole rather than stopped where the
-machine stops.
+shape.
+
+A declared `range` is a **STOP on the request's path** (ADR-126), and the
+stop is a TRUNCATION of the travel in front of the event loop above —
+since one driver moves, ADR-108's group of pushing inputs IS that driver,
+and none of the run's candidate-set machinery is ported. `compile_bounds`
+composes, ONCE at construction, a CHAIN from the bank to every bounded
+coordinate and every coordinate a `Bound` reads: the relations the rest
+render already resolved, substituted into one expression graph over the
+bank's qualified ids, intermediate PORTS traversed as calculations and
+nothing simplified, so the chain performs arithmetic EQUIVALENT to the
+enumeration's over the identical native values. Neither a symbolic pose
+(it would make clocked construction demand a symbolically poseable tree)
+nor `compile_program` (it refuses candidate edges before it knows which
+matter, and carries the RUNNING reading of a jump) is the vehicle; what
+is reused is the layer below both. The rest render's own records decide
+three cases: a slot nothing bound compiles as the CONSTANT it rests at
+and stops nothing even when that constant lies outside the declared pair,
+a slot a relation, wiring or derived formula bound is composed through,
+and a slot the author's own `simulate()` bound is REFUSED at construction
+— naming the assembly whose `simulate()` bound it — beside a chain through
+a non-expression law, a read no chain reaches, a read of a plain port, a
+self-read chain and a cyclic one. The LEVEL is the coordinate's chain
+against the compiled bound, with the bound's OWN coordinate read at the
+value the request STARTED from (which is what makes a ratchet's bound the
+last seated tooth, and an interlock stating a FREEZE — both bounds reading
+the own coordinate, gated on the crank's phase — expressible at all) and
+each `reads=` taken ALONG the path. It is classified structurally per
+driver by `_shape_of`: affine is one division, kinked is cut at ADR-123's
+breakpoints, a level carrying JUMPS is partitioned at its own surfaces and
+its skeleton solved per piece, and a CURVED one is refused by name. The
+driver then lands on the nearest representable value on the SATISFIED side
+through the same `far_side_of` walk, membership decided by EVALUATING the
+level and never by comparing a float to a bound, so an inclusive bound met
+exactly lands ON it and a jumped level lands on the last float before its
+surface; the stopped COORDINATE is never snapped, there being none in the
+bank. The admitted fraction is the largest at which no level exceeds
+`max(0, g(0))` — so a bank standing outside a bound may move inward and may
+not go further out — read ONCE per request and not recomputed between
+events, which makes a bound reading a state the same request commits
+coarser by exactly one request. A request stopped at ZERO travel is
+ADMITTED: it commits nothing, poses nothing new and reports its stop,
+which is what makes an interlocked machine operable.
+
+For the constraints it compiled the clocked simulation is the **sole
+authority** during a request: `compile_bounds` returns the `(id(node),
+joint name)` marks, `ports._clocked_marked` holds them for the duration of
+that request's pose, and `Joint._refuse_out_of_range` (after recording the
+binding) and `couplings.refuse_bounds` skip a marked coordinate exactly as
+`refuse_bounds` already skips a run-owned one — ADR-113's own "one
+authority judges one binding", taken for the request. The simulation
+judges those constraints itself at the END of every request, over the
+final bank and through the same chain, raising `JointRangeError` and
+committing nothing where a COMMIT carried a coordinate out of range; the
+agreement between chain and pose is a TEST at `rel_tol=abs_tol=1e-12` and
+never a runtime refusal, because an ulp of disagreement is not a maker's
+bug. A pose that is NOT a request — construction, `state=`, `restore` — is
+marked by nothing and judged by the enumeration, unchanged. `move` reports
+`admitted` (design units) and `stops` (ADR-108's vocabulary: coordinate,
+side, evaluated bound, value, input, fraction), and `record=N` keeps
+`sim.stops` beside `sim.commits`, which is why `stops` alone is missing
+from the refused cadence names above.
 
 Publishing a clocked model is **refused by name** in
 `serializer.document_body` — the one function `solid build`, `solid
@@ -1342,9 +1404,12 @@ snapshot are untouched, so a clocked model still tests and photographs.
 A tree that declares no `State` pays nothing structurally: the states
 come from the walk `qualified_declarations` already makes, every clocked
 path is entered only when that table is non-empty, and the package's
-exports stay lazy, so such a model imports no new module, poses at the
-same cost (43.9/43.7/48.9 us against 44.8/42.5/42.0 us across the
-change) and publishes a byte-identical document.
+exports stay lazy, so such a model imports no new module, compiles no
+constraint, poses at the same cost (43.9/43.7/48.9 us against
+44.8/42.5/42.0 us across the change) and publishes a byte-identical
+document. A clocked tree whose joints declare no range compiles nothing
+either: the span table is empty and the request is ADR-125's request,
+field for field, plus an `admitted` equal to its travel.
 
 ### Build pipeline (BUILD · spec `build-pipeline`)
 
@@ -2533,11 +2598,31 @@ The short list that changes must not silently break:
   `document_body` refuses one by name. Rendering, `assemble()`,
   `build_stls()`, `solid test` and an OpenSCAD snapshot are untouched, so
   such a model tests and photographs but does not reach a browser.
-- **A `Bound` does not clip a clocked request path** (ADR-125): a request
-  that would drive a mechanism through a stop is refused WHOLE on its
-  final pose and commits nothing, rather than stopping where the machine
-  stops and keeping what it committed on the way. The originating Curta's
-  eight interlocks are all of this shape.
+- **A clocked bound is read ONCE per request, and the machine's own
+  threshold is read with it** (ADR-126): a bound that reads a STATE a
+  commit inside the same request writes is clipped against the state the
+  request STARTED at, so one long request and two short ones split at that
+  event admit different travels — deliberate, on ADR-109's own
+  once-per-quantum rule, with the exact workaround being to split the
+  request. On the same rule the threshold `max(0, g(0))` is read per
+  request, so a bank that stood outside a bound and has moved back inside
+  cannot return to where it stood; a threshold REMEMBERED across requests
+  is a different design and wants its own evidence.
+- **A clocked model's ranged joint must be REACHED from the bank**
+  (ADR-126): a bounded coordinate the author's own `simulate()` binds is
+  refused at construction, an author's rest-default guard
+  (`if self.wheel.turn is None: self.wheel.turn = 0`) included, because
+  the framework cannot tell a guard's constant from a `simulate()` that
+  computes the coordinate from three other things. The message names the
+  joint and the one-line fix; the alternative is an interlock that fails
+  open on the day it is first met. Two rows of that refusal table — a
+  self-read chain and a cyclic one — are unreachable, the relation layer
+  refusing both earlier under every non-running root, so the guards stand
+  untested as backstops.
+- **The clocked authority mark is process-wide** (ADR-126):
+  `ports._clocked_marked` is a module-level frozenset of the shape
+  `run_owned` already has, empty outside one request's pose. A
+  per-simulation mark would be cleaner and nothing yet requires it.
 - **Two clocked writers at one event are found by RUNNING, not by
   reading** (ADR-125): whether two levels land on the same float depends
   on the bank and the path, so a model can carry a guaranteed conflict and
@@ -2552,8 +2637,8 @@ The short list that changes must not silently break:
 | Node model | `solid_node/node/`, `solid_node/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115 |
 | Build parameters | `solid_node/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104 |
-| Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122, 125 |
-| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125 |
+| Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122, 125, 126 |
+| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126 |
 | Mechanisms | `solid_node/mechanisms/` | `mechanisms` | 022, 076 |
 | Build pipeline | `solid_node/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `solid_node/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |

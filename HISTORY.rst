@@ -5,6 +5,54 @@ History
 Unreleased
 ----------
 
+* **A bound stops a clocked request on its path.** The originating
+  project is ``projects/Calculators/Curta-Type-I-3x``, whose eight
+  interlocks are each a ``Bound`` on a joint, each quoted from the
+  manufacturer's booklet, and none of which needed a framework idea the
+  framework did not already have. What it could not do was OBEY them: a
+  request that would drive a mechanism through a stop was refused WHOLE
+  and committed nothing, which is a machine no maker can operate. A
+  declared ``range`` is now a physical STOP on a clocked request path.
+  The moving driver's travel is CLIPPED to the point where the bound is
+  met — exactly, solved and never searched — and the events are located
+  on the clipped path only; a request stopped at ZERO travel is
+  ADMITTED, moving nothing, firing nothing and reporting its stop, which
+  is what an interlock does. ``move`` returns the same value object with
+  two more fields: ``admitted``, the travel actually made in DESIGN
+  units, and ``stops``, each naming the bounded coordinate, the side, the
+  bound as it evaluated at the landing, the coordinate's value there, the
+  input's value and the fraction of the requested travel; ``record=N``
+  keeps a bounded ring ``sim.stops`` beside ``sim.commits``, which lifts
+  the previous refusal of that name. Each bound is compiled ONCE, at
+  construction, into one expression over the bank, by composing the
+  relations that determine the coordinate — wirings, derived coordinates,
+  ``law=`` relations and INTERMEDIATE PORTS alike — and the level is
+  classified per driver exactly as a commit's ``at`` is: affine is one
+  division, kinked is cut at its own breakpoints, a level that JUMPS is
+  partitioned at its own surfaces and solved piece by piece, and a CURVED
+  level is refused at construction by name. **No new locator, no new law
+  inspection, no sampling, no bisection and no tolerance at all.** The
+  bound is read as ``Time.running()`` reads it, with the REQUEST as the
+  quantum the tick was: the bounded coordinate's OWN value is the value
+  it held when the request started — which is what makes a ratchet's
+  floor the last seated tooth, and what makes an interlock stating a
+  FREEZE expressible at all — while each ``reads=`` coordinate takes its
+  value along the path, a read of a declared driver or a declared STATE
+  included. What the framework cannot follow it refuses at construction,
+  by name, naming the joint, the side and where the chain broke: a
+  bounded coordinate a ``simulate()`` binds by hand, a chain through a
+  law that is not an expression, a ``Bound`` reading something no chain
+  reaches. A ranged joint NOTHING binds — a decorative range on a part
+  that rests — is admitted instead, compiled as the constant it is and
+  examined by no request. During a REQUEST the clocked simulation is the
+  SOLE AUTHORITY for the constraints it compiled: the pose that ends a
+  request does not judge them, and the simulation judges them itself over
+  the final bank through the same chain, so a commit that carries a
+  coordinate out of range still refuses the request whole and commits
+  nothing. A pose that is NOT a request — construction, ``state=``,
+  ``restore`` — goes on being judged by the enumeration, unchanged in
+  every particular, and so do an untimed root and a running one.
+
 * **A state is a driver the machine writes, committed at an event.** The
   originating project is ``projects/Calculators/Curta-Type-I-3x``, which
   carries two models of one machine: a closed form that is fast and does

@@ -312,6 +312,41 @@ def run_owned(slot):
             and isinstance(getattr(slot, 'binder', None), RunBinder))
 
 
+#: The coordinates a CLOCKED simulation compiled a constraint for, as
+#: `(id(node), joint name)` identities, held for the duration of ONE
+#: request's pose and empty everywhere else.
+#:
+#: A MARK rather than a binder: a clocked simulation binds no joint
+#: coordinate at all -- the relations bind them, and the double-binding
+#: rule rests on that identity -- so taking the binder over would change
+#: what the enumeration refuses. Empty by default, which is why the two
+#: judgement sites take exactly the branch they take today for an
+#: untimed or a running tree (OpenSpec change
+#: ``a-bound-stops-the-request``, design section 10).
+_clocked_marked = frozenset()
+
+
+def clocked_owned(node, name):
+    """Whether a CLOCKED simulation is, right now, the sole authority
+    for the range of joint `name` on `node`."""
+    if not _clocked_marked:
+        return False
+    return (id(node), name) in _clocked_marked
+
+
+@contextmanager
+def clocked_marking(marks):
+    """Inside this, the clocked simulation judges the constraints it
+    compiled and the enumeration does not."""
+    global _clocked_marked
+    previous = _clocked_marked
+    _clocked_marked = frozenset(marks)
+    try:
+        yield
+    finally:
+        _clocked_marked = previous
+
+
 @contextmanager
 def binding_as(binder):
     """Inside this, every binding records `binder` as what bound it."""

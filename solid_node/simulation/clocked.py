@@ -41,13 +41,18 @@ Three things follow from that and are worth stating before the code:
 import math
 from collections import deque
 
-from solid_node.motion.couplings import CouplingError
-from solid_node.node.qualified import (driver_id, drive_tree, instance_path)
-from solid_node.scad_expression import GraphValue, symbol
+from solid2.core.object_base import OpenSCADConstant
 
-from .program import (JumpPlan, TooManyCrossings, _MAX_CROSSINGS, _Jump,
-                      _along, _argument_graph, _branch_of, _deduplicated,
-                      _shape_of, checked_expression, far_side_of)
+from solid_node.expression_graph import ExpressionNode, free_names, postorder
+from solid_node.motion.couplings import CouplingError
+from solid_node.motion.ports import clocked_marking
+from solid_node.node.qualified import (driver_id, drive_tree, instance_path)
+from solid_node.scad_expression import GraphValue, as_node, symbol
+
+from .program import (JumpPlan, TooManyCrossings, _KinkCuts, _MAX_CROSSINGS,
+                      _Jump, _along, _argument_graph, _branch_of,
+                      _deduplicated, _plan_of, _shape_of, checked_expression,
+                      far_side_of)
 
 
 class ClockedError(CouplingError):
@@ -557,6 +562,691 @@ def _curving(level, moving):
 
 
 ##############################################
+# One compiled constraint
+
+#: The free name a constraint level reads the bounded coordinate's OWN
+#: value under: the value it held when the REQUEST STARTED, which is
+#: ADR-109's committed-state rule with the request in the tick's place.
+#: A `$`-prefixed name, so `_shape_of` reads it as the constant on the
+#: path it is, and so it can never collide with a qualified bank id.
+_OWN = '$own'
+
+#: What a refusal from the shared bound compile calls itself here. A
+#: clocked simulation banks no joint coordinate, so a refusal raised on
+#: its behalf must not say "the run".
+_AUTHORITY = 'the clocked simulation'
+
+#: The name a law's source token is applied under while its graph is
+#: being composed. Substituted away before anything reads the level, and
+#: deliberately NOT `$`-prefixed, so a leak would be seen as a moving
+#: name rather than silently read as a constant.
+_TOKEN = '__source%d__'
+
+
+def _num(value):
+    return ExpressionNode('num', text=repr(float(value)))
+
+
+def _free(text):
+    return ExpressionNode('name', text=text)
+
+
+def _binop(op, left, right):
+    return ExpressionNode('binop', op, (left, right))
+
+
+def _substituted(root, mapping):
+    """`root` with every free name in `mapping` replaced by the SUBTREE
+    it stands for.
+
+    Composition is substitution and NEVER simplification: the graph goes
+    on performing the arithmetic the enumeration performs, over the
+    identical native values, which is what makes the clocked simulation
+    fit to judge its own constraints (design sections 2 and 10).
+    """
+    if not mapping:
+        return root
+    replaced = {}
+    for node in postorder([root]):
+        if node.kind == 'name' and node.text in mapping:
+            replaced[node] = mapping[node.text]
+        elif node.children:
+            children = tuple(replaced.get(child, child)
+                             for child in node.children)
+            if children != node.children:
+                replaced[node] = ExpressionNode(
+                    node.kind, node.op, children, node.text)
+    return replaced.get(root, root)
+
+
+def _slot_name(root, slot):
+    from solid_node.node.qualified import DriverIdError
+
+    try:
+        return driver_id(instance_path(slot.node, root), slot.name)
+    except DriverIdError:
+        return f'{type(slot.node).__name__}.{slot.name}'
+
+
+class _Chains:
+    """Every bounded coordinate, and every coordinate a bound reads,
+    composed into ONE expression graph over the bank.
+
+    A relation's untimed meaning is absolute -- the driven end IS the law
+    applied to its sources -- so composing is SUBSTITUTION: the
+    determining relation's law graph, with each source name replaced by
+    that source's own graph, down to the bank's ids, which stay free
+    names. A wiring contributes its scale, a derived coordinate its
+    linear formula, a `law=` relation its inspected graph, and an
+    INTERMEDIATE PORT is composed through and never stored -- which is
+    exactly how the Curta's selectors are wired.
+
+    What the bank cannot reach this way is refused BY NAME, naming the
+    joint, the node, the side and where the chain broke: a stop that can
+    never stop is a mistake in the model (design section 3).
+    """
+
+    def __init__(self, root, bank, coordinates):
+        from solid_node.motion.joints import declared_joints
+        from solid_node.motion.ports import get_coordinate
+
+        from .program import _units
+
+        self.root = root
+        self.bank = bank
+        self.slots = {}
+        self.joints = {}
+        for identifier, (node, name) in coordinates.items():
+            self.slots[identifier] = get_coordinate(node, name)
+            for joint in declared_joints(type(node)).values():
+                if name in joint.coordinates:
+                    self.joints[identifier] = (node, joint)
+                    break
+        # What the REST RENDER solved, read off its own records: the one
+        # authority on which relation, wiring or formula determines each
+        # coordinate, and in which direction.
+        self.determined = {}
+        for assembly, _path, records, formulas, wirings in _units(root):
+            for record in records:
+                if record.direction == 'forward':
+                    targets = record.driven_ends
+                elif record.direction == 'backward':
+                    targets = record.driver_ends
+                else:
+                    continue
+                for index, end in enumerate(targets):
+                    if end.slot is not None:
+                        self.determined[id(end.slot)] = (
+                            'law', assembly, record, index)
+            for wiring in wirings:
+                self.determined[id(wiring.target)] = (
+                    'wiring', assembly, wiring, 0)
+            for formula in formulas:
+                slot = formula.slot_of(assembly)
+                if slot.binder is formula:
+                    self.determined[id(slot)] = (
+                        'formula', assembly, formula, -1)
+                    continue
+                for index, (end, _factor) in enumerate(
+                        formula.resolved_terms(assembly)):
+                    if end.slot is not None and end.slot.binder is formula:
+                        self.determined[id(end.slot)] = (
+                            'formula', assembly, formula, index)
+        self.cache = {}
+
+    ##############################################
+    # The chain
+
+    def of(self, identifier, refuse, what):
+        """`identifier`'s chain: a bank id is a free NAME, and a joint
+        coordinate is the composition that determines it."""
+        if identifier in self.bank:
+            return _free(identifier)
+        slot = self.slots.get(identifier)
+        if slot is None:
+            refuse(f'{what} is neither a declared input of this tree nor '
+                   f'one of its joint coordinates, so the bank cannot '
+                   f'reach it at all.')
+        return self._of_slot(slot, refuse, what, ())
+
+    def _of_end(self, end, refuse, what, seen):
+        if end.slot is None:
+            from .program import _qualified
+
+            identifier, qualified = _qualified(self.root, end)
+            if not qualified or identifier not in self.bank:
+                refuse(f"{what} is determined by '{identifier}', which is "
+                       f'neither a declared driver nor a declared state of '
+                       f'this tree, so the bank cannot reach it.')
+            return _free(identifier)
+        return self._of_slot(end.slot, refuse, what, seen)
+
+    def _of_slot(self, slot, refuse, what, seen):
+        key = id(slot)
+        found = self.cache.get(key)
+        if found is not None:
+            return found
+        if key in seen:
+            refuse(f'{what} is determined by a CYCLE the rest render left '
+                   f'standing: {_slot_name(self.root, slot)} is reached '
+                   f'from itself. A clocked pose retains nothing between '
+                   f'requests, so there is no value to break the cycle '
+                   f'with.')
+        binder = getattr(slot, 'binder', None)
+        if binder is None:
+            if getattr(slot, '_value', None) is None:
+                # NOTHING determines it -- no relation, no wiring, no
+                # derived formula and no author code -- so it is a
+                # DECORATIVE range on a part that rests, and the chain is
+                # the constant it stands at (design section 3).
+                self.cache[key] = found = _num(0.0)
+                return found
+            # The assembly whose OWN simulate phase bound it, which the
+            # rest render recorded -- not the node the slot belongs to,
+            # which is typically the child being posed.
+            author = getattr(slot, '_bound_by', None) or slot.node
+            refuse(f'{what} is bound BY HAND, in '
+                   f'{type(author).__name__}.simulate(): its value is '
+                   f'whatever that code computes, from whatever it reads, '
+                   f'so nothing can follow it along a request path. State '
+                   f'the relation that moves '
+                   f"'{_slot_name(self.root, slot)}', or drop the range.")
+        entry = self.determined.get(key)
+        if entry is None:
+            refuse(f'{what} is bound by {binder!r}, for which the rest '
+                   f'render recorded no chain, so the bank cannot reach '
+                   f'it.')
+        kind, assembly, obj, index = entry
+        seen = seen + (key,)
+        if kind == 'law':
+            graph = self._law(assembly, obj, index, refuse, what, seen)
+        elif kind == 'wiring':
+            graph = self._of_slot(obj.slot, refuse, what, seen)
+        else:
+            graph = self._formula(assembly, obj, index, refuse, what, seen)
+        if getattr(slot, 'scale', None) is not None:
+            # The one conversion the binding path applies, applied here
+            # as well: `ports.bind` multiplies by the sink's declared
+            # scale, so a chain that skipped it would disagree with the
+            # pose it has to agree with (design section 10).
+            graph = _binop('*', graph, _num(slot.scale))
+        self.cache[key] = graph
+        return graph
+
+    def _law(self, assembly, record, index, refuse, what, seen):
+        described = (f'{record.described()}, stated by '
+                     f'{type(assembly).__name__}')
+        if record.relation.self_read is not None:
+            refuse(f'{what} is driven by {described}, whose law READS the '
+                   f'coordinate it drives. A retained read is a HISTORY, '
+                   f'and a clocked pose retains nothing between requests: '
+                   f'there is no value to read.')
+        if record.direction == 'forward':
+            sources, targets = record.driver_ends, record.driven_ends
+        else:
+            sources, targets = record.driven_ends, record.driver_ends
+        tokens = [symbol(_TOKEN % position)
+                  for position in range(len(sources))]
+        try:
+            if record.direction == 'backward':
+                returned = record.law.inverse(tokens[0])
+            else:
+                returned = record.law.forward(*tokens)
+        except Exception as failure:
+            refuse(f'{what} is driven by {described}, whose law '
+                   f'{record.law!r} cannot be applied to symbols '
+                   f'({type(failure).__name__}: {failure}). A chain from '
+                   f'the bank to a bounded coordinate is an expression '
+                   f'over the bank: write the law with solid_node.math, '
+                   f'whose primitives are symbolic.')
+        if len(targets) == 1:
+            values = (returned,)
+        else:
+            try:
+                length = len(returned)
+            except TypeError:
+                length = None
+            if length != len(targets):
+                refuse(f'{what} is driven by {described}, whose law '
+                       f'returned {returned!r} for {len(targets)} driven '
+                       f'ends, which is not a sequence of exactly '
+                       f'{len(targets)} values.')
+            values = returned
+        graph = self._expression(values[index], refuse, what, described)
+        names = free_names(graph)
+        mapping = {}
+        for position, end in enumerate(sources):
+            token = _TOKEN % position
+            if token in names:
+                mapping[token] = self._of_end(end, refuse, what, seen)
+        return _substituted(graph, mapping)
+
+    def _formula(self, assembly, formula, index, refuse, what, seen):
+        described = (f"the derived coordinate '{formula.described()}' "
+                     f'({formula.written})')
+        terms = formula.resolved_terms(assembly)
+        constant = float(formula.resolved_constant(assembly))
+        if index < 0:
+            total = _num(constant)
+            for end, factor in terms:
+                total = _binop('+', total, _binop(
+                    '*', self._of_end(end, refuse, what, seen),
+                    _num(factor)))
+            return total
+        # Solved BACKWARD into one term, exactly as `Edge._linear` states
+        # it: a derived coordinate is a coefficient map and a constant,
+        # so the rearrangement is exact.
+        own = float(terms[index][1])
+        if own == 0.0:
+            refuse(f'{what} is solved from {described}, in which its own '
+                   f'coefficient is zero, so the formula does not '
+                   f'determine it.')
+        value = _binop('-', self._of_slot(
+            formula.slot_of(assembly), refuse, what, seen), _num(constant))
+        for position, (end, factor) in enumerate(terms):
+            if position == index:
+                continue
+            value = _binop('-', value, _binop(
+                '*', self._of_end(end, refuse, what, seen), _num(factor)))
+        return _binop('/', value, _num(own))
+
+    def _expression(self, value, refuse, what, described):
+        """One law's return as the graph the chain composes, checked by
+        the SAME walk a running law and a commit law are checked by."""
+        if isinstance(value, bool):
+            refuse(f'{what} is driven by {described}, whose law returned '
+                   f'{value!r}, which is neither a number nor an '
+                   f'expression.')
+        if isinstance(value, (int, float)):
+            return _num(value)
+        if not isinstance(value, OpenSCADConstant):
+            refuse(f'{what} is driven by {described}, whose law returned '
+                   f'{value!r}, which is neither a number nor an '
+                   f'expression over its sources.')
+
+        def broke(detail):
+            refuse(f'{what} is driven by {described}, and {detail}')
+
+        root, _jumps = checked_expression(value, broke, 'a chain to a bound')
+        return root
+
+
+class Stop:
+    """ONE bound met on a request path: what stopped, which side of its
+    range, what that bound evaluated to at the landing, what the
+    coordinate is worth there, where the input landed, and the fraction
+    of the REQUESTED travel that was.
+
+    ADR-108's vocabulary, and nothing is added to it. Several
+    constraints met at ONE landing are several entries of one stop,
+    exactly as several relations at one landing are one event.
+    """
+
+    __slots__ = ('coordinate', 'side', 'bound', 'value', 'input', 'fraction')
+
+    def __init__(self, coordinate, side, bound, value, value_of_input,
+                 fraction):
+        self.coordinate = coordinate
+        self.side = side
+        self.bound = bound
+        self.value = value
+        self.input = value_of_input
+        self.fraction = fraction
+
+    def __repr__(self):
+        return (f'<stop {self.coordinate} {self.side} at {self.bound} '
+                f'(value {self.value}, input {self.input}, '
+                f'{self.fraction:.4f})>')
+
+    def __eq__(self, other):
+        return (isinstance(other, Stop)
+                and (self.coordinate, self.side, self.bound, self.value,
+                     self.input, self.fraction)
+                == (other.coordinate, other.side, other.bound, other.value,
+                    other.input, other.fraction))
+
+
+class Bounded:
+    """ONE compiled constraint: one side of one bounded coordinate's
+    declared range, as a LEVEL over the bank and the one moving driver.
+
+        high side:   g(t) = value(t) - bound(t)
+        low  side:   g(t) = bound(t) - value(t)
+
+    `value` is the chain `_Chains` composed; `bound` is the declared
+    bound with its OWN coordinate taken at the value the request STARTED
+    from (`_OWN`) and each read taken ALONG THE PATH through its own
+    chain. A request admits the largest fraction at which `g` does not
+    exceed `max(0, g(0))` (design sections 4 and 7).
+
+    The classification is STRUCTURAL and decided ONCE, at construction,
+    per DRIVER that can move the level -- exactly as cycle 1 classifies
+    an `at`, through the same `_standing_except` substitution.
+    """
+
+    __slots__ = ('coordinate', 'side', 'node', 'joint', 'unit', 'chain',
+                 'bound', 'level', 'names', 'chain_names', 'plans', 'shapes',
+                 'kinks', 'described')
+
+    def __init__(self, coordinate, side, node, joint, unit, chain, bound,
+                 level):
+        self.coordinate = coordinate
+        self.side = side
+        self.node = node
+        self.joint = joint
+        self.unit = unit
+        self.chain = GraphValue(chain)
+        self.bound = GraphValue(bound)
+        self.level = GraphValue(level)
+        self.names = tuple(sorted(free_names(level) - {_OWN}))
+        self.chain_names = tuple(sorted(free_names(chain)))
+        self.plans = {}
+        #: The level's SHAPE in each driver that moves it, decided once,
+        #: structurally: `affine` is one division, `kinked` is cut at its
+        #: own breakpoints, and a level that jumps is partitioned at its
+        #: own surfaces and each piece solved by its skeleton.
+        self.shapes = {}
+        self.kinks = {}
+        self.described = f"the {side} bound of '{coordinate}'"
+
+    def __repr__(self):
+        return f'<constraint {self.described}>'
+
+    ##############################################
+    # The level, per request
+
+    def moves_with(self, input_id):
+        """Whether this constraint's level can move when `input_id`
+        does. A level no driver moves is not examined for it, and costs
+        nothing."""
+        return input_id in self.plans
+
+    def standing(self, bank):
+        """The values this level reads, with the OWN coordinate taken at
+        the value the request STARTS from."""
+        values = {name: bank[name] for name in self.names}
+        values[_OWN] = self.chain.evaluate(
+            {name: bank[name] for name in self.chain_names})
+        return values
+
+    def threshold(self, values):
+        """`h = max(0, g(0))`: the ordinary bound where the machine
+        stands legally, and where it stands where it does not. A
+        simulation standing outside a bound may move as long as it does
+        not go FURTHER outside, and it may return -- nothing is ever
+        clamped and nothing is silently repaired (design section 7)."""
+        return max(0.0, self.level.evaluate(values))
+
+    def at(self, values, input_id, value):
+        held = dict(values)
+        held[input_id] = value
+        return self.level.evaluate(held)
+
+    def bound_at(self, values, input_id, value):
+        held = dict(values)
+        held[input_id] = value
+        return self.bound.evaluate(held)
+
+    def value_at(self, values, input_id, value):
+        held = dict(values)
+        held[input_id] = value
+        return self.chain.evaluate(held)
+
+    ##############################################
+    # The clip
+
+    def clip(self, values, input_id, start, delta, threshold):
+        """The landing this constraint stops the path at, as
+        `(fraction, landing)`, or `None` when it stops nothing.
+
+        The path is partitioned at the level's OWN jump surfaces
+        (`JumpPlan.cuts`); on each piece every jump node holds one
+        branch, so the skeleton is affine or kinked there and its
+        crossing of `threshold` is ONE DIVISION. The landing is then the
+        nearest representable value of the input on the SATISFIED side,
+        walked in float ordinal space with membership decided by
+        EVALUATING the level and never by comparing a float to a bound
+        (design section 6).
+        """
+        plan = self.plans.get(input_id)
+        if plan is None or delta == 0.0:
+            return None
+        walk = {name: values[name] for name in self.names}
+        walk[_OWN] = values[_OWN]
+        walk[input_id] = start
+        steps = {name: 0.0 for name in walk}
+        steps[input_id] = delta
+        try:
+            cuts = plan.cuts(walk, steps, self.described, self.coordinate)
+        except TooManyCrossings as failure:
+            raise _too_many_stops(self, input_id, delta,
+                                  getattr(failure, 'count', None)) from None
+        crossed = None
+        for left, right in zip(cuts, cuts[1:]):
+            branches = plan._branches(
+                walk, steps, (left + right) / 2.0, len(plan.jumps),
+                self.described, self.coordinate)
+            crossed = self._crossed(plan, walk, steps, branches, left, right,
+                                    threshold, input_id)
+            if crossed is not None:
+                break
+        if crossed is None:
+            return None
+        star = start + delta * crossed
+        direction = math.copysign(1.0, delta)
+
+        def satisfied(value):
+            return float(self.at(values, input_id, value) <= threshold)
+
+        landing = far_side_of(satisfied, 0.0, star, -direction,
+                              lambda: _unstopped(self, input_id))
+        fraction = (landing - start) / delta
+        if fraction <= 0.0:
+            # A level already at its limit and pushed further admits
+            # ZERO travel: the request moves nothing, fires nothing and
+            # reports its stop (design section 9).
+            return 0.0, start
+        if fraction >= 1.0:
+            return None
+        return fraction, landing
+
+    def _crossed(self, plan, walk, steps, branches, left, right, threshold,
+                 input_id):
+        """Where the level first exceeds `threshold` on ONE piece of the
+        partition, as a fraction of the whole path, or `None`.
+
+        A piece whose LEFT end already exceeds it is one the level
+        STEPPED across at the cut behind it: the stop is at the end of
+        the last piece on which the level was satisfied, which is the
+        landing rule with no special case.
+        """
+        edges = (left, right)
+        kinks = self.kinks.get(input_id)
+        if kinks:
+            def at(fraction):
+                held = _along(walk, steps, fraction)
+                held.update(branches)
+                return held
+
+            edges = (left,) + kinks.between(at, left, right) + (right,)
+        for low, high in zip(edges, edges[1:]):
+            below = plan._substituted(walk, steps, low, branches)
+            above = plan._substituted(walk, steps, high, branches)
+            if below > threshold:
+                return low
+            if above <= threshold:
+                continue
+            if above == below:
+                return high
+            return low + (high - low) * (threshold - below) / (above - below)
+        return None
+
+
+class _Level:
+    """One compiled constraint as ONE request reads it: the values its
+    level stands at when the request begins, and the threshold those
+    values give it. Both are read ONCE, at the request's start (design
+    section 8)."""
+
+    __slots__ = ('bounded', 'values', 'threshold')
+
+    def __init__(self, bounded, bank):
+        self.bounded = bounded
+        self.values = bounded.standing(bank)
+        self.threshold = bounded.threshold(self.values)
+
+
+##############################################
+# Compiling the bounds of a clocked tree
+
+def compile_bounds(root, drivers, states):
+    """Every declared bound of `root`'s tree, compiled into a constraint
+    level over the bank -- and the coordinates the clocked simulation
+    therefore judges itself.
+
+    Returns `(constraints, marks)`, `marks` being the `(id(node), joint
+    name)` identities design section 10 holds for the duration of one
+    request's pose.
+    """
+    from .program import _compiled_spans, qualified_coordinates
+
+    inputs = dict(drivers)
+    inputs.update(states)
+    coordinates = qualified_coordinates(root)
+    spans, reads = _compiled_spans(root, inputs, coordinates,
+                                   authority=_AUTHORITY)
+    if not spans:
+        # A clocked tree with no ranged joint compiles nothing and pays
+        # nothing: the request is cycle 1's request, field for field.
+        return (), frozenset()
+    chains = _Chains(root, set(inputs), coordinates)
+    found = []
+    marks = set()
+    for identifier, low, high, unit in spans:
+        node, joint = chains.joints[identifier]
+        marks.add((id(node), joint.name))
+        for side, bound in (('low', low), ('high', high)):
+            if bound is None:
+                continue
+            found.append(_constrained(
+                chains, drivers, identifier, node, joint, unit, side, bound,
+                reads.get((identifier, side), ())))
+    return tuple(found), frozenset(marks)
+
+
+def _constrained(chains, drivers, identifier, node, joint, unit, side, bound,
+                 read_ids):
+    """One side of one declared range, as the level a request is clipped
+    against, with every refusal design section 3 and section 5 state."""
+    from solid_node.motion.joints import _where
+
+    def refuse(detail):
+        raise ClockedError(
+            f"{_where(node)}: joint '{joint.name}' -- the coordinate "
+            f"'{identifier}' -- declares a {side} bound, and {detail}")
+
+    chain = chains.of(identifier, refuse, f"the coordinate '{identifier}'")
+    if isinstance(bound, float):
+        compiled = _num(bound)
+    else:
+        mapping = {identifier: _free(_OWN)}
+        for read_id in read_ids:
+            mapping[read_id] = chains.of(
+                read_id, refuse, f"its read '{read_id}'")
+        compiled = _substituted(as_node(bound), mapping)
+    if side == 'high':
+        level = _binop('-', chain, compiled)
+    else:
+        level = _binop('-', compiled, chain)
+    root, jumps = checked_expression(level, refuse, 'a bound')
+    plan = _plan_of(root, jumps)
+    skeleton = as_node(plan.skeleton)
+    entry = Bounded(identifier, side, node, joint, unit, chain, compiled,
+                    root)
+    moving = free_names(root)
+    for input_id in sorted(drivers):
+        if input_id not in moving:
+            # This driver cannot move this level at all: the constraint
+            # is not examined for it, and costs nothing.
+            continue
+        shape = _shape_of(_standing_except(skeleton, input_id))
+        if shape is None:
+            refuse(_curves(level, input_id))
+        planned = []
+        for jump in plan.jumps:
+            argument = as_node(jump.argument)
+            inner = _shape_of(_standing_except(argument, input_id))
+            if inner is None:
+                refuse(_curves(argument, input_id))
+            planned.append(_Jump(jump.primitive, jump.placeholder,
+                                 jump.argument, inner))
+        entry.plans[input_id] = JumpPlan(plan.skeleton, planned)
+        entry.shapes[input_id] = shape
+        if shape == 'kinked':
+            entry.kinks[input_id] = _KinkCuts(plan.skeleton)
+    return entry
+
+
+def _curves(level, input_id):
+    return (f"its constraint level CURVES as '{input_id}' moves: "
+            f'{_curving(level, input_id)}. A clocked stop is SOLVED and '
+            f'never searched, so the level a bound states -- the bounded '
+            f"coordinate's chain against the bound itself -- must be "
+            f'affine in the moving driver, or kinked by abs, min or max '
+            f'over quantities that are. Restate the bound, or the '
+            f'relations that reach it, on a level the driver enters '
+            f'linearly.')
+
+
+def _too_many_stops(bounded, input_id, delta, count):
+    reached = 'more than' if count is None else count
+    return TooManyEvents(
+        f"the request move('{input_id}', by={delta!r}) would cross "
+        f'{reached} surfaces of {bounded.described}, and {_MAX_CROSSINGS} '
+        f'is the most one constraint is admitted on one request. The '
+        f'request committed nothing: the bank and the tree stand as they '
+        f'were. Split it into shorter requests.')
+
+
+def _commit_out_of_range(level, held, input_id, by, to):
+    """A COMMIT inside a request carried a compiled coordinate outside
+    its bound, judged by the clocked simulation itself, over the final
+    bank, through the same chain the clip used.
+
+    Raised as `JointRangeError` -- the kind the joints capability
+    already exports for exactly this -- so what a maker sees for a
+    commit that carries a joint out of range is cycle 1's behaviour
+    unchanged: the request commits NOTHING and never poses.
+    """
+    from solid_node.motion.joints import JointRangeError, _where
+
+    bounded = level.bounded
+    asked = f'by={by!r}' if to is None else f'to={to!r}'
+    return JointRangeError(
+        f"{_where(bounded.node)}: joint '{bounded.joint.name}' -- the "
+        f"coordinate '{bounded.coordinate}' -- declares a {bounded.side} "
+        f'bound of {bounded.bound.evaluate(held)} '
+        f"{bounded.unit or 'units'}, and the request "
+        f"move('{input_id}', {asked}) ends with it at "
+        f'{bounded.chain.evaluate(held)}, which is outside it. The clip '
+        f'read that bound over the bank the request STARTED from; an '
+        f'event inside the request committed a state that moved it. The '
+        f'request committed nothing: the bank, the tree and the record '
+        f'stand as they were. Split the request at that event.')
+
+
+def _unstopped(bounded, input_id):
+    from .program import LandingInvariantError
+
+    return LandingInvariantError(
+        f'{bounded.described}: the level was crossed on this request and '
+        f"no value of '{input_id}' within reach of the crossing's own "
+        f'arithmetic reads the satisfied side, so the stop placed the '
+        f'input nowhere. That is a broken invariant of the clocked '
+        f'solver. The request committed nothing.')
+
+
+##############################################
 # The value objects a request reports
 
 class Commit:
@@ -597,22 +1287,32 @@ class Commit:
 
 
 class Request:
-    """What one `move` did: the input, its travel, and the events it
-    fired in path order."""
+    """What one `move` did: the input, its travel, the events it fired
+    in path order, how much of the travel the machine ADMITTED, and the
+    bounds it STOPPED at.
 
-    __slots__ = ('input', 'by', 'to', 'commits')
+    `by` stays what the caller asked for; `admitted` is what was made,
+    in DESIGN units -- the units `by=` speaks -- and `stops` is empty
+    exactly when the whole travel was made.
+    """
 
-    def __init__(self, input_id, by, to, commits):
+    __slots__ = ('input', 'by', 'to', 'commits', 'admitted', 'stops')
+
+    def __init__(self, input_id, by, to, commits, admitted=0.0, stops=()):
         self.input = input_id
         self.by = by
         self.to = to
         self.commits = tuple(commits)
+        self.admitted = admitted
+        self.stops = tuple(stops)
 
     def __repr__(self):
+        stopped = '' if not self.stops else f', {len(self.stops)} stops'
         return (f"<request move('{self.input}', "
                 f'{"by" if self.to is None else "to"}='
                 f'{self.by if self.to is None else self.to}) '
-                f'-> {len(self.commits)} commits>')
+                f'-> {len(self.commits)} commits, '
+                f'admitted {self.admitted}{stopped}>')
 
 
 class ClockedSnapshot:
@@ -644,6 +1344,11 @@ class Clocked:
         self.drivers = drivers
         self.states = states
         self.relations = compile_clocked(node, drivers, states, instructions)
+        # Every declared bound of the tree, compiled ONCE into a
+        # constraint level over the bank, and the coordinates this
+        # simulation therefore judges itself during a request (OpenSpec
+        # change ``a-bound-stops-the-request``, design sections 2 and 10).
+        self.bounds, self.marks = compile_bounds(node, drivers, states)
         self.bank = {identifier: declaration.default
                      for identifier, declaration in drivers.items()}
         self.bank.update({identifier: declaration.default
@@ -660,6 +1365,11 @@ class Clocked:
                     f'declared: {known}.')
             self.bank[identifier] = value
         self._ring = deque(maxlen=record) if record else None
+        # A stop is a BOUND OF A COORDINATE, which stops motion, and a
+        # commit is a VALUE THE MACHINE WROTE: a reader counting strokes
+        # must not have to filter out interlocks, so the two rings are
+        # two (ADR-108's own reason, taken for the request).
+        self._stops = deque(maxlen=record) if record else None
         self.initial = ClockedSnapshot(self.model, self.bank)
         self.pose()
 
@@ -673,6 +1383,13 @@ class Clocked:
     @property
     def commits(self):
         return tuple(self._ring) if self._ring is not None else ()
+
+    @property
+    def stops(self):
+        """The bounded ring of bounds reached `record=` asked for, and
+        `()` when it asked for none. A request's own result is complete
+        either way."""
+        return tuple(self._stops) if self._stops is not None else ()
 
     def pose(self, bank=None):
         """Bind `bank` -- the simulation's own by default -- over the
@@ -690,7 +1407,7 @@ class Clocked:
                    lambda node, path, name, declaration:
                    bank[driver_id(path, name)])
 
-    def _posed(self, bank):
+    def _posed(self, bank, marked=False):
         """Pose `bank`, and make it the simulation's only if the tree
         ACCEPTS it.
 
@@ -704,11 +1421,21 @@ class Clocked:
         request at a bound instead of refusing it whole.
         """
         previous = self.bank
-        try:
-            self.pose(bank)
-        except Exception:
-            self.pose(previous)
-            raise
+        with clocked_marking(self.marks if marked else ()):
+            # During a REQUEST this simulation is the SOLE AUTHORITY for
+            # the constraints it compiled: the pose does not judge them,
+            # because it judges them in a DIFFERENT ORDER of the same
+            # arithmetic and an ulp of disagreement would refuse a
+            # legitimate stop. It judged them itself, over the final
+            # bank, before this pose. A pose that is NOT a request --
+            # construction, `state=`, `restore` -- is marked by nothing
+            # and judged by the enumeration, unchanged (design
+            # section 10).
+            try:
+                self.pose(bank)
+            except Exception:
+                self.pose(previous)
+                raise
         self.bank = bank
 
     ##############################################
@@ -756,6 +1483,14 @@ class Clocked:
             target = declaration.native(to)
         else:
             target = origin + declaration.native(by)
+        # STEP 0, and the whole of this cycle: the request's travel is
+        # CLIPPED to the largest fraction at which every compiled
+        # constraint is still satisfied, ONCE, over the bank as it
+        # stands here, BEFORE the first event is located. Cycle 1's loop
+        # below then runs over the clipped path exactly as it ran
+        # before (design sections 1 and 9).
+        levels = [_Level(bounded, self.bank) for bounded in self.bounds]
+        target, stops = self._clipped(levels, input_id, origin, target)
         working = dict(self.bank)
         commits = []
         current = origin
@@ -791,16 +1526,71 @@ class Clocked:
                 fraction, landing, dict(staged)))
             current = landing
         working[input_id] = target
+        # STEP 6: this simulation judges what it compiled, over the
+        # FINAL bank, through the same chains and against the same
+        # thresholds the clip used. With the clip in front of the
+        # events, the only way a compiled constraint can be violated
+        # here is a COMMIT -- a state an event wrote, which the clip
+        # read at its pre-request value (design section 10).
+        self._judged(levels, working, input_id, by, to)
         # Nothing above touched the bank or the tree: a request that was
         # refused anywhere between here and its first event committed
         # NOTHING, exactly as a refused running tick commits nothing --
         # and the final POSE is part of the request, so it is posed
         # before the bank is assigned and its refusal leaves everything
         # standing (design section 9).
-        self._posed(working)
+        self._posed(working, marked=True)
         if self._ring is not None:
             self._ring.extend(commits)
-        return Request(input_id, by, to, commits)
+            self._stops.extend(stops)
+        scale = getattr(declaration, 'scale', None)
+        admitted = (target - origin) * (1.0 if scale is None else scale)
+        return Request(input_id, by, to, commits, admitted, stops)
+
+    ##############################################
+    # The clip, and the judgement that closes a request
+
+    def _clipped(self, levels, input_id, origin, target):
+        """`target` truncated to where the machine's declared stops
+        allow, and the stops met there.
+
+        A request stopped at ZERO travel is ADMITTED: it moves nothing,
+        fires nothing, poses nothing new and reports its stop. That is
+        what an interlock does, and it is what makes a clocked machine
+        operable (design section 9).
+        """
+        requested = target - origin
+        if not levels or requested == 0.0:
+            return target, ()
+        found = []
+        for level in levels:
+            reached = level.bounded.clip(level.values, input_id, origin,
+                                         requested, level.threshold)
+            if reached is not None:
+                found.append((reached[0], reached[1], level))
+        if not found:
+            return target, ()
+        landing = min(found, key=lambda entry: entry[0])[1]
+        met = [level for _fraction, where, level in found if where == landing]
+        stops = tuple(Stop(
+            level.bounded.coordinate, level.bounded.side,
+            level.bounded.bound_at(level.values, input_id, landing),
+            level.bounded.value_at(level.values, input_id, landing),
+            landing, (landing - origin) / requested) for level in met)
+        return landing, stops
+
+    def _judged(self, levels, bank, input_id, by, to):
+        """Every compiled constraint, over the bank the request ends at.
+
+        Made BEFORE the tree is posed, so a refused request never poses
+        at all and cycle 1's atomicity is untouched.
+        """
+        for level in levels:
+            bounded = level.bounded
+            held = {name: bank[name] for name in bounded.names}
+            held[_OWN] = level.values[_OWN]
+            if bounded.level.evaluate(held) > level.threshold:
+                raise _commit_out_of_range(level, held, input_id, by, to)
 
     def _next_event(self, bank, input_id, current, delta):
         """The next event on the remaining path: its landing, and every

@@ -221,9 +221,11 @@ additionally accept declared states. A clocked root SHALL ADMIT `move`,
 `snapshot`, `restore`, `reset`, `initial` and `state`, whose meanings that
 requirement states, and SHALL REFUSE `rate`, `commands` and `program`
 together with the cadence surface — `run`, `at`, `every`, `time`, `tick`,
-`trigger`, `crossings` and `stops` — each by name, saying a clocked model has
-no clock. `sim.running` SHALL remain `False` over a clocked root, which
-declares no time base.
+`trigger` and `crossings` — each by name, saying a clocked model has
+no clock. `stops` SHALL NOT be among them: a clocked root ADMITS it as the
+bounded ring of the bounds its requests stopped at, under the requirement
+"A bound stops a clocked request on its path". `sim.running` SHALL remain
+`False` over a clocked root, which declares no time base.
 
 Instants, cadence periods, and run durations SHALL be finite real seconds and
 SHALL be validated as whole numbers of ticks (`round(t/dt)*dt == t` within
@@ -3006,6 +3008,12 @@ holds to the requested one, with every other bank value standing. A request
 naming a state, a joint coordinate, or more than one input SHALL be refused
 by name.
 
+Before any event is located the request's path SHALL be CLIPPED by the
+requirement "A bound stops a clocked request on its path": the travel
+becomes the travel every declared bound admits, and every rule below
+applies to the CLIPPED path. A request whose admitted travel is ZERO SHALL
+fire no event, commit nothing and still be admitted.
+
 Along that path the system SHALL locate events EXACTLY, by the tools the
 running executor already owns and with no additional locator, tolerance or
 knob:
@@ -3079,24 +3087,35 @@ refusal SHALL name the request — the input and its travel — the relation as
 written, the count reached and the maximum, and SHALL say that the request
 can be split into shorter ones.
 
-`move` SHALL return a value object naming the input, the travel and the
-events it fired, each entry carrying the relation as written, the fraction of
-the path, the driver's value at the event, and the targets with their new
-values. `record=N` SHALL keep a bounded ring of the same entries; without it
-the request's own result SHALL still be complete. `sim.state` SHALL return
+`move` SHALL return a value object naming the input, the travel REQUESTED,
+the travel ADMITTED, the bounds met and the events it fired, each event entry
+carrying the relation as written, the fraction of the path, the driver's
+value at the event, and the targets with their new values. The admitted
+travel and the stops are stated by the requirement "A bound stops a clocked
+request on its path"; where no bound is met the admitted travel SHALL be the
+requested one and the stops SHALL be empty. `record=N` SHALL keep a bounded
+ring of the same event entries, and a second bounded ring of the stops;
+without it the request's own result SHALL still be complete. `sim.state` SHALL return
 the whole bank by qualified id as a fresh mapping. `sim.snapshot()`,
 `sim.restore()`, `sim.initial` and `sim.reset()` SHALL act on that bank,
 `restore` refusing a snapshot taken over a different model before touching
 anything.
 
 A clocked simulation has no clock and no cadence: `run`, `at`, `every`,
-`time`, `tick`, `rate`, `trigger`, `commands`, `program`, `crossings` and
-`stops` SHALL each be refused by name.
+`time`, `tick`, `rate`, `trigger`, `commands`, `program` and `crossings`
+SHALL each be refused by name. `sim.stops` SHALL NOT be refused: it is the
+bounded ring of the bounds a clocked machine met, under the requirement "A
+bound stops a clocked request on its path".
 
-A violated joint `range` SHALL remain what it is today — an impossible pose,
-raising `JointRangeError` on the pose the request ends at, including the
-close-of-enumeration judgement for a bound that reads other coordinates. A
-request SHALL NOT be clipped by a bound in this capability.
+A violated joint `range` SHALL be a STOP on the request's path, under the
+requirement "A bound stops a clocked request on its path", which clips the
+travel before any event is located, judges the constraints it compiled ITSELF
+at the end of the request, and leaves every pose that is not a request to the
+enumeration. A bound violated by the INITIAL pose — construction, `state=` or
+`restore` — SHALL remain an impossible pose raising `JointRangeError`. Where
+a request's own COMMITS carry a bounded coordinate outside its range, that
+end-of-request judgement SHALL raise `JointRangeError` and refuse the whole
+request, which commits nothing and never poses.
 
 #### Scenario: One request fires one event
 
@@ -3176,10 +3195,10 @@ request SHALL NOT be clipped by a bound in this capability.
 - **THEN** the bank, the tree and the record stand exactly as they did before
   the request
 
-#### Scenario: A request whose final pose is refused commits nothing
+#### Scenario: A request whose commit leaves a joint out of range commits nothing
 
 - **WHEN** a request would advance a state far enough that the joint it
-  poses leaves its declared `range`
+  would pose leaves its declared `range`
 - **THEN** `JointRangeError` is raised, the bank holds the values it held
   before the request — the moving driver's included — the tree is still
   posed where it was, and the recorded events are unchanged
@@ -3204,6 +3223,326 @@ request SHALL NOT be clipped by a bound in this capability.
 - **WHEN** a clocked simulation calls `run`, `every`, `time`, `tick`,
   `trigger` or `rate`
 - **THEN** each is refused by name, saying a clocked model has no clock
+
+### Requirement: A bound stops a clocked request on its path
+
+Under a CLOCKED root a joint coordinate's declared `range` SHALL be a STOP on
+a request path: a request that would carry the coordinate past a declared
+bound SHALL admit only the travel at which every bound is still satisfied,
+and SHALL NOT be refused. A `Driver`'s own declared `range` SHALL remain
+presentation metadata, never a clamp and never a stop.
+
+**The compile.** At simulation construction, for every joint coordinate of
+the tree whose joint declares a `range` with a bound that is not `None`, the
+system SHALL compile:
+
+1. a CHAIN — one expression graph over the bank's qualified ids giving that
+   coordinate's value — composed by SUBSTITUTION from the relations that
+   determine it: each determining relation's law graph with every source
+   name replaced by that source's own chain, down to declared drivers and
+   declared states, which stay free names. A wiring SHALL contribute its
+   ratio and offset, a derived coordinate its linear formula, and a `law=`
+   relation the graph its law is inspected into, by the same inspection a
+   running law is inspected by. An INTERMEDIATE PORT SHALL be traversed as
+   any other link: it is a calculation composed into the chain, not a banked
+   value. The composition SHALL substitute and SHALL NOT simplify, so that
+   the chain performs, over the identical native values, arithmetic
+   EQUIVALENT to the ordinary enumeration's — the two evaluation orders being
+   free to differ by a rounding, which is why the clocked simulation and not
+   the enumeration judges what it compiled;
+2. the BOUND, exactly as it is compiled under a running root — a number,
+   `None`, or an expression graph over the coordinate's own qualified id and
+   the qualified ids its `reads` resolve to, with jumps admitted and no
+   plan — and a chain as above for each read. A read SHALL be a declared
+   driver, a declared STATE or a joint coordinate; a read naming a plain
+   port or a derived coordinate SHALL be refused at construction by joint
+   and node identity, as it is under a running root.
+
+**The constraint level.** For each bounded side the LEVEL SHALL be the
+coordinate's value minus the evaluated upper bound, or the evaluated lower
+bound minus the coordinate's value, so that OUTSIDE is positive; and its
+arguments SHALL be read as follows:
+
+- the bound's OWN coordinate SHALL take the value it holds when the REQUEST
+  STARTS, evaluated once from the chain over the standing bank, and SHALL
+  therefore be a number for the whole request;
+- every coordinate the bound READS SHALL take its value along the path,
+  through its own chain;
+- every declared driver but the one the request moves, and every declared
+  state, SHALL be a standing number.
+
+**The classification.** How a level moves in each driver that can move it
+SHALL be decided STRUCTURALLY, once, at construction, with every free name
+but that driver replaced by a standing placeholder:
+
+- a level no driver can move SHALL not be examined for that driver, and
+  SHALL cost a request that moves it nothing;
+- an AFFINE level's zero SHALL be solved by one division;
+- a KINKED level SHALL be cut at its own breakpoints and each sub-interval
+  solved the same way;
+- a level carrying JUMPS SHALL be partitioned at its own jump surfaces, each
+  solved, and its SKELETON — every jump node holding one branch on a piece —
+  classified and solved as above on each piece;
+- a CURVED level SHALL be REFUSED at simulation construction, by name,
+  naming the joint, the node, the side, the driver whose motion curves it
+  and the primitive it curves through, and saying a clocked stop is solved
+  and never searched.
+
+No sampling, no bisection and NO TOLERANCE SHALL be introduced by this
+requirement.
+
+**The clip.** Before any event of the request is located, the system SHALL:
+
+1. take, for each constraint the moving driver can move, the level it stands
+   at when the request starts, and the threshold `max(0, that level)`, so
+   that a coordinate standing OUTSIDE a bound may move inward and may return
+   to where it stood but SHALL NOT go further outside;
+2. locate the earliest point on the path at which any constraint's level
+   exceeds its threshold, and take the smallest such point over all of them;
+3. land the driver on the NEAREST REPRESENTABLE VALUE ON THE SATISFIED SIDE
+   of that point, found by walking the solved value in float space, with
+   membership decided by EVALUATING the level there and never by comparing a
+   value to a bound — so that a bound met exactly at a representable value
+   lands ON it, both bounds being INCLUSIVE, and a level that jumps across
+   its zero lands on the last representable value before its surface;
+4. truncate the request's travel to that landing.
+
+The coordinate that stopped SHALL NOT be clamped, snapped or otherwise
+written: a clocked simulation banks no joint coordinate, and the value the
+coordinate holds SHALL follow from the pose of the clipped bank.
+
+Cycle by cycle the events of the request SHALL then be located on the
+CLIPPED path only, by the requirement "A clocked simulation solves a request
+path event by event", unchanged in every particular.
+
+A request whose admitted travel is ZERO SHALL be ADMITTED: it SHALL move
+nothing, commit nothing, leave the bank exactly as it stood, and report its
+stop. It SHALL NOT raise.
+
+The clip SHALL be computed ONCE, over the bank as it stands when the request
+begins, and SHALL NOT be recomputed between events: the request is to a
+clocked root what a tick is to a running one, which is the unit a bound is
+already evaluated over.
+
+**A ranged coordinate NOTHING binds SHALL be admitted as a CONSTANT.** Where
+the rest render shows that no relation, wiring or derived formula resolved to
+a bounded coordinate AND no author code bound it, the chain SHALL be the
+constant value that coordinate holds at rest; the constraint SHALL then be
+examined for no driver, SHALL stop no request, and SHALL NOT be a refusal,
+even where that rest value lies outside the declared pair — nothing bound the
+coordinate, so no binding was ever recorded for any judgement to make. A
+`Bound` that READS such a coordinate SHALL take that same constant.
+
+**What is refused at construction**, each by name, naming the joint, the
+node and the side, and each saying what to state instead: a bounded
+coordinate the root's own `simulate()` BINDS BY HAND, which the rest render
+tells from the case above by the binding it recorded; a bounded coordinate or
+a read whose chain passes through a law that is not an expression; a `Bound`
+whose reads name a coordinate no chain reaches; a chain that reads the
+coordinate it drives; a cyclic chain; and the curved level above. A declared
+stop the framework cannot follow along a path is a stop that can never stop.
+
+A request SHALL be refused, committing nothing, when locating a constraint's
+jump surfaces exceeds the crossing maximum the framework already states for
+one graph, naming the request, the joint, the side and the maximum.
+
+**What a request reports.** The value object `move` returns SHALL carry, in
+addition to the input, the requested travel and the events fired: the
+ADMITTED travel in design units, and the STOPS met — each naming the bounded
+coordinate by its qualified id, the side, the bound EVALUATED at the
+landing, the coordinate's value there, the driver's value and the fraction
+of the requested travel. Several constraints met at ONE landing SHALL be
+several entries. `record=N` SHALL keep a bounded ring of those entries as
+`sim.stops`, separate from the ring of commits, because a stop is a bound of
+a coordinate and a commit is a value the machine wrote.
+
+**Which authority judges what.** During a REQUEST the clocked simulation
+SHALL be the SOLE AUTHORITY for the constraints it compiled: a coordinate it
+compiled a constraint for SHALL NOT be judged by the enumeration at the pose
+that request makes — neither at the moment of binding nor at the close of
+that enumeration — because the clip located the stop and the same authority
+that located it judges it, with one arithmetic.
+
+At the END of every request the clocked simulation SHALL judge each compiled
+constraint ITSELF, over the FINAL bank and THROUGH THE CHAIN, against the
+same threshold the clip used. A constraint violated there — which a request
+can reach only where a state an event COMMITTED moved the coordinate or moved
+its bound — SHALL refuse the request, raising the joint range error and
+naming the node, the joint, the side, the bound as the chain evaluates it
+over that bank, and the value the chain gives the coordinate there. That
+judgement SHALL be made BEFORE the tree is posed, and the refused request
+SHALL commit nothing, leaving the bank, the tree and the record exactly as
+they stood.
+
+A pose that is NOT a request — construction, `state=` or `restore` — SHALL be
+judged by the enumeration exactly as it is judged today: a bound violated by
+such a pose remains an impossible pose and SHALL raise the joint range error,
+because a machine cannot be PUT where it cannot BE. The bind-time and
+close-of-enumeration judgements SHALL be unchanged in every other particular,
+and SHALL be unchanged for every root that is not clocked.
+
+**Cost.** A tree that declares no `State` SHALL compile no constraint and
+SHALL enter no code path of this requirement. A clocked tree whose joints
+declare no range SHALL compile no constraint and SHALL behave exactly as it
+does without this requirement, its requests reporting their whole travel as
+admitted and no stops. Nothing about a stop under a RUNNING root, or about
+the untimed judgement of a range, SHALL change.
+
+#### Scenario: A pawl stops a backwards request at the last seated tooth
+
+- **WHEN** a clocked register whose crank drives a joint declaring
+  `range=(lambda turn: 6 * floor(turn / 6), None)` stands at a settled state
+  and receives `sim.move('crank', by=-3600)`
+- **THEN** the admitted travel is exactly the travel back to that tooth, no
+  event fires, the states stand, and one stop names that coordinate, `low`
+  and the evaluated tooth — where the same request on the fixture without
+  the pawl moves the whole travel
+
+#### Scenario: Events are located on the clipped path only
+
+- **WHEN** a request whose full travel would cross three event surfaces is
+  clipped by a bound after the first
+- **THEN** exactly one event is reported, at the same landing the shorter
+  unclipped request reports it at, and the bank holds the state that one
+  event committed
+
+#### Scenario: A stop at zero travel is admitted
+
+- **WHEN** an interlocked knob is asked to move while the coordinate its
+  bound reads holds the interlock closed
+- **THEN** the request returns with an admitted travel of zero, one stop
+  naming the knob's coordinate, the side and the evaluated bound, no
+  committed event, an unchanged bank, and no exception
+
+#### Scenario: A bound reading its own committed value freezes a coordinate
+
+- **WHEN** a knob's range is a pair of `Bound`s that evaluate to the
+  coordinate's own committed value while the crank is off rest, the knob
+  stands part way through its travel, and the crank is asked to turn a whole
+  revolution
+- **THEN** the crank admits its whole travel and reports no stop, while a
+  request that would move the knob itself admits nothing
+
+#### Scenario: A numeric range lands on the bound
+
+- **WHEN** a lift joint declaring `range=(0, 9)` is driven by a request of
+  twenty
+- **THEN** the admitted travel puts the coordinate at exactly `9`, the pose
+  accepts it, and the stop names `high` and `9`
+
+#### Scenario: A level that jumps lands before its surface
+
+- **WHEN** a bound gated by a comparison closes as the driver crosses a
+  representable threshold
+- **THEN** the driver lands on the last representable value at which the
+  level is satisfied, which is the value below that threshold for a
+  non-strict gate and the threshold itself where the gate admits it
+
+#### Scenario: A coordinate standing outside its bound may move inward
+
+- **WHEN** a clocked simulation is constructed standing outside a bound whose
+  reads held no value for the enumeration to judge, and a request moves it
+  back toward the bound
+- **THEN** the request admits its whole travel, a request back to exactly
+  where it stood is admitted, and a request that would carry it further
+  outside admits nothing
+
+#### Scenario: The bound's own coordinate is read at the request's start
+
+- **WHEN** the pawled register receives one `sim.move('crank', by=-3600)`,
+  and a second simulation from the same bank receives ten successive
+  `sim.move('crank', by=-360)`
+- **THEN** both end at the SAME value — the last seated tooth — because the
+  first request stops there and every later one starts ON that tooth, where
+  the bound evaluates to the tooth itself and the request admits zero travel
+
+#### Scenario: A bound read once per request is coarser than a bound read at each event
+
+- **WHEN** a clocked root whose bound reads a STATE an event of the same
+  request writes receives one long request, and a second simulation from the
+  same bank receives two requests split at that event
+- **THEN** the long request admits the travel the state it STARTED at allows,
+  the split pair admits the travel the committed state allows, the two
+  admitted travels differ, and neither is refused
+
+#### Scenario: A bounded coordinate the bank cannot reach is refused
+
+- **WHEN** a clocked root declares a joint with a range and binds that
+  joint's coordinate in its own `simulate()` rather than through a relation
+- **THEN** simulation construction is refused, naming the node, the joint
+  and the side, and saying the coordinate is not reached from the bank
+
+#### Scenario: A ranged joint nothing binds is admitted as a constant
+
+- **WHEN** a clocked root declares a joint with a range on a part no
+  relation, no wiring and no `simulate()` of that tree ever binds
+- **THEN** simulation construction succeeds, no request examines that
+  constraint, every request admits its whole travel and reports no stop
+
+#### Scenario: A chain that reads the coordinate it drives is refused
+
+- **WHEN** a clocked root declares `range=(0, 9)` on `lift.travel` and
+  determines it by a relation whose law reads `lift.travel` itself —
+  `crank.turn.drives(lift.travel, law=lambda turn, travel: travel + turn)`
+- **THEN** simulation construction is refused naming that relation as
+  written, the node, the joint and the side, and saying a clocked request
+  retains no value for a law to read back
+
+#### Scenario: A cyclic chain is refused
+
+- **WHEN** a clocked root declares `range=(0, 9)` on `a.travel` and states
+  `a.travel.drives(b.travel, ratio=2)` together with
+  `b.travel.drives(a.travel, ratio=0.5)`, so that the chain from the bank to
+  `a.travel` returns to itself
+- **THEN** simulation construction is refused naming both relations as
+  written, the joint and the side, and saying the chain from the bank does
+  not close
+
+#### Scenario: A bound reading a port is refused
+
+- **WHEN** a clocked root's `Bound` names a plain port among its `reads`
+- **THEN** simulation construction is refused by joint and node identity,
+  saying a bound reads the state and naming the joint the port follows
+
+#### Scenario: A curved level is refused at construction
+
+- **WHEN** a clocked root's bound evaluates `sin` of a coordinate a driver
+  moves
+- **THEN** simulation construction is refused naming the joint, the side,
+  that driver and the primitive
+
+#### Scenario: A commit that carries a coordinate out of range refuses the request
+
+- **WHEN** a request's committed state carries a compiled bounded coordinate
+  outside its range
+- **THEN** the clocked simulation's own end-of-request judgement raises the
+  joint range error, naming the node, the joint, the side, the bound its
+  chain evaluates over the final bank and the value that chain gives the
+  coordinate there; the tree is never posed over that bank; and the bank, the
+  tree and the record stand exactly as they did before the request
+
+#### Scenario: A compiled coordinate is not judged twice
+
+- **WHEN** a request is clipped so that a coordinate lands EXACTLY on an
+  inclusive bound, and the tree is posed at the end of that request
+- **THEN** the enumeration does not judge that coordinate — neither at the
+  moment of binding nor at its close — the request is admitted, and the same
+  tree posed by `restore` to a bank outside that bound is refused by the
+  enumeration as it is today
+
+#### Scenario: A clocked model with no ranged joint is unchanged
+
+- **WHEN** cycle one's register fixture, whose joints declare no range, runs
+  its requests
+- **THEN** every request admits its whole travel, reports no stop, and gives
+  the same events and the same bank as before this requirement existed
+
+#### Scenario: A running root's stop is unchanged
+
+- **WHEN** a running fixture reaches a declared stop, including one whose
+  bound reads another coordinate
+- **THEN** the tick stops, records and reports exactly as it did before this
+  requirement existed, message for message
 
 ### Requirement: A clocked discipline costs a stateless model nothing
 

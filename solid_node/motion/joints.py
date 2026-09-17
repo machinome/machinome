@@ -119,7 +119,7 @@ import math
 
 from solid_node.motion.ports import (BoundPort, Coordinate, Port,
                                      RotationalPort, TranslationalPort,
-                                     bind, get_coordinate)
+                                     bind, clocked_owned, get_coordinate)
 
 
 __all__ = ['Bound', 'Free', 'Joint', 'JointRangeError', 'Orbit',
@@ -584,6 +584,20 @@ class Joint(Coordinate):
             from solid_node.node import phase
 
             phase.note_bound_binding(node, self, value)
+        if clocked_owned(node, self.name):
+            # A CLOCKED simulation compiled a constraint for this
+            # coordinate and is, for the duration of this request's
+            # pose, its SOLE AUTHORITY: it located the stop, clipped the
+            # request to it and judged the final bank through the same
+            # chain, so re-judging here in a DIFFERENT evaluation order
+            # of the same arithmetic could refuse a legitimate stop by an
+            # ulp. One authority judges one binding -- ADR-113's own rule
+            # for the run, taken for the clocked request (OpenSpec change
+            # ``a-bound-stops-the-request``, design section 10). The
+            # binding is still RECORDED above, so the close of the
+            # enumeration consults the same mark rather than never
+            # hearing of it.
+            return
         low = self._bound_at(node, span[0], value, 'lower')
         high = self._bound_at(node, span[1], value, 'upper')
         if low is not None and high is not None and low > high:
