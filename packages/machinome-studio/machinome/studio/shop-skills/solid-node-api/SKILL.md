@@ -18,8 +18,9 @@ relations, `solid_node.motion`), open-run simulation through
 conformance below includes the completed `harden-direct-part-motion`
 correction (`d1108a4`), currently on its own unmerged framework branch.
 The clocked machine — `State`, `commits`, the request-driven `Sim`,
-`Time.elapsed()` and document version 8 (ADRs 125–128) — is likewise on
-its own unmerged framework branch (`clocked-machine`).
+`Time.elapsed()` and document version 8 (ADRs 125–128) — is on the
+framework's main branch, and the development viewer executes it
+(viewer ADRs 062–063, widget API 18).
 These additions are local development capabilities, not a claim about
 the published 0.6.0 package or what an installed checkout contains.
 
@@ -2091,9 +2092,11 @@ clocked root publishes 8 whatever else its tree holds, a root declaring no
 NOT additive, because a clocked pose reads its states as free names a
 lower consumer resolves to nothing.
 
-**The browser viewer does NOT execute version 8 yet;** its own cycle is in
-flight in its own repository. So `solid build`, `solid develop` and
-`solid export` publish the document and WARN that the installed viewer
+**The development viewer executes version 8** (widget API 18, documents
+1..8): a request per gesture on one input, states as readouts, stops
+reported at the control, an elapsed machine's clock played one request
+per rendered frame. Against an OLDER installed viewer `solid build`,
+`solid develop` and `solid export` publish the document and WARN that it
 cannot read it, and `solid snapshot --renderer web` is REFUSED before the
 browser starts, writing no image, leaving no staging directory and never
 falling back to OpenSCAD. `render()`, `assemble()`, `build_stls()`,
@@ -2294,8 +2297,9 @@ A consumer must reject a missing or too-old bundle before opening.
 An older report without `documentVersions` means support for `[1, 2, 3, 4]`,
 not 5. Build/develop/export still publish whatever version the model needs
 and warn if the installed viewer cannot render it; a web snapshot refuses
-before opening the browser. No viewer reports version 8 yet, so every
-clocked model takes that path today.
+before opening the browser. The development viewer reports versions
+1..8 at API 18, so a clocked model (version 8) renders there; an older
+installed viewer takes the warn/refuse path.
 Viewer API 12 supports version 5, the running controls,
 the original `controls` table and bounds that read other coordinates, in
 the development checkout; sliding and explicit joint selection require

@@ -500,11 +500,13 @@ one. The method in full is the Curta project's own spike record, in the
   machine; `Sim(model, state={...})`, `snapshot` and `restore` are session
   setup and nothing else. If a demo wants to "set the register", it is
   setting up a session, not operating the machine.
-- **A clocked model reaches no browser yet.** Version 8 is published and
-  warned about; `solid snapshot --renderer web` is refused. Evidence for
-  a clocked increment is `solid test`, hand-computed expectations, and the
-  OpenSCAD snapshot of the initial bank. Do not promise the pilot a
-  browser demo of one.
+- **A clocked model plays in the browser.** The development viewer
+  (widget API 18) executes a version 8 document: a slider move is one
+  request, states are readouts, a declared stop holds the control where
+  the machine stops, and an elapsed machine has a play/step transport.
+  Evidence for a clocked increment is still `solid test` with
+  hand-computed expectations first; the browser and the OpenSCAD snapshot
+  of the initial bank are the pixels.
 
 ## Testing
 
