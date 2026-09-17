@@ -51,7 +51,9 @@ from solid_node.motion.couplings import (BroadcastRef, OwnRef, PathRef,
                                          _is_declaration_list, _named_in_body)
 from solid_node.node.declarative import (ChildDeclaration, RepeatDeclaration,
                                          declared_children)
-from solid_node.node.qualified import DriverDeclaration, declared_drivers_of
+from solid_node.node.qualified import (DriverDeclaration,
+                                       StateDeclaration,
+                                       declared_drivers_of)
 
 
 class Control:
@@ -252,6 +254,15 @@ class Drag(Control):
                 f"id its position in the tree gives it, and a second "
                 f"address for one value is what that qualification "
                 f"prevents.")
+        if isinstance(input, StateDeclaration):
+            raise TypeError(
+                f"a {kind}'s input is a DRIVER, and '{input._name}' is a "
+                f"State. A state is written by the machine at an event, "
+                f"through the committing relation that names it as a "
+                f"target -- a hand does not drag it, and the direct "
+                f"operation a control exists for is what a register "
+                f"editor is not. Name the driver whose motion the event "
+                f"is located on.")
         if not isinstance(input, DriverDeclaration):
             raise TypeError(
                 f'a {kind} is a drag on a part issued as moves on an '

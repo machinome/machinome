@@ -2995,3 +2995,86 @@ again by construction. Both are documented at their call sites.
   away. Recorded so a later cycle, if the residue above and the port
   enumeration are both taken and evaluation is STILL the bottleneck, has
   the number. **Open.**
+
+# declare-the-state (2026-09-17, the clocked discipline)
+
+Named in the ratified change's Non-goals, each with the reason it was left
+out and with the shape a later cycle would take. Nothing here is a defect:
+each is a narrowing chosen deliberately, and each is cheap to lift because
+the machinery it needs is already in place.
+
+- **A port, joint coordinate or derived coordinate as a SOURCE of a
+  committing relation.** A clocked simulation holds a bank of drivers and
+  states and NOTHING else; a port is a calculation the untimed enumeration
+  recomputes from that bank on every pose, so reading one inside `at`
+  would cost a pose per sample or a compiled program over the whole tree
+  — which is exactly the generality the clocked discipline exists not to
+  pay for (design section 4). Neither of the project spike's two
+  committing relations reads anything but drivers and states. A mechanism
+  that genuinely needs one is a mechanism whose event surface is a
+  function of the POSE, and that is a question worth its own evidence.
+  **Open.**
+- **A broadcast `commits` over a `.repeat()` child.** A repeated child's
+  banked value has no legal qualified id — `drivers-0` is not a legal id
+  segment — so the copies could not be addressed apart. It is THAT
+  problem, the one `solid_node.node.qualified` records against a repeated
+  `Driver`, and not this one; the Curta's seventeen clearing relations
+  are seventeen written lines until it is fixed. **Open.**
+- **A multi-input request.** The exactness classification is stated
+  against ONE moving input, and the underlying machinery integrates a
+  path in a joint source space perfectly well, so widening later is a
+  change to the CHECK and not to the solver. Nothing in the corpus needs
+  two. **Open.**
+- **A `direction=` keyword on `commits`.** Rising-only is fully
+  expressive — a mechanism that commits on the other edge negates its own
+  level, `floor(-crank / 360)` — so the keyword would ship with no test
+  in the corpus that discriminates it. If one appears, the keyword is a
+  branch in `Committing.next_event` and nothing else. **Open.**
+- **An `Instruction` under a clocked root.** A declared move with no
+  duration, targeting one input, is a coherent idea and is what a browser
+  panel will want when the viewer executes a clocked document. Left out
+  because its shape depends on what that cycle needs from it; today an
+  instruction targeting a STATE is refused at construction and `trigger`
+  is refused by name. **Open.**
+- **A fold-commit — a `commits` with no `at`.** The project spike
+  measured that per-digit comparison events cover partial clearing in
+  BOTH directions with no held value, and that the one gap a fold would
+  close is a rest the manufacturer's booklet forbids. `at` is therefore
+  required, and a `commits` without one is refused by name. The fold's
+  shape is recorded in the spike's own record
+  (`simulation/docs/clocked-spike-2026-09-16.md`) for the project that
+  does need it. **Open.**
+- **Two writers at one event are found by RUNNING, not by reading.**
+  Closure 1 (2026-09-17) made several committing relations per state
+  legal and refuses only two of them firing at ONE landing. That
+  judgement needs a landing, so it belongs to the request: a model whose
+  two writers always coincide is admitted at construction and refused the
+  first time somebody moves the input they share. A structural
+  pre-check — two relations on ONE input whose levels are the same graph
+  — would catch the commonest case at construction, and is worth its own
+  evidence before it is written. **Open.**
+- **A clocked model cannot be PUBLISHED or VIEWED.** Every document
+  producer refuses one by name. The document version that carries
+  declared states, and the viewer that executes `at` and `law` on its
+  expression DAG, are the next two cycles. **Open, and owned.**
+- **A `Bound` does not clip a request path.** A request that would drive
+  a mechanism through a stop is REFUSED WHOLE: the events are solved, the
+  final pose raises `JointRangeError` exactly as an untimed pose does,
+  and the bank, the tree and the record stand where they stood
+  (amended by closure 1, 2026-09-17: the first implementation left the
+  bank advanced past the refused pose, which was a bug and not this
+  gap). What is missing is the CLIP — stopping where the machine stops
+  and keeping what was committed on the way.
+  The Curta's eight interlocks are all of this shape,
+  so its clocked model is not complete until that cycle. The solver is
+  written so the clip is a truncation of the request's travel before the
+  first location, not a second locator. **Open, and owned.**
+- **A `State` under `Time.running()` is refused, with its meaning
+  defined.** Under a run a value committed at an event is an ADR-121
+  self-read law whose value changes only through a switch — exactly how
+  the operating Curta's wheels already work — so a `State` under a
+  running root compiles to that law and becomes one retained coordinate
+  among all the others. It buys no speed. The one reason to fix the
+  meaning now is PORTABILITY: a project writes "this register is a state
+  committed at the stroke end" once and has it mean the same under both
+  roots. **Open, deliberately.**

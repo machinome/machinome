@@ -760,8 +760,13 @@ class AbstractBaseNode(metaclass=NodeMeta):
         # may be a child or a descendant of one. Imported here for the
         # reason the joints import is: solid_node.motion.couplings
         # imports solid_node.motion.ports, which imports this package.
-        from solid_node.motion.couplings import resolve_declared_relations
+        from solid_node.motion.couplings import (
+            resolve_declared_commitments, resolve_declared_relations)
         resolve_declared_relations(self)
+        # And every committing relation, at the same moment and for the
+        # same reason (OpenSpec change ``declare-the-state``): a target
+        # may be a state declared on a child.
+        resolve_declared_commitments(self)
 
     def check(self):
         """Refuse this instance by raising.
@@ -829,7 +834,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
         pass
 
     def _receive_state(self, entries, path, declared, saved,
-                       coordinates=None):
+                       coordinates=None, states=None):
         """This node's share of a set_state propagation.
         No-op for non-animated nodes; overridden by AssemblyNode --
         except that under a RUNNING root an entry addressed to a leaf's

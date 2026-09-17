@@ -6,7 +6,8 @@ import functools
 from solid_node.scad_expression import get_animation_time
 from . import phase as _phase
 from .internal import InternalNode
-from .qualified import declared_drivers_of, driver_id
+from .qualified import (declared_drivers_of, declared_states_of,
+                        driver_id)
 from solid_node.motion.couplings import (clear_solved, refuse_bounds,
                                          refuse_reads, run_deferred,
                                          solve_relations)
@@ -441,11 +442,25 @@ class AssemblyNode(InternalNode):
         # judge -- which is every entry except the one global.
         judged = [name for name in states if name != 'time']
         declared = {}
+        written = {}
         saved = [] if judged else None
         coordinates = _coordinate_delivery(self)
-        self._receive_state(states, (), declared, saved, coordinates)
+        self._receive_state(states, (), declared, saved, coordinates,
+                            written)
         publishes = {identifier
                      for ids in declared.values() for identifier in ids}
+        machine_written = {identifier
+                           for ids in written.values() for identifier in ids}
+        refused = [name for name in judged
+                   if (name in machine_written if '.' in name
+                       else name in written)]
+        if refused:
+            # Before the undeclared-name judgement below, which would
+            # otherwise report a declared state as a name nothing
+            # declares: a state IS declared, and what it is not is
+            # something a caller may bind.
+            self._undo(saved, coordinates)
+            _refuse_writing_a_state(self, sorted(refused), written)
         unknown = [name for name in judged
                    if (name not in publishes if '.' in name
                        else name not in declared)]
@@ -503,7 +518,7 @@ class AssemblyNode(InternalNode):
             self._receive_state({}, (), {}, None, None)
 
     def _receive_state(self, entries, path, declared, saved,
-                       coordinates=None):
+                       coordinates=None, states=None):
         """One node's share of a `set_state` propagation.
 
         Binds the entries addressed to this node (the undotted ones,
@@ -535,10 +550,19 @@ class AssemblyNode(InternalNode):
             # here rather than emitting an id that parses as a
             # subtraction.
             declared.setdefault(name, []).append(driver_id(path, name))
+        if states is not None:
+            # The STATES this walk passes, kept apart from the drivers:
+            # `set_state` binds a driver and REFUSES a state by name,
+            # because a state is written by the machine at an event
+            # (OpenSpec change ``declare-the-state``). Collected in this
+            # walk rather than in one of its own, and only when a caller
+            # asks -- a tree that declares none pays one cached lookup.
+            for name in declared_states_of(type(self)):
+                states.setdefault(name, []).append(driver_id(path, name))
         for child in _rest_children(self):
             child._receive_state(
                 _entries_for(entries, child.name, consumed),
-                path + (child.name,), declared, saved, coordinates)
+                path + (child.name,), declared, saved, coordinates, states)
 
     def clear_state(self, *names):
         """The inverse of set_state: drop the named driver values, or
@@ -681,3 +705,45 @@ def top_of(node):
     while getattr(node, '_parent', None) is not None:
         node = node._parent
     return node
+
+
+def _refuse_writing_a_state(root, names, written):
+    """`set_state` refusing a STATE by name, and naming what writes it.
+
+    A state is not an undeclared name and not a driver: it IS declared,
+    and what it is not is something a caller may bind. The walk that
+    finds its committing relation is taken HERE, on the refusal path
+    only, so nothing about it is paid for by a binding that succeeds
+    (OpenSpec change ``declare-the-state``).
+    """
+    first = names[0]
+    writer = _writer_of(root, first)
+    by = (f'written by the committing relation {writer}'
+          if writer else 'written by its committing relation')
+    ids = ', '.join(sorted(written.get(first, ())) or [first])
+    raise ValueError(
+        f"set_state cannot bind '{first}': it is a State ({ids}), "
+        f"{by}, at the event that relation states. A state is settable "
+        f"only as session setup -- Sim(model, state={{'{first}': ...}}) "
+        f"or sim.restore(snapshot) -- because everything else about it "
+        f"is the machine's to decide."
+        + (f" Also refused: {', '.join(names[1:])}." if names[1:] else ''))
+
+
+def _writer_of(root, name, seen=None):
+    """How the committing relation that writes the state called `name`
+    is written, found anywhere in `root`'s tree, or None."""
+    if seen is None:
+        seen = set()
+    if id(root) in seen:
+        return None
+    seen.add(id(root))
+    for record in root.__dict__.get('_commitments', ()):
+        for target in record.targets:
+            if target.name == name:
+                return record.described()
+    for child in getattr(root, 'children', ()) or ():
+        found = _writer_of(child, name, seen)
+        if found is not None:
+            return found
+    return None

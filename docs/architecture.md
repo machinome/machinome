@@ -866,9 +866,14 @@ instruction-target resolution, the loader's opening snapshot, and the
 serialized document's driver table — so the id in the document and the
 key in the bank are the same string by construction rather than by two
 implementations agreeing. `qualified_declarations(root)` does the same
-for instructions AND controls in one walk, both declared with
-class-local names and qualified by their declaring node's path;
-`qualified_instructions` and `qualified_controls` are its thin faces.
+for instructions, controls AND states in ONE walk — three tables from
+the pass `drive_tree` already makes, each declared with class-local
+names and qualified by its declaring node's path;
+`qualified_instructions`, `qualified_controls` and `qualified_states`
+are its thin faces. A **state** (ADR-125, below) is a driver the MACHINE
+writes: it declares exactly a driver's five fields, reads off an
+instance exactly as a driver does, qualifies by exactly a driver's rule,
+and differs only in who may write it.
 A **control** (`simulation/control.py`) says how a person issues a
 request by touching the machine rather than a panel beside it —
 `Button(part, instruction)` is a press, `Turn(part, input)` a drag ABOUT
@@ -916,7 +921,18 @@ cadence budgets assertion cost. `ScenarioTest` composes over the CAD
 `TestCase`: one class runs unchanged under pytest and the `solid
 test` runner, building STLs only when `meshes = True`.
 
-**The running mode** (ADR-105 to ADR-109, ADR-113) is a second branch of the same
+`Sim` has THREE branches, one per STATE DISCIPLINE, and the discipline
+is a property of the tree rather than of the caller: the fixed-`dt` loop
+above retains NOTHING (a pose is a function of the drivers), the running
+mode below retains EVERY coordinate and integrates every law at a
+cadence, and the clocked mode retains a FEW declared values and writes
+them at located events. The time base and the state discipline are two
+axes, and today's API ties them only where a cycle has moved a square:
+untimed × none is the ordinary pose, untimed × memory is the clocked
+mode, looping × memory is refused by name, and elapsed × integrated is
+`Time.running()`.
+
+**The running mode** (ADR-105 to ADR-109, ADR-113) is the second branch of the same
 `Sim`, taken when `declared_time(type(node)).mode` is `'running'`, whose
 two modules — `simulation/program.py` (the compile step) and
 `simulation/run.py` (the engine, the commands, the snapshot) — are
@@ -931,7 +947,10 @@ enumerates the tree exactly as an untimed root is enumerated, and reads
 every coordinate off it, refusing an unbound one by name. Plain ports and
 derived coordinates are deliberately not banked; they are calculations
 the ordinary enumeration recomputes every tick. There is no memory bank
-and the author declares no state.
+and the author declares no state: a `State` (ADR-125) under a running
+root is refused by name, its meaning defined — a self-read switch of
+ADR-121's kind, buying no speed because every other coordinate is still
+integrated at the cadence — and deliberately not implemented.
 
 The PROGRAM is compiled once from what that render solved: each
 relation's law applied ONCE to a symbolic token per source, in the
@@ -1240,6 +1259,92 @@ baseline), a seven-member Curta carriage block 10.658, and the tick that
 drives a block coordinate into its declared range — the searched stop —
 17.186, some 22x a quiet tick of the same machine. No test pins any of
 these numbers.
+
+**The clocked mode** (ADR-125) is the third branch, taken when anything
+in the linked tree declares a `State` — `simulation/state.py`'s
+declaration, reached only through the package's lazy export when a
+project names it, and `simulation/clocked.py`'s solver, imported inside
+the `Sim` constructor and nowhere else exactly as the running pair is.
+It is the
+discipline of a machine with a FEW retained values, closed-form
+positions between events, and a commit of those values at each event —
+the originating Curta, whose running model is correct and costs about
+0.73 s per 0.1 s Python tick, and whose fast closed form carries nothing
+forward at all. The bank is DRIVERS AND STATES and nothing else: no
+`time`, no joint coordinates, no ports — a pose under a clocked root is
+the existing untimed enumeration over that bank, so `time` stays the
+symbolic `$t` through ADR-008's fallback and a `simulate()` reading
+`self.time` sees what it sees under any untimed root.
+
+A `State` is written by nothing but a **committing relation**, stated
+beside `drives` on the same `&` groups:
+`(crank & result).commits((result, turns), at=strokes, law=registers)`.
+Both factories follow the existing law-factory protocol — called once at
+realization with the realized `(sources, targets)`, returning a callable
+over the sources' values — so no event object and no mutable protocol
+reaches a project's laws. Sources are drivers and states only; `at` is
+ONE jump node of ADR-107's vocabulary, which is what gives the solver a
+level quantity and its surfaces for free. Refused at class definition: a
+target that is not a `State`, a target named twice among the targets
+(decided by the reference's own key, the child path plus the local name,
+never by the local name, so seventeen identical wheels are one written
+line), a source that is neither driver nor state, a missing `at` or
+`law`, a `ratio=`/`offset=`, and a `.repeat()` broadcast. Refused at
+simulation construction: a state nothing writes, a relation no driver
+can reach (every source a state, so its level can never move), and a
+level that CURVES — a clocked event is solved, never searched, and
+admitting a bisected one would make the exactness claim untrue for a
+model whose author cannot see which `at` curves. Refused elsewhere, each
+where its facts exist: `set_state` on a state (naming the relation that
+writes it), an `Instruction` target, a control input, a `.drives` driven
+end, and a `State` under `Time(loop=)` or `Time.running()`.
+
+`Sim(model)` takes NO `dt`, and the whole cadence surface — `run`, `at`,
+`every`, `time`, `tick`, `rate`, `trigger`, `crossings`, `stops`,
+`commands`, `program` — is refused by name. `sim.move(input, by=|to=)`
+moves ONE declared driver along a straight path: each relation's level
+is bound at the standing sources, classified by `_shape_of` and solved —
+by one division where affine, at ADR-123's own breakpoints where kinked
+— its earliest RISING crossing located, and the earliest over all
+relations taken as the next event. The input lands on ADR-121's FAR SIDE
+of the surface through `program.far_side_of` (the `_Walk` method
+extracted to a free function, body unchanged, so there is ONE landing
+walk in the framework), every relation firing there evaluates `at`'s and
+`law`'s ordinary Python callables at the PRE-EVENT bank, the targets
+take their results together, and the solve resumes from the landing.
+Relations are ONE synchronous event exactly when their landings are the
+SAME float — identity, not `_CROSSING_TOLERANCE`, whose tick-fraction
+units cannot be carried onto a path whose travel the author chooses — so
+the clocked path adds no new use of any tolerance and introduces none.
+SEVERAL relations may write one state (the Curta's digit is written at
+the stroke end and again at the clearing reach); two of them at ONE
+landing refuse the REQUEST by name, which is the only place a landing
+exists. A commit law reads and returns NATIVE values and is never passed
+through `Driver.native()`; a `dtype=int` state rounds to nearest ONCE,
+at the commit. The tree is bound ONCE, at the end, so a request costs no
+pose — measured on this cycle's own fixtures at 0.9 us per commit
+against 60.0 us per pose, and ten events adding 320 us and no further
+pose. A refused request commits NOTHING, the FINAL POSE included: the
+executor poses the working bank and assigns it only if the tree accepted
+it, re-posing the previous bank on failure, and `restore()` is the same
+shape. A `Bound` does not clip a request path — a violated one is still
+the untimed `JointRangeError` on the pose the request ends at, so a
+request through a stop is refused whole rather than stopped where the
+machine stops.
+
+Publishing a clocked model is **refused by name** in
+`serializer.document_body` — the one function `solid build`, `solid
+develop`, `solid export` and `solid snapshot --renderer web` all reach —
+because the document version that carries a state is not defined yet and
+ADR-110's ladder refuses a document a consumer would animate wrongly.
+`render()`, `assemble()`, `build_stls()`, `solid test` and an OpenSCAD
+snapshot are untouched, so a clocked model still tests and photographs.
+A tree that declares no `State` pays nothing structurally: the states
+come from the walk `qualified_declarations` already makes, every clocked
+path is entered only when that table is non-empty, and the package's
+exports stay lazy, so such a model imports no new module, poses at the
+same cost (43.9/43.7/48.9 us against 44.8/42.5/42.0 us across the
+change) and publishes a byte-identical document.
 
 ### Build pipeline (BUILD · spec `build-pipeline`)
 
@@ -2423,6 +2528,22 @@ The short list that changes must not silently break:
   turns leaves the stop with no moving input to stop and the tick is
   refused `StopInvariantError`. Pre-existing and identical with no block
   anywhere.
+- **A clocked model cannot be published or viewed** (ADR-125): the
+  document version that carries a `State` is not defined, so
+  `document_body` refuses one by name. Rendering, `assemble()`,
+  `build_stls()`, `solid test` and an OpenSCAD snapshot are untouched, so
+  such a model tests and photographs but does not reach a browser.
+- **A `Bound` does not clip a clocked request path** (ADR-125): a request
+  that would drive a mechanism through a stop is refused WHOLE on its
+  final pose and commits nothing, rather than stopping where the machine
+  stops and keeping what it committed on the way. The originating Curta's
+  eight interlocks are all of this shape.
+- **Two clocked writers at one event are found by RUNNING, not by
+  reading** (ADR-125): whether two levels land on the same float depends
+  on the bank and the path, so a model can carry a guaranteed conflict and
+  meet it only on the request that reaches it. A structural pre-check —
+  two relations on one input with the same level graph — is possible and
+  wants its own evidence.
 
 ## Map
 
@@ -2431,12 +2552,12 @@ The short list that changes must not silently break:
 | Node model | `solid_node/node/`, `solid_node/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115 |
 | Build parameters | `solid_node/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104 |
-| Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122 |
-| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124 |
+| Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122, 125 |
+| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125 |
 | Mechanisms | `solid_node/mechanisms/` | `mechanisms` | 022, 076 |
 | Build pipeline | `solid_node/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `solid_node/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |
 | Test framework | `solid_node/test.py`, `manager/test.py` | `test-framework` | 009–011, 025, 029, 040, 048, 052, 070, 073 |
 | Viewer lookup & snapshot staging | `solid_node/viewers/bundle.py`, `viewers/browser.py`, `viewers/openscad.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: solid-node-viewer) |
-| Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085 |
+| Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125 |
 | Sphinx embedding | `solid_node/sphinx.py` | `sphinx-embedding` | 020 |

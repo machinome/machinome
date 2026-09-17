@@ -674,6 +674,10 @@ _BODY = object()
 # lands on the real one. Rebinding the key would silently lose it.
 _RELATIONS_KEY = '__solid_node_relations__'
 
+#: The committing relations one class body states, kept the same way and
+#: for the same reason (OpenSpec change ``declare-the-state``).
+_COMMITMENTS_KEY = '__solid_node_commitments__'
+
 
 class _DeclaringNamespace(dict):
     """The namespace a node class body executes in.
@@ -688,6 +692,7 @@ class _DeclaringNamespace(dict):
         super().__init__()
         super().__setitem__(_BODY_KEY, _BODY)
         super().__setitem__(_RELATIONS_KEY, [])
+        super().__setitem__(_COMMITMENTS_KEY, [])
 
     def __setitem__(self, key, value):
         shadowed = self.get(key)
@@ -781,6 +786,25 @@ def record_relation(relation):
     return relation
 
 
+def record_commitment(commitment):
+    """Record `commitment` on the class body that is executing.
+
+    `record_relation`'s twin, by the same rule: a committing relation is
+    a STATEMENT, written bare or assigned to a name, and stated with no
+    node class body executing it is refused by name.
+    """
+    namespace = executing_body()
+    if namespace is None:
+        raise TypeError(
+            f'{commitment!r} was stated with no node class body executing: '
+            f'a committing relation is declared in a class body and is '
+            f'class metadata, like a port, a child or a relation. Write '
+            f'(<sources>).commits(<targets>, at=..., law=...) in the body '
+            f'of the assembly that owns the relation.')
+    namespace[_COMMITMENTS_KEY].append(commitment)
+    return commitment
+
+
 def in_class_body():
     """Whether a node class body is executing somewhere up the stack.
 
@@ -820,6 +844,7 @@ class NodeMeta(type):
         # is not an attribute of the class.
         namespace.pop(_BODY_KEY, None)
         relations = namespace.pop(_RELATIONS_KEY, None)
+        commitments = namespace.pop(_COMMITMENTS_KEY, None)
         cls = super().__new__(mcs, name, bases, namespace, **kwargs)
         if relations:
             # A local import, taken only by a class that carries
@@ -841,11 +866,40 @@ class NodeMeta(type):
                 # belongs to some other class is refused here rather
                 # than resolving to a slot nothing ever binds.
                 relation.check_declared_on(cls)
+        if commitments:
+            from solid_node.node.assembly import AssemblyNode
+
+            if not issubclass(cls, AssemblyNode):
+                raise TypeError(
+                    f'{name} states {len(commitments)} committing '
+                    f'relation(s) and is not an assembly: a state is a '
+                    f'value of a bound snapshot, and only an AssemblyNode '
+                    f'holds one. Declare the commit on the assembly that '
+                    f'owns the states.')
+            cls._declared_commitments = tuple(commitments)
+            for commitment in commitments:
+                commitment.check_declared_on(cls)
         if 'controls' in namespace:
             _validate_controls(cls, name, namespace['controls'])
         if _declares_marking(cls):
             _validate_markings(cls, name, namespace)
         return cls
+
+
+# A class body states NO refusal of a second writer.
+#
+# The first draft of the change ``declare-the-state`` refused a state a
+# second committing relation also targeted, here and again across the
+# tree. The orchestrator's review of 2026-09-17 amended the design: a
+# register digit is written at the STROKE END and at the CLEARING REACH,
+# two different events on two different inputs, and one relation states
+# one `at`, so a one-writer rule makes the originating Curta
+# inexpressible. Several relations MAY write one state; what is refused
+# is two of them writing it AT ONE LANDING, which is a judgement of the
+# REQUEST -- `solid_node/simulation/clocked.py` -- because a class body
+# cannot see a landing. A target named twice among ONE relation's
+# targets is still refused, by the group's own duplicate check in
+# `motion/couplings.py`, which keys on the reference's PATH.
 
 
 def _validate_controls(cls, name, table):

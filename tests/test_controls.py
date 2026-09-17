@@ -65,11 +65,16 @@ class DeclarationTest(BaseNodeTest):
                           'units dial'])
 
     def test_one_walk_returns_both_tables(self):
-        instructions, controls = qualified_declarations(Columns())
+        # THREE tables since the clocked discipline (OpenSpec change
+        # ``declare-the-state``): the declared states come from the same
+        # pass rather than an additional one, and are empty for a model
+        # that declares none.
+        instructions, controls, states = qualified_declarations(Columns())
         self.assertEqual(sorted(instructions), ['Add one', 'Add ten'])
         self.assertEqual(sorted(controls),
                          ['tens dial', 'turn tens', 'turn units',
                           'units dial'])
+        self.assertEqual(states, {})
 
     def test_qualified_instructions_keeps_its_shape(self):
         node = Columns()

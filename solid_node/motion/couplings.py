@@ -58,10 +58,12 @@ from solid_node.node.phase import current as _current_phase
 from solid_node.node.phase import current_enumeration as _current_enumeration
 
 
-__all__ = ['Affine', 'CouplingError', 'DerivedCoordinate', 'DoublyBound',
-           'NotInvertible', 'PrematureRead', 'Relation', 'UnreachedCoordinate',
-           'clear_solved', 'declared_derived', 'declared_relations',
-           'refuse_reads', 'run_deferred', 'solve_relations']
+__all__ = ['Affine', 'Commitment', 'CommitmentRecord', 'CouplingError',
+           'DerivedCoordinate', 'DoublyBound', 'NotInvertible',
+           'PrematureRead', 'Relation', 'UnreachedCoordinate',
+           'clear_solved', 'declared_commitments', 'declared_derived',
+           'declared_relations', 'refuse_reads', 'resolve_declared_commitments',
+           'run_deferred', 'solve_relations']
 
 
 class CouplingError(ValueError):
@@ -110,6 +112,29 @@ def _coordinate_of(value):
         return value
     owned = getattr(value, 'coordinate', None)
     return owned if isinstance(owned, Port) else None
+
+
+def _state_declaration(value):
+    """`value` when it is a `State` declaration, else None.
+
+    Duck-free and import-light for this module's own style: the marker
+    lives in the node layer beside `DriverDeclaration`, and asking for
+    it here is what tells a state apart from the driver it subclasses
+    (OpenSpec change ``declare-the-state``).
+    """
+    from solid_node.node.qualified import StateDeclaration
+
+    return value if isinstance(value, StateDeclaration) else None
+
+
+def _state_named(ref):
+    """The `State` declaration one end of a committing relation names,
+    or None where it names something else."""
+    if isinstance(ref, StateRef):
+        return ref.declared
+    if isinstance(ref, PathRef) and not isinstance(ref, BroadcastRef):
+        return _state_declaration(ref.terminal)
+    return None
 
 
 def _coordinates_of(value):
@@ -238,6 +263,15 @@ class CoordinateRef:
 
     def drives(self, other, ratio=None, offset=None, law=None):
         return relate(self, other, ratio, offset, law)
+
+    def commits(self, targets, at=None, law=None, **rejected):
+        """This end, as the source of a committing relation.
+
+        The other verb of a class body: `drives` states what turns what,
+        and `commits` states what the machine WRITES, and when (OpenSpec
+        change ``declare-the-state``).
+        """
+        return commit(self, targets, at=at, law=law, **rejected)
 
     ##############################################
     # What the reference names
@@ -402,6 +436,49 @@ class DriverRef(CoordinateRef):
         return f'<driver {self.described()}>'
 
 
+class StateRef(DriverRef):
+    """A `State` declaration: a source of a relation, a source of a
+    committing relation, and the ONLY thing a committing relation may
+    write (OpenSpec change ``declare-the-state``).
+
+    A `DriverRef` in everything the classes decide -- it is declared on
+    the class stating the relation, it is addressed by the qualified id
+    its position gives it, and it reads as a value -- and different in
+    exactly one place: it is refused as the DRIVEN end of `drives`, with
+    a message that says what does write it.
+    """
+
+    def key(self):
+        return ('state', id(self.declared))
+
+    def check(self, role):
+        if role == 'driven':
+            raise TypeError(
+                f"state '{self.described()}' cannot be the driven end of a "
+                f"relation: a state is written by the machine at an event, "
+                f"through the committing relation that names it as a "
+                f"target, and by nothing else. State the commit with "
+                f"(<sources>).commits({self.described()}, at=..., law=...), "
+                f"or drive a coordinate FROM the state.")
+
+    def check_declared_on(self, owner, relation):
+        from solid_node.node.qualified import declared_states_of
+
+        if any(self.declared is mine
+               for mine in declared_states_of(owner).values()):
+            return
+        raise TypeError(
+            f"{owner.__name__}: the state '{self.described()}' named by "
+            f"{relation.described()} is not declared on "
+            f"{owner.__name__}. A state is addressed by the qualified id "
+            f"its position in the tree gives it, so a relation from one is "
+            f"stated on the class that declares it, and a relation to one "
+            f"names it through a path from the class that can see it.")
+
+    def __repr__(self):
+        return f'<state {self.described()}>'
+
+
 class PathRef(CoordinateRef):
     """A child declaration, or an attribute path reached through one.
 
@@ -429,6 +506,13 @@ class PathRef(CoordinateRef):
 
     def declaration(self):
         if _coordinate_of(self.terminal) is not None:
+            return self.terminal
+        if _state_declaration(self.terminal) is not None:
+            # A path that stops on a STATE declared on a descendant:
+            # `carriage.result.units.digit`. The state belongs to the
+            # part that holds the value, and the committing relation to
+            # the assembly that can see both ends (OpenSpec change
+            # ``declare-the-state``).
             return self.terminal
         if _coordinates_of(self.terminal) is not None:
             # A path that STOPS on a joint owning several: `chassis.pose`.
@@ -507,6 +591,11 @@ class PathRef(CoordinateRef):
             # name it is reported under has parts: one for a plain port
             # or a joint that owns one, two for `pose.roll`.
             del segments[-(str(coordinate.name).count('.') + 1):]
+        elif segments and _state_declaration(self.terminal) is not None:
+            # A state occupies exactly ONE trailing segment, its own
+            # local name: the node this path reaches is the one that
+            # DECLARES it.
+            del segments[-1:]
         node = self._step(instance, self.root._name, self.written)
         for segment in segments:
             node = self._step(node, segment, self.written)
@@ -701,6 +790,9 @@ class Coordinates:
 
     def drives(self, other, ratio=None, offset=None, law=None):
         return relate(self, other, ratio, offset, law)
+
+    def commits(self, targets, at=None, law=None, **rejected):
+        return commit(self, targets, at=at, law=law, **rejected)
 
     def _refuse_as_formula_term(self, *_args, **_kwargs):
         raise TypeError(
@@ -1017,7 +1109,8 @@ def read_through(node_class, attribute, written):
     from solid_node.node.declarative import (ChildDeclaration,
                                              RepeatDeclaration,
                                              SidewaysReadError)
-    from solid_node.node.qualified import DriverDeclaration
+    from solid_node.node.qualified import (DriverDeclaration,
+                                           StateDeclaration)
 
     found = getattr(node_class, attribute, None)
     if found is not None:
@@ -1045,6 +1138,16 @@ def read_through(node_class, attribute, written):
                 f"and so on -- and a relation names ONE of them, not the "
                 f"list. They are named one by one; a relation cannot reach "
                 f"all of them through this path.")
+        if isinstance(found, StateDeclaration):
+            # A STATE is a place too, and it is the ONE declaration a
+            # class body may reach through a child: a state belongs to
+            # the part that holds the value, and the committing relation
+            # that writes it belongs to the assembly that can see both
+            # ends (OpenSpec change ``declare-the-state``). The driver
+            # refusal below is untouched: a driver is what a request
+            # moves, and reaching one sideways would give one value a
+            # second address.
+            return found
         if isinstance(found, DriverDeclaration):
             raise SidewaysReadError(
                 f"cannot read the driver '{attribute}' off the "
@@ -1521,6 +1624,307 @@ class RelationRecord:
                 f'solved {self.direction or "not yet"}>')
 
 
+##############################################
+# The committing relation
+
+class Commitment:
+    """`(<sources>).commits(<targets>, at=, law=)`: the states a machine
+    writes, and the event it writes them at (OpenSpec change
+    ``declare-the-state``).
+
+    A statement recorded on the class, exactly as a `Relation` is:
+    written bare it is the declaration, assigned to a name it is
+    additionally reachable by that name, and read off an INSTANCE it is
+    that instance's resolved record.
+
+    The two factories follow the law-factory protocol this module
+    already states, which is the whole of what keeps a commit out of the
+    per-relation runtime protocol the pilot rejected on 2026-09-13: each
+    is called exactly ONCE, at realization, with the realized OWNERS,
+    and returns a callable over the sources' VALUES. Neither is ever
+    handed an event object, a runtime handle or any mutable per-tick
+    state.
+    """
+
+    _names_in_body = True
+    _name = None
+    owner = None
+
+    def __init__(self, sources, targets, at, law):
+        self.sources = sources
+        self.targets = targets
+        self.at = at
+        self.law = law
+
+    @property
+    def name(self):
+        return self._name
+
+    def __set_name__(self, owner, name):
+        self._name = name
+        self.owner = owner
+
+    def __get__(self, instance, owner=None):
+        if instance is None:
+            return self
+        return self.record_of(instance)
+
+    def record_of(self, instance):
+        for record in instance.__dict__.get('_commitments', ()):
+            if record.commitment is self:
+                return record
+        raise AttributeError(
+            f'{self} is not resolved on this {type(instance).__name__}')
+
+    def described(self):
+        written = (f'{self.sources.described()} commits '
+                   f'{self.targets.described()}')
+        return f"'{self.name}' ({written})" if self.name else written
+
+    def __repr__(self):
+        return f'<commitment {self.described()}>'
+
+    ##############################################
+    # What the classes alone decide
+
+    def target_refs(self):
+        return _end_refs(self.targets)
+
+    def source_refs(self):
+        return _end_refs(self.sources)
+
+    def target_states(self):
+        """The `State` declaration each target names, in written
+        order."""
+        return tuple(_state_named(ref) for ref in self.target_refs())
+
+    def check_declared_on(self, owner):
+        for ref in self.source_refs():
+            ref.check_declared_on(owner, self)
+        for ref in self.target_refs():
+            ref.check_declared_on(owner, self)
+
+    ##############################################
+    # One instance's record
+
+    def resolve(self, instance):
+        sources = tuple(_banked_end(ref, instance)
+                        for ref in self.source_refs())
+        targets = tuple(_banked_end(ref, instance)
+                        for ref in self.target_refs())
+        # ONCE, at realization, with the realized owners -- shaped
+        # exactly as `_law_argument` shapes a relation's end.
+        source_owners = _law_argument(sources)
+        target_owners = _law_argument(targets)
+        at = _checked_factory(self, 'at', self.at, source_owners,
+                              target_owners)
+        law = _checked_factory(self, 'law', self.law, source_owners,
+                               target_owners)
+        return CommitmentRecord(self, sources, targets, at, law)
+
+
+class CommitmentRecord:
+    """One instance's resolved committing relation.
+
+    `sources` and `targets` are tuples of `BankedEnd` -- the realized
+    node that DECLARES the value and the local name it declares it
+    under -- because a commit reads and writes BANKED values and touches
+    no coordinate at all. The qualified id each one is addressed by is
+    computed by the clocked simulation, against the root it is
+    constructed over, which is the only place that root is known.
+    """
+
+    def __init__(self, commitment, sources, targets, at, law):
+        self.commitment = commitment
+        self.sources = tuple(sources)
+        self.targets = tuple(targets)
+        self.at = at
+        self.law = law
+
+    @property
+    def name(self):
+        return self.commitment.name
+
+    def described(self):
+        return self.commitment.described()
+
+    def __repr__(self):
+        return f'<commitment {self.described()}>'
+
+
+class BankedEnd:
+    """One end of a committing relation, resolved: the node that
+    declares the value, its class-local name, and the declaration."""
+
+    __slots__ = ('node', 'name', 'declaration')
+
+    def __init__(self, node, name, declaration):
+        self.node = node
+        self.name = name
+        self.declaration = declaration
+
+    def described(self):
+        return f'{where(self.node)}.{self.name}'
+
+    def __repr__(self):
+        return f'<banked {self.described()}>'
+
+
+def _banked_end(ref, instance):
+    """The `BankedEnd` `ref` names on `instance`: the node that DECLARES
+    the driver or the state, never a coordinate slot."""
+    declared = ref.declaration()
+    if isinstance(ref, PathRef):
+        node = ref._walk(instance)
+    else:
+        node = instance
+    return BankedEnd(node, _declaration_name(declared), declared)
+
+
+def _checked_factory(commitment, role, factory, sources, targets):
+    """`factory(sources, targets)`, refused by name when it is not a
+    law factory or does not return something callable."""
+    try:
+        returned = factory(sources, targets)
+    except Exception as failure:
+        raise CouplingError(
+            f'{commitment.described()}: the {role}= factory {factory!r} '
+            f'could not be called with the realized owners '
+            f'({type(failure).__name__}: {failure}). Both factories of a '
+            f'committing relation take (sources, targets) -- the realized '
+            f'owners -- and return a callable over the sources\' values, '
+            f'one positional argument per source in written order.'
+        ) from failure
+    if not callable(returned):
+        raise CouplingError(
+            f'{commitment.described()}: the {role}= factory {factory!r} '
+            f'returned {returned!r}, which is not callable. A committing '
+            f'relation\'s {role}= is called ONCE, at realization, with the '
+            f'realized owners, and returns the callable the machine '
+            f'evaluates over its sources\' values.')
+    return returned
+
+
+def commit(sources, targets, at=None, law=None, **rejected):
+    """`(<sources>).commits(<targets>, at=, law=)`, recorded on the class
+    body that is executing.
+
+    Every refusal here is made where its facts are: the classes are all
+    known in a class body, so a target that is not a state, a state two
+    relations of one body write, a port named as a source and a missing
+    factory are each refused at the line that wrote them.
+    """
+    from solid_node.node.declarative import record_commitment
+
+    if rejected:
+        named = ', '.join(f'{key}=' for key in sorted(rejected))
+        raise TypeError(
+            f'a committing relation takes at= and law= and nothing else; '
+            f'got {named}. A commit has no affine default -- ratio= and '
+            f'offset= are the shorthand for the Affine law of a relation, '
+            f'and a commit states an EVENT and the value it writes there, '
+            f'so both factories are required.')
+    source_ref = coordinate_ref(sources, 'source')
+    target_ref = coordinate_ref(targets, 'target')
+    commitment = Commitment(source_ref, target_ref, at, law)
+    if at is None or law is None:
+        missing = ', '.join(name for name, given in
+                            (('at', at), ('law', law)) if given is None)
+        raise TypeError(
+            f'{commitment.described()}: a committing relation states '
+            f'both at= (the event, one jump node over its sources) and '
+            f'law= (the value it writes there), and this one states no '
+            f'{missing}. An event is required: a commit with no event '
+            f'would be a fold over the whole path, which is a different '
+            f'thing and is not this vocabulary.')
+    _check_commitment_ends(commitment)
+    record_commitment(commitment)
+    return commitment
+
+
+def _check_commitment_ends(commitment):
+    """Everything the classes alone decide about a committing relation,
+    refused where it was written."""
+    targets = commitment.target_refs()
+    for ref in targets:
+        if isinstance(ref, BroadcastRef):
+            raise TypeError(
+                f"{commitment.described()}: '{ref.written}' passes through "
+                f"the repeated declaration '{ref.repeat._name}' of "
+                f"{ref.repeat.node_class.__name__}, and a committing "
+                f"relation does not broadcast: a repeated child's banked "
+                f"value has no legal qualified id, so the copies could not "
+                f"be addressed apart. State one relation per copy, or "
+                f"state the relation inside "
+                f"{ref.repeat.node_class.__name__}.")
+        if _state_named(ref) is None:
+            raise TypeError(
+                f"{commitment.described()}: the target "
+                f"'{ref.described()}' is not a State. A committing "
+                f"relation writes STATES and nothing else -- a coordinate "
+                f"is posed from them by an ordinary relation -- so declare "
+                f"the value as State(...) beside the drivers, or name the "
+                f"state this relation writes.")
+    for ref in commitment.source_refs():
+        if isinstance(ref, BroadcastRef):
+            raise TypeError(
+                f"{commitment.described()}: '{ref.written}' passes through "
+                f"the repeated declaration '{ref.repeat._name}' of "
+                f"{ref.repeat.node_class.__name__}, so it cannot be a "
+                f"source of a committing relation: a source is one banked "
+                f"value, and the copies hold one each.")
+        if _state_named(ref) is not None or isinstance(ref, DriverRef):
+            continue
+        raise TypeError(
+            f"{commitment.described()}: the source '{ref.described()}' is "
+            f"neither a Driver nor a State. A committing relation reads "
+            f"the BANK -- the drivers and the states -- and nothing else: "
+            f"a port, a joint coordinate and a derived coordinate are "
+            f"computed from that bank on every pose, and locating an "
+            f"event on one would cost a pose per sample. Name the drivers "
+            f"and states the port follows.")
+
+
+def declared_commitments(node_class):
+    """Every committing relation declared on `node_class`, base-first
+    through the inheritance chain, by `declared_relations`' own rule: a
+    bare statement is ADDITIVE under inheritance and a named one
+    REPLACES the base's of that name, at the position the base's held.
+    """
+    cached = _commitments_cache.get(node_class)
+    if cached is None:
+        found = []
+        positions = {}
+        for klass in reversed(getattr(node_class, '__mro__', ())):
+            for commitment in vars(klass).get('_declared_commitments', ()):
+                if any(commitment is seen for seen in found):
+                    continue
+                name = commitment.name
+                if name is not None and name in positions:
+                    found[positions[name]] = commitment
+                else:
+                    if name is not None:
+                        positions[name] = len(found)
+                    found.append(commitment)
+        cached = _commitments_cache[node_class] = tuple(found)
+    return cached
+
+
+def resolve_declared_commitments(node):
+    """Resolve every committing relation of `node`'s class against this
+    instance, calling each factory once.
+
+    Beside `resolve_declared_relations`, at the same moment and for the
+    same reason: an end may be a child or a descendant of one, so the
+    instance's children have to exist first.
+    """
+    commitments = declared_commitments(type(node))
+    if not commitments:
+        return
+    node.__dict__['_commitments'] = [commitment.resolve(node)
+                                     for commitment in commitments]
+
+
 def _is_descendant_or_self(node, ancestor):
     """Whether `node` IS `ancestor` or hangs below it, through the
     `_parent` links a walker's own linking sets (`_link_children`) --
@@ -1698,7 +2102,8 @@ def coordinate_ref(value, role='end'):
     the class body wrote."""
     from solid_node.node.declarative import (ChildDeclaration,
                                              RepeatDeclaration)
-    from solid_node.node.qualified import DriverDeclaration
+    from solid_node.node.qualified import (DriverDeclaration,
+                                           StateDeclaration)
 
     if isinstance(value, CoordinateRef):
         return value
@@ -1717,6 +2122,10 @@ def coordinate_ref(value, role='end'):
         # `beads.drives(earth)`. `check(role)` refuses the second as a
         # SOURCE; the first is an ordinary broadcast.
         return BroadcastRef(value, (), value, value)
+    if isinstance(value, StateDeclaration):
+        # Before the driver branch: a `State` IS a `DriverDeclaration`,
+        # and everything that differs is about who writes it.
+        return StateRef(value)
     if isinstance(value, DriverDeclaration):
         return DriverRef(value)
     if _is_declaration_list(value):
@@ -1737,6 +2146,7 @@ def coordinate_ref(value, role='end'):
 
 _relations_cache = {}
 _derived_cache = {}
+_commitments_cache = {}
 
 
 def declared_relations(node_class):

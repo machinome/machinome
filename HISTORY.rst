@@ -5,6 +5,89 @@ History
 Unreleased
 ----------
 
+* **A state is a driver the machine writes, committed at an event.** The
+  originating project is ``projects/Calculators/Curta-Type-I-3x``, which
+  carries two models of one machine: a closed form that is fast and does
+  not OPERATE — turning the crank past a revolution carries nothing
+  forward, so the maker edits the registers by hand — and a running model
+  that operates and costs about 0.73 s per 0.1 s Python tick. The machine
+  between them is a CLOCKED one, and the framework had no word for it:
+  ``Time.running()`` bundles a time base with a mechanics that retains
+  EVERY coordinate and integrates EVERY law at a fixed cadence, while an
+  untimed root has no memory at all. A third state discipline now sits
+  between them, declared in the places the API already has.
+  ``State(default, range=, unit=, dtype=, scale=)`` is declared beside a
+  ``Driver``, takes exactly its arguments with exactly their meanings,
+  reads ``self.units`` exactly as a driver's value does and carries the
+  same instance-qualified id; everything that differs is about who writes
+  it, and ``set_state``, an ``Instruction``, a control and ``drives``
+  each refuse one by name.
+  ``(crank & units & tens).commits((units, tens), at=strokes,
+  law=registers)`` is the verb that writes it, beside ``drives`` in a
+  class body, on the same ``&`` groups, with both factories following the
+  law-factory protocol this layer already states: called ONCE, at
+  realization, with the realized owners, returning a callable over the
+  sources' values. No event object, no runtime handle, no per-relation
+  protocol. ``Sim(model)`` takes NO ``dt``; ``sim.move(input, by=|to=)``
+  moves one declared driver along a straight path, and every RISING
+  crossing on it is located EXACTLY — one division on an affine level,
+  one division per sub-interval on a kinked one, by the solver
+  ``Time.running()`` already owns — and committed in path order, each
+  event reading the state the previous one left. **No new locator, no new
+  knob, and no tolerance at all**: two relations fire at one event
+  exactly when their far-side landings are the SAME float, so ten
+  requests of one revolution give the same events as one request of ten,
+  which a tick-fraction tolerance could not have promised. A level the
+  moving driver CURVES is refused at construction naming the driver and
+  the primitive, rather than searched: a clocked model's whole value is
+  that its events are exact. Only RISING steps fire — the requirement
+  note assumed both edges do and the law neutralises the falling one, and
+  the project spike measured that false: with ``floor(crank / 360)`` and
+  no pawl, dragging the crank backwards commits a SECOND addition, 9 to
+  18 — and a mechanism that wants the other edge negates its own level.
+  A commit is evaluated at ONE POINT and never integrated, so a law made
+  entirely of jumps is a perfectly good commit where a running law of
+  that shape is refused as arithmetic, and ``at`` MAY read the state it
+  commits, which is what the Curta's per-digit clearing threshold needs.
+  SEVERAL relations may write one state, because the Curta's register
+  digit is written at the stroke end AND at the clearing reach — two
+  events, two inputs, and one relation states one ``at``; what is refused
+  is two answers for one value at ONE landing, and it is the REQUEST that
+  is refused, naming the state, both relations and the landing. Two
+  children of one class each declare their own state, told apart by the
+  PATH and never by the local name they share, which is what makes a
+  register of seventeen identical wheels one written line. A committing
+  relation whose sources are all STATES is refused at construction: its
+  level can never move, so it could never fire.
+  Between events nothing is retained: a pose is the existing untimed
+  enumeration over the drivers and the states, ``time`` is not in the
+  bank, and a clocked pose leaves ``self.time`` the symbolic ``$t``
+  exactly as the build path does. Measured on the two geometry-free
+  fixtures this cycle adds: **0.9 us per commit against 60 us per pose**,
+  a request with no event 82 us and one with ten events 428 us — the
+  commit is not the cost, the pose is, and a request pays for exactly one.
+  **A tree that declares no State is unchanged**: the states are
+  collected in the walk the enumeration already makes, no clocked code
+  path is entered for an empty state table, the clocked module is never
+  imported, and a stateless document is byte-identical to the one the
+  same model published before this existed (verified against ``81c5364``).
+  **A clocked model cannot be PUBLISHED yet**: the document version that
+  carries declared states is a later cycle's, so every document producer
+  refuses one by name — including ``solid snapshot --renderer web``,
+  which stages its document without entering the symbolic walk at all.
+  Rendering, assembling, STL building, ``solid test`` and an OpenSCAD
+  snapshot are untouched. Also refused, each by name and each a later
+  cycle's: a ``State`` under ``Time(loop=)`` (a loop replays from zero
+  and would replay every commit) and under ``Time.running()`` (whose
+  meaning is DEFINED as an ADR-121 self-read switch and deliberately not
+  implemented); a bound as a stop on a request path, which stays the
+  impossible pose it has always been — and a refused pose now refuses the
+  whole request, leaving the bank, the tree and the record standing,
+  rather than clipping the path where the machine stops; a port, joint
+  coordinate or derived
+  coordinate as a SOURCE; a broadcast ``commits``; a multi-input request;
+  and an instruction or a control under a clocked root.
+
 * **A kink is a cut, and a piecewise-affine quantity is solved.** Under a
   running root the run has to follow a quantity along each tick's path —
   a jump node's level, a law's skeleton, a determiner's value — and it

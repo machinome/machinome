@@ -650,6 +650,51 @@ def program_block(program, initial):
     return program.published(initial)
 
 
+class ClockedDocumentError(ValueError):
+    """A tree that declares a `State` cannot be published: the document
+    version that carries declared states is not defined yet."""
+
+
+def _refuse_a_clocked_model(node):
+    """Refuse publication of a CLOCKED model, by name.
+
+    Placed in ``document_body`` -- the one function EVERY document
+    producer passes through -- rather than in ``symbolic_document``,
+    which a browser-rendered snapshot bypasses entirely: a capture bakes
+    one instant and has nothing symbolic to bind, so it stages its
+    document straight from here. A gate on the symbolic walk would leave
+    that producer publishing a document a consumer would animate wrongly
+    (OpenSpec change ``declare-the-state``, design section 10).
+
+    Publishing at an existing version, with the states rendered as their
+    initial values, was rejected outright: the geometry would be correct
+    only at the initial state and would then silently stop following the
+    machine, which is the failure the non-additive version rule exists to
+    prevent.
+
+    A tree that declares no state is answered by one structural walk that
+    renders nothing, exactly as ``tree_declares_drivers`` answers its own.
+    """
+    from solid_node.simulation.enumeration import tree_declares_states
+
+    if not tree_declares_states(node):
+        return
+    from solid_node.simulation.enumeration import qualified_states
+
+    named = ', '.join(sorted(qualified_states(node)))
+    raise ClockedDocumentError(
+        f'{type(node).__name__} is a CLOCKED model -- its tree declares '
+        f'the state(s) {named} -- and cannot be published: the document '
+        f'version that carries declared states is not defined yet. The '
+        f'model is correct and the wire format is missing, not the other '
+        f'way round. Publishing it at an existing version, with the '
+        f'states rendered as their initial values, would give geometry '
+        f'that is right only at the initial state and then silently '
+        f'stops following the machine. Render it, assemble it, build its '
+        f'STLs, test it and photograph it with the OpenSCAD renderer; '
+        f'operate it in Python with Sim(model) and sim.move(...).')
+
+
 def document_body(node, root, drivers, instructions, program=None,
                   initial=None, fps=30, frames=360, controls=None):
     """Everything a published document carries except the two keys a
@@ -671,6 +716,7 @@ def document_body(node, root, drivers, instructions, program=None,
     declarations the document already published and still renders the
     truth.
     """
+    _refuse_a_clocked_model(node)
     block = None if program is None else program_block(program, initial)
     identifiers = set(drivers)
     if program is not None:

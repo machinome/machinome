@@ -43,6 +43,14 @@ from importlib.util import find_spec
 # the two cannot drift apart.
 _EXPORTS = {
     'Driver': 'driver',
+    # A state is a driver the machine writes (OpenSpec change
+    # ``declare-the-state``). Lazy like every export here, and for the
+    # reason the running kinds below are: a project that names no
+    # `State` imports neither the declaration nor the clocked executor,
+    # which is what makes "a stateless model pays nothing" structural.
+    'State': 'state',
+    'declared_states': 'state',
+    'qualified_states': 'enumeration',
     'RampProgram': 'driver',
     'qualified_drivers': 'enumeration',
     'qualified_instructions': 'enumeration',

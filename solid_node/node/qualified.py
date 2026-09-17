@@ -85,7 +85,14 @@ class DriverDeclaration:
     # was never assigned to a class attribute still reports something.
     _name = None
 
+    #: What this declaration is called in a message. A `State` is a
+    #: driver the machine writes (OpenSpec change ``declare-the-state``),
+    #: so it shares every mechanism here and differs in the noun and in
+    #: who may write it.
+    _kind = 'driver'
+
     def __set_name__(self, owner, name):
+        kind = self._kind
         for klass in owner.__mro__[1:]:
             existing = vars(klass).get(name)
             if existing is None or isinstance(existing, DriverDeclaration):
@@ -94,11 +101,11 @@ class DriverDeclaration:
                 # redeclare, and that stays legal.
                 continue
             raise TypeError(
-                f"driver '{name}' on {owner.__name__} would shadow "
-                f"{klass.__name__}.{name}, which a driver read would then "
-                f"hide for good. A driver is read as an attribute of its "
+                f"{kind} '{name}' on {owner.__name__} would shadow "
+                f"{klass.__name__}.{name}, which a {kind} read would then "
+                f"hide for good. A {kind} is read as an attribute of its "
                 f"node, so its name has to be free on that node: rename "
-                f"the driver.")
+                f"the {kind}.")
         # object.__setattr__ because the simulation layer's Driver is a
         # frozen dataclass. A private non-field slot, not a `name`
         # field, so where a declaration is bound never enters the
@@ -108,7 +115,7 @@ class DriverDeclaration:
     def __get__(self, instance, owner=None):
         if instance is None:
             return self
-        note_read('read driver', self._name)
+        note_read(f'read {self._kind}', self._name)
         try:
             return instance._states[self._name]
         except (AttributeError, KeyError):
@@ -119,15 +126,21 @@ class DriverDeclaration:
             # default, and binding it is the loader's or the
             # simulation's job, never a silent fallback here.
             raise AttributeError(
-                f"driver '{self._name}' of "
-                f"{type(instance).__name__} is not bound; bind it with "
-                f"set_state({self._name}=...)") from None
+                f"{self._kind} '{self._name}' of "
+                f"{type(instance).__name__} is not bound; "
+                f"{self._unbound_advice()}") from None
+
+    def _unbound_advice(self):
+        return f'bind it with set_state({self._name}=...)'
 
     def __set__(self, instance, value):
         raise AttributeError(
-            f"driver '{self._name}' of {type(instance).__name__} cannot be "
-            f"assigned: its value belongs to the bound snapshot. Use "
-            f"set_state({self._name}={value!r}).")
+            f"{self._kind} '{self._name}' of {type(instance).__name__} "
+            f"cannot be assigned: its value belongs to the bound snapshot. "
+            f"{self._assignment_advice(value)}")
+
+    def _assignment_advice(self, value):
+        return f'Use set_state({self._name}={value!r}).'
 
     def drives(self, other, ratio=None, offset=None, law=None):
         """This driver drives `other`: a root driver reaches a joint at
@@ -141,10 +154,54 @@ class DriverDeclaration:
 
         return relate(self, other, ratio, offset, law)
 
+    def commits(self, targets, at=None, law=None, **rejected):
+        """This driver, as the one source of a committing relation.
+
+        The verb lives on the coupling layer exactly as `drives` does;
+        this is the face a bare `Driver` declaration offers it through.
+        """
+        from solid_node.motion.couplings import commit
+
+        return commit(self, targets, at=at, law=law, **rejected)
+
     def __and__(self, other):
         from solid_node.motion.couplings import group_with
 
         return group_with(self, other)
+
+
+class StateDeclaration(DriverDeclaration):
+    """Marker base for a STATE declaration: a driver the machine writes
+    (OpenSpec change ``declare-the-state``).
+
+    It subclasses the driver marker rather than standing beside it
+    because everything the NODE LAYER does with a declaration is the
+    same for both: it is class metadata, it qualifies by the dotted path
+    plus the local name, it is delivered into the node's snapshot, and
+    it is read as an attribute of the node that declares it. Everything
+    that DIFFERS is about who writes it -- `set_state` refuses one, an
+    instruction and a control cannot target one, `drives` refuses one as
+    its driven end -- and every one of those refusals lives where its
+    facts are, never here.
+
+    What a state MEANS -- native units, the single rounding at a commit,
+    the committing relation that writes it -- stays in the simulation
+    layer's `State`, exactly as what a driver means stays in `Driver`.
+    `solid_node.node` still imports nothing from `solid_node.simulation`.
+    """
+
+    _kind = 'state'
+
+    def _unbound_advice(self):
+        return ('it is bound by the enumeration that binds declared '
+                'defaults, and written by its committing relation at an '
+                'event')
+
+    def _assignment_advice(self, value):
+        return ('A state is written by the machine at an event, through '
+                'the committing relation that names it as a target, and '
+                'set as session setup with Sim(model, state={...}) or '
+                'sim.restore(...).')
 
 
 # A segment of a qualified id must be a name in every runtime that
@@ -218,6 +275,7 @@ class DriverToken(GraphValue):
 # change at runtime, and a stepping loop asks this question for every
 # node of the tree on every tick.
 _declared_cache = {}
+_declared_state_cache = {}
 
 
 def declared_drivers_of(node_class):
@@ -227,19 +285,45 @@ def declared_drivers_of(node_class):
     the declaration is class metadata, exactly as `declared_ports` reads
     a mechanism's connection points. Walked base-first so a subclass
     redeclaring an inherited driver wins.
+
+    A STATE is not a driver here, whatever it subclasses: the two tables
+    address two different disciplines -- a driver is what a request and
+    an instruction may move, a state is what a committing relation
+    writes -- and every consumer of this one (the simulation bank, the
+    published driver table, an instruction target) means the first.
+    `declared_states_of` is the other half.
     """
     cached = _declared_cache.get(node_class)
     if cached is None:
         found = {}
         for klass in reversed(node_class.__mro__):
             for name, value in vars(klass).items():
-                if isinstance(value, DriverDeclaration):
+                if (isinstance(value, DriverDeclaration)
+                        and not isinstance(value, StateDeclaration)):
                     found[name] = value
         cached = _declared_cache[node_class] = found
     return cached
 
 
-def drive_tree(root, resolve, visit=None):
+def declared_states_of(node_class):
+    """Every state declared on `node_class`, by class-local name.
+
+    `declared_drivers_of`'s twin, by the same rule and the same
+    base-first walk, so a state qualifies exactly as a driver does and
+    the two can be enumerated in one pass.
+    """
+    cached = _declared_state_cache.get(node_class)
+    if cached is None:
+        found = {}
+        for klass in reversed(getattr(node_class, '__mro__', ())):
+            for name, value in vars(klass).items():
+                if isinstance(value, StateDeclaration):
+                    found[name] = value
+        cached = _declared_state_cache[node_class] = found
+    return cached
+
+
+def drive_tree(root, resolve, visit=None, collected=None):
     """Walk `root`'s tree in linked order, binding driver values, and
     return `{qualified_id: declaration}` for every driver found.
 
@@ -278,6 +362,12 @@ def drive_tree(root, resolve, visit=None):
     that has to reach a leaf's declarations -- a joint may be declared
     on one -- would otherwise have to re-derive the structure and risk
     getting a different generation of a legacy render's children.
+
+    `collected`, when given a dict, receives every declared STATE of the
+    tree by the same qualified id -- from THIS pass, never a second one
+    (OpenSpec change ``declare-the-state``). States are BOUND either
+    way, because a tree that declares one cannot be rendered without
+    them; the dict is only how a caller that needs the table gets it.
     """
     # Deferred: `assembly` is `qualified`'s own caller (AssemblyNode's
     # module already imports THIS one, for `declared_drivers_of` and
@@ -296,6 +386,28 @@ def drive_tree(root, resolve, visit=None):
         for name, declaration in declared_drivers_of(type(node)).items():
             identifier = driver_id(path, name)
             found[identifier] = declaration
+            states[name] = resolve(node, path, name, declaration)
+        # A STATE is bound in the SAME pass, never in a second walk
+        # (OpenSpec change ``declare-the-state``, design section 16): a
+        # tree that declares none pays one cached dict lookup per node
+        # and nothing else, and one that declares some has every state
+        # bound before anything in the tree renders, exactly as a
+        # declared driver default is.
+        declared_here = declared_states_of(type(node))
+        for name, declaration in declared_here.items():
+            identifier = driver_id(path, name)
+            claimed = found.get(identifier)
+            if claimed is not None:
+                raise DriverIdError(
+                    f"the qualified id '{identifier}' is claimed by two "
+                    f"declarations of one tree: the State '{name}' of "
+                    f"{type(node).__name__} and the Driver '{name}' it "
+                    f"inherits ({claimed!r}). A qualified id names at "
+                    f"most one declaration -- it is the key of the bank, "
+                    f"the name a document publishes and the name a "
+                    f"request addresses -- so rename one of them.")
+            if collected is not None:
+                collected[identifier] = declaration
             states[name] = resolve(node, path, name, declaration)
         # Rest-only: discovers structure and links exactly as a render()
         # would, without opening a phase or an enumeration, so every

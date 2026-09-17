@@ -7,6 +7,57 @@ sketch for the proposal to cut from, not an API; the note does not
 authorize a change to `Time.running()`, and does not claim the fast Curta is already a clocked machine. Where this note and a baseline spec or an
 accepted ADR disagree, the note is stale.
 
+**SUPERSEDED:** taken up as OpenSpec change `declare-the-state` (ADR-125)
+on 2026-09-17. The change is what is ratified; this note stays as the
+requirement it was cut from, with the three corrections below marked
+where the spike and the implementation measured it wrong. A note is
+superseded by the change cut from it, not rewritten as if it had been
+right.
+
+### Correction 1 — point 5, "Interlocks are expression bounds"
+
+The project spike measured that the selector lock is NOT needed for the
+REGISTER: the stroke commit reads the settings as they stand at the
+stroke end, and that is the answer the running model gives at every
+stroke end of every in-corpus scenario. It is needed for the POSE, and
+every mid-stroke action that would break the closed form is one the
+manufacturer's booklet forbids. The interlocks stay project-owned
+`Bound`s on joints; the framework needs no new lock idea, and cycle 2 is
+what makes a violated bound CLIP a request path rather than fail the
+pose it ends at.
+
+### Correction 2 — the candidate spelling's constant `RACK_END[p]`
+
+The measured per-digit clearing threshold reads the COMMITTED DIGIT,
+`start_p + pitch_p * (10 - digit_p)`, and no constant the geometry
+admits stands in for it (the spike's finding 2). A source group may
+therefore name its own target, and `at` reads that target's PRE-EVENT
+value exactly as `law` does.
+
+### Correction 3 — "both edges fire and the law neutralises the falling one"
+
+Measured FALSE. With `at = floor(crank / 360)`, no pawl and the note's
+own additive law, dragging the crank backwards from one completed
+revolution commits a SECOND addition: 9 becomes 18. An additive law
+cannot neutralise a falling edge. Only RISING steps fire, and a
+mechanism that commits on the other edge negates its own level,
+`floor(-crank / 360)` -- exact, written in the model, and visible to its
+reader.
+
+### Correction 4 — "A state has exactly one committing relation"
+
+Wrong, and it would have made the originating machine inexpressible. A
+Curta result wheel is written at the STROKE END, by the arithmetic of one
+crank revolution, and again at the CLEARING REACH, by the ring sweeping
+past its own rack -- two events, on two different inputs, and one
+relation states one `at`. The note's own next paragraph states the
+clearing commit as a second `commits` on the same digits, so the note
+contradicts itself here. Several relations may write one state; two of
+them writing it at ONE landing is the conflict, and it refuses the
+REQUEST by name. Found by the orchestrator's review of the
+implementation on 2026-09-17 and folded into the change's ratified
+design (section 3) before it was applied.
+
 Written against framework `main` `debd760` (ADR-124 highest), viewer `main`
 `4a63aaa` (ADR-061 highest, API 16, documents 1..7), and the originating
 project `projects/Calculators/Curta-Type-I-3x` on branch `direct-operation`

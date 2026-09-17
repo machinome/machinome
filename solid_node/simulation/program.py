@@ -1536,43 +1536,9 @@ class _Walk:
         def branch_at(value):
             return _branch_of(jump, self._level(jump, where, value, branches))
 
-        step = math.ulp(own_star) if own_star else 5e-324
-        if branch_at(own_star) != near:
-            # The segment's arithmetic already landed PAST the surface,
-            # which it does about as often as it lands short, so the
-            # bracket is sought in both directions.
-            far, inside = own_star, None
-            for power in range(_WALK_STRIDES):
-                candidate = own_star - direction * step * (2 ** power)
-                if branch_at(candidate) == near:
-                    inside = candidate
-                    break
-            if inside is None:
-                # Unreachable by construction, and loud rather than
-                # silent because of it: the cut exists because the level
-                # crossed this surface, so the branch differs somewhere
-                # on either side of it, and 200 doublings of a ulp cover
-                # every distance a double expresses. No test can reach
-                # this; committing `own_star` instead would commit a
-                # value the design says is never committed.
-                raise _unlanded(self.described, self.coordinate, jump)
-        else:
-            inside, far = own_star, None
-            for power in range(_WALK_STRIDES):
-                candidate = own_star + direction * step * (2 ** power)
-                if branch_at(candidate) != near:
-                    far = candidate
-                    break
-            if far is None:
-                raise _unlanded(self.described, self.coordinate, jump)
-        low, high = _ordinal(inside), _ordinal(far)
-        while abs(high - low) > 1:
-            middle = (low + high) // 2
-            if branch_at(_from_ordinal(middle)) == near:
-                low = middle
-            else:
-                high = middle
-        return _from_ordinal(high)
+        return far_side_of(
+            branch_at, near, own_star, direction,
+            lambda: _unlanded(self.described, self.coordinate, jump))
 
     ##############################################
     # Evaluation
@@ -1609,8 +1575,67 @@ class _Walk:
                         jump, self.described, self.coordinate)
 
 
+def far_side_of(branch_at, near, own_star, direction, unlanded):
+    """The nearest representable value on the FAR side of a surface.
+
+    `branch_at(value)` reads the jump node's branch at one value of the
+    quantity being landed; `near` is the branch on the side the value
+    came from; `direction` is the sign of its travel; `unlanded` builds
+    the invariant error for a bracket that cannot be found.
+
+    Membership of a value in the far side is decided by EVALUATING the
+    branch there, never by comparing the value to the surface: a solved
+    value at which the branch has already changed IS the landing, a
+    strict comparison against a representable threshold lands on the
+    next value beyond it, and a non-strict one lands on the threshold
+    itself. The bisection runs in FLOAT ORDINAL space, so adjacent
+    floats differ by one at any magnitude and no tolerance is involved.
+
+    Extracted from `_Walk._far_side`, which still calls it, so the
+    clocked event solver lands a request path by the SAME walk rather
+    than a second one (OpenSpec change ``declare-the-state``).
+    """
+    step = math.ulp(own_star) if own_star else 5e-324
+    if branch_at(own_star) != near:
+        # The segment's arithmetic already landed PAST the surface,
+        # which it does about as often as it lands short, so the
+        # bracket is sought in both directions.
+        far, inside = own_star, None
+        for power in range(_WALK_STRIDES):
+            candidate = own_star - direction * step * (2 ** power)
+            if branch_at(candidate) == near:
+                inside = candidate
+                break
+        if inside is None:
+            # Unreachable by construction, and loud rather than
+            # silent because of it: the cut exists because the level
+            # crossed this surface, so the branch differs somewhere
+            # on either side of it, and 200 doublings of a ulp cover
+            # every distance a double expresses. No test can reach
+            # this; committing `own_star` instead would commit a
+            # value the design says is never committed.
+            raise unlanded()
+    else:
+        inside, far = own_star, None
+        for power in range(_WALK_STRIDES):
+            candidate = own_star + direction * step * (2 ** power)
+            if branch_at(candidate) != near:
+                far = candidate
+                break
+        if far is None:
+            raise unlanded()
+    low, high = _ordinal(inside), _ordinal(far)
+    while abs(high - low) > 1:
+        middle = (low + high) // 2
+        if branch_at(_from_ordinal(middle)) == near:
+            low = middle
+        else:
+            high = middle
+    return _from_ordinal(high)
+
+
 def _too_many(described, coordinate, jump, count):
-    return TooManyCrossings(
+    failure = TooManyCrossings(
         f'{described}: over one tick {coordinate} would cross {count} '
         f"surfaces of {jump.primitive}, more than the {_MAX_CROSSINGS} a "
         f'single law is admitted in one tick. A dt that coarse is not '
@@ -1618,6 +1643,12 @@ def _too_many(described, coordinate, jump, count):
         f'what a jump law is FOR. Step in smaller ticks. The tick '
         f'committed nothing: the bank, the tick count and the tree stand '
         f'as they were.')
+    # The count travels on the error as well as in its message, so a
+    # caller that states the same judgement in its OWN words -- the
+    # clocked solver's request refusal -- says the number this raise
+    # reached rather than guessing one.
+    failure.count = count
+    return failure
 
 
 def _unlanded(described, coordinate, jump):
@@ -3713,18 +3744,7 @@ def _graph_of(value, refuse):
     if not isinstance(value, OpenSCADConstant):
         refuse(f'the law returned {value!r}, which is neither a number nor '
                f'an expression over its sources.')
-    root = as_node(value)
-    jumps = []
-    for item in postorder([root]):
-        if item.kind == 'raw':
-            refuse(f'its expression carries the text {item.text!r}, which '
-                   f'the framework cannot evaluate: a running law is an '
-                   f'expression over its sources.')
-        if item.kind == 'call' and item.op not in SYMBOLIC_BUILTINS:
-            refuse(f'its expression calls {item.op!r}, which is outside '
-                   f'the symbolic vocabulary the run can evaluate.')
-        if _is_jump(item):
-            jumps.append(item)
+    root, jumps = checked_expression(value, refuse)
     if not jumps:
         return GraphValue(root), None
     if _only_jumps(root):
@@ -3737,6 +3757,33 @@ def _graph_of(value, refuse):
                'coordinate a relation that carries slope, or leave the '
                'count to the code that reads the machine.')
     return GraphValue(root), _plan_of(root, jumps)
+
+
+def checked_expression(value, refuse, kind='a running law'):
+    """`value`'s graph and its JUMP NODES, or the refusal naming what the
+    framework cannot evaluate.
+
+    The text-and-vocabulary walk, shared: raw text the framework cannot
+    evaluate and a call outside the symbolic vocabulary are refused here
+    for a running law and for a commit law alike, because the question
+    "is this an expression over its sources" has one answer. What the
+    two do with the jumps afterwards is where they differ -- a running
+    law is planned and a commit law is evaluated at a point (OpenSpec
+    change ``declare-the-state``, design section 7).
+    """
+    root = as_node(value)
+    jumps = []
+    for item in postorder([root]):
+        if item.kind == 'raw':
+            refuse(f'its expression carries the text {item.text!r}, which '
+                   f'the framework cannot evaluate: {kind} is an '
+                   f'expression over its sources.')
+        if item.kind == 'call' and item.op not in SYMBOLIC_BUILTINS:
+            refuse(f'its expression calls {item.op!r}, which is outside '
+                   f'the symbolic vocabulary the framework can evaluate.')
+        if _is_jump(item):
+            jumps.append(item)
+    return root, jumps
 
 
 def _plan_of(root, jumps):

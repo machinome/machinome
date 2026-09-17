@@ -33,8 +33,15 @@ from collections import namedtuple
 from solid_node.motion.ports import declared_time
 
 from .driver import DriverState
-from .enumeration import qualified_declarations, qualified_drivers
+from .enumeration import (qualified_declarations, qualified_drivers,
+                          tree_declares_states)
 from .timebase import finite_seconds
+
+
+#: "No dt was given", which `None` cannot say: a clocked root takes no
+#: dt at all, and every other root must still be refused for omitting
+#: one (OpenSpec change ``declare-the-state``).
+_NO_DT = object()
 
 
 CadenceCost = namedtuple('CadenceCost', 'period_ticks calls seconds')
@@ -112,14 +119,41 @@ class Sim:
     never touch the artifact path, so this happens once, here.
     """
 
-    def __init__(self, node, dt, meshes=False, state=None, record=None):
-        dt = finite_seconds(dt, 'dt')
-        if dt <= 0:
-            raise ValueError(f'dt must be greater than zero, not {dt!r}')
+    def __init__(self, node, dt=_NO_DT, meshes=False, state=None,
+                 record=None):
+        # A CLOCKED root -- one whose tree declares a `State` -- takes no
+        # `dt`: there is no cadence, and a state moves on requests. The
+        # question is answered STRUCTURALLY, before anything is bound,
+        # exactly as `tree_declares_drivers` answers its own without
+        # rendering, so a `dt` over a clocked root is refused before the
+        # tree receives any simulation state binding.
+        clocked = tree_declares_states(node)
+        if clocked:
+            if dt is not _NO_DT:
+                raise TypeError(
+                    f'Sim({type(node).__name__}, dt={dt!r}) gives a dt '
+                    f'over a CLOCKED root: its tree declares a State, so '
+                    f'it has no clock and no cadence -- a state moves on '
+                    f'requests, and every event on a request path is '
+                    f'solved exactly rather than met at a tick. '
+                    f'Construct it as Sim(model) and move it with '
+                    f'sim.move(input, by=...).')
+            dt = None
+        else:
+            if dt is _NO_DT:
+                raise TypeError(
+                    f'Sim({type(node).__name__}) gives no dt. A stepped '
+                    f'simulation is constructed over one assembly and a '
+                    f'fixed dt in seconds; only a CLOCKED root -- one '
+                    f'whose tree declares a State -- takes none.')
+            dt = finite_seconds(dt, 'dt')
+            if dt <= 0:
+                raise ValueError(f'dt must be greater than zero, not {dt!r}')
         self.node = node
         self.dt = dt
-        self.tick = 0
+        self._tick = 0
         self._run = None
+        self._clocked = None
         base = declared_time(type(node))
         if base is not None and base.mode == 'running':
             # ONE simulation owns a tree at a time, and the NEWEST takes
@@ -158,13 +192,29 @@ class Sim:
         # ONE walk returns both tables, because this is the caller that
         # needs both and `drive_tree`'s `visit` exists to save the second
         # descent.
-        self.instructions, self.controls = qualified_declarations(node)
+        self.instructions, self.controls, self.states = \
+            qualified_declarations(node)
         self._trajectory = []
         self._at = {}
         self._every = []
         if self.controls and not (base is not None
                                   and base.mode == 'running'):
             _refuse_control_without_a_run(node, self.controls)
+        if clocked:
+            # The clocked executor is imported HERE, and nowhere else: a
+            # model that declares no State never loads it, exactly as a
+            # model that declares no running time never loads the run.
+            from .clocked import Clocked
+
+            self._clocked = Clocked(
+                self, node,
+                {identifier: driver.declaration
+                 for identifier, driver in self.drivers.items()},
+                self.states, self.instructions, state=state, record=record)
+            if meshes:
+                node.assemble()
+                node.build_stls()
+            return
         self._bind_initial(state)
         if base is not None and base.mode == 'running':
             # The running engine and the compile step are imported HERE,
@@ -210,7 +260,40 @@ class Sim:
         the run therefore owns its coordinates."""
         return self._run is not None
 
+    @property
+    def clocked(self):
+        """Whether this simulation's tree declares a `State`, and a
+        request therefore solves its own events."""
+        return self._clocked is not None
+
+    @property
+    def tick(self):
+        """The integer tick this simulation stands at.
+
+        Refused over a CLOCKED root: there is no cadence to count, and a
+        state moves on requests.
+        """
+        self._not_clocked('tick')
+        return self._tick
+
+    @tick.setter
+    def tick(self, value):
+        self._tick = value
+
+    def _not_clocked(self, what):
+        """Refuse `what` over a clocked root, by name."""
+        if self._clocked is None:
+            return
+        raise TypeError(
+            f'{what} belongs to a simulation with a CLOCK, and '
+            f'{type(self.node).__name__} is CLOCKED: its tree declares a '
+            f'State, it declares no time base, and it has no cadence. A '
+            f'clocked model moves on requests -- sim.move(input, by=...) '
+            f'-- and every event on a request path is solved exactly. '
+            f'Read sim.state, sim.commits and the request move() returns.')
+
     def _running(self, what):
+        self._not_clocked(what)
         if self._run is None:
             raise TypeError(
                 f'{what} belongs to a RUNNING simulation, and '
@@ -224,12 +307,35 @@ class Sim:
     # The running surface
 
     def move(self, input_id, by=None, to=None, duration=None):
-        """Move a declared input BY a travel or TO a value, over
-        `duration` seconds, and return the handle reporting what the run
-        admits. A duration of zero -- or none -- settles at the current
-        tick without advancing the clock."""
+        """Move a declared input BY a travel or TO a value.
+
+        Under a RUNNING root the move takes `duration` seconds and
+        returns the handle reporting what the run admits. Under a
+        CLOCKED root it is a REQUEST: a straight path from where the
+        input stands to where it is asked for, with every rising event
+        on it solved and committed in path order, and no duration at all
+        -- a state moves on requests, not on a clock.
+        """
+        if self._clocked is not None:
+            if duration is not None:
+                raise TypeError(
+                    f"move('{input_id}', duration={duration!r}) gives a "
+                    f'duration over a CLOCKED root, which has no clock '
+                    f'to spend it on. A request is a straight path from '
+                    f'where the input stands to where it is asked for; '
+                    f'drop the duration.')
+            return self._clocked.move(input_id, by=by, to=to)
         return self._running('move()').move(input_id, by=by, to=to,
                                             duration=duration)
+
+    @property
+    def commits(self):
+        """The bounded ring of committed events `record=` asked for, and
+        `()` when it asked for none. A request's own result is complete
+        either way."""
+        if self._clocked is not None:
+            return self._clocked.commits
+        return self._running('commits').commits
 
     def rate(self, input_id, rate):
         """Run a declared input at `rate` design units per simulated
@@ -249,20 +355,27 @@ class Sim:
     @property
     def initial(self):
         """The snapshot taken at construction: the rest pose."""
+        if self._clocked is not None:
+            return self._clocked.initial
         return self._running('initial').initial
 
     def snapshot(self):
-        """This run's whole state as a value object."""
+        """This simulation's whole state as a value object."""
+        if self._clocked is not None:
+            return self._clocked.snapshot()
         return self._running('snapshot()').snapshot()
 
     def restore(self, snapshot):
-        """Put this run back to `snapshot`, refusing one taken over a
-        different program or a different `dt` before touching
-        anything."""
+        """Put this simulation back to `snapshot`, refusing one taken
+        over a different model before touching anything."""
+        if self._clocked is not None:
+            return self._clocked.restore(snapshot)
         return self._running('restore()').restore(snapshot)
 
     def reset(self):
         """Restore the initial snapshot."""
+        if self._clocked is not None:
+            return self._clocked.reset()
         return self._running('reset()').reset()
 
     @property
@@ -273,8 +386,12 @@ class Sim:
 
         Under a RUNNING root that is the run's whole bank -- every driver
         AND every joint coordinate of the linked tree -- because under
-        that base the coordinates are the state. Under any other root it
-        is the driver bank, exactly as it always was."""
+        that base the coordinates are the state. Under a CLOCKED root it
+        is every driver AND every state, and `time` is deliberately not
+        in it: a clocked root declares no time base. Under any other
+        root it is the driver bank, exactly as it always was."""
+        if self._clocked is not None:
+            return self._clocked.state
         if self._run is not None:
             return self._run.state
         return {name: driver.value
@@ -323,7 +440,8 @@ class Sim:
         `+= dt` drifts off the instant a scenario names (ADR-050's
         reasoning applied to simulation time).
         """
-        return self.tick * self.dt
+        self._not_clocked('time')
+        return self._tick * self.dt
 
     def _binding(self):
         """The full snapshot as `set_state` takes it: every driver by
@@ -353,11 +471,12 @@ class Sim:
 
     def at(self, t):
         """The registrar for instant `t`, in seconds."""
+        self._not_clocked('at()')
         tick = self._ticks(t, 'instant')
-        if tick < self.tick:
+        if tick < self._tick:
             raise ValueError(
                 f'instant {t} is before current simulation time '
-                f'{self.time} (tick {self.tick})')
+                f'{self.time} (tick {self._tick})')
         return _At(self, tick)
 
     def every(self, period, fn, *args):
@@ -368,6 +487,7 @@ class Sim:
         node is the same object at every tick, and what changes is the
         snapshot bound into it.
         """
+        self._not_clocked('every()')
         ticks = self._ticks(period, 'period')
         if ticks < 1:
             # A cadence of no ticks is the one thing this cannot mean:
@@ -386,6 +506,7 @@ class Sim:
         resolve against the declaring node's own path -- which is what
         makes "home the X axis" home only the X axis.
         """
+        self._not_clocked('trigger()')
         path, instruction = self._instruction(name)
         if self._run is not None:
             # Under a running root an instruction is the run's own
@@ -403,7 +524,7 @@ class Sim:
                 # stands, which is well defined over a driver bank under
                 # every time base.
                 native = driver.value + native
-            driver.ramp_to(native, ticks, self.tick)
+            driver.ramp_to(native, ticks, self._tick)
         if ticks == 0:
             # A zero-tick ramp is complete at the trigger instant. Rebind
             # once after every target has settled so the node sees one
@@ -420,13 +541,14 @@ class Sim:
         and only then runs what was scheduled -- an action must see the
         state its tick produced, never the one before it.
         """
+        self._not_clocked('run()')
         duration = finite_seconds(duration, 'duration')
         if duration < 0:
             raise ValueError(
                 f'duration must be non-negative, not {duration!r}')
-        end = self.tick + self._ticks(duration, 'duration')
-        self._fire(self.tick)
-        while self.tick < end:
+        end = self._tick + self._ticks(duration, 'duration')
+        self._fire(self._tick)
+        while self._tick < end:
             if self._run is not None:
                 # One tick of design.md section 7: the increments the
                 # active commands admit, propagated over the compiled
@@ -434,14 +556,14 @@ class Sim:
                 # bound as the run.
                 self._run.advance()
             else:
-                self.tick += 1
-                states = {name: driver.advance(self.tick)
+                self._tick += 1
+                states = {name: driver.advance(self._tick)
                           for name, driver in sorted(self.drivers.items())}
                 self.node.set_state(**dict(states, time=self.time))
-                self._trajectory.append((self.tick, states))
-            self._fire(self.tick)
+                self._trajectory.append((self._tick, states))
+            self._fire(self._tick)
             for slot in self._every:
-                if self.tick % slot.period_ticks == 0:
+                if self._tick % slot.period_ticks == 0:
                     slot.run()
 
     def _fire(self, tick):

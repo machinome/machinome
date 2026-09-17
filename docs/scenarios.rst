@@ -640,3 +640,152 @@ determiner is affine along the path — the common case, and every case in
 practice — nor where it is piecewise affine and MONOTONE between its
 kinks; anywhere else the answer is a smaller ``dt``, as it is for a jump
 surface crossed twice inside one sub-interval.
+
+
+Running a machine that keeps a FEW values
+=========================================
+
+A running root retains every coordinate and integrates every law at a
+fixed cadence. Some machines do not need that. A **clocked** machine has
+a few retained values, closed-form positions between them, and a commit
+of the retained values at each event — a calculator whose registers
+change only at the end of a crank stroke, and whose interlocks hold
+everything else still while the crank is off rest.
+
+Declare the retained value beside the drivers:
+
+.. code-block:: python
+
+    from solid_node.simulation import Driver, State
+
+    class Counter(AssemblyNode):
+        crank = Driver(default=0, unit='deg')
+        units = State(default=0, range=(0, 9), dtype=int)
+        tens = State(default=0, range=(0, 9), dtype=int)
+
+``State`` takes exactly ``Driver``'s arguments with exactly their
+meanings, is read ``self.units`` exactly as a driver's value is, and
+carries the same instance-qualified id. Everything that differs is about
+who WRITES it: ``set_state`` refuses one by name, an ``Instruction`` and
+a control cannot target one, and ``crank.drives(units)`` is refused. A
+state may be a SOURCE of ``drives`` — that is how the pose is fed from
+it — and it is written by exactly one thing.
+
+The verb that writes it
+-----------------------
+
+.. code-block:: python
+
+    def strokes(sources, targets):
+        return lambda crank, units, tens: floor(crank / 360)
+
+    def advance(sources, targets):
+        return lambda crank, units, tens: (
+            (units + 1) % 10, (tens + (units == 9)) % 10)
+
+    class Counter(AssemblyNode):
+        ...
+        (crank & units & tens).commits((units, tens),
+                                       at=strokes, law=advance)
+
+``commits`` sits beside ``drives``, on the same ``&`` groups, and its
+two factories follow the law-factory protocol the rest of the motion
+layer already uses: each is called ONCE, at realization, with the
+realized owners, and returns a callable over the sources' values in
+written order. Neither is handed an event object or any per-tick state.
+
+``at`` states the EVENT and is exactly one jump node — ``floor(x)``,
+``ceil(x)``, ``sign(x)``, or a comparison. Every RISING step of it along
+a request's path is one event. ``law`` states the value written there.
+A source group MAY name its own target, which is a READ of that target's
+value: the Curta's clearing threshold is a function of the digit the
+dial is standing at, so ``at`` reads the digit it commits.
+
+Both read and write NATIVE values — the bank's own units. A ``dtype=int``
+state takes the nearest whole native unit, rounded once, at the commit; a
+scaled one takes what the law returned, unrescaled.
+
+SEVERAL relations may write one state. A register digit is written at the
+stroke end, by the arithmetic of the crank turn, and again at the clearing
+reach, by the ring sweeping past its rack — two events, two inputs, and one
+relation states one ``at``. What is refused is two answers for one value at
+ONE event: if two relations firing at one landing would write the same
+state, the REQUEST is refused, naming the state, both relations and the
+landing, and it commits nothing. Two children of one class each declare
+their own state, so ``a.digit`` and ``b.digit`` are two states and one
+relation may write both.
+
+A committing relation whose sources are ALL states is refused at
+construction: a state is constant between events, so nothing a request moves
+enters its level and it could never fire.
+
+A request, not a tick
+---------------------
+
+.. code-block:: python
+
+    sim = Sim(machine)                  # no dt: there is no clock
+    request = sim.move('crank', by=3600.0)
+
+    len(request.commits)                # 10
+    sim.state['tens']                   # 1
+
+A request moves ONE declared driver along a straight path, and every
+rising crossing on it is located EXACTLY — solved by one division on an
+affine level, one division per sub-interval on a kinked one — and never
+searched. A level the moving driver CURVES is refused at construction,
+naming the driver and the primitive: a clocked model's whole value is
+that its events are exact.
+
+Two relations are ONE event exactly when their far-side landings are the
+same floating-point value. No tolerance decides it, so ten requests of
+one revolution give the same events as one request of ten.
+
+Only RISING steps fire. Dragging the crank backwards through
+``floor(crank / 360)`` commits nothing — which is what the anti-reversal
+pawl of a real machine gives. A mechanism that commits on the other edge
+negates its own level, ``floor(-crank / 360)``.
+
+A commit is evaluated at ONE POINT and never integrated, so every jump
+primitive in a commit law means what it says: ``floor(crank / 360) % 10``
+is a digit, where under a running root a law of that shape is refused as
+arithmetic. Every relation firing at one event reads the bank as it stood
+BEFORE it, so the order of two lines in a class body is not observable.
+
+Between events nothing is retained. A pose is the ordinary untimed
+enumeration over the drivers and the states, and nothing else: ``time``
+is not in the bank, and a clocked pose leaves ``self.time`` the symbolic
+``$t`` exactly as the build path does. A request touches the tree ONCE,
+at its end — which is why a request costs about what one pose costs and
+a commit costs microseconds.
+
+``sim.state`` is the bank; ``sim.snapshot()``, ``sim.restore()``,
+``sim.initial`` and ``sim.reset()`` act on it, and ``Sim(model,
+state={...})`` opens a session at chosen values. Those two are the only
+ways to set a state: everything else about it is the machine's.
+
+What a clocked model refuses today
+----------------------------------
+
+* **Publication.** A tree that declares a ``State`` is refused by every
+  document producer, naming the states: the document version that
+  carries them is not defined yet. Rendering, assembling, STL building,
+  ``solid test`` and an OpenSCAD snapshot are untouched, so a clocked
+  model is built, tested and photographed exactly as any other.
+* **A time base.** A ``State`` under ``Time(loop=)`` is refused — a loop
+  replays from zero and would replay every commit — and under
+  ``Time.running()`` it is refused too, with its meaning named and
+  deliberately not implemented.
+* **A bound as a stop on a request path.** A violated joint ``range`` is
+  still an impossible POSE, raised on the pose the request ends at — and a
+  refused pose refuses the whole REQUEST: the bank, the tree and the
+  recorded events stand exactly as they stood, rather than the request
+  stopping where the machine stops and keeping what it committed on the
+  way.
+* **The cadence surface.** ``run``, ``at``, ``every``, ``time``,
+  ``tick``, ``rate``, ``trigger``, ``commands``, ``program``,
+  ``crossings`` and ``stops`` are each refused by name. A clocked model
+  has no clock.
+* A port, joint coordinate or derived coordinate as a SOURCE; a
+  broadcast ``commits`` over a ``.repeat()`` child; a request naming more
+  than one input; an instruction or a control under a clocked root.

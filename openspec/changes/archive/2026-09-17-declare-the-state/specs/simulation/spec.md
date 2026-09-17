@@ -270,8 +270,11 @@ knob:
    relation, the driver whose motion curves it and the primitive, and saying
    a clocked event is solved and never searched.
 2. A crossing SHALL fire only when the step is RISING — `at`'s branch after
-   the crossing greater than its branch before, read at the midpoints of the
-   two adjoining pieces. A falling step SHALL fire nothing. A mechanism that
+   the crossing greater than its branch before — the branch before read at
+   the midpoint of the piece the path came from, the branch after read AT
+   THE LANDING, the nearest representable point of the piece the path
+   enters, which is the only reading available when the crossing is the
+   request's own endpoint. A falling step SHALL fire nothing. A mechanism that
    commits on the other edge states it by negating its own level.
 3. The earliest rising crossing over all committing relations SHALL be the
    next event. Two crossings SHALL be ONE event exactly when their far-side

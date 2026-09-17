@@ -52,6 +52,14 @@ BASEDIR = os.path.dirname(os.path.abspath(__file__))
 EXPECTED_EXPORTS = {
     'Driver': 'solid_node.simulation.driver',
     'RampProgram': 'solid_node.simulation.driver',
+    # The state declaration and its two enumeration faces, added with
+    # the clocked discipline (OpenSpec change ``declare-the-state``).
+    # Lazy like the rest, and for the reason that makes "a stateless
+    # model pays nothing" structural: a project that names no `State`
+    # imports neither the declaration nor the clocked executor.
+    'State': 'solid_node.simulation.state',
+    'declared_states': 'solid_node.simulation.state',
+    'qualified_states': 'solid_node.simulation.enumeration',
     'qualified_drivers': 'solid_node.simulation.enumeration',
     'qualified_instructions': 'solid_node.simulation.enumeration',
     'Instruction': 'solid_node.simulation.instruction',

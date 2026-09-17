@@ -24,7 +24,15 @@ entry) and knows nothing about drivers beyond the declaration marker.
 """
 
 from solid_node.node.base import AbstractBaseNode
-from solid_node.node.qualified import declared_drivers_of, drive_tree
+from solid_node.node.qualified import (declared_drivers_of,
+                                       declared_states_of, drive_tree)
+
+
+#: Every state declared on ONE class, by class-local name -- the
+#: single-class face, beside `driver.declared_drivers`. Re-exported here
+#: so the two enumeration questions, "what does this class declare" and
+#: "what does this tree declare", are answered from one module.
+declared_states = declared_states_of
 
 
 def qualified_drivers(root):
@@ -42,9 +50,30 @@ def qualified_drivers(root):
         root, lambda node, path, name, declaration: declaration.default)
 
 
+def qualified_states(root):
+    """Every state declared in `root`'s tree, by qualified id.
+
+    `qualified_drivers`'s twin, by the same rule and from the same walk
+    machinery: the id in the clocked bank, the id a refusal names and
+    the id a request is addressed by are the same string because they
+    come from one function (OpenSpec change ``declare-the-state``).
+
+    A tree that declares no state is walked exactly as `qualified_drivers`
+    walks it and returns `{}`; a caller that wants BOTH tables without
+    paying for two descents takes `qualified_declarations`, which
+    returns the states beside the instructions and the controls.
+    """
+    found = {}
+    drive_tree(
+        root, lambda node, path, name, declaration: declaration.default,
+        collected=found)
+    refuse_states_under_a_clock(root, found)
+    return found
+
+
 def qualified_declarations(root):
-    """Every INSTRUCTION and every CONTROL declared in `root`'s tree,
-    from ONE walk: `(instructions, controls)`.
+    """Every INSTRUCTION, every CONTROL and every STATE declared in
+    `root`'s tree, from ONE walk: `(instructions, controls, states)`.
 
     Both are `{qualified_name: (node, path, declaration)}`, keyed by the
     declaring node's instance path joined with the declared name -- a
@@ -57,11 +86,18 @@ def qualified_declarations(root):
     One walk rather than two because `drive_tree`'s `visit` exists for
     exactly this -- "a caller that also needs something else declared
     per node pays for one walk rather than two" -- and `Sim.__init__`
-    needs both tables. `qualified_instructions` and `qualified_controls`
-    are thin faces over it.
+    needs all three. `qualified_instructions`, `qualified_controls` and
+    `qualified_states` are thin faces over it.
+
+    The STATE table is `{qualified_id: declaration}`, the shape
+    `qualified_drivers` returns, and it comes from the SAME pass rather
+    than an additional one -- which is what makes a clocked discipline
+    cost a stateless model nothing (OpenSpec change
+    ``declare-the-state``, design section 16).
     """
     instructions = {}
     controls = {}
+    states = {}
 
     def visit(node, path, _children):
         for name, instruction in getattr(node, 'instructions', {}).items():
@@ -71,8 +107,9 @@ def qualified_declarations(root):
 
     drive_tree(
         root, lambda node, path, name, declaration: declaration.default,
-        visit)
-    return instructions, controls
+        visit, collected=states)
+    refuse_states_under_a_clock(root, states)
+    return instructions, controls, states
 
 
 def qualified_instructions(root):
@@ -112,7 +149,55 @@ def bind_declared_defaults(root):
     if not tree_declares_drivers(root):
         return {}
     _decide_block_membership(root)
-    return qualified_drivers(root)
+    states = {}
+    found = drive_tree(
+        root, lambda node, path, name, declaration: declaration.default,
+        collected=states)
+    refuse_states_under_a_clock(root, states)
+    return found
+
+
+def refuse_states_under_a_clock(root, states):
+    """A `State` under a root declaring a TIME BASE is refused by name.
+
+    Memory and a LOOPING base do not mix: a loop replays the timeline
+    from zero, so it replays every commit and the state climbs across
+    loops. Memory and a RUNNING base do mix, and their meaning is
+    DEFINED -- a committed value under a run is an ADR-121 self-read law
+    whose value changes only through a switch -- but it is deliberately
+    not implemented in this cycle, so the combination is refused rather
+    than silently given the wrong mechanics (OpenSpec change
+    ``declare-the-state``, design section 12).
+
+    Raised where the declared defaults are bound, which is the first
+    moment both facts -- the root's base and the tree's states -- are
+    known together.
+    """
+    if not states:
+        return
+    from solid_node.motion.ports import declared_time
+
+    base = declared_time(type(root))
+    if base is None:
+        return
+    named = ', '.join(sorted(states))
+    if base.mode == 'loop':
+        raise TypeError(
+            f"{type(root).__name__} declares time = Time(loop="
+            f"{base.loop!r}) and its tree declares the state(s) {named}. "
+            f"A looping base replays the timeline from zero, so it would "
+            f"replay every commit and the state would climb across "
+            f"loops: a clocked model declares NO time base, and a state "
+            f"moves on requests. Drop the loop, or drop the state.")
+    raise TypeError(
+        f"{type(root).__name__} declares time = Time.running() and its "
+        f"tree declares the state(s) {named}. The combination is DEFINED "
+        f"-- under a run a value committed at an event is a self-read "
+        f"law whose value changes only through a switch, so the state "
+        f"becomes one retained coordinate among all the others -- and it "
+        f"is NOT implemented in this cycle. Declare no time base to get "
+        f"the clocked mechanics, or drop the state and write the law the "
+        f"run integrates.")
 
 
 def _decide_block_membership(root):
@@ -137,6 +222,41 @@ def _decide_block_membership(root):
     _block_members(root)
 
 
+def tree_declares_states(node, seen=None):
+    """Whether anything in `node`'s constructed tree declares a `State`.
+
+    `tree_declares_drivers`'s twin, structural and never rendering, and
+    asked for one reason: a clocked simulation takes NO `dt`, and every
+    other one must still be refused for omitting one, so the question
+    has to be answered before anything is bound.
+
+    A tree that declares no state is walked and nothing else happens:
+    the clocked module is not imported, no clocked code path is entered,
+    and the simulation constructed over it is the one that was
+    constructed before this existed (OpenSpec change
+    ``declare-the-state``).
+    """
+    if seen is None:
+        seen = set()
+    if id(node) in seen:
+        return False
+    seen.add(id(node))
+    if declared_states_of(type(node)):
+        return True
+    for value in vars(node).values():
+        if isinstance(value, AbstractBaseNode):
+            candidates = (value,)
+        elif isinstance(value, (list, tuple)):
+            candidates = [item for item in value
+                          if isinstance(item, AbstractBaseNode)]
+        else:
+            continue
+        for child in candidates:
+            if tree_declares_states(child, seen):
+                return True
+    return False
+
+
 def tree_declares_drivers(node, seen=None):
     """Whether anything in `node`'s constructed tree declares a driver.
 
@@ -155,7 +275,10 @@ def tree_declares_drivers(node, seen=None):
     if id(node) in seen:
         return False
     seen.add(id(node))
-    if declared_drivers_of(type(node)):
+    if declared_drivers_of(type(node)) or declared_states_of(type(node)):
+        # A STATE is a banked value the tree cannot render without, so a
+        # tree that declares one is walked exactly as a driven one is
+        # even where it declares no driver at all.
         return True
     for value in vars(node).values():
         if isinstance(value, AbstractBaseNode):
