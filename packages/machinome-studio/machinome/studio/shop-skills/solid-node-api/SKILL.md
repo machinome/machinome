@@ -17,6 +17,9 @@ relations, `solid_node.motion`), open-run simulation through
 (`Slide` and explicit joint selection, ADR 117). The selected-joint
 conformance below includes the completed `harden-direct-part-motion`
 correction (`d1108a4`), currently on its own unmerged framework branch.
+The clocked machine — `State`, `commits`, the request-driven `Sim`,
+`Time.elapsed()` and document version 8 (ADRs 125–128) — is likewise on
+its own unmerged framework branch (`clocked-machine`).
 These additions are local development capabilities, not a claim about
 the published 0.6.0 package or what an installed checkout contains.
 
@@ -43,9 +46,12 @@ from solid_node.motion.joints import (         # where a body may move
 from solid_node.motion.couplings import (      # a law between two coordinates
     Affine, UnreachedCoordinate, DoublyBound, NotInvertible, PrematureRead)
 from solid_node.simulation import (            # how it runs
-    Driver, Instruction, Button, Turn, Slide, Sim, ScenarioTest, RampProgram,
+    Driver, State, Instruction, Button, Turn, Slide, Sim, ScenarioTest,
+    RampProgram,
     qualified_drivers, qualified_instructions,
+    declared_states, qualified_states,
     RunConflict, UnsupportedLaw, TooManyCrossings, Crossing, Stop)
+from solid_node.simulation.clocked import ClockedError  # clocked refusals
 from solid_node.test import (
     TestCase, TestCaseMixin, testing_instant, testing_steps)
 from solid_node.math import (
@@ -459,18 +465,57 @@ driver-declaring node held in a list) fails loudly.
   fusions. Nothing accumulates across cycles; rest placement is untouched.
 - Without a declaration, `self.time` is symbolic `$t` (0 through 1 on
   the timeline), or the bound number. A root assembly may instead declare
-  `time = Time(loop=seconds)` or `time = Time.running()`, imported from
-  `solid_node.motion.ports`. `Time()` without a base is refused. A loop
+  one of THREE bases, imported from `solid_node.motion.ports`:
+  `time = Time(loop=seconds)`, `time = Time.running()` or
+  `time = Time.elapsed()`. `Time()` without a base is refused. A loop
   is positive finite seconds: unbound reads become `$t * seconds`, while
   a bound value is already in seconds. Running time is elapsed seconds
   that never wrap; outside a document producer its unbound preview is
   still bare `$t`, but its version-5 document publishes the clock name
-  `time`. `Sim` binds `tick * dt` seconds under every base.
+  `time`. `Time.elapsed()` is those same unwrapping seconds WITHOUT the
+  running mechanics: it says what `time` MEANS and nothing about what a
+  simulation owns (see "Clocked simulations"). `Sim` binds `tick * dt`
+  seconds under every stepped base.
 - Declare `Time` only as `time` on the root assembly, never a leaf or a
   linked descendant; descendants read their root's base. `Root.time.mode`
-  is `'loop'` or `'running'`, and `.loop` is the span or `None`.
+  is `'loop'`, `'running'` or `'elapsed'`, and `.loop` is the span or
+  `None` (both unwrapping bases read `None`, and two declarations are
+  equal only when they declare the same base).
   `declared_time(cls)` returns the inherited declaration or `None`.
   Leaves and fusions have no readable `time`.
+
+**States** are the machine's own retained values — a driver the MACHINE
+writes. `State(default, range=None, unit=None, dtype=None, scale=None)`
+takes exactly `Driver`'s arguments with exactly their meanings, is
+declared on ANY assembly exactly where a `Driver` may be (a register
+wheel declares its own `digit`, addressed by path as `w0.digit`), is read
+`self.units` in `simulate()` and enters a law exactly as a driver's value
+does, and carries a driver's instance-qualified id. A declaration
+shadowing a node member fails at class definition, as a driver's does.
+`declared_states(cls)` enumerates one class's; `qualified_states(node)`
+walks the linked tree.
+
+**A tree in which anything declares a `State` is a CLOCKED model**, which
+is a state discipline and not a time base (see "Clocked simulations").
+Everything that distinguishes a state from a driver is about WHO WRITES
+IT, and each refusal names the state by its qualified id:
+
+- `set_state` refuses one, naming the relation that commits it; a state
+  is settable only as session setup, through `Sim(model, state={...})`
+  and `sim.restore(saved)`.
+- `.drives` refuses one as its DRIVEN end. A state is a perfectly good
+  SOURCE — `units.drives(units_dial.turn, ratio=36.0)` is how the pose is
+  fed from it.
+- An `Instruction` refuses one among its targets at simulation
+  construction, and a `Button`/`Turn`/`Slide` refuses one as its input —
+  though a control under a clocked root is already refused outright,
+  because the root does not declare `Time.running()`.
+- A state under `Time(loop=)` is refused (a loop replays from zero, so it
+  would replay every commit) and a state under `Time.running()` is refused
+  naming both and saying the combination is DEFINED and not yet
+  implemented. Under `Time.elapsed()` it is admitted.
+- A state no committing relation writes is refused at simulation
+  construction.
 
 **Ports** are connection points between parts, declared as class
 attributes on any node: `RotationalPort(unit=None, out=False,
@@ -629,8 +674,11 @@ the start of each tick, then held fixed for that tick; a `Bound` with
 reads is a CONSTRAINT evaluated along the tick's path (see "Running
 simulations"). An invalid/reversed evaluated pair is refused by name.
 Under a run, travel that would exceed a joint range stops the pushing
-inputs at the bound; it does not fail as an out-of-range pose. The driver's
-own range remains presentation metadata (see "Running simulations").
+inputs at the bound; it does not fail as an out-of-range pose. Under a
+CLOCKED root a range is a stop that clips the request's path before any
+event is located (see "Clocked simulations"). The driver's
+own range remains presentation metadata under every root (see "Running
+simulations").
 
 **A joint may be declared where a child is placed (ADR-098):** a shared
 catalogue class that carries no joint of its own — a bought bearing, a
@@ -830,6 +878,88 @@ always carries a `law=`. Guidance: write a DERIVED coordinate when the
 combination is linear and keep both directions; write a multi-source
 `law=` only when it is not, and accept losing the reverse.
 
+**A committing relation writes states at an event (ADR-125).** `commits`
+sits beside `drives`, on the same ends and the same `&` groups, with the
+same flat chaining and the same missing-parentheses refusal:
+
+```python
+from solid_node.math import floor
+
+def strokes(sources, targets):
+    return lambda crank, units, tens: floor(crank / 360)
+
+def advance(sources, targets):
+    return lambda crank, units, tens: ((units + 1) % 10,
+                                       (tens + (units == 9)) % 10)
+
+class Counter(AssemblyNode):
+    crank = Driver(default=0, unit='deg')
+    units = State(default=0, range=(0, 9), dtype=int)
+    tens  = State(default=0, range=(0, 9), dtype=int)
+    units_dial = Dial()                    # declares turn = Revolute(...)
+    tens_dial  = Dial()
+
+    (crank & units & tens).commits((units, tens), at=strokes, law=advance)
+
+    units.drives(units_dial.turn, ratio=36.0)
+    tens.drives(tens_dial.turn, ratio=36.0)
+```
+
+Every TARGET is a `State`, written as a tuple or with `&`; anything else
+is refused at class definition naming what it is instead, and a target
+named twice in ONE relation is refused on its PATH AS WRITTEN — never on
+the local name, which is what lets one line write `w0.digit`, `w1.digit`
+and `w2.digit` of three children of one class. Every SOURCE is a `Driver`
+or a `State` (and, under `Time.elapsed()`, the clock); a port, a joint
+coordinate or a derived coordinate as a source is refused at class
+definition saying to name the drivers and states the port follows. A
+source group MAY name a target of the same relation, which is a READ of
+that target's pre-event value.
+
+`at` and `law` are both REQUIRED and both follow the existing law-factory
+protocol: each is `(sources, targets) -> callable`, called exactly ONCE at
+realization with the realized owners (one owner for a side naming one
+coordinate, the tuple in written order for a side naming several),
+returning a callable over the sources' VALUES, one positional per source
+in written order. Neither is handed an event object or any mutable
+per-tick state. `ratio=`/`offset=` are refused, and a `.repeat()`
+broadcast on either side is refused by name.
+
+- **`at` is exactly ONE jump node** — `floor(x)`, `ceil(x)`, `sign(x)`, or
+  a comparison. A sum of jump nodes, bare arithmetic, and `a % b` are each
+  refused at simulation construction saying one event is one surface
+  family and two are two committing relations. Its level must be AFFINE or
+  KINKED in each moving input; a level the input CURVES is refused at
+  construction naming the relation, the input and the primitive.
+- **Only RISING steps fire.** A mechanism that commits on the other edge
+  negates its own level, `floor(-crank / 360)`.
+- **`at` may read the state it commits.** The Curta's clearing threshold
+  is a function of the digit the dial stands at, so the surface MOVES with
+  the value it writes — which is why the solver re-locates after each
+  commit.
+- **`law` is an expression over its sources**, inspected as a running law
+  is (raw text and calls outside `solid_node.math` refused naming the
+  relation). Because a commit is evaluated at ONE POINT and never
+  integrated, every jump primitive MEANS what it says and nothing is
+  subtracted: `floor(crank / 360) % 10` is a digit, where a running law of
+  that shape is refused as arithmetic. NOTE that `%` in a commit law is
+  PYTHON's floored remainder, because the clocked executor calls the
+  Python callable — and the published document desugars it to say so.
+  `law` returns one value for one target, or a sequence of exactly as many
+  values as there are targets in written order; any other shape is refused
+  naming the relation, the law, the targets and what came back.
+- **Native in, native out.** A law reads and returns NATIVE values; a
+  return is never passed through the design-unit conversion a move target
+  takes. A `dtype=int` target takes the nearest whole NATIVE unit, rounded
+  ONCE at the commit, HALF TO EVEN; a target with a `scale` and no `dtype`
+  takes what the law returned, unrescaled.
+- **SEVERAL relations may write one state** — a register digit written at
+  the stroke end and again at the clearing reach is two events, two
+  inputs, and one `at` each. What is refused is two answers at ONE
+  landing, and that is a judgement of the REQUEST (below).
+- A relation NO REQUEST can reach — every source a state, so nothing a
+  request moves enters its level — is refused at simulation construction.
+
 **Passing a coordinate down** hands a child a port or joint the parent
 already owns, by naming it as a keyword the child class declares:
 `wheel = Arbor(turn=turn)`. This is a WIRING, not a parameter: absent from
@@ -863,6 +993,11 @@ publish as viewer buttons. Under a running root, both forms publish in
 version 5 and `sim.trigger(name)` returns a tuple of move handles. All
 target inputs are checked for ownership before issuing commands; an
 already-owned input refuses the instruction rather than replacing its move.
+Under a CLOCKED root an instruction over a DRIVER is admitted and
+published in the version 8 document in the same shape, but carries NO
+execution meaning — `sim.trigger` is refused by name — and an instruction
+naming a STATE is refused at simulation construction, so no document ever
+carries one.
 
 **Controls** put a request on the PART instead of a panel button, in a
 `controls` dict beside `instructions`, on a root declaring
@@ -946,7 +1081,8 @@ a selection reaching sideways, a `Turn` over a non-rotational coordinate,
 a `Slide` over a non-translational one, or a drag whose input does not
 reach the coordinate (naming the inputs that do). A control under a root
 that does not declare `Time.running()` is refused when the simulation is
-constructed and again at publication. At publication: a drag whose input
+constructed and again at publication — a CLOCKED root included, so a
+version 8 document never carries a `controls` key. At publication: a drag whose input
 moves the part by nothing at rest, one whose two readings disagree, or a
 selected placement that cannot be identified as a complete, contiguous,
 ordered block. Missing, truncated, duplicated or reordered placement
@@ -1646,6 +1782,369 @@ snapshot replay, and interleaved independent controls. Assert geometry on
 the same stepped node, with `meshes=True` and a declared cadence; changing
 `--time` or rebinding a final input position does not replay that history.
 
+### Clocked simulations
+
+A machine with a FEW retained values, closed-form positions between them,
+and a commit of those values at each event is a **clocked** model: a
+calculator whose registers change only at the end of a crank stroke, and
+whose interlocks hold everything else still while the crank is off rest.
+It is the cheap square of a two-axis table — TIME BASE against STATE
+DISCIPLINE — and the two axes are independent:
+
+| time base | none | memory (a `State`) | integrated |
+| --- | --- | --- | --- |
+| undeclared | today's pose | clocked, no clock | — |
+| looping, `Time(loop=)` | the looping timeline | **refused by name** | — |
+| elapsed, `Time.elapsed()` | equivalent to undeclared | clocked, with a clock | `Time.running()` |
+
+A loop refuses a state because a loop replays from zero and would replay
+every commit. The integrated discipline is selected only by
+`Time.running()` itself — "Running simulations" above — and a `State`
+under it is refused naming both, with its meaning DEFINED (such a state
+compiles to a self-read switch and becomes one retained coordinate among
+the rest) and deliberately not implemented.
+
+**It is the `State` that makes a model clocked, not the clock.** A root
+declaring `Time.elapsed()` and no `State` is an ordinary stepped
+simulation, publishes the document an undeclared root publishes byte for
+byte, and behaves in every particular as it did before. `Time.running()`
+is untouched by any of this — not its compile, not its tick, not its
+document.
+
+**`Sim(model)` takes NO `dt`**, and a `dt` over a clocked root is refused
+by name; a `dt` omitted over any other root is still refused. Construction
+poses the tree once and holds a BANK of every driver and every state by
+qualified id — and, under `Time.elapsed()`, `time`. Joint coordinates and
+ports are NOT in that bank: they are what the ordinary enumeration
+recomputes from it on every pose. `state={...}` overrides declared drivers
+AND declared states by qualified id, in native units; `sim.clocked` is
+true and `sim.running` false.
+
+**A request, not a tick.** `sim.move(input_id, by=travel)` or
+`sim.move(input_id, to=value)` takes exactly one of `by`/`to` and names
+exactly ONE MOVING INPUT — one declared driver in design units, or the
+clock under an elapsed root. It is a straight path from where that input
+stands to the requested value, with every other bank value standing. A
+request naming a state, a joint coordinate, or more than one input is
+refused by name.
+
+```python
+sim = Sim(Counter())
+request = sim.move('crank', by=3600.0)
+
+len(request.commits)            # 10
+sim.state                       # {'crank': 3600.0, 'units': 0, 'tens': 1}
+request.admitted                # 3600.0, in DESIGN units
+request.stops                   # ()
+```
+
+`move` returns a `Request` carrying `input`, `by`, `to`, `admitted` (what
+the machine actually made, design units), `commits` and `stops`. Each
+`Commit` is ONE EVENT — `relations` (the relations as written, `relation`
+joining them), `fraction` of the path, `value` the moving input stood at,
+and `targets`, a mapping of qualified id to the new value.
+
+Events are located EXACTLY, with no locator, tolerance or knob the running
+executor did not already own — nothing is searched or bisected, and the
+shared locator's crossing tolerance is reached only where a kinked level's
+crossings are merged or a jumped level's cuts folded:
+
+- an AFFINE level's surfaces are solved by one division, a KINKED level is
+  cut at its own breakpoints and each piece solved the same way, a CURVED
+  level is refused at construction;
+- only RISING steps fire, the branch before read at the midpoint of the
+  piece the path came from and the branch after read AT THE LANDING;
+- the landing is the nearest representable value on the FAR SIDE of the
+  surface, membership decided by EVALUATING the jump node's branch there
+  and never by comparing a float to the surface, and that one value is
+  used both for the event's reads and for resuming the path — so no event
+  fires twice;
+- two crossings are ONE event exactly when their landings are the SAME
+  float, and otherwise two events in PATH ORDER, the later reading what
+  the earlier committed. No tolerance decides it, so ten requests of one
+  revolution give exactly the events one request of ten gives;
+- a crossing belongs to the request whose path CONTAINS ITS LANDING. A
+  request ending exactly on a NON-STRICT surface has reached it; a STRICT
+  comparison reached exactly lands one representable value beyond the
+  endpoint and is the NEXT request's event;
+- every relation firing at one event reads the bank as it stood BEFORE it
+  — including a state the same event writes — and the targets take their
+  results together, so declaration order is not observable. Two relations
+  writing the SAME state at ONE landing refuse the whole REQUEST, naming
+  the state, both relations and the landing;
+- more than 1000 located events of one relation in one request is refused
+  naming the request, the relation and the maximum, and saying to split
+  the request. A level driven to a non-finite value along the path is
+  refused too (`UnsupportedLaw`).
+
+**Between events nothing is retained.** A pose is the ordinary untimed
+enumeration over the drivers and the states and nothing else; a request
+touches the tree ONCE, at its end, so a request costs about what one pose
+costs and a commit costs microseconds. Under a clocked root declaring no
+time base, `time` is absent from the bank and a clocked pose leaves
+`self.time` the symbolic `$t` exactly as the build path does.
+
+**A request is ATOMIC.** A refused request — a raising law, a conflict,
+too many events, a bound violated at its end, or a FINAL POSE the tree
+refuses — leaves the bank, the tree and the record exactly as they stood.
+`restore()` behaves the same way.
+
+**Session surface.** `sim.state` is a fresh mapping of the whole bank;
+`sim.snapshot()`, `sim.restore(saved)`, `sim.initial` and `sim.reset()`
+act on it, `restore` refusing a snapshot taken over a different machine
+before touching anything. `record=N` keeps two bounded rings,
+`sim.commits` and `sim.stops`; without it the request's own result is
+still complete. `run`, `at`, `every`, `tick`, `rate`, `trigger`,
+`commands`, `program` and `crossings` are each refused by name, and so is
+`time` unless the root declares `Time.elapsed()`.
+
+**A bound STOPS a request (ADR-126).** Under a clocked root a joint's
+declared `range` is a physical stop on the request path: the travel is
+clipped to the largest fraction at which every bound is still satisfied,
+the driver lands there, and events are then located on the CLIPPED path
+only.
+
+```python
+class Counter(AssemblyNode):
+    ...                             # as above, plus a bounded lift
+    lift = Driver(default=0.0, unit='mm')
+    plate = Plate(lift=Prismatic(axis=(0, 0, 1), unit='mm', range=(0, 9)))
+    lift.drives(plate.lift)
+
+request = sim.move('lift', by=20.0)
+request.admitted                    # 9.0
+request.stops[0].coordinate         # 'plate.lift'
+request.stops[0].side               # 'high'
+request.stops[0].bound              # 9.0
+```
+
+Each `Stop` names the bounded `coordinate` by qualified id, the `side`
+(`'low'`/`'high'`), the `bound` as it evaluated at the landing, the
+coordinate's `value` there, the `input`'s value and the `fraction` of the
+REQUESTED travel. Several constraints met at ONE landing are several
+entries. `stops` is empty exactly when the whole travel was made.
+
+- **What the bank must REACH.** At construction the simulation composes,
+  for every bounded coordinate and every coordinate a `Bound` reads, ONE
+  expression chain over the bank's ids, by SUBSTITUTION through the
+  relations the rest render resolved — a wiring contributes its
+  ratio/offset, a derived coordinate its formula, a `law=` relation the
+  graph its law inspects into, and an INTERMEDIATE PORT is traversed like
+  any other link. A `Bound`'s `reads` may name a declared driver, a
+  declared STATE or a joint coordinate; a plain port or a derived
+  coordinate is refused as it is under a run.
+- **A ranged coordinate NOTHING binds is admitted as a CONSTANT** — a
+  decorative range on a part that rests. It stops no request and is not a
+  refusal even when that rest value lies outside the pair.
+- **A ranged coordinate the author's `simulate()` binds BY HAND is
+  REFUSED at construction**, naming the assembly whose `simulate()` bound
+  it. The ordinary rest-default guard (`if self.slide.travel.value is
+  None: self.slide.travel = 4.0`) falls on that side, because the
+  framework cannot tell a guard's constant from a computed pose. The
+  one-line fix is to state the relation that moves the coordinate — or to
+  drop the range. Also refused at construction, each naming the joint, the
+  node and the side: a chain through a law that is not an expression, a
+  `Bound` whose reads no chain reaches, a level the moving driver CURVES,
+  and any FREE NAME surviving a composed chain that is not a bank id. (A
+  chain reading the coordinate it drives, and a cyclic one, are refused
+  earlier still, by the relation layer.)
+- **The level and its threshold.** For each bounded side the level is
+  value minus the evaluated high bound, or the evaluated low bound minus
+  the value, so OUTSIDE is positive. The bound's OWN coordinate takes the
+  value it held when the REQUEST STARTED — one number for the whole
+  request — while each `reads=` coordinate takes its value ALONG the path.
+  The admitted fraction is the largest at which no level exceeds its own
+  threshold `h = max(0, g(0))`, read per request: standing legally that is
+  the ordinary bound, and standing OUTSIDE the machine may move inward and
+  back but not further out. Nothing is ever clamped or snapped — a clocked
+  simulation banks no joint coordinate, so the coordinate follows from the
+  pose of the clipped bank. (The threshold is read afresh per request, so
+  once a request has carried a coordinate back inside, the next request is
+  clipped at the bound and cannot return to where it stood outside.)
+- **A request stopped at ZERO travel is ADMITTED**, not refused: it moves
+  nothing, fires nothing, leaves the bank as it stands and reports its
+  stop. An interlock that holds is the machine working.
+- **The clip is computed ONCE**, over the bank the request began from, and
+  is NOT recomputed between events. One long request and two short ones
+  split at an event can therefore admit different travels when a bound
+  reads a state that event writes. Where a COMMIT carries a bounded
+  coordinate out of range, the clocked simulation's own end-of-request
+  judgement raises `JointRangeError` and refuses the whole request, which
+  commits nothing and never poses.
+- **One authority.** During a request the clocked simulation is the sole
+  judge of the constraints it compiled; the pose that ends the request
+  does not judge them again. A pose that is NOT a request — construction,
+  `state=`, `restore` — is judged by the ordinary enumeration exactly as
+  before: a machine cannot be PUT where it cannot BE.
+
+**The ratchet and the freeze** are the two shapes an interlock takes. A
+one-argument bound reads its own coordinate at the value it HELD when the
+request started, so a ratchet's floor is the last seated tooth and gives
+ONE tooth of backlash whether it is one long request or ten short ones:
+
+```python
+crank_dial = Dial(turn=Revolute(
+    axis=(0, 0, 1), unit='deg',
+    range=(lambda turn: 6.0 * floor(turn / 6.0), None)))
+```
+
+A part that may not MOVE while another one is off rest is a FREEZE, and
+is stated by letting BOTH bounds read the coordinate's own committed
+value:
+
+```python
+def rest(turn):
+    return turn - 360 * floor(turn / 360) < 1
+
+knob = Selector(travel=Prismatic(         # Selector is a project leaf
+    axis=(1, 0, 0), unit='mm',
+    range=(Bound(lambda travel, turn: travel * (1 - rest(turn)),
+                 reads=(crank_dial.turn,)),
+           Bound(lambda travel, turn: travel + (54 - travel) * rest(turn),
+                 reads=(crank_dial.turn,)))))
+```
+
+At rest the pair is `(0, 54)` and the knob is free; off rest both bounds
+evaluate to what the knob held when the request started, so it may not
+move in either direction while the crank runs its whole stroke. Writing
+`range=(0, Bound(lambda travel, turn: 54 * rest(turn), ...))` instead says
+something else and something wrong: it forbids the knob to STAND anywhere
+but zero off rest, so it stops the CRANK the moment it leaves rest with
+the knob set.
+
+**A clocked machine with a CLOCK.** Declare `time = Time.elapsed()` on the
+root and the clock joins the bank, in seconds, starting at `0.0`:
+
+```python
+T, A = 2.0, 12.0
+
+def release(sources, targets):
+    return lambda time, engaged, count: floor((time + T / 4) / (T / 2))
+
+def advance(sources, targets):
+    return lambda time, engaged, count: count + engaged
+
+class Regulator(AssemblyNode):
+    time = Time.elapsed()
+    engaged = Driver(default=1, dtype=int)
+    count = State(default=0, dtype=int)
+    bob = Bob()                        # declares swing = Revolute(...)
+
+    (time & engaged & count).commits(count, at=release, law=advance)
+
+    def simulate(self):
+        self.bob.swing = A * sin(360.0 * self.time / T)
+
+sim = Sim(Regulator())
+sim.time                               # 0.0
+request = sim.move('time', by=20 * T)  # the level rises TWICE per period
+len(request.commits)                   # 40
+sim.state['count']                     # 40
+```
+
+`sim.time`, `sim.state['time']`, `Sim(model, state={'time': 4.0})`,
+`snapshot`/`restore` and `reset` all treat the clock as one more banked
+value, and `sim.time` is the ONE name of the refused cadence surface an
+elapsed base gives back. A request moves the clock with the same verb and
+the same one-moving-input rule — seconds are both the design and the
+native unit, so nothing is converted. **Elapsed seconds never reverse:** a
+negative `by=`, or a `to=` behind the banked instant, is refused by name
+naming both instants; zero is admitted, fires nothing and poses what
+stands.
+
+Everything about an event on the clock is what it is on a driver, and a
+relation the CLOCK ALONE can move is admitted (it is a request that can
+reach it that matters). `time` may be NAMED as a source only in the class
+body that DECLARES the base — that is the body in which the name holds the
+declaration. Named in a body declaring `Time(loop=)` or `Time.running()`
+it is refused at class definition naming `Time.elapsed()`; in a body
+declaring no base, Python resolves `time` as a module global, so a file
+that imported the stdlib `time` is refused by name and a file that bound
+nothing raises Python's own `NameError` before any framework code runs.
+
+**Nothing stops a clock.** A time request is never CLIPPED — a declared
+range is a mechanical stop and no interlock holds the next second — so a
+coordinate a commit carries out of range is an impossible POSE and the
+request is refused WHOLE by the end-of-request judgement. Correspondingly
+a compiled chain may NOT follow the clock: the one way to write one is a
+`law=` factory that reads `owner.time` at realization and closes over the
+symbolic value, and such a model is refused at simulation construction
+naming the joint, the side and the name that survived.
+
+**What a clocked model publishes (ADR-128).** A tree that declares a
+`State` publishes **document version 8**, carrying a top-level `clocked`
+object beside `drivers`, `states`, `instructions` and `bindings`. It holds
+what COMPILE TIME decided and nothing a request computes: every committing
+relation with its sources in written order, its `at` as one jump node and
+its level, one law expression per target and the shape of each moving
+input; every compiled constraint as its chain, bound, jump plan and
+shapes; the free names `clock` (`"time"` under `Time.elapsed()`, `null`
+otherwise) and `own` (`"_own"`, the bound's start-of-request value); an
+`identity` digest, so a bank saved against one machine is refused against
+another; and `limits` (`crossing_tolerance`, `max_crossings`).
+
+`states` is a table of its own and never merges with `drivers`: every key
+of `drivers` is a handle a person may move, and no key of `states` ever
+is. The version is a property of the ROOT'S DECLARATION and DOMINATES — a
+clocked root publishes 8 whatever else its tree holds, a root declaring no
+`State` publishes byte for byte what it published before — and the bump is
+NOT additive, because a clocked pose reads its states as free names a
+lower consumer resolves to nothing.
+
+**The browser viewer does NOT execute version 8 yet;** its own cycle is in
+flight in its own repository. So `solid build`, `solid develop` and
+`solid export` publish the document and WARN that the installed viewer
+cannot read it, and `solid snapshot --renderer web` is REFUSED before the
+browser starts, writing no image, leaving no staging directory and never
+falling back to OpenSCAD. `render()`, `assemble()`, `build_stls()`,
+`solid test` and `solid snapshot --renderer openscad` are untouched, so a
+clocked model is built, tested and photographed as any other — the
+OpenSCAD path rendering the tree as posed, which is the INITIAL BANK, with
+`--drive` posing declared DRIVERS and a state named there refused by name.
+
+**Testing a clocked machine.** There is no `ScenarioTest` for it: a
+clocked machine has no cadence, so the idiom is a plain
+`solid_node.test.TestCase` (or `unittest`) driving a fresh `Sim(model)`
+per test and asserting the bank, the commits and the stops. Compute every
+expectation BY HAND — a test that asks the law what the answer is passes
+whatever the implementation did.
+
+```python
+from solid_node.simulation import Sim
+from solid_node.test import TestCase
+
+from counter import Counter
+
+
+class CounterTest(TestCase):
+
+    node = Counter
+
+    def test_two_strokes_carry(self):
+        sim = Sim(Counter(), state={'units': 8, 'tens': 3})
+        request = sim.move('crank', by=360.0 * 2)
+        self.assertEqual([c.value for c in request.commits], [360.0, 720.0])
+        self.assertEqual((sim.state['units'], sim.state['tens']), (0, 4))
+
+    def test_the_lift_stops_at_its_stroke(self):
+        sim = Sim(Counter())
+        request = sim.move('lift', by=20.0)
+        self.assertEqual(request.admitted, 9.0)
+        self.assertEqual(request.stops[0].coordinate, 'plate.lift')
+        self.assertEqual(request.stops[0].side, 'high')
+```
+
+Assert an interlock from BOTH sides — the travel it admits and the zero
+travel it admits when it holds — assert a refusal by the name in its
+message (`ClockedError` for a construction refusal, `JointRangeError` for
+the end-of-request judgement, `TypeError`/`ValueError` for the surface),
+and assert that a refused request left the bank unchanged. Geometry is
+asserted on the same posed node with the ordinary assertions; one long
+request and several short ones over the same travel are an equivalence
+worth pinning. The framework's own clocked conformance corpus is
+framework-internal and is not a project surface.
+
+
 ## CLI
 
 ```text
@@ -1775,6 +2274,10 @@ Inside a publication:
   cannot construct a run cannot build/export a program either. Shared
   expressions may additionally name bank coordinates, the clock and
   compiler-minted branch placeholders. Do not hand-author those tables.
+- In version 8, a CLOCKED root publishes `states` beside `drivers` and a
+  top-level `clocked` object instead of `program` (the two never appear
+  together), whose pose expressions read the declared states as free
+  names. See "Clocked simulations".
 - the rendered STLs at the `model` paths.
 - `errors.json` — `{error, tstamp}`, written atomically on a failed build
   and removed after the next successful one. A failed build after a
@@ -1789,9 +2292,11 @@ the package it prints nothing
 on stdout, names `pip install "solid-node[viewer]"` on stderr and exits 1.
 A consumer must reject a missing or too-old bundle before opening.
 An older report without `documentVersions` means support for `[1, 2, 3, 4]`,
-not 5. Build/develop/export still publish version 5 and warn if the
-installed viewer cannot render it; a web snapshot refuses before opening
-the browser. Viewer API 12 supports version 5, the running controls,
+not 5. Build/develop/export still publish whatever version the model needs
+and warn if the installed viewer cannot render it; a web snapshot refuses
+before opening the browser. No viewer reports version 8 yet, so every
+clocked model takes that path today.
+Viewer API 12 supports version 5, the running controls,
 the original `controls` table and bounds that read other coordinates, in
 the development checkout; sliding and explicit joint selection require
 API 13 or later. Neither capability number implies a published release.
