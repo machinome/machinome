@@ -501,9 +501,15 @@ one. The method in full is the Curta project's own spike record, in the
   setup and nothing else. If a demo wants to "set the register", it is
   setting up a session, not operating the machine.
 - **A clocked model plays in the browser.** The development viewer
-  (widget API 18) executes a version 8 document: a slider move is one
+  (widget API 19) executes a version 8 document: a slider move is one
   request, states are readouts, a declared stop holds the control where
-  the machine stops, and an elapsed machine has a play/step transport.
+  the machine stops, and an instruction button makes ONE request and
+  draws it over its `duration` (ADR-129, viewer ADR-064). Declare the
+  strokes a maker watches as instructions — the Curta's
+  `'Turn crank': Instruction(by={'crank_rotation': 360}, duration=2)` —
+  and do NOT declare `Time.elapsed()` unless something in the model is a
+  formula of elapsed seconds: an unused clock only buys a play button
+  that advances nothing.
   Evidence for a clocked increment is still `solid test` with
   hand-computed expectations first; the browser and the OpenSCAD snapshot
   of the initial bank are the pixels.

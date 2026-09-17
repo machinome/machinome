@@ -18,9 +18,9 @@ relations, `solid_node.motion`), open-run simulation through
 conformance below includes the completed `harden-direct-part-motion`
 correction (`d1108a4`), currently on its own unmerged framework branch.
 The clocked machine — `State`, `commits`, the request-driven `Sim`,
-`Time.elapsed()` and document version 8 (ADRs 125–128) — is on the
-framework's main branch, and the development viewer executes it
-(viewer ADRs 062–063, widget API 18).
+`Time.elapsed()`, document version 8 and the playable instruction (ADRs
+125–129) — is on the framework's main branch, and the development viewer
+executes it (viewer ADRs 062–064, widget API 19).
 These additions are local development capabilities, not a claim about
 the published 0.6.0 package or what an installed checkout contains.
 
@@ -994,11 +994,15 @@ publish as viewer buttons. Under a running root, both forms publish in
 version 5 and `sim.trigger(name)` returns a tuple of move handles. All
 target inputs are checked for ownership before issuing commands; an
 already-owned input refuses the instruction rather than replacing its move.
-Under a CLOCKED root an instruction over a DRIVER is admitted and
-published in the version 8 document in the same shape, but carries NO
-execution meaning — `sim.trigger` is refused by name — and an instruction
-naming a STATE is refused at simulation construction, so no document ever
-carries one.
+Under a CLOCKED root an instruction is ONE REQUEST (ADR-129): `by=`
+is `sim.move(id, by=travel)`, `targets=` is `sim.move(id, to=value)`,
+and `sim.trigger(name)` makes it and returns the `Request`. It names
+exactly ONE driver — two drivers, none, or a STATE are refused at
+simulation construction, so no document ever carries an instruction a
+consumer cannot play. `duration` is not read by the machine: it says how
+long a consumer DRAWS the transition. The request already happened when
+`trigger` returns; the viewer draws it over `duration` (see "Version 8
+in the viewer").
 
 **Controls** put a request on the PART instead of a panel button, in a
 `controls` dict beside `instructions`, on a root declaring
@@ -1895,9 +1899,18 @@ refuses — leaves the bank, the tree and the record exactly as they stood.
 act on it, `restore` refusing a snapshot taken over a different machine
 before touching anything. `record=N` keeps two bounded rings,
 `sim.commits` and `sim.stops`; without it the request's own result is
-still complete. `run`, `at`, `every`, `tick`, `rate`, `trigger`,
+still complete. `sim.trigger(name)` makes the one request a declared
+instruction states and returns it. `run`, `at`, `every`, `tick`, `rate`,
 `commands`, `program` and `crossings` are each refused by name, and so is
 `time` unless the root declares `Time.elapsed()`.
+
+A `Request` carries `input`, `by`, `to`, `origin` and `end` (the input's
+value before and after, verbatim from the bank, in the input's NATIVE
+units — `origin` keeps the bank's type, an `int` where an integer driver
+stood at an integer), `admitted` (design units), `commits` (in path
+order, each with `fraction` of the path, `value` where it fired and
+`targets` written) and `stops`. Those are what a consumer needs to draw
+the transition without running the machine again.
 
 **A bound STOPS a request (ADR-126).** Under a clocked root a joint's
 declared `range` is a physical stop on the request path: the travel is
@@ -2092,10 +2105,18 @@ clocked root publishes 8 whatever else its tree holds, a root declaring no
 NOT additive, because a clocked pose reads its states as free names a
 lower consumer resolves to nothing.
 
-**The development viewer executes version 8** (widget API 18, documents
+**The development viewer executes version 8** (widget API 19, documents
 1..8): a request per gesture on one input, states as readouts, stops
 reported at the control, an elapsed machine's clock played one request
-per rendered frame. Against an OLDER installed viewer `solid build`,
+per rendered frame, and a declared instruction as a BUTTON that makes its
+one request at the press and DRAWS the returned transition over the
+declared `duration` — the input interpolated from `origin` to `end`, each
+commit applied at its `fraction`, one pose per frame and no machine work
+in the frame loop (viewer ADR-064). That is how a clocked machine gets
+the smooth stroke a posed model's instruction ramp gives: declare
+`'Turn crank': Instruction(by={'crank_rotation': 360}, duration=2)` and
+the crank turns over two seconds with every carry firing where the
+machine located it. A slider or nudge stays an instantaneous request. Against an OLDER installed viewer `solid build`,
 `solid develop` and `solid export` publish the document and WARN that it
 cannot read it, and `solid snapshot --renderer web` is REFUSED before the
 browser starts, writing no image, leaving no staging directory and never
@@ -2298,7 +2319,7 @@ An older report without `documentVersions` means support for `[1, 2, 3, 4]`,
 not 5. Build/develop/export still publish whatever version the model needs
 and warn if the installed viewer cannot render it; a web snapshot refuses
 before opening the browser. The development viewer reports versions
-1..8 at API 18, so a clocked model (version 8) renders there; an older
+1..8 at API 19, so a clocked model (version 8) renders there; an older
 installed viewer takes the warn/refuse path.
 Viewer API 12 supports version 5, the running controls,
 the original `controls` table and bounds that read other coordinates, in
