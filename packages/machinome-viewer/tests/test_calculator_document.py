@@ -223,9 +223,19 @@ DRIVE = """async () => {
     inputs: rows('.clocked-input'),
     readouts: rows('.clocked-readout'),
     sliders: rows('.clocked-slider'),
-    // No transport: a clocked machine has no cadence to run or step.
+    // No transport: a clocked machine has no cadence to run or step,
+    // and this one declares no CLOCK for one to advance either.
     transport: panel.querySelectorAll('.run-transport').length,
+    clockTransport: panel.querySelectorAll('.clocked-transport').length,
+    clockPlaying: machine.clockPlaying(),
   };
+  // And the handle refuses to run a clock this machine has not got.
+  let noClock = null;
+  try {
+    machine.setClockPlaying(true);
+  } catch (error) {
+    noClock = String(error.message);
+  }
   // A GESTURE at the control, not through the handle: press `+` on the
   // selector while the crank is off rest, and read what the panel says.
   const plus = panel.querySelector('.clocked-plus[data-input="setting"]');
@@ -239,7 +249,7 @@ DRIVE = """async () => {
 
   return {
     mounted, operand, stroke, frozen, ratchet, forward, cleared,
-    undeclared, afterRefusal, timed, chrome, held, settingAfter,
+    undeclared, afterRefusal, timed, chrome, held, settingAfter, noClock,
     apiVersion: viewer.apiVersion,
     // The dials TURNED: the strokes reached the geometry.
     strokesMoved: restShot !== strokedShot,
@@ -319,7 +329,7 @@ class CalculatorInABrowserTest(TestCase):
                          self.document['clocked']['identity'])
         self.assertIsNone(mounted['clock'])
         self.assertIsNone(mounted['run'])
-        self.assertEqual(result['apiVersion'], 17)
+        self.assertEqual(result['apiVersion'], 18)
         # The bank's id order is DERIVED: drivers, then states.
         self.assertEqual(mounted['order'],
                          ['crank', 'feed', 'operand', 'ring', 'setting',
@@ -409,6 +419,15 @@ class CalculatorInABrowserTest(TestCase):
         # Only `operand` declares a range, so only `operand` has a slider.
         self.assertEqual(chrome['sliders'], ['operand'])
         self.assertEqual(chrome['transport'], 0)
+        # A machine that declares no CLOCK is offered no transport at
+        # all, and `clockPlaying()` is false for it with no guard
+        # (OpenSpec `run-the-clock`, design §7).
+        self.assertEqual(chrome['clockTransport'], 0)
+        self.assertFalse(chrome['clockPlaying'])
+        self.assertIsNotNone(result['noClock'],
+                             'a clockless machine accepted setClockPlaying')
+        self.assertIn('does not', result['noClock'])
+        self.assertIn('clock', result['noClock'])
         self.assertIn('held by knob.travel', result['held'])
         self.assertEqual(result['settingAfter'], 0)
 

@@ -362,6 +362,61 @@ describe('a clocked machine this viewer cannot execute is refused by name',
                              + 'nowhere');
               });
 
+           it('when a constraint\'s VALUE follows the clock', () => {
+             // The producer cannot write one: `compile_bounds` builds its
+             // chains over the drivers and the states and NOT the clock,
+             // and `_over_the_bank` refuses any free name that survives a
+             // composed chain and is not a bank id
+             // (`clocked.py:1368-1377, 1448-1487`). The consumer must not
+             // be silently wider than the producer.
+             const document = documentOf('Lift');
+             const bounds = (document.clocked as { bounds: unknown[] }).bounds;
+             (bounds[0] as Record<string, unknown>).value = '(lift + time)';
+             const said = refusal(document);
+             expect(said).toContain('bounds[0]');
+             expect(said).toContain('.value');
+             expect(said).toContain('"time"');
+             expect(said).toContain("this machine's CLOCK");
+             expect(said).toContain('a stop is compiled over the bank');
+           });
+
+           it('when a constraint\'s BOUND follows the clock', () => {
+             const document = documentOf('Lift');
+             const bounds = (document.clocked as { bounds: unknown[] }).bounds;
+             (bounds[1] as Record<string, unknown>).bound = '(9.0 + time)';
+             const said = refusal(document);
+             expect(said).toContain('bounds[1]');
+             expect(said).toContain('.bound');
+             expect(said).toContain('"time"');
+             expect(said).toContain("this machine's CLOCK");
+           });
+
+           it('when a constraint\'s SHAPES name the clock as an input that '
+              + 'can move it', () => {
+                const document = documentOf('Lift');
+                const bounds = (document.clocked as { bounds: unknown[] })
+                  .bounds;
+                const shapes = (bounds[0] as {
+                  shapes: Record<string, unknown>;
+                }).shapes;
+                shapes.time = { level: 'affine', jumps: [] };
+                const said = refusal(document);
+                expect(said).toContain('bounds[0]');
+                expect(said).toContain('shapes names "time"');
+                expect(said).toContain("this machine's CLOCK");
+              });
+
+           it('and says so of the clock even where the level READS it '
+              + 'through a binding', () => {
+                // `declaredNames` is NOT narrowed: the clock stays a legal
+                // name in a commit's level, in a commit's law and in the
+                // tree's own pose expressions. The refusal belongs where
+                // the fact is -- a CONSTRAINT's chain.
+                const machine = load(documentOf('Regulator'));
+                expect(machine.declaredNames.has('time')).toBe(true);
+                expect(machine.commits[0].level).toContain('time');
+              });
+
            it('when a limit is missing or not finite', () => {
              const document = documentOf('Counter');
              (document.clocked as { limits: Record<string, unknown> })
@@ -370,3 +425,36 @@ describe('a clocked machine this viewer cannot execute is refused by name',
                .toContain('`clocked.limits.max_crossings` is null');
            });
          });
+
+// ---------------------------------------------------------------------
+// Task 3.3: the guard refuses NOTHING the producer writes.
+// ---------------------------------------------------------------------
+
+describe('the producer\'s own corpus passes the clock guard', () => {
+  it('publishes no `bounds` entry naming a clock, anywhere, in any of the '
+     + 'thirty machines', () => {
+    let bounded = 0;
+    for (const entry of fixture.machines) {
+      const clocked = entry.document.clocked as {
+        clock: string | null;
+        bounds: Record<string, unknown>[];
+      };
+      const clock = clocked.clock;
+      if (clock === null) continue;
+      for (const bound of clocked.bounds) {
+        bounded += 1;
+        expect(JSON.stringify(bound.value), entry.name).not.toContain(clock);
+        expect(JSON.stringify(bound.bound), entry.name).not.toContain(clock);
+        expect(JSON.stringify(bound.plan), entry.name).not.toContain(clock);
+        expect(Object.keys(bound.shapes as Record<string, unknown>),
+               entry.name).not.toContain(clock);
+      }
+      // And the whole document still loads.
+      expect(() => load(JSON.parse(JSON.stringify(entry.document))))
+        .not.toThrow();
+    }
+    // `Lift` is the one clocked machine of the corpus that declares
+    // bounds at all, and it declares two.
+    expect(bounded).toBe(2);
+  });
+});

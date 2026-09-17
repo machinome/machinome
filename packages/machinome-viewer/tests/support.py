@@ -53,6 +53,12 @@ CLEARING = FIXTURES / 'clearing'
 #: and an off-rest freeze -- beside the meshes it names. See its own
 #: README.
 CALCULATOR = FIXTURES / 'calculator'
+#: The PENDULUM regulator, exported from the framework's own
+#: `tests/clocked_project/pendulum.py:Regulator`: a version 8 document
+#: whose machine declares a CLOCK -- a bob posed by a formula of elapsed
+#: seconds and a count the machine writes twice a period -- beside the
+#: one mesh it names. See its own README.
+REGULATOR = FIXTURES / 'regulator'
 #: The Curta's own CARRIAGE, exported from the framework's own test
 #: machine: a version 7 document whose nine law edges hold ONE BLOCK of
 #: seven -- four dials on the carriage and three levers on the frame,

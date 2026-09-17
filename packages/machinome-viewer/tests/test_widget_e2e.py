@@ -204,8 +204,12 @@ class ViewerMountApiTest(TestCase):
         # that declares a `State`, whose document carries a compiled
         # CLOCKED machine instead of a program -- is the one after that,
         # and it is not additive either, so this moves to 17 and the
-        # document list moves with it again.
-        self.assertEqual(result['bundle'], 17)
+        # document list moves with it again. OpenSpec `run-the-clock`:
+        # ADVANCING a clocked machine's clock -- the elapsed seconds a
+        # build at 17 banks, poses from and refuses every request on --
+        # is the one after that, and this moves to 18; the document list
+        # does NOT move with it, because no new document shape is read.
+        self.assertEqual(result['bundle'], 18)
         # And a document carrying no program has no run and no machine,
         # which is what a host asking one question is answered with.
         self.assertIsNone(result['run'])

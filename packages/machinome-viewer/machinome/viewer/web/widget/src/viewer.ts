@@ -49,15 +49,18 @@ import type { RunState } from './run/run';
 import { clockedScope, posed, poseScope } from './run/pose';
 import { loadClocked } from './clocked/document';
 import type { ClockedDocument, LoadedMachine } from './clocked/document';
+import { clockAdvance } from './clocked/clock';
 import { clockedMachine } from './clocked/machine';
 import type {
   ClockedMachine, ClockedRequest, ClockedSnapshot,
 } from './clocked/machine';
 import {
-  clockedControlLayer, formatClockedOutcome,
+  clockedControlLayer, clockStepAmount, DEFAULT_CLOCK_STEP,
+  formatClockedOutcome,
 } from './clockedControls';
 import type {
   ClockedControlLayer, ClockedInputControl, ClockedOutcome,
+  ClockTransportPlan,
 } from './clockedControls';
 import { evaluatesTech, knownTechnologies, specRefusal } from './flexible';
 import { AssemblyNode, AssemblyPath, WidgetTree, operationsMatrix } from './tree';
@@ -162,8 +165,26 @@ export interface RunHandle {
  * bank, one request per gesture, and the session verbs. Synchronous:
  * a clocked request is one gesture, one solve, one pose, and the pose
  * is main-thread work in any case. The cadence verbs are refused by
- * name -- a clocked machine has none. */
-export type MachineHandle = ClockedMachine;
+ * name -- a clocked machine has none.
+ *
+ * Two verbs and no more are added to the pure library (OpenSpec
+ * `run-the-clock`, design §7): the CLOCK's transport, which is a page
+ * concern -- the frames are here, not in `machine.ts`. A host that wants
+ * a single frame's worth calls `move(machine.clock()!, {by})`, which it
+ * already can.
+ *
+ * They are NOT named `play`/`step`: `step()` is an existing member of
+ * `ClockedMachine` that refuses by name -- a clocked machine has no tick
+ * -- and reusing the word for the clock would make one handle answer two
+ * meanings for it. */
+export interface MachineHandle extends ClockedMachine {
+  /** Whether the clock's transport is running. `false` for a machine
+   * that declares no clock, and no guard is needed for that. */
+  clockPlaying(): boolean;
+  /** Start or stop the clock. Refused by name on a machine that
+   * declares no clock: there is nothing to run. */
+  setClockPlaying(playing: boolean): void;
+}
 
 export type { ClockedRequest, ClockedSnapshot };
 
@@ -378,6 +399,15 @@ export async function mount(
   let clockedChrome: ClockedChrome | undefined;
   const clockedNudge: Record<string, number> = {};
   let clockedOutcomes: Record<string, ClockedOutcome | null> = {};
+  // The CLOCK's transport (OpenSpec `run-the-clock`, design §5). While
+  // playing, the render loop issues exactly ONE `move(clock, {by})` per
+  // rendered frame; a refusal PAUSES and reports rather than repeating a
+  // refused request sixty times a second. `clockWidth` is the width of
+  // the widest elapsed reading shown so far, so the digits hold still.
+  let clockPlaying = false;
+  let clockStep = DEFAULT_CLOCK_STEP;
+  let clockRefusal: string | null = null;
+  let clockWidth = 0;
   // The running chrome (OpenSpec `drive-the-run-on-screen`). What a
   // maker has typed into the amount and rate fields is a REQUEST
   // setting, not a coordinate: it survives a republish and moves
@@ -995,6 +1025,13 @@ export async function mount(
   const startMachine = (loaded: LoadedMachine | null) => {
     loadedMachine = loaded;
     clockedOutcomes = {};
+    // A republish rebuilds the machine at its INITIAL bank, so it stops
+    // the clock and returns it to zero, exactly as it restarts a run
+    // (design §12). A maker watching a pendulum while editing its model
+    // sees it go back to t = 0 on every rebuild, which is the truth
+    // about what was rebuilt.
+    clockPlaying = false;
+    clockRefusal = null;
     if (loaded === null) {
       machine = undefined;
       return;
@@ -1022,9 +1059,10 @@ export async function mount(
   /** Issue ONE request and report its outcome AT THE CONTROL that made
    * it (design §13), whatever the machine answers. A gesture an
    * interlock holds is REPORTED, not swallowed. */
-  const clockedRequest = (id: string, request: { by?: number; to?: number }) => {
+  const clockedRequest = (id: string, request: { by?: number; to?: number }):
+  ClockedOutcome | null => {
     const started = machine;
-    if (started === undefined) return;
+    if (started === undefined) return null;
     const unit = loadedMachine?.drivers[id]?.unit ?? null;
     let report: ClockedOutcome;
     try {
@@ -1048,6 +1086,49 @@ export async function mount(
     clockedOutcomes[id] = report;
     rebuildClockedChrome();
     renderer.render(scene, camera);
+    return report;
+  };
+
+  /** ONE request per rendered frame while the transport plays (design
+   * §5). Every event inside the frame is located exactly and in order --
+   * a long frame is simply a long request -- and the advance is CAPPED,
+   * so a stall loses wall time rather than firing a burst.
+   *
+   * A refusal PAUSES and reports, mirroring the run's own rule: a
+   * refused request repeated sixty times a second is a page nobody can
+   * read. */
+  const clockFrame = (elapsedWallSeconds: number) => {
+    const started = machine;
+    if (started === undefined || !clockPlaying) return;
+    const clock = started.clock();
+    if (clock === null) return;
+    const by = clockAdvance(elapsedWallSeconds, speed);
+    if (by === 0) return;
+    const report = clockedRequest(clock, { by });
+    if (report !== null && report.status === 'refused') {
+      clockPlaying = false;
+      clockRefusal = report.message;
+      // The refusal belongs ACROSS the transport, not on a driver
+      // control: no gesture of a maker's made it.
+      delete clockedOutcomes[clock];
+      rebuildClockedChrome();
+    }
+  };
+
+  /** Start or stop the clock, from the panel or from the handle: one
+   * door, identical semantics. */
+  const setClockPlaying = (playing: boolean) => {
+    const started = machine;
+    if (started === undefined || started.clock() === null) {
+      throw new Error(
+        'setClockPlaying() asks this document to run a clock it does not '
+        + 'declare. A machine runs a clock only where its root declares an '
+        + 'elapsed time base; this one banks its drivers and its states and '
+        + 'stands until a request moves one.');
+    }
+    if (playing) clockRefusal = null;
+    clockPlaying = playing;
+    rebuildClockedChrome();
   };
 
   function rebuildClockedChrome(): void {
@@ -1057,14 +1138,23 @@ export async function mount(
     // The same switch as the posed chrome's, gating the PIXELS only: a
     // host that suppresses them keeps the whole machine API.
     if (!showsRunControls(resolved.driverControls, true)) return;
-    clockedChrome = buildClockedChrome(container, clockedControlLayer({
+    const layer = clockedControlLayer({
       machine: loadedMachine,
       values: machine.state(),
       focus: assemblyNavigation.root(),
       rootLabel: tree?.name ?? 'root',
       nudge: clockedNudge,
       outcomes: clockedOutcomes,
-    }), {
+      clockPlaying,
+      clockStep,
+      speed,
+      clockRefusal,
+      clockWidth,
+    });
+    // The readout widens once and never narrows, so the digits stand
+    // still as the clock grows.
+    clockWidth = Math.max(clockWidth, layer.transport?.elapsed.length ?? 0);
+    clockedChrome = buildClockedChrome(container, layer, {
       move(id: string, to: number) {
         clockedRequest(id, { to });
       },
@@ -1078,9 +1168,36 @@ export async function mount(
         machine?.reset();
         tree?.update(scope());
         clockedOutcomes = {};
+        // A machine that reset itself WHILE RUNNING would be a machine
+        // nobody could read, so reset stops the transport too.
+        clockPlaying = false;
+        clockRefusal = null;
         rebuildClockedChrome();
         renderer.render(scene, camera);
       },
+      play() {
+        setClockPlaying(!clockPlaying);
+      },
+      step() {
+        const clock = machine?.clock();
+        if (clock === undefined || clock === null) return;
+        // A STEP is ONE request of a stated number of seconds, made
+        // whether or not the transport is playing.
+        const report = clockedRequest(clock, { by: clockStep });
+        clockRefusal = report !== null && report.status === 'refused'
+          ? report.message : null;
+        if (clockRefusal !== null) {
+          clockPlaying = false;
+          delete clockedOutcomes[clock];
+        }
+        rebuildClockedChrome();
+        renderer.render(scene, camera);
+      },
+      setStep(amount: number) {
+        clockStep = clockStepAmount(amount, clockStep);
+        rebuildClockedChrome();
+      },
+      setSpeed,
       focus: focusOn,
     });
   }
@@ -1198,6 +1315,15 @@ export async function mount(
     // slider over a driver value the bank no longer poses from. The
     // chrome is `drive-the-run-on-screen`.
     if (loadedProgram !== null) {
+      return;
+    }
+    // Nor does a document carrying a CLOCKED machine: its declared
+    // inputs are moved by REQUESTS over the machine's bank and their
+    // chrome is `clockedControls.ts`. A posed panel beside it would
+    // offer a second control over the same input that writes the driver
+    // straight past the machine, and -- both being anchored at the
+    // container's corner -- would stand behind the clocked one.
+    if (loadedMachine !== null) {
       return;
     }
     if (!showsDriverChrome(resolved.driverControls,
@@ -1370,6 +1496,14 @@ export async function mount(
       renderer.render(scene, camera);
       return;
     }
+    // The CLOCK's own cadence, in the same loop and for the same reason
+    // (OpenSpec `run-the-clock`, design §5): ONE request per rendered
+    // frame, for the wall seconds since the last one times the speed.
+    // It poses through the machine's own hook, so nothing here renders
+    // twice; and `$t` keeps advancing beside it, because the timeline
+    // and the transport advance different values and neither moves the
+    // other's.
+    clockFrame(elapsed);
     if (playing) {
       setTime(advance(time, elapsed, cycleSeconds));
     }
@@ -1492,7 +1626,38 @@ export async function mount(
     trigger: (name: string) => drivers.trigger(name),
     controls: partControlViews,
     machine(): MachineHandle | null {
-      return machine ?? null;
+      const started = machine;
+      if (started === undefined) return null;
+      // The pure library WRAPPED (design §7): two page verbs and no
+      // more, over the same object a host already drives.
+      return {
+        ...started,
+        // Every READOUT follows the COMMITTED bank, whoever moved it: a
+        // host driving the handle directly must not leave the panel --
+        // the states, the drivers and the clock's own seconds -- showing
+        // an instant the machine has left. The panel is pure data
+        // rendered whole, so this is the same rebuild a gesture makes.
+        move: (input, request) => {
+          const answered = started.move(input, request);
+          rebuildClockedChrome();
+          return answered;
+        },
+        restore: (state) => {
+          started.restore(state);
+          rebuildClockedChrome();
+        },
+        // A machine that reset itself while running would be a machine
+        // nobody could read, so a reset stops the transport -- from the
+        // panel and from the handle alike.
+        reset: () => {
+          started.reset();
+          clockPlaying = false;
+          clockRefusal = null;
+          rebuildClockedChrome();
+        },
+        clockPlaying: () => clockPlaying,
+        setClockPlaying,
+      };
     },
     run(): RunHandle | null {
       const started = runtime;
@@ -2986,7 +3151,10 @@ function summarise(settled: readonly Outcome[],
 // A driver is a HANDLE -- an editable design-unit readout, a pair of
 // nudges and, where the driver declares a `range`, a slider. A state is
 // a follow-only READOUT, and so is the clock. An instruction is LISTED
-// and DISABLED. There is no transport: a clocked machine has no cadence.
+// and DISABLED. There is no transport over the DRIVERS -- a clocked
+// machine has no cadence -- and there IS one over the CLOCK where the
+// machine declares one: play/pause, a step of a stated number of
+// seconds, and the speed ladder. No scrub and no reverse.
 
 interface ClockedChromeActions {
   /** One request landing the driver AT a design-unit value. */
@@ -2995,6 +3163,13 @@ interface ClockedChromeActions {
   nudge(id: string, amount: number): void;
   setNudge(id: string, amount: number): void;
   reset(): void;
+  /** The CLOCK's transport (OpenSpec `run-the-clock`, design §5): start
+   * or stop it, advance it by the stated seconds, change the amount, and
+   * change how fast it is watched. */
+  play(): void;
+  step(): void;
+  setStep(amount: number): void;
+  setSpeed(speed: number): void;
   focus(path: AssemblyPath | null): void;
 }
 
@@ -3098,6 +3273,95 @@ function buildClockedRow(control: ClockedInputControl,
   return row;
 }
 
+/** The CLOCK's transport, beside its readout (OpenSpec `run-the-clock`,
+ * design §5). Words rather than transport glyphs, for the run's own
+ * reason: a headless or minimal font renders the glyphs as empty boxes.
+ *
+ * Deliberately NO SCRUB: a timeline slider implies both directions and
+ * the clock refuses one of them, so dragging left would raise a refusal
+ * on every pointer move. What replaces it is a STEP -- the driver
+ * handles' nudge, minus the minus. */
+function buildClockTransport(plan: ClockTransportPlan,
+                             actions: ClockedChromeActions): HTMLElement {
+  const bar = document.createElement('div');
+  bar.className = 'clocked-transport';
+  bar.dataset.clock = plan.id;
+  bar.style.cssText = 'display:flex;align-items:center;gap:8px;'
+    + 'flex-wrap:wrap;';
+
+  const play = document.createElement('button');
+  play.type = 'button';
+  play.className = 'clocked-play';
+  play.textContent = plan.playing ? 'Pause' : 'Play';
+  play.title = plan.playing
+    ? 'Pause the clock where it stands'
+    : 'Run the clock in real time, times the speed';
+  play.setAttribute('aria-label', plan.playing
+    ? 'Pause the clock' : 'Play the clock');
+  play.style.cssText = BUTTON_STYLE + 'min-width:5em;';
+  play.addEventListener('click', () => { actions.play(); });
+
+  const step = document.createElement('button');
+  step.type = 'button';
+  step.className = 'clocked-step';
+  step.textContent = 'Step';
+  step.title = 'Advance the clock by the stated number of seconds';
+  step.setAttribute('aria-label', 'Step the clock forward');
+  step.style.cssText = BUTTON_STYLE;
+  step.addEventListener('click', () => { actions.step(); });
+
+  const amount = document.createElement('input');
+  amount.type = 'number';
+  amount.className = 'clocked-step-amount';
+  // NO MINUS: elapsed seconds have no reverse, and a control that could
+  // not honour a backwards step must not offer one.
+  amount.min = '0';
+  amount.value = formatDisplay(plan.step);
+  amount.style.cssText = RUN_FIELD_STYLE;
+  amount.setAttribute('aria-label', 'Step the clock by (seconds)');
+  amount.addEventListener('change', () => {
+    actions.setStep(Number(amount.value));
+  });
+
+  const elapsed = document.createElement('span');
+  elapsed.className = 'clocked-elapsed';
+  elapsed.dataset.readout = plan.id;
+  elapsed.setAttribute('aria-label', 'Elapsed seconds');
+  elapsed.setAttribute('aria-live', 'off');
+  elapsed.textContent = plan.elapsed;
+  elapsed.title = `${plan.seconds} s`;
+  elapsed.style.cssText =
+    'font-variant-numeric:tabular-nums;min-width:8ch;text-align:right;';
+
+  const speed = document.createElement('select');
+  speed.className = 'clocked-speed';
+  speed.setAttribute('aria-label', 'Playback speed');
+  speed.title = 'How fast the clock is watched, as a multiple of real '
+    + 'time. Every event inside a frame still fires exactly and in order.';
+  speed.style.cssText =
+    'background:none;border:1px solid rgba(255,255,255,0.4);' +
+    'border-radius:3px;color:inherit;font:inherit;padding:1px 4px;';
+  fillSpeedControl(speed, plan.speed);
+  speed.addEventListener('change', () => {
+    actions.setSpeed(Number(speed.value));
+  });
+
+  bar.append(play, step, label('by'), amount, label('s'), elapsed, speed);
+
+  // A refused frame PAUSES and says so, across the transport rather
+  // than on any one control: no gesture of a maker's made the request.
+  const refusal = document.createElement('div');
+  refusal.className = 'clocked-refusal';
+  refusal.setAttribute('role', 'status');
+  refusal.hidden = plan.refusal === null;
+  refusal.textContent = plan.refusal === null
+    ? '' : `paused: ${plan.refusal}`;
+  refusal.style.cssText =
+    'color:#ffd166;font-size:12px;max-width:40em;flex-basis:100%;';
+  bar.append(refusal);
+  return bar;
+}
+
 function buildClockedChrome(
   container: HTMLElement,
   layer: ClockedControlLayer,
@@ -3152,6 +3416,10 @@ function buildClockedChrome(
       row.append(button);
     });
     panel.append(row);
+  }
+
+  if (layer.transport !== null) {
+    panel.append(buildClockTransport(layer.transport, actions));
   }
 
   const session = document.createElement('div');

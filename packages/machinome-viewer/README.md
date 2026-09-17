@@ -22,7 +22,8 @@ something a person can look at in a browser:
   turns it by whole quanta**, **a CLOCKED machine — one with memory and
   no cadence — operated a gesture at a time, each gesture one request
   solved in thread and stopped where the machine's own interlocks stop
-  it**, and the
+  it, and RUN where it declares a clock: play, step and speed over
+  elapsed seconds, one request per rendered frame**, and the
   `SolidNodeWidget.mount()` API a host page drives it through;
 - the **standalone export page** a `solid export` directory ships with,
   and the **inspector layout** (`SolidNodeWidget.mountInspector`) it can
@@ -397,9 +398,9 @@ declared stops and its limits. A Curta is one of these; so is a counter,
 a register, a ratchet.
 
 The viewer reads that document and **executes it**. There is no cadence
-to run, so there is no transport and no worker: one gesture is one
-**request** — one declared input moving along a straight path from where
-the bank holds it — solved synchronously and posed once. A request costs
+over its drivers to run, and no worker: one gesture is one **request** —
+one declared input moving along a straight path from where the bank holds
+it — solved synchronously and posed once. A request costs
 well under a frame (fractions of a millisecond on the Curta-shaped
 fixture, measured in Chromium), which is what lets a drag be a series of
 requests and still stay smooth.
@@ -424,16 +425,45 @@ same surface to a host building its own panel: the bank, the two tables,
 `move`, and session-local `snapshot`, `restore` and `reset`, where a
 restore of a bank taken against another machine is refused by identity.
 
-What this build does **not** yet do is advance a clock: a version 8
-document that declares a time base loads, poses, animates and takes every
-request on its ordinary inputs, with its clock standing at its initial
-instant, and only `move('time', …)` is refused by name. Declared
-instructions are listed and **disabled**, because the framework publishes
-the table under a clocked root and gives it no runtime meaning yet.
+A machine may also declare a **clock**: under an elapsed time base it
+banks `time` in seconds, and a request may move it exactly as a request
+moves a driver — the events on it are located, ordered and landed by the
+same solver, because an event on the clock is an event. **Nothing stops a
+clock**: a declared range is a mechanical stop and nothing is in the way
+of the next second, so no declared stop ever clips a time request — while
+a commit fired inside one that carries a coordinate out of range still
+refuses the whole request, as any other does. **Time never reverses**: a
+request that would run the clock backwards is refused by name, naming both
+instants, because no bound was met and the request has no meaning; a
+maker who wants an earlier instant restores a snapshot.
+
+So an elapsed machine **runs**. Beside the clock's readout the chrome
+shows a transport: **play**, which advances the clock by the wall seconds
+of each rendered frame times the playback speed — one request per frame,
+so every event inside that frame still fires exactly and in order;
+**step**, one request of a stated number of seconds; and the same speed
+ladder the run uses, whose ×360 and ×3600 exist for watching a clock.
+There is no scrub and no reverse, because the clock is one-way. A long
+frame is capped at four frames' worth and the wall time beyond it is
+lost — visibly, as the readout falling behind the clock on the wall —
+rather than firing a burst of events; a frame the machine refuses pauses
+the transport and says why, once. Pause holds the bank; reset returns the
+whole bank to its published defaults with the clock at zero and stops the
+transport, and so does a republish while `solid develop` is watching. A
+host drives the same transport through `handle.machine()`, which carries
+`clockPlaying()` and `setClockPlaying(playing)` beside the requests and
+the session verbs. A machine that declares no clock is offered no
+transport at all.
+
+Declared instructions are listed and **disabled**, because the framework
+publishes the table under a clocked root and gives it no runtime meaning
+yet.
 
 `$t` animates a clocked document while its bank stands, exactly as it
 does for a posed one, and the headless capture photographs it at its
-initial bank.
+initial bank. `$t` and the clock are two different things and neither
+moves the other: an elapsed document whose geometry reads no `$t` gets no
+timeline at all, and the transport is the only one it has.
 
 ## What a part carries
 
@@ -502,7 +532,7 @@ build reads rather than infer it.
 | solid-node-viewer | viewer API | reads document versions |
 | --- | --- | --- |
 | 0.1.0 | 7 | 1, 2, 3, 4 |
-| 0.2.0 | 17 | 1, 2, 3, 4, 5, 6, 7, 8 |
+| 0.2.0 | 18 | 1, 2, 3, 4, 5, 6, 7, 8 |
 
 (13 is skipped: the `slide-and-turn-parts` work claimed it while it was in
 flight, and merged still in progress without taking the number. Nothing

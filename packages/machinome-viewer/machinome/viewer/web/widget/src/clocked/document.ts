@@ -384,8 +384,8 @@ export function loadClocked(document: ClockedDocument, sourceUrl: string,
   }
   const bounds = (rawBounds as unknown[]).map((entry, index) =>
     readBound(entry, index, {
-      refuse, drivers, own, declaredNames, namesOf, assertNames, nodeOf,
-      bindings, placeholders, order, limits,
+      refuse, drivers, clock, own, declaredNames, namesOf, assertNames,
+      nodeOf, bindings, placeholders, order, limits,
     }));
 
   return {
@@ -604,6 +604,9 @@ function readCommit(entry: unknown, index: number,
 interface BoundContext {
   refuse: Refuse;
   drivers: Record<string, ManifestDriver>;
+  /** The machine's clock name, or `null`. A compiled CONSTRAINT may not
+   * name it anywhere (`run-the-clock`, design §4). */
+  clock: string | null;
   own: string;
   declaredNames: ReadonlySet<string>;
   namesOf(expression: string): Set<string>;
@@ -673,6 +676,39 @@ function readBound(entry: unknown, index: number,
     ? `(${chain} - ${declared})` : `(${declared} - ${chain})`;
 
   const overTheBank = new Set([...context.declaredNames, own]);
+  // NOTHING STOPS A CLOCK, guarded at the LOAD (`run-the-clock`,
+  // design §4; solid-node ADR-127). The producer cannot write a
+  // constraint that follows the clock: `compile_bounds` builds its
+  // chains over the drivers and the states and NOT the clock
+  // (`clocked.py:1368-1377`), and `_over_the_bank` refuses any free name
+  // that survives a composed chain and is not a bank id
+  // (`clocked.py:1448-1487`). A hand-written or corrupted document
+  // could, and would then be CLIPPED against a coordinate the clock
+  // drives -- so the consumer refuses exactly what the producer does,
+  // rather than being silently wider.
+  //
+  // `declaredNames` is NOT narrowed: the clock is a bank id and a legal
+  // name in a commit's level, in a commit's law and in the tree's own
+  // pose expressions. The refusal belongs where the fact is.
+  const clock = context.clock;
+  if (clock !== null) {
+    const clockIn = (expression: string, key: string): void => {
+      if (!context.namesOf(expression).has(clock)) return;
+      context.refuse(
+        `${where}.${key} reads "${clock}", which is this machine's CLOCK. ` +
+        'A published constraint may not follow it: a stop is compiled over ' +
+        'the bank -- the drivers and the states -- and a clock-driven ' +
+        'coordinate is not something a stop can hold, because a declared ' +
+        'range is a MECHANICAL stop and nothing is in the way of the next ' +
+        'second');
+    };
+    clockIn(chain, 'value');
+    clockIn(declared, 'bound');
+    // The level is the consumer's own subtraction of the two above, so
+    // this can only fire where one of them already did -- it is here
+    // because the contract names all three.
+    clockIn(level, 'level');
+  }
   context.assertNames(chain, context.declaredNames, `${where}.value`);
   context.assertNames(declared, overTheBank, `${where}.bound`);
   context.assertNames(level, overTheBank, `${where}'s level`);
@@ -752,6 +788,15 @@ function readBound(entry: unknown, index: number,
   for (const [input, reading] of Object.entries(
     rawShapes as Record<string, unknown>)) {
     if (!Object.prototype.hasOwnProperty.call(context.drivers, input)) {
+      // The clock is the case a reader will actually meet, so it is said
+      // rather than lumped in with "not a declared driver".
+      if (input === context.clock) {
+        refuse(`${where}.shapes names "${input}", which is this machine's ` +
+               'CLOCK. A published constraint may not be moved by it: a ' +
+               'stop is compiled over the bank -- the drivers and the ' +
+               'states -- and nothing is in the way of the next second, so ' +
+               'no declared stop ever clips a request that moves the clock');
+      }
       refuse(`${where}.shapes names "${input}", which is not a declared ` +
              'driver');
     }

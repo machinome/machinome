@@ -26,13 +26,15 @@
 // A DISAGREEMENT IS A BUG IN THIS ENGINE. Not a tolerance to widen, not
 // a scenario to skip, not a fixture to edit.
 //
-// THE ONE DEPARTURE, counted rather than hidden: this build refuses a
-// request that moves the CLOCK (design §9), which the corpus records
-// admitted. Three steps are such a request -- each its machine's FIRST
-// -- and five more stand downstream of one, against a bank this build
-// cannot reach. The census below derives both sets FROM THE FILE and
-// pins 76 = 68 + 3 + 5, so a regenerated corpus cannot narrow this
-// suite by accident.
+// NO DEPARTURE AND NO DEFERRAL. Cycle 5 left one of each -- a request
+// that moves the CLOCK, which that build refused -- and this cycle
+// executes them: all 76 steps of all 30 machines, all 722 recorded
+// numbers, `Regulator`, `Lift` and `ClockAlone` included. The census at
+// the foot of this file is read off the replay ITSELF, so a later build
+// cannot narrow the suite by declaring a departure without failing
+// there; the census at the head is derived from the FILE, so a corpus
+// regenerated wider or narrower is loud without anyone running the
+// producer's generator.
 
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -112,8 +114,9 @@ const fixture = JSON.parse(CORPUS_BYTES.toString('utf8')) as Corpus;
  * fraction requires. */
 const FLOAT = fixture.tolerance.float;
 
-/** The machines whose `clocked.clock` is not null and whose script moves
- * it: the departure this build states (design §9). */
+/** The steps of a machine's script that move its OWN clock, found by the
+ * document's `clocked.clock` field and never by a list of names. These
+ * are the steps this build EXECUTES like any other (design §11). */
 function clockMoves(entry: CorpusMachine): number[] {
   const clocked = (entry.document.clocked ?? {}) as { clock?: string | null };
   const clock = clocked.clock ?? null;
@@ -125,13 +128,26 @@ function clockMoves(entry: CorpusMachine): number[] {
   return found;
 }
 
-/** The FIRST clock request of a machine, or `null`: the step this build
- * refuses where the corpus records it admitted. Everything after it in
- * the same script stands against a bank this build cannot reach. */
-function departureAt(entry: CorpusMachine): number | null {
-  const found = clockMoves(entry);
-  return found.length === 0 ? null : found[0];
+/** Every number nested anywhere inside a recorded request. */
+function numbersIn(value: unknown): number {
+  if (typeof value === 'boolean') return 0;
+  if (typeof value === 'number') return 1;
+  if (Array.isArray(value)) {
+    return value.reduce((total: number, one) => total + numbersIn(one), 0);
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.values(value)
+      .reduce((total: number, one) => total + numbersIn(one), 0);
+  }
+  return 0;
 }
+
+/** What the replay below ACTUALLY compared, accumulated by `replayStep`
+ * itself. The closing census at the foot of this file reads it, so the
+ * claim "every step is replayed" is derived from the replay rather than
+ * asserted beside it: a step skipped, departed from or deferred moves
+ * these numbers and fails there. */
+const compared = { machines: new Set<string>(), steps: 0, numbers: 0 };
 
 function machineOf(entry: CorpusMachine): ClockedMachine {
   const url = `clocked-corpus.json#${entry.name}`;
@@ -190,60 +206,28 @@ describe('the clocked corpus', () => {
 describe('the census this build claims', () => {
   const steps = fixture.machines.reduce(
     (total, entry) => total + entry.script.length, 0);
-  const departures = fixture.machines
-    .filter((entry) => departureAt(entry) !== null);
-  const downstream = departures.reduce(
-    (total, entry) => total + entry.script.length
-      - (departureAt(entry) as number) - 1, 0);
+  const clocked = fixture.machines
+    .filter((entry) => clockMoves(entry).length > 0);
 
   it('is 76 steps over 30 machines', () => {
     expect(fixture.machines.length).toBe(30);
     expect(steps).toBe(76);
   });
 
-  it('partitions them 68 replayed + 3 departures + 5 deferred', () => {
-    expect(departures.length).toBe(3);
-    expect(downstream).toBe(5);
-    expect(steps - departures.length - downstream).toBe(68);
-  });
-
   it('names the three machines that move a clock, off the file', () => {
-    expect(departures.map((entry) => entry.name).sort())
+    expect(clocked.map((entry) => entry.name).sort())
       .toEqual(['ClockAlone', 'Lift', 'Regulator']);
-    // Every one of them moves its clock at its FIRST step, which is why
-    // nothing downstream can be compared.
-    for (const entry of departures) expect(departureAt(entry)).toBe(0);
+    // Every one of them moves its clock at its FIRST step -- which this
+    // build EXECUTES, so everything downstream of it is compared too.
+    for (const entry of clocked) expect(clockMoves(entry)[0]).toBe(0);
   });
 
-  it('replays 652 of the 722 recorded numbers', () => {
-    const count = (value: unknown): number => {
-      if (typeof value === 'boolean') return 0;
-      if (typeof value === 'number') return 1;
-      if (Array.isArray(value)) {
-        return value.reduce((total: number, one) => total + count(one), 0);
-      }
-      if (typeof value === 'object' && value !== null) {
-        return Object.values(value)
-          .reduce((total: number, one) => total + count(one), 0);
-      }
-      return 0;
-    };
-    let replayed = 0;
-    let departed = 0;
-    let deferred = 0;
+  it('carries 722 recorded numbers in all', () => {
+    let recorded = 0;
     for (const entry of fixture.machines) {
-      const at = departureAt(entry);
-      entry.requests.forEach((request, index) => {
-        const numbers = count(request);
-        if (at === null || index < at) replayed += numbers;
-        else if (index === at) departed += numbers;
-        else deferred += numbers;
-      });
+      for (const request of entry.requests) recorded += numbersIn(request);
     }
-    expect(replayed).toBe(652);
-    expect(departed).toBe(48);
-    expect(deferred).toBe(22);
-    expect(replayed + departed + deferred).toBe(722);
+    expect(recorded).toBe(722);
   });
 
   it('counts the 13 machines whose interlocks this build must execute',
@@ -276,12 +260,12 @@ describe('the census this build claims', () => {
        const doctored = JSON.parse(JSON.stringify(
          fixture.machines.find((one) => one.name === 'Counter'),
        )) as CorpusMachine;
-       expect(departureAt(doctored)).toBe(null);
+       expect(clockMoves(doctored)).toEqual([]);
        (doctored.document.clocked as { clock: string | null }).clock = 'crank';
        // `Counter`'s script moves `crank` at step 0, so declaring the
        // clock to BE `crank` makes step 0 a clock request -- found by the
        // document's own field and not by a list of machine names.
-       expect(departureAt(doctored)).toBe(0);
+       expect(clockMoves(doctored)[0]).toBe(0);
      });
 });
 
@@ -292,7 +276,11 @@ describe('the census this build claims', () => {
 function replayStep(machine: ClockedMachine, step: CorpusStep,
                     expected: CorpusRequest,
                     snapshots: Map<string, ClockedSnapshot>,
-                    where: string): void {
+                    where: string, census = false): void {
+  if (census) {
+    compared.steps += 1;
+    compared.numbers += numbersIn(expected);
+  }
   if (step.move !== undefined) {
     const { input, ...request } = step.move;
     const before = machine.state();
@@ -365,43 +353,33 @@ function replayStep(machine: ClockedMachine, step: CorpusStep,
 
 describe('the viewer reproduces the framework\'s own clocked corpus', () => {
   for (const entry of fixture.machines) {
-    const at = departureAt(entry);
     it(`replays ${entry.name}`, () => {
       const machine = machineOf(entry);
       const snapshots = new Map<string, ClockedSnapshot>();
+      compared.machines.add(entry.name);
       entry.script.forEach((step, index) => {
         const where = `${entry.name} step ${index} ${JSON.stringify(step)}`;
-        if (at !== null && index === at) {
-          // THE DEPARTURE, asserted as one: the corpus records this
-          // request admitted and this build refuses it by name (design
-          // §9). A later cycle turns it into an ordinary replayed step.
-          expect(entry.requests[index].refused, where).toBeUndefined();
-          const move = step.move as CorpusMove;
-          const { input, ...request } = move;
-          let caught: unknown;
-          try {
-            machine.move(input, request);
-            throw new Error(`${where}: expected the clock request refused`);
-          } catch (error) {
-            caught = error;
-          }
-          const failure = caught as { kind?: string; message?: string };
-          expect(failure.kind, `${where} kind`).toBe('ValueError');
-          expect(failure.message, where).toContain(input);
-          expect(failure.message, where).toContain('clock');
-          return;
-        }
-        if (at !== null && index > at) {
-          // DEFERRED, named rather than silently dropped: the bank has
-          // diverged from the corpus's at the departure above, so this
-          // step's recorded numbers are not this build's to compare.
-          expect(at).toBeLessThan(index);
-          return;
-        }
-        replayStep(machine, step, entry.requests[index], snapshots, where);
+        // EVERY step, with no branch of any kind: a `move` naming the
+        // machine's clock is one more request on one more input.
+        replayStep(machine, step, entry.requests[index], snapshots, where,
+                   true);
       });
     });
   }
+});
+
+// ---------------------------------------------------------------------
+// The CENSUS THIS BUILD CLOSES (design §11), read off the replay above
+// rather than asserted beside it: `replayStep` counts what it actually
+// compared, so a step departed from, deferred or skipped fails HERE.
+// ---------------------------------------------------------------------
+
+describe('the census, closed', () => {
+  it('replayed every machine, every step and every recorded number', () => {
+    expect(compared.machines.size).toBe(30);
+    expect(compared.steps).toBe(76);
+    expect(compared.numbers).toBe(722);
+  });
 });
 
 describe('the exactness claim, proved rather than declared', () => {
@@ -427,6 +405,33 @@ describe('the exactness claim, proved rather than declared', () => {
       machine, one, entry.requests[index], snapshots,
       `UlpPair step ${index}`))).toThrow();
   });
+
+  it('rejects the CLOCK landing 0.49999999999999994 moved by ONE '
+     + 'representable value', () => {
+       // The strangest number in the file, and the one a reader is most
+       // tempted to "fix" to 0.5: `Regulator`'s first release lands one
+       // representable value BELOW the ideal instant, which is the
+       // far-side landing rule working rather than a rounding error
+       // (ADR-127, "An event on the clock is an event"). Moved by one
+       // ulp -- to 0.5 itself -- the replay must go red.
+       const entry = JSON.parse(JSON.stringify(
+         fixture.machines.find((one) => one.name === 'Regulator'),
+       )) as CorpusMachine;
+       const commits = entry.requests[0].commits as CorpusCommit[];
+       expect(commits[0].value).toBe(0.49999999999999994);
+       const drifted = 0.5;
+       expect(drifted).not.toBe(commits[0].value);
+       expect(Math.abs(drifted - commits[0].value))
+         .toBeLessThan(1e-9 * drifted);
+       commits[0].value = drifted;
+       const machine = machineOf(entry);
+       const snapshots = new Map<string, ClockedSnapshot>();
+       // The throw must be the COMPARISON failing on that very number,
+       // not any refusal the replay might raise on the way there.
+       expect(() => entry.script.forEach((one, index) => replayStep(
+         machine, one, entry.requests[index], snapshots,
+         `Regulator step ${index}`))).toThrow(/commit 0 value/);
+     });
 
   it('rejects a recorded STOP fraction moved by one representable value',
      () => {

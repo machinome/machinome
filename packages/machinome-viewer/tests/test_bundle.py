@@ -51,7 +51,7 @@ class BundleLookupTest(TestCase):
         # `State`, whose document carries a compiled CLOCKED machine
         # instead of a program -- is the one after that (OpenSpec
         # `execute-the-commit`), and it is not additive either.
-        self.assertEqual(bundle.api_version(), 17)
+        self.assertEqual(bundle.api_version(), 18)
 
     def test_declares_the_document_versions_this_build_reads(self):
         self.assertEqual(bundle.document_versions(),

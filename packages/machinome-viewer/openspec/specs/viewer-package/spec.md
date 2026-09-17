@@ -184,9 +184,15 @@ machine rather than a running one: it carries a `states` table beside
 `drivers`, a `clocked` object, and NO `program` and NO `controls` key. The
 viewer SHALL load and validate that object under the clocked requirements
 below, SHALL pose the tree from the bank its two tables declare, and SHALL
-present the document's `$t` animation over that standing bank. A version 8
+present the document's `$t` animation over that bank. A version 8
 document carrying no `clocked` object, or carrying a `program` object
-beside it, SHALL be refused naming what it carries. A version 5 document MAY also carry a `controls`
+beside it, SHALL be refused naming what it carries. A version 8 document
+whose clocked machine names a CLOCK declares that its bank holds elapsed
+SECONDS under that name, starting at zero, which a request may advance and
+which the document's own expressions read where the model reads the clock;
+`$t` is that document's 0..1 animation variable as it is any other's and is
+never seconds. A machine that names no clock has none, and its bank stands
+until a request on one of its drivers moves it. A version 5 document MAY also carry a `controls`
 table, which the viewer SHALL read and validate under the control
 requirements above; the table is additive and does not move the document's
 version, a document carrying none SHALL be read exactly as it was before
@@ -488,9 +494,10 @@ the canvas. Absent a host choice, it SHALL add no such attributes.
 The package SHALL declare one API version, expose it on every mount handle and
 the browser global, and make it readable without executing the bundle. It SHALL
 be raised whenever the mount interface or handle changes incompatibly, and when
-a capability a host may require is added. The declared version SHALL be 17,
-reflecting the execution of a clocked machine's requests — the version 8
-document a build at the previous version refuses by name — on top of the
+a capability a host may require is added. The declared version SHALL be 18,
+reflecting the advance of a clocked machine's CLOCK — the elapsed seconds a
+build at the previous version banks, poses from and refuses every request on —
+on top of the execution of a clocked machine's requests, of the
 ordering of a block of the compiled program once per piece of a step, and of the execution of a law that reads the coordinate it drives, the
 drawing of the markings a document's parts carry, part controls, the inspector
 layout, the mountable assembly navigator, the published assembly-navigation
@@ -606,6 +613,16 @@ version is the only capability gate either moves.
 - **THEN** the declared API version tells it whether this bundle executes
   one, before it mounts a bundle that would refuse the document by name
   and render nothing at all
+
+#### Scenario: A host requires a clock that runs
+
+- **WHEN** a host means to present a machine whose motion is a function of
+  ELAPSED SECONDS — a pendulum and the counter beside it — and to let a
+  maker watch it run
+- **THEN** the declared API version tells it whether this bundle advances a
+  clocked machine's clock, before it mounts a bundle that renders the same
+  document truthfully at one instant and refuses every request that would
+  move it off that instant
 
 ### Requirement: A host reads and drives the document's drivers
 
@@ -969,11 +986,13 @@ available.
 ### Requirement: The host chooses how driver controls are presented
 
 The host SHALL be able to choose at mount time whether the on-screen
-chrome (controls and focus affordance) is presented, for a posed document
-and for a running one alike. By default it is
+chrome (controls and focus affordance) is presented, for a posed document,
+for a running one and for a CLOCKED one alike — one switch over all three
+kinds. By default it is
 presented for documents that declare drivers. A host that suppresses
-it SHALL retain the full driving API unchanged, and for a running
-document the full run API unchanged.
+it SHALL retain the full driving API unchanged, for a running
+document the full run API unchanged, and for a clocked one the full machine
+API — its requests, its session verbs and its clock — unchanged.
 
 The host SHALL be able to choose, **independently of that**, whether the
 parts a document's controls table names are touchable. By default they are,
@@ -3328,7 +3347,9 @@ on, and one law per value it writes.
 
 The viewer SHALL hold that bank, SHALL expose it and the machine's
 identity on the mount handle, and SHALL accept a REQUEST that moves ONE
-declared input along a straight path from where it stands to a stated
+input — a declared driver, or the machine's CLOCK where it declares one,
+under the clock requirement below — along a straight path from where it
+stands to a stated
 value. The value a request names and the travel it reports SHALL both be
 in that input's DESIGN units, whatever units the bank holds it in.
 Executing a request SHALL, without posing anything until it is done:
@@ -3440,6 +3461,96 @@ published identity — and a RESET to every published default.
 - **THEN** the restore is refused naming the two identities, and the
   machine stands where it stood
 
+### Requirement: A request may advance a clocked machine's clock
+
+A clocked machine MAY declare a CLOCK: elapsed seconds that never wrap and
+never run backwards, which the document names and which the bank holds in
+SECONDS starting at zero. The clock is not a declared driver and is never
+written by a committing relation; it is the one value besides the drivers
+that a request may MOVE.
+
+The viewer SHALL accept a request that moves the clock, by a travel or to an
+instant, and SHALL execute it by the SAME path a request on a declared driver
+takes: every committing relation whose published shapes name the clock is
+examined and no others; crossings of those relations' event levels are
+located, landed, ordered, merged and fired under the clocked request
+requirement above without exception; reads at an event are synchronous and
+pre-event; results are written together; and the tree is posed ONCE at the
+end. A travel of zero, and a request to the instant the clock already stands
+at, SHALL be ADMITTED: they fire nothing, pose what already stands, report no
+travel, and leave the bank as it was.
+
+A request that would move the clock BACKWARDS — a negative travel, or a
+stated instant behind the banked one — SHALL be REFUSED by name, naming the
+clock and BOTH instants, and SHALL leave the bank, the pose and the model
+exactly as they stood. It is a refusal and not a stop: no bound was met, and
+a request to un-elapse time has no meaning.
+
+NO declared stop SHALL ever clip a request that moves the clock, whatever
+stops the machine declares, because a declared range is a MECHANICAL stop and
+nothing is in the way of the next second. The end-of-request judgement is
+UNCHANGED: a commit fired by a time request that carries a bounded coordinate
+outside its bound SHALL refuse the whole request by name, commit nothing and
+never pose.
+
+The clock SHALL be carried by the session verbs like every other value: a
+snapshot holds the instant the machine stands at, a restore returns to it,
+and a reset returns the clock to zero with the rest of the bank.
+
+A request naming a clock on a machine that declares NONE SHALL be refused as
+any undeclared input is, naming what the machine does declare.
+
+#### Scenario: A request advances the clock and the machine commits
+
+- **WHEN** a host asks a clocked machine whose counter is released by an
+  expression of elapsed seconds to advance its clock by five seconds
+- **THEN** the clock stands five seconds later, every release inside those
+  five seconds is reported as an event in time order, each reading what the
+  events before it wrote, and the model is posed once at the resulting bank
+
+#### Scenario: A clock request is never stopped by a declared range
+
+- **WHEN** a clocked machine declares a bounded joint and a host advances its
+  clock past the instant that bound would be reached at were the clock a
+  driver
+- **THEN** the whole travel is admitted, no stop is reported, and the same
+  machine's declared driver is still clipped at that bound by a request of
+  its own
+
+#### Scenario: A request to un-elapse time is refused
+
+- **WHEN** a host asks a clocked machine's clock to move by a negative travel,
+  or to an instant behind the one it stands at
+- **THEN** the request is refused naming the clock and both instants, nothing
+  is committed, and the model stays posed where it was
+
+#### Scenario: A zero travel on the clock is admitted
+
+- **WHEN** a host advances a clocked machine's clock by zero, or to the
+  instant it already stands at
+- **THEN** the request is admitted with no travel and no events, the bank is
+  unchanged, and asking twice is the same as asking once
+
+#### Scenario: A commit inside a clock request may still refuse it
+
+- **WHEN** an event fired by a clock request writes a value that carries a
+  bounded coordinate outside its bound
+- **THEN** the whole request is refused naming the joint, the coordinate, the
+  side and the bound, nothing is committed, and the model is not posed
+
+#### Scenario: A snapshot carries the instant
+
+- **WHEN** a host snapshots a clocked machine, advances its clock, and
+  restores that snapshot
+- **THEN** the clock stands at the instant the snapshot was taken and so does
+  every other value in the bank
+
+#### Scenario: A machine with no clock has none to move
+
+- **WHEN** a host asks a clocked machine that declares no clock to advance one
+- **THEN** the request is refused naming the inputs the machine does declare,
+  and nothing about the machine changes
+
 ### Requirement: A declared stop stops a clocked request on its path
 
 A clocked machine publishes one compiled CONSTRAINT per bounded
@@ -3474,6 +3585,14 @@ The EARLIEST landing across every constraint SHALL become the request's
 end, and the request SHALL then locate its events on the clipped path
 only. A request clipped to ZERO travel SHALL be ADMITTED, not refused: it
 commits nothing, poses nothing new, and reports what stopped it.
+
+NO compiled constraint SHALL clip a request that moves the machine's CLOCK,
+whatever stops the machine declares: a declared range is a MECHANICAL stop,
+and nothing is in the way of the next second. A published constraint whose
+value, whose bound, whose level or whose per-input classification names the
+machine's clock is MALFORMED and SHALL be refused at load naming it, because
+a stop is compiled over the bank — the drivers and the states — and a
+clock-driven coordinate is not something a stop can hold.
 
 Every constraint met at that landing SHALL be reported as a STOP naming
 the coordinate, the side, what the bound evaluates to there, what the
@@ -3525,6 +3644,21 @@ stood.
   the side and the bound, nothing is committed, and the model is not
   posed
 
+#### Scenario: An interlock does not hold a clock
+
+- **WHEN** a maker advances the clock of a machine that declares interlocked
+  joints, far enough that a driver moving the same distance would be stopped
+- **THEN** the whole travel is admitted and no stop is reported, while the
+  same machine's driver is still stopped by its own request
+
+#### Scenario: A stop that follows the clock is refused at load
+
+- **WHEN** a mounted document's compiled constraint reads the machine's clock
+  in the value it bounds, in its bound or in the inputs it declares can move
+  it
+- **THEN** mounting fails naming that constraint and the clock, rather than
+  clipping a request against a coordinate the clock drives
+
 ### Requirement: A clocked machine the viewer cannot execute is refused by name
 
 A document this viewer cannot execute SHALL be refused rather than
@@ -3537,16 +3671,19 @@ committing relation whose event level names a primitive this viewer does
 not implement, whose shapes name a classification it does not implement,
 or whose laws do not align with the values it writes; a compiled
 constraint missing a published key, naming a side that is neither low nor
-high, or carrying a jump plan or a classification this viewer does not
-implement; a states table that is not a table of declarations, or one
-whose names collide with the declared drivers; an expression naming an
+high, carrying a jump plan or a classification this viewer does not
+implement, or naming the machine's CLOCK anywhere in what it bounds or what
+can move it; a states table that is not a table of declarations, or one
+whose names collide with the declared drivers or with the machine's clock;
+an expression naming an
 identifier neither table nor the machine's own reserved names declare.
 
 The viewer SHALL refuse a REQUEST, leaving the document loaded and the
-model posed, when the request names the machine's CLOCK — this build
-poses a clocked machine at the instant its clock stands at and does not
-advance it — and when a host asks a clocked machine for a cadence it does
-not have: a rate, a triggered instruction, or a step of a run.
+model posed, when the request names a CLOCK on a machine that declares
+none, and when a host asks a clocked machine for a cadence it does
+not have: a rate, a triggered instruction, or a step of a run. A request
+that ADVANCES a declared clock is not such a refusal and SHALL be executed
+under the clock requirement above.
 
 #### Scenario: A malformed clocked machine is refused by name
 
@@ -3557,11 +3694,13 @@ not have: a rate, a triggered instruction, or a step of a run.
   model and the primitive, rather than executing a machine it does not
   understand
 
-#### Scenario: A request on the clock is refused and the model stands
+#### Scenario: A request on a clock the machine has not got is refused
 
-- **WHEN** a host requests that a clocked machine's clock advance
-- **THEN** the request is refused naming the clock, the document stays
-  loaded, and the model stays posed at the bank it already showed
+- **WHEN** a host requests that a clocked machine which declares no time base
+  advance a clock
+- **THEN** the request is refused naming the inputs the machine does declare,
+  the document stays loaded, and the model stays posed at the bank it
+  already showed
 
 #### Scenario: A cadence a clocked machine does not have is refused
 
@@ -3587,19 +3726,20 @@ the reader chooses. A disagreement SHALL be treated as a defect of this
 engine, and SHALL NOT be answered by widening a comparison, editing the
 fixture or omitting a scenario.
 
-The replay SHALL load and execute EVERY machine of the corpus, and SHALL
-compare, per step, the whole bank, the travel admitted, the events fired,
-the STOPS met and the refusals by kind and by name.
+The replay SHALL load and execute EVERY machine of the corpus and EVERY
+step of every script, and SHALL compare, per step, the whole bank, the
+travel admitted, the events fired, the STOPS met and the refusals by kind
+and by name. No step SHALL be departed from, deferred or passed over: a
+request that advances a machine's CLOCK is replayed exactly as a request on
+a driver is.
 
-Where this build deliberately does not do what the producer did — a
-request that advances a machine's CLOCK, which this build refuses — the
-replay SHALL assert that departure explicitly, by kind and by name, and
-SHALL name the steps it therefore cannot compare because the bank has
-diverged. The set of such steps SHALL be derived from the corpus file
-itself rather than from a list maintained by hand, and a CENSUS of the
-replayed, departed and deferred steps SHALL be asserted, so a corpus
-regenerated wider or narrower than the one this build was written against
-fails loudly here without anyone running the producer's generator.
+A CENSUS of the machines, the steps and the recorded numbers SHALL be
+asserted and SHALL be DERIVED from the corpus file itself rather than from a
+list maintained by hand, so a corpus regenerated wider or narrower than the
+one this build was written against fails loudly here without anyone running
+the producer's generator. The census SHALL state that every step is
+replayed, so a later build cannot narrow the suite by declaring a departure
+without also moving that number.
 
 #### Scenario: The engine reproduces the producer's own numbers
 
@@ -3621,12 +3761,19 @@ fails loudly here without anyone running the producer's generator.
 - **THEN** its script is replayed step by step like every other machine's,
   and the stops it records are reproduced exactly
 
-#### Scenario: A step this build does not perform is a stated departure
+#### Scenario: A step that advances a clock is replayed like any other
 
 - **WHEN** the corpus records a step that advances a machine's clock
-- **THEN** the replay asserts that this build refuses that step by kind
-  and by name, and names the steps after it that it therefore does not
-  compare, rather than passing over them in silence
+- **THEN** its script is replayed step by step like every other machine's,
+  the events it records on the clock are reproduced exactly, and the steps
+  after it are compared against the bank it left
+
+#### Scenario: A landing one representable value off is caught
+
+- **WHEN** a recorded landing on a clock — the first release of a machine
+  whose level is a function of elapsed seconds — is moved by one
+  representable value
+- **THEN** the replay fails, rather than accepting a value within any window
 
 #### Scenario: A regenerated corpus is loud
 
@@ -3654,17 +3801,22 @@ and SHALL NOT clamp a request.
 A state SHALL NOT be presented as a handle and SHALL NOT be a source of
 any request; its readout SHALL follow the committed bank. A machine's
 CLOCK, where it declares one, SHALL likewise be shown as a readout and
-never as a handle.
+never as a positional handle; it is advanced by the transport of the
+requirement "A maker runs an elapsed clocked machine on screen" and by
+nothing else.
 
 Declared instructions SHALL be listed and SHALL be presented as
 unavailable, with the reason available to a reader and to assistive
 tools: a clocked document publishes its instructions and this build gives
 them no meaning.
 
-The chrome SHALL offer snapshot, restore and reset of the machine's bank,
-and SHALL NOT offer a transport — a clocked machine has no cadence to
-run, step or speed. A document's `$t` animation SHALL be presented
-exactly as it is for a document carrying no machine at all.
+The chrome SHALL offer snapshot, restore and reset of the machine's bank.
+It SHALL NOT offer a transport over the machine's DRIVERS — a clocked
+machine has no cadence for one to run, step or speed — and SHALL offer the
+clock's own transport exactly where the machine declares a clock. A
+document's `$t` animation SHALL be presented exactly as it is for a document
+carrying no machine at all, independently of the clock: the two advance
+different values and neither moves the other.
 
 #### Scenario: A maker moves an input and the machine commits
 
@@ -3703,3 +3855,77 @@ exactly as it is for a document carrying no machine at all.
 - **WHEN** a clocked document carries geometry that is a formula of `$t`
 - **THEN** the timeline plays it exactly as it does for a document
   carrying no machine, and the bank stands throughout
+
+### Requirement: A maker runs an elapsed clocked machine on screen
+
+For a clocked machine that declares a CLOCK, the viewer SHALL offer a
+TRANSPORT beside the clock's readout: a way to PLAY, a way to PAUSE, and a
+way to STEP the clock by a stated number of seconds. A machine that declares
+no clock SHALL be offered none.
+
+While playing, the viewer SHALL submit exactly ONE request per rendered
+frame, advancing the clock by the wall-clock seconds elapsed since the
+previous frame multiplied by the playback speed, so that every event inside a
+frame is located and fired exactly and in order and a long frame is simply a
+long request. The advance one frame may make SHALL be capped: wall time
+beyond the cap is LOST rather than made up in a burst, and the clock's
+readout falling behind the clock on the wall is how a maker sees that it was.
+
+The playback SPEED SHALL be the same multiple of real time the viewer
+already offers, refusing a non-positive or non-finite one.
+
+PAUSING SHALL hold the bank exactly where it stands, submitting nothing.
+RESETTING SHALL return the whole bank to its published defaults with the
+clock at zero, and SHALL stop the transport. A request the machine REFUSES
+SHALL pause the transport and report the refusal's own message, rather than
+repeating a refused request once per frame.
+
+The clock's readout SHALL show elapsed SECONDS and SHALL follow the committed
+bank. The clock SHALL NOT be presented as a positional handle and SHALL NOT
+be offered a way to move backwards, elapsed seconds having no reverse.
+
+#### Scenario: A maker plays an elapsed machine and watches it run
+
+- **WHEN** a maker presses play on a clocked machine whose geometry is a
+  formula of elapsed seconds
+- **THEN** the model moves, the clock's readout advances in seconds, and the
+  machine's states are committed at each event as the clock passes it
+
+#### Scenario: Pausing holds the bank
+
+- **WHEN** a maker pauses a playing clocked machine
+- **THEN** the clock stops where it is, nothing further is committed, and the
+  readouts keep showing the bank the machine stands at
+
+#### Scenario: A step advances the clock by exactly what it says
+
+- **WHEN** a maker steps a paused clocked machine by two seconds
+- **THEN** one request advances the clock by two seconds, every event in that
+  interval fires, and the machine stands two seconds later
+
+#### Scenario: A long frame loses time rather than firing a burst
+
+- **WHEN** a rendered frame arrives after a stall far longer than a frame
+- **THEN** the clock advances by at most the capped amount, the events of that
+  advance fire normally, and the time beyond the cap is lost rather than
+  integrated at once
+
+#### Scenario: A refused frame pauses the transport
+
+- **WHEN** a frame's request is refused by the machine
+- **THEN** the transport pauses, the refusal's message is shown, and no
+  further request is submitted until the maker asks for one
+
+#### Scenario: A machine with no clock is offered no transport
+
+- **WHEN** a maker opens a clocked document whose machine declares no clock
+- **THEN** no play, pause or step control appears, and the machine is operated
+  by its handles exactly as it is today
+
+#### Scenario: A host runs the clock from its own panel
+
+- **WHEN** a host mounts an elapsed clocked document with the chrome
+  suppressed and starts the clock from the handle
+- **THEN** no on-screen transport appears while the clock advances, poses and
+  commits exactly as it does when the transport is shown
+

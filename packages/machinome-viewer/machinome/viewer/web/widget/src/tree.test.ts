@@ -26,13 +26,16 @@ vi.mock('./evaluator', async (importOriginal) => {
 });
 
 import { evalExpr } from './evaluator';
-import { bindingTable } from './bindings';
+import { bindingTable, EMPTY_BINDINGS } from './bindings';
+import { controlPlan } from './options';
+import { clockedScope } from './run/pose';
 import {
   assemblyPathKey, liftAlongNormals, liftDecal, MARKING_LIFT, materialForColor,
   WidgetTree,
 } from './tree';
 import { Manifest, ManifestNode } from './types';
 import pascaline from '../../../tests/fixtures/pascaline/viewer.json';
+import regulator from '../../../tests/fixtures/regulator/viewer.json';
 import markedFixture from '../../../tests/fixtures/marked/manifest.json';
 
 const evaluations = () =>
@@ -344,6 +347,67 @@ describe('WidgetTree driver-aware updates', () => {
 
     expect(document.version).toBe(5);
     expect(tree.animated).toBe(false);
+  });
+
+  it('is not animated for an ELAPSED clocked document either: the clock '
+     + 'is not $t', async () => {
+    // OpenSpec `run-the-clock`, design §6 and task 5.6. The acceptance
+    // document itself: the bob's pose reads the free name `time` -- a
+    // BANK id in seconds -- and nothing in it reads `$t`, which is a
+    // 0..1 animation variable and is never seconds (ADR-128 §10). So
+    // `animated` is false, `controlPlan` builds no bar, and the clock's
+    // transport is the only transport such a document has: there is
+    // nothing for a maker to confuse it with.
+    const document = regulator as unknown as Manifest;
+    const tree = new WidgetTree(document.root, './', null,
+                                bindingTable(document, 'regulator'));
+    await tree.loaded;
+
+    expect(document.version).toBe(8);
+    expect((document as unknown as { clocked: { clock: string } })
+      .clocked.clock).toBe('time');
+    expect(tree.animated).toBe(false);
+    expect(controlPlan('inline', tree.animated).bar).toBe(false);
+  });
+
+  it('IS animated where a document reads BOTH, and the two advance '
+     + 'different values', async () => {
+    // Where a document carries both -- a `$t` operation somewhere
+    // alongside a clocked machine with a clock -- the two controls are
+    // independent and each says what it advances: the timeline plays
+    // `$t` over its frames, the transport advances the machine's
+    // seconds, and neither touches the other's value. The pose reads
+    // both through ONE scope, so a frame in which both moved
+    // re-evaluates once.
+    const both = new WidgetTree(root([
+      leaf({ name: 'bob',
+             operations: [['r', '(12.0 * sin((180.0 * time)))',
+                           [0, 0, 1]] as const] }),
+      leaf({ name: 'spinner',
+             operations: [['r', '($t * 360.0)', [0, 0, 1]] as const] }),
+    ]), '/build/');
+    await both.loaded;
+    expect(both.animated).toBe(true);
+    expect(controlPlan('inline', both.animated).bar).toBe(true);
+
+    const matrices = () => both.children.map(
+      (child) => child.group.matrix.elements.slice());
+    const scope = (time: number, seconds: number) => clockedScope(
+      { time: seconds }, time, EMPTY_BINDINGS);
+
+    both.update(scope(0, 0));
+    const [bobAtRest, spinnerAtRest] = matrices();
+    // The TRANSPORT moved: the bob follows the bank and the spinner does
+    // not budge.
+    both.update(scope(0, 0.5), { time: false, drivers: new Set(['time']) });
+    const [bobMoved, spinnerStill] = matrices();
+    expect(bobMoved).not.toEqual(bobAtRest);
+    expect(spinnerStill).toEqual(spinnerAtRest);
+    // The TIMELINE moved: the spinner follows `$t` and the bob stands.
+    both.update(scope(0.25, 0.5), { time: true, drivers: new Set() });
+    const [bobStill, spinnerMoved] = matrices();
+    expect(spinnerMoved).not.toEqual(spinnerAtRest);
+    expect(bobStill).toEqual(bobMoved);
   });
 
   it('forgets a node\'s free variables when its operations are replaced', async () => {

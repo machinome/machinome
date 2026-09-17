@@ -7,6 +7,61 @@ it carries release together and share one version.
 
 The viewer stops posing a machine and starts running one.
 
+- **An elapsed clocked machine RUNS: the clock is an input a request
+  moves, and API 18 says so.** solid-node's ADR-127 gave a clocked root a
+  third time base: under `Time.elapsed()` the machine banks `time` in
+  seconds, and ADR-128 §10 publishes it as `clocked.clock`. Cycle 5 banked
+  that clock at zero, posed from it and refused the one gesture that would
+  move it; this build MOVES it. A time request runs the path an ordinary
+  request runs — every committing relation whose published `shapes` names
+  the clock examined and no others, crossings solved, landings found by the
+  same far-side walk, only rising steps firing, ties by identity of the
+  landing float, reads pre-event, commits in path order, one pose at the
+  end — because **an event on the clock is an event**. **Nothing stops a
+  clock**: a declared range is a mechanical stop and nothing is in the way
+  of the next second, so no declared stop ever clips a time request (proved
+  on the corpus's own `Lift`, which declares a clock AND two compiled
+  bounds, admitted whole where its very next driver request is clipped) —
+  while a commit fired inside a time request that carries a coordinate out
+  of range still refuses the whole request. **Time never reverses**: a
+  negative travel, or a `to=` behind the banked instant, is refused by name
+  naming both instants, in the producer's own position (after the by/to
+  exclusivity refusal, before the clip); zero is admitted and moves
+  nothing. A `bounds` entry whose chain, bound, level or `shapes` names the
+  clock is now **refused at load**, mirroring a refusal the producer makes
+  and the loader was silently wider than. **The conformance corpus closes**:
+  all 30 machines, **76 of 76 steps and 722 of 722 recorded numbers**
+  replayed bit for bit under `toBe` with `tolerance.float` read from the
+  file, no departure and no deferral left, and the census now derived from
+  the replay itself so a later build cannot narrow the suite quietly.
+  **And a maker can watch one run.** Beside the clock's readout the chrome
+  gains a transport: PLAY, which submits exactly one `move(clock, {by})`
+  per rendered frame for the wall seconds elapsed times the playback speed
+  — so every event inside that frame still fires exactly and in order —
+  STEP, one request of a stated number of seconds, and the existing speed
+  ladder, whose ×360 and ×3600 exist for this. There is no scrub and no
+  reverse: the clock is one-way, and a slider that ignored half its travel
+  would be worse than none. A long frame is capped at four frames' worth of
+  machine time and the wall time beyond it is lost visibly, rather than
+  firing a burst past the machine's own `max_crossings`; a refused frame
+  pauses and reports once; pause holds the bank; reset returns the bank to
+  its published defaults with the clock at zero and stops the transport,
+  and so does a republish under `solid develop`. `handle.machine()` carries
+  `clockPlaying()` and `setClockPlaying(playing)` beside the requests it
+  already had, and every panel readout now follows the committed bank
+  whoever moved it — a host driving the handle no longer leaves a stale
+  instant on screen. A clocked document builds ONE chrome (the posed driver
+  panel is no longer built behind the clocked one), and an integer state
+  reads as the whole number it is. `$t` and the clock are independent and
+  neither moves the other: an elapsed document that reads no `$t` gets no
+  timeline at all. Measured on the framework's own `Regulator` pendulum,
+  exported verbatim as a fixture and played in Chromium: a frame costs
+  **0.3–0.4 ms** at ×1 and **1.0–1.8 ms** at ×3600, every number asserted
+  under one 16 ms frame budget, and the whole corpus replays in 15.5 ms.
+  Nothing of the run, its worker, its playback or versions 1–7 changed, and
+  the document versions this build reads stay `1 … 8`. (OpenSpec change
+  `run-the-clock`, ADR-063.)
+
 - **A CLOCKED machine is executed: the viewer reads document version 8,
   and API 17 says so.** solid-node's ADR-125 gave a machine MEMORY and no
   cadence — a few retained values, a closed-form position between events,

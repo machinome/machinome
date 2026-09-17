@@ -7,7 +7,16 @@
 // ONE REQUEST on a clocked machine: the clip, the events, the commits
 // and the pose (`simulation/clocked.py`'s `Clocked.move`, `_clipped`,
 // `_judged`, `_next_event` and the session verbs; OpenSpec
-// `execute-the-commit`, design §3, §6, §7, §8, §9, §12).
+// `execute-the-commit`, design §3, §6, §7, §8, §9, §12, and
+// `run-the-clock`, design §1, §2, §3).
+//
+// The one input a request may move is a declared DRIVER or the
+// machine's CLOCK, and the path is the same one: the clip, the same
+// solver, the same landing rule, the same ordering. Nothing in the
+// solve is clock-aware. What IS the clock's own is that no compiled
+// constraint ever clips it -- a declared range is a MECHANICAL stop and
+// nothing is in the way of the next second -- and that a request which
+// would run it backwards is REFUSED rather than stopped.
 //
 // A pure SYNCHRONOUS library: no DOM, no three.js, no `postMessage`. A
 // clocked request is not a cadence -- it is one gesture, one solve, one
@@ -75,8 +84,9 @@ export interface ClockedMachine {
   state(): Record<string, number>;
   drivers(): Record<string, ManifestDriver>;
   states(): Record<string, ManifestDriver>;
-  /** One request on ONE declared driver, BY a travel or TO a value, in
-   * DESIGN units. */
+  /** One request on ONE input -- a declared driver, or the machine's
+   * CLOCK where it declares one -- BY a travel or TO a value, in DESIGN
+   * units. */
   move(input: string, request: { by?: number; to?: number }): ClockedRequest;
   snapshot(): ClockedSnapshot;
   restore(state: ClockedSnapshot): void;
@@ -134,9 +144,10 @@ export function clockedMachine(machine: LoadedMachine,
    * (`Clocked._input`). */
   const declarationOf = (inputId: string): ManifestDriver => {
     if (machine.clock !== null && inputId === machine.clock) {
-      // A clock has no scale and no dtype: elapsed seconds are what they
-      // are. This build never reaches the conversion, because the
-      // request itself is refused below (design §9).
+      // A clock has no scale and no dtype: elapsed seconds are what
+      // they are, so `native()` is the identity and `by`, `to` and
+      // `admitted` are all plain seconds. No conversion happens
+      // anywhere, and that is a decision (`run-the-clock`, design §1).
       return { default: 0, range: null, unit: 's', dtype: null, scale: null };
     }
     const driver = machine.drivers[inputId];
@@ -278,21 +289,31 @@ export function clockedMachine(machine: LoadedMachine,
           'travel) and to= (where to land), both in design units; got ' +
           `by=${by} and to=${to}.`);
       }
-      if (machine.clock !== null && inputId === machine.clock) {
-        // THE ONE GESTURE THIS BUILD CANNOT HONOUR (design §9). The
-        // DOCUMENT is not refused -- a clock that stands renders
-        // TRUTHFULLY, and the initial bank is a real instant of the
-        // machine -- so the line is drawn at the request rather than at
-        // the load, and it is reported where the gesture was made.
-        throw new ClockedRequestError(
-          `move('${inputId}', ...) asks this machine's clock to advance, ` +
-          'which this build does not yet do. The bank stands at ' +
-          `${bank[inputId]} seconds and the model is posed there; a later ` +
-          'build moves the clock and fires the events on it.');
-      }
       const origin = bank[inputId];
       const target = to !== null
         ? native(declaration, to) : origin + native(declaration, by as number);
+      if (machine.clock !== null && inputId === machine.clock
+          && target < origin) {
+        // TIME NEVER REVERSES (`Clocked.move`, `clocked.py:2064-2082`),
+        // checked exactly where the producer checks it: AFTER the by/to
+        // exclusivity refusal and after `target` is computed, BEFORE the
+        // clip. The order is observable -- a request stating both `by`
+        // and `to` on a backwards clock gets the exclusivity message --
+        // so it is mirrored rather than re-derived.
+        //
+        // A REFUSAL and not a stop: a stop reports a bound the machine
+        // MET, and no bound was met. ZERO is admitted and falls straight
+        // through: `target === origin` makes the clip return at once and
+        // the event loop breaks on `delta === 0`.
+        const asked = to === null ? `by=${by}` : `to=${to}`;
+        throw new ClockedRequestError(
+          `move('${inputId}', ${asked}) asks this machine's clock to run ` +
+          `BACKWARDS: it stands at ${origin} seconds and the request ends ` +
+          `at ${target}. Elapsed seconds never wrap and never reverse -- no ` +
+          'bound was met and nothing stopped, the request has no meaning. ' +
+          'Restore a snapshot taken at the earlier instant, or reset the ' +
+          'machine, to stand before it again.');
+      }
 
       // STEP 0: the request's travel is CLIPPED to the largest fraction
       // at which every compiled constraint is still satisfied, ONCE,

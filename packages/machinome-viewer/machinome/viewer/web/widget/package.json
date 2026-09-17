@@ -1,7 +1,7 @@
 {
   "name": "@solid-node/widget",
   "version": "0.2.0",
-  "solidNodeViewerApi": 17,
+  "solidNodeViewerApi": 18,
   "solidNodeDocumentVersions": [
     1,
     2,

@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { bindingTable } from '../bindings';
 import type { Manifest } from '../types';
+import { clip, levelReading, movesWith } from './bounds';
 import { halfToEven } from './commit';
 import { loadClocked } from './document';
 import type { ClockedDocument, LoadedMachine } from './document';
@@ -28,11 +29,18 @@ function loaded(document: Record<string, unknown>): LoadedMachine {
                      bindingTable(document as unknown as Manifest, url));
 }
 
-function corpusMachine(name: string): ClockedMachine {
+function corpusDocument(name: string): Record<string, unknown> {
   const found = fixture.machines.find((one) => one.name === name);
   if (found === undefined) throw new Error(`no corpus machine ${name}`);
-  return clockedMachine(loaded(
-    JSON.parse(JSON.stringify(found.document)) as Record<string, unknown>));
+  return JSON.parse(JSON.stringify(found.document)) as Record<string, unknown>;
+}
+
+function corpusLoaded(name: string): LoadedMachine {
+  return loaded(corpusDocument(name));
+}
+
+function corpusMachine(name: string): ClockedMachine {
+  return clockedMachine(corpusLoaded(name));
 }
 
 const FREE = { default: 0, range: null, unit: null, dtype: null, scale: null };
@@ -341,13 +349,13 @@ describe('a request this machine has no meaning for', () => {
     expect(() => machine.move('crank', {})).toThrow(/exactly one of by=/);
   });
 
-  it('refuses a request on the CLOCK by name, and loads the document all '
-     + 'the same (design §9)', () => {
-    const machine = corpusMachine('Regulator');
-    expect(machine.clock()).toBe('time');
-    // The bank STANDS at the initial instant, which is a real instant of
-    // the machine: the document is not refused, only the one gesture.
-    expect(machine.state()).toEqual({ engaged: 1, count: 0, time: 0 });
+  it('refuses a request naming a CLOCK on a machine that declares none '
+     + '(ADR-062 F7, deliberately kept)', () => {
+    // A machine with `clocked.clock: null` has no clock to advance, and
+    // the request meets the ORDINARY undeclared-input refusal -- naming
+    // what the machine DOES declare, rather than a clock-specific one.
+    const machine = corpusMachine('Counter');
+    expect(machine.clock()).toBe(null);
     let caught: { kind?: string; message?: string } = {};
     try {
       machine.move('time', { by: 5 });
@@ -355,11 +363,9 @@ describe('a request this machine has no meaning for', () => {
       caught = error as { kind?: string; message?: string };
     }
     expect(caught.kind).toBe('ValueError');
-    expect(caught.message).toContain('clock to advance');
-    expect(machine.state()).toEqual({ engaged: 1, count: 0, time: 0 });
-    // Every ORDINARY request on an elapsed machine is taken.
-    const lift = corpusMachine('Lift');
-    expect(() => lift.move('lift', { by: 1 })).not.toThrow();
+    expect(caught.message).toContain('names no declared driver');
+    expect(caught.message).toContain('declared: crank');
+    expect(machine.state()).toEqual({ crank: 0, units: 0, tens: 0 });
   });
 
   it('refuses the cadence verbs by name (design §4)', () => {
@@ -377,7 +383,7 @@ describe('a request this machine has no meaning for', () => {
       ['Counter', (one: ClockedMachine) => one.move('crank', { by: 400000 })],
       ['Conflict', (one: ClockedMachine) => one.move('crank', { by: 200 })],
       ['Shut', (one: ClockedMachine) => one.move('crank', { by: 1000 })],
-      ['Regulator', (one: ClockedMachine) => one.move('time', { by: 5 })],
+      ['Regulator', (one: ClockedMachine) => one.move('time', { by: -1 })],
     ] as [string, (one: ClockedMachine) => unknown][]) {
       try {
         act(corpusMachine(name));
@@ -387,5 +393,212 @@ describe('a request this machine has no meaning for', () => {
     }
     expect([...kinds].sort()).toEqual(
       ['ClockedError', 'JointRangeError', 'TooManyEvents', 'ValueError']);
+  });
+});
+
+// ---------------------------------------------------------------------
+// The CLOCK (OpenSpec `run-the-clock`, design §1, §2, §3; solid-node
+// ADR-127). The clock is the moving input, and everything below is the
+// SAME request path a declared driver takes.
+// ---------------------------------------------------------------------
+
+/** A `Regulator`-shaped machine whose counted dial carries a declared
+ * RANGE the committed count drives past: `count` turns `face.turn` at 36
+ * degrees a release, and the dial is bounded at a quarter turn. The
+ * framework's own `tests/clocked_project/pendulum.py:Ranged`, hand-written
+ * here because the corpus does not carry it (design §3). */
+function rangedClock(): ClockedMachine {
+  return clockedMachine(loaded({
+    format: 'solid-node-export',
+    version: 8,
+    drivers: { engaged: { ...COUNT, default: 1 } },
+    states: { count: COUNT },
+    instructions: {},
+    bindings: [],
+    clocked: {
+      identity: 'hand-written-ranged',
+      clock: 'time',
+      own: '_own',
+      commits: [{
+        sources: ['time', 'engaged', 'count'],
+        targets: ['count'],
+        at: { primitive: 'floor', level: '((time + 0.5) / 1.0)' },
+        law: ['(count + engaged)'],
+        shapes: { time: 'affine' },
+        description: '(time, engaged, count) commits count',
+        stated_by: 'Ranged',
+      }],
+      bounds: [{
+        coordinate: 'face.turn',
+        side: 'high',
+        unit: 'deg',
+        value: '(count * 36.0)',
+        bound: 90.0,
+        plan: null,
+        // The level is CONSTANT in the one declared driver, and the
+        // producer compiles a plan for declared drivers ALONE -- which
+        // is why no plan here names the clock.
+        shapes: { engaged: { level: 'constant', jumps: [] } },
+        node: 'Quarter',
+        joint: 'turn',
+        description: "the high bound of 'face.turn'",
+      }],
+      limits: { crossing_tolerance: 1e-12, max_crossings: 1000 },
+    },
+  }));
+}
+
+describe('a request that moves the CLOCK', () => {
+  it('REFUSES a travel that would run time backwards, by name', () => {
+    const machine = corpusMachine('Regulator');
+    expect(machine.clock()).toBe('time');
+    machine.move('time', { by: 5 });
+    const before = machine.state();
+    let caught: { kind?: string; message?: string } = {};
+    try {
+      machine.move('time', { by: -1 });
+    } catch (error) {
+      caught = error as { kind?: string; message?: string };
+    }
+    expect(caught.kind).toBe('ValueError');
+    expect(caught.message).toContain('time');
+    expect(caught.message).toContain('BACKWARDS');
+    // BOTH instants, named: where it stands and where the request ends.
+    expect(caught.message).toContain('5');
+    expect(caught.message).toContain('4');
+    expect(machine.state()).toEqual(before);
+  });
+
+  it('REFUSES a `to` behind the banked instant too', () => {
+    const machine = corpusMachine('Regulator');
+    machine.move('time', { by: 5 });
+    expect(() => machine.move('time', { to: 4.5 }))
+      .toThrow(/run BACKWARDS/);
+    expect(machine.state().time).toBe(5);
+  });
+
+  it('takes the EXCLUSIVITY refusal first, because the order is '
+     + 'observable', () => {
+    // A request stating both `by` and `to` on a BACKWARDS clock must get
+    // the exclusivity message, not the reversal one: the producer checks
+    // exclusivity before it computes the target, and this mirrors its
+    // position rather than re-deriving it.
+    const machine = corpusMachine('Regulator');
+    machine.move('time', { by: 5 });
+    expect(() => machine.move('time', { by: -1, to: 4 }))
+      .toThrow(/exactly one of by=/);
+  });
+
+  it('ADMITS zero: `by: 0`, `to:` the banked instant, and twice is once',
+     () => {
+    const machine = corpusMachine('Regulator');
+    machine.move('time', { by: 5 });
+    const banked = machine.state();
+    const zero = machine.move('time', { by: 0 });
+    expect(zero.admitted).toBe(0);
+    expect(zero.commits).toEqual([]);
+    expect(zero.stops).toEqual([]);
+    expect(machine.state()).toEqual(banked);
+    const landed = machine.move('time', { to: 5 });
+    expect(landed.admitted).toBe(0);
+    expect(landed.commits).toEqual([]);
+    expect(machine.state()).toEqual(banked);
+    machine.move('time', { to: 5 });
+    expect(machine.state()).toEqual(banked);
+  });
+
+  it('replays Regulator: five events on `by: 5`, the first landing one '
+     + 'representable value below the ideal instant', () => {
+    const machine = corpusMachine('Regulator');
+    const request = machine.move('time', { by: 5 });
+    expect(request.admitted).toBe(5);
+    expect(request.stops).toEqual([]);
+    expect(request.commits.map((one) => one.value)).toEqual(
+      [0.49999999999999994, 1.5, 2.5, 3.5, 4.5]);
+    expect(request.commits.map((one) => one.fraction)).toEqual(
+      [0.09999999999999999, 0.3, 0.5, 0.7, 0.9]);
+    expect(request.commits.map((one) => one.targets.count))
+      .toEqual([1, 2, 3, 4, 5]);
+    expect(machine.state()).toEqual({ engaged: 1, count: 5, time: 5 });
+    // The session verbs carry the instant like any other value.
+    const taken = machine.snapshot();
+    expect(taken.bank.time).toBe(5);
+    machine.move('time', { by: 0 });
+    machine.restore(taken);
+    expect(machine.state().time).toBe(5);
+    machine.reset();
+    expect(machine.state()).toEqual({ engaged: 1, count: 0, time: 0 });
+  });
+
+  it('replays ClockAlone: a relation NO DRIVER can move, three events',
+     () => {
+    const machine = corpusMachine('ClockAlone');
+    expect(machine.drivers()).toEqual({});
+    const request = machine.move('time', { by: 3 });
+    expect(request.admitted).toBe(3);
+    expect(request.commits.map((one) => one.value)).toEqual(
+      [0.49999999999999994, 1.5, 2.5]);
+    expect(machine.state()).toEqual({ count: 3, time: 3 });
+  });
+
+  it('NOTHING STOPS A CLOCK: Lift admits its whole travel where its own '
+     + 'driver is clipped', () => {
+    const document = corpusDocument('Lift');
+    const machine = clockedMachine(loaded(document));
+    const request = machine.move('time', { by: 4 });
+    expect(request.admitted).toBe(4);
+    expect(request.stops).toEqual([]);
+    expect(request.commits).toHaveLength(4);
+    expect(machine.state())
+      .toEqual({ count: 4, engaged: 1, lift: 0, time: 4 });
+    // The very next step of the same script, on the same machine: an
+    // ORDINARY driver request, clipped at the high bound.
+    const clipped = machine.move('lift', { by: 12 });
+    expect(clipped.admitted).toBe(9);
+    expect(clipped.stops).toHaveLength(1);
+    expect(clipped.stops[0].coordinate).toBe('plate.lift');
+    expect(clipped.stops[0].side).toBe('high');
+    expect(clipped.stops[0].fraction).toBe(0.75);
+  });
+
+  it('is not a coincidence: no compiled constraint of Lift is even '
+     + 'examined for the clock', () => {
+    // The PROMISE of design §3, rather than an accident of the fixture:
+    // the producer compiles a constraint plan per DECLARED DRIVER, so a
+    // clock names no plan, `movesWith` is false for it, and the clip
+    // answers `null` without walking a single piece of the path -- while
+    // the same two constraints DO move with `lift`.
+    const machine = corpusLoaded('Lift');
+    const clock = machine.clock as string;
+    expect(machine.bounds).toHaveLength(2);
+    for (const bound of machine.bounds) {
+      expect(bound.plans.has(clock)).toBe(false);
+      expect(movesWith(bound, clock)).toBe(false);
+      expect(movesWith(bound, 'lift')).toBe(true);
+      const reading = levelReading(machine, bound, machine.initial);
+      expect(clip(machine, reading, clock, 0, 4)).toBe(null);
+    }
+  });
+
+  it('still JUDGES the end of a time request: a commit that carries a '
+     + 'bounded coordinate out of range refuses the whole request', () => {
+    const machine = rangedClock();
+    const before = machine.state();
+    let caught: { kind?: string; message?: string } = {};
+    try {
+      machine.move('time', { by: 5 });
+    } catch (error) {
+      caught = error as { kind?: string; message?: string };
+    }
+    expect(caught.kind).toBe('JointRangeError');
+    expect(caught.message).toContain('face.turn');
+    expect(caught.message).toContain('high bound');
+    // Nothing committed, and nothing posed.
+    expect(machine.state()).toEqual(before);
+    // The same machine, asked for a travel its commits stay inside,
+    // makes it: two releases carry the dial to 72 degrees.
+    const shorter = machine.move('time', { by: 2 });
+    expect(shorter.admitted).toBe(2);
+    expect(machine.state().count).toBe(2);
   });
 });

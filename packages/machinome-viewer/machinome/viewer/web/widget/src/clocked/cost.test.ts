@@ -36,6 +36,21 @@
 //   - what is measured HERE is the SOLVE alone: this machine has no
 //     tree, so no pose happens. The page's own numbers (solve AND pose,
 //     and the pose alone) are in `tests/test_calculator_document.py`.
+//
+// THE NUMBERS OF `run-the-clock` (design §9, task 7) are the PLAYED
+// FRAME's: one frame-sized request on `Regulator` at x1, x60 and x3600,
+// and the per-EVENT cost, which is the number that scales. NO CORPUS
+// MACHINE IS ADDED for them: the corpus is the framework's, and the
+// speed ladder supplies the event rate without inventing a machine the
+// producer never generated -- `Regulator` releases once a second, and
+// x3600 turns a 16 ms frame into 60 seconds of machine time and ~60
+// events.
+//
+// AND WHAT THAT COMPARISON IS NOT: nothing here is held against the
+// running Curta. A clock request is not a tick, and `Regulator` is not
+// the Curta -- which has no clock at all, and which ADR-127 records as
+// owing this work nothing and costing it nothing. The frame numbers are
+// held against ONE FRAME BUDGET, 16 ms, and against nothing else.
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -43,6 +58,7 @@ import { bindingTable } from '../bindings';
 import type { Manifest } from '../types';
 import { loadClocked } from './document';
 import type { ClockedDocument } from './document';
+import { clockAdvance, CLOCK_FRAME_BUDGET } from './clock';
 import { clockedMachine } from './machine';
 import type { ClockedMachine } from './machine';
 
@@ -138,10 +154,67 @@ describe('what a clocked request costs', () => {
     expect(Math.min(...each)).toBeLessThan(4);
   });
 
+  it('plays ONE FRAME of Regulator at x1, x60 and x3600', () => {
+    // The claim to falsify (design §9): a PLAYED FRAME fits in the frame
+    // budget. `clockAdvance` decides the seconds; this measures what
+    // requesting them costs.
+    const machine = machineOf('Regulator');
+    const rest = machine.snapshot();
+    for (const speed of [1, 60, 3600]) {
+      const by = clockAdvance(CLOCK_FRAME_BUDGET, speed);
+      let events = 0;
+      const runs = cost(`Regulator one frame at x${speed} (by ${by} s)`,
+                        machine, () => {
+                          events = machine.move('time', { by }).commits.length;
+                        }, () => machine.restore(rest));
+      // eslint-disable-next-line no-console
+      console.log(`    ... ${events} events in that frame`);
+      // Held against ONE FRAME BUDGET, which is the design's own number
+      // for this claim (§9) and not the 4 ms the gesture measurements
+      // above use: a gesture is compared with the running Curta's 40 ms
+      // per tick, and a FRAME is compared with the 16 ms it has. The
+      // floor is deliberately the ratified one rather than a tighter
+      // number this bench happened to reach -- the x3600 frame is 60
+      // events and measures 1.1 ms alone and 6.5 ms under a full suite,
+      // so a tighter floor would fail on load rather than on a
+      // regression (design, Risks: "the cost floors are
+      // load-sensitive").
+      expect(Math.min(...runs)).toBeLessThan(16);
+      if (speed === 3600) {
+        // A 16 ms frame at the ladder's top rung carries a minute of
+        // machine time: 60 releases, located and fired exactly and in
+        // order, because the frame IS one request.
+        expect(by).toBe(60);
+        expect(events).toBe(60);
+      }
+    }
+  });
+
+  it('counts what ONE EVENT of a played frame costs', () => {
+    // The number that SCALES: a frame's cost is its events' cost, so
+    // this is what a faster machine or a higher speed multiplies.
+    const machine = machineOf('Regulator');
+    const rest = machine.snapshot();
+    let events = 0;
+    const runs = cost('Regulator, 240 events on one capped frame',
+                      machine, () => {
+                        events = machine.move(
+                          'time', { by: clockAdvance(10, 3600) })
+                          .commits.length;
+                      }, () => machine.restore(rest));
+    expect(events).toBe(240);
+    const each = runs.map((one) => one / events);
+    // eslint-disable-next-line no-console
+    console.log('  Regulator per EVENT: '
+      + each.map((one) => one.toFixed(4)).join(' / ') + ' ms');
+    expect(Math.min(...each)).toBeLessThan(0.5);
+  });
+
   it('holds the whole corpus\'s 76 steps inside one frame budget', () => {
     // The main-thread decision (design §3) measured over EVERY machine
     // the corpus carries, rather than over the one that happens to be
-    // fast.
+    // fast. Cycle 5 recorded 13.6 ms for the 68 steps it replayed; this
+    // build EXECUTES all 76, the three clock machines included.
     const started = performance.now();
     let steps = 0;
     for (const entry of fixture.machines) {

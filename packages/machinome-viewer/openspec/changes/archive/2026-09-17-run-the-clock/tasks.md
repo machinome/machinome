@@ -45,18 +45,18 @@
 
 ## 1. The corpus, pinned RED before a line changes
 
-- [ ] 1.1 In `src/clocked/clocked-corpus.test.ts`, turn the census into
+- [x] 1.1 In `src/clocked/clocked-corpus.test.ts`, turn the census into
       the closed one FIRST, derived from the file exactly as it is now:
       30 machines, 76 steps, **76 replayed, 0 departed, 0 deferred**,
       **722 of 722 numbers**. Keep both "derived from the file" tests
       (`:263-289`) unchanged. Run it: red, naming the three machines.
-- [ ] 1.2 Delete the departure and deferral branches of the replay
+- [x] 1.2 Delete the departure and deferral branches of the replay
       (`:365-405`) and the `clockMoves`/`departureAt` helpers they exist
       for, so every machine goes through `replayStep`. Run it: red on
       `Regulator` 0, `ClockAlone` 0 and `Lift` 0 with the clock-request
       refusal's own message. **Record the three failures verbatim** —
       this is the cycle's red.
-- [ ] 1.3 Add the exactness test in the shape of the two that exist
+- [x] 1.3 Add the exactness test in the shape of the two that exist
       (`:406-448`): `Regulator`'s first recorded landing,
       `0.49999999999999994`, moved by ONE representable value must turn
       the replay red. Red now for the wrong reason; green at the end for
@@ -64,7 +64,7 @@
 
 ## 2. A request moves the clock
 
-- [ ] 2.1 Delete `machine.ts:281-292`. In its place, and in the
+- [x] 2.1 Delete `machine.ts:281-292`. In its place, and in the
       producer's own position — after the by/to exclusivity refusal and
       after `target` is computed, BEFORE the clip — the BACKWARDS
       refusal, mirroring `clocked.py:2064-2082`: kind `ValueError`
@@ -73,94 +73,94 @@
       `machine.test.ts`: a negative `by`, a `to` behind the bank, and
       `by`+`to` together on a backwards clock getting the EXCLUSIVITY
       message rather than this one (the order is observable).
-- [ ] 2.2 Zero admitted, asserted rather than assumed: `by=0` and `to=`
+- [x] 2.2 Zero admitted, asserted rather than assumed: `by=0` and `to=`
       the banked instant each report `admitted === 0`, no commits, no
       stops, an unchanged bank, and `move(clock, {to: t})` twice equals
       once. No code is expected here — if a test is red, the fall-through
       is wrong.
-- [ ] 2.3 `Regulator` replays: five events on `by=5`, first landing
+- [x] 2.3 `Regulator` replays: five events on `by=5`, first landing
       `0.49999999999999994`, fractions and `count` values bit for bit,
       then `snapshot`, the `ValueError`, the zero move and `restore`.
       `ClockAlone` replays: a relation no driver can move, three events.
       Both by the corpus, with `toBe`.
-- [ ] 2.4 `Lift` replays BOTH steps: `move('time', by=4)` admitted WHOLE
+- [x] 2.4 `Lift` replays BOTH steps: `move('time', by=4)` admitted WHOLE
       with four events and NO stop on a machine with two compiled
       bounds, then `move('lift', by=12)` clipped to 9.0 with the high
       stop at fraction 0.75. Assert in the same test that `clip` was
       never consulted for the clock — the promise of design §3, not an
       accident of the fixture.
-- [ ] 2.5 The end-of-request judgement on a TIME request, which no corpus
+- [x] 2.5 The end-of-request judgement on a TIME request, which no corpus
       machine exercises: a hand-written version 8 document in
       `machine.test.ts` — a `Regulator`-shaped machine whose counted dial
       carries a declared range the committed count drives past — refuses
       the whole request with kind `JointRangeError`, commits nothing and
       never poses. Red first.
-- [ ] 2.6 ADR-062's finding F7 kept: `move('time', …)` on a machine whose
+- [x] 2.6 ADR-062's finding F7 kept: `move('time', …)` on a machine whose
       `clocked.clock` is `null` still meets the ordinary undeclared-input
       refusal (`machine.ts:151-156`), asserted by name.
-- [ ] 2.7 The whole corpus green: `76 = 76`, `722 = 722`, no departure,
+- [x] 2.7 The whole corpus green: `76 = 76`, `722 = 722`, no departure,
       no deferral. If any operation genuinely cannot agree, STOP and
       report — never widen a comparison, edit the fixture or skip a
       scenario.
 
 ## 3. The loader mirrors the producer's guard
 
-- [ ] 3.1 Red first, in `document.test.ts`: a version 8 document whose
+- [x] 3.1 Red first, in `document.test.ts`: a version 8 document whose
       `clocked.bounds[0].value` names the machine's clock loads today and
       must not. Likewise its `bound`, and likewise a `shapes` key naming
       the clock (`document.ts:753-757` already refuses that one — widen
       the message to name the clock and the reason).
-- [ ] 3.2 In `readBound`, refuse a constraint whose chain, whose bound or
+- [x] 3.2 In `readBound`, refuse a constraint whose chain, whose bound or
       whose level names the clock, by name, with the producer's own
       reason (`clocked.py:1448-1487`): a clocked stop is compiled over
       the bank — the drivers and the states — and a clock-driven
       coordinate is not something a stop can hold. `declaredNames` is NOT
       narrowed: the clock is a legal name everywhere else.
-- [ ] 3.3 Assert over all 30 corpus machines that no published `bounds`
+- [x] 3.3 Assert over all 30 corpus machines that no published `bounds`
       entry names a clock anywhere, so the guard refuses nothing the
       producer writes.
 
 ## 4. The per-frame advance, as a pure decision
 
-- [ ] 4.1 `src/clocked/clock.ts` (new), pure, on `playback.ts`'s pattern:
+- [x] 4.1 `src/clocked/clock.ts` (new), pure, on `playback.ts`'s pattern:
       the seconds one frame advances the clock by, from the wall seconds
       elapsed, the speed and the frame budget — `elapsed × speed`, capped
       at four frames' worth of the current speed exactly as
       `src/run/runtime.ts:286-295` caps the run's debt. No remainder is
       carried (design §5). Tests first, in node: ×1, ×3600, a 10 s stall
       capped, a zero-length frame requesting nothing.
-- [ ] 4.2 Assert the cap's consequence rather than its arithmetic: a
+- [x] 4.2 Assert the cap's consequence rather than its arithmetic: a
       frame handed 10 s of wall time at ×3600 advances the clock by the
       cap and fires the cap's events, not 36 000 s worth — which would
       exceed the corpus's own `max_crossings` of 1000.
 
 ## 5. The transport on screen
 
-- [ ] 5.1 `clockedControls.ts`: the clock readout gains a TRANSPORT —
+- [x] 5.1 `clockedControls.ts`: the clock readout gains a TRANSPORT —
       play/pause, a step with an editable amount in seconds (no minus),
       and the speed control — present exactly when `machine.clock` is not
       `null`. Pure data, as the rest of that module is; tests in node
       first, including a machine with `clock: null` getting none.
-- [ ] 5.2 `viewer.ts`: render it, on `buildRunChrome`'s own action shape
+- [x] 5.2 `viewer.ts`: render it, on `buildRunChrome`'s own action shape
       (`viewer.ts:1266-1316`) — `play()`, `step()`, `setSpeed`, and the
       `reset()` that already exists (`:1074-1081`), which now also stops
       the transport. The frame hook goes in the animation loop beside
       `runtime.frame(elapsed)` (`:1352-1377`): while playing, ONE
       `clockedRequest(clock, {by})` per frame with task 4.1's seconds.
-- [ ] 5.3 A refused frame PAUSES and reports, once — mirroring the run's
+- [x] 5.3 A refused frame PAUSES and reports, once — mirroring the run's
       rule (`viewer.ts:975-981`) — rather than repeating a refused
       request per frame. Test it with a machine whose frame exceeds
       `max_crossings`.
-- [ ] 5.4 `MachineHandle` becomes `ClockedMachine` plus `clockPlaying()`
+- [x] 5.4 `MachineHandle` becomes `ClockedMachine` plus `clockPlaying()`
       and `setClockPlaying(playing)` (`viewer.ts:166`, `:249`). NOT named
       `play`/`step`: `step()` is an existing member that refuses by name
       and must go on refusing. `setClockPlaying(true)` on a machine with
       no clock is refused by name; `clockPlaying()` is `false` there.
-- [ ] 5.5 The chrome switch is unchanged and asserted: a host that
+- [x] 5.5 The chrome switch is unchanged and asserted: a host that
       suppresses the chrome (`showsRunControls`, `viewer.ts:1059`) keeps
       the whole machine API including the two new verbs, and gets no
       transport pixels.
-- [ ] 5.6 `$t` and the clock coexist, asserted: for a document whose
+- [x] 5.6 `$t` and the clock coexist, asserted: for a document whose
       expressions read no `$t`, `tree.animated` is false and NO timeline
       chrome is built (`tree.ts:553-561`, `options.ts:217-224`); for one
       that reads both, the timeline advances `$t` and the transport
@@ -168,7 +168,7 @@
 
 ## 6. A version 8 ELAPSED document with geometry, in a real page
 
-- [ ] 6.1 Export `tests/clocked_project/pendulum.py:Regulator` VERBATIM
+- [x] 6.1 Export `tests/clocked_project/pendulum.py:Regulator` VERBATIM
       from a THROWAWAY COPY of solid-node at branch `clocked-machine`
       head `1a959d3` with `solid export … --no-widget` — never writing
       the read-only worktree and never touching the pilot's primary
@@ -179,11 +179,11 @@
       export's version warning and ADR-062's F2 identity difference.
       Nothing about the document is edited. A REFUSAL is a finding to
       report, not a fixture to hand-edit.
-- [ ] 6.2 A fixture test: every model path resolves beside the document;
+- [x] 6.2 A fixture test: every model path resolves beside the document;
       the document declares version 8, carries `states`, carries
       `clocked.clock: "time"`, carries NO `program` and NO `controls`,
       and its pose expressions read the free name `time`.
-- [ ] 6.3 Playwright acceptance beside `tests/test_calculator_document.py`
+- [x] 6.3 Playwright acceptance beside `tests/test_calculator_document.py`
       (design §10): the page opens at `t = 0` with `count = 0`; play for
       one wall second at ×1 advances the readout by ≈1 s and the count by
       ≈1 (a release every `T/2 = 1 s`); pause holds both; a 2 s step
@@ -193,61 +193,68 @@
 
 ## 7. What a played frame costs
 
-- [ ] 7.1 `src/clocked/cost.test.ts` gains the frame numbers, printed:
+- [x] 7.1 `src/clocked/cost.test.ts` gains the frame numbers, printed:
       one frame-sized request on `Regulator` at ×1, ×60 and ×3600 (the
       last ≈58 events in a 16 ms frame), and the per-EVENT cost, which is
       the number that scales. **No corpus machine is added** — the corpus
       is the framework's, and the speed ladder supplies the event rate.
       Say so in the test.
-- [ ] 7.2 Time a played second IN THE PAGE at ×1 and ×60, inside task
+- [x] 7.2 Time a played second IN THE PAGE at ×1 and ×60, inside task
       6.3's Chromium, asserted under one 16 ms frame budget — the form
       that makes the main-thread decision falsifiable
       (`tests/test_calculator_document.py:390-399`).
-- [ ] 7.3 The whole-corpus replay time, against cycle 5's recorded
+- [x] 7.3 The whole-corpus replay time, against cycle 5's recorded
       **13.6 ms for 68 steps**; this cycle replays 76. Print it.
-- [ ] 7.4 State in the evidence and the ADR what is NOT being compared:
+- [x] 7.4 State in the evidence and the ADR what is NOT being compared:
       nothing here is held against the running Curta — a clock request is
       not a tick and `Regulator` is not the Curta, which has no clock at
       all (ADR-127's own note).
 
 ## 8. Publication and the record
 
-- [ ] 8.1 `package.json`: `solidNodeViewerApi: 18`;
+- [x] 8.1 `package.json`: `solidNodeViewerApi: 18`;
       `solidNodeDocumentVersions` UNCHANGED at `[1..8]`;
       `RELEASED_DOCUMENT_VERSIONS` left at `[1,2,3,4]`;
       `src/version.test.ts` updated.
-- [ ] 8.2 Assert UNCHANGED by diff (design §13): not one line of
+- [x] 8.2 Assert UNCHANGED by diff (design §13): not one line of
       `src/run/run.ts`, `worker.ts`, `runtime.ts`, `jumps.ts` or
       `edges.ts`; `running-corpus.json` byte for byte; `capture.py`
       untouched and its tests green; versions 1–7 load, pose, animate,
       drive and run as they do.
-- [ ] 8.3 `npx tsc --noEmit` clean and `npx vitest run` green; the whole
+- [x] 8.3 `npx tsc --noEmit` clean and `npx vitest run` green; the whole
       Python suite run (`PYTHONPATH=$PWD .venv/bin/python -m pytest tests
       -q -p no:cacheprovider`) and its skips reported honestly. One heavy
       process at a time.
-- [ ] 8.4 `npm run build` in THIS WORKTREE's widget, and the bundle's own
+- [x] 8.4 `npm run build` in THIS WORKTREE's widget, and the bundle's own
       report checked: API **18**, documents **[1..8]**. The PRIMARY
       checkout's bundle is NOT rebuilt here — that belongs to integration
       and is the orchestrator's.
-- [ ] 8.5 `README.md`'s version table gains the `0.2.0 | 18 | 1..8` row
-      and `CHANGELOG.md` its entry under `0.2.0 — unreleased`.
-- [ ] 8.6 `docs/adrs/EXPORT/ADR-063` extracted AFTER implementation from
+- [x] 8.5 `README.md`'s version table now reads `0.2.0 | 18 | 1..8`, its
+      "Operating a clocked machine" section gains the clock (the
+      transport, what plays, what a host drives), and `CHANGELOG.md`
+      carries the entry under `0.2.0 — unreleased`. Nothing is described
+      as released. `workflow/warts.md` gains this cycle's dated entry.
+- [x] 8.6 `docs/adrs/EXPORT/ADR-063-the-clock-is-an-input-and-a-frame-advances-it.md`,
+      extracted AFTER implementation from
       what was actually built — consuming solid-node ADR-127 and
       ADR-128 §10, extending ADR-062, building on ADR-045, ADR-046,
       ADR-047 and ADR-048 — saying explicitly what it does NOT change
       (the run's worker and playback, the capture, versions 1–7) — and
       `docs/adrs/README.md` updated.
-- [ ] 8.7 `evidence.md` inside this change: task 1's three red failures
+- [x] 8.7 `evidence.md` inside this change: task 1's three red failures
       verbatim, the closed census, every measurement of task 7, the page
       evidence of task 6, and every finding reported rather than silently
       resolved.
-- [ ] 8.8 Record as warts for the pilot: what an instruction means under a
+- [x] 8.8 Record as warts for the pilot: what an instruction means under a
       clocked root (ADR-128 §14, still open); a clip in time and a chain
       that follows the clock (ADR-127's own recorded narrowing, whose
       first task is ADR-126's contested direction test); and anything
       this mirror turned up that belongs to the producer rather than
       here.
-- [ ] 8.9 Sync the delta specs into `openspec/specs/`, archive the
-      change, and commit the implementation record. Two commits for the
-      cycle and no more; the implementation commit is the cycle's second
-      and is the orchestrator's.
+- [x] 8.9 The delta is SYNCED into `openspec/specs/viewer-package/spec.md`
+      (eight modified requirements carrying every surviving scenario, two
+      added ones) and the change is archived as
+      `openspec/changes/archive/2026-09-17-run-the-clock` with
+      `evidence.md` inside. The COMMIT is deliberately not made here: two
+      commits for the cycle and no more, and the implementation commit is
+      the cycle's second and is the orchestrator's.

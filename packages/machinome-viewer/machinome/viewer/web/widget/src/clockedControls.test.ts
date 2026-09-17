@@ -9,8 +9,8 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  clockedControlLayer, clockedInputControl, DEFAULT_NUDGE,
-  formatClockedOutcome,
+  clockedControlLayer, clockedInputControl, clockStepAmount,
+  DEFAULT_CLOCK_STEP, DEFAULT_NUDGE, formatClockedOutcome,
 } from './clockedControls';
 import type { ClockedMachineView, ClockedOutcome } from './clockedControls';
 
@@ -77,6 +77,23 @@ describe('the clocked chrome', () => {
     }
   });
 
+  it('reads an INTEGER state as the whole number it is', () => {
+    // A state the machine commits as an integer has no fraction to
+    // report: `5.0000` claims a precision the coordinate has not got.
+    // The CLOCK, which declares no dtype, keeps the fixed decimals a
+    // continuous quantity wants.
+    // The `Regulator`'s own shape: an int state beside a clock.
+    const layer = clockedControlLayer({
+      machine: { ...MACHINE, states: { count: { ...FREE, dtype: 'int' } },
+                 clock: 'time' },
+      values: { count: 5, time: 5.25 }, focus: null,
+    });
+    const count = layer.readouts.find((one) => one.id === 'count');
+    expect(count?.readout).toBe('5');
+    const clock = layer.readouts.find((one) => one.kind === 'clock');
+    expect(clock?.readout).toBe('5.2500');
+  });
+
   it('makes a CLOCK a readout too, never a handle', () => {
     const layer = clockedControlLayer({
       machine: { ...MACHINE, clock: 'time' }, values: { time: 0 },
@@ -98,13 +115,75 @@ describe('the clocked chrome', () => {
     expect(layer.instructions[0].reason).toContain('no runtime meaning');
   });
 
-  it('has NO transport: there is no cadence to run, step or speed', () => {
+  it('has NO transport over its DRIVERS, and none at all for a machine '
+     + 'that declares no clock', () => {
     const layer = clockedControlLayer({
       machine: MACHINE, values: {}, focus: null,
     });
     expect(Object.keys(layer).sort()).toEqual(
       ['breadcrumb', 'children', 'inputs', 'instructions', 'present',
-       'readouts']);
+       'readouts', 'transport']);
+    // A clocked machine has no cadence for a transport over its drivers
+    // to run, step or speed, and a machine with no CLOCK has nothing for
+    // one to advance either.
+    expect(layer.transport).toBe(null);
+  });
+
+  it('is absent for a document carrying no machine at all', () => {
+    const layer = clockedControlLayer({ machine: null, values: {},
+                                        focus: null });
+    expect(layer.transport).toBe(null);
+  });
+
+  it('offers a TRANSPORT exactly where the machine declares a clock',
+     () => {
+    const layer = clockedControlLayer({
+      machine: { ...MACHINE, clock: 'time' },
+      values: { time: 12.5 },
+      focus: null,
+      clockPlaying: true,
+      speed: 60,
+    });
+    const transport = layer.transport;
+    expect(transport).not.toBe(null);
+    expect(transport?.id).toBe('time');
+    expect(transport?.playing).toBe(true);
+    expect(transport?.seconds).toBe(12.5);
+    // Elapsed SECONDS, in the form a run's own elapsed readout takes:
+    // they never wrap, and they only grow.
+    expect(transport?.elapsed).toBe('0:12.50');
+    expect(transport?.speed).toBe(60);
+    expect(transport?.ladder).toContain(3600);
+    expect(transport?.step).toBe(DEFAULT_CLOCK_STEP);
+    expect(transport?.refusal).toBe(null);
+  });
+
+  it('carries the refusal that PAUSED it, rather than repeating the '
+     + 'request', () => {
+    const layer = clockedControlLayer({
+      machine: { ...MACHINE, clock: 'time' },
+      values: { time: 3 },
+      focus: null,
+      clockPlaying: false,
+      clockRefusal: 'would cross 3600 surfaces',
+    });
+    expect(layer.transport?.playing).toBe(false);
+    expect(layer.transport?.refusal).toBe('would cross 3600 surfaces');
+  });
+
+  it('takes a step AMOUNT and never a negative one: the clock has no '
+     + 'reverse', () => {
+    expect(clockStepAmount(2.5, DEFAULT_CLOCK_STEP)).toBe(2.5);
+    // A setting refused, which is not the same as repairing a request:
+    // the amount stays where it was.
+    expect(clockStepAmount(-2, 5)).toBe(5);
+    expect(clockStepAmount(0, 5)).toBe(5);
+    expect(clockStepAmount(Number.NaN, 5)).toBe(5);
+    const layer = clockedControlLayer({
+      machine: { ...MACHINE, clock: 'time' }, values: {}, focus: null,
+      clockStep: 2,
+    });
+    expect(layer.transport?.step).toBe(2);
   });
 
   it('keeps `range` presentation and never a clamp', () => {

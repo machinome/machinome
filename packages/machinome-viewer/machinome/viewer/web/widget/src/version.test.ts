@@ -119,8 +119,22 @@ describe('API_VERSION', () => {
   // to be able to ask before it mounts a bundle that would refuse the
   // document by name. 13 stays SKIPPED: the in-flight cycle
   // `slide-and-turn-parts` claims it.
-  it('declares the clocked API as version 17', () => {
-    expect(API_VERSION).toBe(17);
+  // Advancing a clocked machine's CLOCK (OpenSpec `run-the-clock`) is
+  // the one after that (18). A build at 17 mounts the same version 8
+  // document, renders it truthfully at one instant, and refuses EVERY
+  // request that would move it off that instant -- and a host that means
+  // to present a machine whose motion is a function of elapsed seconds,
+  // a pendulum and the counter beside it, has no way to tell the two
+  // builds apart except by trying. That is precisely the case the
+  // version exists to answer without trying. Like `controls` and
+  // `markings` and unlike 15, 16 and 17, the DOCUMENT list does not move
+  // with it: no new document shape is read -- version 8 already carries
+  // `clocked.clock` -- so this is the clean case that shows the two
+  // declarations are independent, a capability gate moving while the
+  // schema list stands still. 13 stays SKIPPED: the in-flight cycle
+  // `slide-and-turn-parts` claims it.
+  it('declares the running clock as version 18', () => {
+    expect(API_VERSION).toBe(18);
   });
 });
 

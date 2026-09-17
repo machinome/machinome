@@ -25,13 +25,20 @@
 //
 // The other half of the split is the handle rule: every key of `drivers`
 // is an input a person may move and no key of `states` ever is
-// (ADR-128 §3). A state is a READOUT, follow-only; so is the clock,
-// which this build refuses a request on.
+// (ADR-128 §3). A state is a READOUT, follow-only; so is the CLOCK --
+// but a clock is a readout a TRANSPORT advances (OpenSpec
+// `run-the-clock`, design §5), where a state is advanced by nothing but
+// the machine. The transport is play/pause, a step of a stated number of
+// seconds, and the speed ladder. There is NO scrub and NO reverse: a
+// slider implies both directions and the clock refuses one of them by
+// decision, so a control that could not honour a drag backwards does not
+// offer one.
 
 import {
   BreadcrumbSegment, ControlPath, breadcrumb, displayValue, formatDisplay,
   formatReadout, navigableChildren, scopedIds, SliderPlan,
 } from './controls';
+import { formatElapsed, ladderFor } from './playback';
 import type { OutcomeReport, OutcomeStatus } from './runControls';
 import type { ClockedStop } from './clocked/bounds';
 import { ManifestDriver, ManifestInstruction } from './types';
@@ -110,6 +117,33 @@ export interface ClockedMachineView {
   clock: string | null;
 }
 
+/** The CLOCK's transport (design §5): what a maker presses, and what the
+ * readout beside it says. Pure data, like everything else here.
+ *
+ * `null` for a machine that declares no clock, and for a document that
+ * carries no machine -- one question, one truthful answer. */
+export interface ClockTransportPlan {
+  /** The clock's bank id: what a request names. */
+  id: string;
+  playing: boolean;
+  /** The banked instant, in seconds. */
+  seconds: number;
+  /** That instant formatted, in the form a run's elapsed readout takes:
+   * seconds that never wrap and only grow. */
+  elapsed: string;
+  /** The playback speed, a multiple of real time -- the SAME one the
+   * timeline and the run use. */
+  speed: number;
+  ladder: number[];
+  /** How many seconds a STEP asks for. Never negative: the clock has no
+   * reverse, so this control has no minus. */
+  step: number;
+  /** The message of the request that PAUSED the transport, or null. A
+   * refused frame pauses and reports once, rather than repeating a
+   * refused request sixty times a second. */
+  refusal: string | null;
+}
+
 export interface ClockedControlsInput {
   /** The machine the document carries, or null for a document that
    * carries none -- which is every document below version 8. */
@@ -122,6 +156,17 @@ export interface ClockedControlsInput {
   nudge?: Readonly<Record<string, number>>;
   /** The last outcome of each control, by input id. */
   outcomes?: Readonly<Record<string, ClockedOutcome | null>>;
+  /** Whether the clock's transport is running (design §5). */
+  clockPlaying?: boolean;
+  /** How many seconds a step of the clock asks for. */
+  clockStep?: number;
+  /** The playback speed, a multiple of real time. */
+  speed?: number;
+  /** The refusal that paused the transport, or null. */
+  clockRefusal?: string | null;
+  /** The width of the widest elapsed reading shown so far, so the
+   * readout widens once and never narrows. */
+  clockWidth?: number;
 }
 
 export interface ClockedControlLayer {
@@ -133,12 +178,30 @@ export interface ClockedControlLayer {
   inputs: ClockedInputControl[];
   readouts: ClockedReadout[];
   instructions: ClockedInstructionControl[];
+  /** The clock's transport, or `null` where the machine declares no
+   * clock. There is never a transport over the DRIVERS: a clocked
+   * machine has no cadence for one to run, step or speed. */
+  transport: ClockTransportPlan | null;
 }
 
 /** One design unit a press. A clocked request is instantaneous by
  * construction -- there is no cadence for it to be spread over -- so a
  * nudge is a travel and nothing else. */
 export const DEFAULT_NUDGE = 1;
+
+/** How many seconds one press of STEP asks for. A second is the clock's
+ * own unit, and the speed ladder is what makes a long watch short. */
+export const DEFAULT_CLOCK_STEP = 1;
+
+/** A step amount this control will accept, in seconds.
+ *
+ * Elapsed seconds have no reverse, so a negative or non-finite amount is
+ * not a travel the transport can ask for and the SETTING is left where
+ * it was. Refusing a setting is not the same as repairing a request:
+ * nothing a maker asks the machine for is ever clamped. */
+export function clockStepAmount(asked: number, current: number): number {
+  return Number.isFinite(asked) && asked > 0 ? asked : current;
+}
 
 const INSTRUCTIONS_DISABLED =
   'A clocked machine publishes its instruction table and gives it no '
@@ -191,6 +254,20 @@ export function clockedInputControl(
   };
 }
 
+/** A READOUT's text. An INTEGER coordinate reads as the whole number
+ * it is.
+ *
+ * `formatReadout`'s four fixed decimals are a CONTINUOUS quantity's
+ * policy: a readout that changes sixty times a second under a drag
+ * wants one constant shape rather than the shortest one. A state the
+ * machine commits as an integer has no fraction to report, and `5.0000`
+ * claims a precision the coordinate has not got. A SCALED int still
+ * reads as a float, because its DESIGN value is not whole. */
+function readoutText(display: number, declaration: ManifestDriver): string {
+  return declaration.dtype === 'int' && Number.isInteger(display)
+    ? String(display) : formatReadout(display);
+}
+
 function readoutOf(id: string, declaration: ManifestDriver, value: number,
                    kind: 'state' | 'clock'): ClockedReadout {
   const display = displayValue(value, declaration);
@@ -200,7 +277,7 @@ function readoutOf(id: string, declaration: ManifestDriver, value: number,
     unit: declaration.unit,
     value,
     display,
-    readout: formatReadout(display),
+    readout: readoutText(display, declaration),
     kind,
   };
 }
@@ -221,6 +298,7 @@ export function clockedControlLayer(
       inputs: [],
       readouts: [],
       instructions: [],
+      transport: null,
     };
   }
   const driverIds = Object.keys(machine.drivers);
@@ -233,14 +311,30 @@ export function clockedControlLayer(
     ...scopedIds(stateIds, input.focus).map((id) => readoutOf(
       id, machine.states[id],
       input.values[id] ?? machine.states[id].default, 'state')),
-    // A CLOCK is a readout, never a handle: it is not a key of
-    // `drivers`, and this build refuses a request on it (design §9).
+    // A CLOCK is a readout, never a POSITIONAL handle: it is not a key
+    // of `drivers`, and the transport above -- and nothing else --
+    // advances it.
     ...scopedIds(clockIds, input.focus).map((id) => readoutOf(
       id, CLOCK_DECLARATION, input.values[id] ?? 0, 'clock')),
   ];
+  const speed = input.speed ?? 1;
+  const seconds = machine.clock === null
+    ? 0 : input.values[machine.clock] ?? 0;
   return {
     present: true,
     breadcrumb: breadcrumb(input.focus, input.rootLabel),
+    // A machine with no clock is offered NO transport, exactly as it is
+    // offered no driver transport: there is nothing for one to advance.
+    transport: machine.clock === null ? null : {
+      id: machine.clock,
+      playing: input.clockPlaying ?? false,
+      seconds,
+      elapsed: formatElapsed(seconds, input.clockWidth ?? 0),
+      speed,
+      ladder: ladderFor(speed),
+      step: input.clockStep ?? DEFAULT_CLOCK_STEP,
+      refusal: input.clockRefusal ?? null,
+    },
     inputs: scopedIds(driverIds, input.focus).map((id) => clockedInputControl(
       id, machine.drivers[id],
       input.values[id] ?? machine.drivers[id].default,

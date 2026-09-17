@@ -208,3 +208,72 @@ triage the pilot's.**
   that the next unexplained red in this suite is met with a known suspect
   rather than a fresh investigation, and so the pilot knows which assertion
   in this repository can be made to fail by load alone.
+
+# The clock (2026-09-17, `run-the-clock`, ADR-063)
+
+Two findings met while mirroring solid-node's CLOCK (ADR-127, ADR-128 §10)
+into the viewer, recorded HERE rather than only in the change's own
+`evidence.md` — which is where a finding met while applying a cycle normally
+lives, and which holds each one's full text — for the same exception the
+entry above names: neither belongs to a viewer cycle to fix. One is the
+PRODUCER's, and one is a limit of a decision this cycle ratified rather than
+a defect anywhere. A third of ADR-125's own narrowings — a MULTI-INPUT
+request moving a driver and the clock together — is recorded in the change's
+`evidence.md` and is not opened here, because nothing has asked for it: the
+corpus does not script one and no fixture wants one. **Status: recorded;
+triage the pilot's.**
+
+Three of the four findings recorded for `execute-the-commit` above are
+carried forward unchanged and are not restated: a machine's identity is not a
+function of the machine (reproduced exactly by this cycle's `Regulator`
+fixture — `281dfdc2…` from `solid export`, `2e172caa…` from the corpus
+generator, every other field of both `clocked` objects identical), what an
+instruction MEANS under a clocked root, and the load-sensitive cost floors —
+of which this cycle moved exactly one, to the design's own ratified 16 ms
+frame budget, and said so.
+
+## A CLIP in time, and a chain that follows the clock
+
+- **Symptom.** A clocked machine cannot express a stop over elapsed seconds.
+  No published constraint may name the clock — in its chain, its bound, its
+  level or its `shapes` — and no declared stop ever clips a request that
+  moves the clock.
+
+- **Not a defect: a ratified decision with a recorded narrowing.** ADR-127
+  decides it, for the reason that a declared range is a MECHANICAL stop
+  (ADR-108) and nothing is in the way of the next second, and it records the
+  later cycle that would take the clipped time request. This cycle MIRRORS
+  the producer's refusal rather than anticipating that cycle: the viewer's
+  loader now refuses exactly what `clocked.py`'s `_over_the_bank` refuses,
+  where before it was silently wider and would have clipped a hand-written
+  document against a clock-driven coordinate.
+
+- **Producer-side if it is ever to change**, and its first task is the
+  producer's too: settling ADR-126's contested direction test for a level
+  that is PERIODIC in time. Nothing here works around it.
+
+## `max_crossings` bounds a played frame, and the refusal cannot name the speed to drop to
+
+- **Symptom.** Playing an elapsed machine at a high speed on a machine with a
+  fast release can ask one frame to cross more surfaces of one relation than
+  the machine's own published `limits.max_crossings` admits. The request is
+  refused whole, the transport pauses and reports — and the message can say
+  what it refused but not what speed WOULD work.
+
+- **Cause.** A frame is one request (ADR-063), by the decision that keeps
+  every event inside it located exactly and in order, so the machine's own
+  per-request limit applies to it. Computing the largest admissible speed
+  would need the EVENT RATE, which the published document does not carry:
+  `Regulator`'s one release a second is a property of its law, not a field.
+
+- **Evidence.** At the corpus's `max_crossings` of 1000 and `Regulator`'s one
+  event a second, a frame at ×3600 carries ~58 events and a one-second stall
+  at that speed would carry 3600. The per-frame cap (four frames' worth of
+  machine time, wall time beyond it lost) keeps the ordinary case well inside
+  the limit; the acceptance drives the refusal deliberately at ×100000 and
+  asserts that it pauses and reports ONCE.
+
+- **Left as a limit rather than worked around.** A maker's remedy is a lower
+  speed. Producer-side if it is ever to change: the machine would have to
+  publish something it does not — an event rate, or a `max_crossings` a
+  consumer could reason about per second rather than per request.

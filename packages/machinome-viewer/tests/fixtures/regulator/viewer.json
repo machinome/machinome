@@ -1,0 +1,109 @@
+{
+  "format": "solid-node-export",
+  "version": 8,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "engaged": {
+      "default": 1,
+      "range": null,
+      "unit": null,
+      "dtype": "int",
+      "scale": null
+    }
+  },
+  "states": {
+    "count": {
+      "default": 0,
+      "range": null,
+      "unit": null,
+      "dtype": "int",
+      "scale": null
+    }
+  },
+  "instructions": {},
+  "clocked": {
+    "identity": "281dfdc2e4e32c0c86f195c2896faed54c6ea534e9557027890f61f132505814",
+    "clock": "time",
+    "own": "_own",
+    "commits": [
+      {
+        "sources": [
+          "time",
+          "engaged",
+          "count"
+        ],
+        "targets": [
+          "count"
+        ],
+        "at": {
+          "primitive": "floor",
+          "level": "((time + 0.5) / 1.0)"
+        },
+        "law": [
+          "(count + engaged)"
+        ],
+        "shapes": {
+          "time": "affine"
+        },
+        "description": "(time, engaged, count) commits count",
+        "stated_by": "Regulator"
+      }
+    ],
+    "bounds": [],
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "max_crossings": 1000
+    }
+  },
+  "root": {
+    "name": "Regulator",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1789648716.0,
+    "operations": [],
+    "children": [
+      {
+        "name": "bob",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1789648716.0,
+        "operations": [
+          [
+            "r",
+            "(12.0 * sin(((360.0 * time) / 2.0)))",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "model": "models/clocked_project/pendulum-Bob-cd9fb1e148cc.stl",
+        "piece": "c5332a20677b"
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "c5332a20677b",
+      "name": "Bob",
+      "sources": [
+        "clocked_project/pendulum.py"
+      ],
+      "models": [
+        "models/clocked_project/pendulum-Bob-cd9fb1e148cc.stl"
+      ],
+      "count": 1,
+      "size": [
+        2.0,
+        2.0,
+        40.0
+      ],
+      "volume": 160.0,
+      "watertight": true
+    }
+  ]
+}
