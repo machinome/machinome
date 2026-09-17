@@ -447,8 +447,14 @@ class Sim:
         accumulated: `k*dt` is a fixed point, and a float advanced by
         `+= dt` drifts off the instant a scenario names (ADR-050's
         reasoning applied to simulation time).
+
+        Under a CLOCKED root it is the BANKED clock of a root declaring
+        `Time.elapsed()`, and refused by name under one declaring no
+        time base (OpenSpec change ``time-without-running``, design
+        section 3).
         """
-        self._not_clocked('time')
+        if self._clocked is not None:
+            return self._clocked.time
         return self._tick * self.dt
 
     def _binding(self):

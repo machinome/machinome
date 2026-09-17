@@ -169,6 +169,13 @@ def refuse_states_under_a_clock(root, states):
     than silently given the wrong mechanics (OpenSpec change
     ``declare-the-state``, design section 12).
 
+    Memory and the ELAPSED base are the square this refusal now leaves
+    open: elapsed seconds never wrap, so nothing replays a commit, and
+    the simulation over such a root is the clocked one with its clock in
+    the bank (OpenSpec change ``time-without-running``, design section
+    3). The elapsed base RETURNS here rather than falling through, which
+    is what keeps the two refusals below exactly as they were.
+
     Raised where the declared defaults are bound, which is the first
     moment both facts -- the root's base and the tree's states -- are
     known together.
@@ -178,7 +185,7 @@ def refuse_states_under_a_clock(root, states):
     from solid_node.motion.ports import declared_time
 
     base = declared_time(type(root))
-    if base is None:
+    if base is None or base.mode == 'elapsed':
         return
     named = ', '.join(sorted(states))
     if base.mode == 'loop':

@@ -753,8 +753,9 @@ arithmetic. Every relation firing at one event reads the bank as it stood
 BEFORE it, so the order of two lines in a class body is not observable.
 
 Between events nothing is retained. A pose is the ordinary untimed
-enumeration over the drivers and the states, and nothing else: ``time``
-is not in the bank, and a clocked pose leaves ``self.time`` the symbolic
+enumeration over the drivers and the states, and nothing else: unless
+the root declares a clock (below), ``time`` is not in the bank, and a
+clocked pose leaves ``self.time`` the symbolic
 ``$t`` exactly as the build path does. A request touches the tree ONCE,
 at its end — which is why a request costs about what one pose costs and
 a commit costs microseconds.
@@ -763,6 +764,121 @@ a commit costs microseconds.
 ``sim.initial`` and ``sim.reset()`` act on it, and ``Sim(model,
 state={...})`` opens a session at chosen values. Those two are the only
 ways to set a state: everything else about it is the machine's.
+
+A machine with a CLOCK
+----------------------
+
+A machine that is operated has elapsed seconds; a machine on a timeline
+has a loop. Say which this one has with the third spelling of the time
+base:
+
+.. code-block:: python
+
+    from solid_node.motion.ports import Time
+
+    class Regulator(AssemblyNode):
+        time = Time.elapsed()           # the third base
+
+        engaged = Driver(default=1, dtype=int)
+        count = State(default=0, dtype=int)
+
+        def simulate(self):
+            self.bob.rotate([0, 0, A * sin(2 * pi * self.time / T)])
+
+``Time.elapsed()`` is elapsed simulation seconds that never wrap —
+``Time.running()``'s time WITHOUT the running mechanics. It is declared
+by the same rules as the other two bases (the name ``time``, on an
+``AssemblyNode``, on the root of the tree it is read in), and it says
+what ``time`` MEANS and nothing else: a root that declares it and no
+``State`` is an ordinary stepped simulation, publishes the document an
+undeclared root publishes byte for byte, and behaves in every particular
+as it did before. The time base and the state discipline are independent
+— it is the ``State`` that makes a model clocked, not the clock.
+
+Under a CLOCKED root the elapsed base puts ``time`` in the bank, in
+seconds, starting at ``0.0``:
+
+.. code-block:: python
+
+    sim = Sim(Regulator())
+    sim.state['time']                   # 0.0
+    sim.time                            # 0.0
+
+    request = sim.move('time', by=10.0) # the same verb
+    sim.time                            # 10.0
+
+``sim.state['time']``, ``sim.time``, ``Sim(model, state={'time': 4.0})``,
+``snapshot()``/``restore()`` and ``reset()`` all treat the clock as one
+more banked value. ``sim.time`` is the one name of the refused cadence
+surface that a declared elapsed base gives back; ``run``, ``at``,
+``every``, ``tick`` and the rest stay refused.
+
+A request moves the clock with the SAME verb and the same one-moving-
+input rule: ``move('time', by=)`` or ``to=``, in seconds, with every
+driver standing — or one driver, with the clock standing. Elapsed
+seconds never wrap and never reverse, so a request that would move time
+BACKWARDS is refused by name, naming both instants; zero is admitted,
+fires nothing and poses what already stands.
+
+Events on the clock are events
+------------------------------
+
+``time`` is a SOURCE of a committing relation exactly as a driver is:
+
+.. code-block:: python
+
+    T = 2.0                             # seconds per swing
+
+    def release(sources, targets):
+        return lambda time, engaged, count: floor((time + T / 4) / (T / 2))
+
+    def advance(sources, targets):
+        return lambda time, engaged, count: count + engaged
+
+    class Regulator(AssemblyNode):
+        time = Time.elapsed()
+        engaged = Driver(default=1, dtype=int)
+        count = State(default=0, dtype=int)
+
+        (time & engaged & count).commits(count, at=release, law=advance)
+
+Everything about the event is what it is on a driver: ``at`` is one jump
+node, every RISING step of it along the request's path is one event
+located EXACTLY, commits are ordered by path, reads are synchronous and
+pre-event, and two relations writing one state at one landing refuse the
+request. A pendulum's release is AFFINE in time, so it is solved by one
+division and no tolerance is introduced anywhere. The level above rises
+TWICE per period, at each extreme of the swing, so ``move('time',
+by=20 * T)`` fires forty releases at exactly the instants the hand
+computation gives.
+
+A relation the CLOCK alone can move is legal — it is a request that can
+reach it that matters, and a request can move the clock. A relation
+whose every source is a state stays refused.
+
+Where the clock may be NAMED is one rule: in the class body that
+declares the base, because that is the body in which ``time`` holds the
+declaration. Name it in a body declaring ``Time(loop=)`` or
+``Time.running()`` and the relation is refused at class definition,
+naming ``Time.elapsed()``. A body that declares NO base does not see
+``AssemblyNode.time`` at all — Python resolves ``time`` as a module
+global, so a file that imported the stdlib ``time`` is naming that
+MODULE, which the framework refuses by name, and a file that bound
+nothing raises Python's own ``NameError`` before any framework code is
+reached.
+
+Nothing stops a clock
+---------------------
+
+A time request is never CLIPPED. A declared range is a mechanical stop,
+and no interlock holds the next second: a coordinate that leaves its
+range at some instant is an impossible POSE, so the request that reaches
+it is refused whole and commits nothing. Correspondingly a coordinate
+whose chain follows the clock is refused at SIMULATION CONSTRUCTION,
+naming the joint and the name that survived — the one way to write one is
+a ``law=`` factory that reads ``owner.time`` at realization and closes
+over the symbolic value it gets there. Such a model drops the range, or
+states the relation from a declared driver.
 
 A bound STOPS a request
 -----------------------
@@ -882,11 +998,19 @@ What a clocked model refuses today
 * **A time base.** A ``State`` under ``Time(loop=)`` is refused — a loop
   replays from zero and would replay every commit — and under
   ``Time.running()`` it is refused too, with its meaning named and
-  deliberately not implemented.
-* **The cadence surface.** ``run``, ``at``, ``every``, ``time``,
+  deliberately not implemented. Under ``Time.elapsed()`` it is
+  ADMITTED, and that is the root that banks a clock.
+* **The cadence surface.** ``run``, ``at``, ``every``,
   ``tick``, ``rate``, ``trigger``, ``commands``, ``program`` and
-  ``crossings`` are each refused by name. A clocked model has no clock —
-  though it does have ``stops``.
+  ``crossings`` are each refused by name, and so is ``time`` unless the
+  root declares ``Time.elapsed()``. A clocked model has ``stops``, and a
+  clocked model with an elapsed base has a clock.
+* **A clip in TIME.** A time request makes its whole travel or is
+  refused whole; it is never stopped at a bound. A coordinate whose
+  chain carries the clock is refused at construction.
+* **An advance of a named duration.** There is no ``Instruction``, no
+  control and no ``move(duration=)`` over the clock, and no request
+  moves a driver and the clock together.
 * **A bound reading a plain PORT**, refused with the same message a
   running root gives it; a bound whose level the moving driver curves;
   and a request whose level would cross more than a thousand of its own

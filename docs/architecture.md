@@ -455,17 +455,27 @@ Clearing is reversible by re-render: an operation records whatever
 value `render()` computed, so a bound tree has no symbolic form left
 to recover until it re-renders (ADR-051).
 
-A root may declare the base the OTHER way (ADR-104): `Time.running()`
-is the same frozen descriptor with `loop` at `None`, told apart by
-`Root.time.mode` reading `'running'` rather than `'loop'`, and `Time()`
-with neither is refused naming both spellings. Elapsed simulation
-seconds never wrap, so there is no span to scale by and no symbolic form
-to publish yet: unbound, `self.time` reads bare `$t` exactly as an
-undeclared root's does, and every producer that reads the declaration
-treats `loop is None` as no loop — no `loop` key in the document's
-`animation` object, a snapshot keyframed at the fraction. A running
-root's document is therefore byte-identical to an undeclared root's, and
-what the base changes is entirely what a simulation over the root owns.
+A root may declare the base the OTHER two ways: `Time.running()`
+(ADR-104) and `Time.elapsed()` (ADR-127) are the same frozen descriptor
+with `loop` at `None`, told apart from `Time(loop=)` and from each other
+by `Root.time.mode`, and `Time()` with none of them is refused naming
+all THREE spellings. `loop` stays the one FIELD — what tells the two
+unwrapping bases apart is a private marker read only through `mode`, so
+no producer learns a second thing to read — and two declarations are
+equal exactly when they declare the same base, `__eq__`/`__hash__` being
+defined over `(loop, mode)` because the generated pair would make
+`Time.running() == Time.elapsed()`. Elapsed simulation seconds never
+wrap, so there is no span to scale by and no symbolic form to publish
+yet: unbound, `self.time` reads bare `$t` exactly as an undeclared
+root's does, and every producer that reads the declaration treats
+`loop is None` as no loop — no `loop` key in the document's `animation`
+object, a snapshot keyframed at the fraction. A running root's document
+and an elapsed root's are therefore byte-identical to an undeclared
+root's, and what either base changes is entirely what a simulation over
+the root owns: `Time.running()` the run's whole mechanics, and
+`Time.elapsed()` the MEANING of `time` — elapsed seconds that never
+wrap, which is what a machine that is operated has and a loop has not —
+plus, under a clocked root alone, a banked clock.
 
 An entry is addressed to the whole tree or to one instance in it
 (ADR-056 stage 3a). A **qualified driver id** is the dotted path of
@@ -930,11 +940,16 @@ is a property of the tree rather than of the caller: the fixed-`dt` loop
 above retains NOTHING (a pose is a function of the drivers), the running
 mode below retains EVERY coordinate and integrates every law at a
 cadence, and the clocked mode retains a FEW declared values and writes
-them at located events. The time base and the state discipline are two
-axes, and today's API ties them only where a cycle has moved a square:
-untimed × none is the ordinary pose, untimed × memory is the clocked
-mode, looping × memory is refused by name, and elapsed × integrated is
-`Time.running()`.
+them at located events. **The time base and the state discipline are
+INDEPENDENT AXES, and only the state discipline selects the branch**
+(ADR-127): `tree_declares_states(node)` answers the discipline
+structurally before anything is bound, and the base is consulted for the
+running branch alone. So the table reads — untimed × none is the ordinary
+pose, untimed × memory is the clocked mode (ADR-125), elapsed × none is
+ADMITTED and equivalent down to its published bytes, elapsed × memory is
+the clocked mode with a BANKED CLOCK (ADR-127), elapsed × integrated is
+`Time.running()`, and looping × memory is the one square refused by name,
+a loop replaying from zero replaying every commit.
 
 **The running mode** (ADR-105 to ADR-109, ADR-113) is the second branch of the same
 `Sim`, taken when `declared_time(type(node)).mode` is `'running'`, whose
@@ -1264,8 +1279,8 @@ drives a block coordinate into its declared range — the searched stop —
 17.186, some 22x a quiet tick of the same machine. No test pins any of
 these numbers.
 
-**The clocked mode** (ADR-125, ADR-126) is the third branch, taken when anything
-in the linked tree declares a `State` — `simulation/state.py`'s
+**The clocked mode** (ADR-125, ADR-126, ADR-127) is the third branch, taken when
+anything in the linked tree declares a `State` — `simulation/state.py`'s
 declaration, reached only through the package's lazy export when a
 project names it, and `simulation/clocked.py`'s solver, imported inside
 the `Sim` constructor and nowhere else exactly as the running pair is.
@@ -1274,11 +1289,23 @@ discipline of a machine with a FEW retained values, closed-form
 positions between events, and a commit of those values at each event —
 the originating Curta, whose running model is correct and costs about
 0.73 s per 0.1 s Python tick, and whose fast closed form carries nothing
-forward at all. The bank is DRIVERS AND STATES and nothing else: no
-`time`, no joint coordinates, no ports — a pose under a clocked root is
-the existing untimed enumeration over that bank, so `time` stays the
-symbolic `$t` through ADR-008's fallback and a `simulate()` reading
-`self.time` sees what it sees under any untimed root.
+forward at all. The bank is DRIVERS AND STATES and, where the root
+declares `Time.elapsed()`, THE CLOCK: no joint coordinates and no ports,
+a pose under a clocked root being the existing untimed enumeration over
+that bank. Under an untimed clocked root `time` stays the symbolic `$t`
+through ADR-008's fallback and a `simulate()` reading `self.time` sees
+what it sees under any untimed root; under an ELAPSED one the bank holds
+`time` in SECONDS, initial `0.0`, under the bare `CLOCK_NAME` no
+declaration can collide with (a root-declared `Driver` or `State` named
+`time` is already refused as shadowing `AssemblyNode.time`, and a
+child-declared one qualifies). It is opened by `state={'time': ...}`,
+returned by `sim.state`, carried by `snapshot`/`restore`, zeroed by
+`reset` and read by `sim.time` — the one name of the refused cadence
+surface an elapsed base lifts, the rest staying refused. The clock is
+delivered to the pose through `drive_tree`'s EXISTING `visit` hook, per
+visited assembly because `read_time` reads each node's own snapshot
+entry first, so the walk gains no parameter and a request still costs
+ONE pose; a root with no clock passes no `visit` at all.
 
 A `State` is written by nothing but a **committing relation**, stated
 beside `drives` on the same `&` groups:
@@ -1286,27 +1313,42 @@ beside `drives` on the same `&` groups:
 Both factories follow the existing law-factory protocol — called once at
 realization with the realized `(sources, targets)`, returning a callable
 over the sources' values — so no event object and no mutable protocol
-reaches a project's laws. Sources are drivers and states only; `at` is
+reaches a project's laws. Sources are drivers, states and — under a root
+declaring `Time.elapsed()` — THE CLOCK, named as the root's own `time`
+declaration and grouped by the same `&` (ADR-127); `at` is
 ONE jump node of ADR-107's vocabulary, which is what gives the solver a
 level quantity and its surfaces for free. Refused at class definition: a
 target that is not a `State`, a target named twice among the targets
 (decided by the reference's own key, the child path plus the local name,
 never by the local name, so seventeen identical wheels are one written
-line), a source that is neither driver nor state, a missing `at` or
-`law`, a `ratio=`/`offset=`, and a `.repeat()` broadcast. Refused at
-simulation construction: a state nothing writes, a relation no driver
-can reach (every source a state, so its level can never move), and a
+line), a source that is none of the three, the clock as a driven end or
+as either end of `drives`, the clock named under `Time(loop=)` or
+`Time.running()` (where the base declaration is written), a missing `at`
+or `law`, a `ratio=`/`offset=`, and a `.repeat()` broadcast. A class body
+declaring no base does not see `AssemblyNode.time` at all, so `time` there
+is whatever the module bound — and a reflected `__rand__` on every kind
+that carries `&` refuses a foreign LEFT operand by name, naming a MODULE
+as a module and saying a clock is named only through the root's own
+declaration, while a body that bound no `time` at all keeps Python's own
+`NameError`. Refused at
+simulation construction: a state nothing writes, a relation no REQUEST
+can reach (every source a state, so its level can never move — the clock
+counts as reachable, so a relation the clock alone moves is legal), and a
 level that CURVES — a clocked event is solved, never searched, and
 admitting a bisected one would make the exactness claim untrue for a
 model whose author cannot see which `at` curves. Refused elsewhere, each
 where its facts exist: `set_state` on a state (naming the relation that
 writes it), an `Instruction` target, a control input, a `.drives` driven
-end, and a `State` under `Time(loop=)` or `Time.running()`.
+end, and a `State` under `Time(loop=)` or `Time.running()` — the latter
+with its meaning defined and not implemented, and a `State` under
+`Time.elapsed()` ADMITTED.
 
 `Sim(model)` takes NO `dt`, and the whole cadence surface — `run`, `at`,
-`every`, `time`, `tick`, `rate`, `trigger`, `crossings`, `commands`,
-`program` — is refused by name. `sim.move(input, by=|to=)`
-moves ONE declared driver along a straight path: each relation's level
+`every`, `tick`, `rate`, `trigger`, `crossings`, `commands`,
+`program`, and `time` under every base but the elapsed one — is refused
+by name. `sim.move(input, by=|to=)`
+moves ONE declared driver, or the CLOCK, along a straight path: each
+relation's level
 is bound at the standing sources, classified by `_shape_of` and solved —
 by one division where affine, at ADR-123's own breakpoints where kinked
 — its earliest RISING crossing located, and the earliest over all
@@ -1375,6 +1417,25 @@ coarser by exactly one request. A request stopped at ZERO travel is
 ADMITTED: it commits nothing, poses nothing new and reports its stop,
 which is what makes an interlocked machine operable.
 
+**Nothing stops a clock** (ADR-127). A request moving `time` carries no
+compiled constraint — plans are compiled per declared driver — so it is
+never clipped, and that is a decision and not an accident: a declared
+range is a MECHANICAL stop (ADR-108), and no interlock holds the next
+second. What judges a time request is ADR-126's end-of-request
+judgement, unchanged — a coordinate that leaves its range at some
+instant is an impossible POSE, and the request that reaches it is refused
+WHOLE, commits nothing and never poses. A time request is in seconds,
+which are both its design and its native unit; travel BACKWARDS is
+refused by name (a refusal and not a stop: no bound was met, the request
+has no meaning), and zero is admitted, firing nothing and posing what
+already stands. Correspondingly a compiled CHAIN may not follow the
+clock: any free name surviving a composed chain that is not a bank id,
+`$own` aside, is refused at construction naming the node, the joint, the
+side and the name — the general rule ADR-126 promised, whose one
+reachable case is a `law=` FACTORY that read `owner.time` at realization,
+captured the unbound animation symbol and closed over it, and which
+otherwise died on a bare `KeyError` at the first request.
+
 For the constraints it compiled the clocked simulation is the **sole
 authority** during a request: `compile_bounds` returns the `(id(node),
 joint name)` marks, `ports._clocked_marked` holds them for the duration of
@@ -1407,9 +1468,16 @@ path is entered only when that table is non-empty, and the package's
 exports stay lazy, so such a model imports no new module, compiles no
 constraint, poses at the same cost (43.9/43.7/48.9 us against
 44.8/42.5/42.0 us across the change) and publishes a byte-identical
-document. A clocked tree whose joints declare no range compiles nothing
+document — and that stays true of a tree that declares `Time.elapsed()`
+and no `State`, whose document, export and viewer snapshot are asserted
+byte-identical against an undeclared twin. A clocked tree whose joints
+declare no range compiles nothing
 either: the span table is empty and the request is ADR-125's request,
-field for field, plus an `admitted` equal to its travel.
+field for field, plus an `admitted` equal to its travel. A clocked tree
+whose root declares no elapsed base banks no clock: `time` is absent
+from `sim.state` and every clock path is dead, so the clock costs a model
+that has none nothing (one stroke request 0.107 ms and one stateless pose
+0.044 ms, before and after).
 
 ### Build pipeline (BUILD · spec `build-pipeline`)
 
@@ -2594,10 +2662,29 @@ The short list that changes must not silently break:
   refused `StopInvariantError`. Pre-existing and identical with no block
   anywhere.
 - **A clocked model cannot be published or viewed** (ADR-125): the
-  document version that carries a `State` is not defined, so
-  `document_body` refuses one by name. Rendering, `assemble()`,
+  document version that carries a `State` is not defined — nor is one
+  that carries a CLOCK (ADR-127) — so `document_body` refuses one by
+  name. Rendering, `assemble()`,
   `build_stls()`, `solid test` and an OpenSCAD snapshot are untouched, so
   such a model tests and photographs but does not reach a browser.
+- **A clock is not clipped, and a chain may not follow one** (ADR-127):
+  a time request makes its whole travel or is refused whole, and a clip
+  IN time is deliberately not half-built — it needs the animation symbol
+  renamed to a bank id, a level classified in the clock, and a direction
+  test for a level PERIODIC in time, which is the case ADR-126's
+  contested `max(0, g(0))` reading was never asked about. Until then a
+  ranged joint driven by a relation whose law factory captured the clock
+  is refused at construction. A `State` under a LOOPING base stays
+  refused, `Time.elapsed()` under a running root is a category error,
+  and neither an `Instruction`, a control, a `move(duration=)`, a
+  multi-input request nor `time` as a `drives` source exists over the
+  clock.
+- **A class body that binds no `time` gets Python's `NameError`**
+  (ADR-127): a body declaring no base does not see `AssemblyNode.time`,
+  so the framework is never reached and no refusal can name
+  `Time.elapsed()` there. Where the file imported the stdlib `time` the
+  reflected `&` does name it; where nothing bound the name at all, it
+  does not, and this is a recorded blind spot rather than a promise.
 - **A clocked bound is read ONCE per request, and the machine's own
   threshold is read with it** (ADR-126): a bound that reads a STATE a
   commit inside the same request writes is clipped against the state the
@@ -2636,9 +2723,9 @@ The short list that changes must not silently break:
 |---|---|---|---|
 | Node model | `solid_node/node/`, `solid_node/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115 |
 | Build parameters | `solid_node/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
-| Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104 |
-| Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122, 125, 126 |
-| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126 |
+| Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104, 127 |
+| Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122, 125, 126, 127 |
+| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127 |
 | Mechanisms | `solid_node/mechanisms/` | `mechanisms` | 022, 076 |
 | Build pipeline | `solid_node/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `solid_node/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |

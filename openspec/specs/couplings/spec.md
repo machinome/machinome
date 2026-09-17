@@ -1391,13 +1391,39 @@ one state AT ONE EVENT are refused as the request's own conflict, by the
 simulation capability, and nothing about that judgement belongs to a class
 body, which cannot see a landing.
 
-Every source SHALL be a `Driver` or a `State`; the same `&` group grammar
+Every source SHALL be a `Driver`, a `State`, or the root's own `Time`
+declaration when that declaration is the ELAPSED base; the same `&` group
+grammar
 applies, flat and left-associative, with the same missing-parentheses
 refusal. A port, joint coordinate or derived coordinate named as a source
 SHALL be refused at class definition, by name, saying to name the drivers and
 states the port follows. A source group MAY name a target of the same
 relation: that is a READ of that target's value, and it SHALL be handed to
 both factories in the position the group writes it.
+
+The CLOCK named as a source SHALL be the declaration the class body holds
+under the name `time`, SHALL enter the `&` group and both factories exactly
+as a driver does — one positional argument in written order, carrying the
+banked seconds — and SHALL be addressed by the bare qualified id `time`. It
+SHALL be refused at class definition, by name and naming `Time.elapsed()`,
+when the declaration it names is `Time(loop=...)` or `Time.running()`,
+because an event is located on a clock that never wraps. The clock SHALL be
+refused as a TARGET of `commits` and as either end of `drives`, at class
+definition, by name: the clock is moved by a request and written by nothing.
+
+A class body that declares NO time base has no `time` name of the system's
+to refuse — a class body does not read a base class's attributes — so the
+system SHALL NOT claim a refusal it cannot raise there, and SHALL instead
+make the `&` group's refusals SYMMETRIC. A LEFT operand of `&` that is not a
+coordinate SHALL be refused by name exactly as a right operand already is,
+naming the operand and saying a group is a group of coordinates; where that
+operand is a MODULE the message SHALL add that the machine's clock is named
+only through the root's own `time = Time.elapsed()` declaration and that a
+body declaring no base has no clock to name. That refusal SHALL be reached
+only where the left operand carries no `&` of its own, so every group the
+system admits today SHALL be admitted unchanged. A body that binds no `time`
+at all SHALL raise Python's own `NameError` before any declaration is
+reached, and the system SHALL promise no message of its own there.
 
 `at` and `law` SHALL both be required and SHALL both follow the law-factory
 protocol this capability already states: a callable of two arguments, called
@@ -1501,3 +1527,51 @@ state.
 - **WHEN** a committing relation names a path through a `.repeat()`ed child
   on either side
 - **THEN** class definition fails by name
+
+#### Scenario: The clock is a source beside a driver and a state
+
+- **WHEN** a root declaring `time = Time.elapsed()` states
+  `(time & engaged & count).commits(count, at=release, law=advance)`
+- **THEN** the class carries that committing relation with three sources in
+  written order, both factories are called once at realization, and each
+  returned callable receives the seconds first, the driver's value second
+  and the state's value third
+
+#### Scenario: The clock as a source under another base is refused
+
+- **WHEN** a class body declares `time = Time(loop=4)` or
+  `time = Time.running()` and names `time` among a committing relation's
+  sources
+- **THEN** class definition fails naming the relation, the base it declared
+  and `Time.elapsed()`
+
+#### Scenario: A body that declares no base names the module, and the group refuses it
+
+- **WHEN** a module that imported the stdlib `time` contains a class body
+  declaring no time base and writing `time & engaged` among a committing
+  relation's sources
+- **THEN** class definition fails naming the operand, saying a group is a
+  group of coordinates, and saying the machine's clock is named only through
+  the root's own `time = Time.elapsed()` declaration
+
+#### Scenario: A body that binds no time at all gets Python's own answer
+
+- **WHEN** a class body declaring no time base names `time` in a group and
+  nothing in the module or the builtins binds that name
+- **THEN** `NameError` is raised before any declaration of the framework is
+  reached, and no framework refusal is claimed for that case
+
+#### Scenario: A group of coordinates is admitted unchanged
+
+- **WHEN** any group the system admits today is written, its left operand
+  being a coordinate, a declaration or a group
+- **THEN** it is built exactly as it is built today, the left operand's own
+  `&` answering, and the left-operand refusal is never reached
+
+#### Scenario: The clock is not a target and not a driven end
+
+- **WHEN** a class body states `.commits(time, at=..., law=...)`, or
+  `time.drives(x)`, or `x.drives(time)`
+- **THEN** each fails at class definition by name, saying the clock is moved
+  by a request and written by nothing
+

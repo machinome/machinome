@@ -696,10 +696,12 @@ each refused by name with the bank unchanged; `by=0` is admitted, commits
 nothing and leaves the pose standing; `move('time', ...)` on a clocked root
 with no base is refused naming `Time.elapsed()`.
 
-**Events on time** (§5): one request of `by=40*T` fires forty events in path
-order with their instants EXACTLY the hand-computed release times; the same
-forty as forty requests of `by=T` give an identical bank and identical
-instants; a `move('engaged', to=0)` at a standing clock fires NOTHING and
+**Events on time** (§5): one request of `by=40*T` fires EIGHTY events in
+path order (the level rises twice per period, at each extreme of the swing;
+the first draft of this section said forty and was corrected at the
+orchestrator's review of the implementation) with their instants EXACTLY
+the hand-computed release times; the same eighty as forty requests of
+`by=T` give an identical bank and identical instants; a `move('engaged', to=0)` at a standing clock fires NOTHING and
 then a time request over it commits a held count; a curved `at` in the clock
 is refused at construction naming the clock and the primitive; a relation
 whose only moving source is the clock is ADMITTED where cycle 1 refused it;

@@ -102,8 +102,9 @@ meaning — and SHALL NOT admit a `State` under it.
 
 - **WHEN** a pendulum-and-count fixture whose `at` is
   `floor((time + T / 4) / (T / 2))` receives `sim.move('time', by=40 * T)`
-- **THEN** forty events are reported in path order, each at exactly the
-  release instant the affine solve gives, and the count has advanced by forty
+- **THEN** eighty events are reported in path order — the level rises TWICE
+  per period, at each extreme of the swing — each at exactly the release
+  instant the affine solve gives, and the count has advanced by eighty
 
 #### Scenario: Two short time requests equal one long one
 

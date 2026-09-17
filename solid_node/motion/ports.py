@@ -171,6 +171,11 @@ class Coordinate:
 
         return group_with(self, other)
 
+    def __rand__(self, other):
+        from solid_node.motion.couplings import refuse_left_operand
+
+        return refuse_left_operand(self, other)
+
     def _ref(self):
         from solid_node.motion.couplings import coordinate_ref
 
@@ -576,8 +581,9 @@ def get_coordinate(node, name):
 
 @dataclass(frozen=True)
 class Time:
-    """A root assembly's time base, in one of TWO spellings:
-    `time = Time(loop=<seconds>)` and `time = Time.running()`.
+    """A root assembly's time base, in one of THREE spellings:
+    `time = Time(loop=<seconds>)`, `time = Time.running()` and
+    `time = Time.elapsed()`.
 
     Frozen on purpose, like a driver declaration: an attribute that
     could be assigned here would be state shared by every node of the
@@ -585,16 +591,56 @@ class Time:
     without constructing anything, so a producer can publish the loop
     the way it publishes the driver table.
 
-    `loop` is the one field, and it is what tells the two bases apart:
-    the LOOPING base states the span of machine time one turn of the
-    timeline covers, and the RUNNING base has none -- elapsed
-    simulation seconds never wrap -- so its `loop` is `None`. A
+    `loop` is the one field: the LOOPING base states the span of machine
+    time one turn of the timeline covers, and the two bases whose
+    seconds never wrap -- RUNNING and ELAPSED -- have none, so their
+    `loop` is `None` and every producer reading it reads no loop. A
     constructor per base rather than a second field that must be
     exclusive with the first: the declaration reads as the thing it
-    declares, and `Time()` with neither is refused naming both.
+    declares, and `Time()` with none of them is refused naming all
+    three.
+
+    The ELAPSED base is the RUNNING base's time WITHOUT the running
+    mechanics: elapsed seconds that never wrap, and no retained
+    coordinate and no integrated law (OpenSpec change
+    ``time-without-running``, design section 1). What tells the two
+    apart is not a field a document could carry -- both publish none --
+    so it is the private marker below, read only through `mode`.
     """
 
     loop: float = None
+
+    #: Whether this declaration is the ELAPSED base. Not a dataclass
+    #: field: `loop` is the one field, and a second would have to be
+    #: exclusive with it and would reach every producer that reads the
+    #: declaration. `False` on the class, set on the instance by
+    #: `elapsed()` alone.
+    _elapsed = False
+
+    #: The name the clock is addressed by wherever a declaration is
+    #: asked for its own -- the bank id of a banked clock, and the name
+    #: a committing relation's source is reported under. The same
+    #: string as `CLOCK_NAME`, held here so a declaration answers the
+    #: question every other declaration answers.
+    name = CLOCK_NAME
+
+    @classmethod
+    def elapsed(cls):
+        """The ELAPSED base: elapsed simulation seconds that never wrap,
+        and NO running mechanics (OpenSpec change
+        ``time-without-running``).
+
+        Built without `__init__`, exactly as `running()` is and for the
+        same reason. Under a CLOCKED root -- one whose tree declares a
+        `State` -- this is the base that puts `time` in the bank and
+        lets a request move it; over a tree that declares no state it
+        changes nothing observable at all, and says only what `time`
+        MEANS.
+        """
+        base = object.__new__(cls)
+        object.__setattr__(base, 'loop', None)
+        object.__setattr__(base, '_elapsed', True)
+        return base
 
     @classmethod
     def running(cls):
@@ -612,12 +658,15 @@ class Time:
 
     @property
     def mode(self):
-        """`'loop'` or `'running'`: which base this declaration is.
+        """`'loop'`, `'running'` or `'elapsed'`: which base this
+        declaration is.
 
         A property rather than a stored field so the two can never
         disagree, and readable off the class through the declaration
         exactly as `loop` is.
         """
+        if self._elapsed:
+            return 'elapsed'
         return 'running' if self.loop is None else 'loop'
 
     def __post_init__(self):
@@ -630,7 +679,9 @@ class Time:
                 'Time() states no base. Write Time(loop=<seconds>) -- the '
                 'span of machine time one turn of the timeline covers -- '
                 'or Time.running(), elapsed simulation seconds that never '
-                'wrap.')
+                'wrap and mechanics that integrate every law, or '
+                'Time.elapsed(), those same seconds with no running '
+                'mechanics at all.')
         if (isinstance(loop, bool) or not isinstance(loop, (int, float))
                 or not math.isfinite(loop) or loop <= 0):
             raise ValueError(
@@ -639,13 +690,78 @@ class Time:
                 f'timeline covers; got {loop!r}')
         object.__setattr__(self, 'loop', float(loop))
 
+    ##############################################
+    # Two declarations are equal when they declare the same base
+
+    def __eq__(self, other):
+        """Equal exactly when the same BASE is declared.
+
+        The dataclass's generated `__eq__` compares the one field
+        `loop`, which is `None` for both bases whose seconds never wrap
+        -- so `Time.running() == Time.elapsed()` would be `True` while
+        the two mean different things. `mode` is what tells them apart
+        (it is a property and not a field precisely so that no producer
+        has to read it), so equality is defined over `(loop, mode)`
+        here. Defined in the body, which `@dataclass` never overwrites.
+        """
+        if not isinstance(other, Time):
+            return NotImplemented
+        return (self.loop, self.mode) == (other.loop, other.mode)
+
+    def __hash__(self):
+        """Hashed over the same pair `__eq__` compares.
+
+        Defined beside `__eq__` so the frozen declaration stays usable
+        as a dict key and a set member, which the dataclass's own hash
+        gave it: an explicit `__hash__` in the body is kept as an
+        explicit `__eq__` is.
+        """
+        return hash((self.loop, self.mode))
+
+    ##############################################
+    # The clock as a source
+
+    def drives(self, other, ratio=None, offset=None, law=None):
+        """Refused: a clock drives nothing.
+
+        The face exists so the refusal is the framework's and names the
+        clock, rather than Python's `AttributeError` on a declaration
+        that happens to carry no `drives` (OpenSpec change
+        ``time-without-running``).
+        """
+        from solid_node.motion.couplings import relate
+
+        return relate(self, other, ratio, offset, law)
+
+    def commits(self, targets, at=None, law=None, **rejected):
+        """This clock, as the one source of a committing relation.
+
+        The verb lives on the coupling layer exactly as it does for a
+        driver; this is the face the root's own `time` declaration
+        offers it through.
+        """
+        from solid_node.motion.couplings import commit
+
+        return commit(self, targets, at=at, law=law, **rejected)
+
+    def __and__(self, other):
+        from solid_node.motion.couplings import group_with
+
+        return group_with(self, other)
+
+    def __rand__(self, other):
+        from solid_node.motion.couplings import refuse_left_operand
+
+        return refuse_left_operand(self, other)
+
     def __set_name__(self, owner, name):
         if name != 'time':
             raise TypeError(
                 f"{owner.__name__}.{name}: a time base is declared as "
                 f"'time', the property every simulate() reads; "
                 f"'{name}' would leave nothing to tie it to. Write "
-                f"time = Time(loop=...), or time = Time.running().")
+                f"time = Time(loop=...), time = Time.running(), or "
+                f"time = Time.elapsed().")
         from solid_node.node.assembly import AssemblyNode
         if not issubclass(owner, AssemblyNode):
             raise TypeError(

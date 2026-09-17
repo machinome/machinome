@@ -5,6 +5,50 @@ History
 Unreleased
 ----------
 
+* **A clock without a run: ``Time.elapsed()``, and an event on it.** A
+  machine that is OPERATED has elapsed seconds; a machine on a timeline
+  has a loop. Until now "elapsed seconds that never wrap" could be said
+  only as half of ``Time.running()``, whose other half retains every
+  coordinate and integrates every law at a fixed cadence — the
+  generality the clocked discipline exists not to pay for. ``time =
+  Time.elapsed()`` is now a THIRD spelling of the time base, declared by
+  the same rules as the other two, and the time base and the state
+  discipline are INDEPENDENT: only a declared ``State`` makes a model
+  clocked. A root declaring ``Time.elapsed()`` and no state is admitted
+  and equivalent — the same stepped simulation, the same reads, and a
+  document byte-identical to an undeclared root's — and what the base
+  adds is a MEANING for ``time``. Under a CLOCKED root it adds a banked
+  clock: ``time`` in the bank in seconds, initial ``0.0``, opened by
+  ``Sim(model, state={'time': ...})``, returned by ``sim.state``, read by
+  ``sim.time`` (the one refused name a declared elapsed base gives back),
+  carried by ``snapshot()``/``restore()`` and zeroed by ``reset()``. The
+  SAME verb moves it — ``sim.move('time', by=)`` or ``to=``, in seconds,
+  with every driver standing, or one driver with the clock standing —
+  and elapsed seconds never reverse, so a request that would run the
+  clock BACKWARDS is refused by name while zero is admitted, firing
+  nothing and posing what already stands. ``time`` is a SOURCE of a
+  committing relation exactly as a driver is: ``(time & engaged &
+  count).commits(count, at=release, law=advance)``, every RISING step of
+  ``at`` along the request's path one event located EXACTLY, ordered by
+  path, read pre-event and synchronously, with ties by identity of the
+  landing float. A pendulum's release is AFFINE in time, so it is solved
+  by one division and **no tolerance is introduced anywhere**; a level
+  that CURVES in the clock is refused at construction, naming the clock
+  and the primitive, and a relation the CLOCK alone can move is now legal
+  where one every source of which is a state stays refused. The clock is
+  delivered to the pose through the hook the posing walk already has, so
+  a request still costs ONE pose and a model with no clock takes exactly
+  the path it took before. **Nothing stops a clock**: a time request is
+  never clipped — a declared range is a mechanical stop and no interlock
+  holds the next second — and a coordinate that leaves its range at some
+  instant is an impossible pose whose request is refused whole.
+  Correspondingly a coordinate whose compiled chain follows the clock is
+  refused at simulation construction, by name, under the general rule
+  that any free name surviving a chain that is not a bank id is refused.
+  ``Time.running()`` is untouched in every particular — not its compile,
+  not its tick, not its document, not its meaning — and so is every
+  untimed and looping root.
+
 * **A bound stops a clocked request on its path.** The originating
   project is ``projects/Calculators/Curta-Type-I-3x``, whose eight
   interlocks are each a ``Bound`` on a joint, each quoted from the

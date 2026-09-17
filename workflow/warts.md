@@ -3143,3 +3143,87 @@ and the decision is ADR-126; the originating project is
   identity is a `id(node)` rather than the simulation that compiled it.
   Nothing in the corpus does that today, so it is recorded rather than
   fixed. **Open, a follow-up.**
+
+## Findings from the framework cycle `time-without-running` (2026-09-17)
+
+The cycle's own Non-goals, each with its reason and the shape a later
+cycle takes, plus what the implementation found. The full write-up is
+`openspec/changes/archive/2026-09-17-time-without-running/evidence.md`,
+the decision is ADR-127, and the originating project is
+`projects/Calculators/Curta-Type-I-3x` — which **does not owe this cycle
+and paid nothing for it**: the Curta has no clock, it is operated, and
+its events are located on the crank and the clearing ring. What owed the
+cycle is ADR-125's own two-axis table, whose `elapsed × memory` square
+was unsayable. Nothing below was closed by this cycle.
+
+- **A clip in TIME, and a compiled chain that FOLLOWS the clock, are one
+  piece of work.** A time request is never clipped by a bound (a declared
+  range is a mechanical stop, and no interlock holds the next second), and
+  a coordinate whose chain carries the clock is refused at simulation
+  construction by name. Admitting the clock as a chain free name and
+  clipping a time request like a driver request is coherent and is where
+  a later cycle goes; it was refused HERE because it is two changes. The
+  easy half is renaming the animation symbol to a bank id where a chain
+  is composed; the hard half is that a level moving with the clock must
+  be classified, solved and given a DIRECTION TEST, and a level periodic
+  in time is exactly the case ADR-126's contested `h = max(0, g(0))`
+  reading (above, still open) was never asked about — that contradiction
+  is the first thing the cycle must settle. Half of it would ship a clip
+  that stops a clock sometimes. **Open, deliberately, as ONE item.**
+- **A looping root with MEMORY is still refused by name.** A loop replays
+  from zero, so it replays every commit and the state climbs across
+  loops. The demo that would make it sayable — a snapshot restored at each
+  wrap — has not appeared, and until it does the refusal is honest.
+  **Open.**
+- **`Time.elapsed()` under a RUNNING root** is a category error with no
+  spelling, and **a `State` under `Time.running()`** stays refused with
+  its meaning DEFINED and not implemented (ADR-125, unchanged): a
+  self-read switch of ADR-121's kind, buying no speed because every other
+  coordinate is still integrated at the cadence. **Open, unchanged.**
+- **No `Instruction`, no control and no `move(duration=)` over the
+  clock.** A declared advance of a named number of seconds is a coherent
+  idea and is what a browser panel will want; its shape depends on what
+  the viewer cycle needs from it, so it is deliberately not invented
+  here. **Open, waiting on cycle 6.**
+- **No MULTI-INPUT request** moving a driver and the clock together.
+  ADR-125's narrowing, unchanged: the exactness classification is stated
+  against ONE moving input, and widening it is a change to the
+  classification rather than to the clock. **Open, deliberately.**
+- **`time` is not the source of a `drives` relation.** A part whose pose
+  is a formula of time is written in `simulate()`, which is what the
+  pendulum fixture does; admitting the clock into the relation graph
+  would reach the running compile's own source space. Refused at class
+  definition, by name. **Open, deliberately.**
+- **The clocked document and the viewer are cycles 4, 5 and 6.** What a
+  version carrying a clocked clock publishes — the clock's name, its
+  initial value, and whether a consumer advances it — is deliberately not
+  presumed by this cycle. The `declare-the-state` bullet "A clocked model
+  cannot be PUBLISHED or VIEWED" above stays open and is cycle 4's.
+  **Open, and owned.**
+- **A class body that binds no `time` gets Python's `NameError`, and no
+  framework refusal can improve on it.** A class body does not see
+  `AssemblyNode.time`, so a body declaring no time base never reaches the
+  framework through that name. Where the file imported the stdlib `time`,
+  the reflected `&` added by this cycle names the MODULE and says a clock
+  is named only through the root's own declaration; where nothing bound
+  the name at all, the name fails before an operator is reached. A
+  structural blind spot, asserted in a test as Python's own answer rather
+  than papered over. **Open, and probably permanent under this shape.**
+- **Should a time request report the instants it PASSED without firing?**
+  A maker asking "what happened between 0 and 10 seconds" is answered by
+  the commits; one asking "which releases were disengaged" is not. The
+  same question ADR-126 records for constraints examined but not met
+  (above). **Open.**
+- **Does an elapsed clocked root want `set_keyframe` refused?** Today
+  `set_state(time=)` is a general delivery and the clocked simulation
+  does not own the clock the way a run owns its coordinates, so both go on
+  working over a clocked root. Left alone: this cycle refuses nothing that
+  already works. **Open, a question.**
+- **The user manual named TWO time bases.** `docs/scenarios.rst` and
+  `HISTORY.rst` carried the third spelling, but `docs/animation.rst`'s
+  own time-base page ("A machine that never wraps: `Time.running()`")
+  was written when there were two and was not in this cycle's task
+  list. **CLOSED** at completion (2026-09-17): the page now states the
+  third spelling; the passing mentions in `docs/api-reference.rst`,
+  `docs/declaring.rst` and `docs/driving.rst` are statements about the
+  RUNNING base specifically and stay true.

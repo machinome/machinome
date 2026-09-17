@@ -465,3 +465,176 @@ class RunningBasePublicationTest(BaseNodeTest):
               patch.object(node, 'assemble')):
             snapshot._load_and_prepare_node()
         keyframe.assert_called_once_with(0.0)
+
+
+##############################################
+# The ELAPSED base (OpenSpec change ``time-without-running``)
+
+class Elapsed(AssemblyNode):
+    """A root declaring elapsed seconds that never wrap, and no state:
+    the `elapsed x none` square, which is admitted and EQUIVALENT."""
+
+    time = Time.elapsed()
+
+    def __init__(self):
+        self.pointer = Pointer()
+        super().__init__()
+
+    def render(self):
+        return [self.pointer]
+
+
+class ElapsedBaseDeclarationTest(TestCase):
+    """`Time.elapsed()` is a THIRD base with the same declaration rules
+    and its own `mode` (design section 1)."""
+
+    def test_the_elapsed_declaration_is_readable_off_the_class(self):
+        self.assertIsInstance(Elapsed.time, Time)
+        self.assertIsNone(Elapsed.time.loop)
+        self.assertEqual(Elapsed.time.mode, 'elapsed')
+        self.assertIs(declared_time(Elapsed), Elapsed.time)
+
+    def test_the_other_two_bases_still_report_their_own_mode(self):
+        self.assertEqual(Clock.time.mode, 'loop')
+        self.assertEqual(Running.time.mode, 'running')
+
+    def test_time_with_no_base_names_all_three_spellings(self):
+        with self.assertRaises(TypeError) as caught:
+            Time()
+        message = str(caught.exception)
+        self.assertIn('Time(loop=', message)
+        self.assertIn('Time.running()', message)
+        self.assertIn('Time.elapsed()', message)
+
+    def test_only_the_name_time_may_hold_an_elapsed_declaration(self):
+        with self.assertRaises(TypeError) as caught:
+            class Misnamed(AssemblyNode):
+                clock = Time.elapsed()
+        self.assertIn('time', str(caught.exception))
+
+    def test_only_an_assembly_may_declare_the_elapsed_base(self):
+        with self.assertRaises(TypeError) as caught:
+            class Leaf(Solid2Node):
+                time = Time.elapsed()
+
+                def render(self):
+                    return cube(1)
+        self.assertIn('AssemblyNode', str(caught.exception))
+
+    def test_an_elapsed_declaration_below_the_root_is_refused_when_read(self):
+        class ElapsedChild(AssemblyNode):
+            time = Time.elapsed()
+
+            def __init__(self):
+                self.cube = Cube()
+                super().__init__()
+
+            def render(self):
+                return [self.cube]
+
+            def simulate(self):
+                self.cube.rotate(6 * self.time, [0, 0, 1])
+
+        class Composing(AssemblyNode):
+
+            def __init__(self):
+                self.child = ElapsedChild()
+                super().__init__()
+
+            def render(self):
+                return [self.child]
+
+        node = Composing()
+        with self.assertRaises(TypeError) as caught:
+            node.assemble()
+        message = str(caught.exception)
+        self.assertIn('child', message)
+        self.assertIn('Composing', message)
+
+
+class ElapsedBaseReadsTest(BaseNodeTest):
+    """Unbound, an elapsed root reads bare `$t`, exactly as a running
+    root and an undeclared root do."""
+
+    def test_unbound_time_is_bare_t_on_root_and_descendant(self):
+        node = Elapsed()
+        node.assemble()
+        self.assertEqual(str(node.time), '$t')
+        self.assertEqual(str(node.pointer.time), '$t')
+        self.assertEqual(rotation_strings(node.pointer.cube),
+                         [['r', '((360 * $t) / 3600)', [0, 0, 1]]])
+
+    def test_keyframes_bind_seconds_and_clearing_restores_the_symbol(self):
+        node = Elapsed()
+        node.assemble()
+        node.set_keyframe(2.5)
+        self.assertEqual(node.time, 2.5)
+        self.assertEqual(node.pointer.time, 2.5)
+        node.clear_keyframe()
+        self.assertEqual(str(node.time), '$t')
+
+
+class ElapsedBasePublicationTest(BaseNodeTest):
+    """An elapsed root's document is the document an undeclared root
+    publishes: no `loop` key, and a snapshot keyframes the fraction."""
+
+    def test_animation_block_of_an_elapsed_root_carries_no_loop(self):
+        self.assertEqual(animation_block(Elapsed()),
+                         {'fps': 30, 'frames': 360})
+        self.assertEqual(animation_block(Elapsed()),
+                         animation_block(Undeclared()))
+
+    def test_an_elapsed_root_is_keyframed_at_the_fraction(self):
+        from solid_node.manager.snapshot import Snapshot
+        snapshot = Snapshot.__new__(Snapshot)
+        snapshot.path = 'model.py'
+        snapshot.time = 0.25
+        node = Elapsed()
+        with (patch('solid_node.manager.snapshot.load_node',
+                    return_value=node),
+              patch('solid_node.manager.snapshot.project_build_lock'),
+              patch.object(node, 'set_keyframe') as keyframe,
+              patch.object(node, 'assemble')):
+            snapshot._load_and_prepare_node()
+        keyframe.assert_called_once_with(0.25)
+
+
+class TimeEqualityTest(TestCase):
+    """Two declarations are equal exactly when they declare the SAME
+    base: the dataclass's generated `__eq__` compares the one field
+    `loop`, which is `None` for BOTH bases whose seconds never wrap, so
+    equality is defined over `(loop, mode)` instead (closure of the
+    cycle's review; `evidence.md` section 4.4)."""
+
+    def test_the_two_unwrapping_bases_are_not_equal(self):
+        self.assertNotEqual(Time.running(), Time.elapsed())
+        self.assertNotEqual(Time.elapsed(), Time.running())
+
+    def test_the_two_unwrapping_bases_do_not_share_a_hash(self):
+        self.assertNotEqual(hash(Time.running()), hash(Time.elapsed()))
+
+    def test_a_base_equals_another_declaration_of_itself(self):
+        self.assertEqual(Time.elapsed(), Time.elapsed())
+        self.assertEqual(Time.running(), Time.running())
+        self.assertEqual(hash(Time.elapsed()), hash(Time.elapsed()))
+        self.assertEqual(hash(Time.running()), hash(Time.running()))
+
+    def test_a_looping_base_compares_by_its_loop(self):
+        self.assertEqual(Time(loop=4), Time(loop=4))
+        self.assertNotEqual(Time(loop=4), Time(loop=5))
+        self.assertEqual(hash(Time(loop=4)), hash(Time(loop=4)))
+
+    def test_a_looping_base_is_not_either_unwrapping_base(self):
+        self.assertNotEqual(Time(loop=4), Time.running())
+        self.assertNotEqual(Time(loop=4), Time.elapsed())
+
+    def test_a_declaration_is_not_equal_to_a_foreign_object(self):
+        self.assertNotEqual(Time.elapsed(), 'Time.elapsed()')
+        self.assertNotEqual(Time.elapsed(), None)
+
+    def test_a_declaration_stays_usable_in_a_set_and_a_dict(self):
+        bases = {Time(loop=4), Time(loop=4), Time.running(),
+                 Time.elapsed()}
+        self.assertEqual(len(bases), 3)
+        self.assertEqual({Time.elapsed(): 'elapsed'}[Time.elapsed()],
+                         'elapsed')

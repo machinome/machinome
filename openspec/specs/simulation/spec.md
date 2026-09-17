@@ -2802,7 +2802,11 @@ state by its qualified id:
 - A state SHALL be refused under a root declaring `Time(loop=)`, because a
   loop replays from zero and would replay every commit, and under a root
   declaring `Time.running()`, naming both and saying the combination is
-  defined and not yet implemented.
+  defined and not yet implemented. A state under a root declaring
+  `Time.elapsed()` SHALL be ADMITTED: elapsed seconds never wrap, so
+  nothing replays a commit, and the simulation over such a root is the
+  clocked one with its clock in the bank, stated by the requirement "An
+  elapsed clocked root banks its clock".
 
 A state SHALL be settable only as session setup: `Sim(model, state={...})` by
 qualified id, and `sim.restore(saved)`. A state SHALL be carried by
@@ -2866,6 +2870,13 @@ qualified id, and `sim.restore(saved)`. A state SHALL be carried by
 - **WHEN** a root declares `time = Time.running()` and a `State`
 - **THEN** it is refused naming both and saying the combination is defined
   and not yet implemented
+
+#### Scenario: A state under the elapsed base is admitted
+
+- **WHEN** a root declares `time = Time.elapsed()` and a `State` that a
+  committing relation writes
+- **THEN** the declared defaults bind, the tree poses, and `Sim(model)`
+  constructs a clocked simulation over it
 
 ### Requirement: A committing relation writes states at an event
 
@@ -2988,22 +2999,27 @@ state moves on requests and not on a cadence; a `dt` omitted over any other
 root SHALL remain refused as it is today. `state=` SHALL accept declared
 drivers AND declared states by qualified id, bound over the declared defaults
 before the first render. Construction SHALL pose the tree once and hold a
-BANK of every driver and every state by qualified id; joint coordinates,
-ports and `time` SHALL NOT be in that bank — the first two being what the
-ordinary enumeration computes from it on every pose, and `time` because a
-clocked root declares no time base and a state moves on requests rather than
-on a clock.
+BANK of every driver and every state by qualified id; joint coordinates and
+ports SHALL NOT be in that bank, being what the
+ordinary enumeration computes from it on every pose. `time` SHALL NOT be in
+that bank under a clocked root that declares NO time base, because such a
+root has no clock and a state moves on requests rather than on one; under a
+clocked root declaring `Time.elapsed()` `time` SHALL be a banked value, by
+the requirement "An elapsed clocked root banks its clock", and everything
+this requirement says of the bank SHALL hold of it.
 
-A clocked tree SHALL be posed exactly as the build path poses a driven model
+A clocked tree that declares no time base SHALL be posed exactly as the
+build path poses a driven model
 outside a simulation: every driver and every state bound to its current
 value, and `time` left as the untimed symbolic animation variable through the
 fallback an unbound time already takes. A `simulate()` that reads `self.time`
-under a clocked root SHALL therefore read what it reads today under an
+under such a root SHALL therefore read what it reads today under an
 untimed one.
 
 `sim.move(input_id, by=travel)` or `sim.move(input_id, to=value)` SHALL take
-exactly one of `by`/`to` and SHALL name exactly ONE declared driver, in
-design units, and is a REQUEST: a straight path from the value that driver
+exactly one of `by`/`to` and SHALL name exactly ONE MOVING INPUT — one
+declared driver, in design units, or, under an elapsed root, the clock — and
+is a REQUEST: a straight path from the value that input
 holds to the requested one, with every other bank value standing. A request
 naming a state, a joint coordinate, or more than one input SHALL be refused
 by name.
@@ -3019,11 +3035,12 @@ running executor already owns and with no additional locator, tolerance or
 knob:
 
 1. Each committing relation's `at` level SHALL be bound at the standing
-   sources and classified structurally over the one moving driver. An AFFINE
+   sources and classified structurally over the one MOVING INPUT — a declared
+   driver, or the clock under an elapsed root. An AFFINE
    level's surfaces SHALL be solved by division; a KINKED level SHALL be cut
    at its own breakpoints and each sub-interval solved the same way; a CURVED
    level SHALL be refused at simulation construction, by name, naming the
-   relation, the driver whose motion curves it and the primitive, and saying
+   relation, the input whose motion curves it and the primitive, and saying
    a clocked event is solved and never searched.
 2. A crossing SHALL fire only when the step is RISING — `at`'s branch after
    the crossing greater than its branch before — the branch before read at
@@ -3039,7 +3056,7 @@ knob:
    NO TOLERANCE SHALL decide that question: a tolerance stated as a fraction
    of the request's travel would make one long request merge events that
    several short requests keep apart.
-4. The moving driver SHALL take the NEAREST REPRESENTABLE VALUE ON THE FAR
+4. The moving input SHALL take the NEAREST REPRESENTABLE VALUE ON THE FAR
    SIDE of the surface, found by walking the solved value in float space, and
    that one value SHALL be used both for the event's reads and for the
    resumption of the remaining path, so no event can fire twice. Membership
@@ -3049,7 +3066,7 @@ knob:
    comparison against a representable threshold lands on the next value
    beyond it, and a non-strict comparison lands on the threshold itself.
 5. Every relation firing at that event SHALL evaluate its `at` and `law`
-   callables at that driver value and at the PRE-EVENT value of every state —
+   callables at that input value and at the PRE-EVENT value of every state —
    including a state the same relation writes and a state another relation
    writes at the same event — and the targets SHALL take the results
    together. Declaration order SHALL NOT be observable. Two relations firing
@@ -3072,10 +3089,12 @@ tree exactly as they stood, the refusal being raised to the caller.
 `restore()` SHALL behave the same way: a snapshot whose pose is refused
 SHALL leave the previous bank and the previous pose standing.
 
-A committing relation NO declared driver can reach — one whose every source
-is a state, so that its event level can never move along any request path —
+A committing relation NO REQUEST can reach — one whose every source is a
+state, so that its event level can never move along any request path —
 SHALL be refused at simulation construction, by name, saying that its event
-level moves with no declared driver.
+level moves with no declared driver and, under an elapsed root, not with
+the clock either. Under an elapsed root a relation whose only moving source
+is the CLOCK SHALL be admitted: the clock is something a request moves.
 
 A request SHALL be refused when one committing relation's located events
 exceed the crossing maximum the framework already states for one graph — one
@@ -3089,8 +3108,8 @@ can be split into shorter ones.
 
 `move` SHALL return a value object naming the input, the travel REQUESTED,
 the travel ADMITTED, the bounds met and the events it fired, each event entry
-carrying the relation as written, the fraction of the path, the driver's
-value at the event, and the targets with their new values. The admitted
+carrying the relation as written, the fraction of the path, the moving
+input's value at the event, and the targets with their new values. The admitted
 travel and the stops are stated by the requirement "A bound stops a clocked
 request on its path"; where no bound is met the admitted travel SHALL be the
 requested one and the stops SHALL be empty. `record=N` SHALL keep a bounded
@@ -3101,9 +3120,13 @@ the whole bank by qualified id as a fresh mapping. `sim.snapshot()`,
 `restore` refusing a snapshot taken over a different model before touching
 anything.
 
-A clocked simulation has no clock and no cadence: `run`, `at`, `every`,
-`time`, `tick`, `rate`, `trigger`, `commands`, `program` and `crossings`
-SHALL each be refused by name. `sim.stops` SHALL NOT be refused: it is the
+A clocked simulation has no CADENCE: `run`, `at`, `every`, `tick`, `rate`,
+`trigger`, `commands`, `program` and `crossings`
+SHALL each be refused by name, under every time base. `sim.time` SHALL be
+refused by name under a clocked root that declares NO time base, naming
+`Time.elapsed()` as the way to have one, and SHALL read the banked seconds
+under a clocked root that declares it. `sim.stops` SHALL NOT be refused: it
+is the
 bounded ring of the bounds a clocked machine met, under the requirement "A
 bound stops a clocked request on its path".
 
@@ -3116,6 +3139,12 @@ enumeration. A bound violated by the INITIAL pose — construction, `state=` or
 a request's own COMMITS carry a bounded coordinate outside its range, that
 end-of-request judgement SHALL raise `JointRangeError` and refuse the whole
 request, which commits nothing and never poses.
+
+A request along the CLOCK SHALL NOT be clipped by any bound: a declared
+range is a mechanical stop and nothing holds a clock. A coordinate carried
+outside its range by a time request SHALL be judged by the same
+end-of-request judgement, which refuses the whole request, commits nothing
+and never poses.
 
 #### Scenario: One request fires one event
 
@@ -3220,9 +3249,11 @@ request, which commits nothing and never poses.
 
 #### Scenario: The cadence surface is refused
 
-- **WHEN** a clocked simulation calls `run`, `every`, `time`, `tick`,
-  `trigger` or `rate`
-- **THEN** each is refused by name, saying a clocked model has no clock
+- **WHEN** a clocked simulation calls `run`, `every`, `tick`, `trigger` or
+  `rate`, and a clocked simulation over a root declaring no time base also
+  calls `time`
+- **THEN** each is refused by name, saying a clocked model has no cadence,
+  and the `time` refusal names `Time.elapsed()` as the way to have a clock
 
 ### Requirement: A bound stops a clocked request on its path
 
@@ -3565,3 +3596,175 @@ module this capability adds SHALL be imported by a project that names no
 - **WHEN** a driven, stateless model is constructed, posed, stepped with
   `Sim(node, dt)` and published
 - **THEN** no clocked code path is entered at any point
+
+### Requirement: An elapsed clocked root banks its clock
+
+Under a CLOCKED root — one whose tree declares a `State` — that also declares
+`time = Time.elapsed()`, the system SHALL hold `time` as a BANKED VALUE of
+the simulation, in SECONDS, under the bare qualified id `time`, which is the
+one global snapshot entry the state delivery already reserves. Its initial
+value SHALL be `0.0`. It SHALL be settable at construction by
+`Sim(model, state={'time': ...})` as session setup, SHALL appear in
+`sim.state` beside the drivers and the states, SHALL be carried by
+`sim.snapshot()` and put back by `sim.restore()`, and SHALL be returned to
+its initial value by `sim.reset()`. `sim.time` SHALL read it.
+
+No collision SHALL be possible and none SHALL be invented: a bare bank id
+belongs only to a ROOT-declared driver or state, and a root-declared `Driver`
+or `State` named `time` is already refused at class definition for shadowing
+the assembly member of that name.
+
+**The pose.** A clocked tree under the elapsed base SHALL be posed with every
+driver, every state AND the clock bound, `self.time` reading the banked
+number of seconds, and SHALL still be posed exactly ONCE per request. UNBOUND
+— on the build path, in any document producer, in a snapshot, and in any
+render outside a simulation — `self.time` SHALL read bare `$t`, exactly as it
+does under `Time.running()`, so no document producer is affected by the
+elapsed base and a geometry that is a formula of time animates in the untimed
+preview as it does today.
+
+**A request may move the clock.** `sim.move('time', by=seconds)` and
+`sim.move('time', to=seconds)` SHALL be REQUESTS in every sense the
+requirement "A clocked simulation solves a request path event by event"
+states: exactly one of `by`/`to`, a straight path from the banked instant to
+the requested one, every other bank value standing, events located exactly on
+that path, commits ordered, the tree posed once at the end, and the whole
+request ATOMIC. Seconds SHALL be both the design and the native unit of the
+clock, so no conversion SHALL be applied to `by`, `to` or the admitted
+travel. ONE moving input per request SHALL still hold: a request moves the
+clock with every driver standing, or one driver with the clock standing.
+
+**Elapsed seconds never run backwards.** A request whose travel is negative,
+or whose `to=` lies behind the banked instant, SHALL be REFUSED by name,
+naming the banked instant and the one asked for and saying that elapsed
+seconds never wrap and never reverse. It SHALL be a refusal and not a stop: a
+stop reports a bound the machine met, and no bound was met. A request of ZERO
+seconds SHALL be ADMITTED, SHALL fire no event, SHALL commit nothing and
+SHALL report an admitted travel of zero.
+
+**Events on the clock are events.** The clock SHALL be admitted as a SOURCE
+of a committing relation, in `at` and in `law` alike and exactly as a declared
+driver is, and every rule the requirement "A clocked simulation solves a
+request path event by event" states about an event SHALL apply unchanged: one
+jump node, structural classification per moving input with an AFFINE level
+solved, a KINKED level cut and a CURVED level REFUSED at construction by name,
+RISING steps only, the far-side landing, ties decided by identity of that
+landing with NO TOLERANCE, synchronous pre-event reads, path-ordered commits,
+the same conflict refusal at one landing, and the same crossing maximum whose
+refusal names the request. A committing relation whose only moving source is
+the clock SHALL be admitted.
+
+**Nothing stops a clock.** A request along the clock SHALL NOT be clipped by
+any declared range: a range is a MECHANICAL stop and no interlock holds a
+clock. A coordinate that a time request carries outside its declared range
+SHALL be judged by the end-of-request judgement the requirement "A bound
+stops a clocked request on its path" already states — over the final bank,
+through the same chains — and that judgement SHALL refuse the whole request,
+which commits nothing and never poses.
+
+**A compiled chain SHALL NOT follow the clock.** Every chain that requirement
+composes SHALL resolve to bank ids, and ANY free name surviving a composed
+chain that is not a bank id SHALL be refused at simulation construction, by
+name, naming the joint, the node, the side and the name that survived. A
+relation whose law FACTORY captured the clock at realization — the one route
+by which a chain can carry it, `time` being refused as a `drives` source and
+a law callable receiving only its sources' values — composes the animation
+symbol into such a chain and SHALL be refused there, saying that a clocked
+stop is compiled over the bank and that a clock-driven coordinate is not
+something a stop can hold.
+
+**Refusals, each where its facts exist.** A request naming `time` under a
+clocked root that declares no time base SHALL be refused by name, naming
+`Time.elapsed()`; `sim.time` under such a root SHALL stay refused by name,
+naming `Time.elapsed()`; and the elapsed base SHALL change nothing about
+`Time.running()` — not its compile, not its tick, not its document, not its
+meaning — and SHALL NOT admit a `State` under it.
+
+#### Scenario: The clock is in the bank and the session carries it
+
+- **WHEN** a clocked root declaring `Time.elapsed()` is constructed,
+  `sim.move('time', by=3.0)` is made, a snapshot is taken, the clock is moved
+  again, and the snapshot is restored
+- **THEN** `sim.state['time']` and `sim.time` read `0.0`, then `3.0`, then
+  the later instant, then `3.0` again, and `sim.reset()` returns the clock to
+  `0.0` with every state at its declared default
+
+#### Scenario: A clocked root with no time base has no clock in its bank
+
+- **WHEN** a clocked root that declares no time base is constructed
+- **THEN** `sim.state` carries no `time` entry, `sim.time` is refused by name
+  naming `Time.elapsed()`, and `sim.move('time', by=1)` is refused by name
+
+#### Scenario: A request on the clock fires the events on it
+
+- **WHEN** a pendulum-and-count fixture whose `at` is
+  `floor((time + T / 4) / (T / 2))` receives `sim.move('time', by=40 * T)`
+- **THEN** eighty events are reported in path order — the level rises TWICE
+  per period, at each extreme of the swing — each at exactly the release
+  instant the affine solve gives, and the count has advanced by eighty
+
+#### Scenario: Two short time requests equal one long one
+
+- **WHEN** one `sim.move('time', by=10 * T)` is compared with ten successive
+  `sim.move('time', by=T)` from the same initial bank
+- **THEN** both give the same bank, entry for entry, and the same events at
+  the same instants
+
+#### Scenario: A driver request at a standing clock fires nothing on the clock
+
+- **WHEN** the same fixture receives `sim.move('engaged', to=0)`
+- **THEN** no event is reported, the clock has not moved, the count holds,
+  and a time request afterwards commits the count the disengaged law gives
+
+#### Scenario: Time backwards is refused and zero is admitted
+
+- **WHEN** `sim.move('time', by=-1)` and `sim.move('time', to=<an instant
+  behind the bank>)` are made, and then `sim.move('time', by=0)`
+- **THEN** the first two are refused by name naming both instants with the
+  bank and the pose standing, and the third is admitted with no event, no
+  commit and an admitted travel of zero
+
+#### Scenario: The pose reads the banked seconds and the build path reads $t
+
+- **WHEN** a fixture whose `simulate()` poses a part from
+  `A * sin(2 * pi * self.time / T)` is moved to an instant and then the same
+  tree is rendered outside any simulation
+- **THEN** the posed operation is the number that instant gives, the tree was
+  rendered once for the request, and the render outside the simulation
+  carries `$t` in that operation exactly as it does for a root declaring no
+  time base
+
+#### Scenario: A curved event level in the clock is refused
+
+- **WHEN** a committing relation states `at = floor(sin(time))`
+- **THEN** simulation construction is refused by name, naming the relation,
+  the clock as the input whose motion curves the level and the primitive, and
+  saying a clocked event is solved and never searched
+
+#### Scenario: A relation the clock alone moves is admitted
+
+- **WHEN** a committing relation's only moving source is the clock, every
+  other source being a state
+- **THEN** the simulation constructs, and a time request fires its events
+
+#### Scenario: No bound stops a time request
+
+- **WHEN** a clocked elapsed fixture carrying a ranged joint that a driver
+  moves receives a driver request past the bound and then a time request
+- **THEN** the driver request is clipped at the bound and reports its stop,
+  and the time request reports no stop and makes its whole travel
+
+#### Scenario: A time request that leaves a range is refused whole
+
+- **WHEN** a commit made by a time request carries a bounded coordinate
+  outside its declared range
+- **THEN** the request is refused naming the coordinate, the side and the
+  bound, nothing is committed, and the bank, the record and the posed tree
+  stand exactly as they stood
+
+#### Scenario: A chain that carries the clock is refused at construction
+
+- **WHEN** a ranged joint is driven by a relation whose law factory read the
+  owner's `time` at realization and closed over it
+- **THEN** simulation construction is refused by name, naming the joint, the
+  node, the side and the name that survived the chain

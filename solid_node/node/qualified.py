@@ -169,6 +169,11 @@ class DriverDeclaration:
 
         return group_with(self, other)
 
+    def __rand__(self, other):
+        from solid_node.motion.couplings import refuse_left_operand
+
+        return refuse_left_operand(self, other)
+
 
 class StateDeclaration(DriverDeclaration):
     """Marker base for a STATE declaration: a driver the machine writes

@@ -15,7 +15,10 @@ wrap. `Time()` with none of them SHALL be refused naming all three
 spellings. The declaration SHALL be
 frozen class metadata readable off the class (`Root.time.loop`, and
 `Root.time.mode` reading `'loop'`, `'running'` or `'elapsed'`); assigning
-`self.time` SHALL fail naming `set_keyframe`.
+`self.time` SHALL fail naming `set_keyframe`. Two declarations SHALL be
+equal, and SHALL hash alike, exactly when they declare the same base with
+the same `loop`: `Time.running()` and `Time.elapsed()` are NOT equal,
+though both carry `loop` `None`.
 
 A `Time` declaration of ANY base SHALL be refused at class-definition
 time when it is bound to any attribute name other than `time`, or when the

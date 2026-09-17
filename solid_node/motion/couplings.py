@@ -49,10 +49,11 @@ module pulls no CAD backend and no exact stack.
 
 from dataclasses import dataclass
 
-from solid_node.motion.ports import (BoundPort, Port, RotationalPort,
-                                     RunBinder, SignalPort,
-                                     TranslationalPort, bind, binding_as,
-                                     clocked_owned, declared_ports,
+from solid_node.motion.ports import (CLOCK_NAME, BoundPort, Port,
+                                     RotationalPort, RunBinder, SignalPort,
+                                     Time, TranslationalPort, bind,
+                                     binding_as, clocked_owned,
+                                     declared_ports, declared_time,
                                      run_owned, set_coordinate,
                                      wiring_binding)
 from solid_node.node.phase import current as _current_phase
@@ -320,6 +321,9 @@ class CoordinateRef:
     def __and__(self, other):
         return group_with(self, other)
 
+    def __rand__(self, other):
+        return refuse_left_operand(self, other)
+
     def __add__(self, other):
         return _combine(self, other, 1)
 
@@ -478,6 +482,61 @@ class StateRef(DriverRef):
 
     def __repr__(self):
         return f'<state {self.described()}>'
+
+
+class ClockRef(CoordinateRef):
+    """The root's own `Time` declaration, named as the SOURCE of a
+    committing relation (OpenSpec change ``time-without-running``,
+    design section 5).
+
+    A source only, and only under the ELAPSED base: an event is located
+    on a clock that never wraps, and the clock is moved by a request and
+    written by nothing. Addressed by the bare qualified id `time`, which
+    is the one global snapshot entry the state delivery already
+    reserves, so no collision with a driver or a state is possible --
+    a root-declared `Driver` or `State` of that name is already refused
+    at class definition for shadowing the assembly member.
+    """
+
+    def __init__(self, declared):
+        self.declared = declared
+
+    def key(self):
+        return ('clock', id(self.declared))
+
+    def declaration(self):
+        return self.declared
+
+    def coordinate(self):
+        return None
+
+    def described(self):
+        return CLOCK_NAME
+
+    def check(self, role):
+        raise TypeError(
+            f"the clock '{self.described()}' cannot be the {role} end of "
+            f"a relation: a machine's clock is moved by a REQUEST -- "
+            f"sim.move('time', by=<seconds>) -- and written by nothing, "
+            f"so it drives no coordinate and no coordinate drives it. "
+            f"Name the clock among the SOURCES of a committing relation, "
+            f"(time & ...).commits(<state>, at=..., law=...), or pose "
+            f"the part from self.time in simulate().")
+
+    def check_declared_on(self, owner, relation):
+        if declared_time(owner) is self.declared:
+            return
+        raise TypeError(
+            f"{owner.__name__}: the clock named by {relation.described()} "
+            f"is not {owner.__name__}'s own time base. A machine's clock "
+            f"is the ROOT's own declaration, time = Time.elapsed(), and "
+            f"an event on it is stated in the body that declares it.")
+
+    def resolve(self, instance):
+        return ResolvedEnd(instance, self.declared, self)
+
+    def __repr__(self):
+        return f'<clock {self.described()}>'
 
 
 class PathRef(CoordinateRef):
@@ -789,6 +848,9 @@ class Coordinates:
     def __and__(self, other):
         return group_with(self, other)
 
+    def __rand__(self, other):
+        return refuse_left_operand(self, other)
+
     def drives(self, other, ratio=None, offset=None, law=None):
         return relate(self, other, ratio, offset, law)
 
@@ -820,7 +882,11 @@ def _is_group_member(value):
     from solid_node.node.qualified import DriverDeclaration
 
     if isinstance(value, (CoordinateRef, Coordinates, ChildDeclaration,
-                         RepeatDeclaration, DriverDeclaration)):
+                         RepeatDeclaration, DriverDeclaration, Time)):
+        # A `Time` declaration is the root's own clock, and it joins a
+        # group exactly as a driver does: which BASE it declares is
+        # judged where the relation exists, by `_check_commitment_ends`
+        # (OpenSpec change ``time-without-running``).
         return True
     return _coordinate_of(value) is not None or _coordinates_of(value) is not None
 
@@ -846,6 +912,36 @@ def group_with(left, right):
     right_operands = (right.operands if isinstance(right, Coordinates)
                       else (right,))
     return Coordinates(*left_operands, *right_operands)
+
+
+def refuse_left_operand(right, left):
+    """`<anything> & <a declaration>` where the LEFT operand carries no
+    `&` of its own: the mirror of `group_with`'s right-operand refusal
+    (OpenSpec change ``time-without-running``, design section 5).
+
+    Python reaches a reflected `__rand__` only when the left operand's
+    own `__and__` is absent or returns `NotImplemented`, and every
+    declaration kind that can join a group builds or raises in its own
+    `__and__`. So this refuses exactly where Python would otherwise
+    print its operand-type line, and NO admitted group changes.
+
+    Where the left operand is a MODULE the message adds the clock
+    sentence: a class body does not see `AssemblyNode.time`, so a body
+    that declares no time base and writes `time & ...` in a file that
+    imported the stdlib `time` is naming that MODULE, and the framework
+    can say so where Python could not.
+    """
+    from types import ModuleType
+
+    clock = ''
+    if isinstance(left, ModuleType):
+        clock = (f" '{left.__name__}' is a MODULE: a machine's clock is "
+                 f"named only through the root's own "
+                 f"time = Time.elapsed() declaration, and a class body "
+                 f"that declares no time base has no clock to name.")
+    raise TypeError(
+        f'{left!r} is not a coordinate, so it cannot join a group with &: '
+        f'a group is a group of coordinates.{clock}')
 
 
 def _group_operands(value):
@@ -1858,6 +1954,13 @@ def _check_commitment_ends(commitment):
                 f"be addressed apart. State one relation per copy, or "
                 f"state the relation inside "
                 f"{ref.repeat.node_class.__name__}.")
+        if isinstance(ref, ClockRef):
+            raise TypeError(
+                f"{commitment.described()}: the target "
+                f"'{ref.described()}' is the machine's CLOCK. A clock is "
+                f"moved by a request -- sim.move('time', by=<seconds>) -- "
+                f"and written by nothing: a committing relation writes "
+                f"STATES, so name the state this event writes.")
         if _state_named(ref) is None:
             raise TypeError(
                 f"{commitment.described()}: the target "
@@ -1874,6 +1977,26 @@ def _check_commitment_ends(commitment):
                 f"{ref.repeat.node_class.__name__}, so it cannot be a "
                 f"source of a committing relation: a source is one banked "
                 f"value, and the copies hold one each.")
+        if isinstance(ref, ClockRef):
+            # The clock is a source exactly as a driver is, and only
+            # under the ELAPSED base: an event is located on a clock
+            # that never wraps, and this is the body that declared
+            # which base it is (OpenSpec change
+            # ``time-without-running``, design section 5).
+            base = ref.declaration()
+            if base.mode == 'elapsed':
+                continue
+            spelling = ('Time(loop=...)' if base.mode == 'loop'
+                        else 'Time.running()')
+            raise TypeError(
+                f"{commitment.described()}: the source "
+                f"'{ref.described()}' is the root's time base, and this "
+                f"root declares time = {spelling}. An event is located "
+                f"on a clock that NEVER WRAPS and never reverses: a "
+                f"looping base replays the timeline from zero and would "
+                f"replay every commit, and the running base integrates "
+                f"its own laws at a cadence. Declare "
+                f"time = Time.elapsed() to state an event on the clock.")
         if _state_named(ref) is not None or isinstance(ref, DriverRef):
             continue
         raise TypeError(
@@ -2108,6 +2231,10 @@ def coordinate_ref(value, role='end'):
 
     if isinstance(value, CoordinateRef):
         return value
+    if isinstance(value, Time):
+        # The root's own clock, named in the body that declares it: the
+        # base it declares is judged where the relation exists.
+        return ClockRef(value)
     if isinstance(value, (Coordinates, tuple)):
         return _end_group(value, role)
     if _coordinate_of(value) is not None:

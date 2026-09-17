@@ -270,10 +270,19 @@ base:
 
 `type(root).time.mode` reads ``'running'`` where a looping root's reads
 ``'loop'``, and `loop` reads `None` — there is no span, because elapsed
-simulation seconds never wrap. `Time()` with neither is refused naming
-both spellings, and the declaration obeys the same rules a looping one
+simulation seconds never wrap. `Time()` with no base is refused naming
+the spellings, and the declaration obeys the same rules a looping one
 does: only on the name ``time``, only on an `AssemblyNode`, only on the
 root.
+
+There is a third spelling, `Time.elapsed()`: the same unwrapping seconds
+WITHOUT the running mechanics. It says what ``time`` means and nothing
+about what a simulation owns, so a root declaring it and no `State` is
+indistinguishable from one declaring no base at all, and a root
+declaring it beside a `State` is a clocked machine whose clock is a
+banked value a request may move (see :doc:`scenarios`, "A machine with a
+CLOCK"). `mode` reads ``'elapsed'``; `Time.running()` and
+`Time.elapsed()` are never equal, though both read `loop` `None`.
 
 What the base changes is what a :doc:`simulation <scenarios>` over the
 root owns. Under it `Sim` owns every driver **and every joint

@@ -300,7 +300,8 @@ import line names the kind of thing it brings in:
 - `solid_node.motion.ports` — a value that flows between nodes: the port
   declarations, their bound value slot, the binding helper, the
   declaration enumerator, the root's own time channel (`Time`, with its
-  two bases `Time(loop=...)` and `Time.running()` told apart by `mode`,
+  three bases `Time(loop=...)`, `Time.running()` and `Time.elapsed()`
+  told apart by `mode`,
   and the enumerator that reads a class's time declaration), and the
   binder kind a running simulation binds as (`RunBinder`), kept here so
   the binding helper can recognize it without importing the simulation
@@ -339,6 +340,14 @@ exactly one import path for each name.
 - **THEN** `type(root).time.mode` reads `'running'`, `type(root).time.loop`
   reads `None`, and `RunBinder` is the class every running simulation's
   binder is an instance of
+
+#### Scenario: The elapsed base is imported from the ports module
+
+- **WHEN** a consumer writes `from solid_node.motion.ports import Time` and
+  declares `time = Time.elapsed()` on a root
+- **THEN** `type(root).time.mode` reads `'elapsed'` and
+  `type(root).time.loop` reads `None`, and no other import is needed to
+  declare the base
 
 ### Requirement: A port takes part in a relation
 

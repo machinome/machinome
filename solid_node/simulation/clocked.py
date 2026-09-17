@@ -45,7 +45,7 @@ from solid2.core.object_base import OpenSCADConstant
 
 from solid_node.expression_graph import ExpressionNode, free_names, postorder
 from solid_node.motion.couplings import CouplingError
-from solid_node.motion.ports import clocked_marking
+from solid_node.motion.ports import CLOCK_NAME, clocked_marking
 from solid_node.node.qualified import (driver_id, drive_tree, instance_path)
 from solid_node.scad_expression import GraphValue, as_node, symbol
 
@@ -299,13 +299,19 @@ def _too_many_events(relation, input_id, delta, count):
 ##############################################
 # Compiling a clocked tree
 
-def compile_clocked(root, drivers, states, instructions):
+def compile_clocked(root, drivers, states, instructions, clock=False):
     """Every committing relation of `root`'s tree, compiled, with every
     refusal a TREE can state.
 
     A class body cannot see what the whole tree writes, nor what shape an
     `at` expression has once its sources are known, so the refusals here
     are the ones whose facts first exist at simulation construction.
+
+    `clock` says whether this root declares the ELAPSED base, and so
+    whether `time` is a banked value a request can move: under it the
+    clock joins the drivers in the per-input classification loop, and a
+    relation the clock alone moves is admitted (OpenSpec change
+    ``time-without-running``, design section 5).
     """
     _enter()
     records = _records_of(root)
@@ -339,7 +345,7 @@ def compile_clocked(root, drivers, states, instructions):
                     f'a target over a duration, and a state is written by '
                     f'the machine at an event, never ramped to a value a '
                     f'declaration names.')
-    return tuple(_compiled(root, record, drivers, states)
+    return tuple(_compiled(root, record, drivers, states, clock)
                  for record in records)
 
 
@@ -373,7 +379,7 @@ def _identifier(root, end):
     return driver_id(instance_path(end.node, root), end.name)
 
 
-def _compiled(root, record, drivers, states):
+def _compiled(root, record, drivers, states, clock=False):
     """One committing relation, compiled: its ids, its event level and
     its two callables."""
     source_ids = tuple(_identifier(root, end) for end in record.sources)
@@ -383,6 +389,16 @@ def _compiled(root, record, drivers, states):
         raise ClockedError(f'{record.described()}: {detail}')
 
     for identifier in source_ids:
+        if identifier == CLOCK_NAME and clock:
+            # The root's own clock: a banked value under the elapsed
+            # base, and something a request moves (design section 5).
+            continue
+        if identifier == CLOCK_NAME:
+            refuse(f"its source '{identifier}' is this root's clock, and "
+                   f'the root declares no time base. A clocked model has '
+                   f'a clock only where it says so: declare '
+                   f'time = Time.elapsed() on the root, elapsed seconds '
+                   f'that never wrap.')
         if identifier not in drivers and identifier not in states:
             refuse(f"its source '{identifier}' is neither a declared "
                    f'driver nor a declared state of this tree.')
@@ -391,10 +407,12 @@ def _compiled(root, record, drivers, states):
     law = _checked_law(record, tokens, target_ids, refuse)
     jumps = {}
     for identifier in source_ids:
-        if identifier not in drivers:
-            # Only a DRIVER moves along a request path; a state is
-            # constant between events, which is exactly why a level that
-            # reads its own target is simple here (design section 8).
+        if identifier not in drivers and not (clock
+                                              and identifier == CLOCK_NAME):
+            # Only a DRIVER -- or, under the elapsed base, the CLOCK --
+            # moves along a request path; a state is constant between
+            # events, which is exactly why a level that reads its own
+            # target is simple here (design section 8).
             continue
         shape = _shape_of(_standing_except(level, identifier))
         if shape is None:
@@ -411,10 +429,14 @@ def _compiled(root, record, drivers, states):
         # cross anything, never fire, and sit in the model silently
         # doing nothing. Refused by name rather than left inert
         # (design section 5, added 2026-09-17).
-        refuse(f"its event level moves with no declared driver: its "
+        reach = ('a DRIVER, or the CLOCK under a root declaring '
+                 'time = Time.elapsed()' if clock else 'a DRIVER')
+        also = ('' if clock else
+                ', nor with a clock: this root declares no time base')
+        refuse(f"its event level moves with no declared driver{also}: its "
                f"sources are {', '.join(source_ids)}, and every one of "
                f'them is a state, which is constant between events. An '
-               f'event is located on the motion of a DRIVER, so name the '
+               f'event is located on the motion of {reach}, so name the '
                f'input whose motion reaches this event among the '
                f'sources.')
     relation = Committing(record, source_ids, target_ids, primitive, level,
@@ -1159,6 +1181,7 @@ def _constrained(chains, drivers, identifier, node, joint, unit, side, bound,
     else:
         level = _binop('-', compiled, chain)
     root, jumps = checked_expression(level, refuse, 'a bound')
+    _over_the_bank(chains, root, refuse)
     plan = _plan_of(root, jumps)
     skeleton = as_node(plan.skeleton)
     entry = Bounded(identifier, side, node, joint, unit, chain, compiled,
@@ -1185,6 +1208,48 @@ def _constrained(chains, drivers, identifier, node, joint, unit, side, bound,
         if shape == 'kinked':
             entry.kinks[input_id] = _KinkCuts(plan.skeleton)
     return entry
+
+
+def _over_the_bank(chains, level, refuse):
+    """Every free name of a compiled constraint is a BANK ID, `$own`
+    aside -- or the bound is refused by name (OpenSpec change
+    ``time-without-running``, design section 7).
+
+    ADR-126 promised that what the bank cannot reach through a chain is
+    refused by name, and its implementation left one hole: a relation
+    whose law FACTORY captured the clock at realization composes the
+    ANIMATION SYMBOL into the chain, which reaches `Bounded.standing`
+    and dies there with a bare `KeyError`. The rule is stated GENERALLY,
+    over any name that survives, so it covers the clock and whatever
+    else ever leaks.
+
+    A clock-driven coordinate is the case that found it, and it is
+    named: a clocked stop is compiled over the bank, and nothing about
+    a clock is banked for a request to stop against.
+    """
+    unknown = sorted(name for name in free_names(level)
+                     if name != _OWN and name not in chains.bank)
+    if not unknown:
+        return
+    named = ', '.join(f"'{name}'" for name in unknown)
+    clock = ''
+    animation = [name for name in unknown if name.startswith('$')]
+    if animation:
+        clock = (f" The name '{animation[0]}' is the untimed ANIMATION "
+                 f"SYMBOL an unbound read of `time` gives, so a law= "
+                 f"factory that "
+                 f"read the owner's time at realization and closed over "
+                 f"it composed a clock into this chain: a clocked stop "
+                 f"is compiled over the bank -- the drivers and the "
+                 f"states -- and a clock-driven coordinate is not "
+                 f"something a stop can hold. Drop the range from this "
+                 f"joint, or state the relation from a declared driver "
+                 f"and name '{CLOCK_NAME}' among a committing "
+                 f"relation's sources instead.")
+    refuse(f'the chain that reaches it carries {named}, which the bank '
+           f'has not got: the bank is every declared driver and every '
+           f'declared state of this tree, and a stop is judged over '
+           f'it.{clock}')
 
 
 def _curves(level, input_id):
@@ -1315,6 +1380,36 @@ class Request:
                 f'admitted {self.admitted}{stopped}>')
 
 
+class _ClockInput:
+    """The CLOCK as a request's moving input (OpenSpec change
+    ``time-without-running``, design section 4).
+
+    Shaped like a driver declaration where `move` reads one -- a
+    `default`, a `native()` and a `scale` -- and nothing more, because
+    seconds are both the design unit and the native unit of a clock: no
+    conversion happens anywhere, `by=`, `to=` and `admitted` are all
+    plain seconds, and the clock has no range of its own to clip
+    against.
+    """
+
+    name = CLOCK_NAME
+    default = 0.0
+    scale = None
+    unit = 's'
+    dtype = None
+
+    def native(self, value):
+        return float(value)
+
+    def __repr__(self):
+        return f"<clock '{CLOCK_NAME}', in seconds>"
+
+
+#: One instance is enough: the declaration carries no per-simulation
+#: state, exactly as a driver declaration carries none.
+_CLOCK = _ClockInput()
+
+
 class ClockedSnapshot:
     """A clocked simulation's whole state as a value object: the model it
     was taken over, and the bank."""
@@ -1343,7 +1438,17 @@ class Clocked:
         self.node = node
         self.drivers = drivers
         self.states = states
-        self.relations = compile_clocked(node, drivers, states, instructions)
+        # The CLOCK: a banked value of this simulation exactly when the
+        # root declares the ELAPSED base, and nothing at all otherwise
+        # (OpenSpec change ``time-without-running``, design section 3).
+        # The two axes are independent -- the state discipline selected
+        # this executor, and the time base says what `time` means.
+        from solid_node.motion.ports import declared_time
+
+        base = declared_time(type(node))
+        self.clock = base is not None and base.mode == 'elapsed'
+        self.relations = compile_clocked(node, drivers, states, instructions,
+                                         clock=self.clock)
         # Every declared bound of the tree, compiled ONCE into a
         # constraint level over the bank, and the coordinates this
         # simulation therefore judges itself during a request (OpenSpec
@@ -1353,6 +1458,14 @@ class Clocked:
                      for identifier, declaration in drivers.items()}
         self.bank.update({identifier: declaration.default
                           for identifier, declaration in states.items()})
+        if self.clock:
+            # In SECONDS, initial zero, under the bare qualified id
+            # `time` -- the one global snapshot entry the state delivery
+            # already reserves, so no collision with a driver or a state
+            # is possible: a root-declared one of that name is already
+            # refused at class definition for shadowing the assembly
+            # member (design section 3).
+            self.bank[CLOCK_NAME] = 0.0
         self.model = (f'{type(node).__name__}'
                       f'({",".join(sorted(self.bank))})')
         for identifier, value in (state or {}).items():
@@ -1381,6 +1494,26 @@ class Clocked:
         return {name: value for name, value in sorted(self.bank.items())}
 
     @property
+    def time(self):
+        """The instant this simulation stands at, in SECONDS, under the
+        elapsed base -- and refused by name under every other clocked
+        root, naming the base that would give it one.
+
+        The ONE name of ADR-125's refused list this cycle lifts, and
+        only for this base (design section 3).
+        """
+        if self.clock:
+            return self.bank[CLOCK_NAME]
+        raise TypeError(
+            f'time belongs to a simulation with a CLOCK, and '
+            f'{type(self.node).__name__} is CLOCKED and declares no time '
+            f'base: its tree declares a State, and a state moves on '
+            f'requests rather than on a cadence. Declare '
+            f'time = Time.elapsed() on the root -- elapsed seconds that '
+            f'never wrap -- and the clock becomes a banked value '
+            f"sim.move('time', by=<seconds>) moves.")
+
+    @property
     def commits(self):
         return tuple(self._ring) if self._ring is not None else ()
 
@@ -1399,13 +1532,31 @@ class Clocked:
         simulation: every driver and every state bound to its value, and
         `time` left as the untimed symbolic animation variable through
         the fallback an unbound clock already takes. A `simulate()` that
-        reads `self.time` under a clocked root therefore reads what it
-        reads today under an untimed one (design section 12).
+        reads `self.time` under a clocked root that declares no time base
+        therefore reads what it reads today under an untimed one (design
+        section 12 of ``declare-the-state``).
+
+        Under the ELAPSED base the banked seconds are delivered too, in
+        the SAME walk and through the hook that walk already has:
+        `visit(node, path, children)` is called for every assembly after
+        its drivers and states are bound and BEFORE anything renders, so
+        every node's `self.time` reads the instant and the tree is still
+        posed ONCE per request. `drive_tree` gains no parameter, and a
+        root with no clock passes no `visit` at all (OpenSpec change
+        ``time-without-running``, design section 6).
         """
         bank = self.bank if bank is None else bank
+        visit = None
+        if self.clock:
+            seconds = bank[CLOCK_NAME]
+
+            def visit(node, path, children, seconds=seconds):
+                node._states[CLOCK_NAME] = seconds
+
         drive_tree(self.node,
                    lambda node, path, name, declaration:
-                   bank[driver_id(path, name)])
+                   bank[driver_id(path, name)],
+                   visit=visit)
 
     def _posed(self, bank, marked=False):
         """Pose `bank`, and make it the simulation's only if the tree
@@ -1483,6 +1634,21 @@ class Clocked:
             target = declaration.native(to)
         else:
             target = origin + declaration.native(by)
+        if input_id == CLOCK_NAME and target < origin:
+            # A REFUSAL and not a stop: a stop reports a bound the
+            # machine met, and no bound was met. Elapsed seconds never
+            # wrap and never reverse, so the request is meaningless
+            # rather than obstructed (design section 4). Zero is
+            # admitted: it fires nothing and poses what already stands.
+            asked = f'by={by!r}' if to is None else f'to={to!r}'
+            raise ValueError(
+                f"move('{CLOCK_NAME}', {asked}) asks this machine's clock "
+                f'to run BACKWARDS: it stands at {origin!r} seconds and '
+                f'the request ends at {target!r}. Elapsed seconds never '
+                f'wrap and never reverse -- no bound was met and nothing '
+                f'stopped, the request has no meaning. Restore a snapshot '
+                f'taken at the earlier instant, or reset the simulation, '
+                f'to stand before it again.')
         # STEP 0, and the whole of this cycle: the request's travel is
         # CLIPPED to the largest fraction at which every compiled
         # constraint is still satisfied, ONCE, over the bank as it
@@ -1621,7 +1787,18 @@ class Clocked:
         return landing, firing
 
     def _input(self, input_id):
-        """The declaration of the ONE driver a request may name."""
+        """The declaration of the ONE input a request may name: a
+        declared driver, or -- under the elapsed base -- the clock."""
+        if input_id == CLOCK_NAME:
+            if self.clock:
+                return _CLOCK
+            raise ValueError(
+                f"move('{CLOCK_NAME}', ...) names this machine's clock, "
+                f'and {type(self.node).__name__} declares no time base: a '
+                f'clocked model has a clock only where it says so. '
+                f'Declare time = Time.elapsed() on the root -- elapsed '
+                f'seconds that never wrap -- to have one a request can '
+                f'move.')
         try:
             return self.drivers[input_id]
         except KeyError:
