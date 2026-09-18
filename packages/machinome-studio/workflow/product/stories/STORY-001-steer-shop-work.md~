@@ -1,0 +1,18 @@
+# STORY-001: Steer shop work from one place
+
+Status: Draft — rewrite before use
+
+As the pilot, I want one place where I can follow shop work and give direction,
+so that I can understand and steer the work without navigating separate hidden
+agent sessions.
+
+## Notes to rewrite
+
+- Who is the user?
+- What are they trying to accomplish?
+- What outcome makes this valuable?
+- What important situations or failures should the story cover?
+- What is explicitly outside this story?
+
+Keep implementation choices and spike results out of the story. They belong in
+the OpenSpec change's `design.md`.
