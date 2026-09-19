@@ -62,6 +62,9 @@ Narration lives only inside each shot; there is no separate script to keep in sy
   written terms to spoken aliases. Captions restore the written spelling.
 - `series`: optional short series label for the top corner; defaults to the title.
 - `style`: background, foreground, accent, font, caption placement and safe inset.
+  Background, foreground, accent and font are applied by the current renderer;
+  caption placement and safe inset are editorial hints for its fixed layout,
+  not independently implemented layout controls.
 - `cameras`: named world-space `position`, `target`, `up` and `fov`.
 - `layers`: named lists of root-relative assembly paths. Each path is a list
   of exact sibling names, excluding the document root's name.

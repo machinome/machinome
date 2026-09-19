@@ -18,10 +18,13 @@ that project's completed simulation. This film uses model seconds 8–80 over
 
 ## Evidence
 
-- Five Node tests pass: restricted YAML, stale duration/gaps/unknown layers,
+- Eight Node tests pass: restricted YAML, stale duration/gaps/unknown layers,
   camera/time mapping and visibility reset, timestamped captions, explicit
   model keyframes. Initial missing-module failures preceded implementation;
   the keyframe test separately failed numerically before the mapping was added.
+  Three adoption-time regression tests also verify cached speech overflow,
+  missing speech and corrupted cache refusals without paid requests. Those three
+  tests verify existing behavior; they are not represented as red-first evidence.
 - The originating project passes `check`: eight shots, 84 seconds, model duration
   296 seconds, source-revision and assembly/evidence references resolved.
 - Twenty-four real-browser preview stills pass camera readback and pixel replay
@@ -48,8 +51,9 @@ that project's completed simulation. This film uses model seconds 8–80 over
   2,520 frames, 84.000 seconds, stereo AAC at 48kHz. Extracted frames at 5, 41,
   64 and 78 seconds were inspected. The credit text crossed the dark model base;
   a browser assertion reproduced the missing opaque background before the fix,
-  then passed after adding the background. The corrected closing preview was
-  visually inspected; the corrected full encode is being verified separately.
+  then passed after adding the background. The corrected closing preview and
+  final MP4 credit frame were visually inspected; the corrected full encode
+  passes all encoded checks and source/output checksum verification.
 - The initial encoded narration measured -16.92 LUFS integrated and -4.32 dBTP,
   with 4.50 LU loudness range. The visual correction does not regenerate speech.
 
@@ -64,6 +68,15 @@ The manifest records asset hashes, audio hashes, the resolved episode, Chromium
 implementation was committed, so its scaffold HEAD alone does not identify the
 implementation. The final corrected render is made from the committed tool;
 its own manifest and output hash are authoritative for that artifact.
+
+Final corrected MP4: 9,419,262 bytes, 84.000 seconds, 2,520 frames at 1920×1080
+and 30fps, H.264 with AAC/48kHz narration. SHA-256:
+`9c987d9d39461a071b1519ece2890e8785551204e247fe7af4c893234ef35597`.
+The manifest identifies tool implementation `8369a9e5e46a76853115e0f051e5504820a94f1b`
+and episode sources `4291addb4e7bfb613f096ae63fc6362d5e55fdf0`; viewer implementation
+is `2912006` and its exact bundle hash is in the manifest. Thirty caption cues
+are ordered, end within the film and contain no spoken alias. The last caption
+ends at 80.984 seconds, leaving room to read the closing credit.
 
 ## OpenSpec adoption and remaining decisions
 

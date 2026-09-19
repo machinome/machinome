@@ -9,9 +9,9 @@ checked items do not imply that a prior spec-first cycle happened.
 
 ## 2. Complete the first rehearsal
 
-- [ ] 2.1 Inspect final MP4 frames and encoded duration, dimensions, frame count and audio; correct the credit-panel contrast found in review.
-- [ ] 2.2 Record production evidence and update workflow and episode documentation.
-- [ ] 2.3 Validate OpenSpec artifacts and record remaining review/publication limitations.
+- [x] 2.1 Inspect final MP4 frames and encoded duration, dimensions, frame count and audio; correct the credit-panel contrast found in review.
+- [x] 2.2 Record production evidence and update workflow and episode documentation.
+- [x] 2.3 Validate OpenSpec artifacts and record remaining review/publication limitations.
 
 Archive and baseline promotion are a subsequent pilot decision, not prerequisites
 for delivering this local rehearsal. Public hosting and publication are not tasks
