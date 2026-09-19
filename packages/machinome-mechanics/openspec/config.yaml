@@ -1,8 +1,8 @@
 schema: spec-driven
 context: |
-  solid-node-mechanics is an Apache-2.0 collection of mechanical formula helpers
-  for solid-node projects. It depends on solid-node and uses solid_node.math;
-  solid-node must never depend on this package. Python >=3.11.
+  machinome-mechanics is an Apache-2.0 collection of mechanical formula helpers
+  for machinome projects. It depends on machinome and uses machinome.math;
+  machinome must never depend on this package. Python >=3.11.
   Initial version 0.1.0 is founded, not published. Project migration is separate.
   Preserve numeric/symbolic parity and documented degrees, frames and signs.
 rules:

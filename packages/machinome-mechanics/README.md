@@ -1,14 +1,14 @@
-# solid-node-mechanics
+# machinome-mechanics
 
-Mechanical formula helpers for solid-node projects, licensed Apache-2.0.
+Mechanical formula helpers for machinome projects, licensed Apache-2.0.
 Version 0.1.0 is founded locally and **not published**.
 
-The runtime import dependency goes one way: **mechanics imports solid-node**.
-The default solid-node installation does not require this package. Its optional
+The runtime import dependency goes one way: **mechanics imports machinome**.
+The default machinome installation does not require this package. Its optional
 `mechanics` extra installs it, but framework code never imports or re-exports
 these helpers.
-The formulas use `solid_node.math` for degree-based numeric computation and
-symbolic expressions that solid-node's animation paths already understand.
+The formulas use `machinome.math` for degree-based numeric computation and
+symbolic expressions that machinome's animation paths already understand.
 
 ## Install from source
 
@@ -18,33 +18,34 @@ With Python 3.11 or newer, in this checkout:
 python -m pip install .
 ```
 
-This installs solid-node if necessary. The required math operations exist in
-solid-node 0.6.0. Declarative parameters and the newer motion API are features
-of solid-node's unreleased development line, not promises about 0.6.0.
+This installs machinome if necessary. The required math operations exist in
+machinome 0.6.0. Declarative parameters and the newer motion API are features
+of machinome's unreleased development line, not promises about 0.6.0.
 
 The framework's unreleased `mechanics` extra follows its viewer installation
 pattern. Once both versions are published:
 
 ```sh
-python -m pip install 'solid-node[mechanics]'
+python -m pip install 'machinome[mechanics]'
 # Or install both optional packages:
-python -m pip install 'solid-node[viewer,mechanics]'
+python -m pip install 'machinome[viewer,mechanics]'
 ```
 
 For now, supply both local repositories, using a framework checkout that
 contains the new extra:
 
 ```sh
-python -m pip install -e '/path/to/solid-node[mechanics]' -e /path/to/solid-node-mechanics
+python -m pip install -e '/path/to/machinome-framework[mechanics]' -e /path/to/machinome-mechanics
 ```
 
 The extra selects a package to install; helpers still use the
-`solid_node_mechanics` import. Released solid-node 0.6.0 has no mechanics extra.
+`machinome_mechanics` import. Released solid-node 0.6.0 has no mechanics extra;
+the extra begins with Machinome 0.7.0.
 
 ## Use
 
 ```python
-from solid_node_mechanics import meshed_angle, piston_height, screw_travel
+from machinome_mechanics import meshed_angle, piston_height, screw_travel
 
 assert screw_travel(360, 2) == 2
 assert piston_height(0, 15, 60) == 75
@@ -55,18 +56,18 @@ The same functions accept symbolic driving values. A motion relation can
 call them inside its project's law:
 
 ```python
-from solid_node_mechanics import piston_height
+from machinome_mechanics import piston_height
 
 def piston_law(crank, piston):
     radius, length = crank.radius, piston.rod_length
     return lambda angle: piston_height(angle, radius, length)
 
-# On a solid-node development version with the motion API:
+# On a machinome development version with the motion API:
 # crank.turn.drives(piston.rise, law=piston_law)
 ```
 
 This package supplies formulas. The project supplies dimensions, reference
-frames, signs, branch selection and assembly facts; solid-node supplies
+frames, signs, branch selection and assembly facts; machinome supplies
 motion coordinates and relation evaluation.
 
 ## Formula families
@@ -79,8 +80,8 @@ motion coordinates and relation evaluation.
 | `deltas` | `delta_carriage`, `delta_rod` |
 | `linkages` | `circle_intersection`, `triangle_angle`, `link_rise` |
 
-All twelve names are exported from `solid_node_mechanics`, with family imports
-such as `solid_node_mechanics.gears` also available.
+All twelve names are exported from `machinome_mechanics`, with family imports
+such as `machinome_mechanics.gears` also available.
 
 Angles are degrees. Each family module documents its frame, zero, sign and
 originating project conventions; those are part of the API. Read those
@@ -98,12 +99,12 @@ invented valid pose.
 
 ## Migration
 
-The functions were extracted from the unreleased `solid_node.mechanisms`
+The functions were extracted from the unreleased `machinome.mechanisms`
 package. After installing this package, change imports:
 
 ```python
-# Previously: from solid_node.mechanisms import delta_carriage
-from solid_node_mechanics import delta_carriage
+# Previously: from machinome.mechanisms import delta_carriage
+from machinome_mechanics import delta_carriage
 ```
 
 Names, signatures and formulas are preserved. Project migration is separate
@@ -119,8 +120,8 @@ python scripts/check-dist
 ```
 
 The formula suite tests reference values, inverse identities, geometric closure
-and numeric/symbolic agreement. Integration tests exercise newer solid-node
+and numeric/symbolic agreement. Integration tests exercise newer machinome
 features when available. The distribution check builds wheel and sdist,
 validates their metadata and installs each in a temporary environment outside
-the repository. It uses the invoking environment's installed solid-node and
+the repository. It uses the invoking environment's installed machinome and
 uploads nothing.

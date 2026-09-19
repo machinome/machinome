@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome Mechanics - Mechanical formula helpers for Machinome projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -36,10 +36,10 @@ that joint afterwards.
 Nothing here guards an unreachable point: an effector further from a
 carriage joint than the rod is long makes ``sqrt`` of a negative, which
 raises numerically and is NaN symbolically, exactly as
-``solid_node.math`` behaves.
+``machinome.math`` behaves.
 """
 
-from solid_node.math import asin, atan2, cos, sin, sqrt
+from machinome.math import asin, atan2, cos, sin, sqrt
 
 
 def _offset(x, y, radius, tower):

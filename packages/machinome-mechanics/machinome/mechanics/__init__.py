@@ -1,12 +1,12 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome Mechanics - Mechanical formula helpers for Machinome projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""Mechanical formula helpers for solid-node projects.
+"""Mechanical formula helpers for machinome projects.
 
-This independent Apache-2.0 package depends on solid-node. Its optional
+This independent Apache-2.0 package depends on machinome. Its optional
 mechanics extra installs these helpers, but framework code never imports
-them. Import helpers from `solid_node_mechanics`.
+them. Import helpers from `machinome_mechanics`.
 
 A *mechanism law* here is textbook geometry, not a design decision: how
 far a meshed gear has turned, how far a lead screw has advanced, where a
@@ -16,13 +16,13 @@ some of these out, each in its own frame and sign convention, each
 having to rediscover that convention against a rendered mesh, and the
 numeric-only ones broke the moment a symbolic driver reached them.
 
-**Two faces, from `solid_node.math`.** Every function here is a
-composition of `solid_node.math` functions and ordinary arithmetic, and
+**Two faces, from `machinome.math`.** Every function here is a
+composition of `machinome.math` functions and ordinary arithmetic, and
 has exactly one definition. So it computes a number when the node is
 posed at a keyframe, and builds the equivalent deferred OpenSCAD
 expression when its driving argument is animation time or a driver
 symbol -- the same function either way, just deferred. Nothing here
-emits an OpenSCAD builtin `solid_node.math` does not already emit, so
+emits an OpenSCAD builtin `machinome.math` does not already emit, so
 the cross-runtime parity corpus covers this package without extension.
 
 **No third, declared face.** The laws carry degree literals: the mesh
@@ -42,7 +42,7 @@ stated escape hatch::
         pinion_phase = meshed_angle(phase.value, wheel.value, pinion.value)
 
 **Conventions.** Every angle is in degrees, positive by the right-hand
-rule about the stated axis, matching `solid_node.math` and the node
+rule about the stated axis, matching `machinome.math` and the node
 transform API. Each family module states its frame, its zero and its
 sign once, at the top, and maps them onto the project the law was lifted
 from; read that module before calling into it. The names are unique
@@ -50,16 +50,16 @@ across families -- `crank_rod_angle`, not `rod_angle`; `delta_rod`, not
 `rod_tilt` -- so the flat import says which family it came from.
 
 The re-exports are eager: each family module imports only
-`solid_node.math`, so there is nothing heavy to defer.
+`machinome.math`, so there is nothing heavy to defer.
 """
 
-from solid_node_mechanics.cranks import (crank_pin, crank_rod_angle,
+from machinome_mechanics.cranks import (crank_pin, crank_rod_angle,
                                          piston_height)
-from solid_node_mechanics.deltas import delta_carriage, delta_rod
-from solid_node_mechanics.gears import driving_angle, meshed_angle
-from solid_node_mechanics.linkages import (circle_intersection, link_rise,
+from machinome_mechanics.deltas import delta_carriage, delta_rod
+from machinome_mechanics.gears import driving_angle, meshed_angle
+from machinome_mechanics.linkages import (circle_intersection, link_rise,
                                            triangle_angle)
-from solid_node_mechanics.screws import screw_angle, screw_travel
+from machinome_mechanics.screws import screw_angle, screw_travel
 
 __all__ = [
     'meshed_angle', 'driving_angle',

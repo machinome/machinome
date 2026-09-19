@@ -1,15 +1,15 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""Additional coverage for solid-node's unreleased declarative API."""
+"""Additional coverage for machinome's unreleased declarative API."""
 
 from unittest import TestCase
 import pytest
 
-pytest.importorskip('solid_node.parameters')
-from solid_node.node import AssemblyNode
-from solid_node.parameters import Angle, DimensionError
-from solid_node_mechanics import meshed_angle
+pytest.importorskip('machinome.parameters')
+from machinome.node import AssemblyNode
+from machinome.parameters import Angle, DimensionError
+from machinome_mechanics import meshed_angle
 
 
 class DeclaredFaceTest(TestCase):

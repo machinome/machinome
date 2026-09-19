@@ -1,4 +1,4 @@
-# Extraction from solid-node
+# Extraction from machinome
 
 Status: implemented foundation, 2026-09-11. Version 0.1.0 is not released.
 
@@ -18,13 +18,15 @@ Kossel and V8 continue to need those formulas inside their new motion laws.
 ## Accepted boundary
 
 The pilot directed this extraction on 2026-09-11: keep the useful helpers,
-allow their collection to expand independently, retain solid-node math and
+allow their collection to expand independently, retain machinome math and
 initially forbid the dependency in the other direction. Later the same day,
-the pilot requested `solid-node[mechanics]`, following the viewer extra.
+the pilot requested `machinome[mechanics]`, following the viewer extra.
 That explicitly revises the packaging restriction, not the runtime import rule.
 
-Distribution `solid-node-mechanics` exposes `solid_node_mechanics`.
-It depends on `solid-node>=0.6.0`. The framework's default install remains
+The package was founded as `solid-node-mechanics`, exposing
+`solid_node_mechanics`. It was renamed before publication for Machinome 0.7;
+distribution `machinome-mechanics` exposes `machinome_mechanics` and depends
+on `machinome>=0.7.0`. The framework's default install remains
 independent; its optional mechanics extra installs this package. Framework code
 never imports or re-exports the helpers. No new mathematical backend or
 mechanism registry is added.
@@ -34,13 +36,13 @@ documented frame, degree, sign and unreachable-configuration conventions.
 ## Provenance and license
 
 The transferred source, tests, specification and license originate in
-Apache-2.0 solid-node. Copyright and NOTICE are retained. Import paths and
+Apache-2.0 machinome. Copyright and NOTICE are retained. Import paths and
 ownership documentation are updated; formula bodies are unchanged.
 The corresponding framework OpenSpec change is `extract-mechanics`.
 This repository owns the formula contract from this extraction onward.
 
 ## Deferred work
 
-Projects still importing `solid_node.mechanisms` need a later migration.
+Projects still importing `machinome.mechanisms` need a later migration.
 They are not edited by this extraction. No remote, publication or tag is
 created. See `validation.md` for evidence and its environment limits.

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome Mechanics - Mechanical formula helpers for Machinome projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -27,7 +27,7 @@ end exactly on that axis. That identity, not the sign, is what the
 tests pin.
 """
 
-from solid_node.math import asin, cos, sin, sqrt
+from machinome.math import asin, cos, sin, sqrt
 
 
 def crank_pin(angle, crank_radius):

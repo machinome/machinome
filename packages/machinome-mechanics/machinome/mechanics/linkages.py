@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome Mechanics - Mechanical formula helpers for Machinome projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -23,13 +23,13 @@ is ``circle_intersection((0, 0), radius, pivot, arm, branch)``.
 No guards. An unreachable configuration -- circles too far apart or one
 inside the other, a triangle whose sides do not close, a link shorter
 than its offset -- reaches ``sqrt`` or ``acos`` of an out-of-range value
-and raises numerically, exactly as ``solid_node.math`` raises, and
+and raises numerically, exactly as ``machinome.math`` raises, and
 evaluates to NaN symbolically, exactly as OpenSCAD and the viewer do.
 That is what the originating projects do and it is the honest answer: a
 guard would have to invent a pose that does not exist.
 """
 
-from solid_node.math import acos, sqrt
+from machinome.math import acos, sqrt
 
 
 def circle_intersection(centre_a, radius_a, centre_b, radius_b, side=1):

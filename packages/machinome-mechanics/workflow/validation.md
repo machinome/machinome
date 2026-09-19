@@ -2,7 +2,7 @@
 
 Date: 2026-09-11. Environment: Linux, Python 3.12.
 
-- The five formula family files compare byte-for-byte equal to solid-node
+- The five formula family files compare byte-for-byte equal to machinome
   2bdc50b37be920e79202d1c9e9c5700e43f525e0. Package import paths and ownership
   docs changed; the equations did not.
 - Against the extracted framework wheel: 28 tests and 24 subtests passed.
@@ -16,13 +16,13 @@ Date: 2026-09-11. Environment: Linux, Python 3.12.
 - scripts/check-dist built wheel and sdist with setuptools 84.0.0, passed
   twine's strict metadata checks, installed each into separate temporary
   directories and passed numeric/symbolic smoke checks outside the checkout.
-  Both artifacts carry Apache-2.0 metadata, LICENSE, NOTICE and the solid-node
-  dependency, and neither bundles solid_node.
+  Both artifacts carry Apache-2.0 metadata, LICENSE, NOTICE and the machinome
+  dependency, and neither bundles machinome.
 - The refactored framework separately passed 440 tests and 565 subtests, and
   its installed wheel ran math/motion with mechanics unavailable and the old
-  solid_node.mechanisms import absent.
+  machinome.mechanisms import absent.
 
-The workspace registers an editable solid-node checkout. Checks using released
+The workspace registers an editable machinome checkout. Checks using released
 source or the framework wheel ran with Python -S and explicit dependency paths
 to prevent that editable finder from supplying missing modules from main.
 Distribution smoke checks verify that helpers load from the installed target.

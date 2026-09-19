@@ -1,18 +1,18 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""An extracted nonlinear helper supplies a current solid-node motion law."""
+"""An extracted nonlinear helper supplies a current machinome motion law."""
 
 import math
 import pytest
 
-pytest.importorskip("solid_node.motion")
+pytest.importorskip("machinome.motion")
 from solid2.core.object_base import OpenSCADConstant
-from solid_node.core.serializer import symbolic_document
-from solid_node.motion.joints import Prismatic
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver
-from solid_node_mechanics import piston_height
+from machinome.core.serializer import symbolic_document
+from machinome.motion.joints import Prismatic
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver
+from machinome_mechanics import piston_height
 
 
 class Piston(AssemblyNode):

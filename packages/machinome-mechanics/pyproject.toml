@@ -3,9 +3,9 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "solid-node-mechanics"
+name = "machinome-mechanics"
 version = "0.1.0"
-description = "Mechanical formula helpers for solid-node projects"
+description = "Mechanical formula helpers for machinome projects"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
@@ -20,13 +20,16 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
 ]
-dependencies = ["solid-node>=0.6.0"]
+dependencies = ["machinome>=0.7.0"]
+
+[project.urls]
+Homepage = "https://github.com/machinome/machinome-mechanics"
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "build>=1.2", "twine>=5"]
 
 [tool.setuptools.packages.find]
-include = ["solid_node_mechanics", "solid_node_mechanics.*"]
+include = ["machinome_mechanics", "machinome_mechanics.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

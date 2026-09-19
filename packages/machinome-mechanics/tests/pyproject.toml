@@ -1,2 +1,2 @@
-# The integration fixtures are a solid-node project of their own.
-[tool.solid-node]
+# The integration fixtures are a machinome project of their own.
+[tool.machinome]
