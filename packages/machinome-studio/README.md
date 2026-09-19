@@ -72,6 +72,12 @@ repository root. Runtime prompts belong to `profiles/<id>/`; their shared
 allowlisted skills are in `shop-skills/`. Repository operation and development
 skills stay under `skills/` and are not runtime capabilities.
 
+For educational videos from an existing project simulation, use the shared
+[Videomaker skill](skills/videomaker/SKILL.md). It directs the independent
+`videomaker/` tool with project-owned YAML sources and requires the pilot to
+approve exact spoken, on-screen and description credits for every video.
+It does not grant shop-floor agents new tools or publish videos.
+
 Two backends are selectable per agent: Claude and OpenCode. Claude resolves
 project-selected model/reasoning values over explicit profile defaults; the
 supported tools remain profile-owned, and that declared list is the whole
