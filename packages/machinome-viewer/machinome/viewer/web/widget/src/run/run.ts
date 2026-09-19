@@ -729,20 +729,22 @@ export class Run {
       scaled[inputId] = admissions[inputId] * t;
     }
     const deltas = this.deltasOf(scaled);
+    const carriesPlay = constraint.edges.some((edge) => edge.kind === 'play');
+    const landings: Record<string, number> | null = carriesPlay ? {} : null;
     for (const edge of constraint.edges) {
       for (const [key, increment] of edgeIncrements(
-        this.program, edge, values, deltas, null, 0)) {
+        this.program, edge, values, deltas, null, 0, landings)) {
         deltas[key] = increment;
       }
     }
     const scope: Record<string, number> = { [constraint.identifier]: own };
     for (const read of constraint.reads) {
-      scope[read] = held[read] + deltas[read];
+      scope[read] = landings?.[read] ?? (held[read] + deltas[read]);
     }
     const bound = evaluateExpression(
       this.program, constraint.expression, scope);
-    const value = held[constraint.identifier]
-      + deltas[constraint.identifier];
+    const value = landings?.[constraint.identifier]
+      ?? (held[constraint.identifier] + deltas[constraint.identifier]);
     return constraint.side === 'high' ? value - bound : bound - value;
   }
 
@@ -843,6 +845,16 @@ export class Run {
     }
     const { edge, index } = determination;
     const value = held[identifier];
+    // A PLAY follower may still stand at its bound while its upstream
+    // clearance is being recollected. Its contact path, not the retained
+    // coordinate's standing value, locates the first outward push.
+    const throughPlay = this.locateThroughPlay(edge, bound, held, values,
+                                               deltas);
+    if (throughPlay !== null) return throughPlay;
+    if (this.hasPlayAncestor(edge)) {
+      return this.searchThroughPlay(identifier, side, bound, held, values,
+                                    deltas);
+    }
     if ((bound - value) * (side === 'high' ? 1 : -1) <= 0) {
       // Already at or beyond it: the stop is at the very start of the
       // stretch, and the coordinate stands where it stands.
@@ -865,6 +877,116 @@ export class Run {
                             cuts);
     }
     return this.searched(edge, identifier, bound, value, values, deltas);
+  }
+
+  /** Invert an ordinary one-source affine observer, then walk a play
+   * chain's contact offsets back to its originating driver. */
+  private locateThroughPlay(edge: ProgramEdge, bound: number,
+                            held: Record<string, number>,
+                            values: Record<string, number>,
+                            deltas: Record<string, number>): number | null {
+    let target = bound;
+    let current = edge;
+    while (current.kind !== 'play') {
+      const source = current.needs[0];
+      if (current.kind === 'wiring') {
+        if (!current.factor) return null;
+        target = values[source]
+          + (target - held[current.gives[0]]) / current.factor;
+      } else if (current.kind === 'law' && current.needs.length === 1
+                 && current.gives.length === 1
+                 && current.affine[0] && current.expressions[0] !== null) {
+        const expression = current.expressions[0];
+        const at0 = evaluateExpression(this.program, expression,
+                                       { [source]: 0 });
+        const at1 = evaluateExpression(this.program, expression,
+                                       { [source]: 1 });
+        const slope = at1 - at0;
+        if (!slope) return null;
+        target = values[source]
+          + (target - held[current.gives[0]]) / slope;
+      } else {
+        return null;
+      }
+      const upstream = this.program.determiner.get(source)?.edge;
+      if (upstream === undefined) return null;
+      current = upstream;
+    }
+    for (;;) {
+      const direction = deltas[current.gives[0]] > 0 ? 1 : -1;
+      target += direction > 0 ? current.high as number : current.low as number;
+      const source = current.needs[0];
+      if (this.program.inputs.includes(source)) {
+        const travel = deltas[source];
+        return travel ? clamped((target - held[source]) / travel) : 0;
+      }
+      const upstream = this.program.determiner.get(source)?.edge;
+      if (upstream === undefined || upstream.kind !== 'play') {
+        throw new StopInvariantError(
+          `${edge.description} lost its driver-rooted play prefix while ` +
+          'locating a stop. The tick committed nothing.');
+      }
+      current = upstream;
+    }
+  }
+
+  private hasPlayAncestor(edge: ProgramEdge): boolean {
+    const pending: ProgramEdge[] = [edge];
+    const seen = new Set<ProgramEdge>();
+    while (pending.length > 0) {
+      const current = pending.pop()!;
+      if (seen.has(current)) continue;
+      if (current.kind === 'play') return true;
+      seen.add(current);
+      for (const need of current.needs) {
+        const upstream = this.program.determiner.get(need)?.edge;
+        if (upstream !== undefined) pending.push(upstream);
+      }
+    }
+    return false;
+  }
+
+  /** Replay the complete original-input prefix while searching a nonlinear
+   * observer. A departure from an exact-bound plateau toward the inside is
+   * free; only the later outward departure is a stop. */
+  private searchThroughPlay(identifier: string, side: 'low' | 'high',
+                            bound: number, held: Record<string, number>,
+                            values: Record<string, number>,
+                            deltas: Record<string, number>): number {
+    const level = (where: number): number => {
+      const scaled: Record<string, number> = {};
+      for (const input of this.program.inputs) {
+        scaled[input] = (deltas[input] ?? 0) * where;
+      }
+      const replay = this.deltasOf(scaled);
+      const landings: Record<string, number> = {};
+      this.pass(values, replay, null, 0, landings);
+      return (landings[identifier]
+        ?? (held[identifier] + (replay[identifier] ?? 0))) - bound;
+    };
+    const outward = (value: number) => side === 'high' ? value > 0 : value < 0;
+    const steps = this.program.limits.subdivisions;
+    let low = 0;
+    let below = level(0);
+    for (let step = 1; step <= steps; step += 1) {
+      const high = step / steps;
+      const above = level(high);
+      if (!outward(below) && outward(above)) {
+        let left = low;
+        let right = high;
+        for (let round = 0; round < this.program.limits.bisectionRounds;
+          round += 1) {
+          if (right - left <= this.program.limits.crossingTolerance) break;
+          const middle = (left + right) / 2;
+          if (outward(level(middle))) right = middle;
+          else left = middle;
+        }
+        return (left + right) / 2;
+      }
+      low = high;
+      below = above;
+    }
+    return 1;
   }
 
   /** An affine skeleton with a jump plan: piecewise affine in `t`, with
@@ -961,17 +1083,22 @@ export class Run {
   private pushes(candidate: string, delta: number, key: string,
                  values: Record<string, number>): boolean {
     const deltas = this.deltasOf({ [candidate]: delta });
+    const determination = this.program.determiner.get(key)?.edge;
+    const landings: Record<string, number> | null = determination !== undefined
+      && this.hasPlayAncestor(determination) ? {} : null;
     for (const edge of this.program.edges) {
       if (edge.kind === 'check') continue;
       if (edge.needs.some((need) => deltas[need])) {
         for (const [gives, increment] of edgeIncrements(
-          this.program, edge, values, deltas, null, 0)) {
+          this.program, edge, values, deltas, null, 0, landings)) {
           deltas[gives] = increment;
         }
       }
       if (edge.gives.includes(key)) break;
     }
-    return deltas[key] !== 0;
+    return landings !== null && key in landings
+      ? landings[key] !== this.bank[key]
+      : deltas[key] !== 0;
   }
 
   /** Every active command whose input is in the stopped group retires

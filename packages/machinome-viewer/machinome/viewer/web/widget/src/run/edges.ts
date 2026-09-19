@@ -92,6 +92,7 @@ export function edgeValues(program: LoadedProgram, edge: ProgramEdge,
     return edge.gives.map((key, index) =>
       [key, evaluated(program, edge.expressions[index], inputs)]);
   }
+  if (edge.kind === 'play') return [];
   // A BLOCK computes nothing outside the bank -- every one of its gives
   // is a coordinate the run banks (design D1.7's third refusal) -- and
   // `Run.valuesOf` skips an edge all of whose gives are bank keys, so it
@@ -125,6 +126,21 @@ export function edgeIncrements(
   deltas: Record<string, number>, crossings: CrossingRecord[] | null,
   tick: number, landings: Record<string, number> | null = null,
 ): [string, number][] {
+  if (edge.kind === 'play') {
+    const source = edge.needs[0];
+    const retained = edge.needs[1];
+    // A preceding PLAY may have landed this source at an absolute value.
+    // Carry that value through the chain instead of reconstructing it from
+    // a rounded increment (notably 1e16 + (329 - 1e16)).
+    const nextSource = landings !== null && source in landings
+      ? landings[source]
+      : values[source] + deltas[source];
+    const held = values[retained];
+    const next = Math.max(nextSource - (edge.high as number),
+                          Math.min(held, nextSource - (edge.low as number)));
+    if (landings !== null) landings[retained] = next;
+    return [[retained, next - held]];
+  }
   if (edge.kind === 'law') {
     const start = inputsOf(edge, values);
     const carriesPlan = edge.plans.some((plan) => plan !== null);

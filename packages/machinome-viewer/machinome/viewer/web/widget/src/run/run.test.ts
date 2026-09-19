@@ -69,7 +69,45 @@ const law = (needs: string[], gives: string[], expression: string,
   expressions: [expression], affine: [affine], plans: [null],
 });
 
+const play = (source: string, retained: string, low: number, high: number) => ({
+  kind: 'play', needs: [source, retained], gives: [retained],
+  description: `${source} plays ${retained}`, stated_by: 'Bench', low, high,
+});
+
 describe('one pass over the edges in program order', () => {
+  it('runs a three-stage play chain and releases it on reversal', () => {
+    const program = bench({
+      coordinates: {
+        crank: input(0), a: coordinate(0), b: coordinate(0), c: coordinate(0),
+      },
+      edges: [play('crank', 'a', -10, 10), play('a', 'b', -10, 10),
+              play('b', 'c', -10, 10)],
+    });
+    const run = new Run(program, 1, null);
+    run.move('crank', { by: 100, duration: 1 });
+    run.advance();
+    expect(run.state()).toEqual({ crank: 100, a: 90, b: 80, c: 70 });
+    run.move('crank', { by: -5, duration: 1 });
+    run.advance();
+    expect(run.state()).toEqual({ crank: 95, a: 90, b: 80, c: 70 });
+  });
+
+  it('hands absolute landings through a large-offset play chain', () => {
+    const initial = 1e16;
+    const program = bench({
+      coordinates: {
+        x: input(initial), a: coordinate(initial), b: coordinate(initial),
+        c: coordinate(initial),
+      },
+      edges: [play('x', 'a', -329, 3), play('a', 'b', -329, 3),
+              play('b', 'c', -329, 3)],
+    });
+    const run = new Run(program, 1, null);
+    run.move('x', { to: 0, duration: 1 });
+    run.advance();
+    expect(run.state()).toEqual({ x: 0, a: 329, b: 658, c: 987 });
+  });
+
   it('propagates increments along a chain', () => {
     const program = bench({
       coordinates: {
@@ -155,6 +193,130 @@ describe('one pass over the edges in program order', () => {
 });
 
 describe('a declared bound is a physical stop', () => {
+  it('locates a downstream play stop from the original input prefix', () => {
+    const program = bench({
+      coordinates: { x: input(0), y: coordinate(0), z: coordinate(0) },
+      edges: [play('x', 'y', -10, 10), play('y', 'z', -10, 10)],
+      spans: { z: { low: null, high: 20 } },
+    });
+    const run = new Run(program, 1, 16);
+    const command = run.move('x', { by: 100, duration: 1 });
+    run.advance();
+    expect(run.state()).toEqual({ x: 40, y: 30, z: 20 });
+    expect(command.status).toBe('blocked');
+  });
+
+  it('allows clearance before a stopped follower is recollected', () => {
+    const program = bench({
+      coordinates: {
+        x: input(0), a: coordinate(0), b: coordinate(0), c: coordinate(0),
+      },
+      edges: [play('x', 'a', -10, 10), play('a', 'b', -10, 10),
+              play('b', 'c', -10, 10)],
+      spans: { c: { low: -20, high: 20 } },
+    });
+    const run = new Run(program, 1, 16);
+    run.move('x', { to: 100, duration: 1 });
+    run.advance();
+    expect(run.state()).toEqual({ x: 50, a: 40, b: 30, c: 20 });
+    run.move('x', { to: 40, duration: 1 });
+    run.advance();
+    expect(run.state().c).toBe(20);
+    const positive = run.move('x', { to: 60, duration: 1 });
+    run.advance();
+    expect(positive.admitted).toBe(10);
+    expect(run.state().x).toBe(50);
+
+    run.move('x', { to: -100, duration: 1 });
+    run.advance();
+    run.move('x', { to: -40, duration: 1 });
+    run.advance();
+    expect(run.state().c).toBe(-20);
+    const negative = run.move('x', { to: -60, duration: 1 });
+    run.advance();
+    expect(negative.admitted).toBe(-10);
+    expect(run.state().x).toBe(-50);
+  });
+
+  it('locates an ordinary bounded observer through the play prefix', () => {
+    const program = bench({
+      coordinates: {
+        x: input(0), a: coordinate(0), b: coordinate(0), c: coordinate(0),
+        observer: coordinate(0),
+      },
+      edges: [play('x', 'a', -10, 10), play('a', 'b', -10, 10),
+              play('b', 'c', -10, 10), {
+                kind: 'wiring', needs: ['c'], gives: ['observer'],
+                description: 'third drives observer', stated_by: 'Bench',
+                factor: -2,
+              }],
+      spans: { observer: { low: -40, high: 40 } },
+    });
+    const run = new Run(program, 1, 16);
+    run.move('x', { to: 100, duration: 1 });
+    run.advance();
+    expect(run.state()).toEqual({
+      x: 50, a: 40, b: 30, c: 20, observer: -40,
+    });
+    run.move('x', { to: 40, duration: 1 });
+    run.advance();
+    const recollect = run.move('x', { to: 100, duration: 1 });
+    run.advance();
+    expect(recollect.admitted).toBe(10);
+    expect(run.state().x).toBe(50);
+  });
+
+  it('searches a nonlinear observer through its inward excursion', () => {
+    const program = bench({
+      coordinates: {
+        x: input(0), a: coordinate(0), b: coordinate(0), c: coordinate(0),
+        observer: coordinate(0),
+      },
+      edges: [play('x', 'a', -10, 10), play('a', 'b', -10, 10),
+              play('b', 'c', -10, 10),
+              law(['c'], ['observer'], '(c * c)', 'square observer', false)],
+      spans: { observer: { low: null, high: 400 } },
+    });
+    const run = new Run(program, 1, 16);
+    run.move('x', { to: 100, duration: 1 });
+    run.advance();
+    expect(run.state().x).toBeCloseTo(50, 9);
+    run.move('x', { to: 40, duration: 1 });
+    run.advance();
+    run.move('x', { to: 100, duration: 1 });
+    run.advance();
+    expect(run.state().x).toBeCloseTo(50, 9);
+    run.move('x', { to: -100, duration: 1 });
+    run.advance();
+    expect(run.state().x).toBeCloseTo(-50, 9);
+    expect(run.state().c).toBeCloseTo(-20, 9);
+    expect(run.state().observer).toBe(400);
+  });
+
+  it('searches a multi-source observer through its play ancestor', () => {
+    const program = bench({
+      coordinates: {
+        x: input(0), motor: input(0), a: coordinate(0), b: coordinate(0),
+        c: coordinate(0), observer: coordinate(0),
+      },
+      edges: [play('x', 'a', -10, 10), play('a', 'b', -10, 10),
+              play('b', 'c', -10, 10),
+              law(['c', 'motor'], ['observer'], '(c + motor)',
+                  'offset observer')],
+      spans: { observer: { low: -40, high: 40 } },
+    });
+    const run = new Run(program, 1, 16);
+    run.move('motor', { to: 7, duration: 1 }); run.advance();
+    run.move('x', { to: 100, duration: 1 }); run.advance();
+    expect(run.state().x).toBeCloseTo(63, 9);
+    run.move('x', { to: 53, duration: 1 }); run.advance();
+    run.move('x', { to: 100, duration: 1 }); run.advance();
+    expect(run.state().x).toBeCloseTo(63, 9);
+    run.move('x', { to: -100, duration: 1 }); run.advance();
+    expect(run.state().x).toBeCloseTo(-77, 9);
+    expect(run.state().observer).toBe(-40);
+  });
+
   const ratchet = () => bench({
     coordinates: { arbor: input(40), 'wheel.turn': coordinate(40) },
     edges: [law(['arbor'], ['wheel.turn'], 'arbor', 'arbor drives wheel')],

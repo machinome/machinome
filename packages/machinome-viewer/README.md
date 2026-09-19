@@ -6,7 +6,10 @@ models, packaged for pip.
 This repository was founded as `solid-node-viewer` but adopts its final
 Machinome identity before publication (ADR-066). Its Python, process, entry
 point, npm, browser-global, bundle, DOM and CSS surfaces use Machinome names;
-viewer API 20 records that host-contract boundary. The document reader accepts
+viewer API 20 records that host-contract boundary. Viewer API 22 executes
+version-9 running programs carrying machinome's explicit unilateral-contact
+`play` edge; contact history stays in the ordinary run bank and versions 1–8
+retain their existing behavior. The document reader accepts
 both current `machinome-export` files and committed `solid-node-export` files
 from solid-node 0.6. Version 0.2.0 is still unreleased.
 

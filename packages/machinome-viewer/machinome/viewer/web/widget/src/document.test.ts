@@ -217,15 +217,16 @@ describe('assertRenderable on a flexible document', () => {
     // the next one still refused, and the same sentence a version 5
     // document got from every viewer released so far. OpenSpec
     // `execute-the-commit`: version 8 -- a root that declares a State --
-    // is rendered too, so it moves to 9.
+    // is rendered too, so it moves to 9. OpenSpec
+    // `execute-running-play`: version 9 carries PLAY, so it moves to 10.
     const manifest = document({
-      version: 9 as unknown as Manifest['version'],
+      version: 10 as unknown as Manifest['version'],
       root: node('root', []),
     });
 
-    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b9\b/);
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b10\b/);
     expect(() => assertRenderable(manifest, '/m.json'))
-      .toThrow(/1, 2, 3, 4, 5, 6, 7, 8/);
+      .toThrow(/1, 2, 3, 4, 5, 6, 7, 8, 9/);
     expect(() => assertRenderable(manifest, '/m.json')).toThrow(/m\.json/);
   });
 
@@ -505,8 +506,8 @@ function withProgram(overrides: Record<string, unknown> = {},
 }
 
 describe('assertRenderable on a document carrying a program', () => {
-  it('renders versions 5, 6, 7 and 8 and says so in its list', () => {
-    expect(RENDERED_VERSIONS).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  it('renders versions 5 through 9 and says so in its list', () => {
+    expect(RENDERED_VERSIONS).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 
   it('accepts a version 6 document -- one whose program carries a law '
@@ -537,11 +538,11 @@ describe('assertRenderable on a document carrying a program', () => {
     expect(program!.identity).toBe('a-program');
   });
 
-  it('refuses a version 9 document by name, naming what it renders', () => {
+  it('refuses a version 10 document by name, naming what it renders', () => {
     const manifest = withProgram(
-      { version: 9 as unknown as Manifest['version'] });
+      { version: 10 as unknown as Manifest['version'] });
     expect(() => assertRenderable(manifest, '/m.json'))
-      .toThrow(/renders versions 1, 2, 3, 4, 5, 6, 7, 8/);
+      .toThrow(/renders versions 1, 2, 3, 4, 5, 6, 7, 8, 9/);
   });
 
   it('refuses a document carrying BOTH a program and a clocked machine',

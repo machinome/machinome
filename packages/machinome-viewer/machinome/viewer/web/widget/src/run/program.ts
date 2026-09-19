@@ -107,9 +107,10 @@ export type JumpPrimitive = typeof JUMP_PRIMITIVES[number];
  * declaring `kind: "block"` is refused as an unknown kind exactly as it
  * always was, because `EDGE_KINDS` -- which validates the PUBLISHED kind
  * -- does not carry it (design D1.3). */
-export type EdgeKind = 'law' | 'wiring' | 'formula' | 'check' | 'block';
+export type EdgeKind = 'law' | 'wiring' | 'formula' | 'check' | 'play' | 'block';
 
-const EDGE_KINDS: readonly EdgeKind[] = ['law', 'wiring', 'formula', 'check'];
+const EDGE_KINDS: readonly EdgeKind[] =
+  ['law', 'wiring', 'formula', 'check', 'play'];
 
 export interface ProgramCoordinate {
   kind: 'input' | 'coordinate';
@@ -222,6 +223,9 @@ export interface ProgramEdge {
    * loader contracts the cycle and `run.ts` meets it through the edge
    * interface it already calls (design D1.3, D6). */
   block: ProgramBlock | null;
+  /** A play edge's two source-minus-follower contact offsets. */
+  low: number | null;
+  high: number | null;
 }
 
 /** One member of a block: an ordinary law edge, its SELECTORS, and what
@@ -916,9 +920,32 @@ export function loadProgram(
       constant: 0,
       slot: null,
       block: null,
+      low: null,
+      high: null,
     };
 
-    if (kind === 'law') {
+    if (kind === 'play') {
+      if (needs.length !== 2 || gives.length !== 1
+          || gives[0] !== needs[1] || needs[0] === needs[1]) {
+        return refuse(
+          `${where} (${description}) is a play edge whose shape is not ` +
+          '`needs: [source, retained], gives: [retained]` with two distinct ' +
+          'bank coordinates.');
+      }
+      if (!bank.has(needs[0] as string) || !bank.has(needs[1] as string)) {
+        return refuse(`${where} (${description}) is a play edge whose source ` +
+                      'and retained value must both be coordinates of the bank.');
+      }
+      if (typeof entry.low !== 'number' || !Number.isFinite(entry.low)
+          || typeof entry.high !== 'number' || !Number.isFinite(entry.high)
+          || entry.low >= entry.high) {
+        return refuse(`${where} (${description}) is a play edge whose low ` +
+                      `${quoted(entry.low)} and high ${quoted(entry.high)} ` +
+                      'are not finite ordered offsets with low < high.');
+      }
+      edge.low = entry.low;
+      edge.high = entry.high;
+    } else if (kind === 'law') {
       const expressions = entry.expressions;
       const affine = entry.affine;
       const plans = entry.plans;
@@ -1115,6 +1142,62 @@ export function loadProgram(
   const determiner = new Map<string, Determination>();
   for (const edge of edges) {
     edge.gives.forEach((id, index) => determiner.set(id, { edge, index }));
+  }
+
+  // A play path is deliberately narrower than the general dependency graph:
+  // one driver-rooted linear chain, with no hidden reversal or play fan-out.
+  const playEdges = edges.filter((edge) => edge.kind === 'play');
+  const playFollowers = new Map<string, ProgramEdge>();
+  const playUses = new Map<string, ProgramEdge[]>();
+  for (const edge of playEdges) {
+    const source = edge.needs[0];
+    const retained = edge.needs[1];
+    const writers = edges.filter((candidate) =>
+      candidate.gives.includes(retained));
+    if (writers.length !== 1 || writers[0] !== edge) {
+      return refuse(`${edge.description} writes the play follower ` +
+                    `"${retained}", which must have that PLAY as its ` +
+                    'only writer.');
+    }
+    playFollowers.set(retained, edge);
+    playUses.set(source, [...(playUses.get(source) ?? []), edge]);
+    const low = edge.low as number;
+    const high = edge.high as number;
+    const sourceValue = initial[source];
+    const retainedValue = initial[retained];
+    if (retainedValue < sourceValue - high
+        || retainedValue > sourceValue - low) {
+      return refuse(`${edge.description} starts with retained "${retained}" ` +
+                    `at ${retainedValue}, outside [${sourceValue - high}, ` +
+                    `${sourceValue - low}] for source "${source}" at ` +
+                    `${sourceValue}; play never teleports an invalid rest.`);
+    }
+  }
+  for (const [source, followers] of playUses) {
+    if (followers.length > 1) {
+      return refuse(`the play source "${source}" branches to ` +
+                    `${followers.map((edge) => edge.description).join(', ')}; ` +
+                    'a play path is one linear chain with no play fan-out.');
+    }
+  }
+  for (const edge of playEdges) {
+    let source = edge.needs[0];
+    const seen = new Set<string>([edge.needs[1]]);
+    while (!inputs.includes(source)) {
+      if (seen.has(source)) {
+        return refuse(`${edge.description} belongs to a cycle of play edges; ` +
+                      'a play path is a driver-rooted linear chain.');
+      }
+      seen.add(source);
+      const upstream = playFollowers.get(source);
+      if (upstream === undefined) {
+        const writer = determiner.get(source)?.edge.description ?? 'nothing';
+        return refuse(`${edge.description} reads play source "${source}", ` +
+                      `which is determined by ${writer}, not by the preceding ` +
+                      'play edge or a run-owned driver.');
+      }
+      source = upstream.needs[0];
+    }
   }
   for (const edge of edges) {
     for (const id of edge.needs) {
@@ -1519,6 +1602,8 @@ export function loadProgram(
       constant: 0,
       slot: null,
       block,
+      low: null,
+      high: null,
     };
   };
 

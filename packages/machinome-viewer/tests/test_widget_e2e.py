@@ -215,7 +215,7 @@ class ViewerMountApiTest(TestCase):
         # where a build at 18 lists the same button and refuses it -- is
         # the one after that, and this moves to 19; the document list
         # does NOT move with it either.
-        self.assertEqual(result['bundle'], 20)
+        self.assertEqual(result['bundle'], 22)
         # And a document carrying no program has no run and no machine,
         # which is what a host asking one question is answered with.
         self.assertIsNone(result['run'])

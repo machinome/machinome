@@ -72,3 +72,4 @@ both repositories. Consequences:
 - [ADR-064](EXPORT/ADR-064-a-clocked-instruction-is-one-request-drawn-over-its-duration.md) — A clocked instruction is one request, drawn over its duration — **Accepted**, amends 062, extends 063, builds on 045, 047 and 048, consumes solid-node ADR-129
 - [ADR-065](EXPORT/ADR-065-every-request-the-clocked-panel-makes-is-drawn.md) — Every request the clocked panel makes is drawn, over a duration of the viewer's own — **Accepted**, amends 064, extends 062 and 063
 - [ADR-066](EXPORT/ADR-066-the-viewer-host-contract-adopts-machinome.md) — The viewer host contract adopts Machinome — **Accepted**
+- [ADR-067](EXPORT/ADR-067-a-play-edge-retains-contact-history-in-the-running-bank.md) — A play edge retains contact history in the running bank — **Accepted**, extends 045 and 047, builds on 054, consumes machinome ADR-130

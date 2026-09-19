@@ -5,6 +5,13 @@ it carries release together and share one version.
 
 ## 0.2.0 — unreleased
 
+- Viewer API 22 reads document version 9 and executes machinome's explicit
+  `play` edge for retained unilateral contact. Linear driver-rooted chains
+  collect at either flank, release through clearance, clip against follower
+  and downstream-observer bounds from the original driver path, and use the
+  ordinary bank for snapshot, restore and reset. Existing self-read semantics
+  are unchanged; this is not a general contact or physics engine.
+
 - Viewer API 21 adds `setView({camera, target})` for the Leonardo hydraulic
   sawmill's scripted video. It validates and copies finite, distinct endpoints,
   updates and renders the existing mount, and preserves mechanical and assembly

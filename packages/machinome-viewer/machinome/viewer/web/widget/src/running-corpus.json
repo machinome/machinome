@@ -6,6 +6,907 @@
   },
   "machines": [
     {
+      "name": "PlayCorpus",
+      "dt": 1.0,
+      "steps": 8,
+      "document": {
+        "format": "machinome-export",
+        "version": 9,
+        "drivers": {
+          "dial": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "program": {
+          "identity": "4d290ae3f6a8ea167b171ecbfc75b7f43a0b53747590a8145397b03d5204688a",
+          "clock": "time",
+          "coordinates": {
+            "dial": {
+              "kind": "input",
+              "initial": 0.0,
+              "domain": null
+            },
+            "first.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "observer.turn": {
+              "kind": "coordinate",
+              "initial": -0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "second.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "third.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "play",
+              "needs": [
+                "dial",
+                "first.turn"
+              ],
+              "gives": [
+                "first.turn"
+              ],
+              "description": "(dial, first.turn) drives first.turn",
+              "stated_by": "PlayCorpus",
+              "low": -10.0,
+              "high": 10.0
+            },
+            {
+              "kind": "play",
+              "needs": [
+                "first.turn",
+                "second.turn"
+              ],
+              "gives": [
+                "second.turn"
+              ],
+              "description": "(first.turn, second.turn) drives second.turn",
+              "stated_by": "PlayCorpus",
+              "low": -10.0,
+              "high": 10.0
+            },
+            {
+              "kind": "play",
+              "needs": [
+                "second.turn",
+                "third.turn"
+              ],
+              "gives": [
+                "third.turn"
+              ],
+              "description": "(second.turn, third.turn) drives third.turn",
+              "stated_by": "PlayCorpus",
+              "low": -10.0,
+              "high": 10.0
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "third.turn"
+              ],
+              "gives": [
+                "observer.turn"
+              ],
+              "description": "third.turn drives observer.turn",
+              "stated_by": "PlayCorpus",
+              "expressions": [
+                "(-2.0 * third.turn)"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            }
+          ],
+          "spans": {
+            "third.turn": {
+              "low": -20.0,
+              "high": 20.0
+            }
+          },
+          "sources": {
+            "dial": [
+              "dial"
+            ],
+            "first.turn": [
+              "dial"
+            ],
+            "observer.turn": [
+              "dial"
+            ],
+            "second.turn": [
+              "dial"
+            ],
+            "third.turn": [
+              "dial"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          }
+        }
+      },
+      "script": [
+        {
+          "tick": 1,
+          "move": {
+            "input": "dial",
+            "to": 100.0,
+            "duration": 1.0
+          },
+          "handle": "play0"
+        },
+        {
+          "tick": 2,
+          "move": {
+            "input": "dial",
+            "to": 40.0,
+            "duration": 1.0
+          },
+          "handle": "play1"
+        },
+        {
+          "tick": 3,
+          "snapshot": "play"
+        },
+        {
+          "tick": 3,
+          "move": {
+            "input": "dial",
+            "to": -100.0,
+            "duration": 1.0
+          },
+          "handle": "play2"
+        },
+        {
+          "tick": 5,
+          "restore": "play"
+        },
+        {
+          "tick": 6,
+          "move": {
+            "input": "dial",
+            "to": 100.0,
+            "duration": 1.0
+          },
+          "handle": "play3"
+        }
+      ],
+      "ticks": [
+        {
+          "tick": 1,
+          "bank": {
+            "dial": 50.0,
+            "first.turn": 40.0,
+            "observer.turn": -40.0,
+            "second.turn": 30.0,
+            "third.turn": 20.0
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "third.turn",
+              "bound": "high",
+              "value": 20.0,
+              "t": 0.5,
+              "inputs": [
+                "dial"
+              ]
+            }
+          ],
+          "commands": [
+            {
+              "handle": "play0",
+              "status": "blocked",
+              "admitted": 50.0
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "bank": {
+            "dial": 40.0,
+            "first.turn": 40.0,
+            "observer.turn": -40.0,
+            "second.turn": 30.0,
+            "third.turn": 20.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "play0",
+              "status": "blocked",
+              "admitted": 50.0
+            },
+            {
+              "handle": "play1",
+              "status": "completed",
+              "admitted": -10.0
+            }
+          ]
+        },
+        {
+          "tick": 3,
+          "bank": {
+            "dial": -50.0,
+            "first.turn": -40.0,
+            "observer.turn": 40.0,
+            "second.turn": -30.0,
+            "third.turn": -20.0
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "third.turn",
+              "bound": "low",
+              "value": -20.0,
+              "t": 0.6428571428571429,
+              "inputs": [
+                "dial"
+              ]
+            }
+          ],
+          "commands": [
+            {
+              "handle": "play0",
+              "status": "blocked",
+              "admitted": 50.0
+            },
+            {
+              "handle": "play1",
+              "status": "completed",
+              "admitted": -10.0
+            },
+            {
+              "handle": "play2",
+              "status": "blocked",
+              "admitted": -90.0
+            }
+          ]
+        },
+        {
+          "tick": 4,
+          "bank": {
+            "dial": -50.0,
+            "first.turn": -40.0,
+            "observer.turn": 40.0,
+            "second.turn": -30.0,
+            "third.turn": -20.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "play0",
+              "status": "blocked",
+              "admitted": 50.0
+            },
+            {
+              "handle": "play1",
+              "status": "completed",
+              "admitted": -10.0
+            },
+            {
+              "handle": "play2",
+              "status": "blocked",
+              "admitted": -90.0
+            }
+          ]
+        },
+        {
+          "tick": 3,
+          "bank": {
+            "dial": 40.0,
+            "first.turn": 40.0,
+            "observer.turn": -40.0,
+            "second.turn": 30.0,
+            "third.turn": 20.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "play0",
+              "status": "blocked",
+              "admitted": 50.0
+            },
+            {
+              "handle": "play1",
+              "status": "completed",
+              "admitted": -10.0
+            },
+            {
+              "handle": "play2",
+              "status": "blocked",
+              "admitted": -90.0
+            }
+          ]
+        },
+        {
+          "tick": 4,
+          "bank": {
+            "dial": 50.0,
+            "first.turn": 40.0,
+            "observer.turn": -40.0,
+            "second.turn": 30.0,
+            "third.turn": 20.0
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "third.turn",
+              "bound": "high",
+              "value": 20.0,
+              "t": 0.16666666666666666,
+              "inputs": [
+                "dial"
+              ]
+            }
+          ],
+          "commands": [
+            {
+              "handle": "play0",
+              "status": "blocked",
+              "admitted": 50.0
+            },
+            {
+              "handle": "play1",
+              "status": "completed",
+              "admitted": -10.0
+            },
+            {
+              "handle": "play2",
+              "status": "blocked",
+              "admitted": -90.0
+            },
+            {
+              "handle": "play3",
+              "status": "blocked",
+              "admitted": 10.0
+            }
+          ]
+        },
+        {
+          "tick": 5,
+          "bank": {
+            "dial": 50.0,
+            "first.turn": 40.0,
+            "observer.turn": -40.0,
+            "second.turn": 30.0,
+            "third.turn": 20.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "play0",
+              "status": "blocked",
+              "admitted": 50.0
+            },
+            {
+              "handle": "play1",
+              "status": "completed",
+              "admitted": -10.0
+            },
+            {
+              "handle": "play2",
+              "status": "blocked",
+              "admitted": -90.0
+            },
+            {
+              "handle": "play3",
+              "status": "blocked",
+              "admitted": 10.0
+            }
+          ]
+        },
+        {
+          "tick": 6,
+          "bank": {
+            "dial": 50.0,
+            "first.turn": 40.0,
+            "observer.turn": -40.0,
+            "second.turn": 30.0,
+            "third.turn": 20.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "play0",
+              "status": "blocked",
+              "admitted": 50.0
+            },
+            {
+              "handle": "play1",
+              "status": "completed",
+              "admitted": -10.0
+            },
+            {
+              "handle": "play2",
+              "status": "blocked",
+              "admitted": -90.0
+            },
+            {
+              "handle": "play3",
+              "status": "blocked",
+              "admitted": 10.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MeasuredPlayCorpus",
+      "dt": 0.5,
+      "steps": 10,
+      "document": {
+        "format": "machinome-export",
+        "version": 9,
+        "drivers": {
+          "dial": {
+            "default": 0.0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "program": {
+          "identity": "343317baf1241a3e6ac0a7fb17480cb1be50d4d83bf9359233c3c5b8f02d693e",
+          "clock": "time",
+          "coordinates": {
+            "dial": {
+              "kind": "input",
+              "initial": 0.0,
+              "domain": null
+            },
+            "wheel.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "play",
+              "needs": [
+                "dial",
+                "wheel.turn"
+              ],
+              "gives": [
+                "wheel.turn"
+              ],
+              "description": "(dial, wheel.turn) drives wheel.turn",
+              "stated_by": "MeasuredPlayCorpus",
+              "low": -328.7788108,
+              "high": 3.2757369
+            }
+          ],
+          "spans": {},
+          "sources": {
+            "dial": [
+              "dial"
+            ],
+            "wheel.turn": [
+              "dial"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          }
+        }
+      },
+      "script": [
+        {
+          "tick": 1,
+          "move": {
+            "input": "dial",
+            "to": 3.2757369,
+            "duration": 0.5
+          },
+          "handle": "measured0"
+        },
+        {
+          "tick": 2,
+          "move": {
+            "input": "dial",
+            "to": 1590.0,
+            "duration": 1.0
+          },
+          "handle": "measured1"
+        },
+        {
+          "tick": 4,
+          "move": {
+            "input": "dial",
+            "to": 1580.0,
+            "duration": 0.5
+          },
+          "handle": "measured2"
+        },
+        {
+          "tick": 5,
+          "move": {
+            "input": "dial",
+            "to": 1000.0,
+            "duration": 0.5
+          },
+          "handle": "measured3"
+        },
+        {
+          "tick": 6,
+          "move": {
+            "input": "dial",
+            "to": 500.0,
+            "duration": 0.5
+          },
+          "handle": "measured4"
+        },
+        {
+          "tick": 7,
+          "move": {
+            "input": "dial",
+            "to": 0.0,
+            "duration": 0.5
+          },
+          "handle": "measured5"
+        }
+      ],
+      "ticks": [
+        {
+          "tick": 1,
+          "bank": {
+            "dial": 3.2757369,
+            "wheel.turn": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "measured0",
+              "status": "completed",
+              "admitted": 3.2757369
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "bank": {
+            "dial": 796.6378684499999,
+            "wheel.turn": 793.36213155
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "measured0",
+              "status": "completed",
+              "admitted": 3.2757369
+            },
+            {
+              "handle": "measured1",
+              "status": "active",
+              "admitted": 793.36213155
+            }
+          ]
+        },
+        {
+          "tick": 3,
+          "bank": {
+            "dial": 1590.0,
+            "wheel.turn": 1586.7242631
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "measured0",
+              "status": "completed",
+              "admitted": 3.2757369
+            },
+            {
+              "handle": "measured1",
+              "status": "completed",
+              "admitted": 1586.7242631
+            }
+          ]
+        },
+        {
+          "tick": 4,
+          "bank": {
+            "dial": 1580.0,
+            "wheel.turn": 1586.7242631
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "measured0",
+              "status": "completed",
+              "admitted": 3.2757369
+            },
+            {
+              "handle": "measured1",
+              "status": "completed",
+              "admitted": 1586.7242631
+            },
+            {
+              "handle": "measured2",
+              "status": "completed",
+              "admitted": -10.0
+            }
+          ]
+        },
+        {
+          "tick": 5,
+          "bank": {
+            "dial": 1000.0,
+            "wheel.turn": 1328.7788108
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "measured0",
+              "status": "completed",
+              "admitted": 3.2757369
+            },
+            {
+              "handle": "measured1",
+              "status": "completed",
+              "admitted": 1586.7242631
+            },
+            {
+              "handle": "measured2",
+              "status": "completed",
+              "admitted": -10.0
+            },
+            {
+              "handle": "measured3",
+              "status": "completed",
+              "admitted": -580.0
+            }
+          ]
+        },
+        {
+          "tick": 6,
+          "bank": {
+            "dial": 500.0,
+            "wheel.turn": 828.7788108
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "measured0",
+              "status": "completed",
+              "admitted": 3.2757369
+            },
+            {
+              "handle": "measured1",
+              "status": "completed",
+              "admitted": 1586.7242631
+            },
+            {
+              "handle": "measured2",
+              "status": "completed",
+              "admitted": -10.0
+            },
+            {
+              "handle": "measured3",
+              "status": "completed",
+              "admitted": -580.0
+            },
+            {
+              "handle": "measured4",
+              "status": "completed",
+              "admitted": -500.0
+            }
+          ]
+        },
+        {
+          "tick": 7,
+          "bank": {
+            "dial": 0.0,
+            "wheel.turn": 328.7788108
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "measured0",
+              "status": "completed",
+              "admitted": 3.2757369
+            },
+            {
+              "handle": "measured1",
+              "status": "completed",
+              "admitted": 1586.7242631
+            },
+            {
+              "handle": "measured2",
+              "status": "completed",
+              "admitted": -10.0
+            },
+            {
+              "handle": "measured3",
+              "status": "completed",
+              "admitted": -580.0
+            },
+            {
+              "handle": "measured4",
+              "status": "completed",
+              "admitted": -500.0
+            },
+            {
+              "handle": "measured5",
+              "status": "completed",
+              "admitted": -500.0
+            }
+          ]
+        },
+        {
+          "tick": 8,
+          "bank": {
+            "dial": 0.0,
+            "wheel.turn": 328.7788108
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "measured0",
+              "status": "completed",
+              "admitted": 3.2757369
+            },
+            {
+              "handle": "measured1",
+              "status": "completed",
+              "admitted": 1586.7242631
+            },
+            {
+              "handle": "measured2",
+              "status": "completed",
+              "admitted": -10.0
+            },
+            {
+              "handle": "measured3",
+              "status": "completed",
+              "admitted": -580.0
+            },
+            {
+              "handle": "measured4",
+              "status": "completed",
+              "admitted": -500.0
+            },
+            {
+              "handle": "measured5",
+              "status": "completed",
+              "admitted": -500.0
+            }
+          ]
+        },
+        {
+          "tick": 9,
+          "bank": {
+            "dial": 0.0,
+            "wheel.turn": 328.7788108
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "measured0",
+              "status": "completed",
+              "admitted": 3.2757369
+            },
+            {
+              "handle": "measured1",
+              "status": "completed",
+              "admitted": 1586.7242631
+            },
+            {
+              "handle": "measured2",
+              "status": "completed",
+              "admitted": -10.0
+            },
+            {
+              "handle": "measured3",
+              "status": "completed",
+              "admitted": -580.0
+            },
+            {
+              "handle": "measured4",
+              "status": "completed",
+              "admitted": -500.0
+            },
+            {
+              "handle": "measured5",
+              "status": "completed",
+              "admitted": -500.0
+            }
+          ]
+        },
+        {
+          "tick": 10,
+          "bank": {
+            "dial": 0.0,
+            "wheel.turn": 328.7788108
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "measured0",
+              "status": "completed",
+              "admitted": 3.2757369
+            },
+            {
+              "handle": "measured1",
+              "status": "completed",
+              "admitted": 1586.7242631
+            },
+            {
+              "handle": "measured2",
+              "status": "completed",
+              "admitted": -10.0
+            },
+            {
+              "handle": "measured3",
+              "status": "completed",
+              "admitted": -580.0
+            },
+            {
+              "handle": "measured4",
+              "status": "completed",
+              "admitted": -500.0
+            },
+            {
+              "handle": "measured5",
+              "status": "completed",
+              "admitted": -500.0
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Train",
       "dt": 0.05,
       "steps": 30,

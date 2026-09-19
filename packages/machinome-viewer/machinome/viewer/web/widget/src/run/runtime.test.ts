@@ -18,7 +18,7 @@ import type { RunDocument } from './program';
 
 const train = (corpus as unknown as {
   machines: { name: string; dt: number; document: unknown }[];
-}).machines[0];
+}).machines.find((machine) => machine.name === 'Train')!;
 
 const document = train.document as RunDocument;
 

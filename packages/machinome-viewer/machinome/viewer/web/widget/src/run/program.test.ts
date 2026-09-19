@@ -89,6 +89,49 @@ function refusal(doc: RunDocument): string {
 }
 
 describe('loadProgram refuses what it cannot execute (design §4)', () => {
+  it('loads the exact version-9 play edge', () => {
+    const doc = document({
+      edges: [{
+        kind: 'play', needs: ['crank', 'first.turn'], gives: ['first.turn'],
+        description: 'crank plays first.turn', stated_by: 'Bench',
+        low: -10, high: 10,
+      }],
+    }, { version: 9 });
+    const edge = loadProgram(doc, SOURCE).edges[0];
+    expect(edge.kind).toBe('play');
+    expect([edge.low, edge.high]).toEqual([-10, 10]);
+  });
+
+  it('refuses a malformed or initially impossible play edge', () => {
+    const malformed = document({ edges: [{
+      kind: 'play', needs: ['crank'], gives: ['first.turn'],
+      description: 'bad play', stated_by: 'Bench', low: -10, high: 10,
+    }] }, { version: 9 });
+    expect(refusal(malformed)).toContain('needs: [source, retained]');
+
+    const impossible = document({ edges: [{
+      kind: 'play', needs: ['crank', 'first.turn'], gives: ['first.turn'],
+      description: 'bad rest', stated_by: 'Bench', low: 1, high: 2,
+    }] }, { version: 9 });
+    expect(refusal(impossible)).toContain('outside');
+  });
+
+  it('refuses any additional writer of a play follower', () => {
+    const ambiguous = document({ edges: [
+      {
+        kind: 'play', needs: ['crank', 'first.turn'], gives: ['first.turn'],
+        description: 'crank plays first.turn', stated_by: 'Bench',
+        low: -10, high: 10,
+      },
+      {
+        kind: 'law', needs: ['crank'], gives: ['first.turn'],
+        description: 'another writer', stated_by: 'Bench',
+        expressions: ['crank'], affine: [true], plans: [null],
+      },
+    ] }, { version: 9 });
+    expect(refusal(ambiguous)).toContain('only writer');
+  });
+
   it('1. a version 5 document with no program', () => {
     const doc = document();
     delete (doc as Record<string, unknown>).program;
@@ -1813,10 +1856,10 @@ describe('the classification agrees with the published flag (D6)', () => {
       disagreements.push(...found.disagreements);
     }
     expect(disagreements).toEqual([]);
-    // The measurement design D6 records: 39 driven ends + 34 jump
-    // levels = 73 published flags over the corpus's 20 documents, zero
+    // The measurement plus PLAY records: 40 classified driven ends + 34
+    // jump levels over the corpus's 22 documents, zero
     // disagreements.
-    expect([ends, levels]).toEqual([39, 34]);
+    expect([ends, levels]).toEqual([40, 34]);
   });
 
   it('finds constant or affine EXACTLY where a committed fixture '

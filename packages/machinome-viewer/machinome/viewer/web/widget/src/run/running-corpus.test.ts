@@ -223,10 +223,10 @@ describe('the running corpus', () => {
   it('is the framework\'s own fixture, unedited', () => {
     expect(fixture.generated_by).toBe('tools/generate_running_corpus.py');
     expect(fixture.corpus).toBe('tests/running_project/machine.py');
-    expect(fixture.machines).toHaveLength(20);
-    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(17);
+    expect(fixture.machines).toHaveLength(22);
+    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(19);
     expect(fixture.machines.reduce((total, one) => total + one.ticks.length, 0))
-      .toBe(360);
+      .toBe(378);
   });
 
   fixture.machines.forEach((entry, index) => {
@@ -268,6 +268,14 @@ const REQUIRED = [
   'a tick carrying both a selection crossing and a stop',
   'an in-block gate crossing inside a tick',
   'a stop on a kinked determiner inside a tick',
+  'an explicit play edge',
+  'play retention and reversal release',
+  'play pickup at both flanks',
+  'a three-edge play cascade',
+  'a downstream play stop located from its driver',
+  'non-integer play contact',
+  'split play requests',
+  'play snapshot replay',
 ];
 
 /** Every free name `expression` reads, through the fixture's OWN
@@ -517,6 +525,54 @@ export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
     }
     const banked = new Set(Object.keys(document.program?.coordinates ?? {}));
     const program = document.program ?? {};
+    const playEdges = (program.edges ?? []).filter(
+      (edge) => edge.kind === 'play');
+    if (playEdges.length > 0) {
+      seen.add('an explicit play edge');
+      if (playEdges.length >= 3) seen.add('a three-edge play cascade');
+      if (playEdges.some((edge) => {
+        const measured = edge as GuardEdge & { low: number; high: number };
+        return !Number.isInteger(measured.low)
+          || !Number.isInteger(measured.high);
+      })) seen.add('non-integer play contact');
+      if (entry.script.some((action) => action.snapshot !== undefined)
+          && entry.script.some((action) => action.restore !== undefined)) {
+        seen.add('play snapshot replay');
+      }
+
+      const targets = entry.script
+        .filter((action) => action.move?.to !== undefined)
+        .map((action) => [action.move!.input, action.move!.to!] as const);
+      if (targets.some((first, index) => {
+        const second = targets[index + 1];
+        const third = targets[index + 2];
+        return second !== undefined && third !== undefined
+          && first[0] === second[0] && second[0] === third[0]
+          && ((first[1] < second[1] && second[1] < third[1])
+            || (first[1] > second[1] && second[1] > third[1]));
+      })) seen.add('split play requests');
+
+      const retained = playEdges[0].gives![0];
+      const source = playEdges[0].needs[0];
+      const retainedDeltas = entry.ticks.slice(1).map(
+        (tick, index) => tick.bank[retained] - entry.ticks[index].bank[retained]);
+      const sourceDeltas = entry.ticks.slice(1).map(
+        (tick, index) => tick.bank[source] - entry.ticks[index].bank[source]);
+      if (retainedDeltas.some((delta, index) =>
+        delta !== 0 && retainedDeltas[index + 1] === 0
+        && sourceDeltas[index] * sourceDeltas[index + 1] < 0)) {
+        seen.add('play retention and reversal release');
+      }
+      if (retainedDeltas.some((delta) => delta > 0)
+          && retainedDeltas.some((delta) => delta < 0)) {
+        seen.add('play pickup at both flanks');
+      }
+      const chained = new Set(playEdges.slice(1).map((edge) => edge.gives![0]));
+      if (entry.ticks.some((tick) =>
+        tick.stops.some((stop) => chained.has(stop.coordinate)))) {
+        seen.add('a downstream play stop located from its driver');
+      }
+    }
     for (const edge of program.edges ?? []) {
       if (edge.kind === 'law' && edge.needs.length > 1) {
         seen.add('a multi-source law');
@@ -693,6 +749,45 @@ describe('the corpus\'s width', () => {
     // it at all, so trimming to `Train` loses the feature too.
     expect(uncoveredFeatures(trimmed)).toContain(
       'a stop on a kinked determiner inside a tick');
+  });
+
+  it('refuses play fixtures whose recorded behavior is narrowed', () => {
+    const withoutSplit = fixture.machines.map((entry) => {
+      if (!['PlayCorpus', 'MeasuredPlayCorpus'].includes(entry.name)) {
+        return entry;
+      }
+      let moves = 0;
+      return {
+        ...entry,
+        script: entry.script.filter((action) =>
+          action.move === undefined || ++moves <= 2),
+      };
+    });
+    expect(uncoveredFeatures(withoutSplit)).toContain('split play requests');
+
+    const withoutRelease = fixture.machines.map((entry) => {
+      if (!['PlayCorpus', 'MeasuredPlayCorpus'].includes(entry.name)) return entry;
+      return {
+        ...entry,
+        ticks: entry.ticks.map((tick, index) => ({
+          ...tick, bank: {
+            ...tick.bank, 'first.turn': index, 'wheel.turn': index,
+          },
+        })),
+      };
+    });
+    expect(uncoveredFeatures(withoutRelease))
+      .toContain('play retention and reversal release');
+
+    const withoutDownstreamStop = fixture.machines.map((entry) => ({
+      ...entry,
+      ticks: entry.ticks.map((tick) => ({
+        ...tick,
+        stops: tick.stops.filter((stop) => stop.coordinate !== 'third.turn'),
+      })),
+    }));
+    expect(uncoveredFeatures(withoutDownstreamStop))
+      .toContain('a downstream play stop located from its driver');
   });
 });
 

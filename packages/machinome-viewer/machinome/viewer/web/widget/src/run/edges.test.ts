@@ -89,6 +89,30 @@ describe('a law', () => {
   });
 });
 
+describe('a play edge', () => {
+  const program = bench({
+    coordinates: { crank: input(0), wheel: coordinate(0) },
+    edges: [{
+      kind: 'play', needs: ['crank', 'wheel'], gives: ['wheel'],
+      description: 'crank plays wheel', stated_by: 'Bench',
+      low: -10, high: 10,
+    }],
+  });
+  const edge = program.edges[0];
+
+  it('collects at either flank and releases on reversal', () => {
+    expect(edgeIncrements(program, edge, { crank: 0, wheel: 0 },
+                          { crank: 30, wheel: 0 }, null, 0))
+      .toEqual([['wheel', 20]]);
+    expect(edgeIncrements(program, edge, { crank: 30, wheel: 20 },
+                          { crank: -5, wheel: 0 }, null, 0))
+      .toEqual([['wheel', 0]]);
+    expect(edgeIncrements(program, edge, { crank: 25, wheel: 20 },
+                          { crank: -30, wheel: 0 }, null, 0))
+      .toEqual([['wheel', -15]]);
+  });
+});
+
 describe('a constant law', () => {
   const program = bench({
     coordinates: { crank: input(0), pin: coordinate(7) },

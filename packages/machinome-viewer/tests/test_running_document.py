@@ -149,6 +149,30 @@ class RunningDocumentTest(TestCase):
         shutil.copytree(PASCALINE, self.out_dir)
         shutil.copy2(bundle_path(), self.out_dir / 'machinome-viewer.js')
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
+        play = json.loads((PASCALINE / 'viewer.json').read_text())
+        play['version'] = 9
+        play.pop('clocked', None)
+        play['drivers']['play_input'] = {
+            'default': 0.0, 'range': None, 'unit': None,
+            'dtype': None, 'scale': None,
+        }
+        play['program']['coordinates']['play_input'] = {
+            'kind': 'input', 'initial': 0.0, 'domain': None,
+        }
+        play['program']['coordinates']['play_retained'] = {
+            'kind': 'coordinate', 'initial': 0.0,
+            'unit': None, 'domain': None,
+        }
+        play['program']['edges'].append({
+            'kind': 'play',
+            'needs': ['play_input', 'play_retained'],
+            'gives': ['play_retained'],
+            'description': 'play_input plays play_retained',
+            'stated_by': 'Browser smoke', 'low': -10.0, 'high': 10.0,
+        })
+        play['program']['sources']['play_input'] = ['play_input']
+        play['program']['sources']['play_retained'] = ['play_input']
+        (self.out_dir / 'play.json').write_text(json.dumps(play))
         server = serve_directory(self.out_dir)
         base = server.__enter__()
         self.addCleanup(server.__exit__, None, None, None)
@@ -192,7 +216,7 @@ class RunningDocumentTest(TestCase):
                              'the handle reported no run')
         self.assertEqual(result['identity'],
                          self.document['program']['identity'])
-        self.assertEqual(result['apiVersion'], 20)
+        self.assertEqual(result['apiVersion'], 22)
         self.assertEqual(result['controls'], [])
         self.assertAlmostEqual(result['dt'], 1 / 240, places=12)
 
@@ -216,16 +240,39 @@ class RunningDocumentTest(TestCase):
         # Every instruction retired completed, having admitted its digit.
         self.assertEqual([status for status, _ in result['outcomes']],
                          ['completed'] * 10)
-
-        # And the bank provably reached the geometry: the canvas the
-        # widget drew at rest is not the canvas it drew after.
         self.assertTrue(result['moved'],
                         'the rendered canvas did not change')
-
         print(f"\nrunsInWorker={result['runsInWorker']} "
               f"wall={result['wall']:.0f} ms for 2400 ticks "
               f"tens.drum.turn={result['state']['tens.drum.turn']!r}")
 
+    def test_version_nine_play_runs_on_a_real_page(self):
+        errors = []
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 800, 'height': 600})
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.goto(self.harness_url)
+                page.wait_for_function(
+                    'typeof MachinomeViewer !== "undefined"')
+                result = page.evaluate("""async () => {
+                  const viewer = await MachinomeViewer.mount(
+                    document.getElementById('host'), 'play.json', {});
+                  const run = viewer.run();
+                  const settled = run.move(
+                    'play_input', {by: 100, duration: 1});
+                  await run.step(240);
+                  return {state: run.state(), outcome: await settled};
+                }""")
+            finally:
+                browser.close()
+        self.assertEqual(errors, [])
+        self.assertEqual(result['state']['play_input'], 100)
+        self.assertEqual(result['state']['play_retained'], 90)
+        self.assertEqual(result['outcome'][0]['status'], 'completed')
 
 #: The chrome as a maker meets it. Everything below asks the PAGE for
 #: what it shows and presses what it shows: the panel is the only thing
