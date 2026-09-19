@@ -30,10 +30,10 @@ class WebScreenshotTest(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0, "", "")
 
             with patch("floor.screenshots.subprocess.run", side_effect=render):
-                result = refresh_project_screenshot(project, ("solid",))
+                result = refresh_project_screenshot(project, ("machinome",))
 
             self.assertTrue(result.updated)
-            self.assertEqual(observed[:4], ["solid", "snapshot", "--renderer", "web"])
+            self.assertEqual(observed[:4], ["machinome", "snapshot", "--renderer", "web"])
             # The web renderer rejects the OpenSCAD-only presentation options.
             self.assertNotIn("--projection", observed)
             self.assertEqual(screenshot_path(project).read_bytes(), PNG)
@@ -51,7 +51,7 @@ class ModelScreenshotTest(unittest.TestCase):
             return subprocess.CompletedProcess(command, 0, "", "")
 
         with patch("floor.screenshots.subprocess.run", side_effect=render):
-            result = refresh_project_screenshot(project, ("solid",), model=model)
+            result = refresh_project_screenshot(project, ("machinome",), model=model)
         return result, observed
 
     def test_a_named_model_publishes_beside_its_siblings(self) -> None:
@@ -62,7 +62,7 @@ class ModelScreenshotTest(unittest.TestCase):
             result, observed = self.render(project, "wall_clock_02")
 
             self.assertTrue(result.updated)
-            self.assertEqual(observed[:3], ["solid", "snapshot", "wall_clock_02"])
+            self.assertEqual(observed[:3], ["machinome", "snapshot", "wall_clock_02"])
             self.assertEqual(screenshot_path(project, "wall_clock_02"),
                              project / "screenshots" / "wall_clock_02.png")
             self.assertEqual((project / "screenshots" / "wall_clock_02.png").read_bytes(), PNG)
@@ -87,6 +87,6 @@ class ModelScreenshotTest(unittest.TestCase):
 
             _result, observed = self.render(project, None)
 
-            self.assertEqual(observed[:3], ["solid", "snapshot", "--renderer"])
+            self.assertEqual(observed[:3], ["machinome", "snapshot", "--renderer"])
             self.assertEqual((project / "screenshot.png").read_bytes(), PNG)
             self.assertFalse((project / "screenshots").exists())

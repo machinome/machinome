@@ -1,4 +1,4 @@
-repo: LibreSolid/libresolid-studio
+repo: machinome/machinome-studio
 branch: main
 path: floor/frontend/src
 
@@ -19,4 +19,4 @@ date: 2026-08-13T08:30:39Z
 | Project Floor.dc.html — Model area | floor/frontend/src/main.tsx (`AssemblyPanel`, `AgentPanel`, `FunctionalModel`) |
 | Project Floor.dc.html — Code area | floor/frontend/src/main.tsx (`CodeWorkspace`, `SourceIcon`) |
 | Project Floor.dc.html — Agents area | floor/frontend/src/main.tsx (`AgentsWorkspace`) |
-| Project Floor.dc.html — Build area (new) | new design; vocabulary from shop-skills/solid-node/SKILL.md, README.md |
+| Project Floor.dc.html — Build area (new) | new design; vocabulary from shop-skills/machinome/SKILL.md, README.md |

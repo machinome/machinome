@@ -1,6 +1,6 @@
 # STORY-001: The shop-floor interface
 
-solid-node-shop is an AI-first CAD software, and the
+machinome-shop is an AI-first CAD software, and the
 interface should be unified from the beginning, in the web browser.
 That's shop-floor, a software run by codex to provide a web
 interface for the user. The user is a maker and is creating a functional
@@ -21,7 +21,7 @@ User will start codex in a cheap and fast model to run (probably codex-5.3-spark
 The screen is divided in three areas:
 
 - menu: a left column containing online agents and project browsing
-- view: an area for visualizing artifacts like solid-node widget, design docs etc
+- view: an area for visualizing artifacts like machinome widget, design docs etc
 - chat: where user types instructions and sees agents activity
 
 ## Goals
@@ -33,7 +33,7 @@ The screen is divided in three areas:
     - Broker knows when agent acquires a task
     - Agent MUST ack that they got the task (this is start work)
     - Agent MUST report when they finish work, and get back to waiting state
-- Viewer shows solid-node widget being built by machinist
+- Viewer shows machinome widget being built by machinist
 - Chat allows user interaction
   - User messages are routed to foreman
   - Foreman answers back to user

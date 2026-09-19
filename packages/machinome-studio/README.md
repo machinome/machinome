@@ -1,7 +1,7 @@
-# LibreSolid Studio
+# Machinome Studio
 
-LibreSolid Studio is an experimental local harness for building 3D-printable
-mechanical CAD projects with solid-node. The project normally chooses a
+Machinome Studio is an experimental local harness for building 3D-printable
+mechanical CAD projects with machinome. The project normally chooses a
 repository-owned runtime profile;
 the profile defines the standing team, authority, prompts, skills, tool policy,
 and safe runtime defaults. Each project can durably select backend, provider,
@@ -18,8 +18,8 @@ python -m floor --projects-dir PATH
 directory; the shop does not append `projects/`, inspect a Git checkout, or
 derive it from process cwd. The directory may be unrelated to the shop
 installation. The Python environment used to launch the shop must contain the
-pilot-selected solid-node installation; the shop invokes that environment's
-`solid` command directly rather than resolving an unrelated command through
+pilot-selected machinome installation; the shop invokes that environment's
+`machinome` command directly rather than resolving an unrelated command through
 ambient `PATH`.
 
 The OpenSpec CLI is a startup prerequisite and the one exception to that rule:
@@ -51,10 +51,10 @@ their profile's Claude model and effort. A final segment overrides reasoning;
 OpenCode additionally requires a provider:
 
 ```toml
-[tool.libresolid-studio]
+[tool.machinome-studio]
 profile = "fordesmac"
 
-[tool.libresolid-studio.agents]
+[tool.machinome-studio.agents]
 foreman = "claude:opus"
 designer = "opencode:anthropic:claude-sonnet-4-5:high"
 machinist = "claude:sonnet:medium"
@@ -79,7 +79,7 @@ authority a session holds — no session runs with permission checking disabled.
 
 Both replace native file, shell, and network access with a floor-owned MCP
 surface for roles with explicit profile tools. It is rooted at the active
-project and provides bounded filesystem, Git, solid-node, image, and
+project and provides bounded filesystem, Git, machinome, image, and
 shop-broker lifecycle operations. A backend that cannot enforce a
 profile-declared tool policy is not selectable: Codex was retired for that
 reason, because its sessions keep native command execution and file editing
@@ -113,15 +113,15 @@ No backend loads global shop role cards or `.codex/agents` runtime adapters.
 
 `<projects-dir>/<name>/` is an independent Git repository. The catalogue path
 comes only from the required launcher option and need not be inside a shop
-source tree or installation. In this development workspace, `solid-node/` and
-its `WTs/` are framework checkouts, `solid-node-viewer/` is the independent
+source tree or installation. In this development workspace, `machinome-framework/` and
+its `WTs/` are framework checkouts, `machinome-viewer/` is the independent
 AGPL browser-viewer repository the framework installs as its `viewer` extra,
 and top-level `WTs/` holds shop worktrees. `scripts/setup` installs
-`solid-node[viewer]` (tier 1) or clones and installs both repositories
+`machinome[viewer]` (tier 1) or clones and installs both repositories
 editable and builds the viewer's frontends (tier 2, `scripts/setup dev`);
 `scripts/dev-env <name> setup|teardown` opens per-slot framework benches,
 which hold no frontend of their own. The floor serves the viewer bundle the
-framework reports through `solid viewer`, and refuses to open a project when
+framework reports through `machinome viewer`, and refuses to open a project when
 no usable viewer is installed. The hub
 lists every entry under the selected projects directory, including unopenable
 entries with their reason. Each open project has one opaque session identifier,
@@ -136,11 +136,12 @@ with its own watcher.
 A sprint always integrates shop work on branch and worktree `sprint-NNN` and
 `WTs/sprint-NNN`. If its ratified scope includes framework work, the framework
 repository has its own same-named integration branch and worktree at
-`solid-node/WTs/sprint-NNN`. Framework commits remain in solid-node; shop
-commits remain in libresolid-studio.
+`machinome-framework/WTs/sprint-NNN`. Framework commits remain in
+machinome-framework; shop
+commits remain in machinome-studio.
 
 The framework sprint worktree is linked into the shop sprint worktree at
-`WTs/sprint-NNN/solid-node`. Run combined validation from the shop sprint
+`WTs/sprint-NNN/machinome-framework`. Run combined validation from the shop sprint
 worktree so it uses the exact paired integration content. Framework child cycles
 are created from the registered framework sprint head with:
 
@@ -172,5 +173,5 @@ has a browser surface; rerun the build above after changing `floor/frontend`.
 
 Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes.
 
-LibreSolid Studio is licensed under the GNU Affero General Public License,
+Machinome Studio is licensed under the GNU Affero General Public License,
 version 3 only. See [LICENSE](LICENSE).

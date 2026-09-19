@@ -14,8 +14,8 @@ session cannot read.
 A session whose agent declares no skill SHALL receive no catalogue.
 
 #### Scenario: A role holding skills opens
-- **WHEN** a role whose profile agent declares `solid-node-api` and
-  `solid-node` opens on any backend
+- **WHEN** a role whose profile agent declares `machinome-api` and
+  `machinome` opens on any backend
 - **THEN** its session contract lists both skills by name with their
   descriptions and states how to load one, and contains neither skill's
   instructions

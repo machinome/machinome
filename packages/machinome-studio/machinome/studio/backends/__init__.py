@@ -27,7 +27,7 @@ def create_backend(
     broker_url: str = "http://127.0.0.1:9000",
     command: str | None = None,
     command_overrides: Mapping[str, str] | None = None,
-    solid_command: str = "solid",
+    machinome_command: str = "machinome",
     session_id: str | None = None,
     skills: Sequence[ProfileSkill] = (),
     **_kwargs: Any,
@@ -50,7 +50,7 @@ def create_backend(
         "model": model,
         "broker_url": broker_url,
         "command": backend_command,
-        "solid_command": solid_command,
+        "machinome_command": machinome_command,
         "session_id": session_id,
     }
     if "skills" in inspect.signature(_BACKENDS[name]).parameters:

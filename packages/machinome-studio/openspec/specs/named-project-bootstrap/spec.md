@@ -39,7 +39,7 @@ listed, or prevent another project from being opened.
 
 ### Requirement: A missing named project receives a standard first state
 If the named project does not exist at its resolved location beneath the working
-folder, the system SHALL create a standard solid-node project there, SHALL
+folder, the system SHALL create a standard machinome project there, SHALL
 record the runtime profile chosen for it in that project's own configuration,
 and SHALL establish the directory as an independent Git repository with the
 generated scaffold recorded before any project-writing agent starts. The system
@@ -48,7 +48,7 @@ working folder, and SHALL NOT create intermediate folders.
 
 #### Scenario: The named project does not exist
 - **WHEN** the maker creates a project by a valid name absent from the folder being listed
-- **THEN** the system creates the standard solid-node scaffold at that location, records the chosen profile in it, and records it as the initial state of that project repository
+- **THEN** the system creates the standard machinome scaffold at that location, records the chosen profile in it, and records it as the initial state of that project repository
 
 #### Scenario: The folder to create in does not exist
 - **WHEN** a creation request names a folder that does not exist beneath the working folder

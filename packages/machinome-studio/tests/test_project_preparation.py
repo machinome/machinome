@@ -21,7 +21,7 @@ from floor.preparation import (
     _folder_previews,
     build_project,
     commit_new_project,
-    default_solid_command,
+    default_machinome_command,
     list_folder,
     new_entry,
     prepare_project,
@@ -37,7 +37,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class FrameworkCommandTest(unittest.TestCase):
     def test_default_uses_the_solid_cli_from_the_shop_python_environment(self) -> None:
         with patch("floor.preparation.sys.executable", "/opt/shop-env/bin/python"):
-            self.assertEqual(default_solid_command(), ("/opt/shop-env/bin/solid",))
+            self.assertEqual(default_machinome_command(), ("/opt/shop-env/bin/machinome",))
 
 
 class EntryResolutionTest(unittest.TestCase):
@@ -149,7 +149,7 @@ class FolderListingTest(unittest.TestCase):
     def test_listing_keeps_valid_and_unopenable_entries_independent(self) -> None:
         valid = self.home / "valid_project"
         _make_repository(valid)
-        (valid / "pyproject.toml").write_text('[tool.libresolid-studio]\nprofile = "builder"\n')
+        (valid / "pyproject.toml").write_text('[tool.machinome-studio]\nprofile = "builder"\n')
         subprocess.run(["git", "-C", str(valid), "add", "pyproject.toml"], check=True)
         subprocess.run([
             "git", "-C", str(valid), "-c", "user.name=Shop Test", "-c", "user.email=shop@example.invalid",
@@ -330,16 +330,16 @@ class ProjectPreparationTest(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.home = Path(self.temporary.name) / "projects"
         self.home.mkdir()
-        self.fake_solid = Path(self.temporary.name) / "fake_solid.py"
-        self.fake_solid.write_text(FAKE_SOLID)
+        self.fake_machinome = Path(self.temporary.name) / "fake_machinome.py"
+        self.fake_machinome.write_text(FAKE_MACHINOME)
         self.call_log = Path(self.temporary.name) / "solid-calls.jsonl"
-        self.command = (sys.executable, str(self.fake_solid))
+        self.command = (sys.executable, str(self.fake_machinome))
         self.git_environment = {
             "GIT_AUTHOR_NAME": "Shop Test",
             "GIT_AUTHOR_EMAIL": "shop@example.invalid",
             "GIT_COMMITTER_NAME": "Shop Test",
             "GIT_COMMITTER_EMAIL": "shop@example.invalid",
-            "SOLID_CALL_LOG": str(self.call_log),
+            "MACHINOME_CALL_LOG": str(self.call_log),
         }
 
     def prepare(
@@ -360,7 +360,7 @@ class ProjectPreparationTest(unittest.TestCase):
             )
             prepared = prepare_project(
                 entry,
-                solid_command=self.command,
+                machinome_command=self.command,
                 profile=profile,
             )
             outcome = build_project(prepared, allow_failure=allow_build_failure)
@@ -377,7 +377,7 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertEqual(prepared.artifact_root, (project / "_build").resolve())
         self.assertEqual(prepared.model_source, "root/__init__.py")
         self.assertTrue(prepared.viewer_bundle.is_file())
-        self.assertEqual(prepared.viewer_api_version, 10)
+        self.assertEqual(prepared.viewer_api_version, 20)
         self.assertEqual(self.call_log.read_text().splitlines()[0], "new:new_engine")
         self.assertTrue((project / "root" / "__init__.py").is_file())
         self.assertFalse((project / "pyproject.toml").exists())
@@ -519,8 +519,8 @@ class ProjectPreparationTest(unittest.TestCase):
         project = self.home / "existing"
         _make_repository(project)
         cases = (
-            ({"FAKE_SOLID_VIEWER_MISSING": "1"}, "pip install \"solid-node[viewer]\""),
-            ({"FAKE_SOLID_VIEWER_API": "3"}, "viewer API 10 is required but installed viewer API is 3"),
+            ({"FAKE_MACHINOME_VIEWER_MISSING": "1"}, "pip install \"machinome[viewer]\""),
+            ({"FAKE_MACHINOME_VIEWER_API": "3"}, "viewer API 20 is required but installed viewer API is 3"),
         )
         for environment, expected in cases:
             with self.subTest(environment=environment), patch.dict(os.environ, {**self.git_environment, **environment}):
@@ -536,8 +536,8 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertFalse((project / "_build").exists(), "no build may run without a usable viewer")
 
     def test_required_viewer_api_matches_the_declared_widget_interface(self) -> None:
-        declaration = (ROOT / "floor" / "frontend" / "src" / "solid-node-widget.d.ts").read_text()
-        self.assertIn(f"SOLID_NODE_VIEWER_API_VERSION: {REQUIRED_VIEWER_API}", declaration)
+        declaration = (ROOT / "floor" / "frontend" / "src" / "machinome-viewer.d.ts").read_text()
+        self.assertIn(f"MACHINOME_VIEWER_API_VERSION: {REQUIRED_VIEWER_API}", declaration)
         self.assertIn("mountNavigator", declaration)
         self.assertIn("NavigatorHandle", declaration)
 
@@ -564,10 +564,10 @@ class ProjectPreparationTest(unittest.TestCase):
 
 class WorkspaceSolidAcceptanceTest(unittest.TestCase):
     def test_selected_workspace_cli_builds_once_and_rejects_an_invalid_model(self) -> None:
-        solid = ROOT / ".venv" / "bin" / "solid"
-        framework = ROOT / "solid-node"
+        solid = ROOT / ".venv" / "bin" / "machinome"
+        framework = ROOT / "machinome"
         if not solid.is_file() or not framework.is_dir():
-            self.skipTest("development workspace solid-node installation is unavailable")
+            self.skipTest("development workspace machinome installation is unavailable")
         with tempfile.TemporaryDirectory() as temporary:
             home = Path(temporary)
             subprocess.run([str(solid), "new", "acceptance"], cwd=home, check=True, capture_output=True, text=True)
@@ -588,8 +588,8 @@ def _declare_models(project: Path, names: tuple[str, ...]) -> None:
     """Declare named models the way a project manifest does, and tell the
     fixture CLI about them so its build directories match."""
     table = "\n".join(f'{name} = "root:Root"' for name in names)
-    (project / "pyproject.toml").write_text(f"[tool.solid-node.models]\n{table}\n")
-    (project / ".fake-solid-state.json").write_text(json.dumps({"models": list(names)}))
+    (project / "pyproject.toml").write_text(f"[tool.machinome.models]\n{table}\n")
+    (project / ".fake-machinome-state.json").write_text(json.dumps({"models": list(names)}))
 
 
 def _publish_screenshot(project: Path, model: str) -> None:
@@ -640,7 +640,7 @@ def _models(value: object):
             yield from _models(child)
 
 
-FAKE_SOLID = r'''from pathlib import Path
+FAKE_MACHINOME = r'''from pathlib import Path
 import json
 import base64
 import os
@@ -650,13 +650,13 @@ import tempfile
 command = sys.argv[1]
 argument = sys.argv[2] if len(sys.argv) > 2 else ""
 cwd = Path.cwd()
-with Path(os.environ["SOLID_CALL_LOG"]).open("a") as calls:
+with Path(os.environ["MACHINOME_CALL_LOG"]).open("a") as calls:
     calls.write(f"{command}:{argument}\n")
 
 
 def model_name(project):
     """A project named `named-*` declares one named model, as a project with
-    a [tool.solid-node.models] table does; every other one is unnamed."""
+    a [tool.machinome.models] table does; every other one is unnamed."""
     return "alpha" if project.name.startswith("named-") else None
 
 
@@ -722,10 +722,10 @@ elif command == "snapshot":
 elif command == "viewer":
     # The shop asks this without a project, so the test steers it through the
     # environment rather than through a file inside one.
-    if os.environ.get("FAKE_SOLID_VIEWER_MISSING"):
-        print("pip install \"solid-node[viewer]\"", file=sys.stderr)
+    if os.environ.get("FAKE_MACHINOME_VIEWER_MISSING"):
+        print("pip install \"machinome[viewer]\"", file=sys.stderr)
         raise SystemExit(18)
-    bundle = Path(tempfile.gettempdir()) / f"fake-solid-widget-{os.getpid()}.js"
-    bundle.write_text("globalThis.SolidNodeWidget={apiVersion:10,mount(){return Promise.resolve({apiVersion:10,artifactChanged(){return Promise.resolve()},manifestChanged(){return Promise.resolve()},reload(){return Promise.resolve()},assembly(){return{name:'root',path:[],color:null,model:false,children:[]}},setRoot(){},setVisible(){},view(){return{}},dispose(){}})}};")
-    print(json.dumps({"path": str(bundle), "apiVersion": int(os.environ.get("FAKE_SOLID_VIEWER_API", "10"))}))
+    bundle = Path(tempfile.gettempdir()) / f"fake-machinome-viewer-{os.getpid()}.js"
+    bundle.write_text("globalThis.MachinomeViewer={apiVersion:20,mount(){return Promise.resolve({apiVersion:20,artifactChanged(){return Promise.resolve()},manifestChanged(){return Promise.resolve()},reload(){return Promise.resolve()},assembly(){return{name:'root',path:[],color:null,model:false,children:[]}},setRoot(){},setVisible(){},view(){return{}},dispose(){}})}};")
+    print(json.dumps({"path": str(bundle), "apiVersion": int(os.environ.get("FAKE_MACHINOME_VIEWER_API", "20"))}))
 '''

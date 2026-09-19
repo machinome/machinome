@@ -102,11 +102,11 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_activity_updates_replace_by_role_and_id_and_history_is_bounded(self) -> None:
         first = AgentActivity(
-            "tool-1", "designer", "tool", "running", "solid_test", "tests/test_plate.py"
+            "tool-1", "designer", "tool", "running", "machinome_test", "tests/test_plate.py"
         )
         self.broker.record_activity(first)
         completed = AgentActivity(
-            "tool-1", "designer", "tool", "completed", "solid_test", "8 passed"
+            "tool-1", "designer", "tool", "completed", "machinome_test", "8 passed"
         )
         self.broker.record_activity(completed)
 

@@ -67,7 +67,7 @@ class OpenCodeBackend:
         model: str | None = None,
         command: str | Sequence[str] = "opencode",
         broker_url: str = "http://127.0.0.1:9000",
-        solid_command: str | Sequence[str] = "solid",
+        machinome_command: str | Sequence[str] = "machinome",
         session_id: str | None = None,
         readiness_timeout: float = 10,
         request_timeout: float = 30,
@@ -84,8 +84,8 @@ class OpenCodeBackend:
         self.command = (command,) if isinstance(command, str) else tuple(command)
         self.broker_url = broker_url
         self.session_id = session_id
-        self.solid_command = (
-            (solid_command,) if isinstance(solid_command, str) else tuple(solid_command)
+        self.machinome_command = (
+            (machinome_command,) if isinstance(machinome_command, str) else tuple(machinome_command)
         )
         self.readiness_timeout = readiness_timeout
         self.request_timeout = request_timeout
@@ -131,7 +131,7 @@ class OpenCodeBackend:
         self._backend_failed = False
         self.port = self._unused_port()
         self.password = secrets.token_urlsafe(32)
-        self._temporary = tempfile.TemporaryDirectory(prefix="libresolid-studio-opencode-")
+        self._temporary = tempfile.TemporaryDirectory(prefix="machinome-studio-opencode-")
         temporary = Path(self._temporary.name)
         config = temporary / "opencode.json"
         config_dir = temporary / "config"
@@ -145,7 +145,7 @@ class OpenCodeBackend:
                             "type": "local",
                             "command": mcp_command(
                                 self.project,
-                                self.solid_command,
+                                self.machinome_command,
                                 model=self.model,
                                 python=sys.executable,
                                 floor_url=self.broker_url,
@@ -220,7 +220,7 @@ class OpenCodeBackend:
         result = await self._request(
             "POST",
             f"/session?directory={query}",
-            {"title": f"LibreSolid Studio: {role}"},
+            {"title": f"Machinome Studio: {role}"},
         )
         session_id = str(result["id"])
         if context.agent.runtime is None:

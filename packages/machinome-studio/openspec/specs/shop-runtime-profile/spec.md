@@ -77,8 +77,8 @@ mismatched, or without a description SHALL fail profile validation, because a
 skill that cannot be announced cannot be chosen.
 
 #### Scenario: A profile exposes a shared shop skill
-- **WHEN** `profiles/builder/skills/solid-node` is an individual symlink resolving to `shop-skills/solid-node`
-- **THEN** a Builder prompt that declares `solid-node` passes skill validation
+- **WHEN** `profiles/builder/skills/machinome` is an individual symlink resolving to `shop-skills/machinome`
+- **THEN** a Builder prompt that declares `machinome` passes skill validation
 
 #### Scenario: A prompt names an unavailable skill
 - **WHEN** an agent prompt declares a skill not present in its profile's `skills/` directory

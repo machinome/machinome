@@ -90,7 +90,7 @@ class ClaudeBackend:
         model: str | None = None,
         command: str | Sequence[str] = "claude",
         broker_url: str = "http://127.0.0.1:9000",
-        solid_command: str | Sequence[str] = "solid",
+        machinome_command: str | Sequence[str] = "machinome",
         session_id: str | None = None,
         startup_grace: float = 0.5,
         mcp_readiness_timeout: float = 15,
@@ -103,8 +103,8 @@ class ClaudeBackend:
         self.command = (command,) if isinstance(command, str) else tuple(command)
         self.broker_url = broker_url
         self.session_id = session_id
-        self.solid_command = (
-            (solid_command,) if isinstance(solid_command, str) else tuple(solid_command)
+        self.machinome_command = (
+            (machinome_command,) if isinstance(machinome_command, str) else tuple(machinome_command)
         )
         # How long to watch a freshly launched session for an immediate
         # exit before treating it as started.
@@ -140,7 +140,7 @@ class ClaudeBackend:
         self._closing = False
         if self._temporary is None:
             self._temporary = tempfile.TemporaryDirectory(
-                prefix="libresolid-studio-claude-"
+                prefix="machinome-studio-claude-"
             )
 
     async def open_role(self, role: str, context: RoleContext) -> RoleHandle:
@@ -378,7 +378,7 @@ class ClaudeBackend:
                             "command": sys.executable,
                             "args": mcp_command(
                                 Path(context.active_project),
-                                self.solid_command,
+                                self.machinome_command,
                                 model=self.model,
                                 python=sys.executable,
                                 floor_url=self.broker_url,

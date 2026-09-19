@@ -65,7 +65,7 @@ class RuntimeProfileTest(unittest.TestCase):
     def test_skills_are_profile_allowlisted(self) -> None:
         profile = load_profile("builder", shop_root=ROOT)
         agent = profile.user_agent
-        self.assertEqual({skill.path.name for skill in agent.skills}, {"solid-node", "solid-node-api"})
+        self.assertEqual({skill.path.name for skill in agent.skills}, {"machinome", "machinome-api"})
         for skill in agent.skills:
             self.assertTrue((skill.path / "SKILL.md").is_file())
             self.assertTrue(skill.path.is_symlink())
@@ -74,7 +74,7 @@ class RuntimeProfileTest(unittest.TestCase):
     def test_allowlisted_skills_carry_the_announcement_their_skill_file_declares(self) -> None:
         agent = load_profile("builder", shop_root=ROOT).user_agent
         self.assertEqual(
-            {skill.name for skill in agent.skills}, {"solid-node", "solid-node-api"}
+            {skill.name for skill in agent.skills}, {"machinome", "machinome-api"}
         )
         for skill in agent.skills:
             self.assertEqual(skill.name, skill.path.name)
@@ -84,19 +84,19 @@ class RuntimeProfileTest(unittest.TestCase):
 
     def test_a_skill_that_cannot_describe_itself_fails_validation(self) -> None:
         cases = {
-            "frontmatter": "# solid-node\n\nBody without frontmatter.\n",
+            "frontmatter": "# machinome\n\nBody without frontmatter.\n",
             "name": "---\nname: something-else\ndescription: Real work.\n---\n\nBody.\n",
-            "description": "---\nname: solid-node\ndescription:   \n---\n\nBody.\n",
-            "missing description": "---\nname: solid-node\n---\n\nBody.\n",
-            "unterminated": "---\nname: solid-node\ndescription: Real work.\n\nBody.\n",
+            "description": "---\nname: machinome\ndescription:   \n---\n\nBody.\n",
+            "missing description": "---\nname: machinome\n---\n\nBody.\n",
+            "unterminated": "---\nname: machinome\ndescription: Real work.\n\nBody.\n",
         }
         for label, content in cases.items():
             with self.subTest(broken=label), tempfile.TemporaryDirectory() as temporary:
                 shop = Path(temporary)
                 shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
                 shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
-                (shop / "shop-skills" / "solid-node" / "SKILL.md").write_text(content)
-                with self.assertRaisesRegex(ProfileError, "builder.*skills.*solid-node"):
+                (shop / "shop-skills" / "machinome" / "SKILL.md").write_text(content)
+                with self.assertRaisesRegex(ProfileError, "builder.*skills.*machinome"):
                     load_profile("builder", shop_root=shop)
 
     def test_builtin_profiles_declare_only_profile_explicit_backends(self) -> None:
@@ -141,9 +141,9 @@ class RuntimeProfileTest(unittest.TestCase):
             shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
             (shop / "skills").mkdir()
             skills = shop / "profiles" / "builder" / "skills"
-            (skills / "solid-node").unlink()
-            (skills / "solid-node").symlink_to(shop / "skills")
-            with self.assertRaisesRegex(ProfileError, "builder.*skills.*solid-node.*shop-skills"):
+            (skills / "machinome").unlink()
+            (skills / "machinome").symlink_to(shop / "skills")
+            with self.assertRaisesRegex(ProfileError, "builder.*skills.*machinome.*shop-skills"):
                 load_profile("builder", shop_root=shop)
 
     def test_selected_backends_reject_controls_their_adapters_cannot_enforce(self) -> None:

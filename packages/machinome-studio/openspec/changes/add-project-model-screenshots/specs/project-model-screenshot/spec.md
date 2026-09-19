@@ -3,7 +3,7 @@
 ### Requirement: The shop maintains one canonical project model screenshot
 The shop SHALL use the exact project-root path `screenshot.png` as the canonical
 hub preview for a project. It SHALL render the image through the selected
-solid-node CLI's web renderer without importing project Python, SHALL render
+Machinome CLI's web renderer without importing project Python, SHALL render
 with one shop-owned thumbnail recipe, and SHALL atomically replace the path
 only after a complete PNG has been produced and only when its bytes differ from
 the existing regular non-symlink file.

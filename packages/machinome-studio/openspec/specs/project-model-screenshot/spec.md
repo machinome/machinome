@@ -9,7 +9,7 @@ project listed as a single openable project that path is the exact project-root
 path `screenshot.png`. For one declared model of a multi-model project it is the
 exact project-root path `screenshots/<model>.png`, where `<model>` is the name
 the manifest gives that model. The shop SHALL render through the selected
-solid-node CLI without importing project Python, render the entry's own model,
+machinome CLI without importing project Python, render the entry's own model,
 select the CLI's web renderer to produce a transparent background, use a fixed
 shop-owned thumbnail recipe, and atomically replace the path only after a
 complete PNG has been produced and only when its bytes differ from the existing

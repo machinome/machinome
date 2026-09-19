@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Filesystem-event model watching for the shop floor.
 
-The floor never imports project code.  It asks ``solid build`` to publish
+The floor never imports project code.  It asks ``machinome build`` to publish
 artifacts, then forwards the filesystem's publication events to the browser.
 The framework defines publication as an atomic rename into ``_build``; that is
 the only output event this module interprets.
@@ -107,8 +107,8 @@ class SourceFileWatcher(FileSystemEventHandler):
             first == ".git"
             or first == "_build"
             or first.startswith("_build.")
-            or first.startswith(".solid-node-build-")
-            or any(part.startswith(".libresolid-studio-save-") for part in parts)
+            or first.startswith(".machinome-build-")
+            or any(part.startswith(".machinome-studio-save-") for part in parts)
         ):
             return None
         return relative
@@ -152,12 +152,12 @@ class ArtifactWatcher(FileSystemEventHandler):
 
 
 class ModelWatcher(FileSystemEventHandler):
-    """Trigger one settled ``solid build`` for a burst of Python source events."""
+    """Trigger one settled ``machinome build`` for a burst of Python source events."""
 
     def __init__(
         self,
         project_root: Path,
-        solid_command: Sequence[str],
+        machinome_command: Sequence[str],
         publish: Publisher,
         *,
         loop: asyncio.AbstractEventLoop,
@@ -168,7 +168,7 @@ class ModelWatcher(FileSystemEventHandler):
         super().__init__()
         self.project_root = project_root.resolve()
         self.build_root = self.project_root / "_build"
-        self.solid_command = tuple(solid_command)
+        self.machinome_command = tuple(machinome_command)
         self.publish = publish
         self.loop = loop
         self.extra_environment = dict(extra_environment or {})
@@ -179,7 +179,7 @@ class ModelWatcher(FileSystemEventHandler):
         self._pending_trigger: str | None = None
 
     # Only the four events that mean "this source is different now" may
-    # trigger a build.  A real ``solid build`` opens every source it loads, so
+    # trigger a build.  A real ``machinome build`` opens every source it loads, so
     # dispatching on ``on_any_event`` would let inotify's ``opened`` and
     # ``closed_no_write`` events from one build trigger the next, forever.
     def on_created(self, event: FileSystemEvent) -> None:
@@ -255,7 +255,7 @@ class ModelWatcher(FileSystemEventHandler):
             self._source_changed(trigger)
 
     async def _rebuild(self, trigger: str) -> None:
-        command = (*self.solid_command, "build")
+        command = (*self.machinome_command, "build")
         environment = {**os.environ, **self.extra_environment}
         try:
             process = await asyncio.create_subprocess_exec(

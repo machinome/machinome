@@ -1,0 +1,4 @@
+interface:
+  display_name: "machinome API"
+  short_description: "Complete public API for machinome projects"
+  default_prompt: "Use $machinome-api to design or implement against the complete public machinome contract."

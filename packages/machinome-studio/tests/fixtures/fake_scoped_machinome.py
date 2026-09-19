@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
-"""Finite solid CLI used by the scoped MCP tool tests."""
+"""Finite Machinome CLI used by the scoped MCP tool tests."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 
-capture = os.environ.get("FAKE_SCOPED_SOLID_CAPTURE")
+capture = os.environ.get("FAKE_SCOPED_MACHINOME_CAPTURE")
 if capture:
     with Path(capture).open("a") as stream:
         stream.write(json.dumps({"argv": sys.argv[1:], "cwd": os.getcwd()}) + "\n")

@@ -22,13 +22,13 @@ from watchdog.observers import Observer
 
 
 ROOT = Path(__file__).resolve().parents[1]
-FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
-SOLID_COMMAND = (sys.executable, str(FAKE_SOLID))
+FAKE_MACHINOME = ROOT / "tests" / "fixtures" / "fake_machinome.py"
+SOLID_COMMAND = (sys.executable, str(FAKE_MACHINOME))
 SETTLE = 0.04
 
 
 def build_state(project: Path, **state: object) -> None:
-    (project / ".fake-solid-state.json").write_text(json.dumps(state))
+    (project / ".fake-machinome-state.json").write_text(json.dumps(state))
 
 
 def atomic_publish(root: Path, name: str, content: str) -> None:
@@ -65,7 +65,7 @@ class WatcherTestCase(unittest.IsolatedAsyncioTestCase):
     def app(
         self,
         *,
-        solid_command: tuple[str, ...] | None = SOLID_COMMAND,
+        machinome_command: tuple[str, ...] | None = SOLID_COMMAND,
         source_events: bool = False,
     ) -> tuple[object, list[tuple[str, dict[str, object]]]]:
         broker = Broker()
@@ -82,14 +82,14 @@ class WatcherTestCase(unittest.IsolatedAsyncioTestCase):
             self.project,
             self.artifacts,
             broker,
-            solid_command=solid_command,
+            machinome_command=machinome_command,
             source_events=source_events,
         ), events
 
 
 class ArtifactWatcherTest(WatcherTestCase):
     async def test_atomic_rename_reports_exactly_one_named_artifact(self) -> None:
-        app, events = self.app(solid_command=None)
+        app, events = self.app(machinome_command=None)
         async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
             atomic_publish(self.artifacts, "leaf.stl", "new leaf")
             payload = await self.wait_for(events, "model_artifact_changed")
@@ -97,7 +97,7 @@ class ArtifactWatcherTest(WatcherTestCase):
         self.assertEqual([kind for kind, _ in events], ["model_artifact_changed"])
 
     async def test_external_build_output_is_forwarded_without_a_source_build(self) -> None:
-        app, events = self.app(solid_command=None)
+        app, events = self.app(machinome_command=None)
         async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
             atomic_publish(self.artifacts, "other.stl", "external build")
             await self.wait_for(events, "model_artifact_changed")
@@ -106,7 +106,7 @@ class ArtifactWatcherTest(WatcherTestCase):
     async def test_republishing_one_of_three_artifacts_reports_only_that_artifact(self) -> None:
         for name in ("one.stl", "two.stl", "three.stl"):
             (self.artifacts / name).write_text(name)
-        app, events = self.app(solid_command=None)
+        app, events = self.app(machinome_command=None)
         async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
             atomic_publish(self.artifacts, "two.stl", "new two")
             await self.wait_for(events, "model_artifact_changed")
@@ -114,7 +114,7 @@ class ArtifactWatcherTest(WatcherTestCase):
         self.assertEqual(events, [("model_artifact_changed", {"artifact": "two.stl"})])
 
     async def test_deletion_and_direct_write_are_silent_until_rename(self) -> None:
-        app, events = self.app(solid_command=None)
+        app, events = self.app(machinome_command=None)
         async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
             (self.artifacts / "part.stl").unlink()
             (self.artifacts / "draft.stl").write_text("not published")
@@ -125,14 +125,14 @@ class ArtifactWatcherTest(WatcherTestCase):
         self.assertEqual(payload, {"artifact": "draft.stl"})
 
     async def test_errors_file_uses_the_same_event_path(self) -> None:
-        app, events = self.app(solid_command=None)
+        app, events = self.app(machinome_command=None)
         async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
             atomic_publish(self.artifacts, "errors.json", "broken model")
             payload = await self.wait_for(events, "model_artifact_changed")
         self.assertEqual(payload, {"artifact": "errors.json"})
 
     async def test_startup_does_not_announce_existing_artifacts(self) -> None:
-        app, events = self.app(solid_command=None)
+        app, events = self.app(machinome_command=None)
         async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
             await asyncio.sleep(SETTLE * 3)
         self.assertEqual(events, [])
@@ -140,7 +140,7 @@ class ArtifactWatcherTest(WatcherTestCase):
 
 class SourceWatcherTest(WatcherTestCase):
     def builds(self) -> int:
-        log = self.project / ".fake-solid-builds"
+        log = self.project / ".fake-machinome-builds"
         return len(log.read_text().splitlines()) if log.is_file() else 0
 
     async def test_a_build_reading_the_sources_does_not_trigger_another_build(self) -> None:
@@ -173,7 +173,7 @@ class SourceWatcherTest(WatcherTestCase):
         self.assertEqual([kind for kind, _ in events], ["model_artifact_changed"])
 
     async def test_unavailable_build_command_has_its_own_event(self) -> None:
-        app, events = self.app(solid_command=("/not/a/solid",))
+        app, events = self.app(machinome_command=("/not/a/solid",))
         async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
             self.model.write_text("# trigger\n")
             payload = await self.wait_for(events, "model_build_unavailable")
@@ -198,8 +198,8 @@ class SourceWatcherTest(WatcherTestCase):
             payload = await self.wait_for(events, "model_artifact_changed")
         self.assertIn(payload["artifact"], {"part.stl", "viewer.json"})
 
-    async def test_app_without_solid_command_observes_output_but_has_no_source_handler(self) -> None:
-        app, events = self.app(solid_command=None)
+    async def test_app_without_machinome_command_observes_output_but_has_no_source_handler(self) -> None:
+        app, events = self.app(machinome_command=None)
         async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
             self.assertIsNone(app.state.model_watcher)  # type: ignore[attr-defined]
             atomic_publish(self.artifacts, "outside.stl", "changed")
@@ -224,7 +224,7 @@ class SourceInvalidationWatcherTest(WatcherTestCase):
         self.assertEqual(await subprocess.wait(), 0)
 
     async def test_create_modify_move_and_delete_publish_project_relative_invalidations(self) -> None:
-        app, events = self.app(solid_command=None, source_events=True)
+        app, events = self.app(machinome_command=None, source_events=True)
         async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
             created = self.project / "agent.py"
             created.write_text("one = 1\n")
@@ -245,7 +245,7 @@ class SourceInvalidationWatcherTest(WatcherTestCase):
             await self._wait_source(events, "deleted", "renamed.py")
 
     async def test_ignored_and_build_paths_never_publish_source_invalidations(self) -> None:
-        app, events = self.app(solid_command=None, source_events=True)
+        app, events = self.app(machinome_command=None, source_events=True)
         async with app.router.lifespan_context(app):  # type: ignore[attr-defined]
             ignored = self.project / "ignored"
             ignored.mkdir()
@@ -292,13 +292,13 @@ class _WatcherHarness:
         artifacts: Path,
         broker: Broker,
         *,
-        solid_command: tuple[str, ...] | None,
+        machinome_command: tuple[str, ...] | None,
         source_events: bool,
     ) -> None:
         self.project = project
         self.artifacts = artifacts
         self.broker = broker
-        self.solid_command = solid_command
+        self.machinome_command = machinome_command
         self.source_events = source_events
         self.state = SimpleNamespace(model_watcher=None, artifact_watcher=None, source_file_watcher=None, observer=None)
         self.router = SimpleNamespace(lifespan_context=self.lifespan_context)
@@ -314,10 +314,10 @@ class _WatcherHarness:
             source_file = SourceFileWatcher(self.project, loop, self.broker.publish)
             observer.schedule(source_file, str(self.project), recursive=True)
         source = None
-        if self.solid_command is not None:
+        if self.machinome_command is not None:
             source = ModelWatcher(
                 self.project,
-                self.solid_command,
+                self.machinome_command,
                 self.broker.publish,
                 loop=loop,
                 settle_delay=SETTLE,

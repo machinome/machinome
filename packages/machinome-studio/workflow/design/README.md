@@ -1,8 +1,8 @@
-# Handoff: LibreSolid Studio desktop shell (project hub, first run, redesigned workspace)
+# Handoff: Machinome Studio desktop shell (project hub, first run, redesigned workspace)
 
 ## Overview
 
-`libresolid-studio` opens a project hub and then a shop workspace. The project
+`machinome-studio` opens a project hub and then a shop workspace. The project
 records its profile and per-agent runtime selection in `pyproject.toml`. The
 workspace has persistent Model and Code areas with the project conversation at
 the right.

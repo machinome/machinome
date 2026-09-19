@@ -20,7 +20,7 @@ from floor.sessions import Session, SessionRegistry
 
 
 ROOT = Path(__file__).resolve().parents[1]
-FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
+FAKE_MACHINOME = ROOT / "tests" / "fixtures" / "fake_machinome.py"
 RENDERED_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8/+8dAwMDEwMDAwMDAwAjPwLvkz8BYAAAAABJRU5ErkJggg=="
 )
@@ -40,7 +40,7 @@ class ProjectOpenTest(unittest.IsolatedAsyncioTestCase):
             "GIT_AUTHOR_EMAIL": "shop@example.invalid",
             "GIT_COMMITTER_NAME": "Shop Test",
             "GIT_COMMITTER_EMAIL": "shop@example.invalid",
-            "SOLID_CALL_LOG": str(self.call_log),
+            "MACHINOME_CALL_LOG": str(self.call_log),
         }))
         self.backends: list[object] = []
 
@@ -53,7 +53,7 @@ class ProjectOpenTest(unittest.IsolatedAsyncioTestCase):
         self.registry = SessionRegistry(
             self.home,
             shop_root=ROOT,
-            solid_command=(sys.executable, str(FAKE_SOLID)),
+            machinome_command=(sys.executable, str(FAKE_MACHINOME)),
             backend_factory=factory,
         )
         self.addAsyncCleanup(self.registry.close_all)
@@ -65,9 +65,9 @@ class ProjectOpenTest(unittest.IsolatedAsyncioTestCase):
         (project / "root").mkdir(parents=True)
         (project / "root" / "__init__.py").write_text("# model\n")
         (project / ".gitignore").write_text(
-            "_build/\n.fake-solid-builds\n.fake-solid-state.json\nscreenshot.png\n"
+            "_build/\n.fake-machinome-builds\n.fake-machinome-state.json\nscreenshot.png\n"
         )
-        (project / "pyproject.toml").write_text(f'[tool.libresolid-studio]\nprofile = "{profile}"\n')
+        (project / "pyproject.toml").write_text(f'[tool.machinome-studio]\nprofile = "{profile}"\n')
         subprocess.run(["git", "init", "-q", "-b", "main", str(project)], check=True)
         subprocess.run(["git", "-C", str(project), "add", "--all"], check=True)
         subprocess.run(
@@ -79,14 +79,14 @@ class ProjectOpenTest(unittest.IsolatedAsyncioTestCase):
     def build_once(self, project: Path) -> None:
         """Publish the project outside the shop, as a previous run would have."""
         subprocess.run(
-            [sys.executable, str(FAKE_SOLID), "build"],
+            [sys.executable, str(FAKE_MACHINOME), "build"],
             cwd=project,
             check=True,
             capture_output=True,
         )
 
     def state(self, project: Path, **values: object) -> None:
-        (project / ".fake-solid-state.json").write_text(json.dumps(values))
+        (project / ".fake-machinome-state.json").write_text(json.dumps(values))
 
     async def open(self, name: str) -> Session:
         await self.registry.request_open(name)
@@ -125,7 +125,7 @@ class ProjectOpenTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(self.calls("viewer"), 1)
         self.assertEqual(alpha.prepared.viewer_bundle, bravo.prepared.viewer_bundle)
-        self.assertEqual(alpha.prepared.viewer_api_version, 10)
+        self.assertEqual(alpha.prepared.viewer_api_version, 20)
 
         await self.registry.request_close(alpha.id)
         reopened = await self.open("alpha")

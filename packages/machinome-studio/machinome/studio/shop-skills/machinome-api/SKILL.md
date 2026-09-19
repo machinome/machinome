@@ -1,18 +1,18 @@
 ---
-name: solid-node-api
-description: Complete public API reference for solid-node 0.6. Use when designing a mechanical project against solid-node capabilities, specifying nodes, parameters, drivers, ports, joints and relations without inspecting framework implementation, or implementing nodes, tests, scenarios, snapshots, and exports through supported public interfaces.
+name: machinome-api
+description: Complete public API reference for machinome 0.6. Use when designing a mechanical project against machinome capabilities, specifying nodes, parameters, drivers, ports, joints and relations without inspecting framework implementation, or implementing nodes, tests, scenarios, snapshots, and exports through supported public interfaces.
 ---
 
-# solid-node public API
+# machinome public API
 
 Use this as the authoritative public contract. It is the whole of what a
 project may rely on: framework source is not available to you, so a behavior
 this document does not describe is a gap to report, not a thing to discover.
 Never guess an interface from a symbol name.
 
-This describes solid-node 0.6 plus what followed it on the framework's
+This describes machinome 0.6 plus what followed it on the framework's
 main branch: the declarative node API, the motion layer (joints,
-relations, `solid_node.motion`), open-run simulation through
+relations, `machinome.motion`), open-run simulation through
 `publish-the-mechanical-program` (ADRs 104–110), and direct part motion
 (`Slide` and explicit joint selection, ADR 117). The selected-joint
 conformance below includes the completed `harden-direct-part-motion`
@@ -29,52 +29,52 @@ the published 0.6.0 package or what an installed checkout contains.
 Each module answers one question, and an import line says which:
 
 ```python
-from solid_node.node import (                  # what the machine is made of
+from machinome.node import (                  # what the machine is made of
     AssemblyNode, FusionNode,
     CadQueryNode, Build123dNode, Solid2Node, OpenScadNode, JScadNode,
     Build123dSheetNode, StlNode, StepNode, MolejoNode,
     declared_children, property_as_number,
-    Marking, Wrapped, Flat, Svg,               # what a part CARRIES (also solid_node.node.markings)
+    Marking, Wrapped, Flat, Svg,               # what a part CARRIES (also machinome.node.markings)
 )
-from solid_node.parameters import (            # what is built
+from machinome.parameters import (            # what is built
     Length, Angle, Count, Ratio, Scalar, Flag, Quantity,
     declared_parameters, DimensionError, ParameterError)
-from solid_node.motion.ports import (          # a value between nodes
+from machinome.motion.ports import (          # a value between nodes
     Port, RotationalPort, TranslationalPort, SignalPort, Time,
     declared_ports, declared_time, get_coordinate, set_coordinate)
-from solid_node.motion.joints import (         # where a body may move
+from machinome.motion.joints import (         # where a body may move
     Revolute, Prismatic, Orbit, Free, JointRangeError, declared_joints)
-from solid_node.motion.couplings import (      # a law between two coordinates
+from machinome.motion.couplings import (      # a law between two coordinates
     Affine, UnreachedCoordinate, DoublyBound, NotInvertible, PrematureRead)
-from solid_node.simulation import (            # how it runs
+from machinome.simulation import (            # how it runs
     Driver, State, Instruction, Button, Turn, Slide, Sim, ScenarioTest,
     RampProgram,
     qualified_drivers, qualified_instructions,
     declared_states, qualified_states,
     RunConflict, UnsupportedLaw, TooManyCrossings, Crossing, Stop)
-from solid_node.simulation.clocked import ClockedError  # clocked refusals
-from solid_node.test import (
+from machinome.simulation.clocked import ClockedError  # clocked refusals
+from machinome.test import (
     TestCase, TestCaseMixin, testing_instant, testing_steps)
-from solid_node.math import (
+from machinome.math import (
     sin, cos, tan, asin, acos, atan, atan2, sqrt,   # DEGREES
     abs, min, max, floor, ceil, sign,
     clamp, clamp01, ramp, lerp, wrap, piecewise)
 ```
 
-The parameter kinds are exported by `solid_node.parameters` and by nothing
-else: `solid_node.node` does not provide `Length`, and importing it from
+The parameter kinds are exported by `machinome.parameters` and by nothing
+else: `machinome.node` does not provide `Length`, and importing it from
 there fails.
-`SheetLeafNode` and `FlexibleNode` are also exported from `solid_node.node`
+`SheetLeafNode` and `FlexibleNode` are also exported from `machinome.node`
 as the abstract bases of the sheet and flexible kinds; a project subclasses
 their concrete adapters.
 
-Ports, joints and couplings live in `solid_node.motion` — three submodules,
+Ports, joints and couplings live in `machinome.motion` — three submodules,
 each answering one question, and nothing importable from the package itself:
-`from solid_node.motion import RotationalPort` fails; only `from
-solid_node.motion.ports import RotationalPort` works. `solid_node.node` no
+`from machinome.motion import RotationalPort` fails; only `from
+machinome.motion.ports import RotationalPort` works. `machinome.node` no
 longer exports `Port`, `RotationalPort`, `TranslationalPort`, `SignalPort` or
 `declared_ports`; importing them from there raises `ImportError` naming
-`solid_node.motion.ports`.
+`machinome.motion.ports`.
 
 ## Node kinds
 
@@ -133,7 +133,7 @@ Leaves make one part each; internal nodes combine parts.
   `adjust(self, shape)` receives a cadquery `Shape` and returns the
   corrected one; a result holding no solid fails naming what it holds,
   and nothing is sewn silently: call
-  `solid_node.node.adapters.step.solids_from_faces(shape, tolerance)`
+  `machinome.node.adapters.step.solids_from_faces(shape, tolerance)`
   from `adjust` knowingly. A subclass declaring no `color` takes the
   product's colour from the file (sRGB `#RRGGBB`). One document is read
   per file per process, however many nodes select from it. It is exact:
@@ -174,8 +174,8 @@ The class body declares what a part is; the framework derives identity,
 propagation and the command-line surface. This is the preferred form.
 
 ```python
-from solid_node.node import CadQueryNode
-from solid_node.parameters import Length
+from machinome.node import CadQueryNode
+from machinome.parameters import Length
 
 class Piston(CadQueryNode):
 
@@ -234,7 +234,7 @@ parent, by `--set`, or by assignment. Every quantity carries dimension
 exponents: products add, quotients subtract, sums and differences need
 equality, and a mismatch raises `DimensionError` on `import`.
 `teeth * module` is a length, `bore / stroke` dimensionless, `bore +
-pressure_angle` an error. `solid_node.math` takes part: `sqrt` halves even
+pressure_angle` an error. `machinome.math` takes part: `sqrt` halves even
 exponents, `sin`/`cos`/`tan` need an `Angle` and return dimensionless,
 `asin`/`acos`/`atan`/`atan2` return an `Angle`. Comparisons are refused in a
 declaration; they belong in `render()` or `check()`. `Count` and `Ratio`
@@ -284,7 +284,7 @@ Lists and repetition:
 
 A declarative class rejects positional arguments and unknown keywords
 with a `TypeError` listing the declared names. A class carrying its own
-metaclass derives it from `solid_node.node.declarative.NodeMeta`.
+metaclass derives it from `machinome.node.declarative.NodeMeta`.
 
 ### render() that returns nothing
 
@@ -303,7 +303,7 @@ for that realization: not linked, built, exported, fused or serialized.
 Every child is always declared; `render()` selects presence from declared
 parameters only. Structure varies with parameters, never with time:
 `omit()` in `simulate()` raises `StructureError` (defined in
-`solid_node.node.declarative`), and on the legacy
+`machinome.node.declarative`), and on the legacy
 re-running render path an omitted set that differs from the first run
 raises naming the node and both sets.
 
@@ -420,7 +420,7 @@ and composes after motion; it is no longer recommended.
 **Drivers** are the machine's named inputs, declared on an assembly:
 
 ```python
-from solid_node.simulation import Driver
+from machinome.simulation import Driver
 
 class Axis(AssemblyNode):
     position = Driver(default=20.0, range=(0.0, TRAVEL), unit='mm')
@@ -466,7 +466,7 @@ driver-declaring node held in a list) fails loudly.
   fusions. Nothing accumulates across cycles; rest placement is untouched.
 - Without a declaration, `self.time` is symbolic `$t` (0 through 1 on
   the timeline), or the bound number. A root assembly may instead declare
-  one of THREE bases, imported from `solid_node.motion.ports`:
+  one of THREE bases, imported from `machinome.motion.ports`:
   `time = Time(loop=seconds)`, `time = Time.running()` or
   `time = Time.elapsed()`. `Time()` without a base is refused. A loop
   is positive finite seconds: unbound reads become `$t * seconds`, while
@@ -538,7 +538,7 @@ dotted (`pose.roll`); a name that enumerator does not report is refused
 rather than answered with `None`.
 
 **Joints** say where a body MAY move, next to the body, once: a class
-attribute of the node it moves, from `solid_node.motion.joints`.
+attribute of the node it moves, from `machinome.motion.joints`.
 `Revolute(axis, at=(0,0,0), range=None, unit='deg')` turns a body about a
 line; `Prismatic(axis, at=(0,0,0), range=None, unit='mm')` slides it along
 one (`at` does not affect a `Prismatic`'s placement — a translation along a
@@ -628,7 +628,7 @@ that joint's own coordinate, or `Bound(expression, reads=(...))`, a
 callable over that coordinate AND the coordinates it names:
 
 ```python
-from solid_node.motion.joints import Bound, Prismatic, Revolute
+from machinome.motion.joints import Bound, Prismatic, Revolute
 
 turn = Revolute(axis=(1, 0, 0),
                 range=(lambda turn: 36 * floor(turn / 36), None))
@@ -649,7 +649,7 @@ bound lets it turn only while both pins clear a window, and the key's
 lower bound captures it at full insertion while the plug is turned. A
 `Bound`'s expression is applied to the joint's own coordinate FIRST and
 then to each read in the order `reads` states them, and returns a number
-or an expression in `solid_node.math`'s vocabulary. Reads are named as a
+or an expression in `machinome.math`'s vocabulary. Reads are named as a
 relation's ends are — a joint or port the class body owns, a path through
 child declarations, a driver of the class — and are refused at class
 definition by the same rules (no list-held child, no `.repeat()`, no
@@ -757,7 +757,7 @@ one on the same body would not.
 
 **Relations** say that one coordinate's motion IS another's, stated with
 `drives` in a class body — no import needed for the verb itself, imported
-names come only from `solid_node.motion.couplings`:
+names come only from `machinome.motion.couplings`:
 
 ```python
 power.drives(centre, law=going_train)
@@ -793,7 +793,7 @@ object with `forward(x)` and, if the relation is ever solved backwards,
 or `offset=` given together with `law=` is refused at class definition.
 
 Three refusals keep a wrong drive network from becoming a pose, each its
-own error kind from `solid_node.motion.couplings`, each naming the node
+own error kind from `machinome.motion.couplings`, each naming the node
 paths and the relation as written: `UnreachedCoordinate` (nothing bound
 either end, or for a relation of several sources, exactly the sources
 still unbound); `DoublyBound` (something else — the author's `simulate()`,
@@ -832,7 +832,7 @@ relation, or one whose name no base used, stays additive.
 
 **A read of a coordinate its own relation, a derived formula or a wiring
 is going to bind is refused by name — `PrematureRead`, from
-`solid_node.motion.couplings` — never a silent empty slot**, because
+`machinome.motion.couplings` — never a silent empty slot**, because
 `simulate()` runs before that class's own relations are solved and a
 descendant's after that. The message names the coordinate, the reading
 class and the binder. The ordinary rest-default guard is NOT refused by
@@ -884,7 +884,7 @@ sits beside `drives`, on the same ends and the same `&` groups, with the
 same flat chaining and the same missing-parentheses refusal:
 
 ```python
-from solid_node.math import floor
+from machinome.math import floor
 
 def strokes(sources, targets):
     return lambda crank, units, tens: floor(crank / 360)
@@ -939,7 +939,7 @@ broadcast on either side is refused by name.
   the value it writes — which is why the solver re-locates after each
   commit.
 - **`law` is an expression over its sources**, inspected as a running law
-  is (raw text and calls outside `solid_node.math` refused naming the
+  is (raw text and calls outside `machinome.math` refused naming the
   relation). Because a commit is evaluated at ONE POINT and never
   integrated, every jump primitive MEANS what it says and nothing is
   subtracted: `floor(crank / 360) % 10` is a digit, where a running law of
@@ -1124,7 +1124,7 @@ refuses it. Sliding or choosing between a body's explicitly selected
 freedoms requires viewer API 13 or later. The framework publishes the
 contract; the independent viewer owns picking and gesture affordances.
 API 13 consumer work is still in progress at this update, not a released
-capability. Check the installed viewer's `solid viewer` report and test
+capability. Check the installed viewer's `machinome viewer` report and test
 actual pointer operation, not its package version or export alone.
 
 ## Instance surface
@@ -1171,15 +1171,15 @@ contract (see the test surface).
 
 ## Files, references and rebuilds
 
-A project is a package with a `pyproject.toml` whose `[tool.solid-node]
+A project is a package with a `pyproject.toml` whose `[tool.machinome]
 model = "package.module:Class"` names the root. The project root is the
 nearest ancestor manifest, discovered from a referenced path or the
 working directory, so every command behaves identically from any
 directory. A node **reference** is `package.module:Class`, `path/to/file.py`
 or `path/to/file.py:Class`; a directory is not a reference. A bare path
 resolves only when the file defines exactly one node class; otherwise it
-raises `AmbiguousNodeError` listing the candidates, and `solid build`,
-`solid snapshot` and `solid develop` need the class named. `solid test`
+raises `AmbiguousNodeError` listing the candidates, and `machinome build`,
+`machinome snapshot` and `machinome develop` need the class named. `machinome test`
 on a bare path to such a file runs the node classes its companion test
 cases declare (each `TestCase` there must declare `node = TheClass`) and
 builds no other; with no companion, every node it defines.
@@ -1236,8 +1236,8 @@ digits on a number roll, an index mark, a scale, a label — drawn from a
 file, placed in the part's own frame, in a colour of its own:
 
 ```python
-from solid_node.node import CadQueryNode
-from solid_node.node.markings import Marking, Svg, Wrapped, Flat
+from machinome.node import CadQueryNode
+from machinome.node.markings import Marking, Svg, Wrapped, Flat
 
 class ResultsDial(CadQueryNode):
     digits = Marking(
@@ -1318,11 +1318,11 @@ entry per marking in declaration order, `{name, model, color, mtime}` —
 own — absent when none is declared. **Additive, no version bump**: no
 placement is published (the mesh is already in the part's frame; a consumer
 applies the part's operations to it), no `piece`, and a document with no
-marking is byte-identical to before. `solid export` copies each under
+marking is byte-identical to before. `machinome export` copies each under
 `models/`; the browser snapshot stages them beside the models; the build's
 sweep spares them by reference, so a deleted declaration's decal is swept.
 
-Status (2026-09-15): framework side integrated into solid-node main
+Status (2026-09-15): framework side integrated into machinome main
 (ADR-120). The browser viewer draws markings only once its own cycle
 lands; until then a marked model looks as it did. The OpenSCAD path never
 draws them. Real callers: the Curta Type I number rolls and the
@@ -1332,7 +1332,7 @@ the register they compute).
 ## Test surface
 
 Tests for `foo.py` live in `test_foo.py` beside it; a package rooted at
-`__init__.py` uses `test.py`. Subclass `solid_node.test.TestCase`, or mix
+`__init__.py` uses `test.py`. Subclass `machinome.test.TestCase`, or mix
 `TestCaseMixin` into the node class. The runner exposes the built node as
 `self.node` and as the snake-case name of the test class (`SpurGearTest`
 gives `self.spur_gear`). Every `TestCase` in a companion file is loaded;
@@ -1422,7 +1422,7 @@ rather than a tool.
 A run compares on one **kernel**, a property of the run and never of the
 model: `exact` (the default; two exact nodes are decided on their solids)
 or `faceted` (every question decided on the parts' meshes at tessellation
-precision, about 30x cheaper on flexible parts). `solid test --faceted`
+precision, about 30x cheaper on flexible parts). `machinome test --faceted`
 or `--exact` selects it; without a flag `SOLID_TEST_KERNEL` in the
 project's ignored `.env` does; without that the run is exact. A faceted
 run prints `Comparing on the faceted kernel ...` before the first build
@@ -1441,7 +1441,7 @@ walks leaf pairs quadratically and warns; `assertNoSolidInterference`
 replaces it. `assertOneBody`, `assertBodyCount` and
 `assertNoDisconnectedParts` do not exist.
 
-`solid new` scaffolds both whole-model contracts into the root test file,
+`machinome new` scaffolds both whole-model contracts into the root test file,
 because the framework enforces neither itself:
 
 ```python
@@ -1478,7 +1478,7 @@ Integer driver ramps use native steps; a physical stop can admit fractional
 travel.
 
 ```python
-from solid_node.simulation import ScenarioTest
+from machinome.simulation import ScenarioTest
 
 class AxisScenarioTest(ScenarioTest):
     node = Axis
@@ -1493,7 +1493,7 @@ class AxisScenarioTest(ScenarioTest):
 ```
 
 A `ScenarioTest` is a `TestCase`: as a companion test it runs under
-`solid test`, and imported into a pytest module it runs under `pytest`,
+`machinome test`, and imported into a pytest module it runs under `pytest`,
 unmodified. `dt` is part of the scenario's meaning.
 
 ### Running simulations
@@ -1532,10 +1532,10 @@ This minimal travel model shows repeatable commands and a physical stop;
 replace the grouping `Carriage` with the project's actual moving assembly:
 
 ```python
-from solid_node.node import AssemblyNode
-from solid_node.motion.ports import Time
-from solid_node.motion.joints import Prismatic
-from solid_node.simulation import Driver, Instruction, Sim
+from machinome.node import AssemblyNode
+from machinome.motion.ports import Time
+from machinome.motion.joints import Prismatic
+from machinome.simulation import Driver, Instruction, Sim
 
 class Carriage(AssemblyNode):
     travel = Prismatic(axis=(1, 0, 0), range=(0, 12), unit='mm')
@@ -1599,7 +1599,7 @@ measured defect, not the intended cancellation contract.
 
 **One law, two readings.** Laws are compiled once at construction by
 applying them to symbolic sources, in the direction the rest pose solved
-each relation. Use arithmetic and `solid_node.math`, not Python `math`,
+each relation. Use arithmetic and `machinome.math`, not Python `math`,
 Python `if`/`and`/`or` over coordinates, or per-tick mutation. The math
 helpers keep numeric and symbolic readings:
 `clamp(x, lo, hi)`, `clamp01(x)`, `ramp(x, start, end)` (clamped 0–1),
@@ -1640,7 +1640,7 @@ at the start of each piece of the tick, never a value the same piece is
 computing:
 
 ```python
-from solid_node.math import floor
+from machinome.math import floor
 
 GAP = 0.5   # the gap's half-width in wheel degrees: the mechanism's clearance
 
@@ -1750,7 +1750,7 @@ like any joint anywhere in the tree — a `turn` driver beside a
 `plug.turn` joint — is refused as ambiguous at simulation construction:
 name the input differently. A `.repeat()` child that owns a joint is
 refused too, because `drivers-0` is not a legal id segment, and a
-`.repeat()` child whose PORT a relation drives makes `solid build`
+`.repeat()` child whose PORT a relation drives makes `machinome build`
 refuse the document (`the program names 'PenSpring.height', which is a
 FALLBACK derived from a class name`) although the run itself works:
 under a running root, hold every child that owns a joint or a driven
@@ -1761,7 +1761,7 @@ relation whose driven coordinate a ROOT relation also reads in the
 root's body: a child-declared relation read by a root-declared one
 publishes as a false `DoublyBound` (framework wart, 2026-09-14).
 `RunConflict`, `UnsupportedLaw` and `TooManyCrossings` are exported from
-`solid_node.simulation`. A refused tick commits no bank, time, pose or
+`machinome.simulation`. A refused tick commits no bank, time, pose or
 record change, and the commands that attempted travel retire `refused`.
 
 **Snapshots and evidence.** `sim.snapshot()` captures the bank, tick,
@@ -2116,26 +2116,26 @@ in the frame loop (viewer ADR-064). That is how a clocked machine gets
 the smooth stroke a posed model's instruction ramp gives: declare
 `'Turn crank': Instruction(by={'crank_rotation': 360}, duration=2)` and
 the crank turns over two seconds with every carry firing where the
-machine located it. A slider or nudge stays an instantaneous request. Against an OLDER installed viewer `solid build`,
-`solid develop` and `solid export` publish the document and WARN that it
-cannot read it, and `solid snapshot --renderer web` is REFUSED before the
+machine located it. A slider or nudge stays an instantaneous request. Against an OLDER installed viewer `machinome build`,
+`machinome develop` and `machinome export` publish the document and WARN that it
+cannot read it, and `machinome snapshot --renderer web` is REFUSED before the
 browser starts, writing no image, leaving no staging directory and never
 falling back to OpenSCAD. `render()`, `assemble()`, `build_stls()`,
-`solid test` and `solid snapshot --renderer openscad` are untouched, so a
+`machinome test` and `machinome snapshot --renderer openscad` are untouched, so a
 clocked model is built, tested and photographed as any other — the
 OpenSCAD path rendering the tree as posed, which is the INITIAL BANK, with
 `--drive` posing declared DRIVERS and a state named there refused by name.
 
 **Testing a clocked machine.** There is no `ScenarioTest` for it: a
 clocked machine has no cadence, so the idiom is a plain
-`solid_node.test.TestCase` (or `unittest`) driving a fresh `Sim(model)`
+`machinome.test.TestCase` (or `unittest`) driving a fresh `Sim(model)`
 per test and asserting the bank, the commits and the stops. Compute every
 expectation BY HAND — a test that asks the law what the answer is passes
 whatever the implementation did.
 
 ```python
-from solid_node.simulation import Sim
-from solid_node.test import TestCase
+from machinome.simulation import Sim
+from machinome.test import TestCase
 
 from counter import Counter
 
@@ -2172,36 +2172,36 @@ framework-internal and is not a project surface.
 ## CLI
 
 ```text
-solid new <name>
-solid build   [ref] [--set NAME=VALUE ...]
-solid test    [ref] [--set ...] [--failfast] [--exact | --faceted]
+machinome new <name>
+machinome build   [ref] [--set NAME=VALUE ...]
+machinome test    [ref] [--set ...] [--failfast] [--exact | --faceted]
       [--volume-epsilon MM3]
-solid snapshot [ref] [--set ...] -o out.png [--time 0..1] [--autocenter]
+machinome snapshot [ref] [--set ...] -o out.png [--time 0..1] [--autocenter]
       [--drive NAME=VALUE ...]
       [--viewall] [--camera tx,ty,tz,rx,ry,rz,dist | ex,ey,ez,cx,cy,cz]
       [--imgsize 1920x1080] [--renderer openscad|web]
       [--projection ortho|perspective] [--colorscheme Cornfield|...]
       [--render | --preview] [--view axes,crosshairs,edges,scales,wireframe]
-solid export  [ref] [--set ...] [-o export] [--fps 30] [--frames 360] [--no-widget]
-solid develop [ref] [--set ...] [--web | --openscad | --web-dev | --no-web]
+machinome export  [ref] [--set ...] [-o export] [--fps 30] [--frames 360] [--no-widget]
+machinome develop [ref] [--set ...] [--web | --openscad | --web-dev | --no-web]
       [--callback URL] [--debug-builder]
-solid viewer
-solid import-step FILE [--into PACKAGE_DIR] [--model NAME]
+machinome viewer
+machinome import-step FILE [--into PACKAGE_DIR] [--model NAME]
 ```
 
 `ref` is a node reference as above; omitted, the manifest's model is used.
 The command comes first. The CLI loads `./.env` at startup with the real
-environment taking precedence: `SOLID_NODE_PORT` (viewer, default 8000),
-`SOLID_NODE_FRONTEND_PORT` (viewer dev server, 3000), `SOLID_BUILD_DIR`
+environment taking precedence: `MACHINOME_PORT` (viewer, default 8000),
+`MACHINOME_FRONTEND_PORT` (viewer dev server, 3000), `SOLID_BUILD_DIR`
 (artifact directory, `_build`, resolved against the project root).
 
-`solid build` renders once, publishes the complete current model, and
+`machinome build` renders once, publishes the complete current model, and
 exits: 0 when the model built or was already current, 66
 (`MODEL_NOT_FOUND`) when the reference resolves to nothing, another
 nonzero status when the build failed. It is the finite form of what
-`solid develop` does on every save.
+`machinome develop` does on every save.
 
-`solid snapshot --drive NAME=VALUE` sets declared drivers by qualified id,
+`machinome snapshot --drive NAME=VALUE` sets declared drivers by qualified id,
 in native units as with `set_state`; `--set` changes build parameters
 instead. Drivers not overridden use their defaults. `--time` is the 0–1
 timeline fraction: it binds the fraction for an undeclared root or the
@@ -2213,27 +2213,27 @@ Leave the renderer at the default `openscad`:
 it is fast, needs no browser, self-wraps with `xvfb-run` when headless,
 and stays the default whatever is installed. The `web` renderer exists
 so a host can get a transparent background through headless Chromium; it
-needs the separately installed `solid-node-viewer` package with its
-browser (`pip install "solid-node[web-snapshot]"` plus `playwright install
+needs the separately installed `machinome-viewer` package with its
+browser (`pip install "machinome[web-snapshot]"` plus `playwright install
 chromium`), rejects the OpenSCAD-only options and an unsupported document
 version by name, and never falls
 back. It is not for inspecting your own work.
 
-`solid develop` opens a live viewer that rebuilds on save: the browser
-viewer when `solid-node-viewer` is installed (`pip install
-"solid-node[viewer]"`), the OpenSCAD GUI otherwise; a requested viewer
+`machinome develop` opens a live viewer that rebuilds on save: the browser
+viewer when `machinome-viewer` is installed (`pip install
+"machinome[viewer]"`), the OpenSCAD GUI otherwise; a requested viewer
 that cannot open is refused, never swapped. `--no-web` runs the watch
 loop alone, `--callback URL` POSTs after each complete build. The shop
 already watches the project and keeps the maker's view current, so you
 never run it.
 
-`solid new <name>` scaffolds `<name>/<name>/<name>.py` with a starter
+`machinome new <name>` scaffolds `<name>/<name>/<name>.py` with a starter
 `Solid2Node`, `<name>/<name>/test_<name>.py` with the two default
 contracts, an empty `__init__.py`, a `.gitignore` covering the build
 path, and a `pyproject.toml` declaring the model. It refuses an existing
 directory.
 
-`solid import-step FILE` scaffolds project-owned source from a STEP
+`machinome import-step FILE` scaffolds project-owned source from a STEP
 document's assembly structure: `parts.py` with one `StepNode` subclass
 per part product (exact `part` name, `angular_deflection = 0.5`) and
 `assembly.py` with one `AssemblyNode` per assembly product, one declared
@@ -2244,9 +2244,9 @@ a mirrored or scaled placement, and prints the manifest line to add
 instead of editing `pyproject.toml`. Edit the generated files as your
 own; regenerate only by removing them.
 
-`solid export` writes `manifest.json`, deduplicated `models/`, and unless
+`machinome export` writes `manifest.json`, deduplicated `models/`, and unless
 `--no-widget` a self-contained viewer copied from the installed
-`solid-node-viewer` package; without that package, export with
+`machinome-viewer` package; without that package, export with
 `--no-widget` or the command fails naming the `viewer` extra. Exports
 carry drivers, instructions and animation and never freeze a pose.
 
@@ -2265,7 +2265,7 @@ and are never held while watching or testing.
 
 Inside a publication:
 
-- `viewer.json` — `{format: "solid-node-export", version, animation:
+- `viewer.json` — `{format: "machinome-export", version, animation:
   {fps, frames, loop?}, drivers, instructions, bindings?, program?, root, pieces}`.
   `version` is 2; 3 when the tree holds a flexible part; 4 when the
   document carries a `bindings` table, which the serializer publishes
@@ -2309,11 +2309,11 @@ Inside a publication:
   still names files that are present and complete, but do not read it as
   the previous model.
 
-`solid viewer` prints one JSON object naming the installed bundle
+`machinome viewer` prints one JSON object naming the installed bundle
 (`path`), the standalone export page (`index`), its integer `apiVersion`,
 supported `documentVersions`, and the viewer package `version`; without
 the package it prints nothing
-on stdout, names `pip install "solid-node[viewer]"` on stderr and exits 1.
+on stdout, names `pip install "machinome[viewer]"` on stderr and exits 1.
 A consumer must reject a missing or too-old bundle before opening.
 An older report without `documentVersions` means support for `[1, 2, 3, 4]`,
 not 5. Build/develop/export still publish whatever version the model needs
@@ -2328,9 +2328,9 @@ API 13 or later. Neither capability number implies a published release.
 
 ## Viewer HTTP surface
 
-`solid develop` runs the viewer package's own server as a separate
+`machinome develop` runs the viewer package's own server as a separate
 process on the build directory; a build publication serves nothing. With
-it running on `SOLID_NODE_PORT`:
+it running on `MACHINOME_PORT`:
 
 - `GET /build/viewer.json` and `GET /build/<model path>` — the published
   document and the STLs it names.

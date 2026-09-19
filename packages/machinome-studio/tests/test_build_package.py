@@ -74,7 +74,7 @@ class BuildPackageTests(unittest.TestCase):
 
     def _publish(self, pieces: list[dict[str, object]]) -> None:
         (self.artifacts / "viewer.json").write_text(json.dumps({
-            "format": "solid-node-export",
+            "format": "machinome-export",
             "version": 1,
             "root": {"name": "root", "children": []},
             "pieces": pieces,

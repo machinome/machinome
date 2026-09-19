@@ -27,7 +27,7 @@ from .preparation import (
     ViewerBundle,
     build_project,
     commit_new_project,
-    default_solid_command,
+    default_machinome_command,
     has_complete_publication,
     list_folder,
     prepare_project,
@@ -218,7 +218,7 @@ class Session:
         observer.schedule(self.source_file_watcher, str(self.project_root), recursive=True)
         self.source_watcher = ModelWatcher(
             self.project_root,
-            self.prepared.solid_command,
+            self.prepared.machinome_command,
             self.broker.publish,
             loop=loop,
             extra_environment=self.prepared.build_environment,
@@ -247,7 +247,7 @@ class Session:
         result = await asyncio.to_thread(
             refresh_project_screenshot,
             self.project_root,
-            self.prepared.solid_command,
+            self.prepared.machinome_command,
             model=self.prepared.project_model,
             extra_environment=self.prepared.build_environment,
         )
@@ -293,7 +293,7 @@ class SessionRegistry:
         working_folder: Path,
         *,
         shop_root: Path,
-        solid_command: str | Sequence[str] | None = None,
+        machinome_command: str | Sequence[str] | None = None,
         broker_url: str = "http://127.0.0.1:9000",
         backend_commands: Mapping[str, str] | None = None,
         backend_factory: BackendFactory = create_backend,
@@ -302,7 +302,7 @@ class SessionRegistry:
     ) -> None:
         self.working_folder = working_folder.resolve()
         self.shop_root = shop_root.resolve()
-        self.solid_command = solid_command or default_solid_command()
+        self.machinome_command = machinome_command or default_machinome_command()
         self.broker_url = broker_url
         self.backend_commands = dict(backend_commands or {})
         self.backend_factory = backend_factory
@@ -463,7 +463,7 @@ class SessionRegistry:
             prepared = await asyncio.to_thread(
                 prepare_project,
                 entry,
-                solid_command=self.solid_command,
+                machinome_command=self.machinome_command,
                 profile=create_profile,
                 viewer=await self._viewer_bundle(),
             )
@@ -528,7 +528,7 @@ class SessionRegistry:
         """
         async with self._viewer_lock:
             if self._viewer is None:
-                self._viewer = await asyncio.to_thread(resolve_viewer_bundle, self.solid_command)
+                self._viewer = await asyncio.to_thread(resolve_viewer_bundle, self.machinome_command)
             return self._viewer
 
     async def _build_behind(self, session: Session) -> None:
@@ -569,7 +569,7 @@ class SessionRegistry:
                     model=session.prepared.project_model,
                     broker_url=self.broker_url,
                     command_overrides=self.backend_commands,
-                    solid_command=self.solid_command,
+                    machinome_command=self.machinome_command,
                     session_id=session.id,
                     skills=_profile_skills(session.profile),
                 )
@@ -590,7 +590,7 @@ class SessionRegistry:
                     project=session.project_root,
                     broker_url=self.broker_url,
                     command_overrides=self.backend_commands,
-                    solid_command=self.solid_command,
+                    machinome_command=self.machinome_command,
                     session_id=session.id,
                     skills=_profile_skills(session.profile),
                 )

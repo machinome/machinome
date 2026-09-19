@@ -2,7 +2,7 @@
 
 The hub already reserves a 158-pixel model-preview region on every project
 card, but the production UI fills it with a striped placeholder. A project
-session already invokes the selected solid-node CLI during preparation, after
+session already invokes the selected Machinome CLI during preparation, after
 source changes, and through the scoped `solid_build` tool. The same scoped MCP
 surface exposes `solid_snapshot` only as temporary image output and exposes the
 only Git commit operation available to scoped runtime agents.
@@ -42,14 +42,14 @@ must not turn a valid build or an important commit into a failure.
 ### 1. `screenshot.png` is a project-root artifact with a fixed recipe
 
 The canonical path is exactly `screenshot.png` beneath the verified project Git
-root. The shop invokes the solid-node CLI as a subprocess and writes no project
+root. The shop invokes the Machinome CLI as a subprocess and writes no project
 Python. It renders a 640x360 PNG at time `0.1`, with autocenter and view-all
 enabled. The web renderer rejects the OpenSCAD-only presentation options
 (`--projection`, `--colorscheme`, `--view`, `--render`, `--preview`), so the
 recipe passes none of them. This is a stable
 thumbnail recipe, not a design-evidence view and not a new project setting.
 
-The shop selects the solid-node CLI's web renderer, which produces the
+The shop selects the Machinome CLI's web renderer, which produces the
 transparent canvas directly. It publishes the complete PNG bytes without
 pixel post-processing, making the card background responsible for the preview
 canvas without heuristic treatment of model geometry.

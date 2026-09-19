@@ -45,7 +45,7 @@ caller.
 
 **Non-Goals:**
 
-- The framework (`solid-node/`) is untouched. `solid develop`'s own watcher is
+- The framework (`Machinome/`) is untouched. `machinome develop`'s own watcher is
   reference, not scope.
 - No change to the orchestrator delivery stream, the backend adapters, or the
   broker's profile validation.
@@ -122,7 +122,7 @@ rules and its `viewer.json` content hash. Only change detection changes: a
 `FileSystemEventHandler` that filters to `.py` paths surviving
 `_excluded_directory`, and bridges to the loop with `call_soon_threadsafe` onto
 an `asyncio.Queue`. This is the idiom the framework already uses in
-`solid_node/core/builder.py` (`schedule(..., recursive=True)`,
+`machinome/core/builder.py` (`schedule(..., recursive=True)`,
 `loop.call_soon_threadsafe`), so the shop is not inventing a second pattern.
 
 The handler observes created, modified, moved and deleted events, not modified

@@ -20,7 +20,7 @@ from tests.fixtures.shop_process import isolated_launch_directory, subprocess_en
 
 
 ROOT = Path(__file__).resolve().parents[1]
-FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
+FAKE_MACHINOME = ROOT / "tests" / "fixtures" / "fake_machinome.py"
 
 
 class FloorAPITest(unittest.TestCase):
@@ -35,7 +35,7 @@ class FloorAPITest(unittest.TestCase):
             [
                 "python", "-m", "floor", "--port", str(self.port),
                 "--projects-dir", str(self.project_home),
-                "--solid-command", str(FAKE_SOLID),
+                "--machinome-command", str(FAKE_MACHINOME),
             ],
             cwd=self.shop,
             stdout=subprocess.DEVNULL,
@@ -178,7 +178,7 @@ class FloorAPITest(unittest.TestCase):
 
     def test_a_failed_initial_build_still_opens_and_artifacts_are_project_scoped(self) -> None:
         project = self._make_project("broken-model")
-        (project / ".fake-solid-state.json").write_text(json.dumps({"fail": "model exploded"}))
+        (project / ".fake-machinome-state.json").write_text(json.dumps({"fail": "model exploded"}))
         session_id = self._open("broken-model")
         run = _request(self.url(f"/api/sessions/{session_id}"), "GET")
         self.assertTrue(any(event["kind"] == "model_build_unavailable" for event in run["events"]))
@@ -201,7 +201,7 @@ class FloorAPITest(unittest.TestCase):
                 "size": [10, 20, 30], "volume": 6000, "watertight": True,
             }],
         }
-        (project / ".fake-solid-state.json").write_text(json.dumps({
+        (project / ".fake-machinome-state.json").write_text(json.dumps({
             "model_content": "solid fixture\nendsolid fixture\n",
             "viewer": viewer,
         }))
@@ -384,14 +384,14 @@ class FloorAPITest(unittest.TestCase):
         project = self.project_home / name
         (project / "root").mkdir(parents=True)
         (project / "root" / "__init__.py").write_text("# model\n")
-        (project / ".gitignore").write_text("_build/\n.fake-solid-builds\n.fake-solid-state.json\n")
+        (project / ".gitignore").write_text("_build/\n.fake-machinome-builds\n.fake-machinome-state.json\n")
         declared = "".join(
-            f"\n[tool.solid-node.models]\n" + "".join(f'{model} = "root:Root"\n' for model in models)
+            f"\n[tool.machinome.models]\n" + "".join(f'{model} = "root:Root"\n' for model in models)
             for _ in (models,) if models
         )
-        (project / "pyproject.toml").write_text(f'[tool.libresolid-studio]\nprofile = "{profile}"\n{declared}')
+        (project / "pyproject.toml").write_text(f'[tool.machinome-studio]\nprofile = "{profile}"\n{declared}')
         if models:
-            (project / ".fake-solid-state.json").write_text(json.dumps({"models": list(models)}))
+            (project / ".fake-machinome-state.json").write_text(json.dumps({"models": list(models)}))
         subprocess.run(["git", "init", "-q", "-b", "main", str(project)], check=True)
         subprocess.run(["git", "-C", str(project), "add", "--all"], check=True)
         subprocess.run([

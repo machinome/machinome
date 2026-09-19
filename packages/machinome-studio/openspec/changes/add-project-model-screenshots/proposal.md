@@ -23,7 +23,7 @@ tool is the reliable place to carry a changed preview into project history.
   browsers when an open project's screenshot changes, without carrying project
   conversation or agent work into the hub stream.
 - Rendering uses one fixed, shop-owned thumbnail recipe rather than adding
-  project configuration in this change; the solid-node web renderer supplies
+  project configuration in this change; the Machinome web renderer supplies
   its transparent canvas directly.
 
 ## Capabilities

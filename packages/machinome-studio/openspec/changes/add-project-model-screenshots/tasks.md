@@ -5,7 +5,7 @@
   renderer/output failure, preservation of a prior image, and refusal to follow
   a project-root `screenshot.png` symlink; record the expected red failures.
 - [x] 1.2 Implement the shared project screenshot helper using the selected
-  solid-node executable, an outside-project temporary output, PNG validation,
+  Machinome executable, an outside-project temporary output, PNG validation,
   byte comparison, and atomic replacement, with screenshot errors represented
   separately from build or Git errors.
 - [ ] 1.3 Add serialization/coalescing coverage for overlapping requests and

@@ -13,7 +13,7 @@ import uvicorn
 
 from .app import create_app
 from .openspec import OpenSpecUnavailable, resolve_openspec_command
-from .preparation import default_solid_command, shop_resource_root
+from .preparation import default_machinome_command, shop_resource_root
 from .sessions import SessionRegistry
 
 
@@ -31,7 +31,7 @@ def main() -> None:
         required=True,
         help="exact directory containing project repositories",
     )
-    parser.add_argument("--solid-command", help=argparse.SUPPRESS)
+    parser.add_argument("--machinome-command", help=argparse.SUPPRESS)
     arguments = parser.parse_args()
     try:
         resolve_openspec_command()
@@ -40,11 +40,11 @@ def main() -> None:
         raise SystemExit(1) from error
     project_home = arguments.projects_dir
     shop_root = shop_resource_root()
-    solid_command = arguments.solid_command or default_solid_command()
+    machinome_command = arguments.machinome_command or default_machinome_command()
     registry = SessionRegistry(
         project_home,
         shop_root=shop_root,
-        solid_command=solid_command,
+        machinome_command=machinome_command,
         start_agents=False,
     )
     uvicorn.run(

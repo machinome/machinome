@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Present a completed solid-node build in the shop floor without loading project
+Present a completed machinome build in the shop floor without loading project
 Python into Floor.
 ## Requirements
 ### Requirement: The shop floor builds the selected functional model before opening
-When opening a shop floor for a hub entry, the system SHALL use a solid-node CLI
+When opening a shop floor for a hub entry, the system SHALL use a machinome CLI
 one-shot build of the model that entry names before starting the Floor service
 or agent runtime. For an entry naming a declared model, that is the named model;
 for a project listed as a single openable project, it is the project's default
@@ -19,7 +19,7 @@ execute, reload, or interpret that source.
 
 #### Scenario: A named project has a buildable default model
 - **WHEN** the maker opens the shop for a project listed as one openable project whose default model builds successfully
-- **THEN** the system completes one solid-node CLI build and makes that model's complete build artifacts available before starting Floor
+- **THEN** the system completes one machinome CLI build and makes that model's complete build artifacts available before starting Floor
 
 #### Scenario: The entry names one model of several
 - **WHEN** the maker opens an entry naming one of a project's declared models
@@ -213,11 +213,11 @@ unknown. The system SHALL serve nothing outside the project's build output.
 
 ### Requirement: The shop floor presents the complete static viewer experience
 The Floor browser SHALL render completed build artifacts with the established
-solid-node viewer semantics while obtaining only `viewer.json` and referenced
+machinome viewer semantics while obtaining only `viewer.json` and referenced
 model files through Floor's static artifact route. It SHALL use nested node
 groups, complete OpenSCAD expression evaluation, inherited colours, normal
 material for uncoloured models, a Z-up fitted camera, and working orbit
-rotation and zoom. A capability that solid-node adds to that viewer SHALL reach
+rotation and zoom. A capability that machinome adds to that viewer SHALL reach
 the shop floor without the shop reproducing it.
 
 #### Scenario: A colourless V8 model is displayed
@@ -232,25 +232,25 @@ the shop floor without the shop reproducing it.
 - **WHEN** the maker has rotated, panned, or zoomed the functional model and a successful rebuild refreshes it
 - **THEN** Floor updates only the parts the rebuild republished, leaving the rest of the rendered model and the maker's camera position, orientation, zoom, and orbit target as they were
 
-#### Scenario: solid-node improves how models are seen
-- **WHEN** the installed solid-node changes how it renders a published model
+#### Scenario: machinome improves how models are seen
+- **WHEN** the installed machinome changes how it renders a published model
 - **THEN** the shop floor shows that change without a corresponding shop change
 
-### Requirement: The shop floor requires a usable solid-node viewer to open
+### Requirement: The shop floor requires a usable machinome viewer to open
 When opening a named project shop floor, the system SHALL obtain the browser
-viewer from the installed solid-node through its CLI, which reports the viewer
+viewer from the installed machinome through its CLI, which reports the viewer
 package installed beside it. The viewer the floor requires SHALL be one that
 updates a mounted model in place from a named artifact and from the published
 document, and one that mounts its own assembly navigator over a mounted viewer
-into a host element the floor supplies. When the installed solid-node reports no
-viewer — because the `solid-node-viewer` package is not installed — or reports
+into a host element the floor supplies. When the installed machinome reports no
+viewer — because the `machinome-viewer` package is not installed — or reports
 one the floor cannot use, the system SHALL treat preparation as failed, report
 the reason and its remedy, and SHALL NOT start Floor or its agents. The maker
 SHALL NOT be shown a shop that is open with a model pane that cannot render or
 a Model panel that cannot navigate.
 
-#### Scenario: The installed solid-node ships no viewer
-- **WHEN** the maker opens the shop and the installed solid-node has no viewer package installed beside it
+#### Scenario: The installed machinome ships no viewer
+- **WHEN** the maker opens the shop and the installed machinome has no viewer package installed beside it
 - **THEN** the shop does not open, and the maker is told that the viewer is unavailable together with the framework's remedy, installing the `viewer` extra
 
 #### Scenario: The installed viewer is older than the floor requires
@@ -266,14 +266,14 @@ a Model panel that cannot navigate.
 - **THEN** the shop does not open rather than opening with a Model panel that has nothing to show
 
 #### Scenario: A usable viewer is installed
-- **WHEN** the maker opens the shop and the installed solid-node reports a usable viewer
+- **WHEN** the maker opens the shop and the installed machinome reports a usable viewer
 - **THEN** the shop opens, the browser renders the functional model with that viewer, and the Model panel shows that viewer's assembly navigator
 
 ### Requirement: The build snapshot carries browser animation metadata
-The `solid build` publication consumed by Floor SHALL include a versioned
+The `machinome build` publication consumed by Floor SHALL include a versioned
 animation cadence with `fps` and `frames` together with the root viewer tree.
 
 #### Scenario: Floor opens an animated model
-- **WHEN** `solid build` publishes a model whose operations include `$t`
+- **WHEN** `machinome build` publishes a model whose operations include `$t`
 - **THEN** `viewer.json` supplies the animation cadence required for Floor to animate that model without a project runtime
 

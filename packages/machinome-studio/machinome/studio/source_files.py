@@ -127,7 +127,7 @@ class SourceWorkspace:
         try:
             mode = stat.S_IMODE(candidate.stat().st_mode)
             descriptor, temporary_name = tempfile.mkstemp(
-                prefix=".libresolid-studio-save-",
+                prefix=".machinome-studio-save-",
                 dir=candidate.parent,
             )
             temporary = Path(temporary_name)
@@ -221,7 +221,7 @@ class SourceWorkspace:
             first == ".git"
             or first == "_build"
             or first.startswith("_build.")
-            or first.startswith(".solid-node-build-")
+            or first.startswith(".machinome-build-")
         )
 
     @staticmethod

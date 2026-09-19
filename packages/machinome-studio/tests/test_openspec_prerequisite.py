@@ -91,7 +91,7 @@ class OpenSpecStartupPrerequisiteTest(unittest.TestCase):
 
     def test_the_hub_entrypoint_starts_when_the_cli_runs(self) -> None:
         with (
-            patch.object(sys, "argv", ["floor", "--projects-dir", "/work/projects", "--solid-command", "fake-solid"]),
+            patch.object(sys, "argv", ["floor", "--projects-dir", "/work/projects", "--machinome-command", "fake-solid"]),
             patch.object(__main__, "SessionRegistry", return_value=object()),
             patch.object(__main__, "create_app", return_value=object()),
             patch.object(__main__.uvicorn, "run") as run,

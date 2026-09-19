@@ -1,6 +1,6 @@
 # The shop checkout is a WORKSPACE: everything the setup scripts create
 # next to the shop's own files stays out of git — including the
-# framework working copy at solid-node/ (its version is the pilot's
+# framework working copy at machinome-framework/ (its version is the pilot's
 # choice: released tag, main, a fork). Each project under projects/
 # is its OWN repository (untracked here).
 .venv/
@@ -15,9 +15,11 @@ floor/static/
 playwright-report/
 test-results/
 # No trailing slash: this must also ignore the framework sprint worktree
-# link a cross-repository sprint creates at WTs/sprint-NNN/solid-node,
+# link a cross-repository sprint creates at WTs/sprint-NNN/machinome-framework,
 # which is a symlink rather than a directory.
-/solid-node
+/machinome-framework
+/machinome-mechanics
+/name-holders
 # Independent browser-delivery prototype repositories, each with its own
 # Git history (see AGENTS.md, "Browser delivery prototypes").
 /browser-engine
@@ -26,12 +28,11 @@ test-results/
 # Independent molejo library repository (analytic flexible parts),
 # born from the flexible-leaf finding; its own Git history.
 /molejo
-# Independent solid-node-viewer repository: the AGPL browser viewer the
+# Independent machinome-viewer repository: the AGPL browser viewer the
 # framework installs as its [viewer] extra; its own Git history.
-/solid-node-viewer
+/machinome-viewer
 WTs/
 .env
-projects/*
-!projects/README.md
+/projects
 *.pyc
 __pycache__

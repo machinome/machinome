@@ -57,7 +57,12 @@ def prepare_runtime_edit(
 
         document = tomlkit.parse(source.decode() if source else "")
         tool = _table(document, "tool")
-        studio = _table(tool, "libresolid-studio")
+        if "libresolid-studio" in tool:  # type: ignore[operator]
+            raise ValueError(
+                "Machinome Studio renamed [tool.libresolid-studio] to "
+                "[tool.machinome-studio]"
+            )
+        studio = _table(tool, "machinome-studio")
         agents = _table(studio, "agents")
         agents[role] = runtime_selection(runtime)
         rendered = document.as_string().encode()

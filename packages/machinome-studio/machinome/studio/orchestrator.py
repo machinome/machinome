@@ -24,7 +24,7 @@ from .openspec import OpenSpecUnavailable, resolve_openspec_command
 from .preparation import (
     PreparationError,
     ProjectRuntimeError,
-    default_solid_command,
+    default_machinome_command,
     prepare_project,
     read_project_runtime,
     shop_resource_root,
@@ -702,13 +702,13 @@ async def _serve(arguments: argparse.Namespace) -> None:
     resolve_openspec_command()
     shop_root = shop_resource_root()
     project_home = arguments.projects_dir
-    solid_command = arguments.solid_command or default_solid_command()
+    machinome_command = arguments.machinome_command or default_machinome_command()
     command_overrides = parse_backend_command_overrides(getattr(arguments, "backend_command", None))
     from .sessions import SessionRegistry
     registry = SessionRegistry(
         project_home,
         shop_root=shop_root,
-        solid_command=solid_command,
+        machinome_command=machinome_command,
         broker_url=f"http://127.0.0.1:{arguments.port}",
         backend_commands=command_overrides,
     )
@@ -748,7 +748,7 @@ def main() -> None:
         required=True,
         help="exact directory containing project repositories",
     )
-    parser.add_argument("--solid-command", help=argparse.SUPPRESS)
+    parser.add_argument("--machinome-command", help=argparse.SUPPRESS)
     parser.add_argument("--backend-command", action="append", default=[], metavar="BACKEND=COMMAND", help=argparse.SUPPRESS)
     try:
         asyncio.run(_serve(parser.parse_args()))

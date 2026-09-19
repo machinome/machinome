@@ -16,7 +16,7 @@ from floor.mcp_server import ProjectTools, TOOL_NAMES, TOOL_SCHEMAS, mcp_command
 
 
 ROOT = Path(__file__).resolve().parents[1]
-FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_scoped_solid.py"
+FAKE_MACHINOME = ROOT / "tests" / "fixtures" / "fake_scoped_machinome.py"
 
 
 class ScopedProjectToolsTest(unittest.TestCase):
@@ -43,12 +43,12 @@ class ScopedProjectToolsTest(unittest.TestCase):
         subprocess.run(["git", "add", ".gitignore", "part.txt", "drawing.svg", "image.png"], cwd=self.project, check=True)
         subprocess.run(["git", "commit", "-q", "-m", "initial"], cwd=self.project, check=True)
         self.capture = root / "solid.jsonl"
-        self.environment = patch.dict(os.environ, {"FAKE_SCOPED_SOLID_CAPTURE": str(self.capture)})
+        self.environment = patch.dict(os.environ, {"FAKE_SCOPED_MACHINOME_CAPTURE": str(self.capture)})
         self.environment.start()
         self.addCleanup(self.environment.stop)
         self.tools = ProjectTools(
             self.project,
-            solid_command=(sys.executable, str(FAKE_SOLID)),
+            machinome_command=(sys.executable, str(FAKE_MACHINOME)),
         )
 
     def test_exposes_only_ratified_tools(self) -> None:
@@ -59,7 +59,7 @@ class ScopedProjectToolsTest(unittest.TestCase):
                 "write_file", "edit_file", "apply_patch", "delete_file", "move_file", "make_dir",
                 "git_status", "git_diff", "git_log", "git_show", "git_rev_parse_toplevel",
                 "git_merge_base_is_ancestor", "git_head", "git_add", "git_commit",
-                "solid_build", "solid_test", "solid_snapshot",
+                "machinome_build", "machinome_test", "machinome_snapshot",
                 "openspec_setup", "openspec_run",
                 "floor_assign", "floor_direction", "floor_acknowledge",
                 "floor_report", "floor_complete",
@@ -304,16 +304,16 @@ class ScopedProjectToolsTest(unittest.TestCase):
         self.assertEqual(self.tools.git_show("HEAD", "new.txt")["stdout"], "new\n")
         self.assertEqual(self.tools.git_rev_parse_toplevel(), str(self.project))
 
-    def test_solid_test_passes_the_kernel_through_as_the_framework_flag(self) -> None:
-        self.assertTrue(self.tools.solid_test(kernel="faceted")["ok"])
-        self.assertTrue(self.tools.solid_test("part.txt", failfast=True, kernel="exact")["ok"])
-        self.assertTrue(self.tools.solid_test()["ok"])
+    def test_machinome_test_passes_the_kernel_through_as_the_framework_flag(self) -> None:
+        self.assertTrue(self.tools.machinome_test(kernel="faceted")["ok"])
+        self.assertTrue(self.tools.machinome_test("part.txt", failfast=True, kernel="exact")["ok"])
+        self.assertTrue(self.tools.machinome_test()["ok"])
         calls = [json.loads(line)["argv"] for line in self.capture.read_text().splitlines()]
         self.assertEqual(calls[0], ["test", "--faceted"])
         self.assertEqual(calls[1], ["test", "--failfast", "--exact", "part.txt"])
         self.assertEqual(calls[2], ["test"])
         with self.assertRaises(ValueError):
-            self.tools.solid_test(kernel="fast")
+            self.tools.machinome_test(kernel="fast")
 
     def test_a_model_session_defaults_every_solid_tool_to_its_own_model(self) -> None:
         """Two models of one repository share a checkout, so a tool called
@@ -321,12 +321,12 @@ class ScopedProjectToolsTest(unittest.TestCase):
         tools = ProjectTools(
             self.project,
             model="wall_clock_02",
-            solid_command=(sys.executable, str(FAKE_SOLID)),
+            machinome_command=(sys.executable, str(FAKE_MACHINOME)),
         )
 
-        tools.solid_build()
-        tools.solid_test()
-        tools.solid_build("part.txt")
+        tools.machinome_build()
+        tools.machinome_test()
+        tools.machinome_build("part.txt")
 
         calls = [json.loads(line)["argv"] for line in self.capture.read_text().splitlines()]
         self.assertEqual(
@@ -338,12 +338,12 @@ class ScopedProjectToolsTest(unittest.TestCase):
         self.assertEqual(snapshot[1], "wall_clock_02")
 
     def test_solid_tools_preserve_exit_status_and_snapshot_stays_outside_project(self) -> None:
-        self.assertTrue(self.tools.solid_build()["ok"])
-        failed = self.tools.solid_test("fail", failfast=True)
+        self.assertTrue(self.tools.machinome_build()["ok"])
+        failed = self.tools.machinome_test("fail", failfast=True)
         self.assertFalse(failed["ok"])
         self.assertEqual(failed["exit_code"], 17)
         before = self.tools.git_status()["stdout"]
-        image = self.tools.solid_snapshot(
+        image = self.tools.machinome_snapshot(
             time=0.5,
             camera="1,2,3,4,5,6,7",
             imgsize="320x200",
@@ -383,9 +383,9 @@ class ScopedProjectToolsTest(unittest.TestCase):
             lambda: self.tools.git_log("../outside.txt"),
             lambda: self.tools.git_show("HEAD", "../outside.txt"),
             lambda: self.tools.git_add(["../outside.txt"]),
-            lambda: self.tools.solid_build("../outside.txt"),
-            lambda: self.tools.solid_test("../outside.txt"),
-            lambda: self.tools.solid_snapshot("../outside.txt"),
+            lambda: self.tools.machinome_build("../outside.txt"),
+            lambda: self.tools.machinome_test("../outside.txt"),
+            lambda: self.tools.machinome_snapshot("../outside.txt"),
         )
         for call in calls:
             with self.subTest(call=call):
@@ -397,24 +397,24 @@ class ScopedProjectToolsTest(unittest.TestCase):
 
     def skill_registry(self) -> dict[str, Path]:
         """Register one skill outside the project, as the shop does at launch."""
-        root = Path(self.temporary.name) / "shop-skills" / "solid-node"
+        root = Path(self.temporary.name) / "shop-skills" / "machinome"
         (root / "reference").mkdir(parents=True)
-        (root / "SKILL.md").write_text("---\nname: solid-node\n---\n\nMACHINING INSTRUCTIONS\n")
+        (root / "SKILL.md").write_text("---\nname: machinome\n---\n\nMACHINING INSTRUCTIONS\n")
         (root / "reference" / "gears.md").write_text("GEAR TABLE\n")
-        return {"solid-node": root}
+        return {"machinome": root}
 
     def test_load_skill_returns_instructions_and_names_its_bundled_resources(self) -> None:
         registry = self.skill_registry()
         tools = ProjectTools(
             self.project,
-            solid_command=(sys.executable, str(FAKE_SOLID)),
+            machinome_command=(sys.executable, str(FAKE_MACHINOME)),
             skills=registry,
         )
-        loaded = tools.load_skill("solid-node")
+        loaded = tools.load_skill("machinome")
         self.assertIn("MACHINING INSTRUCTIONS", loaded)
         self.assertIn("reference/gears.md", loaded)
         self.assertNotIn("GEAR TABLE", loaded)
-        self.assertEqual(tools.load_skill("solid-node", "reference/gears.md"), "GEAR TABLE\n")
+        self.assertEqual(tools.load_skill("machinome", "reference/gears.md"), "GEAR TABLE\n")
 
     def test_load_skill_rejects_unregistered_names_and_escaping_resources(self) -> None:
         registry = self.skill_registry()
@@ -422,28 +422,28 @@ class ScopedProjectToolsTest(unittest.TestCase):
         outside.write_text("SECRET\n")
         tools = ProjectTools(
             self.project,
-            solid_command=(sys.executable, str(FAKE_SOLID)),
+            machinome_command=(sys.executable, str(FAKE_MACHINOME)),
             skills=registry,
         )
-        with self.assertRaisesRegex(ValueError, "solid-node"):
-            tools.load_skill("solid-node-api")
+        with self.assertRaisesRegex(ValueError, "machinome"):
+            tools.load_skill("machinome-api")
         for escape in ("../secret.md", str(outside), "reference/../../secret.md"):
             with self.subTest(resource=escape):
                 with self.assertRaisesRegex(ValueError, "outside"):
-                    tools.load_skill("solid-node", escape)
+                    tools.load_skill("machinome", escape)
 
     def test_a_session_without_registered_skills_cannot_load_one(self) -> None:
         with self.assertRaisesRegex(ValueError, "no skill"):
-            self.tools.load_skill("solid-node")
+            self.tools.load_skill("machinome")
 
     def test_a_registered_skill_directory_is_not_reachable_as_a_project_path(self) -> None:
         registry = self.skill_registry()
         tools = ProjectTools(
             self.project,
-            solid_command=(sys.executable, str(FAKE_SOLID)),
+            machinome_command=(sys.executable, str(FAKE_MACHINOME)),
             skills=registry,
         )
-        for path in (str(registry["solid-node"] / "SKILL.md"), str(registry["solid-node"])):
+        for path in (str(registry["machinome"] / "SKILL.md"), str(registry["machinome"])):
             with self.subTest(path=path):
                 with self.assertRaisesRegex(ValueError, "outside active project"):
                     tools.read_file(path)
@@ -453,7 +453,7 @@ class ScopedProjectToolsTest(unittest.TestCase):
     def test_floor_tools_map_to_only_the_injected_session(self) -> None:
         tools = ProjectTools(
             self.project,
-            solid_command=(sys.executable, str(FAKE_SOLID)),
+            machinome_command=(sys.executable, str(FAKE_MACHINOME)),
             floor_url="http://127.0.0.1:9123",
             floor_session="opaque-session",
         )
@@ -506,7 +506,7 @@ class ScopedProjectToolsTest(unittest.TestCase):
         process = subprocess.Popen(
             mcp_command(
                 self.project,
-                (sys.executable, str(FAKE_SOLID)),
+                (sys.executable, str(FAKE_MACHINOME)),
                 floor_url="http://127.0.0.1:9123",
                 floor_session="opaque-session",
                 skills=self.skill_registry(),
@@ -534,14 +534,14 @@ class ScopedProjectToolsTest(unittest.TestCase):
             "initialize",
             {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}},
         )
-        self.assertEqual(initialized["result"]["serverInfo"]["name"], "libresolid-studio-floor-tools")
+        self.assertEqual(initialized["result"]["serverInfo"]["name"], "machinome-studio-floor-tools")
         listed = rpc(2, "tools/list")
         self.assertEqual({tool["name"] for tool in listed["result"]["tools"]}, set(TOOL_NAMES))
         image = rpc(3, "tools/call", {"name": "read_file", "arguments": {"path": "image.png"}})
         self.assertEqual(image["result"]["content"][0]["type"], "image")
         escaped = rpc(4, "tools/call", {"name": "read_file", "arguments": {"path": "../outside.txt"}})
         self.assertTrue(escaped["result"]["isError"])
-        skill = rpc(5, "tools/call", {"name": "load_skill", "arguments": {"name": "solid-node"}})
+        skill = rpc(5, "tools/call", {"name": "load_skill", "arguments": {"name": "machinome"}})
         self.assertFalse(skill["result"]["isError"])
         self.assertIn("MACHINING INSTRUCTIONS", skill["result"]["content"][0]["text"])
 
@@ -550,7 +550,7 @@ class ScopedProjectToolsTest(unittest.TestCase):
 
     def test_stdio_mcp_protocol_omits_skill_loading_without_a_registry(self) -> None:
         process = subprocess.Popen(
-            mcp_command(self.project, (sys.executable, str(FAKE_SOLID))),
+            mcp_command(self.project, (sys.executable, str(FAKE_MACHINOME))),
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

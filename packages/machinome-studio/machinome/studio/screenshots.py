@@ -65,7 +65,7 @@ def is_safe_screenshot(project_root: Path, model: str | None = None) -> bool:
 
 def refresh_project_screenshot(
     project_root: Path,
-    solid_command: Sequence[str],
+    machinome_command: Sequence[str],
     *,
     model: str | None = None,
     extra_environment: Mapping[str, str] | None = None,
@@ -84,12 +84,12 @@ def refresh_project_screenshot(
             existing = _existing_bytes(target)
             if existing is _UNSAFE:
                 return ScreenshotResult(warning=f"{relative} is not a regular non-symlink file")
-            with tempfile.TemporaryDirectory(prefix="libresolid-studio-screenshot-") as temporary:
+            with tempfile.TemporaryDirectory(prefix="machinome-studio-screenshot-") as temporary:
                 output = Path(temporary) / SCREENSHOT_NAME
                 env = {**os.environ, **dict(extra_environment or {})}
                 result = subprocess.run(
                     [
-                        *solid_command,
+                        *machinome_command,
                         "snapshot",
                         *([model] if model else ()),
                         "--renderer",

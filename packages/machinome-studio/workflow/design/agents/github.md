@@ -1,4 +1,4 @@
-repo: LibreSolid/libresolid-studio
+repo: machinome/machinome-studio
 branch: main
 path: floor/
 

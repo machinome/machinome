@@ -1,6 +1,6 @@
 // Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 // SPDX-License-Identifier: AGPL-3.0-only
-// Vendored from solid-node-viewer 0.2.0, viewer API 11 (viewer worktree
+// Vendored from machinome-viewer 0.2.0, viewer API 11 (viewer worktree
 // commit 644b504ca3431b8450ed98408d5e151cf7437ef5, branch
 // viewer-navigator), declaring API 10 -- the version this studio requires
 // (design D3, `adopt-the-viewer-navigator`). Only the `ViewerHandle` surface
@@ -11,7 +11,7 @@
 // since viewer API 8 (`run-in-the-worker`), below the API 10 this studio
 // requires, so declaring it raises nothing.
 type ViewerView = unknown;
-export const SOLID_NODE_VIEWER_API_VERSION: 10;
+export const MACHINOME_VIEWER_API_VERSION: 20;
 
 type AssemblyPath = readonly string[];
 
@@ -92,7 +92,7 @@ type NavigatorHandle = {
 
 declare global {
   interface Window {
-    SolidNodeWidget: {
+    MachinomeViewer: {
       apiVersion: number;
       mount(target: HTMLElement, sourceUrl: string, options: ViewerOptions): Promise<ViewerHandle>;
       mountNavigator(target: HTMLElement | string, viewer: ViewerHandle, options?: NavigatorOptions): NavigatorHandle;

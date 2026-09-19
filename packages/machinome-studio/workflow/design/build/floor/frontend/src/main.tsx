@@ -6,7 +6,7 @@ import type { Monaco, OnMount } from "@monaco-editor/react";
 import { createRoot } from "react-dom/client";
 import "./monaco";
 import "./styles.css";
-import type { AssemblyNode, AssemblyPath, ViewerHandle, ViewerView } from "./solid-node-widget";
+import type { AssemblyNode, AssemblyPath, ViewerHandle, ViewerView } from "./machinome-viewer";
 
 type AgentState = "waiting" | "active";
 
@@ -179,9 +179,9 @@ function FunctionalModel({ artifact, reconnect, buildError, project, onAssemblyC
       enqueue(async () => {
         if (disposed || handle.current) return;
         try {
-          if (!window.SolidNodeWidget) throw new Error("the framework viewer is unavailable");
+          if (!window.MachinomeViewer) throw new Error("the framework viewer is unavailable");
           const prefix = `/projects/${encodeURIComponent(project)}/artifacts/`;
-          const mountedHandle = await window.SolidNodeWidget.mount(target, `${prefix}viewer.json`, {
+          const mountedHandle = await window.MachinomeViewer.mount(target, `${prefix}viewer.json`, {
             baseUrl: prefix,
             animation: "toggle",
             view: view.current,
@@ -557,17 +557,17 @@ function relativeTime(value: string | null) {
 }
 
 function loadViewer(project: string) {
-  if (window.SolidNodeWidget) return Promise.resolve();
+  if (window.MachinomeViewer) return Promise.resolve();
   return new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>("script[data-solid-node-viewer]");
+    const existing = document.querySelector<HTMLScriptElement>("script[data-machinome-viewer]");
     if (existing) {
       existing.addEventListener("load", () => resolve(), { once: true });
       existing.addEventListener("error", () => reject(new Error("the framework viewer is unavailable")), { once: true });
       return;
     }
     const script = document.createElement("script");
-    script.dataset.solidNodeViewer = "true";
-    script.src = `/projects/${encodeURIComponent(project)}/viewer/solid-widget.js`;
+    script.dataset.machinomeViewer = "true";
+    script.src = `/projects/${encodeURIComponent(project)}/viewer/machinome-viewer.js`;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error("the framework viewer is unavailable"));
     document.head.append(script);
@@ -698,7 +698,7 @@ function Hub() {
 
   return <main className={`hub-shell ${sheetOpen ? "sheet-visible" : ""}`}>
     <header className="workspace-titlebar">
-      <div className="workspace-title"><span className="shop-mark" aria-hidden="true" /><span>LibreSolid Studio</span></div>
+      <div className="workspace-title"><span className="shop-mark" aria-hidden="true" /><span>Machinome Studio</span></div>
       <p className="workspace-run">Shop is {shopOpen ? "open" : "closed"}</p>
     </header>
     <div className="hub-body">
@@ -1558,7 +1558,7 @@ function Workspace({ project }: { project: string }) {
       <header className="workspace-titlebar">
         <div className="workspace-title">
           <span className="shop-mark" aria-hidden="true" />
-          <span>LibreSolid Studio / {project}</span>
+          <span>Machinome Studio / {project}</span>
         </div>
         <div className="title-actions"><p className="workspace-run" aria-live="polite">{shopOpen && run ? `${run.profile_id} · open` : `Shop is ${shopOpen ? "open" : "closed"}`}</p><button className="close-project" onClick={() => void closeProject()}>Close project</button></div>
       </header>

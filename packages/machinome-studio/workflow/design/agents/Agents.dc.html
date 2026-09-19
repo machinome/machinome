@@ -25,7 +25,7 @@
   <header style="display:flex;align-items:center;justify-content:space-between;min-width:0;background:#14171c;border-bottom:1px solid #262b33;color:#c3c8d1;padding:0 12px;">
     <div style="display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;">
       <span style="display:block;width:11px;height:11px;border-radius:3px;background:#e0a350;"></span>
-      <span>LibreSolid Studio / bracket-assembly</span>
+      <span>Machinome Studio / bracket-assembly</span>
     </div>
     <div style="display:flex;align-items:center;gap:12px;">
       <p style="margin:0;color:#8b929e;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">fordesmac · open</p>
@@ -287,7 +287,7 @@ const MODELS = {
 const RESOLVED_TOOLS = {
   Read: ["read_file", "stat"], Glob: ["list_dir", "find_files"], Grep: ["search_content"],
   Write: ["write_file", "delete_file", "move_file", "make_dir"], Edit: ["edit_file", "apply_patch"],
-  Bash: ["git_status", "git_diff", "git_log", "git_show", "git_head", "git_add", "git_commit", "solid_build", "solid_test", "solid_snapshot", "floor_assign", "floor_direction", "floor_acknowledge", "floor_report", "floor_complete"],
+  Bash: ["git_status", "git_diff", "git_log", "git_show", "git_head", "git_add", "git_commit", "machinome_build", "machinome_test", "machinome_snapshot", "floor_assign", "floor_direction", "floor_acknowledge", "floor_report", "floor_complete"],
   WebSearch: [], WebFetch: [],
 };
 
@@ -324,7 +324,7 @@ const SESSIONS = {
     state: "active", headerState: "active · awaiting two reports", tokens: "38k / 200k context",
     entries: [
       { t: "08:41:58", k: "message", label: "MAKER", text: "The bracket is 14 g over budget and the fixture plate slot is tight. Sort both before the print run." },
-      { t: "08:42:04", k: "tool", tool: "read_file", target: "pyproject.toml", status: "ok", detail: '{ "path": "pyproject.toml" }\n→ [tool.libresolid-studio] profile = "fordesmac"\n→ 3 agent selections declared' },
+      { t: "08:42:04", k: "tool", tool: "read_file", target: "pyproject.toml", status: "ok", detail: '{ "path": "pyproject.toml" }\n→ [tool.machinome-studio] profile = "fordesmac"\n→ 3 agent selections declared' },
       { t: "08:42:09", k: "tool", tool: "floor_assign", target: "designer · DES-14", status: "accepted", detail: '{ "recipient": "designer", "assignment_id": "DES-14",\n  "body": "Reduce the bracket web to 4 mm and re-check M4 boss clearance." }\n→ acknowledged 08:42:12' },
       { t: "08:42:10", k: "tool", tool: "floor_assign", target: "machinist · MAC-7", status: "accepted", detail: '{ "recipient": "machinist", "assignment_id": "MAC-7",\n  "body": "Open the clamp slot to 8.6 mm and re-run the fixture tests." }\n→ acknowledged 08:42:15' },
       { t: "08:43:22", k: "message", label: "REPORT · MAC-7", meta: "machinist → foreman", text: "Clamp slot at 8.6 mm, fixture tests pass. Committed as 9c41f0e." },
@@ -339,14 +339,14 @@ const SESSIONS = {
       { t: "08:42:13", k: "tool", tool: "read_file", target: "parts/bracket.py", status: "168 lines", detail: '{ "path": "parts/bracket.py" }\n→ 168 lines · revision 4f1a9c' },
       { t: "08:42:19", k: "tool", tool: "search_content", target: '"web_thickness"', status: "3 matches", detail: '{ "query": "web_thickness", "path": "parts" }\n→ parts/bracket.py:41\n→ parts/bracket.py:57\n→ tests/test_bracket.py:22' },
       { t: "08:42:31", k: "diff", tool: "edit_file", file: "parts/bracket.py", stat: "+2 −2", lines: DIFF_BRACKET_A },
-      { t: "08:42:36", k: "tool", tool: "solid_build", target: "assembly.py", status: "failed", failed: true, detail: "→ exit 1 · 1.9 s\n→ errors.json written" },
-      { t: "08:42:36", k: "error", text: "solid_build failed — parts/bracket.py:47 boss clearance 0.42 mm is below the 0.60 mm minimum for M4 heat-set inserts." },
+      { t: "08:42:36", k: "tool", tool: "machinome_build", target: "assembly.py", status: "failed", failed: true, detail: "→ exit 1 · 1.9 s\n→ errors.json written" },
+      { t: "08:42:36", k: "error", text: "machinome_build failed — parts/bracket.py:47 boss clearance 0.42 mm is below the 0.60 mm minimum for M4 heat-set inserts." },
       { t: "08:42:52", k: "message", label: "DESIGNER", text: "Thinning the web pulled the boss shell in with it. Holding the boss wall at 2.0 mm and letting the fillet absorb the change." },
       { t: "08:43:04", k: "diff", tool: "apply_patch", file: "parts/bracket.py", stat: "+2 −1", lines: DIFF_BRACKET_B },
-      { t: "08:43:11", k: "tool", tool: "solid_build", target: "assembly.py", status: "ok · viewer.json", detail: "→ 3 artifacts refreshed · 2.8 s\n→ mass 186 g (−14 g)" },
-      { t: "08:43:26", k: "tool", tool: "solid_test", target: "tests/test_bracket.py", status: "12 passed", detail: "→ 12 passed, 0 failed · 4.1 s" },
+      { t: "08:43:11", k: "tool", tool: "machinome_build", target: "assembly.py", status: "ok · viewer.json", detail: "→ 3 artifacts refreshed · 2.8 s\n→ mass 186 g (−14 g)" },
+      { t: "08:43:26", k: "tool", tool: "machinome_test", target: "tests/test_bracket.py", status: "12 passed", detail: "→ 12 passed, 0 failed · 4.1 s" },
       { t: "08:43:44", k: "message", label: "REPORT · DES-14", meta: "designer → foreman", text: "Web is 4 mm, boss wall held at 2.0 mm, clearance 0.71 mm. Mass down 14 g. Fixture plate untouched." },
-      { t: "08:44:01", k: "running", tool: "solid_snapshot", target: "assembly.py" },
+      { t: "08:44:01", k: "running", tool: "machinome_snapshot", target: "assembly.py" },
     ],
   },
   machinist: {
@@ -355,7 +355,7 @@ const SESSIONS = {
       { t: "08:42:15", k: "message", label: "ASSIGNMENT · MAC-7", meta: "foreman → machinist", text: "Open the clamp slot to 8.6 mm and re-run the fixture tests." },
       { t: "08:42:20", k: "tool", tool: "read_file", target: "parts/fixture_plate.py", status: "94 lines", detail: '{ "path": "parts/fixture_plate.py" }\n→ 94 lines · revision 771be2' },
       { t: "08:42:44", k: "diff", tool: "edit_file", file: "parts/fixture_plate.py", stat: "+1 −1", lines: DIFF_PLATE },
-      { t: "08:42:58", k: "tool", tool: "solid_test", target: "tests/test_fixture.py", status: "8 passed", detail: "→ 8 passed, 0 failed · 2.2 s" },
+      { t: "08:42:58", k: "tool", tool: "machinome_test", target: "tests/test_fixture.py", status: "8 passed", detail: "→ 8 passed, 0 failed · 2.2 s" },
       { t: "08:43:14", k: "tool", tool: "git_commit", target: "9c41f0e", status: "committed", detail: '{ "message": "machinist: open clamp slot to 8.6 mm" }\n→ 9c41f0e · 1 file changed' },
       { t: "08:43:22", k: "message", label: "REPORT · MAC-7", meta: "machinist → foreman", text: "Clamp slot at 8.6 mm, fixture tests pass. Committed as 9c41f0e." },
     ],

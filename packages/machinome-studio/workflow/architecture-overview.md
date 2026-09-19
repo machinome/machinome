@@ -1,11 +1,27 @@
-# LibreSolid Studio architecture overview
+# Machinome Studio architecture overview
 
-LibreSolid Studio is a local agent harness for mechanical CAD projects. A
+Machinome Studio is a local agent harness for mechanical CAD projects. A
 human pilot owns intent and consequential choices; the runtime opens a
 project hub over one working folder and can hold several isolated project
 sessions, each with a repository-owned validated team profile. `AGENTS.md`
 governs how this repository is changed. This document describes the running
 system.
+
+## Product identity and ecosystem boundary
+
+Machinome means the source code of one machine and, collectively, the body of
+source code for machines. Machinome Studio is the experimental local harness;
+the independently versioned framework, viewer, and mechanics repositories are
+`machinome-framework`, `machinome-viewer`, and `machinome-mechanics` under the
+Machinome organization (ADR 0031). Their Python distributions are `machinome`,
+`machinome-viewer`, and `machinome-mechanics`. The studio invokes the
+`machinome` command from its own Python environment and finds project runtime
+choices only under `[tool.machinome-studio]`; a former
+`[tool.libresolid-studio]` table is a migration error, never silently ignored.
+
+The studio and the two optional packages remain unpublished. Historical ADRs,
+archived changes, and past release evidence retain their former names; current
+source, contracts, workspace paths, and guidance use the Machinome identity.
 
 ## Project hub and sessions
 
@@ -25,7 +41,7 @@ for a nested project, `3DPrintedClocks/wall_clock_01` for one declared model
 directory. A directory that is not a repository but holds one anywhere below it
 is a folder of those projects; a repository whose manifest declares more than
 one model is a folder of those models, read straight from `pyproject.toml`
-rather than through `solid models`; a repository declaring one model or none is
+rather than through `machinome models`; a repository declaring one model or none is
 a single project. Every folder also reports the entry path and preview revision
 of up to three entries, so its card can stand on those pictures rather than a
 folder glyph: a multi-model project reports the first three models it declares,
@@ -80,14 +96,14 @@ When a project is opened, the registry makes one side-effect-free read of its
 `pyproject.toml`, then loads `profiles/<id>/profile.toml` from the running shop
 package resources. A source-worktree launch therefore exercises that worktree;
 an installed launch uses its installed resources and requires no Git checkout.
-The project's `[tool.libresolid-studio]` `profile` value selects it;
+The project's `[tool.machinome-studio]` `profile` value selects it;
 otherwise the shop uses `fordesmac`. The launcher provides no override. A
 profile is strict trusted configuration: it declares the
 human label, one user-facing agent, standing roster, direct or delegated work
 mode, prompt paths, allowed skills, communication edges, and Claude
 runtime defaults. The option overrides a project declaration for one run
 without modifying it. The project may select backend, provider, model, and
-reasoning level per agent under `[tool.libresolid-studio.agents]`; the profile
+reasoning level per agent under `[tool.machinome-studio.agents]`; the profile
 tool policy remains non-overridable and is the whole authority a Claude session
 holds, so no profile or project declaration can widen it or disable permission
 checking. OpenCode has no profile
@@ -259,7 +275,7 @@ does permit replacement of a pristine process. These two adapters consume one re
 runtime and never parse project or profile files or load global role adapters.
 
 The floor MCP server is rooted at the exact active project. Every path-bearing
-filesystem, Git, and solid-node operation resolves and rejects escapes before
+filesystem, Git, and machinome operation resolves and rejects escapes before
 acting. It exposes text and raster reads, bounded writes, non-destructive Git
 and commit operations, finite build/test, and temporary image-returning
 snapshots. Its broker lifecycle wrappers can assign, direct, acknowledge,
@@ -359,7 +375,7 @@ the published viewer document, not by rendering and comparing afterwards — or
 when the project has no valid screenshot yet, extending to opening the rule
 floor-mediated commits already follow. The framework viewer bundle is resolved
 once per running shop rather than per open (ADR 0028); the framework reports
-it from the separately installed `solid-node-viewer` package, and an
+it from the separately installed `machinome-viewer` package, and an
 installation without that package fails the open with the framework's remedy,
 installing the `viewer` extra. Where the project publishes is the
 framework's answer too: preparation asks it for the build directory of the
@@ -421,13 +437,13 @@ single-model project, or `screenshots/<model>.png` for one declared model of a
 project that has several. The screenshot is
 a fixed 640x360 preview of that entry's own model, rendered through the selected
 CLI after an observed successful build and before a floor-mediated commit. It
-goes through `solid snapshot --renderer web`, so a workspace needs the viewer's
+goes through `machinome snapshot --renderer web`, so a workspace needs the viewer's
 `snapshot` extra and its Chromium; `scripts/setup` installs both, and a refusal
 is logged rather than swallowed. Rendering and
 staging are best-effort: they never turn a valid build or Git commit into a
 failure. Every session owns a filesystem observer with separate source and
 artifact handlers. Qualifying Python changes outside `_build` settle into one
-`solid build`, regardless of whether the writer is an agent, the Code
+`machinome build`, regardless of whether the writer is an agent, the Code
 workspace, or another local process. Source create, modify, move, and delete
 events also become project-scoped browser invalidations after the watcher
 re-evaluates Git visibility; they carry paths and operations, never content or
@@ -443,7 +459,7 @@ defines the working set as tracked plus non-ignored untracked files; `.git`,
 `_build`, and build-staging families are always excluded. Directory rows are
 synthesized from those paths. The listing also names the project-relative file
 the session's model is declared in, read at preparation from the reference
-`solid models --json` reports and resolved to a file inside the project; the
+`machinome models --json` reports and resolved to a file inside the project; the
 browser opens that file once per session so the Code area starts on the
 assembly being shown. A reference that resolves to no file is not an error. Read and save revalidate Git visibility, reject
 escapes, symlinks, and non-regular files, and accept at most one MiB of UTF-8
@@ -465,7 +481,7 @@ updates the separate build-failure banner. A failed targeted request reports
 beside the retained model and the next publication retries normally; the browser
 does not remount the viewer or interpret artifact contents. The navigator is
 themed by the workspace's own stylesheet, entirely through the viewer's
-published `--solid-nav-*` custom properties and its two named classes for the
+published `--machinome-nav-*` custom properties and its two named classes for the
 two accents a shared variable cannot carry; the browser specifies none of the
 navigator's tree, keyboard, or visibility behaviour and holds no assembly
 state of its own — no focused root, no hidden set, no expansion — and
@@ -533,9 +549,9 @@ recovery log.
 Each `<projects-dir>/<name>/` directory is an independent Git repository. The
 required catalogue directory is an external runtime input and may be unrelated
 to the shop installation. In this repository's development workspace, the
-framework checkout belongs under `solid-node/`; framework worktrees belong
-under `solid-node/WTs/`; the browser viewer's independent repository belongs
-under `solid-node-viewer/` (the framework's `viewer` extra, AGPL-3.0-only,
+framework checkout belongs under `machinome-framework/`; framework worktrees belong
+under `machinome-framework/WTs/`; the browser viewer's independent repository belongs
+under `machinome-viewer/` (the framework's `viewer` extra, AGPL-3.0-only,
 with its own OpenSpec and decision records); shop worktrees belong under
 `WTs/`. Runtime agents use
 only their session's verified project root plus their selected profile contract.

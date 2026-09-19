@@ -97,7 +97,7 @@ copy. Every artifact is written to a temporary name in the same directory and
 `os.replace`d into place, so a reader observes an artifact complete or not at
 all, and a reader that has already opened one keeps reading it to completion.
 
-Concurrent builders — the floor, `solid test`, `solid develop`, several agents —
+Concurrent builders — the floor, `machinome test`, `machinome develop`, several agents —
 serialise on a build lock held in the project. A builder that acquires the lock
 and finds the current publication already covers its triggering change skips
 building and trusts the result.
@@ -148,7 +148,7 @@ Rejected: a broker, daemon, or WebSocket lock. The framework had one and
 removed it deliberately as a platform feature. `flock` adds no protocol and no
 process, and the kernel releases it on death, so there is no stale-lock reaping.
 Dedup rule: if the publication already covers the acquirer's triggering change,
-skip. The lock covers the build only — `solid test` releases before running
+skip. The lock covers the build only — `machinome test` releases before running
 tests, so a long sweep never blocks the maker's refresh.
 
 **D3 — The event names the artifact; no diff on the wire.**
@@ -167,7 +167,7 @@ Defect A's failed fetch from a routine node removal. Not forwarding leaves
 **D5 — The viewer owns the targeted update.**
 Rejected: the shop computing the update and driving fine-grained widget
 mutations. The manifest, `mtime` and `operations` are the framework's data
-model, and `solid develop` needs the identical behaviour — it reloads coarsely
+model, and `machinome develop` needs the identical behaviour — it reloads coarsely
 today. One implementation upstream serves both consumers and shrinks the shop.
 
 **D6 — Geometry staleness is keyed on `(model path, mtime)` together.**
@@ -188,7 +188,7 @@ documents today.
 
 Three, in the repositories and subsystems that own the decisions.
 
-**solid-node, BUILD — per-file atomic publication and build mutual exclusion.**
+**machinome, BUILD — per-file atomic publication and build mutual exclusion.**
 Covers D1 and D2 as one decision, because their correctness is joint: a single
 directory is safe only given rename-based writes and a lock, and splitting them
 would let one land without the other, which is the corrupting case.
@@ -208,12 +208,12 @@ It must argue two things head-on rather than by implication:
 It supersedes ADR-032, whose own origin line records that the shop drove it by
 measurement — the same path this sprint takes.
 
-**solid-node, VIEWER-WEB — targeted artifact update in the viewer widget.**
+**machinome, VIEWER-WEB — targeted artifact update in the viewer widget.**
 Covers D5 and D6. A separate record because the framework files ADRs by
-subsystem, because `solid develop` consumes it independently of any shop
+subsystem, because `machinome develop` consumes it independently of any shop
 concern, and because a shop record cannot decide a framework interface.
 
-**libresolid-studio — the floor's model event pipeline.**
+**machinome-studio — the floor's model event pipeline.**
 Covers D3, D4 and D8. Amends ADR-0010, which settled that the shop watches and
 rebuilds rather than asking an agent to: that holds, but the *event source*
 moves from the floor's own build completion to observed build output, so a
@@ -225,11 +225,11 @@ Python.
 
 | ID | Repository | Change | Requires |
 |---|---|---|---|
-| F1 | `solid-node` | `build-mutual-exclusion` | none |
-| F2 | `solid-node` | `per-file-build-publication` | F1 |
-| F3 | `solid-node` | `viewer-targeted-update` | none |
-| S1 | `libresolid-studio` | `floor-artifact-event-pipeline` | F2 |
-| S2 | `libresolid-studio` | `floor-in-place-model-updates` | F3, S1 |
+| F1 | `machinome` | `build-mutual-exclusion` | none |
+| F2 | `machinome` | `per-file-build-publication` | F1 |
+| F3 | `machinome` | `viewer-targeted-update` | none |
+| S1 | `machinome-studio` | `floor-artifact-event-pipeline` | F2 |
+| S2 | `machinome-studio` | `floor-in-place-model-updates` | F3, S1 |
 
 F1 before F2 is not a preference. Under set-atomic publication a race caused a
 lost update; under a single directory two builders write the same files and
@@ -255,7 +255,7 @@ below is written so that it cannot.
    viewer recovers on the next publication with no page reload.
 4. **The newest source wins.** Race two builds with a stale one finishing last;
    the published model matches the newest source.
-5. **A concurrent reader is not torn.** `solid test` reading artifacts while
+5. **A concurrent reader is not torn.** `machinome test` reading artifacts while
    another builder republishes them completes against consistent data.
 6. **Placement costs nothing.** An operations-only or colour-only edit produces
    no geometry refetch.
@@ -272,7 +272,7 @@ below is written so that it cannot.
   much it updates, not what a model looks like.
 - Remote or multi-client floors. The shop is local and attended; the
   architecture deliberately optimises for one browser.
-- Retiring `solid develop`. It becomes a lock participant, nothing more.
+- Retiring `machinome develop`. It becomes a lock participant, nothing more.
 - The shop workspace redesign already on `main`.
 
 ## 9. Risks
@@ -285,7 +285,7 @@ below is written so that it cannot.
   the published build directory, and the staging copy that may have carried it
   forward is being removed. F2 must prove its lifecycle rather than inherit it.
 - **R3 — Most of the sprint is upstream.** Four of five cycles' risk sits in
-  `solid-node`, and framework integration needs explicit pilot authority that
+  `machinome`, and framework integration needs explicit pilot authority that
   sprint membership does not grant.
 - **R4 — The superseded worktree.** `make-shop-floor-event-driven` describes a
   source-watching, floor-building, full-reload design this PRD rejects. Its

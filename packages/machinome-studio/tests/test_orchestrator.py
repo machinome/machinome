@@ -47,7 +47,7 @@ from floor.preparation import PreparationError, ProjectAgentRuntime, ProjectRunt
 from floor.profiles import load_profile, resolve_profile_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
-FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
+FAKE_MACHINOME = ROOT / "tests" / "fixtures" / "fake_machinome.py"
 def _resolved_profile(profile_id: str, backend: str = "claude"):
     profile = load_profile(profile_id, shop_root=ROOT)
     agents = {}
@@ -781,8 +781,8 @@ class OrchestratorShutdownAcceptanceTest(unittest.TestCase):
                 str(port),
                 "--projects-dir",
                 str(project_home),
-                "--solid-command",
-                str(FAKE_SOLID),
+                "--machinome-command",
+                str(FAKE_MACHINOME),
             ],
             cwd=launch_directory,
             stdout=subprocess.PIPE,
@@ -831,8 +831,8 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         self.project = self.home / "engine"
         (self.project / "root").mkdir(parents=True)
         (self.project / "root" / "__init__.py").write_text("# model\n")
-        (self.project / ".gitignore").write_text("_build/\n.fake-solid-builds\n")
-        (self.project / "pyproject.toml").write_text('[tool.libresolid-studio]\nprofile = "builder"\n')
+        (self.project / ".gitignore").write_text("_build/\n.fake-machinome-builds\n")
+        (self.project / "pyproject.toml").write_text('[tool.machinome-studio]\nprofile = "builder"\n')
         subprocess.run(["git", "init", "-q", "-b", "main", str(self.project)], check=True)
         subprocess.run(["git", "-C", str(self.project), "add", "--all"], check=True)
         subprocess.run([
@@ -850,7 +850,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         self.registry = SessionRegistry(
             self.home,
             shop_root=ROOT,
-            solid_command=(sys.executable, str(FAKE_SOLID)),
+            machinome_command=(sys.executable, str(FAKE_MACHINOME)),
             backend_factory=factory,
         )
         self.addAsyncCleanup(self.registry.close_all)
@@ -924,7 +924,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
             self.registry.unsubscribe_hub(subscriber)
 
     async def test_profile_failure_is_fatal_before_preparation_and_leaves_no_session(self) -> None:
-        (self.project / "pyproject.toml").write_text('[tool.libresolid-studio]\nprofile = "missing-profile"\n')
+        (self.project / "pyproject.toml").write_text('[tool.machinome-studio]\nprofile = "missing-profile"\n')
         with patch("floor.sessions.prepare_project") as prepare:
             await self.registry.request_open("engine")
             self.assertIsNone(await self.registry.wait_until_settled("engine"))
@@ -1292,7 +1292,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
             ROOT,
             project=self.project,
             command=(sys.executable, str(FAKE_CLAUDE_CLI)),
-            solid_command=("/work/.venv/bin/solid",),
+            machinome_command=("/work/.venv/bin/machinome",),
             session_id="opaque-session",
         )
     def context(self, role: str) -> RoleContext:
@@ -1356,7 +1356,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(argv[argv.index("--model") + 1], "sonnet")
         granted = argv[argv.index("--allowedTools") + 1]
         self.assertIn("mcp__floor__read_file", granted)
-        self.assertIn("mcp__floor__solid_build", granted)
+        self.assertIn("mcp__floor__machinome_build", granted)
         self.assertNotIn("Bash", granted)
         self.assertEqual(argv[argv.index("--tools") + 1], "")
         self.assertNotIn("--safe-mode", argv)
@@ -1473,7 +1473,7 @@ class ClaudeBackendAcceptanceTest(unittest.IsolatedAsyncioTestCase):
             ROOT,
             project=self.project,
             command=(sys.executable, str(FAKE_CLAUDE_CLI)),
-            solid_command=("/work/.venv/bin/solid",),
+            machinome_command=("/work/.venv/bin/machinome",),
             session_id="opaque-session",
             startup_grace=0.05,
             mcp_readiness_timeout=0.5,

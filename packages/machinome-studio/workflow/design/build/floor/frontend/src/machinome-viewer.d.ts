@@ -1,7 +1,7 @@
 // Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 // SPDX-License-Identifier: AGPL-3.0-only
 type ViewerView = unknown;
-export const SOLID_NODE_VIEWER_API_VERSION: 4;
+export const MACHINOME_VIEWER_API_VERSION: 4;
 
 type AssemblyPath = readonly string[];
 
@@ -36,7 +36,7 @@ type ViewerHandle = {
 
 declare global {
   interface Window {
-    SolidNodeWidget: {
+    MachinomeViewer: {
       apiVersion: number;
       mount(target: HTMLElement, sourceUrl: string, options: ViewerOptions): Promise<ViewerHandle>;
     };

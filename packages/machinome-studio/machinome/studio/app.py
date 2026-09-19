@@ -766,7 +766,7 @@ def create_app(working_folder: Path, *, registry: object) -> FastAPI:
         finally:
             await registry.close_all()  # type: ignore[attr-defined]
 
-    app = FastAPI(title="libresolid-studio", lifespan=lifespan)
+    app = FastAPI(title="machinome-studio", lifespan=lifespan)
     app.state.working_folder = working_folder.resolve()
     app.state.registry = registry
     app.mount("/assets", StaticFiles(directory=STATIC_ROOT / "assets"), name="assets")
@@ -828,7 +828,7 @@ def create_app(working_folder: Path, *, registry: object) -> FastAPI:
     async def detect_backends() -> dict[str, object]:
         return await backends()
 
-    @app.get("/api/sessions/{session_id}/viewer/solid-widget.js")
+    @app.get("/api/sessions/{session_id}/viewer/machinome-viewer.js")
     async def viewer(session_id: str) -> FileResponse:
         bundle = session(session_id).prepared.viewer_bundle
         if bundle is None or not bundle.is_file():

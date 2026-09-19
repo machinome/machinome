@@ -3,9 +3,9 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "libresolid-studio"
+name = "machinome-studio"
 version = "0.1.0"
-description = "LibreSolid Studio mechanical CAD agent harness"
+description = "Machinome Studio mechanical CAD agent harness"
 license = "AGPL-3.0-only"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
@@ -18,5 +18,10 @@ dependencies = [
 
 [tool.setuptools.package-data]
 floor = ["static/**"]
+
+[tool.setuptools.packages.find]
+include = ["floor", "floor.*"]
+namespaces = false
+
 [project.optional-dependencies]
 e2e = ["playwright==1.61.0"]

@@ -1,4 +1,0 @@
-interface:
-  display_name: "solid-node API"
-  short_description: "Complete public API for solid-node projects"
-  default_prompt: "Use $solid-node-api to design or implement against the complete public solid-node contract."

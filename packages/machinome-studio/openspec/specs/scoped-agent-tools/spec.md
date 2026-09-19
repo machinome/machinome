@@ -93,7 +93,7 @@ never waits for a confirmation nobody can give.
 ### Requirement: Runtime location independence
 The shop SHALL treat the caller-supplied `--projects-dir` as the exact and sole
 project catalogue, SHALL load trusted shop resources from the running shop
-package or source worktree, SHALL invoke the solid-node CLI installed in the
+package or source worktree, SHALL invoke the machinome CLI installed in the
 same Python environment as the running shop, and SHALL NOT require or discover
 a Git checkout to start the hub or its backend processes.
 
@@ -115,7 +115,7 @@ backend behavior SHALL require or discover an ambient `PATH` executable.
   implementation without resolving or reading a primary checkout
 
 #### Scenario: Ambient PATH contains a different solid executable
-- **WHEN** the shop's Python environment contains its selected solid-node CLI
+- **WHEN** the shop's Python environment contains its selected machinome CLI
   and an unrelated or broken `solid` executable appears earlier on `PATH`
 - **THEN** project preparation and agent tools invoke the CLI from the shop's
   Python environment
@@ -263,30 +263,30 @@ The tool set SHALL provide `git_status`, `git_diff`, `git_log`, `git_show`,
   rebase operation through the tool set
 - **THEN** no such tool exists to call
 
-### Requirement: solid-node build and test tools
-The tool set SHALL provide `solid_build` and `solid_test`, matching the
-`solid build` and `solid test` CLI commands' arguments and exit semantics.
+### Requirement: machinome build and test tools
+The tool set SHALL provide `machinome_build` and `machinome_test`, matching the
+`machinome build` and `machinome test` CLI commands' arguments and exit semantics.
 
 #### Scenario: Build failure is reported, not swallowed
-- **WHEN** `solid_build` is called against a project whose model fails to
+- **WHEN** `machinome_build` is called against a project whose model fails to
   build
 - **THEN** the tool reports nonzero/failed status and the failure detail,
   without publishing a broken model over a previous good one
 
-### Requirement: solid-node snapshot tool returns image content directly
-The tool set SHALL provide `solid_snapshot`, accepting the same rendering
-options as the `solid snapshot` CLI command, returning the rendered image as
+### Requirement: machinome snapshot tool returns image content directly
+The tool set SHALL provide `machinome_snapshot`, accepting the same rendering
+options as the `machinome snapshot` CLI command, returning the rendered image as
 direct tool output, and SHALL NOT leave any generated file inside the project
 tree.
 
 #### Scenario: Snapshot does not appear in git status
-- **WHEN** `solid_snapshot` is called against a project with a clean working
+- **WHEN** `machinome_snapshot` is called against a project with a clean working
   tree
 - **THEN** the tool returns the rendered image content, and `git_status`
   afterward still reports a clean working tree
 
 #### Scenario: No output-path argument
-- **WHEN** `solid_snapshot` is called
+- **WHEN** `machinome_snapshot` is called
 - **THEN** it accepts rendering options (time, camera, image size,
   projection, color scheme, view flags, autocenter/viewall) but no `-o`/output
   path argument

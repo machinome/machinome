@@ -7,7 +7,7 @@ import { createRoot } from "react-dom/client";
 import { artifactUrl, BUILD_VOLUME, canonicalModel, fitsBuildEnvelope, parsePieces, type PrintedPiece } from "./build-data";
 import "./monaco";
 import "./styles.css";
-import type { ViewerHandle, ViewerView } from "./solid-node-widget";
+import type { ViewerHandle, ViewerView } from "./machinome-viewer";
 
 const BuildPieceViewer = lazy(() => import("./build-viewer").then((module) => ({ default: module.BuildPieceViewer })));
 
@@ -227,9 +227,9 @@ function FunctionalModel({ artifact, reconnect, buildError, session, onViewerCha
       enqueue(async () => {
         if (disposed || handle.current) return;
         try {
-          if (!window.SolidNodeWidget) throw new Error("the framework viewer is unavailable");
+          if (!window.MachinomeViewer) throw new Error("the framework viewer is unavailable");
           const prefix = `/api/sessions/${encodeURIComponent(session)}/artifacts/`;
-          const mountedHandle = await window.SolidNodeWidget.mount(target, `${prefix}viewer.json`, {
+          const mountedHandle = await window.MachinomeViewer.mount(target, `${prefix}viewer.json`, {
             baseUrl: prefix,
             animation: "toggle",
             view: view.current,
@@ -293,7 +293,7 @@ function AssemblyNavigator({ viewer }: { viewer: ViewerHandle | null }) {
   useEffect(() => {
     const target = host.current;
     if (target === null || viewer === null) return;
-    const widget = window.SolidNodeWidget;
+    const widget = window.MachinomeViewer;
     if (!widget || typeof widget.mountNavigator !== "function") return;
     const mounted = widget.mountNavigator(target, viewer, { label: "Assembly", fullAssembly: true });
     return () => mounted.dispose();
@@ -466,35 +466,35 @@ function relativeTime(value: string | null) {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-// Mirrors solid-node-widget.d.ts's `SOLID_NODE_VIEWER_API_VERSION`: that
+// Mirrors machinome-viewer.d.ts's `MACHINOME_VIEWER_API_VERSION`: that
 // declaration file has no runtime module of its own to import a value from
 // (it is types only), so the required version is duplicated here.
-const REQUIRED_VIEWER_API = 10;
+const REQUIRED_VIEWER_API = 20;
 
 function verifyLoadedViewer(): void {
-  const widget = window.SolidNodeWidget;
+  const widget = window.MachinomeViewer;
   if (!widget || widget.apiVersion < REQUIRED_VIEWER_API) {
     throw new Error("the framework viewer is unavailable");
   }
 }
 
 function loadViewer(session: string) {
-  if (window.SolidNodeWidget) {
+  if (window.MachinomeViewer) {
     try { verifyLoadedViewer(); return Promise.resolve(); } catch (error) { return Promise.reject(error); }
   }
   return new Promise<void>((resolve, reject) => {
     const settle = () => {
       try { verifyLoadedViewer(); resolve(); } catch (error) { reject(error as Error); }
     };
-    const existing = document.querySelector<HTMLScriptElement>("script[data-solid-node-viewer]");
+    const existing = document.querySelector<HTMLScriptElement>("script[data-machinome-viewer]");
     if (existing) {
       existing.addEventListener("load", settle, { once: true });
       existing.addEventListener("error", () => reject(new Error("the framework viewer is unavailable")), { once: true });
       return;
     }
     const script = document.createElement("script");
-    script.dataset.solidNodeViewer = "true";
-    script.src = `/api/sessions/${encodeURIComponent(session)}/viewer/solid-widget.js`;
+    script.dataset.machinomeViewer = "true";
+    script.src = `/api/sessions/${encodeURIComponent(session)}/viewer/machinome-viewer.js`;
     script.onload = settle;
     script.onerror = () => reject(new Error("the framework viewer is unavailable"));
     document.head.append(script);
@@ -692,7 +692,7 @@ function Hub({ folder }: { folder: string }) {
 
   return <main className={`hub-shell ${sheetOpen ? "sheet-visible" : ""}`}>
     <header className="workspace-titlebar">
-      <a className="workspace-title" {...linkProps("/")} title="All projects"><span className="shop-mark" aria-hidden="true" /><span>LibreSolid Studio</span></a>
+      <a className="workspace-title" {...linkProps("/")} title="All projects"><span className="shop-mark" aria-hidden="true" /><span>Machinome Studio</span></a>
       <p className="workspace-run">Shop is {shopOpen ? "open" : "closed"}</p>
     </header>
     <div className="hub-body">
@@ -1820,7 +1820,7 @@ function Workspace({ path: entryPath }: { path: string }) {
       <header className="workspace-titlebar">
         <div className="workspace-title">
           <span className="shop-mark" aria-hidden="true" />
-          <span><a className="workspace-home" {...linkProps("/")} title="All projects">LibreSolid Studio</a> / {entryPath}</span>
+          <span><a className="workspace-home" {...linkProps("/")} title="All projects">Machinome Studio</a> / {entryPath}</span>
         </div>
         <div className="title-actions"><p className="workspace-run" aria-live="polite">{opening ? "Opening…" : shopOpen && run ? `${run.profile_id} · open` : `Shop is ${shopOpen ? "open" : "closed"}`}</p><button className="close-project" onClick={() => void closeProject()}>Close project</button></div>
       </header>

@@ -37,7 +37,7 @@ class FloorEntrypointTest(unittest.TestCase):
                 # the OpenSpec CLI, before it binds a listener.
                 patch.dict(os.environ, {"PATH": os.environ.get("PATH", "")}, clear=True),
                 patch.object(sys, "argv", arguments),
-                patch.object(__main__, "default_solid_command", return_value=("solid",)),
+                patch.object(__main__, "default_machinome_command", return_value=("machinome",)),
                 patch.object(__main__, "SessionRegistry", return_value=object()),
                 patch.object(__main__, "create_app", return_value=object()),
                 patch.object(__main__.uvicorn, "run") as run,
@@ -52,7 +52,7 @@ class FloorEntrypointTest(unittest.TestCase):
             os.chdir(unrelated)
             try:
                 with (
-                    patch.object(sys, "argv", ["floor", "--projects-dir", str(folder), "--solid-command", "fake-solid"]),
+                    patch.object(sys, "argv", ["floor", "--projects-dir", str(folder), "--machinome-command", "fake-solid"]),
                     patch.object(__main__, "SessionRegistry", return_value=object()) as registry,
                     patch.object(__main__, "create_app", return_value=object()) as create_app,
                     patch.object(__main__.uvicorn, "run"),
@@ -65,7 +65,7 @@ class FloorEntrypointTest(unittest.TestCase):
             registry.call_args.kwargs["shop_root"],
             Path(__main__.__file__).resolve().parents[1],
         )
-        self.assertEqual(registry.call_args.kwargs["solid_command"], "fake-solid")
+        self.assertEqual(registry.call_args.kwargs["machinome_command"], "fake-solid")
         self.assertTrue(registry.call_args.kwargs["start_agents"] is False)
         self.assertEqual(create_app.call_args.args, (folder,))
 

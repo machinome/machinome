@@ -36,13 +36,13 @@ class RoleContractTest(unittest.TestCase):
         builder = (ROOT / "profiles" / "builder" / "builder.md").read_text()
         self.assertIn("deliberately\ndisassembled position", builder)
         self.assertIn("already-existing leaf", builder)
-        self.assertNotIn("solid develop --callback", builder)
+        self.assertNotIn("machinome develop --callback", builder)
         self.assertNotIn("assignment ID", builder.split("never self-assign", 1)[0])
 
     def test_machinist_uses_finite_builds_not_a_live_model_process(self) -> None:
         machinist = (ROOT / "profiles" / "fordesmac" / "machinist.md").read_text()
-        self.assertNotIn("solid develop", machinist)
-        self.assertIn("solid build", machinist)
+        self.assertNotIn("machinome develop", machinist)
+        self.assertIn("machinome build", machinist)
         self.assertIn('floor_report(sender="machinist", recipient="foreman"', machinist)
 
 

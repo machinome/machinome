@@ -4,7 +4,7 @@
 
 The server deliberately implements the small MCP JSON-RPC surface it needs
 instead of importing the Python MCP SDK.  The workspace venv also carries the
-solid-node CLI, whose pinned Uvicorn version conflicts with the SDK's runtime
+machinome CLI, whose pinned Uvicorn version conflicts with the SDK's runtime
 dependency.  Keeping this server stdio-only avoids changing that environment.
 """
 
@@ -52,7 +52,7 @@ GIT_TOOLS = (
     "git_status", "git_diff", "git_log", "git_show", "git_rev_parse_toplevel",
     "git_merge_base_is_ancestor", "git_head", "git_add", "git_commit",
 )
-SOLID_TOOLS = ("solid_build", "solid_test", "solid_snapshot")
+MACHINOME_TOOLS = ("machinome_build", "machinome_test", "machinome_snapshot")
 OPENSPEC_TOOLS = ("openspec_setup", "openspec_run")
 FLOOR_TOOLS = (
     "floor_assign", "floor_direction", "floor_acknowledge", "floor_report",
@@ -62,7 +62,7 @@ FLOOR_TOOLS = (
 # declared tool capabilities, so it belongs to no capability group below.
 SKILL_TOOL = "load_skill"
 TOOL_NAMES = (
-    FILESYSTEM_READ_TOOLS + FILESYSTEM_WRITE_TOOLS + GIT_TOOLS + SOLID_TOOLS
+    FILESYSTEM_READ_TOOLS + FILESYSTEM_WRITE_TOOLS + GIT_TOOLS + MACHINOME_TOOLS
     + FLOOR_TOOLS + OPENSPEC_TOOLS + (SKILL_TOOL,)
 )
 
@@ -74,7 +74,7 @@ PROFILE_TOOL_MAP: dict[str, tuple[str, ...]] = {
     "Grep": ("search_content",),
     "Write": ("write_file", "delete_file", "move_file", "make_dir"),
     "Edit": ("edit_file", "apply_patch"),
-    "Bash": GIT_TOOLS + SOLID_TOOLS + FLOOR_TOOLS,
+    "Bash": GIT_TOOLS + MACHINOME_TOOLS + FLOOR_TOOLS,
     # Its own capability: a role reaches the project's spec record only by
     # declaring it, never as a side effect of holding a shell or file surface.
     "OpenSpec": OPENSPEC_TOOLS,
@@ -130,7 +130,7 @@ def resolved_tool_names(profile_tools: str | tuple[str, ...]) -> tuple[str, ...]
 
 def mcp_command(
     project: Path,
-    solid_command: tuple[str, ...],
+    machinome_command: tuple[str, ...],
     *,
     model: str | None = None,
     python: str | None = None,
@@ -145,8 +145,8 @@ def mcp_command(
         "floor.mcp_server",
         "--project",
         str(project.resolve()),
-        "--solid-command-json",
-        json.dumps(solid_command),
+        "--machinome-command-json",
+        json.dumps(machinome_command),
     ]
     if model is not None:
         command.extend(("--model", model))
@@ -170,7 +170,7 @@ class ProjectTools:
         project: Path,
         *,
         model: str | None = None,
-        solid_command: tuple[str, ...] = ("solid",),
+        machinome_command: tuple[str, ...] = ("machinome",),
         floor_url: str | None = None,
         floor_session: str | None = None,
         skills: Mapping[str, Path] | None = None,
@@ -187,8 +187,8 @@ class ProjectTools:
         self.skills = {
             name: Path(path).resolve(strict=True) for name, path in (skills or {}).items()
         }
-        self.solid_command = tuple(solid_command)
-        if not self.solid_command:
+        self.machinome_command = tuple(machinome_command)
+        if not self.machinome_command:
             raise ValueError("solid command must not be empty")
         # Resolved on first use: startup already proved the CLI runs.
         self._openspec_command: tuple[str, ...] | None = None
@@ -798,7 +798,7 @@ class ProjectTools:
                 "screenshot.png was left as it is"
             )
             return result
-        screenshot = refresh_project_screenshot(self.root, self.solid_command, model=self.model)
+        screenshot = refresh_project_screenshot(self.root, self.machinome_command, model=self.model)
         warning = screenshot.warning
         preview = str(screenshot_path(self.root, self.model).relative_to(self.root))
         if is_safe_screenshot(self.root, self.model):
@@ -942,25 +942,25 @@ class ProjectTools:
             self._require_a_finished_change(vector)
         return self._run_openspec(vector)
 
-    # -- solid-node --------------------------------------------------
+    # -- machinome --------------------------------------------------
 
-    def solid_build(self, path: str | None = None) -> dict[str, Any]:
-        """Run `solid build`, returning its exit status and output."""
+    def machinome_build(self, path: str | None = None) -> dict[str, Any]:
+        """Run `machinome build`, returning its exit status and output."""
         reference = self._reference(path)
-        result = self._run([*self.solid_command, "build", *([reference] if reference else [])])
+        result = self._run([*self.machinome_command, "build", *([reference] if reference else [])])
         if result["ok"]:
-            screenshot = refresh_project_screenshot(self.root, self.solid_command, model=self.model)
+            screenshot = refresh_project_screenshot(self.root, self.machinome_command, model=self.model)
             if screenshot.warning:
                 result["screenshot_warning"] = screenshot.warning
         return result
 
-    def solid_test(
+    def machinome_test(
         self,
         path: str | None = None,
         failfast: bool = False,
         kernel: str | None = None,
     ) -> dict[str, Any]:
-        """Run `solid test`, returning its exit status and output.
+        """Run `machinome test`, returning its exit status and output.
 
         `kernel` selects the comparison kernel for this run -- "faceted" for
         the fast development loop on meshes, "exact" for the certified run --
@@ -970,7 +970,7 @@ class ProjectTools:
         if kernel is not None and kernel not in ("exact", "faceted"):
             raise ValueError(f"kernel must be 'exact' or 'faceted', not {kernel!r}")
         reference = self._reference(path)
-        command = [*self.solid_command, "test"]
+        command = [*self.machinome_command, "test"]
         if failfast:
             command.append("--failfast")
         if kernel is not None:
@@ -979,7 +979,7 @@ class ProjectTools:
             command.append(reference)
         return self._run(command)
 
-    def solid_snapshot(
+    def machinome_snapshot(
         self,
         path: str | None = None,
         time: float | None = None,
@@ -993,14 +993,14 @@ class ProjectTools:
     ) -> ImagePayload:
         """Render a snapshot and return the image; nothing is left in the project.
 
-        Accepts the same options as the `solid snapshot` CLI command.  The
+        Accepts the same options as the `machinome snapshot` CLI command.  The
         image is returned as tool output, so it never appears in git status
         and is never commit evidence.
         """
         reference = self._reference(path)
-        with tempfile.TemporaryDirectory(prefix="libresolid-studio-snapshot-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="machinome-studio-snapshot-") as temporary:
             output = Path(temporary) / "snapshot.png"
-            command = [*self.solid_command, "snapshot"]
+            command = [*self.machinome_command, "snapshot"]
             if reference:
                 command.append(reference)
             command.extend(("-o", str(output)))
@@ -1017,11 +1017,11 @@ class ProjectTools:
             result = self._run(command)
             if not result["ok"]:
                 raise RuntimeError(
-                    f"solid snapshot failed ({result['exit_code']}): "
+                    f"machinome snapshot failed ({result['exit_code']}): "
                     f"{result['stderr'] or result['stdout']}"
                 )
             if not output.is_file():
-                raise RuntimeError("solid snapshot succeeded without producing an image")
+                raise RuntimeError("machinome snapshot succeeded without producing an image")
             return ImagePayload(output.read_bytes(), "image/png")
 
     # -- bounded shop broker lifecycle ------------------------------
@@ -1243,10 +1243,10 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
         },
         ["arguments"],
     ),
-    "solid_build": _schema({
+    "machinome_build": _schema({
         "path": STR("Node reference or file to build. Defaults to the project model."),
     }),
-    "solid_test": _schema({
+    "machinome_test": _schema({
         "path": STR("Test file or node reference to run. Defaults to the whole suite."),
         "failfast": BOOL("Stop at the first failing test."),
         "kernel": {
@@ -1260,10 +1260,10 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
             ),
         },
     }),
-    "solid_snapshot": _schema({
+    "machinome_snapshot": _schema({
         "path": STR("Node reference or file to render. Defaults to the project model."),
         "time": NUMBER("Animation time to render at."),
-        "camera": STR("Camera placement, as accepted by 'solid snapshot'."),
+        "camera": STR("Camera placement, as accepted by 'machinome snapshot'."),
         "imgsize": STR("Image size as 'width,height', such as '1024,768'."),
         "projection": {
             "type": "string",
@@ -1271,7 +1271,7 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
             "description": "Projection used for the render.",
         },
         "colorscheme": STR("Named render colour scheme."),
-        "view": STR("View flags, as accepted by 'solid snapshot'."),
+        "view": STR("View flags, as accepted by 'machinome snapshot'."),
         "autocenter": BOOL("Centre the model in the frame."),
         "viewall": BOOL("Zoom so the whole model is visible."),
     }),
@@ -1365,7 +1365,7 @@ class StdioMcpServer:
                 {
                     "protocolVersion": PROTOCOL_VERSION,
                     "capabilities": {"tools": {"listChanged": False}},
-                    "serverInfo": {"name": "libresolid-studio-floor-tools", "version": "0.1.0"},
+                    "serverInfo": {"name": "machinome-studio-floor-tools", "version": "0.1.0"},
                 },
             )
         if method == "ping":
@@ -1435,14 +1435,14 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", type=Path, required=True)
     parser.add_argument("--model")
-    parser.add_argument("--solid-command-json", default='["solid"]')
+    parser.add_argument("--machinome-command-json", default='["machinome"]')
     parser.add_argument("--floor-url")
     parser.add_argument("--floor-session")
     parser.add_argument("--skills-json", default="{}")
     args = parser.parse_args(argv)
-    raw_command = json.loads(args.solid_command_json)
+    raw_command = json.loads(args.machinome_command_json)
     if not isinstance(raw_command, list) or not raw_command or not all(isinstance(item, str) for item in raw_command):
-        parser.error("--solid-command-json must encode a non-empty string array")
+        parser.error("--machinome-command-json must encode a non-empty string array")
     raw_skills = json.loads(args.skills_json)
     if not isinstance(raw_skills, dict) or not all(
         isinstance(name, str) and name and isinstance(path, str) and path
@@ -1453,7 +1453,7 @@ def main(argv: list[str] | None = None) -> None:
         ProjectTools(
             args.project,
             model=args.model,
-            solid_command=tuple(raw_command),
+            machinome_command=tuple(raw_command),
             floor_url=args.floor_url,
             floor_session=args.floor_session,
             skills={name: Path(path) for name, path in raw_skills.items()},

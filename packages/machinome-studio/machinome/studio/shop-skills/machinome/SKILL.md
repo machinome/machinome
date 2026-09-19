@@ -1,14 +1,14 @@
 ---
-name: solid-node
-description: Build and test parametric mechanical components in a solid-node project. Use when creating or modifying nodes (parts, assemblies), declaring parameters, writing mesh contract tests, driving and animating assemblies, or wiring components into the model the maker sees. solid-node treats mechanical parts as software — declared parameters, unit tests, integration contracts verified on meshes.
+name: machinome
+description: Build and test parametric mechanical components in a machinome project. Use when creating or modifying nodes (parts, assemblies), declaring parameters, writing mesh contract tests, driving and animating assemblies, or wiring components into the model the maker sees. machinome treats mechanical parts as software — declared parameters, unit tests, integration contracts verified on meshes.
 ---
 
-# Building solid-node components
+# Building machinome components
 
-solid-node is a Python framework for parametric, 3D-printable mechanical
-projects. A project is a package — `solid new snowman` scaffolds
+machinome is a Python framework for parametric, 3D-printable mechanical
+projects. A project is a package — `machinome new snowman` scaffolds
 `snowman/snowman/`, with the root node in `snowman.py` beside an empty
-`__init__.py`, and `pyproject.toml` naming it under `[tool.solid-node]`. Its
+`__init__.py`, and `pyproject.toml` naming it under `[tool.machinome]`. Its
 nodes form a tree: leaf nodes produce geometry through a CAD backend, assembly
 nodes compose, place and drive children. Mechanical contracts (parts mesh,
 fit, clear, transmit torque, stand up) are expressed as tests over the
@@ -16,29 +16,29 @@ rendered geometry.
 
 Commands (run from the project directory, with the project's venv):
 
-    solid build                 # build once and publish the model
-    solid test <pkg>/<node>.py  # run tests for one node (passing the
+    machinome build                 # build once and publish the model
+    machinome test <pkg>/<node>.py  # run tests for one node (passing the
                                 # test_*.py path works too)
-    solid test --faceted        # the same run decided on meshes: the
+    machinome test --faceted        # the same run decided on meshes: the
                                 # fast loop, never commit evidence
-    solid test --exact          # the certified run (the default when
+    machinome test --exact          # the certified run (the default when
                                 # neither flag nor the project's .env
                                 # says otherwise)
-    solid snapshot -o out.png --autocenter   # render an image
-    solid build --set bore=32.0 # the same model at another parameter value
+    machinome snapshot -o out.png --autocenter   # render an image
+    machinome build --set bore=32.0 # the same model at another parameter value
 
 Commands take an optional node reference — `package.module:Class`,
 `path/to/file.py`, or `path/to/file.py:Class`. Omit it and the project's
-model from `[tool.solid-node]` in `pyproject.toml` is used. A directory is
+model from `[tool.machinome]` in `pyproject.toml` is used. A directory is
 not a reference.
 
-`solid develop` also exists, and opens a live viewer that rebuilds on save —
-the browser viewer from the separately installed `solid-node-viewer` package,
+`machinome develop` also exists, and opens a live viewer that rebuilds on save —
+the browser viewer from the separately installed `machinome-viewer` package,
 or OpenSCAD when that package is absent. Do not run it here: the shop already
 watches the project, rebuilds it, and keeps the maker's view current. Your
 builds are verification of your own work, and they are finite.
 
-Read `../solid-node-api/SKILL.md` in full before building unless it is already
+Read `../machinome-api/SKILL.md` in full before building unless it is already
 loaded. It is the authoritative public surface, and it is all you have:
 framework source is not available to you. This manual owns implementation
 craft: parameter flow, placement and motion, contract tests, measurement, and
@@ -48,12 +48,12 @@ need, report the gap — never infer an interface from a name or a traceback.
 ## Writing nodes
 
 Declare a node in its class body. Parameters are typed declarations from
-`solid_node.parameters`; derived dimensions are formulas over them; children
+`machinome.parameters`; derived dimensions are formulas over them; children
 are constructed in the class body and realized per instance:
 
 ```python
-from solid_node.node import AssemblyNode, CadQueryNode
-from solid_node.parameters import Length
+from machinome.node import AssemblyNode, CadQueryNode
+from machinome.parameters import Length
 
 class Shaft(CadQueryNode):
 
@@ -138,14 +138,14 @@ Know the costs and pick deliberately:
   other. Editing what they share in the file — imports, constants, helper
   functions, a class either of them names — rebuilds both.
 - A bare path to a file with several node classes is ambiguous: `solid
-  build root/parts.py` and `solid snapshot root/parts.py` fail listing the
-  candidates, so name the class (`root/parts.py:Gear`). `solid test`
+  build root/parts.py` and `machinome snapshot root/parts.py` fail listing the
+  candidates, so name the class (`root/parts.py:Gear`). `machinome test`
   tolerates the bare path and runs the nodes its companion's `TestCase`s
   declare (`node = TheClass`, mandatory beside such a file); a
   sub-assembly no test declares is not built, so a file holding a machine
   and the sub-assemblies only it can bind is tested by its bare path.
 
-One class per file, named after it, is what `solid new` sets up; it buys
+One class per file, named after it, is what `machinome new` sets up; it buys
 unambiguous bare paths, not a cheaper build. Do not reorganize an inherited
 layout for the cache's sake; name the class in references and in tests.
 
@@ -181,7 +181,7 @@ formula where it is used:
   clearance`), never a second independent literal. A hand-computed default
   like `29.4` (really `30.0 - 2 * 0.3`) freezes the design at one point of
   its parameter space — turn the knob and its mates silently stop following.
-- One number moves the whole machine: `solid build --set clearance=0.35`
+- One number moves the whole machine: `machinome build --set clearance=0.35`
   re-realizes every child that reads it and rebuilds exactly those
   artifacts. Anything the maker should be able to tune from the shell
   belongs on the root for that reason.
@@ -350,7 +350,7 @@ def per_unit_phase(cylinders, unit):
   drivers, and a tree that declares one is a CLOCKED model — a different
   discipline from a running root, not a different clock. See "Machines
   that keep a few values" below.
-- Kinematic math imports from `solid_node.math` (`sin, cos, tan, asin,
+- Kinematic math imports from `machinome.math` (`sin, cos, tan, asin,
   acos, atan, atan2, sqrt`), NEVER stdlib math: time and drivers are
   symbolic in the viewer, and these functions compute numerically on
   numbers while building the viewer's expression on symbols — one formula
@@ -372,7 +372,7 @@ meshes follow.
 
 Use `time = Time.running()` on the root for an operated machine whose
 coordinates must retain history. Import `Time` from
-`solid_node.motion.ports`. The run owns every driver and joint coordinate;
+`machinome.motion.ports`. The run owns every driver and joint coordinate;
 there is no separate state declaration or mutable accumulator to add to
 `simulate()`. Read the API skill's "Running simulations" section before
 migrating a pose model.
@@ -396,7 +396,7 @@ migrating a pose model.
   safe operating travel and visualization assumptions are different facts;
   do not invent measured material limits from a drawing that lacks them.
 - State contact-following motion with a continuous law; for sampled
-  geometry use `solid_node.math.piecewise` over measured breakpoints.
+  geometry use `machinome.math.piecewise` over measured breakpoints.
   Pure jumps such as `floor(input)` do not move a running joint: the run
   subtracts jumps. A zero-slope region or a multi-source gate disengages
   motion but does not by itself report the input blocked. Test the actual
@@ -510,14 +510,14 @@ one. The method in full is the Curta project's own spike record, in the
   and do NOT declare `Time.elapsed()` unless something in the model is a
   formula of elapsed seconds: an unused clock only buys a play button
   that advances nothing.
-  Evidence for a clocked increment is still `solid test` with
+  Evidence for a clocked increment is still `machinome test` with
   hand-computed expectations first; the browser and the OpenSCAD snapshot
   of the initial bank are the pixels.
 
 ## Testing
 
 Tests for `foo.py` live in `test_foo.py` beside it (for a package,
-`test.py`); one class subclassing `solid_node.test.TestCase`. The
+`test.py`); one class subclassing `machinome.test.TestCase`. The
 runner builds the node at time 0 and exposes it on the test as
 `self.node` and as a snake_case alias of the test class name:
 `SpurGearTest` gets `self.spur_gear`. Mesh assertions available:
@@ -689,7 +689,7 @@ Contract design principles:
   parts stay out of each other, the second says each part holds
   together.
 
-`solid new` writes both into the root test file, so a new project starts
+`machinome new` writes both into the root test file, so a new project starts
 with them:
 
 ```python
@@ -783,7 +783,7 @@ model is an assembly — do not report it as coverage before then.
   clearance ratios.
 - A parametric contract needs evidence at more than the default. Build a
   second instance at a boundary value inside the test, or run the file
-  under `solid test --set knob=value`, and say which values you covered.
+  under `machinome test --set knob=value`, and say which values you covered.
 - `volume_epsilon` on `assertBlockedBeyond` / `assertFreeWithin`
   dismisses an intersection below the given volume. It exists because
   parts abutting exactly FLUSH (butt-jointed shaft segments) produce
@@ -799,16 +799,16 @@ model is an assembly — do not report it as coverage before then.
 
 ## Definition of done — every component step
 
-0. Work on the faceted kernel. Every `solid test` you run while
+0. Work on the faceted kernel. Every `machinome test` you run while
    building — the red run, the green run, the regression, the mutation
-   check — is `solid test --faceted` (on the floor, `solid_test` with
+   check — is `machinome test --faceted` (on the floor, `machinome_test` with
    `kernel="faceted"`). It decides the same assertions on the parts'
    meshes, about twenty times faster on exact parts and thirty on
    springs and belts, and it labels its own output. Only the last step
    below runs exact.
 1. Write the test file first; run it; watch it fail.
 2. Implement to green.
-3. Full regression: run `solid test` for EVERY node file in the project
+3. Full regression: run `machinome test` for EVERY node file in the project
    (a failing run exits nonzero, so chaining files with `&&` works),
    including the root, whose two integrity contracts are what catch a
    part you broke somewhere else. If you redirect a chained run's output
@@ -835,7 +835,7 @@ model is an assembly — do not report it as coverage before then.
    change the model the maker sees is not done. You run no server;
    verify from a finite build:
 
-       solid build
+       machinome build
 
    It exits nonzero if the build fails, and on success publishes the
    whole current model into the build directory (`_build` by default,
@@ -858,7 +858,7 @@ model is an assembly — do not report it as coverage before then.
 6. LOOK at the result — a correct build tree does not mean the model
    looks right, and the user judges pixels. Render and read images:
 
-       solid snapshot -o out.png --autocenter --time 0.1
+       machinome snapshot -o out.png --autocenter --time 0.1
 
    Render at least an isometric view and one view along the axis that
    the new component's alignments live on, and inspect them before
@@ -877,7 +877,7 @@ model is an assembly — do not report it as coverage before then.
    deterministically, at any scale, without a framing guess. Snapshots
    answer whether the component is wired and posed as intended.
 7. The exact run, once, at the end. Repeat the full regression of step
-   3 on the exact kernel — `solid test --exact` (`kernel="exact"`) for
+   3 on the exact kernel — `machinome test --exact` (`kernel="exact"`) for
    every node file including the root — and only that run certifies the
    contracts and evidences the commit: a summary line that ends in
    `(faceted kernel, ...)` is not evidence. When the two kernels
@@ -899,7 +899,7 @@ model is an assembly — do not report it as coverage before then.
 ## Public API
 
 The complete supported surface is in the separately loaded
-`solid-node-api` skill, and it is the only description of the framework
+`machinome-api` skill, and it is the only description of the framework
 you have — its source is not available to you. If the skill is
 unavailable, stop and report the packaging gap. If it is loaded but
 silent on something you need, report that gap too: an interface guessed

@@ -21,7 +21,7 @@ from tests.fixtures.shop_process import isolated_launch_directory, subprocess_en
 
 
 ROOT = Path(__file__).resolve().parents[1]
-FAKE_SOLID = ROOT / "tests" / "fixtures" / "fake_solid.py"
+FAKE_MACHINOME = ROOT / "tests" / "fixtures" / "fake_machinome.py"
 PNG_1X1 = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
 )
@@ -61,7 +61,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         """Start the shop subprocess. `setUp` calls this with no extra
         environment; a test that needs the real viewer bundle stops the
         default process and relaunches through this same method with
-        FAKE_SOLID_BUNDLE / FAKE_SOLID_VIEWER_API set, so the framework
+        FAKE_MACHINOME_BUNDLE / FAKE_MACHINOME_VIEWER_API set, so the framework
         viewer command the floor process itself later runs inherits them
         (`resolve_viewer_bundle` runs with no `extra_env` of its own -- it
         inherits the floor process's own environment)."""
@@ -70,7 +70,7 @@ class ShopLifecycleE2E(unittest.TestCase):
             [
                 "python", "-m", "floor", "--port", str(self.port),
                 "--projects-dir", str(self.project_home),
-                "--solid-command", str(FAKE_SOLID),
+                "--machinome-command", str(FAKE_MACHINOME),
             ],
             cwd=self.shop,
             stdout=subprocess.DEVNULL,
@@ -82,7 +82,7 @@ class ShopLifecycleE2E(unittest.TestCase):
                 "GIT_AUTHOR_EMAIL": "shop@example.invalid",
                 "GIT_COMMITTER_NAME": "Shop Test",
                 "GIT_COMMITTER_EMAIL": "shop@example.invalid",
-                "FAKE_SOLID_NEW_DELAY": "0.5",
+                "FAKE_MACHINOME_NEW_DELAY": "0.5",
                 **(extra_env or {}),
             }),
         )
@@ -94,7 +94,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         against (design D4). `SHOP_E2E_VIEWER_BUNDLE` first -- a value
         naming no file is a hard failure, not a skip, because the pilot
         asked for that exact bundle -- then the installed
-        `solid_node_viewer` package if it is new enough, else a named skip.
+        `machinome_viewer` package if it is new enough, else a named skip.
         A skipped run is not evidence; the caller must actually be run with
         the environment variable exported to prove anything red or green."""
         supplied = os.environ.get("SHOP_E2E_VIEWER_BUNDLE")
@@ -109,7 +109,7 @@ class ShopLifecycleE2E(unittest.TestCase):
             return path, int(match.group(1))
         installed_version: int | None = None
         try:
-            from solid_node_viewer import bundle as installed_bundle
+            from machinome_viewer import bundle as installed_bundle
         except ImportError:
             installed_bundle = None
         if installed_bundle is not None and installed_bundle.has_bundle():
@@ -119,7 +119,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.skipTest(
             f"no viewer bundle at API {REQUIRED_VIEWER_API} or newer is available: "
             "export SHOP_E2E_VIEWER_BUNDLE to name one, or install a newer "
-            "solid-node-viewer (installed viewer API: "
+            "machinome-viewer (installed viewer API: "
             f"{installed_version if installed_version is not None else 'no bundle installed'})"
         )
 
@@ -145,7 +145,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_role("button", name="Create and open").click()
         self.page.get_by_text("creating · builder", exact=False).wait_for(timeout=2_000)
         self.page.wait_for_url("**/projects/new_bracket", timeout=10_000)
-        self.page.get_by_text("LibreSolid Studio / new_bracket").wait_for()
+        self.page.get_by_text("Machinome Studio / new_bracket").wait_for()
         self.page.get_by_role("button", name="Close project").click()
         self.page.wait_for_url(self.url("/"), timeout=5_000)
         self.page.get_by_role("heading", name="Projects").wait_for()
@@ -155,11 +155,11 @@ class ShopLifecycleE2E(unittest.TestCase):
         # A publication from an earlier run is what the session opens on. The
         # build behind it is held open so the browser can be read while it runs.
         subprocess.run(
-            [sys.executable, str(FAKE_SOLID), "build"],
+            [sys.executable, str(FAKE_MACHINOME), "build"],
             cwd=project, check=True, capture_output=True,
         )
         gate = Path(self.temporary.name) / "release-build"
-        (project / ".fake-solid-state.json").write_text(json.dumps({"build_gate": str(gate)}))
+        (project / ".fake-machinome-state.json").write_text(json.dumps({"build_gate": str(gate)}))
 
         self.page.goto(self.url("/"))
         self.page.get_by_text("closed · builder", exact=False).wait_for()
@@ -183,16 +183,16 @@ class ShopLifecycleE2E(unittest.TestCase):
         # As in the hub case: a publication from an earlier run, and a build
         # held open behind the session that opens on it.
         subprocess.run(
-            [sys.executable, str(FAKE_SOLID), "build"],
+            [sys.executable, str(FAKE_MACHINOME), "build"],
             cwd=project, check=True, capture_output=True,
         )
         gate = Path(self.temporary.name) / "release-build"
-        (project / ".fake-solid-state.json").write_text(json.dumps({"build_gate": str(gate)}))
+        (project / ".fake-machinome-state.json").write_text(json.dumps({"build_gate": str(gate)}))
         self._open("warm-workspace")
 
         # The maker who clicks the card never sees it; they land here.
         self.page.goto(self.url("/projects/warm-workspace"))
-        self.page.get_by_text("LibreSolid Studio / warm-workspace").wait_for()
+        self.page.get_by_text("Machinome Studio / warm-workspace").wait_for()
         rebuilding = self.page.get_by_text("Bringing the model up to date", exact=False)
         rebuilding.wait_for(timeout=10_000)
 
@@ -245,7 +245,7 @@ class ShopLifecycleE2E(unittest.TestCase):
 
     def test_failed_initial_model_build_keeps_chat_available_and_states_the_reason(self) -> None:
         project = self._make_project("broken-model")
-        (project / ".fake-solid-state.json").write_text(json.dumps({"fail": "broken model evidence"}))
+        (project / ".fake-machinome-state.json").write_text(json.dumps({"fail": "broken model evidence"}))
         session_id = self._open("broken-model")
         self.page.goto(self.url("/projects/broken-model"))
         self.page.get_by_text("broken model evidence", exact=False).wait_for(timeout=10_000)
@@ -258,7 +258,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         session_id = self._open("viewer-project")
         self.page.goto(self.url("/projects/viewer-project"))
         self.page.get_by_role("img", name="Functional model").wait_for(timeout=10_000)
-        history = self.page.evaluate("() => window.__solidNodeWidgetHistory")
+        history = self.page.evaluate("() => window.__machinomeViewerHistory")
         self.assertEqual(history["mounts"], 1)
         self.assertIn(f"/api/sessions/{session_id}/artifacts/viewer.json", history["fetches"])
 
@@ -270,7 +270,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         )
         project = self._make_project("print-job")
         viewer = {
-            "format": "solid-node-export", "version": 1,
+            "format": "machinome-export", "version": 1,
             "root": {"name": "assembly", "children": [
                 {"name": "gear", "model": "gear.stl", "piece": "111111111111"},
                 {"name": "pin", "model": "pin.stl", "piece": "222222222222"},
@@ -288,7 +288,7 @@ class ShopLifecycleE2E(unittest.TestCase):
                 },
             ],
         }
-        (project / ".fake-solid-state.json").write_text(json.dumps({
+        (project / ".fake-machinome-state.json").write_text(json.dumps({
             "model": "gear.stl", "model_content": triangle,
             "extra_models": {"pin.stl": triangle}, "viewer": viewer,
         }))
@@ -358,7 +358,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.keyboard.type("# saved in Code\n")
         self.page.keyboard.press("Control+S")
         _wait_for(lambda: (project / "root" / "__init__.py").read_text() == "# saved in Code\n")
-        _wait_for(lambda: (project / ".fake-solid-builds").read_text().count("build\n") >= 2)
+        _wait_for(lambda: (project / ".fake-machinome-builds").read_text().count("build\n") >= 2)
         self.page.get_by_text("saved", exact=True).wait_for()
 
         (project / "agent_created.py").write_text("# made by an agent\n")
@@ -375,7 +375,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_role("button", name="Code", exact=True).click()
         self.page.get_by_title("agent_created.py").last.wait_for()
         self.assertEqual(composer.input_value(), "persistent draft")
-        self.assertEqual(self.page.evaluate("() => window.__solidNodeWidgetHistory.mounts"), 1)
+        self.assertEqual(self.page.evaluate("() => window.__machinomeViewerHistory.mounts"), 1)
 
         editor_input.focus()
         self.page.keyboard.press("End")
@@ -481,7 +481,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         run["activity"] = [
             {
                 "id": "tool-1", "sequence": 1, "role": "builder", "category": "tool",
-                "state": "completed", "name": "solid_test", "summary": "tests/test_model.py",
+                "state": "completed", "name": "machinome_test", "summary": "tests/test_model.py",
                 "detail": "8 passed", "path": "", "diff": "", "timestamp": "2026-08-12T08:42:20Z",
                 "input_tokens": 120, "output_tokens": 30,
             },
@@ -568,7 +568,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual(self.page.locator('[data-agent-role="builder"].selected').count(), 1)
 
         self.page.get_by_role("button", name="tools 1", exact=True).click()
-        self.page.get_by_role("button", name="solid_test", exact=False).click()
+        self.page.get_by_role("button", name="machinome_test", exact=False).click()
         self.page.get_by_text("8 passed", exact=True).wait_for()
         self.page.get_by_role("button", name="files 1", exact=True).click()
         self.page.get_by_text("# revised model", exact=True).wait_for()
@@ -616,36 +616,36 @@ class ShopLifecycleE2E(unittest.TestCase):
         # heuristic.
         tree = self.page.get_by_role("tree", name="Assembly")
         tree.wait_for(state="attached", timeout=10_000)
-        history = self.page.evaluate("() => window.__solidNodeWidgetHistory")
+        history = self.page.evaluate("() => window.__machinomeViewerHistory")
         self.assertEqual(len(history["navigators"]), 1)
         self.assertEqual(history["navigators"][0]["label"], "Assembly")
 
         self.page.get_by_role("button", name="Code", exact=True).click()
         self.page.get_by_role("button", name="Model", exact=True).click()
         tree.wait_for(state="attached")
-        history = self.page.evaluate("() => window.__solidNodeWidgetHistory")
+        history = self.page.evaluate("() => window.__machinomeViewerHistory")
         self.assertEqual(len(history["navigators"]), 1)
         self.assertEqual(history["mounts"], 1)
 
         self.page.get_by_role("button", name="Close project").click()
         self.page.get_by_role("heading", name="Projects").wait_for()
-        history = self.page.evaluate("() => window.__solidNodeWidgetHistory")
+        history = self.page.evaluate("() => window.__machinomeViewerHistory")
         self.assertEqual(len(history["navigators"]), 1)
         self.assertTrue(history["navigators"][0]["disposed"])
 
     def test_model_panel_presents_the_viewer_navigator(self) -> None:
         """The one behavioural test that runs against a REAL viewer bundle
         (design D4): the panel's look is proved against the navigator's
-        published class contract and the studio's own `--solid-nav-*`
+        published class contract and the studio's own `--machinome-nav-*`
         overrides, not against the e2e fake's hand-written tree. A skipped
         run is not evidence -- see `_discover_real_viewer_bundle`."""
         bundle, api_version = self._discover_real_viewer_bundle()
         self._stop()
-        self._launch({"FAKE_SOLID_BUNDLE": str(bundle), "FAKE_SOLID_VIEWER_API": str(api_version)})
+        self._launch({"FAKE_MACHINOME_BUNDLE": str(bundle), "FAKE_MACHINOME_VIEWER_API": str(api_version)})
 
         project = self._make_project("navigator-look")
         viewer_document = {
-            "format": "solid-node-export", "version": 1,
+            "format": "machinome-export", "version": 1,
             "animation": {"fps": 24, "frames": 1},
             "root": {
                 "name": "engine", "type": "assembly", "color": None, "operations": [],
@@ -660,7 +660,7 @@ class ShopLifecycleE2E(unittest.TestCase):
                 ],
             },
         }
-        (project / ".fake-solid-state.json").write_text(json.dumps({"viewer": viewer_document}))
+        (project / ".fake-machinome-state.json").write_text(json.dumps({"viewer": viewer_document}))
         self._open("navigator-look")
         self.page.goto(self.url("/projects/navigator-look"))
 
@@ -669,12 +669,12 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_role("heading", name="MODEL", exact=True).wait_for()
 
         engine_row = tree.get_by_role("treeitem").filter(has_text="engine")
-        self.assertIn("solid-nav-row--root", engine_row.get_attribute("class") or "")
+        self.assertIn("machinome-nav-row--root", engine_row.get_attribute("class") or "")
         self.assertEqual(engine_row.get_attribute("aria-selected"), "true")
         self.assertEqual(engine_row.evaluate("element => getComputedStyle(element).backgroundColor"), "rgb(28, 33, 40)")
         self.assertIn("rgb(79, 182, 184)", engine_row.evaluate("element => getComputedStyle(element).boxShadow"))
         self.assertEqual(
-            engine_row.evaluate("element => getComputedStyle(element).getPropertyValue('--solid-nav-focus-ring')").strip(),
+            engine_row.evaluate("element => getComputedStyle(element).getPropertyValue('--machinome-nav-focus-ring')").strip(),
             "#e0a350",
         )
         self.assertEqual(self.page.get_by_role("button", name="Show full assembly").count(), 0)
@@ -693,25 +693,25 @@ class ShopLifecycleE2E(unittest.TestCase):
         # Keyboard contract: Down (engine -> housing), Right (housing is
         # already expanded, so this MOVES to its first child, pin), Enter
         # (pin becomes the focused root -- the navigator redraws which row
-        # carries `solid-nav-row--root`), Space (toggles the active row's --
+        # carries `machinome-nav-row--root`), Space (toggles the active row's --
         # pin's -- own visibility, emptying its chip).
         self.page.get_by_text("engine", exact=True).click()
         self.page.keyboard.press("ArrowDown")
         self.page.keyboard.press("ArrowRight")
         self.page.keyboard.press("Enter")
         pin_row = tree.get_by_role("treeitem").filter(has_text="pin")
-        self.assertIn("solid-nav-row--root", pin_row.get_attribute("class") or "")
-        self.assertNotIn("solid-nav-row--root", engine_row.get_attribute("class") or "")
+        self.assertIn("machinome-nav-row--root", pin_row.get_attribute("class") or "")
+        self.assertNotIn("machinome-nav-row--root", engine_row.get_attribute("class") or "")
         self.page.keyboard.press(" ")
         self.assertFalse(pin_visibility.is_checked())
         self.assertEqual(pin_visibility.evaluate("element => getComputedStyle(element).backgroundColor"), "rgba(0, 0, 0, 0)")
 
         self.page.get_by_role("button", name="Show full assembly").click()
-        self.assertIn("solid-nav-row--root", engine_row.get_attribute("class") or "")
+        self.assertIn("machinome-nav-row--root", engine_row.get_attribute("class") or "")
         self.assertEqual(self.page.get_by_role("button", name="Show full assembly").count(), 0)
 
         viewer_document["root"]["children"][0]["children"] = []
-        (project / ".fake-solid-state.json").write_text(json.dumps({"viewer": viewer_document}))
+        (project / ".fake-machinome-state.json").write_text(json.dumps({"viewer": viewer_document}))
         (project / "root" / "__init__.py").write_text("# changed model\n")
         _wait_for(lambda: self.page.get_by_text("pin", exact=True).count() == 0)
         tree.wait_for(state="attached")
@@ -770,7 +770,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self._open("sandbox/windmill")
 
         self.page.goto(self.url("/projects/sandbox/windmill"))
-        home = self.page.get_by_role("link", name="LibreSolid Studio")
+        home = self.page.get_by_role("link", name="Machinome Studio")
         home.wait_for(timeout=10_000)
         self.assertEqual(home.get_attribute("href"), "/")
         home.click()
@@ -779,7 +779,7 @@ class ShopLifecycleE2E(unittest.TestCase):
 
         # And from a folder, without closing anything.
         self.page.goto(self.url("/folders/sandbox"))
-        self.page.get_by_role("link", name="LibreSolid Studio").click()
+        self.page.get_by_role("link", name="Machinome Studio").click()
         self.page.wait_for_url(self.url("/"), timeout=5_000)
         self.page.get_by_role("heading", name="Projects").wait_for()
 
@@ -788,7 +788,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self._open("sandbox/windmill")
 
         self.page.goto(self.url("/projects/sandbox/windmill"))
-        self.page.get_by_text("LibreSolid Studio / sandbox/windmill").wait_for(timeout=10_000)
+        self.page.get_by_text("Machinome Studio / sandbox/windmill").wait_for(timeout=10_000)
         self.page.get_by_role("button", name="Close project").click()
 
         self.page.wait_for_url(self.url("/folders/sandbox"), timeout=5_000)
@@ -798,14 +798,14 @@ class ShopLifecycleE2E(unittest.TestCase):
         project = self.project_home / name
         (project / "root").mkdir(parents=True)
         (project / "root" / "__init__.py").write_text("# model\n")
-        (project / ".gitignore").write_text("_build/\n.fake-solid-builds\n.fake-solid-state.json\n")
+        (project / ".gitignore").write_text("_build/\n.fake-machinome-builds\n.fake-machinome-state.json\n")
         declared = "".join(f'{model} = "root:Root"\n' for model in models)
         (project / "pyproject.toml").write_text(
-            '[tool.libresolid-studio]\nprofile = "builder"\n'
-            + (f"\n[tool.solid-node.models]\n{declared}" if models else "")
+            '[tool.machinome-studio]\nprofile = "builder"\n'
+            + (f"\n[tool.machinome.models]\n{declared}" if models else "")
         )
         if models:
-            (project / ".fake-solid-state.json").write_text(json.dumps({"models": list(models)}))
+            (project / ".fake-machinome-state.json").write_text(json.dumps({"models": list(models)}))
         subprocess.run(["git", "init", "-q", "-b", "main", str(project)], check=True)
         subprocess.run(["git", "-C", str(project), "add", "--all"], check=True)
         subprocess.run([

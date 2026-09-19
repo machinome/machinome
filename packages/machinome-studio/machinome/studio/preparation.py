@@ -28,7 +28,7 @@ AGENT_ID = LOWER_KEBAB_ID
 # Viewer API 10 is the version that introduced `mountNavigator` (viewer
 # ADR-050): the capability the Model panel needs, not merely the newest
 # build available.
-REQUIRED_VIEWER_API = 10
+REQUIRED_VIEWER_API = 20
 CLAUDE_MODELS = {"sonnet", "opus", "fable"}
 CLAUDE_EFFORTS = {"low", "medium", "high"}
 
@@ -85,7 +85,7 @@ class PreparedProject:
     model_source: str | None = None
     viewer_bundle: Path | None = None
     viewer_api_version: int | None = None
-    solid_command: tuple[str, ...] = ()
+    machinome_command: tuple[str, ...] = ()
     build_environment: dict[str, str] | None = None
     build_error: str | None = None
     created: bool = False
@@ -97,7 +97,7 @@ class PreparedProject:
         first built it; carrying the invocation on the prepared project
         keeps one definition rather than two that can drift apart.
         """
-        return build_command(self.solid_command, self.project_model), self.build_environment
+        return build_command(self.machinome_command, self.project_model), self.build_environment
 
 
 @dataclass(frozen=True)
@@ -217,7 +217,7 @@ class ResolvedModel:
 
 
 def resolve_model(
-    solid_command: str | Sequence[str],
+    machinome_command: str | Sequence[str],
     project_root: Path,
     *,
     name: str | None = None,
@@ -239,7 +239,7 @@ def resolve_model(
     looking at that model, so that is the file already open.
     """
     result = _run(
-        (*_command(solid_command), "models", "--json"),
+        (*_command(machinome_command), "models", "--json"),
         cwd=project_root,
         stage="models",
         name=name,
@@ -258,7 +258,7 @@ def resolve_model(
         described = f"model {model!r}" if model else "a default model"
         raise PreparationError(
             "models", name, project_root,
-            f"solid models did not report a build directory for {described}",
+            f"machinome models did not report a build directory for {described}",
         ) from error
     artifact_root = build_dir.resolve()
     if project_root.resolve() not in artifact_root.parents:
@@ -293,11 +293,11 @@ def _model_source(project_root: Path, reference: object) -> str | None:
     return None
 
 
-def build_command(solid_command: str | Sequence[str], model: str | None = None) -> tuple[str, ...]:
+def build_command(machinome_command: str | Sequence[str], model: str | None = None) -> tuple[str, ...]:
     # Without a model the framework resolves the project's default from
-    # [tool.solid-node] in the project's pyproject.toml. A session opened on
+    # [tool.machinome] in the project's pyproject.toml. A session opened on
     # one declared model names it, so it builds its own and not a sibling's.
-    return (*_command(solid_command), "build", *([model] if model else ()))
+    return (*_command(machinome_command), "build", *([model] if model else ()))
 
 
 class PreparationError(RuntimeError):
@@ -328,15 +328,15 @@ def shop_resource_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def default_solid_command() -> tuple[str, ...]:
-    """Use solid-node from the Python environment running the shop.
+def default_machinome_command() -> tuple[str, ...]:
+    """Use machinome from the Python environment running the shop.
 
     Console-script lookup through ambient ``PATH`` can silently select a
     different Python installation. The shop and framework are installed into
     one environment, so binding the command to that interpreter's scripts
     directory preserves the selected framework without cwd or Git discovery.
     """
-    return (str(Path(sys.executable).with_name("solid")),)
+    return (str(Path(sys.executable).with_name("machinome")),)
 
 
 SKIPPED_DIRECTORIES = {".git", "_build", "node_modules", "__pycache__", ".venv"}
@@ -345,7 +345,7 @@ SKIPPED_DIRECTORIES = {".git", "_build", "node_modules", "__pycache__", ".venv"}
 def declared_models(project_root: Path) -> tuple[str, ...]:
     """The model names the project's manifest declares, in declaration order.
 
-    Read straight from the manifest rather than through ``solid models`` so
+    Read straight from the manifest rather than through ``machinome models`` so
     that listing a folder of twenty projects costs no subprocess. The build
     directory of a model still comes from the framework, once, when the entry
     is prepared.
@@ -357,7 +357,7 @@ def declared_models(project_root: Path) -> tuple[str, ...]:
     except (OSError, tomllib.TOMLDecodeError):
         return ()
     tool = document.get("tool")
-    table = tool.get("solid-node") if isinstance(tool, dict) else None
+    table = tool.get("machinome") if isinstance(tool, dict) else None
     models = table.get("models") if isinstance(table, dict) else None
     if not isinstance(models, dict):
         return ()
@@ -677,14 +677,20 @@ def read_project_runtime(project_root: Path) -> ProjectRuntimeSelection:
     tool = document.get("tool", {})
     if not isinstance(tool, dict):
         raise ProjectRuntimeError(source_path, "tool must be a table")
-    table = tool.get("libresolid-studio")
+    if "libresolid-studio" in tool:
+        raise ProjectRuntimeError(
+            source_path,
+            "Machinome Studio renamed [tool.libresolid-studio] to "
+            "[tool.machinome-studio]",
+        )
+    table = tool.get("machinome-studio")
     if table is None:
         return ProjectRuntimeSelection(project_root, source_path, {})
     if not isinstance(table, dict):
-        raise ProjectRuntimeError(source_path, "tool.libresolid-studio must be a table")
+        raise ProjectRuntimeError(source_path, "tool.machinome-studio must be a table")
     unknown = set(table) - {"agents", "profile"}
     if unknown:
-        raise ProjectRuntimeError(source_path, f"tool.libresolid-studio: unknown key {sorted(unknown)[0]!r}")
+        raise ProjectRuntimeError(source_path, f"tool.machinome-studio: unknown key {sorted(unknown)[0]!r}")
     profile = table.get("profile")
     if profile is not None and (not isinstance(profile, str) or not LOWER_KEBAB_ID.fullmatch(profile)):
         raise ProjectRuntimeError(
@@ -693,7 +699,7 @@ def read_project_runtime(project_root: Path) -> ProjectRuntimeSelection:
         )
     raw_agents = table.get("agents", {})
     if not isinstance(raw_agents, dict):
-        raise ProjectRuntimeError(source_path, "tool.libresolid-studio.agents must be a table")
+        raise ProjectRuntimeError(source_path, "tool.machinome-studio.agents must be a table")
     agents: dict[str, ProjectAgentRuntime] = {}
     for agent_id, raw in raw_agents.items():
         if not isinstance(agent_id, str) or not AGENT_ID.fullmatch(agent_id):
@@ -748,7 +754,7 @@ def _parse_agent_runtime(agent_id: str, raw: str, source_path: Path) -> ProjectA
 def prepare_project(
     entry: HubEntry,
     *,
-    solid_command: str | Sequence[str],
+    machinome_command: str | Sequence[str],
     profile: str | None = None,
     viewer: ViewerBundle | None = None,
 ) -> PreparedProject:
@@ -766,22 +772,22 @@ def prepare_project(
     project_root = entry.project_root
     name = entry.path
     created = not project_root.exists()
-    solid_env = None
+    machinome_env = None
     if created:
         package_name = project_root.name.replace("-", "_")
         with tempfile.TemporaryDirectory(prefix=f".{project_root.name}-", dir=project_root.parent) as temporary:
             staging_home = Path(temporary)
             staged_project = staging_home / package_name
             _run(
-                (*_command(solid_command), "new", package_name),
+                (*_command(machinome_command), "new", package_name),
                 cwd=staging_home,
                 stage="scaffold",
                 name=name,
                 project_root=project_root,
-                extra_env=solid_env,
+                extra_env=machinome_env,
             )
             if not staged_project.is_dir():
-                raise PreparationError("scaffold", name, project_root, "solid new did not create the normalized project scaffold")
+                raise PreparationError("scaffold", name, project_root, "machinome new did not create the normalized project scaffold")
             try:
                 staged_project.rename(project_root)
             except OSError as error:
@@ -791,9 +797,12 @@ def prepare_project(
         _run(("git", "init", "-q", "-b", "main", str(project_root)), stage="git-init", name=name, project_root=project_root)
     _require_exact_repository(project_root, name)
 
-    bundle = viewer if viewer is not None else resolve_viewer_bundle(solid_command, extra_env=solid_env)
+    bundle = viewer if viewer is not None else resolve_viewer_bundle(
+        machinome_command, extra_env=machinome_env
+    )
     resolved = resolve_model(
-        solid_command, project_root, name=name, model=entry.model, extra_env=solid_env,
+        machinome_command, project_root, name=name, model=entry.model,
+        extra_env=machinome_env,
     )
     return PreparedProject(
         name=name,
@@ -804,8 +813,8 @@ def prepare_project(
         project_model=entry.model,
         viewer_bundle=bundle.path,
         viewer_api_version=bundle.api_version,
-        solid_command=_command(solid_command),
-        build_environment=solid_env,
+        machinome_command=_command(machinome_command),
+        build_environment=machinome_env,
         created=created,
     )
 
@@ -854,7 +863,7 @@ def build_project(
         # otherwise indistinguishable from a project nobody photographed.
         result = refresh_project_screenshot(
             prepared.project_root,
-            prepared.solid_command,
+            prepared.machinome_command,
             model=prepared.project_model,
             extra_environment=prepared.build_environment,
         )
@@ -882,7 +891,7 @@ def commit_new_project(prepared: PreparedProject) -> None:
         project_root=project_root,
     )
     _run(
-        ("git", "-C", str(project_root), "commit", "-q", "-m", "Initial solid-node scaffold"),
+        ("git", "-C", str(project_root), "commit", "-q", "-m", "Initial machinome scaffold"),
         stage="git-commit",
         name=prepared.name,
         project_root=project_root,
@@ -917,22 +926,22 @@ def _write_project_profile(project_root: Path, profile: str) -> None:
     path = project_root / "pyproject.toml"
     try:
         source = path.read_text() if path.exists() else ""
-        if "[tool.libresolid-studio]" in source:
-            marker = "[tool.libresolid-studio]"
+        if "[tool.machinome-studio]" in source:
+            marker = "[tool.machinome-studio]"
             before, after = source.split(marker, 1)
             if re.search(r"(?m)^profile\s*=", after.split("\n[", 1)[0]):
                 raise PreparationError("profile", project_root.name, project_root, "scaffold already declares a runtime profile")
             source = f'{before}{marker}\nprofile = "{profile}"{after}'
         else:
             separator = "" if not source else ("" if source.endswith("\n\n") else "\n" if source.endswith("\n") else "\n\n")
-            source = f'{source}{separator}[tool.libresolid-studio]\nprofile = "{profile}"\n'
+            source = f'{source}{separator}[tool.machinome-studio]\nprofile = "{profile}"\n'
         path.write_text(source)
     except OSError as error:
         raise PreparationError("profile", project_root.name, project_root, str(error)) from error
 
 
 def resolve_viewer_bundle(
-    solid_command: str | Sequence[str],
+    machinome_command: str | Sequence[str],
     *,
     extra_env: dict[str, str] | None = None,
 ) -> ViewerBundle:
@@ -944,7 +953,7 @@ def resolve_viewer_bundle(
     answer or its consequence: an unusable installation still fails the open.
     """
     result = _run(
-        (*_command(solid_command), "viewer"),
+        (*_command(machinome_command), "viewer"),
         stage="viewer",
         name=None,
         project_root=None,
@@ -955,9 +964,9 @@ def resolve_viewer_bundle(
         path = Path(value["path"])
         api_version = value["apiVersion"]
     except (json.JSONDecodeError, KeyError, TypeError) as error:
-        raise PreparationError("viewer", None, None, "solid viewer returned malformed bundle metadata") from error
+        raise PreparationError("viewer", None, None, "machinome viewer returned malformed bundle metadata") from error
     if not isinstance(api_version, int) or isinstance(api_version, bool):
-        raise PreparationError("viewer", None, None, "solid viewer returned a non-integer API version")
+        raise PreparationError("viewer", None, None, "machinome viewer returned a non-integer API version")
     if api_version < REQUIRED_VIEWER_API:
         raise PreparationError(
             "viewer", None, None,

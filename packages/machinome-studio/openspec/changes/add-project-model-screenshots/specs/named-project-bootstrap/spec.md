@@ -2,7 +2,7 @@
 
 ### Requirement: A missing named project receives a standard first state
 If the named project does not exist beneath the working folder, the system SHALL
-create a standard solid-node project there, SHALL record the runtime profile
+create a standard Machinome project there, SHALL record the runtime profile
 chosen for it in that project's own configuration, SHALL establish the
 directory as an independent Git repository, and SHALL attempt the initial model
 build and canonical project screenshot before recording the generated scaffold.
@@ -14,7 +14,7 @@ recorded before any project-writing agent starts.
 
 #### Scenario: The named project does not exist
 - **WHEN** the maker creates a project by a valid name absent from the working folder and its initial model and screenshot render successfully
-- **THEN** the system creates the standard solid-node scaffold, records its chosen profile, and records `screenshot.png` with the initial state of that project repository
+- **THEN** the system creates the standard Machinome scaffold, records its chosen profile, and records `screenshot.png` with the initial state of that project repository
 
 #### Scenario: The initial screenshot fails
 - **WHEN** the initial project can otherwise be recorded but screenshot rendering or staging fails
