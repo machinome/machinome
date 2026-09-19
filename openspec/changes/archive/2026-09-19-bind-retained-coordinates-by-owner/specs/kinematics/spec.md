@@ -2,8 +2,9 @@
 
 ### Requirement: Qualified joint assignments affect only their addressed owner
 
-A qualified joint-coordinate assignment through `set_state` SHALL change only
-the addressed joint's bound value and LOCAL joint placement, even when
+Under a running root, a qualified joint-coordinate assignment through
+`set_state` SHALL change only the addressed joint's bound value and LOCAL
+joint placement, even when
 ancestors or descendants own coordinates with the same local name. Every other
 joint SHALL retain its own bound value and local joint placement; a
 descendant's WORLD pose SHALL still compose the changed ancestor placement
@@ -31,5 +32,7 @@ snapshot, bound coordinate and pose unchanged.
 
 - **WHEN** a qualified entry such as `chassis.pose.roll` reaches the node that
   owns the multi-coordinate joint
-- **THEN** `pose.roll` binds and places only that joint, without changing a
-  descendant whose path or local coordinate name shares either segment
+- **THEN** `pose.roll` binds and places only that joint, without changing the
+  local coordinate or joint placement of a descendant whose path or coordinate
+  name shares either segment; descendant world poses still compose ancestor
+  motion

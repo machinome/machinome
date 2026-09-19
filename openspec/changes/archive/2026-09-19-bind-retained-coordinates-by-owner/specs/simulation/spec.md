@@ -17,10 +17,10 @@ refusals and rollback SHALL remain unchanged.
 - **WHEN** three nested nodes each own a `turn` joint, a running simulation
   moves the parent while the child and grandchild retain different values, and
   then moves the child while the other two retain theirs
-- **THEN** after each request every `sim.state` entry equals its owning joint's
-  bound value and local joint placement, each world pose composes those local
-  placements with its rest and ancestor transforms, and neither ancestor nor
-  descendant receives another owner's `turn`
+- **THEN** after each request every joint's bound value equals its `sim.state`
+  entry, its local joint placement represents that value, each world pose
+  composes those local placements with its rest and ancestor transforms, and
+  neither ancestor nor descendant receives another owner's `turn`
 
 #### Scenario: Full-bank binding is independent of mapping order
 

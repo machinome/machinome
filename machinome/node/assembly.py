@@ -225,6 +225,37 @@ def _rest_children(assembly):
     return children
 
 
+class _StateEntries(dict):
+    """A state mapping carrying which current names began qualified.
+
+    Qualification is an addressing fact, not part of a bound value.  A
+    qualified name loses path segments as it descends, so the spelling alone
+    cannot distinguish the final local ``turn`` from a caller's originally
+    bare ``turn``. Keep the ordered variants alongside the private delivery
+    mapping: order still chooses a value when two accepted aliases address one
+    owner, while provenance independently decides which variant descends.
+    """
+
+    __slots__ = ('_ordered_variants',)
+
+    def __init__(self, entries=()):
+        super().__init__()
+        self._ordered_variants = []
+        for name, value in dict(entries).items():
+            self.add(name, value, qualified='.' in name)
+
+    def add(self, name, value, qualified):
+        """Retain both variants when projection gives them one key."""
+        self._ordered_variants.append((name, value, qualified))
+        # Mapping consumers see ordinary last-write precedence. A collision
+        # may later be refused and rolled back, but an unambiguous bare and
+        # qualified alias for one owner remains an accepted ordered mapping.
+        super().__setitem__(name, value)
+
+    def variants(self):
+        yield from self._ordered_variants
+
+
 def _entries_for(entries, child_name, consumed=()):
     """The entries addressed to `child_name`'s subtree, with the
     consumed leading segment stripped.
@@ -236,20 +267,23 @@ def _entries_for(entries, child_name, consumed=()):
     -- propagates flat to everyone, exactly as it always has.
 
     `consumed` are the names THIS node already bound as its own joint
-    coordinates. A dotted one of those -- `pose.roll`, a coordinate of a
-    joint owning several -- is dropped rather than forwarded: its head
-    is the JOINT's name, not a child's, and forwarding it would address
-    a child that happened to share the name.
+    coordinates. An originally qualified one is dropped rather than
+    forwarded, even after descent has stripped it to a single segment. An
+    originally bare one keeps propagating so every claimant is discovered
+    and the existing ambiguity judgement can refuse it atomically.
     """
-    delivered = {}
-    for name, value in entries.items():
+    delivered = _StateEntries()
+    variants = (entries.variants() if isinstance(entries, _StateEntries)
+                else ((name, value, '.' in name)
+                      for name, value in entries.items()))
+    for name, value, qualified in variants:
         head, dot, rest = name.partition('.')
-        if dot and name in consumed:
+        if name in consumed and qualified:
             continue
         if not dot:
-            delivered[name] = value
+            delivered.add(name, value, qualified)
         elif head == child_name:
-            delivered[rest] = value
+            delivered.add(rest, value, qualified)
     return delivered
 
 
@@ -445,8 +479,8 @@ class AssemblyNode(InternalNode):
         written = {}
         saved = [] if judged else None
         coordinates = _coordinate_delivery(self)
-        self._receive_state(states, (), declared, saved, coordinates,
-                            written)
+        self._receive_state(_StateEntries(states), (), declared, saved,
+                            coordinates, written)
         publishes = {identifier
                      for ids in declared.values() for identifier in ids}
         machine_written = {identifier
