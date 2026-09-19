@@ -1600,6 +1600,14 @@ class Relation:
         (design.md sections 3 and 5)."""
         from machinome.parameters import evaluate
 
+        if (getattr(self.callable_law, '_machinome_play', False)
+                and _is_broadcast(self.driven)):
+            raise ValueError(
+                f'{self.described()}: Play requires exactly one scalar '
+                f'retained coordinate; a broadcast or group is not the '
+                f'(source & retained).drives(retained, law=Play(...)) '
+                f'running shape.')
+
         if _is_broadcast(self.driven) and self.self_read is not None:
             # The source group's repeated member IS the broadcast this
             # relation drives, so it resolves PER COPY exactly as the
@@ -1645,9 +1653,23 @@ class Relation:
             return records
         driven_ends = _resolve_ends(self.driven, instance)
         if self.callable_law is not None:
-            returned = self.callable_law(_law_argument(driver_ends),
-                                         _law_argument(driven_ends))
-            law = as_law(returned, self.described())
+            if getattr(self.callable_law, '_machinome_play', False):
+                valid = (len(driver_ends) == 2
+                         and len(driven_ends) == 1
+                         and driver_ends[1].slot is driven_ends[0].slot
+                         and driver_ends[0].slot is not driver_ends[1].slot)
+                if not valid:
+                    raise ValueError(
+                        f'{self.described()}: Play requires exactly '
+                        f'(source & retained).drives(retained, '
+                        f'law=Play(...)), with two distinct scalar sources '
+                        f'ordered source then retained and that same '
+                        f'retained coordinate as the one driven end.')
+                law = self.callable_law
+            else:
+                returned = self.callable_law(_law_argument(driver_ends),
+                                             _law_argument(driven_ends))
+                law = as_law(returned, self.described())
         else:
             values = instance.__dict__.get('_parameters', {})
             law = Affine(

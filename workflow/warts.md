@@ -3488,3 +3488,41 @@ watched turning it. Nothing here is a defect.
   prediction that `machinome/core/serializer.py` would not change held
   exactly. What the viewer's own cycle inherits is stated in ADR-129's
   consequences and is not framework work. **Closed.**
+
+# Vault running pickup (2026-09-19, complex twelve-bolt vault)
+
+**Status: resolved by `unilateral-running-pickup` and its independent viewer
+companion after adversarial review; originating project migration follows.**
+Originating project `projects/Locks/Vault_with_combination_lock`, checkpoint
+`78d4ceb`; framework baseline `b9b64dd`. Historical reproduction and control
+evidence: [investigation](docs/vault-running-pickup-investigation.md).
+The [external issue draft](docs/vault-running-pickup-wart.md) was not posted:
+GitHub CLI authentication is unavailable. No external issue number is claimed.
+
+- A positional self-read gate cannot state the Vault's unilateral peg contact:
+  from dial 1590 / wheel 1587, reversal to 1580 gives wheel 1577 instead of
+  retaining 1587. This conforms to ADR-121's surface-following branch rule;
+  it is a missing opt-in capability, not a regression in missing-tooth clearing.
+  Strict comparisons and smaller ticks were not reliable workarounds.
+- The ratified response is an explicit `Play(low, high)` law under
+  `Time.running()`, initially limited to linear driver-rooted chains. It
+  preserves callable-law semantics and uses the run's existing retained bank,
+  not a project Python/browser controller. Publication is document version 9;
+  viewer execution belongs to the viewer's own `execute-running-play` cycle.
+- Independent review tests exposed incorrect cascade stop interpolation,
+  cancellation when one wheel's absolute landing was recomputed from its
+  increment, an ambiguous terminal writer, and refusal to recollect free
+  clearance while a wheel remains at a physical stop. These tests are retained
+  as acceptance evidence; final validation and project migration follow below.
+
+Resolution: the reviewed implementation, ADR-131, synchronized baseline specs,
+and validation are recorded in
+[the completed change](../openspec/changes/archive/2026-09-19-unilateral-running-pickup/evidence.md).
+Additional review covered bounded affine/nonlinear/multi-source observers,
+rollback after projection, corpus behavior-removal mutations and early malformed
+declaration refusals. The viewer companion is integrated into its local main at
+`038f74d`; its API 22 explicitly reports document versions 1–9. The framework
+and viewer corpus bytes agree. The original callable prototype remains a red
+control; the measured direct-dial Play caller is green. This resolution does
+not certify the Vault's source orientation, password or complete assembly.
+The GitHub issue draft is still unposted because authentication is absent.

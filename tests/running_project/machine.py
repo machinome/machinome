@@ -41,7 +41,8 @@ from machinome.motion.joints import Bound, Free, Prismatic, Revolute
 from machinome.motion.ports import RotationalPort, Time
 from machinome.node import AssemblyNode
 from machinome.parameters import Angle, Flag
-from machinome.simulation import Button, Driver, Instruction, Slide, Turn
+from machinome.simulation import (Button, Driver, Instruction, Play, Slide,
+                                  Turn)
 
 from .parts import (Arbor, Block, Carriage, Dial, Floater, PenSpring, Pin,
                     Wheel)
@@ -3313,3 +3314,42 @@ class CappedCountBody(AssemblyNode):
 
 class CappedCount(CappedCountBody):
     time = Time.running()
+
+
+class PlayCorpus(AssemblyNode):
+    """Three backlash gaps, a downstream stop, and an ordinary observer."""
+
+    time = Time.running()
+    dial = Driver(default=0.0, unit='deg')
+    first = Arbor()
+    second = Arbor()
+    third = Arbor(turn=Revolute(axis=(0, 0, 1), range=(-20.0, 20.0),
+                                unit='deg'))
+    observer = Arbor()
+
+    (dial & first.turn).drives(first.turn,
+                               law=Play(low=-10.0, high=10.0))
+    (first.turn & second.turn).drives(second.turn,
+                                     law=Play(low=-10.0, high=10.0))
+    (second.turn & third.turn).drives(third.turn,
+                                     law=Play(low=-10.0, high=10.0))
+    third.turn.drives(observer.turn, ratio=-2.0)
+
+    def simulate(self):
+        for wheel in (self.first, self.second, self.third):
+            if wheel.turn.value is None:
+                wheel.turn = 0.0
+
+
+class MeasuredPlayCorpus(AssemblyNode):
+    """Non-integer contacts and split/reversed requests."""
+
+    time = Time.running()
+    dial = Driver(default=0.0, unit='deg')
+    wheel = Arbor()
+    (dial & wheel.turn).drives(
+        wheel.turn, law=Play(low=-328.7788108, high=3.2757369))
+
+    def simulate(self):
+        if self.wheel.turn.value is None:
+            self.wheel.turn = 0.0

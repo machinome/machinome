@@ -1036,6 +1036,16 @@ such a relation binds NOTHING at rest — the dial's rest value is the
 author's own guarded default — and under any other time base it is
 refused by name at the close of the enumeration.
 
+Backlash and clearance are a separate explicit law (ADR-131), not an
+interpretation of that switch. `Play(low, high)` projects one retained bank
+coordinate to `max(source - high, min(retained, source - low))`. The compiler
+admits only linear play chains rooted at a run-owned driver and refuses
+invalid rest intervals, cycles, fan-out, ambiguous writers and potentially
+reversing sources. Propagation passes exact absolute landings down a chain;
+stop localization replays from the original driver through the complete play
+prefix and any downstream observer. Publication carries a `kind: "play"`
+edge with its ordered endpoints and offsets, selecting document version 9.
+
 A quantity a tick follows along ONE path with ONE branch reading is
 evaluated as that path, not as an expression (ADR-124): `_PathValue`
 decides, in the same postorder walk `GraphValue.evaluate` would have

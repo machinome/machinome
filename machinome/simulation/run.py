@@ -305,6 +305,20 @@ class Run:
 
         self.program = compile_program(sim.node, inputs, coordinates,
                                        sim.controls, sim.instructions)
+        for edge in self.program.edges:
+            if edge.kind != 'play':
+                continue
+            source, retained = edge.needs
+            x, y = self.bank[self.program.nodes[source].name], \
+                self.bank[self.program.nodes[retained].name]
+            lower, upper = x - edge.high, x - edge.low
+            if not lower <= y <= upper:
+                raise UnsupportedLaw(
+                    f'{edge.description}, stated by {edge.stated_by}: '
+                    f'initial source {x!r} and retained value {y!r} put the '
+                    f'retained coordinate outside its admissible interval '
+                    f'[{lower!r}, {upper!r}]. Play never teleports an '
+                    f'invalid rest state.')
         self.keys = {identifier: ('input', identifier) for identifier in inputs}
         for identifier, (node, name) in coordinates.items():
             self.keys[identifier] = ('slot', id(get_coordinate(node, name)))
@@ -861,15 +875,24 @@ class Run:
         """
         deltas = self._deltas({input_id: delta * t
                                for input_id, delta in admissions.items()})
+        landings = {}
         for edge in constraint.edges:
-            for key, increment in edge.increments(values, deltas):
+            for key, increment in edge.increments(values, deltas,
+                                                   landings=landings):
                 deltas[key] = increment
         arguments = {constraint.identifier: own}
         for read in constraint.reads:
-            arguments[read] = held[read] + deltas[self.keys[read]]
+            read_key = self.keys[read]
+            arguments[read] = (landings[read_key]
+                               if self._has_play_ancestor(read_key)
+                               and read_key in landings
+                               else held[read] + deltas[read_key])
         bound = constraint.graph.evaluate(arguments)
-        value = (held[constraint.identifier]
-                 + deltas[self.keys[constraint.identifier]])
+        own_key = self.keys[constraint.identifier]
+        value = (landings[own_key]
+                 if self._has_play_ancestor(own_key)
+                 and own_key in landings
+                 else held[constraint.identifier] + deltas[own_key])
         return value - bound if constraint.side == 'high' else bound - value
 
     def _constraint_bound(self, constraint, committed):
@@ -967,10 +990,70 @@ class Run:
                 f'it. The tick committed nothing.')
         index = edge.gives.index(key)
         value = held[identifier]
+        if self._has_play_ancestor(key):
+            # Every admitted play path is one linear chain rooted at a
+            # driver. At contact, replaying that prefix has a closed form:
+            # each positive-moving edge contributes its high offset and
+            # each negative-moving edge its low offset. Solving at the root
+            # gives exact prefix coordinates after the bound is snapped.
+            wanted = bound
+            current = key
+            while True:
+                member = self.program.determiner.get(current)
+                if member is None:
+                    break
+                if member.kind == 'play':
+                    wanted += (member.high if deltas[current] > 0
+                               else member.low)
+                    current = member.needs[0]
+                    continue
+                if (member.kind == 'wiring' and len(member.needs) == 1
+                        and member.factors[0] != 0):
+                    wanted /= member.factors[0]
+                    current = member.needs[0]
+                    continue
+                if (member.kind == 'law' and len(member.needs) == 1
+                        and len(member.gives) == 1 and not member.plans
+                        and member.shapes[0] in ('constant', 'affine')
+                        and member.graphs[0] is not None):
+                    name = member.names[0]
+                    zero = member.graphs[0].evaluate({name: 0.0})
+                    slope = (member.graphs[0].evaluate({name: 1.0})
+                             - zero)
+                    if slope:
+                        wanted = (values[member.needs[0]]
+                                  + (wanted - values[current]) / slope)
+                        current = member.needs[0]
+                        continue
+                # A more general observer is still located by full-prefix
+                # replay below; only an exactly invertible wiring joins the
+                # closed-form contact solve.
+                current = None
+                break
+            if current is not None and current[0] == 'input' \
+                    and deltas[current]:
+                root_start = values[current]
+                root_travel = deltas[current]
+                return _clamped((wanted - root_start) / root_travel)
+            # The observer is not exactly invertible, but full-prefix
+            # replay can still locate when a follower parked on its bound
+            # is recollected after a zero-width plateau.
+            if current is None:
+                return self._searched_play(edge, key, side, bound, value,
+                                           values, deltas)
         if (bound - value) * (1.0 if side == 'high' else -1.0) <= 0.0:
             # Already at or beyond it: the stop is at the very start of
             # the stretch, and the coordinate stands where it stands.
+            # Play is handled first because a follower standing at its
+            # stop may have been released into its clearance; recollection
+            # reaches the same bound only after genuine source travel.
             return 0.0
+        if self._has_play_ancestor(key):
+            # An ordinary observer downstream of play inherits the play
+            # prefix's flats and contacts even when its own edge is affine.
+            # Replay that prefix instead of interpolating its immediate net
+            # displacement through a clearance.
+            return self._searched(edge, key, bound, value, values, deltas)
         if edge.shapes[index] is not None:
             # AFFINE or KINKED: either way the value is piecewise affine
             # in `t` over the breakpoints `cuts` gives, and the stop is
@@ -989,6 +1072,29 @@ class Run:
             return self._piecewise(edge, key, bound, value, values, deltas,
                                    cuts)
         return self._searched(edge, key, bound, value, values, deltas)
+
+    def _searched_play(self, edge, key, side, bound, value, values, deltas):
+        """Locate departure from a bound after a play-clearance plateau."""
+        at = lambda t: value + self._along(edge, key, values, deltas, t) - bound
+        outward = (lambda level: level > 0.0) if side == 'high' \
+            else (lambda level: level < 0.0)
+        left, below = 0.0, at(0.0)
+        for step in range(1, _SUBDIVISIONS + 1):
+            right = step / _SUBDIVISIONS
+            above = at(right)
+            if not outward(below) and outward(above):
+                low, high = left, right
+                for _round in range(_BISECTION_ROUNDS):
+                    if high - low <= _CROSSING_TOLERANCE:
+                        break
+                    middle = (low + high) / 2.0
+                    if outward(at(middle)):
+                        high = middle
+                    else:
+                        low = middle
+                return (low + high) / 2.0
+            left, below = right, above
+        return 1.0
 
     def _piecewise(self, edge, key, bound, value, values, deltas, cuts):
         """An affine skeleton with a jump plan: piecewise affine in `t`,
@@ -1039,8 +1145,41 @@ class Run:
         """The increment `key` receives over the stretch truncated at
         `t`: one edge evaluation for a continuous law, one jump-plan
         partition-and-sum for a law that jumps."""
+        if self._has_play_ancestor(key):
+            # A downstream play follower is not linear in its immediate
+            # source's net tick displacement. Replay the complete program
+            # prefix from the original input(s) at this request fraction.
+            truncated = {other: (delta * t if other[0] == 'input' else 0.0)
+                         for other, delta in deltas.items()}
+            landings = {}
+            for candidate in self.program.edges:
+                if candidate.kind == 'check':
+                    continue
+                for gives, increment in candidate.increments(values,
+                                                              truncated,
+                                                              landings=landings):
+                    truncated[gives] = increment
+                if key in candidate.gives:
+                    return truncated[key]
+            return truncated[key]
         truncated = {other: delta * t for other, delta in deltas.items()}
         return dict(edge.increments(values, truncated))[key]
+
+    def _has_play_ancestor(self, key):
+        """Whether the determiner path to ``key`` contains a play edge."""
+        pending, seen = [key], set()
+        while pending:
+            current = pending.pop()
+            if current in seen:
+                continue
+            seen.add(current)
+            edge = self.program.determiner.get(current)
+            if edge is None:
+                continue
+            if edge.kind == 'play':
+                return True
+            pending.extend(edge.needs)
+        return False
 
     def _group(self, identifier, admissions, values):
         """The inputs a stop on `identifier` stops: the candidates the
@@ -1069,14 +1208,18 @@ class Run:
         window -- contributes nothing and is not stopped.
         """
         deltas = self._deltas({candidate: delta})
+        landings = {}
         for edge in self.program.edges:
             if edge.kind == 'check':
                 continue
             if any(deltas[need] for need in edge.needs):
-                for gives, increment in edge.increments(values, deltas):
+                for gives, increment in edge.increments(
+                        values, deltas, landings=landings):
                     deltas[gives] = increment
             if key in edge.gives:
                 break
+        if self._has_play_ancestor(key) and key in landings:
+            return landings[key] != values[key]
         return deltas[key] != 0.0
 
     def _block(self, stopped):

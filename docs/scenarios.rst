@@ -428,6 +428,45 @@ segment. And a document whose program carries such a law is a **version
 would have the read at both ends, freeze the branch and move the part by
 a different mechanism in silence.
 
+Backlash and clearance with ``Play``
+------------------------------------
+
+``Play`` is the narrow running law for a retained follower separated
+from its source by backlash or clearance::
+
+    from machinome.simulation import Play
+
+    (dial & wheel.turn).drives(
+        wheel.turn, law=Play(low=-329.0, high=3.0))
+
+For source ``x`` and retained follower ``y``, a monotonic segment ending
+at ``x'`` commits ``max(x' - high, min(y, x' - low))``.  The follower
+holds inside the interval, is collected at either flank, and is released
+immediately when the source reverses.  The offsets must be finite and
+ordered ``low < high``; the initial follower must already lie in the
+closed interval ``[source-high, source-low]``.  Construction refuses an
+invalid rest state rather than moving it into the interval.
+
+The admitted graph is deliberately small: each play source is either a
+run-owned driver or the unique output of another play edge, and those
+edges form one linear, driver-rooted chain.  Cycles, fan-out, ambiguous
+writers and ordinary laws, formulas or wirings as sources are refused,
+because those sources can reverse within a tick.  Stops on a downstream
+follower replay the whole prefix from the original driver; they do not
+interpolate the immediate source's net displacement.
+
+A published play edge has ``kind: "play"``, ordered ``needs`` of source
+then retained coordinate, that retained coordinate in ``gives``, and its
+``low`` and ``high`` offsets.  Its document version is 9.  Browser
+execution requires a viewer that independently reports version 9 support;
+an older viewer is refused rather than asked to guess these semantics.
+
+The originating complex Vault with Combination Lock uses three such edges,
+rooted directly at its dial driver. Its measured wheel contacts include
+``[-328.7788108, 3.2757369]``, ``[-237.0991722, 94.9784270]`` and
+``[-231.6311303, 100.2710715]``; the non-integer flanks are ordinary values,
+not tolerances.
+
 A selection decides which sources a law reads
 ---------------------------------------------
 

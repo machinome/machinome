@@ -154,6 +154,9 @@ BLOCK_DOCUMENT_VERSION = 7
 #: initial state and would then silently stop following the machine.
 CLOCKED_DOCUMENT_VERSION = 8
 
+#: A running document carrying an explicit backlash/clearance edge.
+PLAY_DOCUMENT_VERSION = 9
+
 
 _MISSING = object()
 
@@ -552,6 +555,9 @@ def document_version(root, bindings=(), program=None, clocked=None):
     if clocked is not None:
         return CLOCKED_DOCUMENT_VERSION
     if program is not None:
+        if any(edge.get('kind') == 'play'
+               for edge in program.get('edges', ())):
+            return PLAY_DOCUMENT_VERSION
         if _carries_a_block(program):
             return BLOCK_DOCUMENT_VERSION
         return (SELF_READ_DOCUMENT_VERSION if _reads_its_own(program)

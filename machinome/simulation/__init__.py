@@ -43,6 +43,7 @@ from importlib.util import find_spec
 # the two cannot drift apart.
 _EXPORTS = {
     'Driver': 'driver',
+    'Play': 'play',
     # A state is a driver the machine writes (OpenSpec change
     # ``declare-the-state``). Lazy like every export here, and for the
     # reason the running kinds below are: a project that names no

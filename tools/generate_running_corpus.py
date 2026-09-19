@@ -103,6 +103,14 @@ REQUIRED = (
     'a tick carrying both a selection crossing and a stop',
     'an in-block gate crossing inside a tick',
     'a stop on a kinked determiner inside a tick',
+    'an explicit play edge',
+    'play retention and reversal release',
+    'play pickup at both flanks',
+    'a three-edge play cascade',
+    'a downstream play stop located from its driver',
+    'non-integer play contact',
+    'split play requests',
+    'play snapshot replay',
 )
 
 #: The CONTINUOUS SELECTIONS of the symbolic vocabulary, each of which
@@ -118,6 +126,32 @@ COMPARISONS = ('<', '<=', '>', '>=', '==', '!=')
 #: One entry per machine: its class name, its step size, how many ticks
 #: to run, and the script applied BEFORE the tick each entry names.
 CORPUS = (
+    {'name': 'PlayCorpus', 'dt': 1.0, 'steps': 8, 'script': [
+        {'tick': 1, 'move': {'input': 'dial', 'to': 100.0,
+                             'duration': 1.0}, 'handle': 'play0'},
+        {'tick': 2, 'move': {'input': 'dial', 'to': 40.0,
+                             'duration': 1.0}, 'handle': 'play1'},
+        {'tick': 3, 'snapshot': 'play'},
+        {'tick': 3, 'move': {'input': 'dial', 'to': -100.0,
+                             'duration': 1.0}, 'handle': 'play2'},
+        {'tick': 5, 'restore': 'play'},
+        {'tick': 6, 'move': {'input': 'dial', 'to': 100.0,
+                             'duration': 1.0}, 'handle': 'play3'},
+    ]},
+    {'name': 'MeasuredPlayCorpus', 'dt': 0.5, 'steps': 10, 'script': [
+        {'tick': 1, 'move': {'input': 'dial', 'to': 3.2757369,
+                             'duration': 0.5}, 'handle': 'measured0'},
+        {'tick': 2, 'move': {'input': 'dial', 'to': 1590.0,
+                             'duration': 1.0}, 'handle': 'measured1'},
+        {'tick': 4, 'move': {'input': 'dial', 'to': 1580.0,
+                             'duration': 0.5}, 'handle': 'measured2'},
+        {'tick': 5, 'move': {'input': 'dial', 'to': 1000.0,
+                             'duration': 0.5}, 'handle': 'measured3'},
+        {'tick': 6, 'move': {'input': 'dial', 'to': 500.0,
+                             'duration': 0.5}, 'handle': 'measured4'},
+        {'tick': 7, 'move': {'input': 'dial', 'to': 0.0,
+                             'duration': 0.5}, 'handle': 'measured5'},
+    ]},
     # The Curta bench's shape, at two step sizes: an affine chain, a
     # `clamp01` kink, a wiring into a plain port, a rate, both
     # instruction forms, and a snapshot restored a few ticks later.
@@ -378,6 +412,44 @@ def uncovered_features(machines):
     seen = set()
     for entry in machines:
         program = entry['document'].get('program') or {}
+        play_edges = [edge for edge in program.get('edges', ())
+                      if edge.get('kind') == 'play']
+        if play_edges:
+            seen.add('an explicit play edge')
+            if len(play_edges) >= 3:
+                seen.add('a three-edge play cascade')
+            if any(not float(edge['low']).is_integer()
+                   or not float(edge['high']).is_integer()
+                   for edge in play_edges):
+                seen.add('non-integer play contact')
+            if any('snapshot' in action for action in entry['script']) \
+                    and any('restore' in action for action in entry['script']):
+                seen.add('play snapshot replay')
+            moves = [action for action in entry['script'] if 'move' in action]
+            targets = [(action['move'].get('input'), action['move'].get('to'))
+                       for action in moves if action['move'].get('to') is not None]
+            if any(a[0] == b[0] == c[0]
+                   and (a[1] < b[1] < c[1] or a[1] > b[1] > c[1])
+                   for a, b, c in zip(targets, targets[1:], targets[2:])):
+                seen.add('split play requests')
+            banks = [tick['bank'] for tick in entry['ticks']]
+            retained = play_edges[0]['gives'][0]
+            source = play_edges[0]['needs'][0]
+            deltas = [b[retained] - a[retained]
+                      for a, b in zip(banks, banks[1:])]
+            source_deltas = [b[source] - a[source]
+                             for a, b in zip(banks, banks[1:])]
+            if any(deltas[index] and deltas[index + 1] == 0.0
+                   and source_deltas[index] * source_deltas[index + 1] < 0
+                   for index in range(len(deltas) - 1)):
+                seen.add('play retention and reversal release')
+            if any(delta > 0 for delta in deltas) \
+                    and any(delta < 0 for delta in deltas):
+                seen.add('play pickup at both flanks')
+            chained = {edge['gives'][0] for edge in play_edges[1:]}
+            if any(stop['coordinate'] in chained for tick in entry['ticks']
+                   for stop in tick['stops']):
+                seen.add('a downstream play stop located from its driver')
         for edge in program.get('edges', ()):
             if edge['kind'] == 'law' and len(edge['needs']) > 1:
                 seen.add('a multi-source law')

@@ -51,6 +51,7 @@ BASEDIR = os.path.dirname(os.path.abspath(__file__))
 # itself would prove nothing about what consumers used to import.
 EXPECTED_EXPORTS = {
     'Driver': 'machinome.simulation.driver',
+    'Play': 'machinome.simulation.play',
     'RampProgram': 'machinome.simulation.driver',
     # The state declaration and its two enumeration faces, added with
     # the clocked discipline (OpenSpec change ``declare-the-state``).

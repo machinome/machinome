@@ -2078,17 +2078,19 @@ class Edge:
     __slots__ = ('kind', 'needs', 'gives', 'graphs', 'plans', 'driven',
                  'names', 'factors', 'constant', 'slot_key', 'description',
                  'stated_by', 'shapes', 'kinks', 'affine', 'retained',
-                 'block')
+                 'block', 'low', 'high')
 
     def __init__(self, kind, needs, gives, description, stated_by,
                  graphs=(), plans=(), driven=(), names=(), factors=(),
-                 constant=0.0, slot_key=None, block=None):
+                 constant=0.0, slot_key=None, block=None, low=None, high=None):
         self.kind = kind
         # The `_Block` reading for a compound BLOCK edge, and `None` for
         # every other kind: a block is ONE entry of the program, so
         # `_ordered` contracts the cycle and `run.py` meets it through
         # the interface it already calls.
         self.block = block
+        self.low = low
+        self.high = high
         self.needs = tuple(needs)
         self.gives = tuple(gives)
         self.graphs = tuple(graphs)
@@ -2157,6 +2159,8 @@ class Edge:
                 yield _KinkCuts(self.graphs[index])
 
     def _end_shapes(self):
+        if self.kind == 'play':
+            return [None]
         if self.kind == 'block':
             # A block's value is piecewise in the SELECTOR partition and
             # RE-ORDERED across it, so a stop on one of its coordinates
@@ -2229,6 +2233,20 @@ class Edge:
         it: the run commits that float rather than `value + delta`,
         exactly where it commits a stop at its bound.
         """
+        if self.kind == 'play':
+            source, retained = self.needs
+            old = values[retained]
+            # A preceding play edge reports its exact absolute landing.
+            # Consume it directly: reconstructing a large landing as
+            # ``start + (landing - start)`` can lose a unit before the next
+            # clearance projection sees it.
+            end = (landings[source] if landings is not None
+                   and source in landings
+                   else values[source] + deltas[source])
+            new = max(end - self.high, min(old, end - self.low))
+            if landings is not None:
+                landings[retained] = new
+            return [(retained, new - old)]
         if self.kind == 'law':
             start = self._inputs(values)
             if not self.plans:
@@ -2526,6 +2544,8 @@ class Program:
                 if one.kind == 'law':
                     how = ' | '.join('constant' if graph is None
                                      else str(graph) for graph in one.graphs)
+                elif one.kind == 'play':
+                    how = f'{one.low!r} to {one.high!r}'
                 elif one.kind == 'wiring':
                     how = f'identity * {one.factors[0]!r}'
                 else:
@@ -2597,10 +2617,12 @@ class Program:
         """
         values = self.values_of(bank)
         deltas = self.deltas_of({input_id: epsilon})
+        landings = {}
         for edge in self.edges:
             if edge.kind == 'check':
                 continue
-            for key, delta in edge.increments(values, deltas):
+            for key, delta in edge.increments(values, deltas,
+                                              landings=landings):
                 deltas[key] = delta
         return {identifier: deltas[key]
                 for identifier, key in self.keys.items()}
@@ -2826,6 +2848,9 @@ class Program:
                 _published_plan(edge.plans[index] if edge.plans else None,
                                 placeholders[index])
                 for index in range(len(edge.gives))]
+        elif edge.kind == 'play':
+            entry['low'] = edge.low
+            entry['high'] = edge.high
         elif edge.kind == 'wiring':
             entry['factor'] = edge.factors[0]
         else:
@@ -2968,6 +2993,7 @@ def compile_program(root, inputs, coordinates, controls=None,
         touched.update(edge.gives)
     nodes = {key: node for key, node in nodes.items() if key in touched}
     _refuse_opaque(kept, bank_keys, nodes)
+    _validate_play_graph(kept, nodes)
     grouped, blocks = _blocked(kept, nodes, bank_keys)
     _agree_on_membership(marked, blocks, nodes)
     ordered = _ordered(grouped, nodes)
@@ -2979,6 +3005,47 @@ def compile_program(root, inputs, coordinates, controls=None,
         program.controls = _compiled_controls(
             root, program, coordinates, controls, instructions or {})
     return program
+
+
+def _validate_play_graph(edges, nodes):
+    """Admit only unbranched play chains rooted directly at an input."""
+    play = [edge for edge in edges if edge.kind == 'play']
+    if not play:
+        return
+    writers = {}
+    for edge in edges:
+        for key in edge.gives:
+            writers.setdefault(key, []).append(edge)
+    sourced = {}
+    for edge in play:
+        retained_writers = writers.get(edge.gives[0], ())
+        if len(retained_writers) != 1:
+            raise UnsupportedLaw(
+                f'{edge.description}, stated by {edge.stated_by}: its '
+                f'retained coordinate {nodes[edge.gives[0]].name} has '
+                f'{len(retained_writers)} writers. A Play coordinate has '
+                f'exactly one writer; an ambiguous writer is refused by '
+                f'relation identity.')
+        source = edge.needs[0]
+        sourced.setdefault(source, []).append(edge)
+        if source[0] == 'input':
+            continue
+        incoming = writers.get(source, ())
+        if len(incoming) != 1 or incoming[0].kind != 'play':
+            origin = nodes[source].name
+            raise UnsupportedLaw(
+                f'{edge.description}, stated by {edge.stated_by}: its play '
+                f'source {origin} is not a run-owned driver or the unique '
+                f'output of another play relation. Ordinary laws, wirings, '
+                f'formulas, and ambiguous writers can reverse within a '
+                f'tick and are refused by relation identity.')
+    for source, outgoing in sourced.items():
+        if len(outgoing) > 1:
+            raise UnsupportedLaw(
+                f'{nodes[source].name} sources more than one play relation '
+                f'({", ".join(edge.description for edge in outgoing)}). '
+                f'Play edges form a linear driver-rooted chain; fan-out is '
+                f'refused by relation identity.')
 
 
 ##############################################
@@ -3610,6 +3677,24 @@ def _relation_edge(root, assembly, record, nodes, bank_keys):
         sources, targets = record.driven_ends, record.driver_ends
     source_nodes = [_register(nodes, root, end) for end in sources]
     target_nodes = [_register(nodes, root, end) for end in targets]
+
+    if getattr(record.law, '_machinome_play', False):
+        valid = (record.direction == 'forward'
+                 and len(source_nodes) == 2
+                 and len(target_nodes) == 1
+                 and source_nodes[1].key == target_nodes[0].key
+                 and target_nodes[0].key in bank_keys)
+        if not valid:
+            raise UnsupportedLaw(
+                f'{record.described()}, stated by {type(assembly).__name__}: '
+                f'Play requires exactly the running shape '
+                f'(source & retained).drives(retained, law=Play(...)), '
+                f'with one banked scalar retained coordinate named second.')
+        return Edge('play', [node.key for node in source_nodes],
+                    [target_nodes[0].key], record.described(),
+                    type(assembly).__name__, driven=[target_nodes[0].name],
+                    names=[node.name for node in source_nodes],
+                    low=record.law.low, high=record.law.high)
 
     banked = [node.key in bank_keys for node in target_nodes]
     if any(banked) and not all(banked):
