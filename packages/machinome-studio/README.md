@@ -131,6 +131,16 @@ stale identifier cannot reach a later session of the same project. The service
 serves only each session's completed `_build/` artifacts and refreshes them
 with its own watcher.
 
+`scripts/migrate-projects-to-machinome` previews the one-time ecosystem rename
+across every Git project below the development catalogue. Pass `--apply` to
+write the previewed tracked files. Pass `--apply --stage` to stage only the
+rename while retaining unrelated unstaged edits; that mode refuses a repository
+which already has staged work. The script stops at repository boundaries,
+preserves archived OpenSpec history and the legacy `solid-node-export` document
+marker, and otherwise blocks a repository instead of touching a target file
+that already has uncommitted changes. `--include-untracked` also updates live
+untracked text files without adding them to Git.
+
 ## Cross-Repository Sprints
 
 A sprint always integrates shop work on branch and worktree `sprint-NNN` and
