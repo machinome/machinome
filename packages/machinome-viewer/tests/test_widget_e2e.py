@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -18,7 +18,7 @@ from pathlib import Path
 from subprocess import run
 from unittest import TestCase
 
-from solid_node_viewer.bundle import api_version
+from machinome_viewer.bundle import api_version
 
 from .support import (
     CHROME, HAS_PIL, HAS_PLAYWRIGHT, export_marked, export_with_widget,
@@ -104,7 +104,7 @@ HARNESS_PAGE = """<!doctype html>
   <body>
     <div id="host"></div>
     <div id="navHost"></div>
-    <script src="solid-widget.js"></script>
+    <script src="machinome-viewer.js"></script>
   </body>
 </html>
 """
@@ -159,7 +159,7 @@ class ViewerMountApiTest(TestCase):
                 errors = []
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(self.harness_url)
-                page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+                page.wait_for_function('typeof MachinomeViewer !== "undefined"')
                 result = page.evaluate(script)
                 self.assertEqual(errors, [], f'uncaught page errors: {errors}')
                 return result
@@ -169,7 +169,7 @@ class ViewerMountApiTest(TestCase):
     def test_dispose_leaves_the_container_empty(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
           const mounted = host.children.length;
           viewer.dispose();
           return { mounted, after: host.children.length };
@@ -180,8 +180,8 @@ class ViewerMountApiTest(TestCase):
     def test_the_bundle_and_mount_handle_report_one_api_version(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
-          return { bundle: SolidNodeWidget.apiVersion, handle: viewer.apiVersion,
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
+          return { bundle: MachinomeViewer.apiVersion, handle: viewer.apiVersion,
                    run: viewer.run(), machine: viewer.machine() };
         }""")
         self.assertEqual(result['bundle'], api_version())
@@ -215,7 +215,7 @@ class ViewerMountApiTest(TestCase):
         # where a build at 18 lists the same button and refuses it -- is
         # the one after that, and this moves to 19; the document list
         # does NOT move with it either.
-        self.assertEqual(result['bundle'], 19)
+        self.assertEqual(result['bundle'], 20)
         # And a document carrying no program has no run and no machine,
         # which is what a host asking one question is answered with.
         self.assertIsNone(result['run'])
@@ -224,7 +224,7 @@ class ViewerMountApiTest(TestCase):
     def test_the_mount_handle_exposes_and_controls_the_assembly(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
           const assembly = viewer.assembly();
           const target = assembly.children[0] ?? assembly;
           viewer.setRoot(target.path);
@@ -250,7 +250,7 @@ class ViewerMountApiTest(TestCase):
     def test_navigation_reads_focus_and_hidden_and_notifies_once_per_source(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
           const target = viewer.assembly().children[0];
           const initial = viewer.navigation();
 
@@ -307,7 +307,7 @@ class ViewerMountApiTest(TestCase):
     def test_a_redundant_visibility_call_still_notifies(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
           const target = viewer.assembly().children[0];
           let count = 0;
           viewer.onAssemblyChange(() => { count += 1; });
@@ -323,7 +323,7 @@ class ViewerMountApiTest(TestCase):
     def test_a_refused_focus_notifies_nobody(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
           const before = viewer.navigation();
           let count = 0;
           viewer.onAssemblyChange(() => { count += 1; });
@@ -341,7 +341,7 @@ class ViewerMountApiTest(TestCase):
     def test_cancel_and_dispose_stop_notifications(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
           const target = viewer.assembly().children[0];
 
           let cancelledCount = 0;
@@ -378,7 +378,7 @@ class ViewerMountApiTest(TestCase):
         # parent/child fixture, in assembly.test.ts's 'state' block.
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
           const assembly = viewer.assembly();
           const first = assembly.children[0];
           const second = assembly.children[1];
@@ -402,7 +402,7 @@ class ViewerMountApiTest(TestCase):
     def test_the_breadcrumb_notifies_a_subscribed_host(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(
+          const viewer = await MachinomeViewer.mount(
             host, 'nested-driven.json', { autoplay: false });
           const events = [];
           viewer.onAssemblyChange((change) => { events.push(change.navigation.root); });
@@ -421,7 +421,7 @@ class ViewerMountApiTest(TestCase):
     def test_a_targeted_update_notifies_once_with_reconciled_state(self):
         # Playwright directly, not in_page (which runs one script): a
         # file write has to land BETWEEN two evaluations of the same
-        # page, as `solid develop`'s targeted update does.
+        # page, as `machinome develop`'s targeted update does.
         errors = []
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(args=[
@@ -431,10 +431,10 @@ class ViewerMountApiTest(TestCase):
                 page = browser.new_page(viewport={'width': 800, 'height': 600})
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(self.harness_url)
-                page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+                page.wait_for_function('typeof MachinomeViewer !== "undefined"')
                 setup = page.evaluate("""async () => {
                   const host = document.getElementById('host');
-                  const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+                  const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
                   window.__viewer = viewer;
                   const assembly = viewer.assembly();
                   const focused = assembly.children[0];
@@ -477,12 +477,12 @@ class ViewerMountApiTest(TestCase):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
           const navHost = document.getElementById('navHost');
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
-          const nav = SolidNodeWidget.mountNavigator(navHost, viewer);
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
+          const nav = MachinomeViewer.mountNavigator(navHost, viewer);
           const rows = [...navHost.querySelectorAll('[role="treeitem"]')];
           const info = rows.map((row) => ({
             role: row.getAttribute('role'),
-            label: row.querySelector('.solid-nav-name')?.textContent,
+            label: row.querySelector('.machinome-nav-name')?.textContent,
           }));
           nav.dispose();
           return { count: rows.length, info };
@@ -495,21 +495,21 @@ class ViewerMountApiTest(TestCase):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
           const navHost = document.getElementById('navHost');
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
-          const nav = SolidNodeWidget.mountNavigator(navHost, viewer);
-          const rows = () => [...navHost.querySelectorAll('.solid-nav-row')];
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
+          const nav = MachinomeViewer.mountNavigator(navHost, viewer);
+          const rows = () => [...navHost.querySelectorAll('.machinome-nav-row')];
           const press = (key) => document.activeElement.dispatchEvent(
             new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
 
           rows().find((row) => row.tabIndex === 0).focus();
           press('ArrowDown');
-          const firstChildLabel = document.activeElement.querySelector('.solid-nav-name').textContent;
+          const firstChildLabel = document.activeElement.querySelector('.machinome-nav-name').textContent;
           press('Enter');
           const rootAfterEnter = viewer.navigation().root;
           press(' ');
           const hiddenAfterSpace = viewer.navigation().hidden;
           press('ArrowLeft');
-          const labelAfterLeft = document.activeElement.querySelector('.solid-nav-name').textContent;
+          const labelAfterLeft = document.activeElement.querySelector('.machinome-nav-name').textContent;
 
           nav.dispose();
           return { firstChildLabel, rootAfterEnter, hiddenAfterSpace, labelAfterLeft };
@@ -525,15 +525,15 @@ class ViewerMountApiTest(TestCase):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
           const navHost = document.getElementById('navHost');
-          const viewer = await SolidNodeWidget.mount(
+          const viewer = await MachinomeViewer.mount(
             host, 'nested-driven.json', { autoplay: false });
-          const nav = SolidNodeWidget.mountNavigator(navHost, viewer);
+          const nav = MachinomeViewer.mountNavigator(navHost, viewer);
 
           const descend = host.querySelector('.driver-descend');
           descend?.click();
 
-          const hubRow = [...navHost.querySelectorAll('.solid-nav-row')]
-            .find((row) => row.querySelector('.solid-nav-name')?.textContent === 'Hub');
+          const hubRow = [...navHost.querySelectorAll('.machinome-nav-row')]
+            .find((row) => row.querySelector('.machinome-nav-name')?.textContent === 'Hub');
           const outcome = {
             found: hubRow !== undefined,
             selected: hubRow?.getAttribute('aria-selected'),
@@ -549,7 +549,7 @@ class ViewerMountApiTest(TestCase):
 
     def test_a_targeted_update_reconciles_the_navigator(self):
         # Playwright directly, not in_page: a manifest.json write has to
-        # land BETWEEN two page evaluations, as `solid develop`'s
+        # land BETWEEN two page evaluations, as `machinome develop`'s
         # targeted update does (matching
         # test_a_targeted_update_notifies_once_with_reconciled_state
         # above). The Spinner fixture is flat -- Hub, b0, b1, b2 are all
@@ -569,15 +569,15 @@ class ViewerMountApiTest(TestCase):
                 page = browser.new_page(viewport={'width': 800, 'height': 600})
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(self.harness_url)
-                page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+                page.wait_for_function('typeof MachinomeViewer !== "undefined"')
                 setup = page.evaluate("""async () => {
                   const host = document.getElementById('host');
                   const navHost = document.getElementById('navHost');
-                  const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
-                  const nav = SolidNodeWidget.mountNavigator(navHost, viewer);
+                  const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
+                  const nav = MachinomeViewer.mountNavigator(navHost, viewer);
                   window.__viewer = viewer;
                   window.__nav = nav;
-                  const names = [...navHost.querySelectorAll('.solid-nav-name')]
+                  const names = [...navHost.querySelectorAll('.machinome-nav-name')]
                     .map((el) => el.textContent);
                   return { names };
                 }""")
@@ -594,9 +594,9 @@ class ViewerMountApiTest(TestCase):
                 result = page.evaluate("""async () => {
                   await window.__viewer.manifestChanged();
                   const navHost = document.getElementById('navHost');
-                  const rows = [...navHost.querySelectorAll('.solid-nav-row')];
+                  const rows = [...navHost.querySelectorAll('.machinome-nav-row')];
                   return {
-                    names: rows.map((row) => row.querySelector('.solid-nav-name').textContent),
+                    names: rows.map((row) => row.querySelector('.machinome-nav-name').textContent),
                     rootExpanded: rows[0].getAttribute('aria-expanded'),
                     tabStops: rows.filter((row) => row.tabIndex === 0).length,
                   };
@@ -616,22 +616,22 @@ class ViewerMountApiTest(TestCase):
           const navHost = document.getElementById('navHost');
           const navHost2 = document.createElement('div');
           document.body.appendChild(navHost2);
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
-          const navA = SolidNodeWidget.mountNavigator(navHost, viewer);
-          const navB = SolidNodeWidget.mountNavigator(navHost2, viewer);
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
+          const navA = MachinomeViewer.mountNavigator(navHost, viewer);
+          const navB = MachinomeViewer.mountNavigator(navHost2, viewer);
 
-          const firstChip = (root) => root.querySelectorAll('.solid-nav-visibility')[1];
+          const firstChip = (root) => root.querySelectorAll('.machinome-nav-visibility')[1];
           firstChip(navHost).click();
           const afterHide = {
             a: firstChip(navHost).checked,
             b: firstChip(navHost2).checked,
-            styleCount: document.querySelectorAll('#solid-node-navigator-style').length,
+            styleCount: document.querySelectorAll('#machinome-navigator-style').length,
           };
 
           navA.dispose();
           const navHostEmptyAfterDispose = navHost.children.length === 0;
 
-          const secondChip = (root) => root.querySelectorAll('.solid-nav-visibility')[2];
+          const secondChip = (root) => root.querySelectorAll('.machinome-nav-visibility')[2];
           secondChip(navHost2).click();
           const bStillUpdates = secondChip(navHost2).checked === false;
 
@@ -649,13 +649,13 @@ class ViewerMountApiTest(TestCase):
     def test_a_captured_view_survives_a_remount(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const first = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const first = await MachinomeViewer.mount(host, 'manifest.json', {});
           const moved = {
             camera: first.view().camera.clone().multiplyScalar(2),
             target: first.view().target.clone(),
           };
           first.dispose();
-          const second = await SolidNodeWidget.mount(host, 'manifest.json', { view: moved });
+          const second = await MachinomeViewer.mount(host, 'manifest.json', { view: moved });
           const got = second.view();
           return {
             want: [moved.camera.x, moved.camera.y, moved.camera.z],
@@ -668,7 +668,7 @@ class ViewerMountApiTest(TestCase):
     def test_reload_keeps_the_maker_looking_where_they_were(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
           const before = viewer.view();
           const want = [before.camera.x, before.camera.y, before.camera.z];
           await viewer.reload();
@@ -681,7 +681,7 @@ class ViewerMountApiTest(TestCase):
     def test_manifest_update_keeps_the_canvas_and_camera(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json', {});
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json', {});
           const canvas = host.querySelector('canvas');
           const before = viewer.view();
           await viewer.manifestChanged();
@@ -699,7 +699,7 @@ class ViewerMountApiTest(TestCase):
     def test_the_host_names_the_canvas(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          await SolidNodeWidget.mount(host, 'manifest.json', {
+          await MachinomeViewer.mount(host, 'manifest.json', {
             className: 'functional-model', role: 'img', ariaLabel: 'Functional model',
           });
           const canvas = host.querySelector('canvas');
@@ -713,7 +713,7 @@ class ViewerMountApiTest(TestCase):
     def test_a_slider_readout_accepts_an_exact_number(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'driven.json',
+          const viewer = await MachinomeViewer.mount(host, 'driven.json',
                                                      { autoplay: false });
           const row = host.querySelector('.driver-control');
           const slider = row.querySelector('input[type=range]');
@@ -771,7 +771,7 @@ class ViewerMountApiTest(TestCase):
     def test_the_toggle_presentation_starts_collapsed(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          await SolidNodeWidget.mount(host, 'manifest.json', { animation: 'toggle' });
+          await MachinomeViewer.mount(host, 'manifest.json', { animation: 'toggle' });
           const toggle = host.querySelector('.timeline-toggle');
           const bar = host.querySelector('.animation-controls');
           const collapsed = { expanded: toggle.getAttribute('aria-expanded'),
@@ -790,7 +790,7 @@ class ViewerMountApiTest(TestCase):
 @needs_playwright
 class InspectorLayoutE2ETest(TestCase):
     """The standalone export page selects a layout (design D8): the
-    shipped `index.html` carries `data-solid-layout="inspector"`, and a
+    shipped `index.html` carries `data-machinome-layout="inspector"`, and a
     page written before this capability existed carries no such
     attribute and mounts the plain viewer exactly as it always has."""
 
@@ -815,44 +815,44 @@ class InspectorLayoutE2ETest(TestCase):
                 errors = []
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(url or self.base_url)
-                page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+                page.wait_for_function('typeof MachinomeViewer !== "undefined"')
                 yield page, errors
             finally:
                 browser.close()
 
     def test_the_export_page_mounts_the_inspector(self):
         with self.open_page() as (page, errors):
-            page.wait_for_selector('.solid-inspector')
-            self.assertEqual(page.locator('.solid-inspector-toggle').count(), 1)
+            page.wait_for_selector('.machinome-inspector')
+            self.assertEqual(page.locator('.machinome-inspector-toggle').count(), 1)
             # Collapsed by default (design D3): the `hidden` attribute is
             # present on the sidebar.
             self.assertIsNotNone(
-                page.locator('.solid-inspector-sidebar').get_attribute('hidden'))
+                page.locator('.machinome-inspector-sidebar').get_attribute('hidden'))
             self.assertEqual(errors, [])
 
     def test_the_toggle_opens_the_sidebar_and_the_canvas_narrows(self):
         with self.open_page() as (page, errors):
-            page.wait_for_selector('.solid-inspector-viewer canvas')
-            canvas = page.locator('.solid-inspector-viewer canvas')
+            page.wait_for_selector('.machinome-inspector-viewer canvas')
+            canvas = page.locator('.machinome-inspector-viewer canvas')
             before = canvas.bounding_box()['width']
 
-            page.locator('.solid-inspector-toggle').click()
-            page.wait_for_selector('.solid-nav-tree [role="treeitem"]')
+            page.locator('.machinome-inspector-toggle').click()
+            page.wait_for_selector('.machinome-nav-tree [role="treeitem"]')
             self.assertIsNone(
-                page.locator('.solid-inspector-sidebar').get_attribute('hidden'))
+                page.locator('.machinome-inspector-sidebar').get_attribute('hidden'))
             # The viewer resizes through its own ResizeObserver, which
             # fires after layout: wait for the canvas to follow the pane
             # rather than reading its width in the same turn as the click.
-            narrowed = ("(before) => document.querySelector('.solid-inspector-viewer canvas')"
+            narrowed = ("(before) => document.querySelector('.machinome-inspector-viewer canvas')"
                         ".getBoundingClientRect().width < before")
             page.wait_for_function(narrowed, arg=before, timeout=5_000)
             opened = canvas.bounding_box()['width']
             self.assertLess(opened, before, 'the canvas did not narrow when the sidebar opened')
 
-            page.locator('.solid-inspector-toggle').click()
+            page.locator('.machinome-inspector-toggle').click()
             self.assertIsNotNone(
-                page.locator('.solid-inspector-sidebar').get_attribute('hidden'))
-            restored = ("(before) => Math.abs(document.querySelector('.solid-inspector-viewer canvas')"
+                page.locator('.machinome-inspector-sidebar').get_attribute('hidden'))
+            restored = ("(before) => Math.abs(document.querySelector('.machinome-inspector-viewer canvas')"
                         ".getBoundingClientRect().width - before) <= 2")
             page.wait_for_function(restored, arg=before, timeout=5_000)
             closed = canvas.bounding_box()['width']
@@ -862,31 +862,31 @@ class InspectorLayoutE2ETest(TestCase):
 
     def test_the_query_string_opens_the_sidebar(self):
         with self.open_page(f'{self.base_url}?sidebar=open') as (page, errors):
-            page.wait_for_selector('.solid-inspector-sidebar')
+            page.wait_for_selector('.machinome-inspector-sidebar')
             self.assertIsNone(
-                page.locator('.solid-inspector-sidebar').get_attribute('hidden'),
+                page.locator('.machinome-inspector-sidebar').get_attribute('hidden'),
                 'the sidebar attribute did not override the collapsed default')
             self.assertEqual(errors, [])
 
     def test_a_page_without_a_layout_attribute_mounts_the_plain_viewer(self):
-        # A hand-written page carrying only data-solid-widget -- the
+        # A hand-written page carrying only data-machinome-widget -- the
         # compatibility promise every already-published export keeps.
         (self.out_dir / 'plain.html').write_text(
             '<!doctype html><html><body>'
-            '<div id="solid-widget" data-solid-widget="manifest.json"></div>'
-            '<script src="solid-widget.js"></script></body></html>'
+            '<div id="machinome-viewer" data-machinome-widget="manifest.json"></div>'
+            '<script src="machinome-viewer.js"></script></body></html>'
         )
         with self.open_page(f'{self.dir_url}/plain.html') as (page, errors):
-            page.wait_for_selector('#solid-widget canvas')
-            self.assertEqual(page.locator('.solid-inspector').count(), 0)
+            page.wait_for_selector('#machinome-viewer canvas')
+            self.assertEqual(page.locator('.machinome-inspector').count(), 0)
             self.assertEqual(errors, [])
 
     def test_an_unknown_layout_is_refused_by_name(self):
         with self.open_page(f'{self.base_url}?layout=bogus') as (page, errors):
             page.wait_for_function(
-                "document.getElementById('solid-widget').textContent"
+                "document.getElementById('machinome-viewer').textContent"
                 ".includes('unknown layout')")
-            text = page.locator('#solid-widget').text_content()
+            text = page.locator('#machinome-viewer').text_content()
             self.assertIn('unknown layout "bogus"', text)
 
 
@@ -905,7 +905,7 @@ MARKED_HARNESS = """<!doctype html>
   </head>
   <body>
     <div id="host"></div>
-    <script src="solid-widget.js"></script>
+    <script src="machinome-viewer.js"></script>
   </body>
 </html>
 """
@@ -1009,7 +1009,7 @@ class MarkedDocumentPixelsTest(TestCase):
                 errors = []
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(self.harness_url)
-                page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+                page.wait_for_function('typeof MachinomeViewer !== "undefined"')
                 path = os.path.join(self.tempdir.name, 'shot.png')
                 for source, view, after in requests:
                     page.evaluate(
@@ -1017,7 +1017,7 @@ class MarkedDocumentPixelsTest(TestCase):
                           const host = document.getElementById('host');
                           host.innerHTML = '';
                           if (window.viewer) { window.viewer.dispose(); }
-                          window.viewer = await SolidNodeWidget.mount(
+                          window.viewer = await MachinomeViewer.mount(
                             host, source, options);
                           if (after) {
                             new Function('viewer', after)(window.viewer);

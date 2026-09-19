@@ -1,11 +1,11 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 // The conformance corpus (design §9, ADR-047). `src/running-corpus.json`
-// is solid-node's `tests/running-corpus.json`, copied byte for byte: the
+// is machinome's `tests/running-corpus.json`, copied byte for byte: the
 // numbers in it are the framework's, produced by the framework's own run
 // and never recomputed a second way. This suite replays every scenario
 // through the shipped engine and compares it tick by tick.

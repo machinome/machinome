@@ -1,11 +1,19 @@
 # Changelog
 
-All notable changes to solid-node-viewer. The Python package and the widget
+All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
 ## 0.2.0 — unreleased
 
 The viewer stops posing a machine and starts running one.
+
+- **The unreleased viewer adopts its final Machinome identity.** The
+  distribution, import package, command, entry point, browser global, DOM/CSS
+  contract, npm package and bundle are now `machinome-viewer`,
+  `machinome_viewer`, `machinome.viewer`, `MachinomeViewer`,
+  `@machinome/viewer` and `machinome-viewer.js`. Viewer API 20 records that
+  host-contract break. New documents use `machinome-export`; the reader keeps
+  accepting `solid-node-export` so committed 0.6 artifacts remain viewable.
 
 - **Large machine controls stay in a compact side rail instead of covering
   the model.** The operating `Calculators/Curta-Type-I-3x` clocked build

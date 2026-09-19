@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -41,7 +41,7 @@ export interface InspectorHandle {
   dispose(): void;
 }
 
-const STYLE_ID = 'solid-node-inspector-style';
+const STYLE_ID = 'machinome-inspector-style';
 
 // The class contract and the custom-property defaults (design D6, D13's
 // pattern). The rail and its toggle are always in the DOM (design D5);
@@ -50,32 +50,32 @@ const STYLE_ID = 'solid-node-inspector-style';
 // attribute already gets, so a host stylesheet loaded before this one
 // cannot accidentally re-show it.
 const INSPECTOR_STYLESHEET = `
-.solid-inspector {
-  --solid-inspector-sidebar-width: 260px;
-  --solid-inspector-rail-width: 32px;
-  --solid-inspector-bg: transparent;
-  --solid-inspector-fg: inherit;
-  --solid-inspector-border: rgba(128, 128, 128, 0.35);
-  --solid-inspector-toggle-bg: rgba(128, 128, 128, 0.12);
-  --solid-inspector-toggle-hover-bg: rgba(128, 128, 128, 0.24);
-  --solid-inspector-focus-ring: currentColor;
-  background: var(--solid-inspector-bg);
-  color: var(--solid-inspector-fg);
+.machinome-inspector {
+  --machinome-inspector-sidebar-width: 260px;
+  --machinome-inspector-rail-width: 32px;
+  --machinome-inspector-bg: transparent;
+  --machinome-inspector-fg: inherit;
+  --machinome-inspector-border: rgba(128, 128, 128, 0.35);
+  --machinome-inspector-toggle-bg: rgba(128, 128, 128, 0.12);
+  --machinome-inspector-toggle-hover-bg: rgba(128, 128, 128, 0.24);
+  --machinome-inspector-focus-ring: currentColor;
+  background: var(--machinome-inspector-bg);
+  color: var(--machinome-inspector-fg);
   display: flex;
   height: 100%;
   width: 100%;
 }
-.solid-inspector-rail {
-  border-right: 1px solid var(--solid-inspector-border);
+.machinome-inspector-rail {
+  border-right: 1px solid var(--machinome-inspector-border);
   display: flex;
-  flex: 0 0 var(--solid-inspector-rail-width);
+  flex: 0 0 var(--machinome-inspector-rail-width);
   flex-direction: column;
   align-items: center;
   padding-top: 4px;
 }
-.solid-inspector-toggle {
-  background: var(--solid-inspector-toggle-bg);
-  border: 1px solid var(--solid-inspector-border);
+.machinome-inspector-toggle {
+  background: var(--machinome-inspector-toggle-bg);
+  border: 1px solid var(--machinome-inspector-border);
   border-radius: 4px;
   color: inherit;
   cursor: pointer;
@@ -83,33 +83,33 @@ const INSPECTOR_STYLESHEET = `
   padding: 4px 2px;
   writing-mode: vertical-rl;
 }
-.solid-inspector-toggle:hover {
-  background: var(--solid-inspector-toggle-hover-bg);
+.machinome-inspector-toggle:hover {
+  background: var(--machinome-inspector-toggle-hover-bg);
 }
-.solid-inspector-toggle:focus-visible {
-  outline: 2px solid var(--solid-inspector-focus-ring);
+.machinome-inspector-toggle:focus-visible {
+  outline: 2px solid var(--machinome-inspector-focus-ring);
   outline-offset: 1px;
 }
-.solid-inspector-sidebar {
-  border-right: 1px solid var(--solid-inspector-border);
-  flex: 0 0 var(--solid-inspector-sidebar-width);
+.machinome-inspector-sidebar {
+  border-right: 1px solid var(--machinome-inspector-border);
+  flex: 0 0 var(--machinome-inspector-sidebar-width);
   min-width: 0;
   overflow: auto;
 }
-.solid-inspector-sidebar[hidden] {
+.machinome-inspector-sidebar[hidden] {
   display: none;
 }
-.solid-inspector-viewer {
+.machinome-inspector-viewer {
   flex: 1 1 auto;
   min-width: 0;
   position: relative;
 }
-.solid-inspector :is(
+.machinome-inspector :is(
   .driver-descend, .run-descend, .clocked-descend,
   .driver-descend-separator, .run-descend-separator,
   .clocked-descend-separator
 ),
-.solid-inspector .clocked-reset {
+.machinome-inspector .clocked-reset {
   display: none;
 }
 `;
@@ -134,7 +134,7 @@ function resolveTarget(target: HTMLElement | string): HTMLElement {
   }
   const element = document.querySelector<HTMLElement>(target);
   if (!element) {
-    throw new Error(`solid-widget: no element matches "${target}"`);
+    throw new Error(`machinome-viewer: no element matches "${target}"`);
   }
   return element;
 }
@@ -165,24 +165,24 @@ export async function mountInspectorWith(
   }
 
   const root = doc.createElement('div');
-  root.className = 'solid-inspector';
+  root.className = 'machinome-inspector';
 
   const rail = doc.createElement('div');
-  rail.className = 'solid-inspector-rail';
+  rail.className = 'machinome-inspector-rail';
 
-  const sidebarId = `solid-inspector-sidebar-${(nextSidebarId += 1)}`;
+  const sidebarId = `machinome-inspector-sidebar-${(nextSidebarId += 1)}`;
   const sidebarEl = doc.createElement('div');
-  sidebarEl.className = 'solid-inspector-sidebar';
+  sidebarEl.className = 'machinome-inspector-sidebar';
   sidebarEl.id = sidebarId;
 
   const toggle = doc.createElement('button');
   toggle.type = 'button';
-  toggle.className = 'solid-inspector-toggle';
+  toggle.className = 'machinome-inspector-toggle';
   toggle.setAttribute('aria-controls', sidebarId);
   toggle.textContent = label;
 
   const viewerPane = doc.createElement('div');
-  viewerPane.className = 'solid-inspector-viewer';
+  viewerPane.className = 'machinome-inspector-viewer';
 
   rail.append(toggle);
   root.append(rail, sidebarEl, viewerPane);

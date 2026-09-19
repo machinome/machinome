@@ -1,9 +1,9 @@
 # `workflow/` — the viewer's pre-spec working record
 
-This directory holds working material of solid-node-viewer development that
+This directory holds working material of machinome-viewer development that
 is real and worth keeping but is not, or is not yet, an OpenSpec record. It
 follows the convention the framework established in
-`solid-node/workflow/README.md`; read that file for the reasoning. What is
+`machinome/workflow/README.md`; read that file for the reasoning. What is
 here is the viewer's own, and never the framework's.
 
 Nothing in this directory is ratified, and nothing in it is a public API

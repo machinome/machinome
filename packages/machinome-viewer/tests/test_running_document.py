@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -22,7 +22,7 @@ from tests.support import (
     FIXTURES, TOUCHED, needs_bundle, needs_playwright, published_touched,
     serve_directory,
 )
-from solid_node_viewer.bundle import bundle_path, index_path
+from machinome_viewer.bundle import bundle_path, index_path
 
 try:
     from playwright.sync_api import sync_playwright
@@ -91,7 +91,7 @@ HARNESS_PAGE = """<!doctype html>
   </head>
   <body>
     <div id="host"></div>
-    <script src="solid-widget.js"></script>
+    <script src="machinome-viewer.js"></script>
   </body>
 </html>
 """
@@ -100,7 +100,7 @@ HARNESS_PAGE = """<!doctype html>
 #: viewer's own step size, awaiting the outcome of every one.
 DRIVE = """async () => {
   const host = document.getElementById('host');
-  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json', {});
   const run = viewer.run();
   if (run === null) {
     return { run: null };
@@ -147,7 +147,7 @@ class RunningDocumentTest(TestCase):
         self.addCleanup(self.tempdir.cleanup)
         self.out_dir = Path(self.tempdir.name) / 'pascaline'
         shutil.copytree(PASCALINE, self.out_dir)
-        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        shutil.copy2(bundle_path(), self.out_dir / 'machinome-viewer.js')
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(self.out_dir)
         base = server.__enter__()
@@ -169,13 +169,13 @@ class RunningDocumentTest(TestCase):
                         if message.type == 'error' else None)
                 page.goto(self.harness_url)
                 page.wait_for_function(
-                    'typeof SolidNodeWidget !== "undefined"')
+                    'typeof MachinomeViewer !== "undefined"')
                 # The rest pose, photographed before anything is asked of
                 # the run: pixels are evidence, and a green suite is not
                 # an inspection.
                 page.evaluate("""async () => {
                   const host = document.getElementById('host');
-                  window.__rest = await SolidNodeWidget.mount(
+                  window.__rest = await MachinomeViewer.mount(
                     host, 'viewer.json', {});
                 }""")
                 page.wait_for_timeout(500)
@@ -192,7 +192,7 @@ class RunningDocumentTest(TestCase):
                              'the handle reported no run')
         self.assertEqual(result['identity'],
                          self.document['program']['identity'])
-        self.assertEqual(result['apiVersion'], 19)
+        self.assertEqual(result['apiVersion'], 20)
         self.assertEqual(result['controls'], [])
         self.assertAlmostEqual(result['dt'], 1 / 240, places=12)
 
@@ -261,7 +261,7 @@ class DrivenOnScreenTest(TestCase):
         self.addCleanup(self.tempdir.cleanup)
         self.out_dir = Path(self.tempdir.name) / 'pascaline'
         shutil.copytree(PASCALINE, self.out_dir)
-        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        shutil.copy2(bundle_path(), self.out_dir / 'machinome-viewer.js')
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(self.out_dir)
         base = server.__enter__()
@@ -271,9 +271,9 @@ class DrivenOnScreenTest(TestCase):
 
     def open(self, page):
         page.goto(self.harness_url)
-        page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+        page.wait_for_function('typeof MachinomeViewer !== "undefined"')
         page.evaluate("""async () => {
-          window.__viewer = await SolidNodeWidget.mount(
+          window.__viewer = await MachinomeViewer.mount(
             document.getElementById('host'), 'viewer.json', {});
         }""")
         page.wait_for_selector(PANEL)
@@ -550,8 +550,8 @@ class RunningExportPageTest(TestCase):
         self.addCleanup(self.tempdir.cleanup)
         self.out_dir = Path(self.tempdir.name) / 'export'
         shutil.copytree(PASCALINE, self.out_dir)
-        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
-        # `solid export` names the document manifest.json; the page the
+        shutil.copy2(bundle_path(), self.out_dir / 'machinome-viewer.js')
+        # `machinome export` names the document manifest.json; the page the
         # package ships points at it.
         (self.out_dir / 'viewer.json').rename(self.out_dir / 'manifest.json')
         shutil.copy2(index_path(), self.out_dir / 'index.html')
@@ -572,21 +572,21 @@ class RunningExportPageTest(TestCase):
                 page.on('console', lambda message: errors.append(message.text)
                         if message.type == 'error' else None)
                 page.goto(self.page_url)
-                page.wait_for_selector('#solid-widget .run-controls',
+                page.wait_for_selector('#machinome-viewer .run-controls',
                                        timeout=60_000)
-                page.wait_for_selector('#solid-widget .run-transport')
+                page.wait_for_selector('#machinome-viewer .run-transport')
                 self.assertEqual(
                     page.eval_on_selector_all(
-                        '#solid-widget input[type=range]',
+                        '#machinome-viewer input[type=range]',
                         'nodes => nodes.length'), 0)
-                button = ('#solid-widget .run-instruction'
+                button = ('#machinome-viewer .run-instruction'
                           '[data-instruction="Add one"]')
                 page.click(button)
                 page.wait_for_selector(f'{button}:not([aria-busy])',
                                        timeout=60_000)
                 self.assertEqual(
                     page.text_content(
-                        '#solid-widget .run-input[data-input="units_entry"]'
+                        '#machinome-viewer .run-input[data-input="units_entry"]'
                         ' .run-readout-value'), '1.0000')
             finally:
                 browser.close()
@@ -597,7 +597,7 @@ class RunningExportPageTest(TestCase):
 @needs_bundle
 @needs_playwright
 class RepublishedRunTest(TestCase):
-    """What `solid develop`'s targeted document update does to a live run.
+    """What `machinome develop`'s targeted document update does to a live run.
 
     The rule is the workflow design's own: a live update must invalidate
     or explicitly migrate incompatible simulation state, never preserve
@@ -610,7 +610,7 @@ class RepublishedRunTest(TestCase):
         self.addCleanup(self.tempdir.cleanup)
         self.out_dir = Path(self.tempdir.name) / 'pascaline'
         shutil.copytree(PASCALINE, self.out_dir)
-        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        shutil.copy2(bundle_path(), self.out_dir / 'machinome-viewer.js')
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(self.out_dir)
         base = server.__enter__()
@@ -636,9 +636,9 @@ class RepublishedRunTest(TestCase):
                         if message.type == 'error' else None)
                 page.goto(self.harness_url)
                 page.wait_for_function(
-                    'typeof SolidNodeWidget !== "undefined"')
+                    'typeof MachinomeViewer !== "undefined"')
                 page.evaluate("""async () => {
-                  window.__viewer = await SolidNodeWidget.mount(
+                  window.__viewer = await MachinomeViewer.mount(
                     document.getElementById('host'), 'viewer.json', {});
                 }""")
                 page.wait_for_selector('#host .run-controls')
@@ -741,7 +741,7 @@ class TouchedByHandTest(TestCase):
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         self.out_dir = published_touched(Path(self.tempdir.name) / 'touched')
-        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        shutil.copy2(bundle_path(), self.out_dir / 'machinome-viewer.js')
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(self.out_dir)
         base = server.__enter__()
@@ -761,9 +761,9 @@ class TouchedByHandTest(TestCase):
         page.on('console', lambda message: self.errors.append(message.text)
                 if message.type == 'error' else None)
         page.goto(self.harness_url)
-        page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+        page.wait_for_function('typeof MachinomeViewer !== "undefined"')
         page.evaluate("""async (options) => {
-          window.__viewer = await SolidNodeWidget.mount(
+          window.__viewer = await MachinomeViewer.mount(
             document.getElementById('host'), 'viewer.json', options);
           window.__out = [];
           window.__viewer.run().onOutcome((one) => window.__out.push(

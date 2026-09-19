@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -7,7 +7,7 @@
 // What a live rebuild does to a live run (OpenSpec
 // `drive-the-run-on-screen`, design §3).
 //
-// `solid develop` republishes while a run is standing part way through a
+// `machinome develop` republishes while a run is standing part way through a
 // movement. The workflow design's rule is the one this answers: "Live
 // updates must invalidate or explicitly migrate incompatible simulation
 // state, not preserve coordinates solely because strings happen to

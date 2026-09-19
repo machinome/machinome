@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -62,7 +62,7 @@ export function materialForColor(color: string | null): THREE.Material {
 
 /** The anti-z-fighting lift, in document units (millimetres).
  *
- * The artifact carries NO offset -- solid-node design D5 states the
+ * The artifact carries NO offset -- machinome design D5 states the
  * offset is the VIEWER's rendering constant, not a claim about where the
  * part's surface is -- so the viewer supplies it, and `polygonOffset`
  * alone cannot: its units are denominated in the depth buffer's smallest

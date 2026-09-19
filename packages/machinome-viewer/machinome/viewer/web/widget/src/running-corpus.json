@@ -10,7 +10,7 @@
       "dt": 0.05,
       "steps": 30,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "crank": {
@@ -1076,7 +1076,7 @@
       "dt": 0.1,
       "steps": 20,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "crank": {
@@ -1817,7 +1817,7 @@
       "dt": 0.05,
       "steps": 24,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "crank": {
@@ -2313,7 +2313,7 @@
       "dt": 0.05,
       "steps": 24,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "crank": {
@@ -2803,7 +2803,7 @@
       "dt": 0.05,
       "steps": 20,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "crank": {
@@ -3247,7 +3247,7 @@
       "dt": 0.05,
       "steps": 20,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "crank": {
@@ -3675,7 +3675,7 @@
       "dt": 0.05,
       "steps": 24,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "shaft": {
@@ -4318,7 +4318,7 @@
       "dt": 0.05,
       "steps": 24,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "column": {
@@ -5040,7 +5040,7 @@
       "dt": 0.1,
       "steps": 14,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "column": {
@@ -5478,7 +5478,7 @@
       "dt": 0.05,
       "steps": 20,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "arbor": {
@@ -5977,7 +5977,7 @@
       "dt": 0.01,
       "steps": 16,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "motor": {
@@ -6499,7 +6499,7 @@
       "dt": 0.05,
       "steps": 12,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "lever_in": {
@@ -6944,7 +6944,7 @@
       "dt": 0.05,
       "steps": 12,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "crank": {
@@ -7308,7 +7308,7 @@
       "dt": 0.05,
       "steps": 24,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 6,
         "drivers": {
           "ring": {
@@ -7930,7 +7930,7 @@
       "dt": 0.1,
       "steps": 12,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 6,
         "drivers": {
           "ring": {
@@ -8364,7 +8364,7 @@
       "dt": 0.05,
       "steps": 16,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 6,
         "drivers": {
           "gauge_in": {
@@ -9094,7 +9094,7 @@
       "dt": 0.05,
       "steps": 20,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 7,
         "drivers": {
           "clearing": {
@@ -9903,7 +9903,7 @@
       "dt": 0.05,
       "steps": 8,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 7,
         "drivers": {
           "crank": {
@@ -10429,7 +10429,7 @@
       "dt": 0.05,
       "steps": 16,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "feed": {
@@ -11068,7 +11068,7 @@
       "dt": 0.1,
       "steps": 4,
       "document": {
-        "format": "solid-node-export",
+        "format": "machinome-export",
         "version": 5,
         "drivers": {
           "lever": {

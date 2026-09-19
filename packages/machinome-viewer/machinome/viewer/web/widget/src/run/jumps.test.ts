@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -37,7 +37,7 @@ const LIMITS = {
 function bench(expression: string, plan: unknown,
                extra: Record<string, unknown> = {}): LoadedProgram {
   return loadProgram({
-    format: 'solid-node-export',
+    format: 'machinome-export',
     version: 5,
     drivers: {
       crank: { default: 0, range: null, unit: null, dtype: null, scale: null },
@@ -438,7 +438,7 @@ describe('the float primitives (design D3)', () => {
 function clearing(edge: Record<string, unknown> = {},
                   rest = 108): LoadedProgram {
   return loadProgram({
-    format: 'solid-node-export',
+    format: 'machinome-export',
     version: 6,
     drivers: {
       ring: { default: 0, range: null, unit: 'deg', dtype: null, scale: null },
@@ -931,7 +931,7 @@ describe('the first cut (design D2, tasks 4.6-4.7)', () => {
 /** `HeldAngle`, loadable: rest `71.99999999999996`, setter `72`. */
 function heldAngle(rest = 71.99999999999996): LoadedProgram {
   return loadProgram({
-    format: 'solid-node-export',
+    format: 'machinome-export',
     version: 6,
     drivers: {
       setter: {
@@ -1037,7 +1037,7 @@ function blockBench(coordinates: Record<string, unknown>,
   const inputs = ids.filter(
     (id) => (coordinates[id] as { kind: string }).kind === 'input');
   return loadProgram({
-    format: 'solid-node-export',
+    format: 'machinome-export',
     version: 7,
     drivers: Object.fromEntries(inputs.map((id) => [id, {
       default: 0, range: null, unit: null, dtype: null, scale: null,
@@ -1973,7 +1973,7 @@ describe('a curved quantity is still searched', () => {
 
 // ---------------------------------------------------------------------
 // `farSideOf`, EXTRACTED from `Walk.farSide` with a `scale` argument
-// (OpenSpec `execute-the-commit`, design §5; solid-node ADR-128 closure
+// (OpenSpec `execute-the-commit`, design §5; machinome ADR-128 closure
 // 2). The running walk passes no scale and keeps the landed value's own
 // ulp exactly as it was; a CLOCKED caller passes the SEGMENT, which is
 // what lets a value standing at exactly `0.0` be landed at all.

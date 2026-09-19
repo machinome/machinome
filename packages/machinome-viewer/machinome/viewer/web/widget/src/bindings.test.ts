@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -20,7 +20,7 @@ const motor: ManifestDriver = {
 };
 
 const document = (overrides: Partial<Manifest> = {}): Manifest => ({
-  format: 'solid-node-export',
+  format: 'machinome-export',
   version: 4 as unknown as Manifest['version'],
   animation: { fps: 30, frames: 360 },
   root: { name: 'root', type: 'AssemblyNode', color: null, operations: [] },

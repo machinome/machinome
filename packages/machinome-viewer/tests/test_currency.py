@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -23,7 +23,7 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from solid_node_viewer import bundle, currency
+from machinome_viewer import bundle, currency
 
 
 def checkout(root, *, bundle_ns=1_000_000_000_000_000_000, source_ns=None,
@@ -36,7 +36,7 @@ def checkout(root, *, bundle_ns=1_000_000_000_000_000_000, source_ns=None,
     """
     widget = Path(root) / 'widget'
     (widget / 'dist').mkdir(parents=True)
-    (widget / 'dist' / 'solid-widget.js').write_text('/* built */')
+    (widget / 'dist' / 'machinome-viewer.js').write_text('/* built */')
     if dependencies:
         (widget / 'node_modules' / 'esbuild').mkdir(parents=True)
         (widget / 'node_modules' / 'esbuild' / 'index.js').write_text('x')
@@ -47,15 +47,15 @@ def checkout(root, *, bundle_ns=1_000_000_000_000_000_000, source_ns=None,
         (widget / 'build.mjs').write_text('// build')
         (widget / 'tsconfig.json').write_text('{}')
     (widget / 'package.json').write_text(json.dumps({
-        'solidNodeViewerApi': 16,
-        'solidNodeDocumentVersions': [1, 2, 3, 4, 5, 6, 7],
+        'machinomeViewerApi': 16,
+        'machinomeDocumentVersions': [1, 2, 3, 4, 5, 6, 7],
     }))
     if source_ns is None:
         source_ns = bundle_ns - 1_000_000_000
     for path in widget.rglob('*'):
         if path.is_file() and 'dist' not in path.parts:
             os.utime(path, ns=(source_ns, source_ns))
-    built = widget / 'dist' / 'solid-widget.js'
+    built = widget / 'dist' / 'machinome-viewer.js'
     os.utime(built, ns=(bundle_ns, bundle_ns))
     return widget
 
@@ -76,7 +76,7 @@ class CurrencyModuleTest(TestCase):
         self.assertTrue(
             imports <= {'logging', 'os', 'subprocess', 'fcntl'}, imports)
         self.assertTrue(
-            froms <= {'pathlib', 'solid_node_viewer.bundle'}, froms)
+            froms <= {'pathlib', 'machinome_viewer.bundle'}, froms)
 
 
 class StalenessTest(TestCase):
@@ -158,7 +158,7 @@ class RebuildTest(TestCase):
         def run(argv, **kwargs):
             calls.append((argv, kwargs))
             if returncode == 0:
-                built = widget / 'dist' / 'solid-widget.js'
+                built = widget / 'dist' / 'machinome-viewer.js'
                 built.write_text('/* rebuilt */')
                 touch(built, 3_000_000_000_000_000_000)
             return subprocess.CompletedProcess(
@@ -226,7 +226,7 @@ class RefusalTest(TestCase):
                     currency.ensure_current(widget)
             run.assert_not_called()
             message = str(caught.exception)
-            self.assertIn('solid-widget.js', message)
+            self.assertIn('machinome-viewer.js', message)
             self.assertIn('viewer.ts', message)
             self.assertIn('npm ci', message)
             self.assertIn('npm run build', message)
@@ -260,7 +260,7 @@ class RefusalTest(TestCase):
             with self.assertRaises(currency.BundleStale):
                 currency.ensure_current(widget)
             self.assertEqual(
-                (widget / 'dist' / 'solid-widget.js').read_text(), '/* built */')
+                (widget / 'dist' / 'machinome-viewer.js').read_text(), '/* built */')
 
 
 class ConcurrentRebuildTest(TestCase):
@@ -279,7 +279,7 @@ class ConcurrentRebuildTest(TestCase):
                 calls.append(argv)
                 started.set()
                 threading.Event().wait(0.2)
-                built = widget / 'dist' / 'solid-widget.js'
+                built = widget / 'dist' / 'machinome-viewer.js'
                 built.write_text('/* rebuilt */')
                 touch(built, 3_000_000_000_000_000_000)
                 return subprocess.CompletedProcess(argv, 0, stdout='', stderr='')

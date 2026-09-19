@@ -3,9 +3,9 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "solid-node-viewer"
+name = "machinome-viewer"
 version = "0.2.0"
-description = "The browser viewer for solid-node models: the embeddable widget, the development server and the headless snapshot capture"
+description = "The browser viewer for machinome models: the embeddable widget, the development server and the headless snapshot capture"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
 license = "AGPL-3.0-only"
@@ -24,17 +24,17 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Multimedia :: Graphics :: 3D Modeling",
 ]
-keywords = ["solid-node", "cad", "viewer", "three.js"]
-# The ranges below overlap solid-node's own pins, so the two packages
+keywords = ["machinome", "cad", "viewer", "three.js"]
+# The ranges below overlap machinome's own pins, so the two packages
 # install into one environment; the viewer depends on nothing of
-# solid-node itself.
+# machinome itself.
 dependencies = [
     "fastapi>=0.111,<1",
     "uvicorn>=0.30,<1",
 ]
 
 [project.optional-dependencies]
-# The headless capture behind `solid snapshot --renderer web`. Chromium is a
+# The headless capture behind `machinome snapshot --renderer web`. Chromium is a
 # second, separate step: `playwright install chromium`.
 snapshot = [
     "playwright",
@@ -52,27 +52,37 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/LibreSolid/solid-node-viewer"
+Homepage = "https://github.com/machinome/machinome-viewer"
 
 [project.scripts]
-solid-node-viewer = "solid_node_viewer.cli:main"
+machinome-viewer = "machinome_viewer.cli:main"
 
-# How solid-node finds the installed viewer: one entry point that resolves to
+# How machinome finds the installed viewer: one entry point that resolves to
 # a function returning the bundle path, the export page and the API version.
 # Nothing else of this package is an interface to it.
-[project.entry-points."solid_node.viewer"]
-bundle = "solid_node_viewer.bundle:describe"
+[project.entry-points."machinome.viewer"]
+bundle = "machinome_viewer.bundle:describe"
 
 [tool.setuptools.packages.find]
-include = ["solid_node_viewer", "solid_node_viewer.*"]
+include = ["machinome_viewer", "machinome_viewer.*"]
+namespaces = false
 
 [tool.setuptools]
 include-package-data = true
 zip-safe = false
 
+[tool.setuptools.exclude-package-data]
+machinome_viewer = [
+    "widget/src/*",
+    "widget/build.mjs",
+    "widget/package-lock.json",
+    "widget/tsconfig.json",
+    "widget/vitest.config.ts",
+]
+
 [tool.setuptools.cmdclass]
-sdist = "solid_node_viewer.packaging.BuildSourceDistribution"
-build_py = "solid_node_viewer.packaging.BuildPythonWithFrontend"
+sdist = "machinome_viewer.packaging.BuildSourceDistribution"
+build_py = "machinome_viewer.packaging.BuildPythonWithFrontend"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

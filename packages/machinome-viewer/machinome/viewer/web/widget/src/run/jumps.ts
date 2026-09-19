@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -738,7 +738,7 @@ function halved(sum: bigint): bigint {
  * reach about 1e-263, which is no distance at all on a segment a
  * millimetre long. Scaling by the segment rather than by the landed
  * value alone is what lets a bank standing at exactly zero report its
- * stop instead of raising a broken invariant (solid-node ADR-128,
+ * stop instead of raising a broken invariant (machinome ADR-128,
  * closure 2). A caller that passes no `scale` keeps the value's own ulp
  * exactly as before, which is what `Walk.farSide` does: NO RUNNING
  * LANDING MOVES.
@@ -746,7 +746,7 @@ function halved(sum: bigint): bigint {
  * Extracted from `Walk.farSide`, which still calls it, so the clocked
  * event solver and the clocked clip land by the SAME walk rather than a
  * second one (OpenSpec `execute-the-commit`, design §5 -- the
- * framework's own extraction, `solid_node/simulation/program.py`
+ * framework's own extraction, `machinome/simulation/program.py`
  * lines 1578-1646). */
 export function farSideOf(branchAt: (value: number) => number, near: number,
                           ownStar: number, direction: number,

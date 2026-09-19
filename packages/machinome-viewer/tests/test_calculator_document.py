@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -32,7 +32,7 @@ from unittest import TestCase
 from tests.support import (
     CALCULATOR, needs_bundle, needs_playwright, serve_directory,
 )
-from solid_node_viewer.bundle import bundle_path
+from machinome_viewer.bundle import bundle_path
 
 try:
     from playwright.sync_api import sync_playwright
@@ -79,7 +79,7 @@ class CalculatorFixtureTest(TestCase):
         self.assertEqual(missing, [], 'the fixture names meshes it lacks')
 
     def test_the_document_is_the_framework_s_own_clocked_machine(self):
-        self.assertEqual((CALCULATOR / 'viewer.json').stat().st_size, 15159)
+        self.assertEqual((CALCULATOR / 'viewer.json').stat().st_size, 15158)
         self.assertEqual(self.document['version'], 8)
         self.assertEqual(sorted(self.document['drivers']),
                          ['crank', 'feed', 'operand', 'ring', 'setting'])
@@ -99,7 +99,7 @@ class CalculatorFixtureTest(TestCase):
 
     def test_it_declares_exactly_the_two_instructions_this_cycle_plays(self):
         # Re-exported for OpenSpec `play-the-instruction` from a
-        # throwaway copy of solid-node at `2ab9505`: `'Stroke'` is the
+        # throwaway copy of machinome at `2ab9505`: `'Stroke'` is the
         # Curta's own `'Turn crank'` on a fixture that also carries three
         # bounds, and `'Set four'` is its absolute twin -- the `targets=`
         # form the corpus requires this runtime to reproduce.
@@ -133,7 +133,7 @@ HARNESS_PAGE = """<!doctype html>
   </head>
   <body>
     <div id="host"></div>
-    <script src="solid-widget.js"></script>
+    <script src="machinome-viewer.js"></script>
   </body>
 </html>
 """
@@ -143,7 +143,7 @@ HARNESS_PAGE = """<!doctype html>
 #: and each answer read back off the bank.
 DRIVE = """async () => {
   const host = document.getElementById('host');
-  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json', {});
   const machine = viewer.machine();
   if (machine === null) {
     return { machine: null };
@@ -281,7 +281,7 @@ class CalculatorInABrowserTest(TestCase):
         self.addCleanup(self.tempdir.cleanup)
         self.out_dir = Path(self.tempdir.name) / 'calculator'
         shutil.copytree(CALCULATOR, self.out_dir)
-        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        shutil.copy2(bundle_path(), self.out_dir / 'machinome-viewer.js')
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(self.out_dir)
         base = server.__enter__()
@@ -305,13 +305,13 @@ class CalculatorInABrowserTest(TestCase):
                         if message.type == 'error' else None)
                 page.goto(self.harness_url)
                 page.wait_for_function(
-                    'typeof SolidNodeWidget !== "undefined"')
+                    'typeof MachinomeViewer !== "undefined"')
                 result = page.evaluate(DRIVE)
                 # Pixels are evidence: the machine after its strokes, and
                 # the knob held by the freeze.
                 page.evaluate("""async () => {
                   const host = document.getElementById('host');
-                  window.__shot = await SolidNodeWidget.mount(
+                  window.__shot = await MachinomeViewer.mount(
                     host, 'viewer.json', {});
                   const machine = window.__shot.machine();
                   machine.move('operand', { to: 4 });
@@ -340,7 +340,7 @@ class CalculatorInABrowserTest(TestCase):
                          self.document['clocked']['identity'])
         self.assertIsNone(mounted['clock'])
         self.assertIsNone(mounted['run'])
-        self.assertEqual(result['apiVersion'], 19)
+        self.assertEqual(result['apiVersion'], 20)
         # The bank's id order is DERIVED: drivers, then states.
         self.assertEqual(mounted['order'],
                          ['crank', 'feed', 'operand', 'ring', 'setting',
@@ -460,14 +460,14 @@ class CalculatorInABrowserTest(TestCase):
                         if message.type == 'error' else None)
                 page.goto(self.harness_url)
                 page.wait_for_function(
-                    'typeof SolidNodeWidget !== "undefined"')
+                    'typeof MachinomeViewer !== "undefined"')
                 result = page.evaluate("""async () => {
                   const host = document.getElementById('host');
                   host.style.height = '260px';
-                  const mounted = await SolidNodeWidget.mountInspector(
+                  const mounted = await MachinomeViewer.mountInspector(
                     host, 'viewer.json', { sidebar: 'collapsed' });
                   const panel = host.querySelector('.clocked-controls');
-                  const pane = host.querySelector('.solid-inspector-viewer');
+                  const pane = host.querySelector('.machinome-inspector-viewer');
                   const style = getComputedStyle(panel);
                   const shown = (selector) => getComputedStyle(
                     panel.querySelector(selector)).display !== 'none';
@@ -499,7 +499,7 @@ class CalculatorInABrowserTest(TestCase):
                   answer.scrollAfterSlider = host.querySelector(
                     '.clocked-controls').scrollTop;
                   mounted.dispose();
-                  const plain = await SolidNodeWidget.mount(
+                  const plain = await MachinomeViewer.mount(
                     host, 'viewer.json', {});
                   const plainPanel = host.querySelector('.clocked-controls');
                   answer.plainDescenderVisible = getComputedStyle(
@@ -553,7 +553,7 @@ PLAY = """async () => {
     callback(stamp);
     if (timing) frameCosts.push(performance.now() - began);
   });
-  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json', {});
   const machine = viewer.machine();
   const panel = () => host.querySelector('.clocked-controls');
   const field = (id) => Number(panel().querySelector(
@@ -722,7 +722,7 @@ class InstructionDrawnInABrowserTest(TestCase):
         self.addCleanup(self.tempdir.cleanup)
         self.out_dir = Path(self.tempdir.name) / 'calculator'
         shutil.copytree(CALCULATOR, self.out_dir)
-        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        shutil.copy2(bundle_path(), self.out_dir / 'machinome-viewer.js')
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(self.out_dir)
         base = server.__enter__()
@@ -746,7 +746,7 @@ class InstructionDrawnInABrowserTest(TestCase):
                         if message.type == 'error' else None)
                 page.goto(self.harness_url)
                 page.wait_for_function(
-                    'typeof SolidNodeWidget !== "undefined"')
+                    'typeof MachinomeViewer !== "undefined"')
                 result = page.evaluate(PLAY)
                 # PIXELS ARE EVIDENCE: one shot mid-stroke and one at the
                 # end of it, of a fresh mount so the shot is of a drawing
@@ -757,7 +757,7 @@ class InstructionDrawnInABrowserTest(TestCase):
                   // own canvas and panel here, and two panels stacked on
                   // one host make a photograph nobody can read.
                   host.replaceChildren();
-                  window.__play = await SolidNodeWidget.mount(
+                  window.__play = await MachinomeViewer.mount(
                     host, 'viewer.json', {});
                   window.__play.machine().move('operand', { to: 4 });
                   host.querySelector(
@@ -883,7 +883,7 @@ class InstructionDrawnInABrowserTest(TestCase):
               f'{result["wall"]:.2f} s ({fps:.1f} fps), per-frame pose '
               f'median {median:.2f} ms, worst {costs[-1]:.2f} ms')
         self.assertTrue(result['moved'], 'the model did not move on screen')
-        self.assertEqual(result['apiVersion'], 19)
+        self.assertEqual(result['apiVersion'], 20)
 
         self.assertTrue(
             (SHOTS / 'clocked-instruction-mid-stroke.png').is_file())
@@ -909,7 +909,7 @@ GESTURE = """async () => {
     callback(stamp);
     if (timing) frameCosts.push(performance.now() - began);
   });
-  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json', {});
   // Kept for the REAL POINTER gesture the harness drives afterwards.
   window.__gesture = viewer;
   const machine = viewer.machine();
@@ -1084,7 +1084,7 @@ FREEZE = """async (frames) => {
     budget -= 1;
     callback(stamp);
   });
-  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json', {});
   const panel = () => host.querySelector('.clocked-controls');
   const at = (selector) => panel().querySelector(selector);
   viewer.machine().move('operand', { to: 4 });
@@ -1121,7 +1121,7 @@ class GestureDrawnInABrowserTest(TestCase):
         self.addCleanup(self.tempdir.cleanup)
         self.out_dir = Path(self.tempdir.name) / 'calculator'
         shutil.copytree(CALCULATOR, self.out_dir)
-        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        shutil.copy2(bundle_path(), self.out_dir / 'machinome-viewer.js')
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(self.out_dir)
         base = server.__enter__()
@@ -1144,7 +1144,7 @@ class GestureDrawnInABrowserTest(TestCase):
                         if message.type == 'error' else None)
                 page.goto(self.harness_url)
                 page.wait_for_function(
-                    'typeof SolidNodeWidget !== "undefined"')
+                    'typeof MachinomeViewer !== "undefined"')
                 result = page.evaluate(GESTURE)
                 # A REAL POINTER on the slider's TRACK, driven by the
                 # browser itself rather than by a dispatched event: one
@@ -1292,4 +1292,4 @@ class GestureDrawnInABrowserTest(TestCase):
         self.assertEqual(landed['crank'], 360)
         self.assertTrue((SHOTS / 'clocked-gesture-mid-nudge.png').is_file())
         self.assertTrue((SHOTS / 'clocked-gesture-landed.png').is_file())
-        self.assertEqual(result['apiVersion'], 19)
+        self.assertEqual(result['apiVersion'], 20)

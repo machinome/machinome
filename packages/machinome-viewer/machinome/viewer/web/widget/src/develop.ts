@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -24,8 +24,8 @@ export interface DevelopmentHandle {
 }
 
 const DEFAULT_SOURCE_URL = '/build/viewer.json';
-const STYLE_ID = 'solid-node-develop-style';
-const ERROR_CLASS = 'solid-inspector-error';
+const STYLE_ID = 'machinome-develop-style';
+const ERROR_CLASS = 'machinome-inspector-error';
 
 // design D11: the build error is a pane OVER a viewer that stays
 // mounted, not a replacement for it -- `position: fixed` covers the

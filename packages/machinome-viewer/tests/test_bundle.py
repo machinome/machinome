@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -10,7 +10,7 @@ import tempfile
 from unittest import TestCase
 from unittest.mock import patch
 
-from solid_node_viewer import bundle
+from machinome_viewer import bundle
 
 
 class BundleLookupTest(TestCase):
@@ -22,15 +22,15 @@ class BundleLookupTest(TestCase):
         froms = {node.module for node in ast.walk(tree)
                  if isinstance(node, ast.ImportFrom)}
         self.assertEqual(imports, {'json'})
-        # `solid_node_viewer.currency` joins the set with ADR-059: the
+        # `machinome_viewer.currency` joins the set with ADR-059: the
         # lookup makes the bundle current before it reads the declaration.
         # That module imports only the standard library too, which
         # `tests/test_currency.py` asserts of it directly, so the promise
         # this test exists for -- resolving the entry point costs no
         # browser bundle and no web framework -- is unchanged.
         self.assertTrue(froms <= {'pathlib', 'importlib.metadata',
-                                  'solid_node_viewer',
-                                  'solid_node_viewer.currency'},
+                                  'machinome_viewer',
+                                  'machinome_viewer.currency'},
                         froms)
 
     def test_declares_api_version_fifteen(self):
@@ -57,7 +57,7 @@ class BundleLookupTest(TestCase):
         # its transition drawn over the declared duration, where a build
         # at 18 lists the same button and refuses it (OpenSpec
         # `play-the-instruction`) -- is the one after that.
-        self.assertEqual(bundle.api_version(), 19)
+        self.assertEqual(bundle.api_version(), 20)
 
     def test_declares_the_document_versions_this_build_reads(self):
         self.assertEqual(bundle.document_versions(),
@@ -84,7 +84,7 @@ class BundleLookupTest(TestCase):
         self.assertEqual(described['apiVersion'], bundle.api_version())
 
     def test_paths_and_remedy_share_one_source(self):
-        self.assertTrue(str(bundle.bundle_path()).endswith('widget/dist/solid-widget.js'))
+        self.assertTrue(str(bundle.bundle_path()).endswith('widget/dist/machinome-viewer.js'))
         self.assertTrue(str(bundle.index_path()).endswith('widget/index.html'))
         self.assertTrue(str(bundle.develop_page_path()).endswith('widget/develop.html'))
         remedy = bundle.missing_bundle_remedy()
@@ -95,8 +95,8 @@ class BundleLookupTest(TestCase):
         with tempfile.TemporaryDirectory() as root:
             package = os.path.join(root, 'package.json')
             with open(package, 'w') as stream:
-                json.dump({'solidNodeViewerApi': 7,
-                           'solidNodeDocumentVersions': [1, 2]}, stream)
+                json.dump({'machinomeViewerApi': 7,
+                           'machinomeDocumentVersions': [1, 2]}, stream)
             with patch.object(bundle, 'PACKAGE_JSON', package):
                 self.assertEqual(bundle.api_version(), 7)
                 self.assertEqual(bundle.document_versions(), [1, 2])
@@ -107,13 +107,13 @@ class BundleLookupTest(TestCase):
         with tempfile.TemporaryDirectory() as root:
             package = os.path.join(root, 'package.json')
             with open(package, 'w') as stream:
-                json.dump({'solidNodeViewerApi': 7}, stream)
+                json.dump({'machinomeViewerApi': 7}, stream)
             with patch.object(bundle, 'PACKAGE_JSON', package):
                 self.assertEqual(bundle.document_versions(), [1, 2, 3, 4])
 
     def test_the_bundle_carries_the_worker_and_is_one_file(self):
         # OpenSpec `run-in-the-worker`, design D3: the worker entry is
-        # bundled INTO the one published artifact, so `solid export`, the
+        # bundled INTO the one published artifact, so `machinome export`, the
         # development server and the capture page go on copying one file.
         if not bundle.has_bundle():
             self.skipTest('widget bundle not built (npm run build)')
@@ -121,11 +121,11 @@ class BundleLookupTest(TestCase):
         self.assertIn('onmessage', built)
         self.assertEqual(
             sorted(p.name for p in bundle.bundle_path().parent.glob('*.js')),
-            ['solid-widget.js'])
+            ['machinome-viewer.js'])
 
     def test_describe_reports_absolute_existing_paths(self):
         with tempfile.TemporaryDirectory() as root:
-            fake = os.path.join(root, 'solid-widget.js')
+            fake = os.path.join(root, 'machinome-viewer.js')
             open(fake, 'w').close()
             with patch.object(bundle, 'bundle_path', return_value=bundle.Path(fake)), \
                  patch.object(bundle, 'api_version', return_value=3), \

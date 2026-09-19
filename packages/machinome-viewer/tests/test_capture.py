@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -10,9 +10,9 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from solid_node_viewer import capture as capture_module
-from solid_node_viewer.bundle import BundleStale
-from solid_node_viewer.capture import Capture, CaptureError, mount_options
+from machinome_viewer import capture as capture_module
+from machinome_viewer.bundle import BundleStale
+from machinome_viewer.capture import Capture, CaptureError, mount_options
 
 from .support import (
     HAS_PIL, HAS_PLAYWRIGHT, SPINNER, needs_bundle, needs_pil,
@@ -63,7 +63,7 @@ class CaptureFailureTest(TestCase):
             with self.assertRaises(CaptureError) as raised:
                 self.capture.playwright()
         message = str(raised.exception)
-        self.assertIn('solid-node-viewer[snapshot]', message)
+        self.assertIn('machinome-viewer[snapshot]', message)
         self.assertIn('playwright install chromium', message)
 
     def test_missing_browser_has_an_actionable_install_message(self):
@@ -161,7 +161,7 @@ class StagedDocumentTest(TestCase):
     def test_the_viewer_is_added_beside_the_document(self):
         self.capture.add_viewer(mount_options(time=0.5, fov=22.5))
         page = (self.staging / 'index.html').read_text()
-        self.assertTrue((self.staging / 'solid-widget.js').is_file())
+        self.assertTrue((self.staging / 'machinome-viewer.js').is_file())
         self.assertIn("mount('#host', 'viewer.json'", page)
         self.assertIn(json.dumps(mount_options(time=0.5, fov=22.5)), page)
         # A still photograph is the last place a hover affordance should
@@ -173,7 +173,7 @@ class StagedDocumentTest(TestCase):
         document = json.loads((self.staging / 'viewer.json').read_text())
         model = document['root']['children'][0]['model']
         with self.capture.serve() as url:
-            for relative in ('viewer.json', model, 'solid-widget.js', 'index.html'):
+            for relative in ('viewer.json', model, 'machinome-viewer.js', 'index.html'):
                 with urllib.request.urlopen(f'{url}/{relative}') as response:
                     self.assertEqual(response.status, 200, relative)
 
@@ -250,7 +250,7 @@ class RunningStagedDocumentTest(TestCase):
         # drives moves it to included. A test on the number 5 alone
         # would photograph the rest state while claiming another
         # instant.
-        from solid_node_viewer.capture import carries_program
+        from machinome_viewer.capture import carries_program
 
         self.assertTrue(carries_program({"version": 6}))
         self.assertTrue(carries_program({"version": 5}))
@@ -294,7 +294,7 @@ class RunningStagedDocumentTest(TestCase):
     def test_what_animates_time_is_a_question_of_its_own(self):
         """(8.2) The two questions, split: "does this document carry a
         compiled program" and "does this document animate `$t`"."""
-        from solid_node_viewer.capture import (animates_time,
+        from machinome_viewer.capture import (animates_time,
                                                carries_clocked,
                                                carries_program)
 
@@ -386,7 +386,7 @@ class MarkedStagedDocumentTest(TestCase):
 
     `Capture.serve` serves the WHOLE staging directory, and the framework
     already stages marking artifacts beside the models it copies, so
-    `solid snapshot --renderer web` photographs markings the moment the
+    `machinome snapshot --renderer web` photographs markings the moment the
     widget draws them -- with no change to `capture.py` and none to
     `mount_options`. That is a claim, and this proves it with a marked
     staging rather than asserting it.

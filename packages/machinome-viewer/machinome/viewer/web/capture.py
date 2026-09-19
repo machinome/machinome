@@ -1,12 +1,12 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
 """Photograph a staged document through the viewer in a headless browser.
 
-``solid snapshot --renderer web`` describes the node it is photographing in
+``machinome snapshot --renderer web`` describes the node it is photographing in
 a staging directory -- a ``viewer.json`` beside the model files it names --
-and hands that directory to ``solid-node-viewer capture``. This module adds
+and hands that directory to ``machinome-viewer capture``. This module adds
 the viewer bundle and a mount page to it, serves it over a loopback HTTP
 server, opens it in headless Chromium and screenshots the canvas with the
 background left transparent.
@@ -32,14 +32,14 @@ from contextlib import contextmanager
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
-from solid_node_viewer.bundle import (
+from machinome_viewer.bundle import (
     BUNDLE_NAME, BundleStale, bundle_path, has_bundle, missing_bundle_remedy,
 )
-from solid_node_viewer.currency import ensure_current
+from machinome_viewer.currency import ensure_current
 
 PLAYWRIGHT_REMEDY = (
     "Install the browser renderer with "
-    "`pip install 'solid-node-viewer[snapshot]'` and then download Chromium "
+    "`pip install 'machinome-viewer[snapshot]'` and then download Chromium "
     "with `playwright install chromium`."
 )
 
@@ -60,7 +60,7 @@ def carries_clocked(document):
     """Whether a staged document carries a compiled CLOCKED machine.
 
     Version 8 is the version a root that declares a ``State`` publishes
-    (solid-node ADR-128), and it is a property of the ROOT'S
+    (machinome ADR-128), and it is a property of the ROOT'S
     DECLARATION: a clocked document is a clocked document whatever else
     it holds, and it carries a ``clocked`` object where a running one
     carries a ``program``.
@@ -125,7 +125,7 @@ def mount_options(time=0.0, view=None, up=None, fov=None):
 
     The PART affordance is suppressed with it: a still photograph is the
     last place a hover cursor or a highlight should be able to appear.
-    This capture publishes no ``controls`` table at all (solid-node
+    This capture publishes no ``controls`` table at all (machinome
     ADR-112 §6), so it can never matter -- belt and braces.
     """
     options = {"animation": "external", "time": time,
@@ -220,7 +220,7 @@ background:transparent}}
 canvas{{background:transparent}}
 </style></head><body><div id="host"></div>
 <script src="{BUNDLE_NAME}"></script><script>
-SolidNodeWidget.mount('#host', '{DOCUMENT}', {payload}).then((viewer) => {{
+MachinomeViewer.mount('#host', '{DOCUMENT}', {payload}).then((viewer) => {{
   requestAnimationFrame(() => requestAnimationFrame(() => {{
     var run = viewer.run();
     if (run) {{

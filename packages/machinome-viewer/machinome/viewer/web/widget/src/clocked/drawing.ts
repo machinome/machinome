@@ -1,11 +1,11 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 // ONE TRANSITION, DRAWN over its declared duration (OpenSpec
-// `play-the-instruction`, design §3, §4, §5; solid-node ADR-129).
+// `play-the-instruction`, design §3, §4, §5; machinome ADR-129).
 //
 // A clocked instruction is ONE REQUEST: the machine makes it once, at
 // the press, and stands at its end from that instant. What is left is a

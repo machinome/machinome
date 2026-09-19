@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -38,84 +38,84 @@ export interface NavigatorHandle {
   dispose(): void;
 }
 
-const STYLE_ID = 'solid-node-navigator-style';
+const STYLE_ID = 'machinome-navigator-style';
 
 // The class contract and the custom-property defaults of design D13.
 // Every colour and metric a host may want is a variable declared on
-// `.solid-nav`; everything else in this stylesheet is structure. Per-row
+// `.machinome-nav`; everything else in this stylesheet is structure. Per-row
 // data that is NOT theme -- depth and the node's own colour -- is written
 // straight to the row element with `style.setProperty`, never here.
 const NAVIGATOR_STYLESHEET = `
-.solid-nav {
-  --solid-nav-font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
-  --solid-nav-indent: 15px;
-  --solid-nav-row-padding: 4px 5px;
-  --solid-nav-row-radius: 5px;
-  --solid-nav-row-min-height: 28px;
-  --solid-nav-gap: 6px;
-  --solid-nav-chip-size: 12px;
-  --solid-nav-fg: inherit;
-  --solid-nav-fg-strong: inherit;
-  --solid-nav-muted: rgba(128, 128, 128, 0.95);
-  --solid-nav-bg: transparent;
-  --solid-nav-row-hover-bg: rgba(128, 128, 128, 0.18);
-  --solid-nav-root-bg: rgba(128, 128, 128, 0.22);
-  --solid-nav-root-mark: currentColor;
-  --solid-nav-chip-neutral: #9aa0a8;
-  --solid-nav-chip-border: rgba(128, 128, 128, 0.8);
-  --solid-nav-obscured-opacity: 0.45;
-  --solid-nav-focus-ring: currentColor;
-  background: var(--solid-nav-bg);
-  color: var(--solid-nav-fg);
-  font: var(--solid-nav-font);
+.machinome-nav {
+  --machinome-nav-font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+  --machinome-nav-indent: 15px;
+  --machinome-nav-row-padding: 4px 5px;
+  --machinome-nav-row-radius: 5px;
+  --machinome-nav-row-min-height: 28px;
+  --machinome-nav-gap: 6px;
+  --machinome-nav-chip-size: 12px;
+  --machinome-nav-fg: inherit;
+  --machinome-nav-fg-strong: inherit;
+  --machinome-nav-muted: rgba(128, 128, 128, 0.95);
+  --machinome-nav-bg: transparent;
+  --machinome-nav-row-hover-bg: rgba(128, 128, 128, 0.18);
+  --machinome-nav-root-bg: rgba(128, 128, 128, 0.22);
+  --machinome-nav-root-mark: currentColor;
+  --machinome-nav-chip-neutral: #9aa0a8;
+  --machinome-nav-chip-border: rgba(128, 128, 128, 0.8);
+  --machinome-nav-obscured-opacity: 0.45;
+  --machinome-nav-focus-ring: currentColor;
+  background: var(--machinome-nav-bg);
+  color: var(--machinome-nav-fg);
+  font: var(--machinome-nav-font);
 }
-.solid-nav-toolbar {
+.machinome-nav-toolbar {
   display: flex;
   justify-content: flex-end;
   padding: 4px 5px;
 }
-.solid-nav-full {
+.machinome-nav-full {
   background: transparent;
   border: 0;
-  color: var(--solid-nav-muted);
+  color: var(--machinome-nav-muted);
   cursor: pointer;
   font: inherit;
   padding: 2px 3px;
 }
-.solid-nav-full:hover {
-  color: var(--solid-nav-fg-strong);
+.machinome-nav-full:hover {
+  color: var(--machinome-nav-fg-strong);
 }
-.solid-nav-row {
+.machinome-nav-row {
   align-items: center;
-  border-radius: var(--solid-nav-row-radius);
-  color: var(--solid-nav-fg);
+  border-radius: var(--machinome-nav-row-radius);
+  color: var(--machinome-nav-fg);
   cursor: default;
   display: grid;
-  gap: var(--solid-nav-gap);
+  gap: var(--machinome-nav-gap);
   grid-template-columns:
-    var(--solid-nav-chip-size) var(--solid-nav-chip-size) minmax(0, 1fr) auto;
-  min-height: var(--solid-nav-row-min-height);
-  padding: var(--solid-nav-row-padding);
-  padding-left: calc(5px + var(--solid-nav-depth, 0) * var(--solid-nav-indent));
+    var(--machinome-nav-chip-size) var(--machinome-nav-chip-size) minmax(0, 1fr) auto;
+  min-height: var(--machinome-nav-row-min-height);
+  padding: var(--machinome-nav-row-padding);
+  padding-left: calc(5px + var(--machinome-nav-depth, 0) * var(--machinome-nav-indent));
 }
-.solid-nav-row:hover,
-.solid-nav-row--root {
-  background: var(--solid-nav-row-hover-bg);
-  color: var(--solid-nav-fg-strong);
+.machinome-nav-row:hover,
+.machinome-nav-row--root {
+  background: var(--machinome-nav-row-hover-bg);
+  color: var(--machinome-nav-fg-strong);
 }
-.solid-nav-row--root {
-  background: var(--solid-nav-root-bg);
-  box-shadow: inset 2px 0 var(--solid-nav-root-mark);
+.machinome-nav-row--root {
+  background: var(--machinome-nav-root-bg);
+  box-shadow: inset 2px 0 var(--machinome-nav-root-mark);
 }
-.solid-nav-row:focus-visible,
-.solid-nav-visibility:focus-visible,
-.solid-nav-twisty:focus-visible,
-.solid-nav-focus:focus-visible,
-.solid-nav-full:focus-visible {
-  outline: 2px solid var(--solid-nav-focus-ring);
+.machinome-nav-row:focus-visible,
+.machinome-nav-visibility:focus-visible,
+.machinome-nav-twisty:focus-visible,
+.machinome-nav-focus:focus-visible,
+.machinome-nav-full:focus-visible {
+  outline: 2px solid var(--machinome-nav-focus-ring);
   outline-offset: 1px;
 }
-.solid-nav-twisty {
+.machinome-nav-twisty {
   align-items: center;
   background: transparent;
   border: 0;
@@ -123,57 +123,57 @@ const NAVIGATOR_STYLESHEET = `
   cursor: pointer;
   display: flex;
   font: inherit;
-  height: var(--solid-nav-chip-size);
+  height: var(--machinome-nav-chip-size);
   justify-content: center;
   line-height: 1;
   padding: 0;
-  width: var(--solid-nav-chip-size);
+  width: var(--machinome-nav-chip-size);
 }
-.solid-nav-spacer {
-  height: var(--solid-nav-chip-size);
-  width: var(--solid-nav-chip-size);
+.machinome-nav-spacer {
+  height: var(--machinome-nav-chip-size);
+  width: var(--machinome-nav-chip-size);
 }
-.solid-nav-visibility {
+.machinome-nav-visibility {
   appearance: none;
   background: transparent;
-  border: 1px solid var(--solid-nav-chip-border);
+  border: 1px solid var(--machinome-nav-chip-border);
   border-radius: 2px;
   cursor: pointer;
-  height: var(--solid-nav-chip-size);
+  height: var(--machinome-nav-chip-size);
   margin: 0;
-  width: var(--solid-nav-chip-size);
+  width: var(--machinome-nav-chip-size);
 }
-.solid-nav-visibility:checked {
-  background: var(--solid-nav-node-color, var(--solid-nav-chip-neutral));
-  border-color: var(--solid-nav-node-color, var(--solid-nav-chip-neutral));
+.machinome-nav-visibility:checked {
+  background: var(--machinome-nav-node-color, var(--machinome-nav-chip-neutral));
+  border-color: var(--machinome-nav-node-color, var(--machinome-nav-chip-neutral));
 }
-.solid-nav-row--obscured .solid-nav-visibility {
-  opacity: var(--solid-nav-obscured-opacity);
+.machinome-nav-row--obscured .machinome-nav-visibility {
+  opacity: var(--machinome-nav-obscured-opacity);
 }
-.solid-nav-name {
+.machinome-nav-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.solid-nav-badge {
-  color: var(--solid-nav-fg-strong);
+.machinome-nav-badge {
+  color: var(--machinome-nav-fg-strong);
   font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.solid-nav-focus {
+.machinome-nav-focus {
   background: transparent;
   border: 0;
-  color: var(--solid-nav-muted);
+  color: var(--machinome-nav-muted);
   cursor: pointer;
   font: inherit;
   opacity: 0;
   padding: 2px 3px;
   pointer-events: none;
 }
-.solid-nav-row:hover .solid-nav-focus,
-.solid-nav-row:focus-visible > .solid-nav-focus,
-.solid-nav-focus:focus-visible {
+.machinome-nav-row:hover .machinome-nav-focus,
+.machinome-nav-row:focus-visible > .machinome-nav-focus,
+.machinome-nav-focus:focus-visible {
   opacity: 1;
   pointer-events: auto;
 }
@@ -199,7 +199,7 @@ function resolveTarget(target: HTMLElement | string): HTMLElement {
   }
   const element = document.querySelector<HTMLElement>(target);
   if (!element) {
-    throw new Error(`solid-widget: no element matches "${target}"`);
+    throw new Error(`machinome-viewer: no element matches "${target}"`);
   }
   return element;
 }
@@ -226,13 +226,13 @@ export function mountNavigator(
   }
 
   const navRoot = doc.createElement('div');
-  navRoot.className = options.className ? `solid-nav ${options.className}` : 'solid-nav';
+  navRoot.className = options.className ? `machinome-nav ${options.className}` : 'machinome-nav';
 
   const toolbar = doc.createElement('div');
-  toolbar.className = 'solid-nav-toolbar';
+  toolbar.className = 'machinome-nav-toolbar';
 
   const treeEl = doc.createElement('div');
-  treeEl.className = 'solid-nav-tree';
+  treeEl.className = 'machinome-nav-tree';
   treeEl.setAttribute('role', 'tree');
   treeEl.setAttribute('aria-label', label);
 
@@ -263,7 +263,7 @@ export function mountNavigator(
       action();
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error('solid-widget: a navigator gesture into the viewer failed', error);
+      console.error('machinome-viewer: a navigator gesture into the viewer failed', error);
     }
   }
 
@@ -286,7 +286,7 @@ export function mountNavigator(
     }
     const button = doc.createElement('button');
     button.type = 'button';
-    button.className = 'solid-nav-full';
+    button.className = 'machinome-nav-full';
     button.tabIndex = -1;
     button.textContent = 'Show full assembly';
     button.addEventListener('click', () => {
@@ -298,26 +298,26 @@ export function mountNavigator(
   function buildRow(row: NavigatorRow): HTMLElement {
     const el = doc.createElement('div');
     const modifiers = [
-      row.root ? 'solid-nav-row--root' : '',
-      row.hidden ? 'solid-nav-row--hidden' : '',
-      row.obscured ? 'solid-nav-row--obscured' : '',
-      row.expandable ? '' : 'solid-nav-row--leaf',
+      row.root ? 'machinome-nav-row--root' : '',
+      row.hidden ? 'machinome-nav-row--hidden' : '',
+      row.obscured ? 'machinome-nav-row--obscured' : '',
+      row.expandable ? '' : 'machinome-nav-row--leaf',
     ].filter((name) => name !== '').join(' ');
-    el.className = modifiers ? `solid-nav-row ${modifiers}` : 'solid-nav-row';
+    el.className = modifiers ? `machinome-nav-row ${modifiers}` : 'machinome-nav-row';
     el.setAttribute('role', 'treeitem');
     el.setAttribute('aria-selected', String(row.root));
     if (row.expandable) {
       el.setAttribute('aria-expanded', String(row.expanded));
     }
     el.tabIndex = row.active ? 0 : -1;
-    el.style.setProperty('--solid-nav-depth', String(row.depth));
+    el.style.setProperty('--machinome-nav-depth', String(row.depth));
     el.style.setProperty(
-      '--solid-nav-node-color', row.color ?? 'var(--solid-nav-chip-neutral)');
+      '--machinome-nav-node-color', row.color ?? 'var(--machinome-nav-chip-neutral)');
 
     if (row.expandable) {
       const twisty = doc.createElement('button');
       twisty.type = 'button';
-      twisty.className = 'solid-nav-twisty';
+      twisty.className = 'machinome-nav-twisty';
       twisty.tabIndex = -1;
       twisty.setAttribute(
         'aria-label', `${row.expanded ? 'Collapse' : 'Expand'} ${row.node.name}`);
@@ -330,14 +330,14 @@ export function mountNavigator(
       el.append(twisty);
     } else {
       const spacer = doc.createElement('span');
-      spacer.className = 'solid-nav-spacer';
+      spacer.className = 'machinome-nav-spacer';
       el.append(spacer);
     }
 
     const chip = chipState(row);
     const checkbox = doc.createElement('input');
     checkbox.type = 'checkbox';
-    checkbox.className = 'solid-nav-visibility';
+    checkbox.className = 'machinome-nav-visibility';
     checkbox.tabIndex = -1;
     checkbox.checked = chip.checked;
     checkbox.setAttribute('aria-label', chip.label);
@@ -351,19 +351,19 @@ export function mountNavigator(
     el.append(checkbox);
 
     const name = doc.createElement('span');
-    name.className = 'solid-nav-name';
+    name.className = 'machinome-nav-name';
     name.textContent = row.node.name;
     el.append(name);
 
     if (row.root) {
       const badge = doc.createElement('span');
-      badge.className = 'solid-nav-badge';
+      badge.className = 'machinome-nav-badge';
       badge.textContent = 'root';
       el.append(badge);
     } else {
       const focusButton = doc.createElement('button');
       focusButton.type = 'button';
-      focusButton.className = 'solid-nav-focus';
+      focusButton.className = 'machinome-nav-focus';
       focusButton.tabIndex = -1;
       focusButton.setAttribute('aria-label', `Focus ${row.node.name}`);
       focusButton.textContent = 'Focus';

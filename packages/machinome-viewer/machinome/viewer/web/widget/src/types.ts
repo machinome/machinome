@@ -1,10 +1,10 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-// The manifest.json format written by solid_node/core/export.py
+// The manifest.json format written by machinome/core/export.py
 
 export type RawRotation = ['r', string, number[]];
 export type RawTranslation = ['t', string[]];
@@ -32,7 +32,7 @@ export interface ManifestFlexible {
 }
 
 // One marking a rigid part CARRIES on its surface -- artwork, not a
-// solid (solid-node ADR-120, "Manifest contract"). The wire shape, as
+// solid (machinome ADR-120, "Manifest contract"). The wire shape, as
 // the producer publishes it:
 //
 //   - `name` is the marking's declaring attribute, unique on its node;
@@ -118,7 +118,7 @@ export interface ManifestInstruction {
 }
 
 // One declared control: how a PERSON issues a request on a part
-// (solid-node ADR-112, OpenSpec `declare-controls-on-parts`). A version
+// (machinome ADR-112, OpenSpec `declare-controls-on-parts`). A version
 // 5 document whose tree declares at least one carries a `controls`
 // table keyed by qualified control name; the entry carries no
 // expression, so it never enters the `bindings` pass.
@@ -160,7 +160,7 @@ export interface Manifest {
     fps: number;
     frames: number;
     // The seconds of machine time one turn of `$t` covers, published when
-    // the root declares a time base (solid-node `declared-time-base`).
+    // the root declares a time base (machinome `declared-time-base`).
     // Additive: the expressions already carry `$t * loop`, so a document
     // without it plays `frames / fps` exactly as it always did.
     loop?: number;
@@ -192,7 +192,7 @@ export interface Manifest {
    * validation no structural type can perform. */
   program?: unknown;
   /** The controls a version 5 document's parts carry, keyed and ordered
-   * by qualified control name (solid-node ADR-112 §6). ADDITIVE within
+   * by qualified control name (machinome ADR-112 §6). ADDITIVE within
    * version 5: the key is absent when the tree declares none, and a
    * document carrying none is read exactly as it was before this viewer
    * knew of controls. Validated by `partControls.ts`'s `readControls`

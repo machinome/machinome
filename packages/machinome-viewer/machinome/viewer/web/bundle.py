@@ -1,12 +1,12 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
 """Locate the built viewer without importing anything else.
 
-This module is the whole interface solid-node has to the viewer's files: the
-``solid_node.viewer`` entry point resolves to :func:`describe`, and the
-``solid-node-viewer describe`` command prints the same answer. It imports
+This module is the whole interface machinome has to the viewer's files: the
+``machinome.viewer`` entry point resolves to :func:`describe`, and the
+``machinome-viewer describe`` command prints the same answer. It imports
 only the standard library so that answering costs no browser bundle, no web
 framework and no CAD stack.
 """
@@ -14,7 +14,7 @@ framework and no CAD stack.
 import json
 from pathlib import Path
 
-from solid_node_viewer.currency import (
+from machinome_viewer.currency import (
     BUNDLE_NAME, PACKAGE_DIR, WIDGET_DIR, BundleStale, ensure_current,
 )
 
@@ -64,7 +64,7 @@ RELEASED_DOCUMENT_VERSIONS = [1, 2, 3, 4]
 def api_version():
     """Return the viewer API version declared by the widget package."""
     with open(PACKAGE_JSON) as stream:
-        return json.load(stream)['solidNodeViewerApi']
+        return json.load(stream)['machinomeViewerApi']
 
 
 def document_versions():
@@ -75,7 +75,7 @@ def document_versions():
     versions the bundle actually refuses can never disagree.
     """
     with open(PACKAGE_JSON) as stream:
-        declared = json.load(stream).get('solidNodeDocumentVersions')
+        declared = json.load(stream).get('machinomeDocumentVersions')
     return list(declared) if declared else list(RELEASED_DOCUMENT_VERSIONS)
 
 
@@ -83,9 +83,9 @@ def version():
     """Return the version of this package, read where pip recorded it."""
     from importlib.metadata import PackageNotFoundError, version as installed
     try:
-        return installed('solid-node-viewer')
+        return installed('machinome-viewer')
     except PackageNotFoundError:
-        from solid_node_viewer import __version__
+        from machinome_viewer import __version__
         return __version__
 
 
@@ -93,7 +93,7 @@ def missing_bundle_remedy():
     """Explain how to obtain a bundle when this installation has none."""
     return (
         f'Viewer bundle not found at {bundle_path()}. A release of '
-        'solid-node-viewer from PyPI carries it; a source checkout builds it '
+        'machinome-viewer from PyPI carries it; a source checkout builds it '
         f'with: cd {WIDGET_DIR} && npm ci && npm run build.'
     )
 
@@ -106,7 +106,7 @@ class BundleMissing(FileNotFoundError):
 
 
 def describe():
-    """The installed viewer, as the ``solid_node.viewer`` entry point reports it.
+    """The installed viewer, as the ``machinome.viewer`` entry point reports it.
 
     Returns a JSON-serializable mapping with the absolute ``path`` of the
     bundle, the absolute ``index`` of the standalone export page, the integer

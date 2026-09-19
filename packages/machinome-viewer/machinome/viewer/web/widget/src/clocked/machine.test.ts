@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -51,7 +51,7 @@ const COUNT = {
 function handMade(law: string, states: Record<string, unknown> = { n: COUNT },
                   targets: string[] = ['n']): ClockedMachine {
   return clockedMachine(loaded({
-    format: 'solid-node-export',
+    format: 'machinome-export',
     version: 8,
     drivers: { x: FREE },
     states,
@@ -259,7 +259,7 @@ describe('one request', () => {
   it('poses the bank BEFORE assigning it, so a refused pose stands too',
      () => {
     const machine = clockedMachine(loaded({
-      format: 'solid-node-export',
+      format: 'machinome-export',
       version: 8,
       drivers: { x: FREE },
       states: { n: COUNT },
@@ -403,7 +403,7 @@ describe('a request this machine has no meaning for', () => {
 });
 
 // ---------------------------------------------------------------------
-// The CLOCK (OpenSpec `run-the-clock`, design §1, §2, §3; solid-node
+// The CLOCK (OpenSpec `run-the-clock`, design §1, §2, §3; machinome
 // ADR-127). The clock is the moving input, and everything below is the
 // SAME request path a declared driver takes.
 // ---------------------------------------------------------------------
@@ -415,7 +415,7 @@ describe('a request this machine has no meaning for', () => {
  * here because the corpus does not carry it (design §3). */
 function rangedClock(): ClockedMachine {
   return clockedMachine(loaded({
-    format: 'solid-node-export',
+    format: 'machinome-export',
     version: 8,
     drivers: { engaged: { ...COUNT, default: 1 } },
     states: { count: COUNT },

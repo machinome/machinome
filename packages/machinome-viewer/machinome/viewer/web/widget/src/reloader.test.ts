@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -48,7 +48,7 @@ beforeEach(() => {
   FakeWebSocket.instances = [];
   (globalThis as unknown as { WebSocket: unknown }).WebSocket = FakeWebSocket;
   document.body.innerHTML = '';
-  document.getElementById('solid-node-reloader-style')?.remove();
+  document.getElementById('machinome-reloader-style')?.remove();
   globalThis.fetch = vi.fn(() => Promise.resolve({
     json: () => Promise.resolve({}),
   })) as unknown as typeof fetch;
@@ -97,8 +97,8 @@ describe('Reloader offline banner', () => {
     latestSocket().onclose?.();
     const banner = document.querySelector(BANNER_SELECTOR);
     expect(banner).not.toBeNull();
-    expect(banner?.id).toBe('solid-node-offline-banner');
-    expect(banner?.textContent).toBe('solid develop is not running — model may be stale');
+    expect(banner?.id).toBe('machinome-offline-banner');
+    expect(banner?.textContent).toBe('machinome develop is not running — model may be stale');
   });
 
   it('shows the banner immediately once a previously-live connection drops', () => {
@@ -111,8 +111,8 @@ describe('Reloader offline banner', () => {
 
     const banner = document.querySelector(BANNER_SELECTOR);
     expect(banner).not.toBeNull();
-    expect(banner?.id).toBe('solid-node-offline-banner');
-    expect(banner?.textContent).toBe('solid develop is not running — model may be stale');
+    expect(banner?.id).toBe('machinome-offline-banner');
+    expect(banner?.textContent).toBe('machinome develop is not running — model may be stale');
   });
 
   it('retries the dropped connection roughly every 2 seconds, indefinitely', () => {
@@ -171,6 +171,6 @@ describe('the injected stylesheet', () => {
     new Reloader(() => {}, () => {});
     new Reloader(() => {}, () => {});
 
-    expect(document.querySelectorAll('#solid-node-reloader-style').length).toBe(1);
+    expect(document.querySelectorAll('#machinome-reloader-style').length).toBe(1);
   });
 });

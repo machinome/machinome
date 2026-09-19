@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -30,25 +30,25 @@ const RETRY_INTERVAL_MS = 2000;
 // treated as "the backend looks dead" after a couple of retry cycles.
 const INITIAL_CONNECT_GRACE_ATTEMPTS = 2;
 
-const BANNER_ID = 'solid-node-offline-banner';
-const BANNER_TEXT = 'solid develop is not running — model may be stale';
+const BANNER_ID = 'machinome-offline-banner';
+const BANNER_TEXT = 'machinome develop is not running — model may be stale';
 
-const STYLE_ID = 'solid-node-reloader-style';
+const STYLE_ID = 'machinome-reloader-style';
 
 // Carried over verbatim in effect from `App.css`: a fixed red strip
 // across the top, `pointer-events: none` so the stale model underneath
 // stays fully interactive.
 const RELOADER_STYLESHEET = `
 .reload-offline-banner {
-  --solid-reload-bg: #c0392b;
-  --solid-reload-fg: #fff;
+  --machinome-reload-bg: #c0392b;
+  --machinome-reload-fg: #fff;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 9999;
-  background: var(--solid-reload-bg);
-  color: var(--solid-reload-fg);
+  background: var(--machinome-reload-bg);
+  color: var(--machinome-reload-fg);
   text-align: center;
   font-weight: bold;
   font-family: sans-serif;
@@ -120,7 +120,7 @@ export class Reloader {
 
       if (isReconnect) {
         // Heal the browser with zero manual interaction: a restarted
-        // `solid develop` must repopulate the tree/STLs, not just clear
+        // `machinome develop` must repopulate the tree/STLs, not just clear
         // the banner, since the model may have changed while it was down.
         this.checkBuild().finally(() => this.hideBanner());
       } else {

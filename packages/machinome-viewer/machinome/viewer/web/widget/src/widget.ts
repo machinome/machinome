@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -33,9 +33,9 @@ function autoMount(): void {
   if (params.get('autoplay') === '0') {
     options.autoplay = false;
   }
-  document.querySelectorAll<HTMLElement>('[data-solid-widget]').forEach(
+  document.querySelectorAll<HTMLElement>('[data-machinome-widget]').forEach(
     (element) => {
-      const sourceUrl = element.dataset.solidWidget;
+      const sourceUrl = element.dataset.machinomeWidget;
       if (!sourceUrl) {
         return;
       }
@@ -44,14 +44,14 @@ function autoMount(): void {
       // written before this capability existed.
       const choice = layoutChoice(element.dataset, params);
       if (typeof choice.layout === 'object') {
-        element.textContent = `solid-widget: unknown layout "${choice.layout.unknown}"`;
+        element.textContent = `machinome-viewer: unknown layout "${choice.layout.unknown}"`;
         return;
       }
       const mounted = choice.layout === 'inspector'
         ? mountInspector(element, sourceUrl, { ...options, sidebar: choice.sidebar })
         : mount(element, sourceUrl, options);
       mounted.catch((error) => {
-        element.textContent = `solid-widget: ${error.message}`;
+        element.textContent = `machinome-viewer: ${error.message}`;
         console.error(error);
       });
     },

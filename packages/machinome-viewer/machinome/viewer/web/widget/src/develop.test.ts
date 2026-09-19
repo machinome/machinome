@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -89,8 +89,8 @@ beforeEach(() => {
 
 afterEach(() => {
   document.body.replaceChildren();
-  document.getElementById('solid-node-develop-style')?.remove();
-  document.getElementById('solid-node-reloader-style')?.remove();
+  document.getElementById('machinome-develop-style')?.remove();
+  document.getElementById('machinome-reloader-style')?.remove();
   vi.restoreAllMocks();
 });
 
@@ -179,7 +179,7 @@ describe('a build error', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    const pane = document.querySelector('.solid-inspector-error');
+    const pane = document.querySelector('.machinome-inspector-error');
     expect(pane).not.toBeNull();
     expect(pane?.textContent).toBe('boom: relation refused');
     expect(disposeInspector).not.toHaveBeenCalled();
@@ -191,6 +191,6 @@ describe('a build error', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(document.querySelector('.solid-inspector-error')).toBeNull();
+    expect(document.querySelector('.machinome-inspector-error')).toBeNull();
   });
 });

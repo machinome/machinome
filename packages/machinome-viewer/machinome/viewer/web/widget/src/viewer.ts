@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -962,7 +962,7 @@ export async function mount(
   /** Start (or restart) the run of a document carrying a program, posed
    * at its published rest bank before the first tick is ever taken.
    *
-   * `republished` marks the targeted document update `solid develop`
+   * `republished` marks the targeted document update `machinome develop`
    * drives, where a live run may stand rather than restart: it keeps
    * its bank, its active commands, its step count and its elapsed clock
    * only when the republished program's identity and the run's step
@@ -2501,10 +2501,12 @@ function visibleBounds(root: THREE.Object3D): THREE.Box3 {
 // every viewer released so far.
 //
 // Exported so `version.test.ts` can pin it against the ONE declaration
-// the bundle and `bundle.py` both read (`solidNodeDocumentVersions` in
+// the bundle and `bundle.py` both read (`machinomeDocumentVersions` in
 // package.json): the number this viewer reports and the versions it
 // refuses by must not be able to drift apart.
 export const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8];
+const DOCUMENT_FORMAT = 'machinome-export';
+const LEGACY_DOCUMENT_FORMAT = 'solid-node-export';
 
 // The document schema this viewer evaluates. Version 2 added the
 // `drivers` table, and since ADR-056 stage 3b this viewer EVALUATES
@@ -2548,7 +2550,7 @@ export interface LoadedDocument {
 }
 
 /** `#RRGGBB`, and nothing else. The producer REQUIRES a colour on a
- * marking (solid-node design D6: "a decal with no colour is invisible,
+ * marking (machinome design D6: "a decal with no colour is invisible,
  * which means the declaration did nothing"), so a shorthand, a name or a
  * number is a producer bug rather than a value to guess at. */
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -2619,6 +2621,14 @@ export function assertMarkings(node: ManifestNode, sourceUrl: string): void {
 
 export function assertRenderable(document: Manifest,
                                  sourceUrl: string): LoadedDocument {
+  if (document.format !== DOCUMENT_FORMAT
+      && document.format !== LEGACY_DOCUMENT_FORMAT) {
+    throw new Error(
+      `${sourceUrl} declares document format ${JSON.stringify(document.format)}, ` +
+      `which this viewer does not render; expected ${DOCUMENT_FORMAT} ` +
+      `(or legacy ${LEGACY_DOCUMENT_FORMAT}).`,
+    );
+  }
   if (!RENDERED_VERSIONS.includes(document.version)) {
     throw new Error(
       `${sourceUrl} declares document version ${document.version}, which ` +
@@ -2839,7 +2849,7 @@ function resolveContainer(target: HTMLElement | string): HTMLElement {
   }
   const element = document.querySelector<HTMLElement>(target);
   if (!element) {
-    throw new Error(`solid-widget: no element matches "${target}"`);
+    throw new Error(`machinome-viewer: no element matches "${target}"`);
   }
   return element;
 }

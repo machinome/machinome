@@ -2,14 +2,14 @@
 
 `viewer.json` is the framework's own test machine
 `tests/carriage_project/machine.py:CurtaCarriage`, exported **verbatim**
-from a throwaway copy of solid-node at branch `select-the-source`, commit
+from a throwaway copy of machinome at branch `select-the-source`, commit
 `0b0f02a` — 32,791 bytes, `md5 1598d57e18f772315183a7e466123a39`, a
 **version 7** document.
 
 It declares five drivers (`clearing`, `crank`, `lift`, `position`,
 `reset`), fourteen coordinates all resting at `0.0`, thirty-five
 bindings, no intermediates, a `seat` span **both of whose sides are
-expressions** reading another coordinate (solid-node ADR-113), and
+expressions** reading another coordinate (machinome ADR-113), and
 **nine law edges of which seven — edges 2 to 8, the three levers and the
 four dials — form ONE BLOCK**, each carrying a self-read and each
 published `affine: [true]`.
@@ -26,7 +26,7 @@ Nothing here edited the document and nothing here regenerates it. It was
 produced with
 
 ```
-PYTHONPATH="$PWD" solid export \
+PYTHONPATH="$PWD" machinome export \
     tests/carriage_project/machine.py:CurtaCarriage -o <dir> --no-widget
 ```
 
@@ -34,13 +34,13 @@ which warned, correctly, that the installed viewer could not read it:
 
 ```text
 WARNING - core.export - this model needs document version 7, and the
-  installed browser viewer renders 1, 2, 3, 4, 5, 6 (solid-node-viewer
+  installed browser viewer renders 1, 2, 3, 4, 5, 6 (machinome-viewer
   0.1.0). The export is written anyway: an export is an artifact a LATER
   viewer may open, and a viewer that cannot read it refuses it by name
   rather than rendering part of a machine it does not understand.
 ```
 
-The file `solid export` wrote — `manifest.json` — is what sits here under
+The file `machinome export` wrote — `manifest.json` — is what sits here under
 the name `viewer.json`, byte for byte. The rename is the only thing done
 to it: the loader reads either published document by the fields they
 share, and every other running fixture in this repository is called
@@ -68,7 +68,7 @@ INTERLOCK — and with it UP the span opens by four stations either way.
 
 ## What is a stand-in
 
-The geometry is the machine's own: `solid export` wrote both meshes the
+The geometry is the machine's own: `machinome export` wrote both meshes the
 document names, a dial (`parts-Arbor-ff269d604af9.stl`, 5,884 bytes) and
 a carriage plate (`parts-Carriage-047f12d8000c.stl`, 684 bytes). This
 repository tests a RUN, not a mesh; what the acceptance asks of those
@@ -79,7 +79,7 @@ files is that a mesh exists at every path the document names.
 `tests/carriage_project/machine.py` reaches its parts through the
 relative import `from ..running_project.parts import Arbor, Block,
 Carriage as Slide`, which resolves under pytest and not under
-`solid export`: the framework's loader takes `tests/pyproject.toml` as
+`machinome export`: the framework's loader takes `tests/pyproject.toml` as
 the project root, so the module loads as `carriage_project.machine` and
 the relative import goes beyond the top-level package. In the throwaway
 copy that one line was changed to `from running_project.parts import

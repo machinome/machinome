@@ -1,11 +1,11 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
 """What the suites share: the committed export fixture and a way to see it.
 
 The fixture under tests/fixtures/spinner is a widget-less
-`solid export` of the framework's spinner test project -- a red hub and
+`machinome export` of the framework's spinner test project -- a red hub and
 three blue blades turning with `$t`. It is committed rather than produced
 here because this repository does not depend on the framework: the viewer
 reads documents, it does not make them.
@@ -22,7 +22,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from solid_node_viewer.bundle import bundle_path, index_path
+from machinome_viewer.bundle import bundle_path, index_path
 
 FIXTURES = Path(__file__).parent / 'fixtures'
 SPINNER = FIXTURES / 'spinner'
@@ -110,9 +110,9 @@ needs_playwright = unittest.skipUnless(HAS_PLAYWRIGHT, 'playwright not installed
 
 def export_with_widget(target):
     """Copy the fixture export into ``target`` and complete it with the
-    installed widget files, exactly as `solid export` would have."""
+    installed widget files, exactly as `machinome export` would have."""
     shutil.copytree(SPINNER, target)
-    shutil.copy2(bundle_path(), Path(target) / 'solid-widget.js')
+    shutil.copy2(bundle_path(), Path(target) / 'machinome-viewer.js')
     shutil.copy2(index_path(), Path(target) / 'index.html')
     return Path(target)
 
@@ -166,10 +166,10 @@ def published_touched(target):
 
 def export_marked(target):
     """Copy the MARKED fixture into ``target`` and complete it with the
-    installed widget files, exactly as `solid export` would have --
+    installed widget files, exactly as `machinome export` would have --
     :func:`export_with_widget`'s shape, over the marked bench."""
     shutil.copytree(MARKED, target)
-    shutil.copy2(bundle_path(), Path(target) / 'solid-widget.js')
+    shutil.copy2(bundle_path(), Path(target) / 'machinome-viewer.js')
     shutil.copy2(index_path(), Path(target) / 'index.html')
     return Path(target)
 
@@ -212,7 +212,7 @@ class QuietHandler(SimpleHTTPRequestHandler):
 
     def end_headers(self):
         # The suites rewrite a served document between two fetches of the
-        # same URL -- a republish, which is what `solid develop` does --
+        # same URL -- a republish, which is what `machinome develop` does --
         # and a browser answering the second from its cache would test
         # the bytes of the first.
         self.send_header('Cache-Control', 'no-store')

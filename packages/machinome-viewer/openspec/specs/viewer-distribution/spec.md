@@ -2,18 +2,18 @@
 
 ## Purpose
 
-How the viewer is delivered and how a framework finds it: the `solid-node-viewer`
+How the viewer is delivered and how a framework finds it: the `machinome-viewer`
 distribution carries the built frontends, exposes one lookup and three
-commands, and is installed beside solid-node as its optional `viewer` extra.
-Rewritten from solid-node's `viewer-distribution` baseline when the viewer
+commands, and is installed beside machinome as its optional `viewer` extra.
+Rewritten from machinome's `viewer-distribution` baseline when the viewer
 became this package.
 
-Code: `pyproject.toml`, `solid_node_viewer/bundle.py`,
-`solid_node_viewer/packaging.py`, `solid_node_viewer/cli.py`.
+Code: `pyproject.toml`, `machinome_viewer/bundle.py`,
+`machinome_viewer/packaging.py`, `machinome_viewer/cli.py`.
 ## Requirements
 ### Requirement: Distributions carry the built frontends
 
-Source distributions and wheels of `solid-node-viewer` SHALL contain the
+Source distributions and wheels of `machinome-viewer` SHALL contain the
 built viewer bundle and the pages the package authors over it: the
 standalone export page and the development page. The bundle SHALL be the
 only built frontend: creating a source distribution SHALL build it, and
@@ -71,7 +71,7 @@ notices of the libraries it bundles. The Python package, the widget's
 
 ### Requirement: A framework finds the installed viewer through one entry point
 
-The distribution SHALL register the `solid_node.viewer` entry point group
+The distribution SHALL register the `machinome.viewer` entry point group
 with one entry, `bundle`, resolving to a function that returns the absolute
 `path` of the installed bundle, the absolute `index` of the standalone
 export page, the integer `apiVersion` the widget declares, the list of
@@ -79,7 +79,7 @@ document schema versions the widget renders as `documentVersions`, and the
 package `version`. Resolving it SHALL import only the standard library — no
 browser bundle, no web framework — and SHALL raise, with the remedy, when
 the installation carries no built bundle, so a caller never receives a path
-that does not exist. `solid-node-viewer describe` SHALL print the same
+that does not exist. `machinome-viewer describe` SHALL print the same
 mapping as one JSON object on standard output, or print nothing there,
 report the remedy on standard error and exit non-zero when there is no
 bundle.
@@ -98,14 +98,14 @@ answer is never given a build log to parse.
 
 #### Scenario: A framework resolves the viewer without importing it
 
-- **WHEN** solid-node loads the `solid_node.viewer` entry point and calls it
+- **WHEN** machinome loads the `machinome.viewer` entry point and calls it
 - **THEN** it obtains an existing absolute bundle path, the export page and
   the declared API version, having imported nothing of the viewer's
   rendering, serving or capturing code
 
 #### Scenario: A program asks the command line
 
-- **WHEN** a program runs `solid-node-viewer describe` against an
+- **WHEN** a program runs `machinome-viewer describe` against an
   installation with a built bundle
 - **THEN** it parses one JSON object carrying the path, index, API version
   and version, and the process exits zero
@@ -120,7 +120,7 @@ answer is never given a build log to parse.
 #### Scenario: A producer asks which documents this installation reads
 
 - **WHEN** a framework resolves the entry point, or runs
-  `solid-node-viewer describe`, before publishing a document
+  `machinome-viewer describe`, before publishing a document
 - **THEN** the answer carries the list of document schema versions this
   build renders, and that list is the same one the bundle refuses an
   unlisted version by
@@ -134,7 +134,7 @@ answer is never given a build log to parse.
 
 #### Scenario: A rebuild does not corrupt the answer
 
-- **WHEN** `solid-node-viewer describe` rebuilds a stale bundle before
+- **WHEN** `machinome-viewer describe` rebuilds a stale bundle before
   answering
 - **THEN** standard output carries exactly one JSON object and nothing the
   build printed
@@ -142,16 +142,16 @@ answer is never given a build log to parse.
 ### Requirement: Everything else is a process
 
 Beyond the lookup, the framework SHALL use the viewer only through the
-`solid-node-viewer` console script, or the same program as
-`python -m solid_node_viewer` through the interpreter the framework runs
+`machinome-viewer` console script, or the same program as
+`python -m machinome_viewer` through the interpreter the framework runs
 under — `serve` for the development server and `capture` for the snapshot —
-each run as a separate process on a directory the framework prepared. This package SHALL NOT import `solid_node`, and its
-distribution SHALL NOT depend on solid-node.
+each run as a separate process on a directory the framework prepared. This package SHALL NOT import `machinome`, and its
+distribution SHALL NOT depend on machinome.
 
 #### Scenario: The two packages install into one environment
 
-- **WHEN** `pip install "solid-node[viewer]"` runs
-- **THEN** solid-node-viewer installs beside solid-node with no dependency
+- **WHEN** `pip install "machinome[viewer]"` runs
+- **THEN** machinome-viewer installs beside machinome with no dependency
   from the viewer back to the framework, and each package remains
   importable without the other
 
@@ -184,7 +184,7 @@ absent, the build program cannot be run, or the build fails — the package
 SHALL report a stale installation naming the bundle, the input that
 outdates it, why the rebuild could not happen, and the remedy, and SHALL
 NOT hand out, serve or copy the stale bundle. The entry point SHALL raise,
-`solid-node-viewer describe` SHALL print nothing on standard output and
+`machinome-viewer describe` SHALL print nothing on standard output and
 exit non-zero, and the capture SHALL write no image.
 
 An installation carrying no widget sources SHALL be current by definition:
@@ -192,7 +192,7 @@ it SHALL perform no scan, SHALL never rebuild, and SHALL require no npm.
 
 #### Scenario: A checkout is asked after its sources changed
 
-- **WHEN** the entry point or `solid-node-viewer describe` is asked in a
+- **WHEN** the entry point or `machinome-viewer describe` is asked in a
   checkout whose widget sources are newer than its built bundle
 - **THEN** the bundle is rebuilt from those sources before the answer is
   given, and the reported API version and document schema versions are the
@@ -231,4 +231,44 @@ it SHALL perform no scan, SHALL never rebuild, and SHALL require no npm.
   but no widget sources
 - **THEN** it answers without scanning for sources, without rebuilding and
   without requiring npm
+
+### Requirement: The distribution carries one Machinome viewer identity
+
+The distribution SHALL be named `machinome-viewer`, expose the Python package
+`machinome_viewer`, register `machinome.viewer`, and provide
+`machinome-viewer describe|serve|capture` plus equivalent
+`python -m machinome_viewer` execution. Its source repository SHALL be
+`github.com/machinome/machinome-viewer`. The built bundle, standalone page,
+source banner, package metadata, diagnostics and remedies SHALL use Machinome
+names. It SHALL NOT install solid-node-named Python packages, entry points or
+commands.
+
+#### Scenario: The framework resolves the viewer
+
+- **WHEN** Machinome loads the `machinome.viewer` entry point
+- **THEN** it receives the installed Machinome bundle description without
+  importing rendering, serving, or capture code
+
+#### Scenario: A program asks the command line
+
+- **WHEN** it runs `machinome-viewer describe`
+- **THEN** standard output contains the same JSON mapping as the entry point
+
+#### Scenario: A source recipient follows the bundle banner
+
+- **WHEN** a conveyed bundle's source notice is read
+- **THEN** it names the AGPL licence, package/API versions, and the
+  `machinome/machinome-viewer` repository
+
+### Requirement: The viewer remains an independent process
+
+Machinome SHALL reach the viewer only through `machinome.viewer` lookup and
+the `machinome-viewer` process commands. The viewer distribution SHALL NOT
+depend on or import the `machinome` Python package.
+
+#### Scenario: The two packages install together
+
+- **WHEN** `pip install "machinome[viewer]"` installs both distributions
+- **THEN** each package remains importable without importing the other and all
+  serving or capture work crosses the process boundary
 

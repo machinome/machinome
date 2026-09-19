@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -13,13 +13,29 @@ from a checkout whose bundle predates its source ships that bundle, and
 """
 
 from dataclasses import dataclass
+import importlib.util
 from pathlib import Path
 import subprocess
-
-from solid_node_viewer import currency
+import sys
 
 from setuptools.command.build_py import build_py
 from setuptools.command.sdist import sdist
+
+
+# Setuptools loads this module while resolving ``cmdclass``, before the source
+# package is importable in an isolated build environment. Load the sibling
+# standard-library-only module by path rather than relying on an installed copy
+# of this package (which would be the wrong source of currency rules anyway).
+_currency_name = 'machinome_viewer.currency'
+currency = sys.modules.get(_currency_name)
+if currency is None:
+    _currency_spec = importlib.util.spec_from_file_location(
+        _currency_name, Path(__file__).with_name('currency.py'))
+    if _currency_spec is None or _currency_spec.loader is None:  # pragma: no cover
+        raise ImportError('cannot load machinome_viewer.currency')
+    currency = importlib.util.module_from_spec(_currency_spec)
+    sys.modules[_currency_name] = currency
+    _currency_spec.loader.exec_module(currency)
 
 
 @dataclass
@@ -43,11 +59,11 @@ class Frontend:
 PACKAGE = Path(__file__).parent
 WIDGET = Frontend(
     PACKAGE / 'widget',
-    PACKAGE / 'widget' / 'dist' / 'solid-widget.js',
+    PACKAGE / 'widget' / 'dist' / 'machinome-viewer.js',
 )
 # The bundle is the only built frontend now: the development page is a
 # plain file the widget directory already carries (`develop.html`,
-# `MANIFEST.in`'s `recursive-include solid_node_viewer/widget *`), not a
+# `MANIFEST.in`'s `recursive-include machinome_viewer/widget *`), not a
 # second npm project to build.
 FRONTENDS = (WIDGET,)
 

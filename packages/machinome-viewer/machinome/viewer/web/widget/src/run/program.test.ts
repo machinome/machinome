@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -42,7 +42,7 @@ interface Overrides { [key: string]: unknown }
 function document(program: Overrides = {},
                   document: Overrides = {}): RunDocument {
   return {
-    format: 'solid-node-export',
+    format: 'machinome-export',
     version: 5,
     drivers: {
       crank: {
@@ -559,7 +559,7 @@ describe('the held node ids are generation-guarded (design D12)', () => {
 function reading(program: Overrides = {},
                  extra: Overrides = {}): RunDocument {
   return {
-    format: 'solid-node-export',
+    format: 'machinome-export',
     version: 5,
     drivers: {
       crank: { default: 0, range: null, unit: 'deg', dtype: null, scale: null },
@@ -843,7 +843,7 @@ describe('the pin tumbler lock\'s published document', () => {
 function selfRead(program: Overrides = {},
                   overrides: Overrides = {}): RunDocument {
   return {
-    format: 'solid-node-export',
+    format: 'machinome-export',
     version: 6,
     drivers: {
       ring: { default: 0, range: null, unit: 'deg', dtype: null, scale: null },
@@ -1172,7 +1172,7 @@ const blockLimits = { ...LIMITS };
 function blockDocument(overrides: Overrides = {},
                        extra: Overrides = {}): RunDocument {
   return {
-    format: 'solid-node-export',
+    format: 'machinome-export',
     version: 7,
     drivers: {
       crank: { default: 0, range: null, unit: null, dtype: null, scale: null },

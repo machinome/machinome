@@ -5,8 +5,8 @@ include CHANGELOG.md
 # The frontend travels with its sources so a source distribution can
 # rebuild it, and with its built output so installing needs no npm.
 # develop.html is a package file here too, not a build output.
-recursive-include solid_node_viewer/widget *
-prune solid_node_viewer/widget/node_modules
+recursive-include machinome_viewer/widget *
+prune machinome_viewer/widget/node_modules
 
 recursive-include tests *
 recursive-exclude * __pycache__

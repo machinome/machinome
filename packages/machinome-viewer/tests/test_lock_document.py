@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -22,7 +22,7 @@ from unittest import TestCase
 from tests.support import (
     LOCK, needs_bundle, needs_playwright, published_lock, serve_directory,
 )
-from solid_node_viewer.bundle import bundle_path
+from machinome_viewer.bundle import bundle_path
 
 try:
     from playwright.sync_api import sync_playwright
@@ -61,7 +61,7 @@ class LockFixtureTest(TestCase):
         self.assertEqual(missing, [], 'the fixture names meshes it lacks')
 
     def test_the_document_is_the_lock_s_own_published_build(self):
-        self.assertEqual((LOCK / 'viewer.json').stat().st_size, 26278)
+        self.assertEqual((LOCK / 'viewer.json').stat().st_size, 26277)
         self.assertEqual(self.document['version'], 5)
         self.assertEqual(self.document['root']['name'], 'PinTumblerLock')
         program = self.document['program']
@@ -112,7 +112,7 @@ HARNESS_PAGE = """<!doctype html>
   </head>
   <body>
     <div id="host"></div>
-    <script src="solid-widget.js"></script>
+    <script src="machinome-viewer.js"></script>
   </body>
 </html>
 """
@@ -127,7 +127,7 @@ HARNESS_PAGE = """<!doctype html>
 #: page can see them.
 DRIVE = """async () => {
   const host = document.getElementById('host');
-  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json', {});
   const run = viewer.run();
   if (run === null) {
     return { run: null };
@@ -184,7 +184,7 @@ class LockInABrowserTest(TestCase):
         self.addCleanup(self.tempdir.cleanup)
         self.out_dir = Path(self.tempdir.name) / 'lock'
         shutil.copytree(LOCK, self.out_dir)
-        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        shutil.copy2(bundle_path(), self.out_dir / 'machinome-viewer.js')
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(self.out_dir)
         base = server.__enter__()
@@ -207,13 +207,13 @@ class LockInABrowserTest(TestCase):
                         if message.type == 'error' else None)
                 page.goto(self.harness_url)
                 page.wait_for_function(
-                    'typeof SolidNodeWidget !== "undefined"')
+                    'typeof MachinomeViewer !== "undefined"')
                 result = page.evaluate(DRIVE)
                 # The plug turned with the key seated, and the key
                 # stopped by the turned plug: pixels are evidence.
                 page.evaluate("""async () => {
                   const host = document.getElementById('host');
-                  window.__shot = await SolidNodeWidget.mount(
+                  window.__shot = await MachinomeViewer.mount(
                     host, 'viewer.json', {});
                   const run = window.__shot.run();
                   const turn = run.trigger('Turn the plug');
@@ -242,7 +242,7 @@ class LockInABrowserTest(TestCase):
         self.assertIsNotNone(result.get('mounted'), 'the handle reported no run')
         self.assertEqual(mounted['identity'],
                          self.document['program']['identity'])
-        self.assertEqual(result['apiVersion'], 19)
+        self.assertEqual(result['apiVersion'], 20)
         self.assertAlmostEqual(mounted['dt'], 1 / 240, places=12)
         # No step taken, at the published rest values.
         self.assertEqual(mounted['tick'], 0)

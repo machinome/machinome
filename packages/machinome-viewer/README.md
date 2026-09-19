@@ -1,14 +1,21 @@
-# solid-node-viewer
+# machinome-viewer
 
-The browser viewer for [solid-node](https://github.com/LibreSolid/solid-node)
+The browser viewer for [machinome](https://github.com/machinome/machinome-framework)
 models, packaged for pip.
 
-solid-node describes a mechanical model as a versioned tree document —
+This repository was founded as `solid-node-viewer` but adopts its final
+Machinome identity before publication (ADR-066). Its Python, process, entry
+point, npm, browser-global, bundle, DOM and CSS surfaces use Machinome names;
+viewer API 20 records that host-contract boundary. The document reader accepts
+both current `machinome-export` files and committed `solid-node-export` files
+from solid-node 0.6. Version 0.2.0 is still unreleased.
+
+machinome describes a mechanical model as a versioned tree document —
 `viewer.json` in a build, `manifest.json` in an export — beside the STL
 files it names. This package is everything that turns such a document into
 something a person can look at in a browser:
 
-- **`solid-widget.js`**, the embeddable three.js widget: orbit controls,
+- **`machinome-viewer.js`**, the embeddable three.js widget: orbit controls,
   client-side `$t` animation — at real time, with a speed control and a
   machine-time readout, when the document declares how long a turn of the
   timeline is — one slider with a passive click-to-edit numeric readout per
@@ -26,16 +33,16 @@ something a person can look at in a browser:
   play, step and speed over
   elapsed seconds, one request per rendered frame, with a declared
   instruction pressed as one request and DRAWN over its duration**, and the
-  `SolidNodeWidget.mount()` API a host page drives it through;
-- the **standalone export page** a `solid export` directory ships with,
-  and the **inspector layout** (`SolidNodeWidget.mountInspector`) it can
+  `MachinomeViewer.mount()` API a host page drives it through;
+- the **standalone export page** a `machinome export` directory ships with,
+  and the **inspector layout** (`MachinomeViewer.mountInspector`) it can
   select — the viewer beside a collapsible assembly sidebar, composed
   from the widget's own navigator, in one host element;
-- the **development server** that `solid develop` launches beside its
+- the **development server** that `machinome develop` launches beside its
   builder, serving a static **development page** this package carries —
   the inspector mounted on the published build, with the reload channel
   and the build-error surface;
-- the **headless capture** behind `solid snapshot --renderer web`, which
+- the **headless capture** behind `machinome snapshot --renderer web`, which
   photographs a staged document through the widget with a transparent
   background.
 
@@ -45,37 +52,37 @@ Makers do not install this package directly. It arrives as an extra of the
 framework:
 
 ```
-pip install "solid-node[viewer]"
+pip install "machinome[viewer]"
 ```
 
-With it installed, `solid develop` opens the web viewer by default and
-`solid export` and the Sphinx directive ship the widget. Without it, the
+With it installed, `machinome develop` opens the web viewer by default and
+`machinome export` and the Sphinx directive ship the widget. Without it, the
 framework still works in full with its OpenSCAD viewer; the commands that
 need the browser viewer name this extra as the remedy.
 
 The snapshot capture needs a browser as well:
 
 ```
-pip install "solid-node-viewer[snapshot]"
+pip install "machinome-viewer[snapshot]"
 playwright install chromium
 ```
 
-## How solid-node reaches it
+## How machinome reaches it
 
 The framework never imports this package's code. It finds the installed
-viewer through one Python entry point, `solid_node.viewer`, which returns
+viewer through one Python entry point, `machinome.viewer`, which returns
 the bundle path, the export page, the declared viewer API version and the
 document schema versions this build reads; and it
-runs three commands of the `solid-node-viewer` console script (or, as the
-framework does it, `python -m solid_node_viewer`) as separate processes:
+runs three commands of the `machinome-viewer` console script (or, as the
+framework does it, `python -m machinome_viewer`) as separate processes:
 
 | Command | Used by |
 | --- | --- |
-| `solid-node-viewer describe` | the same answer as the entry point, as JSON on standard output |
-| `solid-node-viewer serve --build-dir DIR` | `solid develop`, which launches it beside the builder |
-| `solid-node-viewer capture STAGING -o PNG` | `solid snapshot --renderer web`, on a staged document |
+| `machinome-viewer describe` | the same answer as the entry point, as JSON on standard output |
+| `machinome-viewer serve --build-dir DIR` | `machinome develop`, which launches it beside the builder |
+| `machinome-viewer capture STAGING -o PNG` | `machinome snapshot --renderer web`, on a staged document |
 
-That process boundary is the licensing boundary. solid-node is Apache-2.0
+That process boundary is the licensing boundary. machinome is Apache-2.0
 and stays complete and useful on its own; this viewer is AGPL-3.0-only and
 is an optional, separately installed addition to it. Nothing flows from here
 back into the framework.
@@ -99,14 +106,14 @@ can loop forever, and a navigator built on this bundle does not.
 
 ### The bundle's own navigator
 
-`SolidNodeWidget.mountNavigator(target, viewer, options?)` mounts a
+`MachinomeViewer.mountNavigator(target, viewer, options?)` mounts a
 React-free, plain-DOM tree over that same channel — into the sidebar
 the inspector layout below composes, a studio panel, or a maker's own
 page:
 
 ```js
-const viewer = await SolidNodeWidget.mount('#host', 'viewer.json', {});
-const navigator = SolidNodeWidget.mountNavigator('#navigator', viewer, {
+const viewer = await MachinomeViewer.mount('#host', 'viewer.json', {});
+const navigator = MachinomeViewer.mountNavigator('#navigator', viewer, {
   label: 'Assembly',
   fullAssembly: true,
   className: 'my-panel',
@@ -146,53 +153,53 @@ publishes no other file for it:
 
 | class | element |
 | --- | --- |
-| `solid-nav` | the navigator root |
-| `solid-nav-toolbar` | the row above the tree |
-| `solid-nav-full` | the "show full assembly" button |
-| `solid-nav-tree` | the `role="tree"` container |
-| `solid-nav-row` | a `role="treeitem"`; modifiers `--root`, `--hidden`, `--obscured`, `--leaf` |
-| `solid-nav-twisty` | the expand/collapse button |
-| `solid-nav-spacer` | the twisty's width on a leaf |
-| `solid-nav-visibility` | the visibility checkbox |
-| `solid-nav-name` | the node's label |
-| `solid-nav-badge` | the `root` marker on the focused row |
-| `solid-nav-focus` | the per-row focus button |
+| `machinome-nav` | the navigator root |
+| `machinome-nav-toolbar` | the row above the tree |
+| `machinome-nav-full` | the "show full assembly" button |
+| `machinome-nav-tree` | the `role="tree"` container |
+| `machinome-nav-row` | a `role="treeitem"`; modifiers `--root`, `--hidden`, `--obscured`, `--leaf` |
+| `machinome-nav-twisty` | the expand/collapse button |
+| `machinome-nav-spacer` | the twisty's width on a leaf |
+| `machinome-nav-visibility` | the visibility checkbox |
+| `machinome-nav-name` | the node's label |
+| `machinome-nav-badge` | the `root` marker on the focused row |
+| `machinome-nav-focus` | the per-row focus button |
 
 **Theming.** The default presentation is neutral — legible on a light or
 a dark page — and entirely driven by CSS custom properties declared on
-`.solid-nav`, which a host overrides from its own stylesheet, on an
+`.machinome-nav`, which a host overrides from its own stylesheet, on an
 ancestor, or on `:root`, without reaching into the navigator's elements:
 
 | property | default | what it sets |
 | --- | --- | --- |
-| `--solid-nav-font` | `12px ui-monospace, SFMono-Regular, Menlo, monospace` | row type |
-| `--solid-nav-indent` | `15px` | indent per level |
-| `--solid-nav-row-padding` | `4px 5px` | row padding |
-| `--solid-nav-row-radius` | `5px` | row corner |
-| `--solid-nav-row-min-height` | `28px` | row height |
-| `--solid-nav-gap` | `6px` | gap between a row's parts |
-| `--solid-nav-chip-size` | `12px` | the visibility chip |
-| `--solid-nav-fg` | `inherit` | row text |
-| `--solid-nav-fg-strong` | `inherit` | hovered / focused-root text |
-| `--solid-nav-muted` | `rgba(128,128,128,0.95)` | buttons, badges |
-| `--solid-nav-bg` | `transparent` | the navigator's ground |
-| `--solid-nav-row-hover-bg` | `rgba(128,128,128,0.18)` | hover |
-| `--solid-nav-root-bg` | `rgba(128,128,128,0.22)` | the focused-root row |
-| `--solid-nav-root-mark` | `currentColor` | its inset rule |
-| `--solid-nav-chip-neutral` | `#9aa0a8` | a colourless visible node |
-| `--solid-nav-chip-border` | `rgba(128,128,128,0.8)` | a hidden node's outline |
-| `--solid-nav-obscured-opacity` | `0.45` | an obscured node's chip |
-| `--solid-nav-focus-ring` | `currentColor` | `:focus-visible` outline |
+| `--machinome-nav-font` | `12px ui-monospace, SFMono-Regular, Menlo, monospace` | row type |
+| `--machinome-nav-indent` | `15px` | indent per level |
+| `--machinome-nav-row-padding` | `4px 5px` | row padding |
+| `--machinome-nav-row-radius` | `5px` | row corner |
+| `--machinome-nav-row-min-height` | `28px` | row height |
+| `--machinome-nav-gap` | `6px` | gap between a row's parts |
+| `--machinome-nav-chip-size` | `12px` | the visibility chip |
+| `--machinome-nav-fg` | `inherit` | row text |
+| `--machinome-nav-fg-strong` | `inherit` | hovered / focused-root text |
+| `--machinome-nav-muted` | `rgba(128,128,128,0.95)` | buttons, badges |
+| `--machinome-nav-bg` | `transparent` | the navigator's ground |
+| `--machinome-nav-row-hover-bg` | `rgba(128,128,128,0.18)` | hover |
+| `--machinome-nav-root-bg` | `rgba(128,128,128,0.22)` | the focused-root row |
+| `--machinome-nav-root-mark` | `currentColor` | its inset rule |
+| `--machinome-nav-chip-neutral` | `#9aa0a8` | a colourless visible node |
+| `--machinome-nav-chip-border` | `rgba(128,128,128,0.8)` | a hidden node's outline |
+| `--machinome-nav-obscured-opacity` | `0.45` | an obscured node's chip |
+| `--machinome-nav-focus-ring` | `currentColor` | `:focus-visible` outline |
 
 ### The inspector layout
 
-`SolidNodeWidget.mountInspector(target, sourceUrl, options?)` composes,
+`MachinomeViewer.mountInspector(target, sourceUrl, options?)` composes,
 inside one host element, a collapsible assembly sidebar holding the
 bundle's own navigator and the viewer with its own on-screen chrome —
 the layout `mountNavigator` above says nothing ships with:
 
 ```js
-const inspector = await SolidNodeWidget.mountInspector('#host', 'viewer.json', {
+const inspector = await MachinomeViewer.mountInspector('#host', 'viewer.json', {
   sidebar: 'collapsed',
   navigator: { label: 'Assembly', fullAssembly: true },
   styles: 'inject',
@@ -242,42 +249,42 @@ navigator's:
 
 | class | element |
 | --- | --- |
-| `solid-inspector` | the layout root, the target's only child |
-| `solid-inspector-rail` | always present, in both states; holds the toggle |
-| `solid-inspector-toggle` | the disclosure button; `aria-expanded`, `aria-controls` naming the sidebar |
-| `solid-inspector-sidebar` | the navigator's host; `hidden` while collapsed |
-| `solid-inspector-viewer` | `mount()`'s own container |
+| `machinome-inspector` | the layout root, the target's only child |
+| `machinome-inspector-rail` | always present, in both states; holds the toggle |
+| `machinome-inspector-toggle` | the disclosure button; `aria-expanded`, `aria-controls` naming the sidebar |
+| `machinome-inspector-sidebar` | the navigator's host; `hidden` while collapsed |
+| `machinome-inspector-viewer` | `mount()`'s own container |
 
-**Theming**, CSS custom properties on `.solid-inspector`:
+**Theming**, CSS custom properties on `.machinome-inspector`:
 
 | property | default | what it sets |
 | --- | --- | --- |
-| `--solid-inspector-sidebar-width` | `260px` | the sidebar's width |
-| `--solid-inspector-rail-width` | `32px` | the rail's width |
-| `--solid-inspector-bg` | `transparent` | the layout's ground |
-| `--solid-inspector-fg` | `inherit` | text |
-| `--solid-inspector-border` | `rgba(128,128,128,0.35)` | the rail/sidebar divider |
-| `--solid-inspector-toggle-bg` | `rgba(128,128,128,0.12)` | the toggle |
-| `--solid-inspector-toggle-hover-bg` | `rgba(128,128,128,0.24)` | the toggle, hovered |
-| `--solid-inspector-focus-ring` | `currentColor` | `:focus-visible` outline |
+| `--machinome-inspector-sidebar-width` | `260px` | the sidebar's width |
+| `--machinome-inspector-rail-width` | `32px` | the rail's width |
+| `--machinome-inspector-bg` | `transparent` | the layout's ground |
+| `--machinome-inspector-fg` | `inherit` | text |
+| `--machinome-inspector-border` | `rgba(128,128,128,0.35)` | the rail/sidebar divider |
+| `--machinome-inspector-toggle-bg` | `rgba(128,128,128,0.12)` | the toggle |
+| `--machinome-inspector-toggle-hover-bg` | `rgba(128,128,128,0.24)` | the toggle, hovered |
+| `--machinome-inspector-focus-ring` | `currentColor` | `:focus-visible` outline |
 
 ### The standalone page's layout selection
 
 `widget/index.html`'s published container attribute,
-`data-solid-widget`, gains a sibling that chooses between the plain
+`data-machinome-widget`, gains a sibling that chooses between the plain
 viewer and the inspector — on the same container, and as a query-string
 twin that overrides it:
 
 | source | value | effect |
 | --- | --- | --- |
 | no attribute, no query | — | `mount()` — unchanged from every page written before this capability existed |
-| `data-solid-layout="inspector"` | | `mountInspector()` |
+| `data-machinome-layout="inspector"` | | `mountInspector()` |
 | `?layout=inspector` / `?layout=viewer` | | overrides the attribute |
-| `data-solid-sidebar="open"` \| `"collapsed"` | | the inspector's initial sidebar |
+| `data-machinome-sidebar="open"` \| `"collapsed"` | | the inspector's initial sidebar |
 | `?sidebar=open` \| `?sidebar=collapsed` | | overrides the attribute |
 
 An unrecognised layout value is written into the element by name
-(`solid-widget: unknown layout "<value>"`), never silently ignored. The
+(`machinome-viewer: unknown layout "<value>"`), never silently ignored. The
 page this package ships selects the inspector, collapsed.
 
 No layout ships for a mount whose host wants neither: `mount()` and
@@ -312,7 +319,7 @@ The nudge amount, its duration and the jog rate are editable in the panel
 and settable at mount:
 
 ```js
-SolidNodeWidget.mount('#host', 'viewer.json', {
+MachinomeViewer.mount('#host', 'viewer.json', {
   run: { nudge: { amount: 1, seconds: 0.2 }, jog: { rate: 1 } },
 });
 ```
@@ -373,7 +380,7 @@ translations), two controls of one kind on one part, or a table on a
 document that carries no program.
 
 ```js
-const viewer = await SolidNodeWidget.mount('#host', 'viewer.json', {
+const viewer = await MachinomeViewer.mount('#host', 'viewer.json', {
   partControls: 'inline',   // 'none' suppresses the affordance
 });
 viewer.controls();
@@ -404,7 +411,7 @@ keyboard gesture, and nothing anywhere writes a coordinate.
 
 A machine may have **memory and no cadence**: a few retained values, a
 closed-form position between events, and a commit of those values at each
-event. solid-node publishes such a root as a **version 8** document — a
+event. machinome publishes such a root as a **version 8** document — a
 `states` table beside `drivers`, and a `clocked` object carrying the
 compiled machine: its identity, its clock, its committing relations, its
 declared stops and its limits. A Curta is one of these; so is a counter,
@@ -466,7 +473,7 @@ lost — visibly, as the readout falling behind the clock on the wall —
 rather than firing a burst of events; a frame the machine refuses pauses
 the transport and says why, once. Pause holds the bank; reset returns the
 whole bank to its published defaults with the clock at zero and stops the
-transport, and so does a republish while `solid develop` is watching. A
+transport, and so does a republish while `machinome develop` is watching. A
 host drives the same transport through `handle.machine()`, which carries
 `clockPlaying()` and `setClockPlaying(playing)` beside the requests and
 the session verbs. A machine that declares no clock is offered no
@@ -576,16 +583,16 @@ documents the framework publishes today declare version 2.
 
 The package version and the **viewer API version** are different numbers.
 The API version is the integer a host checks before mounting — the widget
-declares it once in `package.json` as `solidNodeViewerApi`, and every mount
-handle and the `SolidNodeWidget` global report it. It rises when the mount
+declares it once in `package.json` as `machinomeViewerApi`, and every mount
+handle and the `MachinomeViewer` global report it. It rises when the mount
 interface changes incompatibly or gains a capability a host may require.
 The document schema versions the widget reads are a third number, owned by
 the producer; the widget declares the list it reads once in the same
-`package.json` as `solidNodeDocumentVersions`, and `describe` reports it as
+`package.json` as `machinomeDocumentVersions`, and `describe` reports it as
 `documentVersions` beside the API version, so a producer can ask what this
 build reads rather than infer it.
 
-| solid-node-viewer | viewer API | reads document versions |
+| machinome-viewer | viewer API | reads document versions |
 | --- | --- | --- |
 | 0.1.0 | 7 | 1, 2, 3, 4 |
 | 0.2.0 | 19 | 1, 2, 3, 4, 5, 6, 7, 8 |
@@ -597,18 +604,18 @@ was ever published at API 13, and the number stays unused.)
 ## Working on the viewer
 
 ```
-git clone https://github.com/LibreSolid/solid-node-viewer
-cd solid-node-viewer
+git clone https://github.com/machinome/machinome-viewer
+cd machinome-viewer
 python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/playwright install chromium
-(cd solid_node_viewer/widget && npm ci && npm run build)
+(cd machinome_viewer/widget && npm ci && npm run build)
 .venv/bin/python -m pytest
-(cd solid_node_viewer/widget && npm run typecheck && npm test)
+(cd machinome_viewer/widget && npm run typecheck && npm test)
 ```
 
 After that first build, the bundle keeps itself current: the entry point,
-`solid-node-viewer describe`, the development server's bundle route and the
-capture each compare `dist/solid-widget.js` against `widget/src/`,
+`machinome-viewer describe`, the development server's bundle route and the
+capture each compare `dist/machinome-viewer.js` against `widget/src/`,
 `package.json`, `build.mjs` and `tsconfig.json`, and rebuild it when a
 source is newer (ADR-059). So an edit followed by a page reload serves the
 edit, and nothing answers for a bundle older than the source beside it.
@@ -627,12 +634,12 @@ evaluator; that fixture is regenerated by the framework's own tool and
 copied here, because the numbers in it are the framework's, not ours.
 
 The development page is a static file this package carries
-(`solid_node_viewer/widget/develop.html`), served directly by
-`solid-node-viewer serve --build-dir <project>/_build` — there is no
+(`machinome_viewer/widget/develop.html`), served directly by
+`machinome-viewer serve --build-dir <project>/_build` — there is no
 second frontend process, no npm dev server and nothing to proxy. The
 command still accepts `--dev`, `--start-frontend` and `--frontend-port`,
 changing nothing and logging one notice per flag given: a released
-solid-node's `solid develop --web-dev` passes `--start-frontend`, and
+machinome's `machinome develop --web-dev` passes `--start-frontend`, and
 this keeps it working rather than turning it into an argparse error on a
 flag the maker never typed.
 
@@ -643,7 +650,7 @@ explicit decision.
 
 ## Status and process
 
-Version 0.1.0 is the viewer exactly as it shipped inside solid-node 0.6.0,
+Version 0.1.0 is the viewer exactly as it shipped inside machinome 0.6.0,
 relicensed and repackaged; see `CHANGELOG.md`. Neither version is on an
 index yet: 0.1.0 is founded and unpublished, and 0.2.0 is in progress
 here. Behavioural specs live under

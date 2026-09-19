@@ -1,17 +1,17 @@
 # The marked bench, as an export fixture
 
-`manifest.json` is a widget-less `solid export` of the framework's own
-marked test project — `solid-node`'s `tests/markings_project/assembly.py:Bench`
+`manifest.json` is a widget-less `machinome export` of the framework's own
+marked test project — `machinome`'s `tests/markings_project/assembly.py:Bench`
 (the `carry-markings-on-a-part` change, ADR-120) — **verbatim**, beside the
 five STLs it names. Nothing here edited it, and nothing here regenerates it.
 It was written by
 
 ```
-PYTHONPATH="$PWD" solid export tests/markings_project/assembly.py:Bench \
+PYTHONPATH="$PWD" machinome export tests/markings_project/assembly.py:Bench \
     -o <dir> --no-widget
 ```
 
-run from a solid-node checkout at `8d29cf5` or later, and copied in whole:
+run from a machinome checkout at `8d29cf5` or later, and copied in whole:
 59,220 bytes, of which the document is 2,700 and the meshes 56,520.
 
 ## What the document settles

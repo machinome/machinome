@@ -1,11 +1,11 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 // The document's binding table (OpenSpec `read-expression-bindings`,
-// design D1-D7; ADR-044). solid-node's `expression-bindings` (ADR-080)
+// design D1-D7; ADR-044). machinome's `expression-bindings` (ADR-080)
 // stopped writing the same subexpression out over and over: a version-4
 // document publishes each subexpression that occurs more than once as
 // one named entry in an ordered top-level `bindings` array, referenced
@@ -163,7 +163,7 @@ export function bindingTable(document: Manifest, sourceUrl: string): BindingTabl
   // `EvalScope.bindings` names it by. The guard against a store reset
   // (D4): this table holds ids OUTSIDE the shared store, so a reset
   // between one call and the next -- the node ceiling tripping during a
-  // long `solid develop` session, or the last mount releasing -- would
+  // long `machinome develop` session, or the last mount releasing -- would
   // leave `cachedRoots` naming reallocated nodes. `expressionGeneration()`
   // is one integer comparison per call and a real re-prepare only after
   // a genuine reset; the entries' expression STRINGS cost nothing to

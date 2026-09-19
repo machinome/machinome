@@ -1,12 +1,12 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 // The compiled program, loaded from a version 5 document (design §4).
 //
-// Reproduces what solid-node's `simulation/program.py` `Program`
+// Reproduces what machinome's `simulation/program.py` `Program`
 // PUBLISHES, read backwards: the coordinates in the order the program
 // propagates them, the values it computes and never stores, the edges
 // in propagation order with their expressions, their affinity and their
@@ -1189,7 +1189,7 @@ export function loadProgram(
   }
 
   // The SHAPE of every followed quantity, derived HERE, once, at load
-  // (openspec `solve-at-the-kink`, design D1; solid-node's ADR-123).
+  // (openspec `solve-at-the-kink`, design D1; machinome's ADR-123).
   //
   // The producer's own classification is STRUCTURAL -- it reads the
   // expression tree and nothing else -- and this viewer holds the same

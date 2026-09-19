@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -23,7 +23,7 @@ function machineOf(clocked: Record<string, unknown>,
                    drivers: Record<string, unknown>,
                    states: Record<string, unknown>): LoadedMachine {
   const document = {
-    format: 'solid-node-export',
+    format: 'machinome-export',
     version: 8,
     drivers,
     states,

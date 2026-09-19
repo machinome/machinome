@@ -1,8 +1,8 @@
 {
-  "name": "@solid-node/widget",
+  "name": "@machinome/viewer",
   "version": "0.2.0",
-  "solidNodeViewerApi": 19,
-  "solidNodeDocumentVersions": [
+  "machinomeViewerApi": 20,
+  "machinomeDocumentVersions": [
     1,
     2,
     3,
@@ -14,7 +14,7 @@
   ],
   "private": true,
   "license": "AGPL-3.0-only",
-  "description": "Embeddable static viewer for `solid export` output",
+  "description": "Embeddable static viewer for `machinome export` output",
   "scripts": {
     "build": "node build.mjs",
     "test": "vitest run",

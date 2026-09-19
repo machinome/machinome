@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -114,7 +114,7 @@ beforeEach(() => {
 afterEach(() => {
   handles.splice(0).forEach((handle) => handle.dispose());
   document.body.replaceChildren();
-  document.getElementById('solid-node-navigator-style')?.remove();
+  document.getElementById('machinome-navigator-style')?.remove();
   vi.restoreAllMocks();
 });
 
@@ -125,8 +125,8 @@ function mount(stub: StubHandle, options?: Parameters<typeof mountNavigator>[2])
 }
 
 function rowFor(name: string): HTMLElement {
-  const row = [...container.querySelectorAll<HTMLElement>('.solid-nav-row')]
-    .find((element) => element.querySelector('.solid-nav-name')?.textContent === name);
+  const row = [...container.querySelectorAll<HTMLElement>('.machinome-nav-row')]
+    .find((element) => element.querySelector('.machinome-nav-name')?.textContent === name);
   if (!row) throw new Error(`no row for ${name}`);
   return row;
 }
@@ -181,7 +181,7 @@ describe('mounting', () => {
     expect(tabbable.length).toBe(1);
     rows.filter((row) => row.tabIndex !== 0).forEach((row) => expect(row.tabIndex).toBe(-1));
     const others = container.querySelectorAll<HTMLElement>(
-      '.solid-nav-twisty, .solid-nav-visibility, .solid-nav-focus, .solid-nav-full');
+      '.machinome-nav-twisty, .machinome-nav-visibility, .machinome-nav-focus, .machinome-nav-full');
     others.forEach((element) => expect(element.tabIndex).toBe(-1));
   });
 
@@ -189,10 +189,10 @@ describe('mounting', () => {
     const stub = new StubHandle();
     mount(stub);
     const aRow = rowFor('A');
-    expect(aRow.querySelector('.solid-nav-name')!.textContent).toBe('A');
-    expect(aRow.style.getPropertyValue('--solid-nav-depth')).toBe('1');
-    expect(aRow.style.getPropertyValue('--solid-nav-node-color')).toBe('#ff0000');
-    expect(rowFor('Root').style.getPropertyValue('--solid-nav-depth')).toBe('0');
+    expect(aRow.querySelector('.machinome-nav-name')!.textContent).toBe('A');
+    expect(aRow.style.getPropertyValue('--machinome-nav-depth')).toBe('1');
+    expect(aRow.style.getPropertyValue('--machinome-nav-node-color')).toBe('#ff0000');
+    expect(rowFor('Root').style.getPropertyValue('--machinome-nav-depth')).toBe('0');
   });
 
   it('shows the four chip states of design D5', () => {
@@ -200,13 +200,13 @@ describe('mounting', () => {
     stub.hidden.add(JSON.stringify(['A']));
     mount(stub);
 
-    const aChip = rowFor('A').querySelector<HTMLInputElement>('.solid-nav-visibility')!;
+    const aChip = rowFor('A').querySelector<HTMLInputElement>('.machinome-nav-visibility')!;
     expect(aChip.checked).toBe(false);
     expect(aChip.getAttribute('aria-label')).toBe('Visibility for A');
-    expect(rowFor('A').className).toContain('solid-nav-row--hidden');
-    expect(rowFor('A').className).not.toContain('solid-nav-row--obscured');
+    expect(rowFor('A').className).toContain('machinome-nav-row--hidden');
+    expect(rowFor('A').className).not.toContain('machinome-nav-row--obscured');
 
-    const leafChip = rowFor('Leaf').querySelector<HTMLInputElement>('.solid-nav-visibility')!;
+    const leafChip = rowFor('Leaf').querySelector<HTMLInputElement>('.machinome-nav-visibility')!;
     expect(leafChip.checked).toBe(true);
     expect(leafChip.getAttribute('aria-label')).toBe('Visibility for Leaf');
   });
@@ -221,11 +221,11 @@ describe('mounting', () => {
     press('ArrowDown');
     press('ArrowRight');
 
-    const bChip = rowFor('B').querySelector<HTMLInputElement>('.solid-nav-visibility')!;
+    const bChip = rowFor('B').querySelector<HTMLInputElement>('.machinome-nav-visibility')!;
     expect(bChip.checked).toBe(true);
     expect(bChip.getAttribute('aria-label')).toBe('Visibility for B (hidden with A)');
-    expect(rowFor('B').className).toContain('solid-nav-row--obscured');
-    expect(rowFor('B').className).not.toContain('solid-nav-row--hidden');
+    expect(rowFor('B').className).toContain('machinome-nav-row--obscured');
+    expect(rowFor('B').className).not.toContain('machinome-nav-row--hidden');
   });
 });
 
@@ -295,7 +295,7 @@ describe('keyboard on a row reached by pointer', () => {
   it('leaves a row\'s own control its native keys', () => {
     const stub = new StubHandle();
     mount(stub);
-    const checkbox = rowFor('A').querySelector<HTMLInputElement>('.solid-nav-visibility')!;
+    const checkbox = rowFor('A').querySelector<HTMLInputElement>('.machinome-nav-visibility')!;
     checkbox.focus();
     const space = press(' ');
     expect(space.defaultPrevented).toBe(false);
@@ -308,7 +308,7 @@ describe('show full assembly', () => {
     const stub = new StubHandle();
     stub.root = ['A'];
     mount(stub);
-    const button = container.querySelector<HTMLButtonElement>('.solid-nav-full');
+    const button = container.querySelector<HTMLButtonElement>('.machinome-nav-full');
     expect(button).not.toBeNull();
     button!.click();
     expect(stub.calls.setRoot).toEqual([null]);
@@ -317,14 +317,14 @@ describe('show full assembly', () => {
   it('is absent when the document root is already focused', () => {
     const stub = new StubHandle();
     mount(stub);
-    expect(container.querySelector('.solid-nav-full')).toBeNull();
+    expect(container.querySelector('.machinome-nav-full')).toBeNull();
   });
 
   it('is suppressed entirely under fullAssembly: false', () => {
     const stub = new StubHandle();
     stub.root = ['A'];
     mount(stub, { fullAssembly: false });
-    expect(container.querySelector('.solid-nav-full')).toBeNull();
+    expect(container.querySelector('.machinome-nav-full')).toBeNull();
   });
 });
 
@@ -371,21 +371,21 @@ describe('the stylesheet', () => {
     document.body.append(second);
     handles.push(mountNavigator(second, asHandle(new StubHandle())));
 
-    expect(document.querySelectorAll('#solid-node-navigator-style').length).toBe(1);
+    expect(document.querySelectorAll('#machinome-navigator-style').length).toBe(1);
   });
 
   it('injects nothing under styles: none', () => {
     const stub = new StubHandle();
     mount(stub, { styles: 'none' });
-    expect(document.getElementById('solid-node-navigator-style')).toBeNull();
+    expect(document.getElementById('machinome-navigator-style')).toBeNull();
     // The class contract is still there for a host's own stylesheet.
-    expect(container.querySelector('.solid-nav')).not.toBeNull();
+    expect(container.querySelector('.machinome-nav')).not.toBeNull();
   });
 
   it('puts a host\'s className on the navigator root', () => {
     const stub = new StubHandle();
     mount(stub, { className: 'studio-panel' });
-    const root = container.querySelector('.solid-nav')!;
+    const root = container.querySelector('.machinome-nav')!;
     expect(root.className.split(' ')).toContain('studio-panel');
   });
 });
@@ -398,11 +398,11 @@ describe('synchronous redraw inside a gesture (design D10)', () => {
     rootRow.focus();
     expect(document.activeElement).toBe(rootRow);
 
-    const before = rowFor('A').querySelector<HTMLInputElement>('.solid-nav-visibility')!;
+    const before = rowFor('A').querySelector<HTMLInputElement>('.machinome-nav-visibility')!;
     before.focus();
     expect(() => before.click()).not.toThrow();
 
-    const after = rowFor('A').querySelector<HTMLInputElement>('.solid-nav-visibility')!;
+    const after = rowFor('A').querySelector<HTMLInputElement>('.machinome-nav-visibility')!;
     expect(after).not.toBe(before);
     expect(after.checked).toBe(false);
     // The active row (Root, unmoved by clicking A's checkbox) got focus
@@ -444,6 +444,6 @@ describe('refusal', () => {
   it('refuses a selector matching no element, naming it', () => {
     const stub = new StubHandle();
     expect(() => mountNavigator('#does-not-exist', asHandle(stub)))
-      .toThrow('solid-widget: no element matches "#does-not-exist"');
+      .toThrow('machinome-viewer: no element matches "#does-not-exist"');
   });
 });

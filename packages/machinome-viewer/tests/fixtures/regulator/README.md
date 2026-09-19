@@ -2,7 +2,7 @@
 
 `viewer.json` is the framework's own test machine
 `tests/clocked_project/pendulum.py:Regulator`, exported **verbatim** from
-a throwaway copy of solid-node at branch `clocked-machine` head
+a throwaway copy of machinome at branch `clocked-machine` head
 `1a959d3` — 2,116 bytes, md5 `2f3fbfa80f4f125c5915c7f4ae74cc66`, a
 **version 8** document: one driver (`engaged`), one **state** (`count`),
 no bindings, one piece, and a `clocked` object carrying **one committing
@@ -19,19 +19,19 @@ Nothing here edited the document and nothing here regenerates it. It was
 produced with
 
 ```
-PYTHONPATH="$PWD" solid export \
+PYTHONPATH="$PWD" machinome export \
     tests/clocked_project/pendulum.py:Regulator -o <dir> --no-widget
 ```
 
-and the file `solid export` wrote — `manifest.json` — is what sits here
+and the file `machinome export` wrote — `manifest.json` — is what sits here
 under the name `viewer.json`, byte for byte. The rename is the only thing
 done to it, as it is for every other fixture in this repository.
 
-`solid export` **warned** while writing it, exactly as it warned for the
+`machinome export` **warned** while writing it, exactly as it warned for the
 calculator:
 
 > this model needs document version 8, and the installed browser viewer
-> renders 1, 2, 3, 4, 5, 6, 7 (solid-node-viewer 0.1.0). The export is
+> renders 1, 2, 3, 4, 5, 6, 7 (machinome-viewer 0.1.0). The export is
 > written anyway: an export is an artifact a LATER viewer may open …
 
 which is ADR-128 §15 working. (The installed viewer the warning names is

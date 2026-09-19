@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  solid-node-viewer - the browser viewer for solid-node models
+  machinome-viewer - the browser viewer for machinome models
   Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
   SPDX-License-Identifier: AGPL-3.0-only
 
@@ -15,7 +15,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>solid-node model</title>
+  <title>machinome model</title>
   <style>
     html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; }
   </style>
@@ -25,7 +25,7 @@
   <script>
     function showRemedy(reason) {
       document.getElementById('root').textContent = String(
-        (reason && reason.message) || reason || 'solid-widget: the viewer bundle is unavailable');
+        (reason && reason.message) || reason || 'machinome-viewer: the viewer bundle is unavailable');
     }
     function loadScript(src) {
       return new Promise(function (resolve, reject) {
@@ -51,7 +51,7 @@
         if (sidebar === 'open' || sidebar === 'collapsed') {
           options.sidebar = sidebar;
         }
-        return window.SolidNodeWidget.mountDevelopment('#root', options);
+        return window.MachinomeViewer.mountDevelopment('#root', options);
       }).catch(showRemedy);
     }).catch(showRemedy);
   </script>

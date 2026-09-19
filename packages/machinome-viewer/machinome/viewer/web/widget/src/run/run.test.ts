@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -43,7 +43,7 @@ function bench(spec: {
   const inputs = ids.filter(
     (id) => (spec.coordinates[id] as { kind: string }).kind === 'input');
   return loadProgram({
-    format: 'solid-node-export',
+    format: 'machinome-export',
     version: 5,
     drivers: Object.fromEntries(inputs.map((id) => [id, {
       default: 0, range: null, unit: null, dtype: null, scale: null,
@@ -431,7 +431,7 @@ describe('state', () => {
 
 // ---------------------------------------------------------------------
 // A bound that READS OTHER COORDINATES (design D4-D6). Each bench below
-// reproduces a fixture of solid-node's own
+// reproduces a fixture of machinome's own
 // `tests/running_project/machine.py`, and every number is that
 // repository's `tests/test_running_stops.py`.
 // ---------------------------------------------------------------------
@@ -1289,7 +1289,7 @@ describe('a block in the run (design D4, D6, tasks 8-9)', () => {
   it('9.2 the selected machine equals its FROZEN TWIN: `ShiftedCarry` '
      + 'cranked by 2.0 over 12 ticks of dt = 1/12', () => {
     // The producer's own numbers for THIS document, measured at
-    // solid-node `0b0f02a`:
+    // machinome `0b0f02a`:
     //   Sim(ShiftedCarry(), dt=1/12, state={'shift': s});
     //   move('crank', by=2.0, duration=1.0); run(1/12) x 12
     //   s = 0 -> carry.travel 1.0, crank 2.0, higher.turn 1.5,

@@ -1,14 +1,14 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
-"""The ``solid-node-viewer`` command: describe, serve, capture.
+"""The ``machinome-viewer`` command: describe, serve, capture.
 
-These three commands are how solid-node uses the viewer. ``describe`` is
-the same answer the ``solid_node.viewer`` entry point gives, for a caller
+These three commands are how machinome uses the viewer. ``describe`` is
+the same answer the ``machinome.viewer`` entry point gives, for a caller
 that would rather not import anything; ``serve`` is the process
-``solid develop`` launches beside its builder; ``capture`` is the process
-``solid snapshot --renderer web`` launches on its staged document.
+``machinome develop`` launches beside its builder; ``capture`` is the process
+``machinome snapshot --renderer web`` launches on its staged document.
 """
 
 import argparse
@@ -16,14 +16,14 @@ import json
 import logging
 import sys
 
-from solid_node_viewer.bundle import BundleMissing, BundleStale, describe
+from machinome_viewer.bundle import BundleMissing, BundleStale, describe
 
 logger = logging.getLogger('viewer.cli')
 
 # The development page is a static file this package carries; there is
 # no second frontend process to start or proxy any more (design D13,
-# D14). A released solid-node's `solid develop --web-dev` still passes
-# `--start-frontend` (`solid_node/manager/develop.py:49-51`), so these
+# D14). A released machinome's `machinome develop --web-dev` still passes
+# `--start-frontend` (`machinome/manager/develop.py:49-51`), so these
 # three flags go on being ACCEPTED, changing nothing, so that command
 # keeps working rather than turning into an argparse error on a flag the
 # maker never typed. This is a compatibility promise, not an oversight:
@@ -61,8 +61,8 @@ def _imgsize(text):
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        prog='solid-node-viewer',
-        description='The browser viewer for solid-node models.',
+        prog='machinome-viewer',
+        description='The browser viewer for machinome models.',
     )
     commands = parser.add_subparsers(dest='command', title='Commands')
 
@@ -76,7 +76,7 @@ def build_parser():
     serve.add_argument('--build-dir', required=True,
                        help='The published build directory to serve')
     serve.add_argument('--port', type=int, default=None,
-                       help='Port to listen on (default: SOLID_NODE_PORT or 8000)')
+                       help='Port to listen on (default: MACHINOME_PORT or 8000)')
     serve.add_argument('--dev', action='store_true',
                        help='Deprecated, accepted and ignored: the development page is '
                             'served directly, with no npm dev server to proxy to')
@@ -122,7 +122,7 @@ def run_describe(args):
 
 
 def run_serve(args):
-    from solid_node_viewer.server import WebViewer
+    from machinome_viewer.server import WebViewer
 
     for flag, given in (
         ('--dev', args.dev),
@@ -137,7 +137,7 @@ def run_serve(args):
 
 
 def run_capture(args):
-    from solid_node_viewer.capture import Capture, CaptureError, mount_options
+    from machinome_viewer.capture import Capture, CaptureError, mount_options
 
     if not 0.0 <= args.time <= 1.0:
         sys.stderr.write(f'Error: --time must be between 0.0 and 1.0, got {args.time}\n')

@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -35,8 +35,8 @@ beforeEach(() => {
 afterEach(() => {
   handles.splice(0).forEach((handle) => handle.dispose());
   document.body.replaceChildren();
-  document.getElementById('solid-node-inspector-style')?.remove();
-  document.getElementById('solid-node-navigator-style')?.remove();
+  document.getElementById('machinome-inspector-style')?.remove();
+  document.getElementById('machinome-navigator-style')?.remove();
   vi.restoreAllMocks();
 });
 
@@ -110,19 +110,19 @@ describe('mounting', () => {
     const { mountCalls } = await mount();
 
     expect(container.children.length).toBe(1);
-    const root = container.querySelector('.solid-inspector')!;
+    const root = container.querySelector('.machinome-inspector')!;
     expect(root).not.toBeNull();
     expect(root.parentElement).toBe(container);
 
-    const rail = root.querySelector('.solid-inspector-rail');
+    const rail = root.querySelector('.machinome-inspector-rail');
     expect(rail).not.toBeNull();
-    const toggle = rail!.querySelector('.solid-inspector-toggle');
+    const toggle = rail!.querySelector('.machinome-inspector-toggle');
     expect(toggle).not.toBeNull();
 
-    const sidebar = root.querySelector('.solid-inspector-sidebar');
+    const sidebar = root.querySelector('.machinome-inspector-sidebar');
     expect(sidebar).not.toBeNull();
 
-    const viewerPane = root.querySelector('.solid-inspector-viewer');
+    const viewerPane = root.querySelector('.machinome-inspector-viewer');
     expect(viewerPane).not.toBeNull();
 
     // mount() was called with the VIEWER PANE, never the target itself
@@ -135,8 +135,8 @@ describe('mounting', () => {
   it('gives the toggle aria-expanded, aria-controls naming the sidebar, and the accessible name Assembly', async () => {
     await mount();
 
-    const toggle = container.querySelector<HTMLButtonElement>('.solid-inspector-toggle')!;
-    const sidebar = container.querySelector<HTMLElement>('.solid-inspector-sidebar')!;
+    const toggle = container.querySelector<HTMLButtonElement>('.machinome-inspector-toggle')!;
+    const sidebar = container.querySelector<HTMLElement>('.machinome-inspector-sidebar')!;
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(toggle.getAttribute('aria-controls')).toBe(sidebar.id);
     expect(sidebar.id).not.toBe('');
@@ -146,16 +146,16 @@ describe('mounting', () => {
 
   it('defaults the sidebar to collapsed, and sidebar: "open" starts it open', async () => {
     const collapsed = await mount();
-    const collapsedToggle = container.querySelector<HTMLButtonElement>('.solid-inspector-toggle')!;
+    const collapsedToggle = container.querySelector<HTMLButtonElement>('.machinome-inspector-toggle')!;
     expect(collapsedToggle.getAttribute('aria-expanded')).toBe('false');
-    expect(container.querySelector<HTMLElement>('.solid-inspector-sidebar')!.hidden).toBe(true);
+    expect(container.querySelector<HTMLElement>('.machinome-inspector-sidebar')!.hidden).toBe(true);
     collapsed.handle.dispose();
     container.replaceChildren();
 
     const { handle } = await mount({ sidebar: 'open' });
-    const toggle = container.querySelector<HTMLButtonElement>('.solid-inspector-toggle')!;
+    const toggle = container.querySelector<HTMLButtonElement>('.machinome-inspector-toggle')!;
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    expect(container.querySelector<HTMLElement>('.solid-inspector-sidebar')!.hidden).toBe(false);
+    expect(container.querySelector<HTMLElement>('.machinome-inspector-sidebar')!.hidden).toBe(false);
     handle.dispose();
   });
 
@@ -164,7 +164,7 @@ describe('mounting', () => {
     const { navigatorCalls, viewerHandle } = await mount({ navigator: navigatorOptions });
 
     expect(navigatorCalls).toHaveLength(1);
-    expect(navigatorCalls[0].target).toBe(container.querySelector('.solid-inspector-sidebar'));
+    expect(navigatorCalls[0].target).toBe(container.querySelector('.machinome-inspector-sidebar'));
     expect(navigatorCalls[0].viewer).toBe(viewerHandle);
     // Passed through untouched, plus styles defaulted from the layout's
     // own (design D4) -- asserted separately below.
@@ -185,8 +185,8 @@ describe('mounting', () => {
 describe('the toggle', () => {
   it('opens and closes the sidebar on click, keeping focus on the toggle throughout', async () => {
     await mount();
-    const toggle = container.querySelector<HTMLButtonElement>('.solid-inspector-toggle')!;
-    const sidebar = container.querySelector<HTMLElement>('.solid-inspector-sidebar')!;
+    const toggle = container.querySelector<HTMLButtonElement>('.machinome-inspector-toggle')!;
+    const sidebar = container.querySelector<HTMLElement>('.machinome-inspector-sidebar')!;
 
     toggle.focus();
     toggle.click();
@@ -212,7 +212,7 @@ describe('the toggle', () => {
   // real click reaches it in Chromium.
   it('answers a dispatched click event the same way (the keyboard\'s eventual effect)', async () => {
     await mount();
-    const toggle = container.querySelector<HTMLButtonElement>('.solid-inspector-toggle')!;
+    const toggle = container.querySelector<HTMLButtonElement>('.machinome-inspector-toggle')!;
     toggle.focus();
     toggle.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
@@ -221,11 +221,11 @@ describe('the toggle', () => {
 
   it('is the same element across both states -- never destroyed by toggling', async () => {
     await mount();
-    const toggle = container.querySelector<HTMLButtonElement>('.solid-inspector-toggle')!;
+    const toggle = container.querySelector<HTMLButtonElement>('.machinome-inspector-toggle')!;
     toggle.click();
-    expect(container.querySelector('.solid-inspector-toggle')).toBe(toggle);
+    expect(container.querySelector('.machinome-inspector-toggle')).toBe(toggle);
     toggle.click();
-    expect(container.querySelector('.solid-inspector-toggle')).toBe(toggle);
+    expect(container.querySelector('.machinome-inspector-toggle')).toBe(toggle);
   });
 
   it('writes nothing to storage and rewrites no URL across a toggle', async () => {
@@ -233,7 +233,7 @@ describe('the toggle', () => {
     sessionStorage.clear();
     const before = window.location.href;
     await mount();
-    const toggle = container.querySelector<HTMLButtonElement>('.solid-inspector-toggle')!;
+    const toggle = container.querySelector<HTMLButtonElement>('.machinome-inspector-toggle')!;
     toggle.click();
     toggle.click();
     expect(localStorage.length).toBe(0);
@@ -246,14 +246,14 @@ describe('the handle', () => {
   it('sidebarOpen() follows the toggle', async () => {
     const { handle } = await mount();
     expect(handle.sidebarOpen()).toBe(false);
-    container.querySelector<HTMLButtonElement>('.solid-inspector-toggle')!.click();
+    container.querySelector<HTMLButtonElement>('.machinome-inspector-toggle')!.click();
     expect(handle.sidebarOpen()).toBe(true);
   });
 
   it('setSidebar() does exactly what the toggle does', async () => {
     const { handle } = await mount();
-    const toggle = container.querySelector<HTMLButtonElement>('.solid-inspector-toggle')!;
-    const sidebar = container.querySelector<HTMLElement>('.solid-inspector-sidebar')!;
+    const toggle = container.querySelector<HTMLButtonElement>('.machinome-inspector-toggle')!;
+    const sidebar = container.querySelector<HTMLElement>('.machinome-inspector-sidebar')!;
 
     handle.setSidebar(true);
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
@@ -297,36 +297,36 @@ describe('the stylesheet', () => {
     document.body.append(second);
     await mount(undefined, second);
 
-    expect(document.querySelectorAll('#solid-node-inspector-style').length).toBe(1);
+    expect(document.querySelectorAll('#machinome-inspector-style').length).toBe(1);
   });
 
   it('injects neither the layout\'s nor the navigator\'s stylesheet under styles: "none"', async () => {
     await mount({ styles: 'none' });
-    expect(document.getElementById('solid-node-inspector-style')).toBeNull();
+    expect(document.getElementById('machinome-inspector-style')).toBeNull();
     // The navigator itself is stubbed here, so its own stylesheet is not
     // injected by this test; the layout's default-for-navigator wiring
     // is asserted separately above ("defaults the navigator's own
     // styles to the layout's").
-    expect(container.querySelector('.solid-inspector')).not.toBeNull();
+    expect(container.querySelector('.machinome-inspector')).not.toBeNull();
   });
 
   it('passes className to the viewer pane\'s mount options, not the layout root', async () => {
     const { mountCalls } = await mount({ className: 'my-canvas' });
     expect(mountCalls[0].options.className).toBe('my-canvas');
-    expect(container.querySelector('.solid-inspector')!.className.split(' '))
+    expect(container.querySelector('.machinome-inspector')!.className.split(' '))
       .not.toContain('my-canvas');
   });
 
   it('suppresses chrome controls the inspector navigator and host API make redundant', async () => {
     await mount();
-    const stylesheet = document.getElementById('solid-node-inspector-style')!;
+    const stylesheet = document.getElementById('machinome-inspector-style')!;
 
     expect(stylesheet.textContent).toContain(
       '.driver-descend, .run-descend, .clocked-descend');
     expect(stylesheet.textContent).toContain(
       '.driver-descend-separator, .run-descend-separator');
     expect(stylesheet.textContent).toContain(
-      '.solid-inspector .clocked-reset');
+      '.machinome-inspector .clocked-reset');
     expect(stylesheet.textContent).toContain('display: none');
   });
 });
@@ -335,7 +335,7 @@ describe('a refused mount', () => {
   it('leaves the target empty and rethrows the original error', async () => {
     const order: string[] = [];
     const collaborators = stubs(order);
-    const refusal = new Error('solid-widget: undeclared driver id "x"');
+    const refusal = new Error('machinome-viewer: undeclared driver id "x"');
     collaborators.rejectWith(refusal);
 
     await expect(mountInspectorWith(
@@ -352,6 +352,6 @@ describe('a selector naming no element', () => {
     const collaborators = stubs();
     await expect(mountInspectorWith(
       collaborators.mountFn, collaborators.mountNavigatorFn, '#does-not-exist', 'viewer.json',
-    )).rejects.toThrow('solid-widget: no element matches "#does-not-exist"');
+    )).rejects.toThrow('machinome-viewer: no element matches "#does-not-exist"');
   });
 });

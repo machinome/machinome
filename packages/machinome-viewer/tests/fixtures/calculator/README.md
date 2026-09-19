@@ -2,7 +2,7 @@
 
 `viewer.json` is the framework's own test machine
 `tests/clocked_project/calculator.py:Calculator`, exported **verbatim**
-from a throwaway copy of solid-node at branch `play-the-instruction` head
+from a throwaway copy of machinome at branch `play-the-instruction` head
 `2ab9505` — 15,159 bytes, md5 `d1d1aad665d22a734767ca7a7bdb5872`, a
 **version 8** document: five drivers (`crank`, `feed`, `operand`, `ring`,
 `setting`), five **states** (`halved`, `w0.digit` … `w3.digit`), 39
@@ -12,7 +12,7 @@ publishes one machine or the other, and ADR-128 §14 keeps a `Control`
 refused under a clocked root.
 
 It declares TWO INSTRUCTIONS, which is why it was re-exported for the
-cycle `play-the-instruction` (solid-node ADR-129):
+cycle `play-the-instruction` (machinome ADR-129):
 
 ```json
 "instructions": {"Set four": {"targets": {"operand": 4}, "duration": 0.5},
@@ -32,18 +32,18 @@ Nothing here edited the document and nothing here regenerates it. It was
 produced with
 
 ```
-PYTHONPATH="$PWD" solid export \
+PYTHONPATH="$PWD" machinome export \
     tests/clocked_project/calculator.py:Calculator -o <dir> --no-widget
 ```
 
-and the file `solid export` wrote — `manifest.json` — is what sits here
+and the file `machinome export` wrote — `manifest.json` — is what sits here
 under the name `viewer.json`, byte for byte. The rename is the only thing
 done to it, as it is for every other fixture in this repository.
 
-`solid export` **warned** while writing it:
+`machinome export` **warned** while writing it:
 
 > this model needs document version 8, and the installed browser viewer
-> renders 1, 2, 3, 4, 5, 6, 7 (solid-node-viewer 0.1.0). The export is
+> renders 1, 2, 3, 4, 5, 6, 7 (machinome-viewer 0.1.0). The export is
 > written anyway: an export is an artifact a LATER viewer may open …
 
 which is ADR-128 §15 working, and is why this fixture can exist at all.
@@ -77,7 +77,7 @@ Every other field of the two `clocked` objects — `clock`, `own`, all six
 The difference is the identity's own first line. `Clocked.described`
 opens with `root {klass.__module__}.{klass.__qualname__}`, and the two
 producers import the same class under two module paths: the corpus
-generator as `tests.clocked_project.calculator`, and `solid export
+generator as `tests.clocked_project.calculator`, and `machinome export
 <path>:Calculator` as whatever its loader names the file. So the same
 machine, exported two ways, gets two identities — and a snapshot taken
 against one is refused against the other. Recorded for the pilot as a

@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -212,7 +212,7 @@ describe('valueOf: semantics agree with the shipped evaluator', () => {
   });
 
   it('resolves sign by the producer\'s formula, including at negative zero', () => {
-    // `solid_node.math.sign` is `(x > 0) - (x < 0)`, which is 0 at
+    // `machinome.math.sign` is `(x > 0) - (x < 0)`, which is 0 at
     // -0.0; `Math.sign(-0)` is -0. No parity case pinned it, and the
     // run reads a `sign` branch off the same formula (design §8, §15
     // finding 3), so the two runtimes have to agree here.
@@ -692,7 +692,7 @@ describe('expressionGeneration and the reset guard (D4)', () => {
   it('a held BindingTable re-prepares its roots after a reset, and evaluates correctly', () => {
     const original = EXPRESSION_LIMITS.nodes;
     const manifest: Manifest = {
-      format: 'solid-node-export', version: 4, animation: { fps: 30, frames: 360 },
+      format: 'machinome-export', version: 4, animation: { fps: 30, frames: 360 },
       bindings: [{ name: '_b0', expression: '(9900101 + 1)' }],
       root: { name: 'root', type: 'AssemblyNode', color: null, operations: [] },
     };

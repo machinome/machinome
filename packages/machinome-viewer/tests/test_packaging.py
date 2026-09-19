@@ -1,22 +1,22 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
 from unittest import TestCase
 from unittest.mock import call, patch
 
-from solid_node_viewer import packaging
+from machinome_viewer import packaging
 
 
 class FrontendPackagingTest(TestCase):
 
     def test_source_distribution_builds_the_one_frontend(self):
-        with patch('solid_node_viewer.packaging.build_frontend') as build:
+        with patch('machinome_viewer.packaging.build_frontend') as build:
             packaging.build_distribution_frontends()
         self.assertEqual(build.call_args_list, [call(packaging.WIDGET)])
 
     def test_wheel_builds_the_widget_when_its_output_is_missing(self):
-        with patch('solid_node_viewer.packaging.build_frontend') as build, \
+        with patch('machinome_viewer.packaging.build_frontend') as build, \
              patch.object(packaging.WIDGET, 'output_exists', return_value=False), \
              patch.object(packaging.WIDGET, 'output_is_stale', return_value=False):
             packaging.build_stale_frontends()
@@ -28,14 +28,14 @@ class FrontendPackagingTest(TestCase):
         # stale bundle, and `scripts/check-dist` would install and smoke
         # it without noticing. That is a publishing hazard, not just a
         # development annoyance.
-        with patch('solid_node_viewer.packaging.build_frontend') as build, \
+        with patch('machinome_viewer.packaging.build_frontend') as build, \
              patch.object(packaging.WIDGET, 'output_exists', return_value=True), \
              patch.object(packaging.WIDGET, 'output_is_stale', return_value=True):
             packaging.build_stale_frontends()
         build.assert_called_once_with(packaging.WIDGET)
 
     def test_wheel_builds_nothing_when_the_widget_is_built_and_current(self):
-        with patch('solid_node_viewer.packaging.build_frontend') as build, \
+        with patch('machinome_viewer.packaging.build_frontend') as build, \
              patch.object(packaging.WIDGET, 'output_exists', return_value=True), \
              patch.object(packaging.WIDGET, 'output_is_stale', return_value=False):
             packaging.build_stale_frontends()
@@ -45,13 +45,13 @@ class FrontendPackagingTest(TestCase):
         # Packaging does not carry a second opinion about what "stale"
         # means: it asks `currency`, the same module the lookup, the
         # server and the capture ask.
-        with patch('solid_node_viewer.currency.is_stale',
+        with patch('machinome_viewer.currency.is_stale',
                    return_value=True) as stale:
             self.assertTrue(packaging.WIDGET.output_is_stale())
         stale.assert_called_once_with(packaging.WIDGET.directory)
 
     def test_the_wheel_hook_builds_what_is_missing_or_stale(self):
-        with patch('solid_node_viewer.packaging.build_stale_frontends') as build, \
+        with patch('machinome_viewer.packaging.build_stale_frontends') as build, \
              patch('setuptools.command.build_py.build_py.run'):
             packaging.BuildPythonWithFrontend(__import__('setuptools').Distribution()).run()
         build.assert_called_once_with()

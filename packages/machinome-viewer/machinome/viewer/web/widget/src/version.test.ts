@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -21,13 +21,13 @@ const pkg = JSON.parse(
 
 describe('API_VERSION', () => {
   it('is declared in package.json, where a Python caller can read it', () => {
-    expect(typeof pkg.solidNodeViewerApi).toBe('number');
-    expect(Number.isInteger(pkg.solidNodeViewerApi)).toBe(true);
-    expect(pkg.solidNodeViewerApi).toBeGreaterThan(0);
+    expect(typeof pkg.machinomeViewerApi).toBe('number');
+    expect(Number.isInteger(pkg.machinomeViewerApi)).toBe(true);
+    expect(pkg.machinomeViewerApi).toBeGreaterThan(0);
   });
 
   it('is the number the package declares, not a second copy', () => {
-    expect(API_VERSION).toBe(pkg.solidNodeViewerApi);
+    expect(API_VERSION).toBe(pkg.machinomeViewerApi);
   });
 
   // Raised whenever the mount interface or the handle changes
@@ -38,7 +38,7 @@ describe('API_VERSION', () => {
   // was the next (6). Reading a `version: 4` document's `bindings` table
   // (OpenSpec `read-expression-bindings`, design D9) is the one after
   // that (7): a host that mounts a document the framework now publishes
-  // at version 4 -- `solid develop`, the shop floor's live viewer, the
+  // at version 4 -- `machinome develop`, the shop floor's live viewer, the
   // standalone export page -- needs a number it can check before
   // mounting, and there is no other number to check it by.
   // Executing a published program (OpenSpec `run-in-the-worker`) is the
@@ -55,13 +55,13 @@ describe('API_VERSION', () => {
   // is exactly the capability a host may require this number exists to
   // answer.
   // Mounting the assembly navigator itself (OpenSpec `mount-the-navigator`,
-  // ADR-050) is the one after that (10): `SolidNodeWidget.mountNavigator`
+  // ADR-050) is the one after that (10): `MachinomeViewer.mountNavigator`
   // is a capability a host may require -- rather than build its own tree
   // over the state version 9 published -- and this is the number that
   // tells it whether the bundle carries one.
   // Mounting the composed inspector layout (OpenSpec
   // `ship-the-inspector-layout`, ADR-051) is the one after that (11):
-  // `SolidNodeWidget.mountInspector` -- the sidebar, the navigator and
+  // `MachinomeViewer.mountInspector` -- the sidebar, the navigator and
   // the viewer composed into one host element -- and
   // `mountDevelopment`, the development page's own mount built on it,
   // are capabilities a host may require rather than lay the parts out
@@ -76,7 +76,7 @@ describe('API_VERSION', () => {
   // is the bundle that would show the same document with no affordance
   // at all, and no number would say so: the document versions this
   // build reads do NOT move, because `controls` is additive within
-  // version 5 (solid-node ADR-112).
+  // version 5 (machinome ADR-112).
   // Drawing the markings a document's parts carry (OpenSpec
   // `draw-what-a-part-carries`) is the one after that (14): a studio
   // that means to show a readable Curta -- a machine whose ANSWER is
@@ -141,30 +141,30 @@ describe('API_VERSION', () => {
   // clocked document declares, and to have the stroke WATCHED rather
   // than jumped, has no way to tell the two builds apart except by
   // pressing. Like 18 and unlike 15, 16 and 17, the DOCUMENT list does
-  // not move with it: solid-node's ADR-129 changed no field, no key and
+  // not move with it: machinome's ADR-129 changed no field, no key and
   // no version, and a version 8 document published after it is byte for
   // byte the one published before. 13 stays SKIPPED: the in-flight
   // cycle `slide-and-turn-parts` claims it.
-  it('declares the played instruction as version 19', () => {
-    expect(API_VERSION).toBe(19);
+  it('declares the Machinome host contract as version 20', () => {
+    expect(API_VERSION).toBe(20);
   });
 });
 
 describe('DOCUMENT_VERSIONS', () => {
   it('is declared in package.json, where a Python caller can read it', () => {
-    expect(Array.isArray(pkg.solidNodeDocumentVersions)).toBe(true);
-    expect(pkg.solidNodeDocumentVersions)
+    expect(Array.isArray(pkg.machinomeDocumentVersions)).toBe(true);
+    expect(pkg.machinomeDocumentVersions)
       .toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
 
   it('is the list the package declares, not a second copy', () => {
-    expect([...DOCUMENT_VERSIONS]).toEqual(pkg.solidNodeDocumentVersions);
+    expect([...DOCUMENT_VERSIONS]).toEqual(pkg.machinomeDocumentVersions);
   });
 
   it('is exactly what the loader refuses by', () => {
     // The number the viewer REPORTS and the versions it REFUSES by
     // cannot be allowed to drift apart: a framework decides whether to
-    // warn on a build and whether to refuse `solid snapshot --renderer
+    // warn on a build and whether to refuse `machinome snapshot --renderer
     // web` from this list, and the loader turns a document away by that
     // one.
     expect([...DOCUMENT_VERSIONS]).toEqual([...RENDERED_VERSIONS]);

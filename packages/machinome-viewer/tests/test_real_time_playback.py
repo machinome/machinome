@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -57,7 +57,7 @@ class RealTimePlaybackTest(TestCase):
                 errors = []
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(self.harness_url)
-                page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+                page.wait_for_function('typeof MachinomeViewer !== "undefined"')
                 result = page.evaluate(script)
                 self.assertEqual(errors, [], f'uncaught page errors: {errors}')
                 return result
@@ -67,7 +67,7 @@ class RealTimePlaybackTest(TestCase):
     def test_a_declared_loop_earns_a_speed_control_and_a_readout(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'clock.json',
+          const viewer = await MachinomeViewer.mount(host, 'clock.json',
                                                      { autoplay: false });
           const select = host.querySelector('select.playback-speed');
           const readout = host.querySelector('.machine-time');
@@ -92,7 +92,7 @@ class RealTimePlaybackTest(TestCase):
     def test_the_control_and_the_handle_are_one_door(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'clock.json',
+          const viewer = await MachinomeViewer.mount(host, 'clock.json',
                                                      { autoplay: false, speed: 720 });
           const select = host.querySelector('select.playback-speed');
           const hostSet = { speed: viewer.speed(), selected: select.value,
@@ -121,7 +121,7 @@ class RealTimePlaybackTest(TestCase):
     def test_the_timeline_reaches_the_complete_loop(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'clock.json',
+          const viewer = await MachinomeViewer.mount(host, 'clock.json',
                                                      { autoplay: false });
           const slider = host.querySelector('.animation-controls input[type=range]');
           slider.value = slider.max;
@@ -136,7 +136,7 @@ class RealTimePlaybackTest(TestCase):
     def test_a_document_without_a_loop_keeps_the_bar_it_had(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
-          const viewer = await SolidNodeWidget.mount(host, 'manifest.json',
+          const viewer = await MachinomeViewer.mount(host, 'manifest.json',
                                                      { autoplay: false });
           viewer.setSpeed(720);
           return { select: host.querySelector('select.playback-speed') !== null,

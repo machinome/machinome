@@ -2,17 +2,17 @@ schema: spec-driven
 
 # Project context shown to AI when creating artifacts.
 context: |
-  solid-node-viewer is the browser viewer for solid-node models: the
-  embeddable three.js widget (solid_node_viewer/widget, TypeScript, built
-  by esbuild to dist/solid-widget.js) with the export page and the static
+  machinome-viewer is the browser viewer for machinome models: the
+  embeddable three.js widget (machinome_viewer/widget, TypeScript, built
+  by esbuild to dist/machinome-viewer.js) with the export page and the static
   development page beside it, the FastAPI development server
-  (solid_node_viewer/server.py) and the Playwright capture
-  (solid_node_viewer/capture.py), packaged for pip as `solid-node-viewer`.
+  (machinome_viewer/server.py) and the Playwright capture
+  (machinome_viewer/capture.py), packaged for pip as `machinome-viewer`.
 
   The framework reaches it through one Python entry point
-  (`solid_node.viewer` -> solid_node_viewer.bundle:describe) and the
-  `solid-node-viewer describe|serve|capture` console script, always as a
-  separate process. This package never imports solid_node; solid_node
+  (`machinome.viewer` -> machinome_viewer.bundle:describe) and the
+  `machinome-viewer describe|serve|capture` console script, always as a
+  separate process. This package never imports machinome; machinome
   never imports this package. That is the licensing boundary: the
   framework is Apache-2.0, this viewer is AGPL-3.0-only.
 
@@ -24,11 +24,11 @@ context: |
   - Test fixtures are committed exports under tests/fixtures; the suite
     depends on nothing of the framework.
   - The viewer API version is declared once, in widget/package.json as
-    solidNodeViewerApi, and rises on incompatible interface changes or
+  machinomeViewerApi, and rises on incompatible interface changes or
     when a capability a host may require is added. Document schema
     versions belong to the producer.
-  - Published names are a compatibility contract: solid-widget.js,
-    data-solid-widget, SolidNodeWidget, the /_viewer and /build/ routes.
+  - Published names are a compatibility contract: machinome-viewer.js,
+    data-machinome-widget, MachinomeViewer, the /_viewer and /build/ routes.
 
 rules:
   specs:

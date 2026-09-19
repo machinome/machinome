@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -417,7 +417,7 @@ export function prepare(expression: string): NodeId {
 
   // The node ceiling (D8), checked here -- at the START of a NEW
   // preparation, never mid-build -- so a table that has grown past it
-  // (a long `solid develop` session republishing hundreds of document
+  // (a long `machinome develop` session republishing hundreds of document
   // versions) is dropped whole before the next expression is built,
   // rather than risking a partially-built DAG whose ids a caller
   // already holds. One document never reaches the ceiling on its own
@@ -543,7 +543,7 @@ context.acos = (value: number) => (Math.acos(value) * 180) / Math.PI;
 context.atan = (value: number) => (Math.atan(value) * 180) / Math.PI;
 context.atan2 = (y: number, x: number) => (Math.atan2(y, x) * 180) / Math.PI;
 
-// `solid_node.math.sign` is `(x > 0) - (x < 0)`: which side of zero its
+// `machinome.math.sign` is `(x > 0) - (x < 0)`: which side of zero its
 // argument is on, with no branch. `Math.sign` agrees everywhere except
 // at negative zero, where it answers -0 and the producer answers 0 --
 // and the run reads the branch of a `sign` jump off this same formula
@@ -963,7 +963,7 @@ export function affineCoordinate(expression: string, coordinate: string,
 
 // ---------------------------------------------------------------------
 // A quantity FOLLOWED along one tick's path (design D1-D9; ADR-060,
-// mirroring solid-node's ADR-124's `_PathValue`). The part of an
+// mirroring machinome's ADR-124's `_PathValue`). The part of an
 // expression that reads no name the step MOVES cannot change over one
 // piece, so it is computed ONCE and read back; only the moving cone is
 // walked per point. `PathValue` is a VIEW of the SAME interned DAG
@@ -1203,7 +1203,7 @@ export function movingNames(delta: Record<string, number>): ReadonlySet<string> 
 
 // ---------------------------------------------------------------------
 // The SHAPE of a quantity followed along a tick's path, and the KINKS
-// that cut it (openspec `solve-at-the-kink`, design D1-D2; solid-node's
+// that cut it (openspec `solve-at-the-kink`, design D1-D2; machinome's
 // ADR-123 `_shape_of`, `_kink_level` and `_KinkCuts`, mirrored over this
 // interned DAG).
 //

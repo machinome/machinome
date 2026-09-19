@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from unittest import TestCase
 
-from solid_node_viewer.bundle import bundle_path
+from machinome_viewer.bundle import bundle_path
 from .support import FIXTURES, needs_bundle, needs_playwright, serve_directory
 from .test_widget_e2e import HARNESS_PAGE
 
@@ -24,7 +24,7 @@ class DirectMotionTest(TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         shutil.copytree(FIXTURES / 'direct-motion', self.root / 'fixtures')
-        shutil.copy2(bundle_path(), self.root / 'solid-widget.js')
+        shutil.copy2(bundle_path(), self.root / 'machinome-viewer.js')
         (self.root / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(self.root)
         self.url = server.__enter__() + '/harness.html'
@@ -41,7 +41,7 @@ class DirectMotionTest(TestCase):
     def open(self, fixture, camera, target=(0, 0, 0), up=(0, 0, 1)):
         self.page.goto(self.url)
         self.page.evaluate("""async ([fixture, camera, target, up]) => {
-          window.machine = await SolidNodeWidget.mount(document.querySelector('#host'),
+          window.machine = await MachinomeViewer.mount(document.querySelector('#host'),
             `fixtures/${fixture}/manifest.json`, {view: {camera, target}, up});
           window.outcomes = [];
           machine.run().onOutcome(outcome => outcomes.push(outcome));

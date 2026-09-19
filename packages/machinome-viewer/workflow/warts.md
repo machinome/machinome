@@ -4,7 +4,7 @@ Found while answering "why is the operating Curta so slow in the browser",
 against the project's own published document rather than a fixture.
 **Status: recorded; triage open.** The dominant cost of that document is the
 SEARCHED self-read crossing, which is the framework's, is already recorded in
-`solid-node/workflow/warts.md` under `read-the-driven-coordinate` and under
+`machinome/workflow/warts.md` under `read-the-driven-coordinate` and under
 "Originating Curta follow-up: seconds per Python tick", and is not restated
 here. What follows is the part that is the VIEWER's, and it is the smaller
 part: no correctness failure, and no claim that removing it makes the
@@ -113,7 +113,7 @@ document interactive.
 
 # The clocked machine (2026-09-17, `execute-the-commit`, ADR-062)
 
-Four findings met while mirroring solid-node's clocked executor (ADR-125,
+Four findings met while mirroring machinome's clocked executor (ADR-125,
 ADR-126, ADR-128) into the viewer. They are recorded HERE rather than only
 in the change's own `evidence.md` — which is where a finding met while
 applying a cycle normally lives, and which holds each one's full text —
@@ -126,7 +126,7 @@ triage the pilot's.**
 
 - **Symptom.** The same class exported two ways publishes two
   `clocked.identity` hashes, so a bank snapshotted against one export is
-  refused when restored against the other. That is not what solid-node
+  refused when restored against the other. That is not what machinome
   ADR-128 §13 means by "a bank taken against one machine is refused
   against another".
 
@@ -137,7 +137,7 @@ triage the pilot's.**
 - **Evidence.** The corpus's `Calculator` (imported as
   `tests.clocked_project.calculator`) publishes
   `6eb8e57724cde8a15bc10a2966d02e039ba6fa4aee8c3392bb02c951064eb4a7`; the
-  same class exported by `solid export
+  same class exported by `machinome export
   tests/clocked_project/calculator.py:Calculator` publishes
   `979b1a0ef4fe214106f329844ef1c5af789dd18608b5d883eaf22bfdc73ba684`.
   **Every other field of the two `clocked` objects is byte-identical** —
@@ -153,7 +153,7 @@ triage the pilot's.**
 
 ## The clocked corpus does not discriminate the landing walk's segment scale
 
-- **Symptom.** solid-node ADR-128's closure 2 — the far-side walk's first
+- **Symptom.** machinome ADR-128's closure 2 — the far-side walk's first
   step is sized by the SEGMENT rather than by the ulp of a value that
   happens to be `0.0` — is unpinned by the corpus. Dropping the scale in
   BOTH clocked callers (the event landing and the stop landing) leaves all
@@ -177,7 +177,7 @@ triage the pilot's.**
 
 ## What an instruction MEANS under a clocked root
 
-- **Symptom.** solid-node ADR-128 §14 publishes a clocked root's declared
+- **Symptom.** machinome ADR-128 §14 publishes a clocked root's declared
   instructions in the version 5 shape and gives the table NO runtime
   meaning. A consumer can neither honour one nor honestly hide it.
 
@@ -211,7 +211,7 @@ triage the pilot's.**
 
 # The clock (2026-09-17, `run-the-clock`, ADR-063)
 
-Two findings met while mirroring solid-node's CLOCK (ADR-127, ADR-128 §10)
+Two findings met while mirroring machinome's CLOCK (ADR-127, ADR-128 §10)
 into the viewer, recorded HERE rather than only in the change's own
 `evidence.md` — which is where a finding met while applying a cycle normally
 lives, and which holds each one's full text — for the same exception the
@@ -226,7 +226,7 @@ triage the pilot's.**
 Three of the four findings recorded for `execute-the-commit` above are
 carried forward unchanged and are not restated: a machine's identity is not a
 function of the machine (reproduced exactly by this cycle's `Regulator`
-fixture — `281dfdc2…` from `solid export`, `2e172caa…` from the corpus
+fixture — `281dfdc2…` from `machinome export`, `2e172caa…` from the corpus
 generator, every other field of both `clocked` objects identical), what an
 instruction MEANS under a clocked root, and the load-sensitive cost floors —
 of which this cycle moved exactly one, to the design's own ratified 16 ms
@@ -281,7 +281,7 @@ frame budget, and said so.
 # The drawn instruction (2026-09-17, `play-the-instruction`, ADR-064)
 
 Three findings met while giving a clocked root's declared instructions a
-runtime meaning (solid-node ADR-129), recorded HERE rather than only in the
+runtime meaning (machinome ADR-129), recorded HERE rather than only in the
 change's own `evidence.md` — which holds each one's full text — for the same
 exception the entries above name: none belongs to a viewer cycle to fix. One
 is this package's own but is NOT this cycle's surface, one is the PRODUCER's,
@@ -290,7 +290,7 @@ change in it. **Status: recorded; triage the pilot's.**
 
 **One wart above is CLOSED by this cycle and is not carried forward.** "What
 an instruction MEANS under a clocked root", open under both `execute-the-commit`
-and `run-the-clock`, is answered: solid-node ADR-129 decided that an
+and `run-the-clock`, is answered: machinome ADR-129 decided that an
 instruction under a clocked root is ONE REQUEST over the ONE driver it names,
 with the declared duration saying how long a consumer draws the transition,
 and this cycle implements it — the buttons are pressable, a press is drawn,

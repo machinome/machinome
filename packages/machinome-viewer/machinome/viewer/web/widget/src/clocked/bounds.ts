@@ -1,12 +1,12 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 // A declared STOP, and where it clips a request
 // (`simulation/clocked.py`'s `Bounded`, `_Level` and `Stop`; OpenSpec
-// `execute-the-commit`, design §8; solid-node ADR-126).
+// `execute-the-commit`, design §8; machinome ADR-126).
 //
 //     high side:   g(t) = value(t) - bound(t)
 //     low  side:   g(t) = bound(t) - value(t)

@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -30,7 +30,7 @@ from unittest import TestCase
 from tests.support import (
     REGULATOR, needs_bundle, needs_playwright, serve_directory,
 )
-from solid_node_viewer.bundle import bundle_path
+from machinome_viewer.bundle import bundle_path
 
 try:
     from playwright.sync_api import sync_playwright
@@ -74,7 +74,7 @@ class RegulatorFixtureTest(TestCase):
         self.assertEqual(missing, [], 'the fixture names meshes it lacks')
 
     def test_the_document_is_the_framework_s_own_elapsed_machine(self):
-        self.assertEqual((REGULATOR / 'viewer.json').stat().st_size, 2116)
+        self.assertEqual((REGULATOR / 'viewer.json').stat().st_size, 2115)
         self.assertEqual(self.document['version'], 8)
         self.assertEqual(sorted(self.document['drivers']), ['engaged'])
         self.assertEqual(sorted(self.document['states']), ['count'])
@@ -119,7 +119,7 @@ HARNESS_PAGE = """<!doctype html>
   </head>
   <body>
     <div id="host"></div>
-    <script src="solid-widget.js"></script>
+    <script src="machinome-viewer.js"></script>
   </body>
 </html>
 """
@@ -129,7 +129,7 @@ HARNESS_PAGE = """<!doctype html>
 #: a host holds, and every answer read back off the bank.
 DRIVE = """async () => {
   const host = document.getElementById('host');
-  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json', {});
   const machine = viewer.machine();
   if (machine === null) {
     return { machine: null };
@@ -338,7 +338,7 @@ DRIVE = """async () => {
   const bare = document.createElement('div');
   bare.style.cssText = 'width:320px;height:240px;';
   document.body.append(bare);
-  const headless = await SolidNodeWidget.mount(bare, 'viewer.json', {
+  const headless = await MachinomeViewer.mount(bare, 'viewer.json', {
     driverControls: 'none',
   });
   const quiet = headless.machine();
@@ -382,7 +382,7 @@ class RegulatorInABrowserTest(TestCase):
         self.addCleanup(self.tempdir.cleanup)
         self.out_dir = Path(self.tempdir.name) / 'regulator'
         shutil.copytree(REGULATOR, self.out_dir)
-        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        shutil.copy2(bundle_path(), self.out_dir / 'machinome-viewer.js')
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(self.out_dir)
         base = server.__enter__()
@@ -406,14 +406,14 @@ class RegulatorInABrowserTest(TestCase):
                         if message.type == 'error' else None)
                 page.goto(self.harness_url)
                 page.wait_for_function(
-                    'typeof SolidNodeWidget !== "undefined"')
+                    'typeof MachinomeViewer !== "undefined"')
                 result = page.evaluate(DRIVE)
                 # Pixels are evidence: the pendulum at rest, and the
                 # pendulum somewhere else with its count standing.
                 page.evaluate("""async () => {
                   const host = document.getElementById('host');
                   host.replaceChildren();
-                  window.__shot = await SolidNodeWidget.mount(
+                  window.__shot = await MachinomeViewer.mount(
                     host, 'viewer.json', {});
                 }""")
                 page.wait_for_timeout(500)
@@ -436,7 +436,7 @@ class RegulatorInABrowserTest(TestCase):
                          self.document['clocked']['identity'])
         self.assertEqual(mounted['clock'], 'time')
         self.assertIsNone(mounted['run'])
-        self.assertEqual(result['apiVersion'], 19)
+        self.assertEqual(result['apiVersion'], 20)
         # The bank's id order is DERIVED: drivers, then states, then the
         # clock.
         self.assertEqual(mounted['order'], ['engaged', 'count', 'time'])

@@ -1,14 +1,14 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 // The compiled CLOCKED machine, loaded from a version 8 document
-// (OpenSpec `execute-the-commit`, design §1, §2, §7, §8; solid-node
+// (OpenSpec `execute-the-commit`, design §1, §2, §7, §8; machinome
 // ADR-125, ADR-126, ADR-128).
 //
-// Reproduces what solid-node's `simulation/clocked.py` PUBLISHES, read
+// Reproduces what machinome's `simulation/clocked.py` PUBLISHES, read
 // backwards: the `states` table beside `drivers`, the machine's
 // identity, its clock name, the reserved own-name every bound reads its
 // own coordinate under, one entry per committing relation, one entry per
@@ -743,7 +743,7 @@ function readBound(entry: unknown, index: number,
 
   const overTheBank = new Set([...context.declaredNames, own]);
   // NOTHING STOPS A CLOCK, guarded at the LOAD (`run-the-clock`,
-  // design §4; solid-node ADR-127). The producer cannot write a
+  // design §4; machinome ADR-127). The producer cannot write a
   // constraint that follows the clock: `compile_bounds` builds its
   // chains over the drivers and the states and NOT the clock
   // (`clocked.py:1368-1377`), and `_over_the_bank` refuses any free name

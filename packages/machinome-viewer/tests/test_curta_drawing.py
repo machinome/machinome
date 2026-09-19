@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -39,7 +39,7 @@ from pathlib import Path
 from unittest import TestCase, skipUnless
 
 from tests.support import needs_bundle, needs_playwright, serve_directory
-from solid_node_viewer.bundle import bundle_path
+from machinome_viewer.bundle import bundle_path
 
 try:
     from playwright.sync_api import sync_playwright
@@ -51,13 +51,13 @@ ROOT = Path(__file__).resolve().parent.parent
 #: Where this harness writes its screenshots. NOT in the repository:
 #: these are measurement artefacts, and a measurement is not a contract.
 SHOTS = Path(os.environ.get(
-    'SOLID_NODE_CURTA_SHOTS', Path(tempfile.gettempdir()) / 'curta-drawing'))
+    'MACHINOME_CURTA_SHOTS', Path(tempfile.gettempdir()) / 'curta-drawing'))
 
 #: Where the Curta's builds are, in the workspace this repository is
-#: developed in. `SOLID_NODE_CURTA_BUILDS` overrides it for a checkout
+#: developed in. `MACHINOME_CURTA_BUILDS` overrides it for a checkout
 #: somewhere else.
 CURTA_BUILDS = Path(os.environ.get(
-    'SOLID_NODE_CURTA_BUILDS',
+    'MACHINOME_CURTA_BUILDS',
     ROOT.parents[2] / 'projects' / 'Calculators' / 'Curta-Type-I-3x'
     / '_build'))
 
@@ -81,7 +81,7 @@ HARNESS_PAGE = """<!doctype html>
   </head>
   <body>
     <div id="host"></div>
-    <script src="solid-widget.js"></script>
+    <script src="machinome-viewer.js"></script>
   </body>
 </html>
 """
@@ -100,7 +100,7 @@ PLAY = """async (kind) => {
   });
   const frame = () => new Promise((resolve) => raw(() => resolve()));
   const mountedAt = performance.now();
-  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json', {});
   const mount = performance.now() - mountedAt;
   // 54 MB of meshes arrive after the mount resolves, so the timed phase
   // waits for the scene to settle: a frame rate measured over an empty
@@ -181,7 +181,7 @@ GESTURE = """async (amount) => {
   });
   const frame = () => new Promise((resolve) => raw(() => resolve()));
   const mountedAt = performance.now();
-  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json', {});
   const mount = performance.now() - mountedAt;
   // 54 MB of meshes arrive after the mount resolves, so the timed phase
   // waits for the scene to settle.
@@ -271,7 +271,7 @@ FREEZE = """async ({frames, stride}) => {
     clock = clock === null ? stamp : clock + stride;
     return callback(clock);
   });
-  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json', {});
   await new Promise((resolve) => setTimeout(resolve, 3000));
   const panel = () => host.querySelector('.clocked-controls');
   const at = (selector) => panel().querySelector(selector);
@@ -333,7 +333,7 @@ class CurtaDrawingTest(TestCase):
         out = Path(tempdir.name)
         for entry in build.iterdir():
             (out / entry.name).symlink_to(entry)
-        shutil.copy2(bundle_path(), out / 'solid-widget.js')
+        shutil.copy2(bundle_path(), out / 'machinome-viewer.js')
         (out / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(out)
         base = server.__enter__()
@@ -359,13 +359,13 @@ class CurtaDrawingTest(TestCase):
                         if message.type == 'error' else None)
                 page.goto(clocked_url)
                 page.wait_for_function(
-                    'typeof SolidNodeWidget !== "undefined"')
+                    'typeof MachinomeViewer !== "undefined"')
                 clocked = page.evaluate(PLAY, 'clocked')
                 SHOTS.mkdir(parents=True, exist_ok=True)
                 page.screenshot(path=str(SHOTS / 'curta-clocked-landed.png'))
                 page.goto(fast_url)
                 page.wait_for_function(
-                    'typeof SolidNodeWidget !== "undefined"')
+                    'typeof MachinomeViewer !== "undefined"')
                 fast = page.evaluate(PLAY, 'posed')
                 page.screenshot(path=str(SHOTS / 'curta-fast-landed.png'))
             finally:
@@ -385,7 +385,7 @@ class CurtaDrawingTest(TestCase):
         # And the machine stands at the transition's end throughout: the
         # bank is FINAL from the press.
         self.assertEqual(clocked['bank']['crank_rotation'], 360)
-        self.assertEqual(clocked['apiVersion'], 19)
+        self.assertEqual(clocked['apiVersion'], 20)
         # The canvas was not blank: a frame rate measured over an empty
         # scene would flatter this cycle, so the painted size is
         # recorded beside the numbers.
@@ -427,7 +427,7 @@ class CurtaGestureTest(TestCase):
         out = Path(tempdir.name)
         for entry in build.iterdir():
             (out / entry.name).symlink_to(entry)
-        shutil.copy2(bundle_path(), out / 'solid-widget.js')
+        shutil.copy2(bundle_path(), out / 'machinome-viewer.js')
         (out / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(out)
         base = server.__enter__()
@@ -451,7 +451,7 @@ class CurtaGestureTest(TestCase):
                         if message.type == 'error' else None)
                 page.goto(url)
                 page.wait_for_function(
-                    'typeof SolidNodeWidget !== "undefined"')
+                    'typeof MachinomeViewer !== "undefined"')
                 result = page.evaluate(GESTURE, 360)
                 frozen = page.evaluate(FREEZE,
                                        {'frames': 2, 'stride': 50})
@@ -506,6 +506,6 @@ class CurtaGestureTest(TestCase):
         self.assertLess(frozen['crank'], 360)
         self.assertEqual(frozen['bank'], 360)
         self.assertEqual(landed['crank'], 360)
-        self.assertEqual(result['apiVersion'], 19)
+        self.assertEqual(result['apiVersion'], 20)
         self.assertTrue((SHOTS / 'curta-nudge-drawing.png').is_file())
         self.assertTrue((SHOTS / 'curta-nudge-landed.png').is_file())

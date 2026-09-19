@@ -1,10 +1,10 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
 """Keep the built bundle current with the sources it is built from.
 
-`dist/solid-widget.js` is this package's one published artifact, and it is
+`dist/machinome-viewer.js` is this package's one published artifact, and it is
 a build product of `widget/src/`, `package.json`, `build.mjs` and
 `tsconfig.json`. In a wheel those are the same instant by construction --
 packaging builds the bundle and the sources are not shipped. In a SOURCE
@@ -37,10 +37,10 @@ logger = logging.getLogger('viewer.currency')
 
 PACKAGE_DIR = Path(__file__).parent
 WIDGET_DIR = PACKAGE_DIR / 'widget'
-#: The published artifact's name is a compatibility contract: `solid export`,
+#: The published artifact's name is a compatibility contract: `machinome export`,
 #: the development server's `/_viewer/bundle.js` and the capture page all
 #: copy this one file.
-BUNDLE_NAME = 'solid-widget.js'
+BUNDLE_NAME = 'machinome-viewer.js'
 LOCK_NAME = '.build.lock'
 
 #: The files the bundle is built from. `node_modules` is deliberately NOT
@@ -117,7 +117,7 @@ def newest_input_ns(widget=WIDGET_DIR):
 def is_stale(widget=WIDGET_DIR):
     """Whether the built bundle is older than the sources beside it.
 
-    Integer nanoseconds, never floats -- the comparison solid-node settled
+    Integer nanoseconds, never floats -- the comparison machinome settled
     for its own artifacts, because a float comparison on a coarse
     filesystem is exactly the near-miss that leaves a stale artifact nobody
     can reproduce. Equal times mean CURRENT: the tolerant direction.

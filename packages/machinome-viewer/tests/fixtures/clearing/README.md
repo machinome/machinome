@@ -2,7 +2,7 @@
 
 `viewer.json` is the framework's own test machine
 `tests/clearing_project/machine.py:CurtaInterface`, exported **verbatim**
-from a throwaway copy of solid-node at main `8e15791` — 16,153 bytes, a
+from a throwaway copy of machinome at main `8e15791` — 16,153 bytes, a
 **version 6** document: one driver (`clearing`), six coordinates
 (`result0.turn`, `result1.turn`, `result2.turn`, `counter0.turn`,
 `counter1.turn`, `counter2.turn`), thirty bindings, one piece, and **six
@@ -14,11 +14,11 @@ Nothing here edited the document and nothing here regenerates it. It was
 produced with
 
 ```
-PYTHONPATH="$PWD" solid export \
+PYTHONPATH="$PWD" machinome export \
     tests/clearing_project/machine.py:CurtaInterface -o <dir> --no-widget
 ```
 
-and the file `solid export` wrote — `manifest.json` — is what sits here
+and the file `machinome export` wrote — `manifest.json` — is what sits here
 under the name `viewer.json`, byte for byte (`md5
 cd9a3de93d232f15185638f534c0c942`). The rename is the only thing done to
 it: the loader reads either published document by the fields they share,
@@ -61,7 +61,7 @@ exactly what a cube shows about where a dial stands.
 
 `tests/clearing_project/machine.py` reaches its `Arbor` through the
 relative import `from ..running_project.parts import Arbor`, which
-resolves under pytest and not under `solid export`: the framework's
+resolves under pytest and not under `machinome export`: the framework's
 loader takes `tests/pyproject.toml` as the project root, so the module
 loads as `clearing_project.machine` and the relative import goes beyond
 the top-level package. In the throwaway copy that one line was changed to

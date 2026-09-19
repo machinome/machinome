@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -16,9 +16,9 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 import uvicorn
 
-from solid_node_viewer import server as server_module
-from solid_node_viewer.bundle import BundleStale
-from solid_node_viewer.server import WebViewer
+from machinome_viewer import server as server_module
+from machinome_viewer.bundle import BundleStale
+from machinome_viewer.server import WebViewer
 
 from .support import (
     CHROME, HAS_PIL, HAS_PLAYWRIGHT, needs_bundle, needs_chrome, needs_pil,
@@ -40,7 +40,7 @@ class PublishedBuildTest(TestCase):
         (self.build_dir / 'models').mkdir()
         (self.build_dir / 'models' / 'part.stl').write_text('solid part')
         (self.build_dir / 'viewer.json').write_text(json.dumps({
-            'format': 'solid-node-export',
+            'format': 'machinome-export',
             'version': 1,
             'animation': {'fps': 30, 'frames': 360},
             'root': {'name': 'part', 'model': 'models/part.stl'},
@@ -85,8 +85,8 @@ class PublishedBuildTest(TestCase):
             self.assertEqual(socket_.receive_text(), 'reload')
 
     def test_ports_default_from_the_environment(self):
-        with patch.dict('os.environ', {'SOLID_NODE_PORT': '8123',
-                                       'SOLID_NODE_FRONTEND_PORT': '3123'}):
+        with patch.dict('os.environ', {'MACHINOME_PORT': '8123',
+                                       'MACHINOME_FRONTEND_PORT': '3123'}):
             viewer = self.viewer()
         self.assertEqual(viewer.port, 8123)
         self.assertEqual(viewer.frontend, 3123)
@@ -96,8 +96,8 @@ class PublishedBuildTest(TestCase):
 class BundleRoutesTest(TestCase):
     def test_reports_available_bundle_and_api_version(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            bundle = Path(tmpdir) / 'solid-widget.js'
-            bundle.write_text('window.SolidNodeWidget = {};')
+            bundle = Path(tmpdir) / 'machinome-viewer.js'
+            bundle.write_text('window.MachinomeViewer = {};')
             with patch.object(server_module, 'bundle_path', return_value=bundle), \
                  patch.object(server_module, 'has_bundle', return_value=True), \
                  patch.object(server_module, 'api_version', return_value=1):
@@ -108,7 +108,7 @@ class BundleRoutesTest(TestCase):
             'available': True, 'apiVersion': 1, 'remedy': None,
         })
         self.assertEqual(script.status_code, 200)
-        self.assertIn('SolidNodeWidget', script.text)
+        self.assertIn('MachinomeViewer', script.text)
 
     def test_reports_the_remedy_when_the_bundle_is_missing(self):
         with tempfile.TemporaryDirectory() as tmpdir, \
@@ -288,7 +288,7 @@ class DevelopmentPageReloadTest(TestCase):
                 page = browser.new_page(viewport={'width': 800, 'height': 600})
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 # Capture the reloader's own socket so the test can force
-                # exactly the reconnect a `solid develop` server restart
+                # exactly the reconnect a `machinome develop` server restart
                 # drives (spec "Rebuild refreshes the browser"), without
                 # actually killing and rebinding this test's own server.
                 page.add_init_script("""
@@ -302,15 +302,15 @@ class DevelopmentPageReloadTest(TestCase):
                     window.WebSocket.prototype = Native.prototype;
                 """)
                 page.goto(self.url)
-                page.wait_for_selector('.solid-nav-row')
+                page.wait_for_selector('.machinome-nav-row')
                 # A property set on window survives an in-place update
                 # and is lost by a page load (design D11/D12's claim).
                 page.evaluate('window.__pageLoad = performance.now()')
                 stamp_before = page.evaluate('window.__pageLoad')
-                rows_before = page.locator('.solid-nav-row').count()
+                rows_before = page.locator('.machinome-nav-row').count()
 
                 # The file write lands BETWEEN two evaluations, as
-                # `solid develop`'s own rebuild does
+                # `machinome develop`'s own rebuild does
                 # (`tests/test_widget_e2e.py`'s
                 # `test_a_targeted_update_notifies_once_with_reconciled_state`
                 # uses the same direct-`sync_playwright` shape).
@@ -320,11 +320,11 @@ class DevelopmentPageReloadTest(TestCase):
 
                 page.evaluate('window.__sockets[window.__sockets.length - 1].close()')
                 page.wait_for_function(
-                    'document.querySelectorAll(".solid-nav-row").length < %d'
+                    'document.querySelectorAll(".machinome-nav-row").length < %d'
                     % rows_before, timeout=10000)
 
                 stamp_after = page.evaluate('window.__pageLoad')
-                rows_after = page.locator('.solid-nav-row').count()
+                rows_after = page.locator('.machinome-nav-row').count()
             finally:
                 browser.close()
 

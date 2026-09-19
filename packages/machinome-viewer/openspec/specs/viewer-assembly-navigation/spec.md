@@ -4,10 +4,10 @@
 
 Expose a stable host API for inspecting, focusing, hiding, and showing nodes in
 the published viewer assembly without exposing mutable rendering internals.
-Migrated from solid-node's baseline when the viewer became this package;
+Migrated from machinome's baseline when the viewer became this package;
 behaviour unchanged.
 
-Code: `solid_node_viewer/widget/src/assembly.ts`.
+Code: `machinome_viewer/widget/src/assembly.ts`.
 ## Requirements
 ### Requirement: A viewer host can inspect the rendered assembly
 The viewer handle SHALL expose a serializable assembly snapshot of the current

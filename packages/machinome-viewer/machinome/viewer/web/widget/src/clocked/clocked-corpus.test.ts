@@ -1,11 +1,11 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 // The CLOCKED conformance corpus (design §15, ADR-128).
-// `src/clocked-corpus.json` is solid-node's `tests/clocked-corpus.json`,
+// `src/clocked-corpus.json` is machinome's `tests/clocked-corpus.json`,
 // copied BYTE FOR BYTE from branch `clocked-machine` -- taken at head
 // `1a959d3`, which is one follow-up commit past the `2d2dc2b` the design
 // records and leaves the file byte-identical (139 262 bytes, md5
@@ -180,9 +180,9 @@ describe('the clocked corpus', () => {
   });
 
   it('is the producer\'s file, byte for byte', () => {
-    expect(CORPUS_BYTES.length).toBe(145673);
+    expect(CORPUS_BYTES.length).toBe(145643);
     expect(createHash('md5').update(CORPUS_BYTES).digest('hex'))
-      .toBe('bc4174cf47f844b035125ed3afcee3aa');
+      .toBe('720735fa6e162da8e0bce16cfc7c7f52');
   });
 
   it('carries a NEGATIVE ZERO, which the reader must preserve', () => {

@@ -1,10 +1,10 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
 """The development server: a published build in front of the viewer.
 
-``solid develop`` publishes a project's build directory -- ``viewer.json``,
+``machinome develop`` publishes a project's build directory -- ``viewer.json``,
 the model files it names and ``errors.json`` when a build fails -- and
 launches this server on it as a separate process. The server knows the
 build only as a directory: it never imports project source, never waits for
@@ -23,11 +23,11 @@ from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.websockets import WebSocketDisconnect
 
-from solid_node_viewer.bundle import (
+from machinome_viewer.bundle import (
     BundleStale, api_version, bundle_path, develop_page_path, has_bundle,
     missing_bundle_remedy,
 )
-from solid_node_viewer.currency import ensure_current
+from machinome_viewer.currency import ensure_current
 
 
 logger = logging.getLogger('viewer.server')
@@ -61,13 +61,13 @@ uvicorn_config = {
 
 
 def backend_port():
-    """The port the server listens on: ``SOLID_NODE_PORT`` or 8000."""
-    return int(os.environ.get('SOLID_NODE_PORT', DEFAULT_PORT))
+    """The port the server listens on: ``MACHINOME_PORT`` or 8000."""
+    return int(os.environ.get('MACHINOME_PORT', DEFAULT_PORT))
 
 
 def frontend_port():
-    """The npm dev server port: ``SOLID_NODE_FRONTEND_PORT`` or 3000."""
-    return int(os.environ.get('SOLID_NODE_FRONTEND_PORT', DEFAULT_FRONTEND_PORT))
+    """The npm dev server port: ``MACHINOME_FRONTEND_PORT`` or 3000."""
+    return int(os.environ.get('MACHINOME_FRONTEND_PORT', DEFAULT_FRONTEND_PORT))
 
 
 class WebViewer:
@@ -139,7 +139,7 @@ class WebViewer:
     def _setup_viewer_bundle(self):
         # ADR-059: currency is checked PER REQUEST, not once at start.
         # This is the surface a developer keeps open across edits -- the
-        # whole point of `solid develop` -- so a reload must serve what
+        # whole point of `machinome develop` -- so a reload must serve what
         # they just wrote. The check is a newest-mtime scan of the build
         # inputs (a median 2.88 ms over 77 files) and the response is one
         # per page load, so this is free; the rebuild it may trigger is

@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -6,7 +6,7 @@
 
 `tests/fixtures/carriage/viewer.json` is the framework's own
 `tests/carriage_project/machine.py:CurtaCarriage`, exported verbatim from
-a throwaway copy of solid-node at `0b0f02a` -- a **version 7** document
+a throwaway copy of machinome at `0b0f02a` -- a **version 7** document
 whose nine law edges hold ONE BLOCK of seven, and which this viewer
 refused by name until this cycle.
 
@@ -31,7 +31,7 @@ from unittest import TestCase
 from tests.support import (
     CARRIAGE, needs_bundle, needs_playwright, serve_directory,
 )
-from solid_node_viewer.bundle import bundle_path
+from machinome_viewer.bundle import bundle_path
 
 try:
     from playwright.sync_api import sync_playwright
@@ -85,7 +85,7 @@ class CarriageFixtureTest(TestCase):
         self.assertEqual(len(set(paths)), 2)
 
     def test_the_document_is_the_framework_s_own_machine(self):
-        self.assertEqual((CARRIAGE / 'viewer.json').stat().st_size, 32791)
+        self.assertEqual((CARRIAGE / 'viewer.json').stat().st_size, 32790)
         self.assertEqual(self.document['version'], 7)
         self.assertEqual(sorted(self.document['drivers']),
                          ['clearing', 'crank', 'lift', 'position', 'reset'])
@@ -173,7 +173,7 @@ HARNESS_PAGE = """<!doctype html>
   </head>
   <body>
     <div id="host"></div>
-    <script src="solid-widget.js"></script>
+    <script src="machinome-viewer.js"></script>
   </body>
 </html>
 """
@@ -183,7 +183,7 @@ HARNESS_PAGE = """<!doctype html>
 #: reset, then crank again. Every `step` count is the framework's own.
 DRIVE = """async () => {
   const host = document.getElementById('host');
-  const viewer = await SolidNodeWidget.mount(host, 'viewer.json',
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json',
                                              { run: { dt: 0.02 } });
   const run = viewer.run();
   if (run === null) return { run: null };
@@ -236,7 +236,7 @@ DRIVE = """async () => {
 #: same shift is refused by the `seat` span that reads the hoist.
 INTERLOCK = """async () => {
   const host = document.getElementById('host');
-  const viewer = await SolidNodeWidget.mount(host, 'viewer.json',
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json',
                                              { run: { dt: 0.02 } });
   const run = viewer.run();
   const stops = [];
@@ -263,7 +263,7 @@ INTERLOCK = """async () => {
 #: detent and cyclic above it -- driven past its detent.
 REFUSAL = """async () => {
   const host = document.getElementById('host');
-  const viewer = await SolidNodeWidget.mount(host, 'both-active.json',
+  const viewer = await MachinomeViewer.mount(host, 'both-active.json',
                                              { run: { dt: 0.5 } });
   const run = viewer.run();
   const line = () => {
@@ -310,7 +310,7 @@ def both_active_document(models):
                        ['t', ['30.0', '0.0', '0.0']]],
     }
     return {
-        'format': 'solid-node-export',
+        'format': 'machinome-export',
         'version': 7,
         'animation': {'fps': 30, 'frames': 360},
         'drivers': {
@@ -399,7 +399,7 @@ class CarriageInABrowserTest(TestCase):
         self.addCleanup(self.tempdir.cleanup)
         self.out_dir = Path(self.tempdir.name) / 'carriage'
         shutil.copytree(CARRIAGE, self.out_dir)
-        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        shutil.copy2(bundle_path(), self.out_dir / 'machinome-viewer.js')
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
         document = json.loads((CARRIAGE / 'viewer.json').read_text())
         models = model_paths(document['root'])[0]
@@ -418,7 +418,7 @@ class CarriageInABrowserTest(TestCase):
         page.on('console', lambda message: self.errors.append(message.text)
                 if message.type == 'error' else None)
         page.goto(self.harness_url)
-        page.wait_for_function('typeof SolidNodeWidget !== "undefined"')
+        page.wait_for_function('typeof MachinomeViewer !== "undefined"')
         return page
 
     def test_the_carriage_carries_and_a_shift_preserves_every_part(self):
@@ -435,7 +435,7 @@ class CarriageInABrowserTest(TestCase):
                 # carriage carried.
                 page.evaluate("""async () => {
                   const host = document.getElementById('host');
-                  window.__shot = await SolidNodeWidget.mount(
+                  window.__shot = await MachinomeViewer.mount(
                     host, 'viewer.json', { run: { dt: 0.02 } });
                 }""")
                 page.wait_for_timeout(500)
@@ -465,7 +465,7 @@ class CarriageInABrowserTest(TestCase):
         self.assertIsNotNone(mounted, 'the handle reported no run')
         self.assertEqual(mounted['identity'],
                          self.document['program']['identity'])
-        self.assertEqual(result['apiVersion'], 19)
+        self.assertEqual(result['apiVersion'], 20)
         self.assertAlmostEqual(mounted['dt'], DT, places=12)
         self.assertEqual(mounted['tick'], 0)
         for name in (*DIALS, *LEVERS, 'seat', 'hoist'):

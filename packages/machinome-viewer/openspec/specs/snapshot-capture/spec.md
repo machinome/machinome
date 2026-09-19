@@ -3,16 +3,16 @@
 ## Purpose
 
 Transparent PNG rendering of a staged document through the viewer in a
-headless browser: the process `solid snapshot --renderer web` launches once it
+headless browser: the process `machinome snapshot --renderer web` launches once it
 has described the photographed node in a staging directory. Migrated from the
-capture half of solid-node's `web-snapshot` baseline when the viewer became
+capture half of machinome's `web-snapshot` baseline when the viewer became
 this package; the staging contract is new.
 
-Code: `solid_node_viewer/capture.py`, `solid_node_viewer/cli.py` (`capture`).
+Code: `machinome_viewer/capture.py`, `machinome_viewer/cli.py` (`capture`).
 ## Requirements
 ### Requirement: A staged document is photographed with a transparent background
 
-The system SHALL provide `solid-node-viewer capture STAGING -o PNG`, where
+The system SHALL provide `machinome-viewer capture STAGING -o PNG`, where
 `STAGING` is a directory holding a `viewer.json` document beside the model
 files it names. It SHALL copy the installed bundle and write a mount page
 beside the document, serve the directory over a loopback HTTP server, display
@@ -115,7 +115,7 @@ camera option SHALL be refused by the command line rather than ignored.
 
 When the capture cannot run, the command SHALL exit non-zero with an error
 identifying what is missing and SHALL write no image. A missing Playwright
-SHALL name both the `solid-node-viewer[snapshot]` extra and the
+SHALL name both the `machinome-viewer[snapshot]` extra and the
 `playwright install chromium` step; a missing browser SHALL name the install
 step; a missing bundle SHALL give the same remedy the viewer's lookup gives;
 a process running as root SHALL be refused because Chromium cannot be

@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -18,9 +18,9 @@ const pkg = JSON.parse(
 
 export default defineConfig({
   define: {
-    __VIEWER_API_VERSION__: JSON.stringify(pkg.solidNodeViewerApi ?? null),
+    __VIEWER_API_VERSION__: JSON.stringify(pkg.machinomeViewerApi ?? null),
     __DOCUMENT_VERSIONS__: JSON.stringify(
-      pkg.solidNodeDocumentVersions ?? null),
+      pkg.machinomeDocumentVersions ?? null),
     // The suite never builds a worker: `runtime.ts` falls back in-thread
     // when there is no source to make one from, which is the same path a
     // page with a restrictive policy takes.

@@ -1,12 +1,12 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 // The auto-mount's layout decision (design D8), extracted from
-// `widget.ts` so it is testable with no DOM at all: `data-solid-layout`
-// / `data-solid-sidebar` on the container, `?layout=` / `?sidebar=` on
+// `widget.ts` so it is testable with no DOM at all: `data-machinome-layout`
+// / `data-machinome-sidebar` on the container, `?layout=` / `?sidebar=` on
 // the page, the query string winning over the attribute in both
 // directions, and an unrecognised layout value reported by name rather
 // than mounting something the page did not ask for. Not re-exported
@@ -14,8 +14,8 @@
 
 /** The subset of `HTMLElement.dataset` this decision reads. */
 export interface LayoutDataset {
-  solidLayout?: string;
-  solidSidebar?: string;
+  machinomeLayout?: string;
+  machinomeSidebar?: string;
 }
 
 export interface LayoutChoice {
@@ -32,8 +32,8 @@ export interface LayoutChoice {
 export function layoutChoice(dataset: LayoutDataset, search: URLSearchParams): LayoutChoice {
   // A container with no selection at all mounts exactly what it mounts
   // today (design D8): the plain viewer.
-  const layoutValue = search.get('layout') ?? dataset.solidLayout ?? 'viewer';
-  const sidebarValue = search.get('sidebar') ?? dataset.solidSidebar;
+  const layoutValue = search.get('layout') ?? dataset.machinomeLayout ?? 'viewer';
+  const sidebarValue = search.get('sidebar') ?? dataset.machinomeSidebar;
 
   const choice: LayoutChoice = {
     layout: layoutValue === 'viewer' || layoutValue === 'inspector'

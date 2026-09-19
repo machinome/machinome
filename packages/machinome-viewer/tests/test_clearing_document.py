@@ -1,4 +1,4 @@
-# solid-node-viewer - the browser viewer for solid-node models
+# machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -28,7 +28,7 @@ from unittest import TestCase
 from tests.support import (
     CLEARING, needs_bundle, needs_playwright, serve_directory,
 )
-from solid_node_viewer.bundle import bundle_path
+from machinome_viewer.bundle import bundle_path
 
 try:
     from playwright.sync_api import sync_playwright
@@ -87,7 +87,7 @@ class ClearingFixtureTest(TestCase):
         self.assertEqual(missing, [], 'the fixture names meshes it lacks')
 
     def test_the_document_is_the_framework_s_own_machine(self):
-        self.assertEqual((CLEARING / 'viewer.json').stat().st_size, 16153)
+        self.assertEqual((CLEARING / 'viewer.json').stat().st_size, 16152)
         self.assertEqual(self.document['version'], 6)
         self.assertEqual(list(self.document['drivers']), ['clearing'])
         program = self.document['program']
@@ -125,7 +125,7 @@ HARNESS_PAGE = """<!doctype html>
   </head>
   <body>
     <div id="host"></div>
-    <script src="solid-widget.js"></script>
+    <script src="machinome-viewer.js"></script>
   </body>
 </html>
 """
@@ -136,7 +136,7 @@ HARNESS_PAGE = """<!doctype html>
 #: page can see them.
 DRIVE = """async () => {
   const host = document.getElementById('host');
-  const viewer = await SolidNodeWidget.mount(host, 'viewer.json', {});
+  const viewer = await MachinomeViewer.mount(host, 'viewer.json', {});
   const run = viewer.run();
   if (run === null) {
     return { run: null };
@@ -188,7 +188,7 @@ class ClearingInABrowserTest(TestCase):
         self.addCleanup(self.tempdir.cleanup)
         self.out_dir = Path(self.tempdir.name) / 'clearing'
         shutil.copytree(CLEARING, self.out_dir)
-        shutil.copy2(bundle_path(), self.out_dir / 'solid-widget.js')
+        shutil.copy2(bundle_path(), self.out_dir / 'machinome-viewer.js')
         (self.out_dir / 'harness.html').write_text(HARNESS_PAGE)
         server = serve_directory(self.out_dir)
         base = server.__enter__()
@@ -212,13 +212,13 @@ class ClearingInABrowserTest(TestCase):
                         if message.type == 'error' else None)
                 page.goto(self.harness_url)
                 page.wait_for_function(
-                    'typeof SolidNodeWidget !== "undefined"')
+                    'typeof MachinomeViewer !== "undefined"')
                 result = page.evaluate(DRIVE)
                 # Pixels are evidence: the six dials at rest, and the six
                 # dials cleared.
                 page.evaluate("""async () => {
                   const host = document.getElementById('host');
-                  window.__shot = await SolidNodeWidget.mount(
+                  window.__shot = await MachinomeViewer.mount(
                     host, 'viewer.json', {});
                 }""")
                 page.wait_for_timeout(500)
@@ -244,7 +244,7 @@ class ClearingInABrowserTest(TestCase):
         self.assertIsNotNone(mounted, 'the handle reported no run')
         self.assertEqual(mounted['identity'],
                          self.document['program']['identity'])
-        self.assertEqual(result['apiVersion'], 19)
+        self.assertEqual(result['apiVersion'], 20)
         self.assertAlmostEqual(mounted['dt'], 1 / 240, places=12)
         # No tick taken, at the published rest values.
         self.assertEqual(mounted['tick'], 0)

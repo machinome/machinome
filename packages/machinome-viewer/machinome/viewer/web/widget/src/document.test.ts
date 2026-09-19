@@ -1,5 +1,5 @@
 /*
- * solid-node-viewer - the browser viewer for solid-node models
+ * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -63,7 +63,7 @@ const lift = {
 };
 
 const document = (overrides: Partial<Manifest>): Manifest => ({
-  format: 'solid-node-export',
+  format: 'machinome-export',
   version: 2,
   animation: { fps: 30, frames: 360 },
   root: node('root', []),
@@ -76,6 +76,19 @@ const motor = {
 };
 
 describe('assertRenderable', () => {
+  it('accepts Machinome and legacy solid-node document formats', () => {
+    expect(() => assertRenderable(document(), '/m.json')).not.toThrow();
+    expect(() => assertRenderable(
+      document({ format: 'solid-node-export' }), '/legacy.json',
+    )).not.toThrow();
+  });
+
+  it('refuses an unrelated document format', () => {
+    expect(() => assertRenderable(
+      document({ format: 'other-export' }), '/other.json',
+    )).toThrow(/other-export/);
+  });
+
   it('accepts a version 1 document, which carries no table at all', () => {
     expect(() =>
       assertRenderable(document({ version: 1, drivers: undefined }), '/m.json'),
@@ -392,7 +405,7 @@ describe('assertRenderable refuses an inline function (D10)', () => {
 // A refused mount must leave no hold on the shared table (D8): the
 // spec's "disposing of the last viewer on the page leaves none of it"
 // has to hold for a page whose viewer refused a document too, or a
-// `solid develop` session that republishes a broken document and then
+// `machinome develop` session that republishes a broken document and then
 // a good one leaks a hold forever -- no handle, no dispose(), and
 // nothing ever brings the mount count back to zero. `mountRetained`
 // (viewer.ts) is the fix: it retains the shared table ONLY once its
