@@ -1,7 +1,7 @@
 # Episode source contract — draft 0.2
 
-Status: an authoring format exercised by one screenplay, not a working renderer.
-The user reads and edits the same YAML that the future production tool consumes.
+Status: implemented for the first sawmill rehearsal; still a provisional format.
+The user reads and edits the same YAML that the production tool consumes.
 No executable episode code, imports, expressions or generated screenplay copy.
 
 ## Read the screenplay first
@@ -57,7 +57,10 @@ Narration lives only inside each shot; there is no separate script to keep in sy
 - `output`: `width`, `height`, `fps`, `durationSeconds`.
 - `model`: relative `manifest`, `expectedDurationSeconds`, `timeMode`,
   `sourceRevision` and `readiness`. A null revision marks unpinned source.
-- `audio`: provider/model/voice, direction, pronunciation notes and timing notes.
+- `audio`: provider/model/voice, direction, pronunciation notes and timing notes;
+  optional `voiceSettings` passed to ElevenLabs and `replacements` mapping
+  written terms to spoken aliases. Captions restore the written spelling.
+- `series`: optional short series label for the top corner; defaults to the title.
 - `style`: background, foreground, accent, font, caption placement and safe inset.
 - `cameras`: named world-space `position`, `target`, `up` and `fov`.
 - `layers`: named lists of root-relative assembly paths. Each path is a list
@@ -81,8 +84,13 @@ video clock and cover `[0, output.durationSeconds)` contiguously, without overla
 The final frame is at `(frameCount - 1) / fps`, not at the duration.
 
 `simulation: {from, to}` maps the shot's video interval linearly to model seconds.
+Optional `keyframes: [{at, seconds}, ...]` maps explicit shot-local video instants
+to model seconds, interpolating linearly between them. The first key is at zero
+and matches `from`; the last is at the shot duration and matches `to`. Video
+times increase strictly; model times never decrease. The sawmill uses these
+keys to align the return stroke and cut/advance beats with measured speech.
 Equal endpoints hold a pose. For the first episode, `timeMode: normalized-loop`
-means the viewer gets `simulationSeconds / expectedDurationSeconds`. The future
+means the viewer gets `simulationSeconds / expectedDurationSeconds`. The
 adapter must check the document's declared duration and disable autonomous
 playback. Do not pass seconds to a normalized time setter or wrap to zero.
 Machines with memory need a future replay/checkpoint contract; this format
@@ -103,9 +111,15 @@ annotations. Narration captions occupy the bottom safe area separately.
 Framing and text placement need visual review at the final aspect ratio.
 
 Narration timing remains an editorial target until speech is generated and
-measured. Align speech and captions, then revise shot timing and affected cues
+measured. `speechOffset` optionally sets a shot-local audio start (default 0.2 s).
+Align speech and captions, then revise shot timing and affected cues
 together. Never truncate narration or silently stretch it to fit. Silent tails
 are allowed. Mechanical cut/advance cues must stay tied to model time.
+
+The film stage mounts Viewer API 21 with external, paused, on-demand rendering
+and no interactive controls. The viewer's setters pose/render synchronously;
+Playwright captures the composed frame. A rendered frame does not advance
+the model by wall-clock time. Named cameras currently share a fixed up and FOV.
 
 ## Evidence and provenance
 

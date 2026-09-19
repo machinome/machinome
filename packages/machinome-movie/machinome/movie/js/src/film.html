@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Machinome film stage</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{background:#faf7ef;color:#222;font-family:'DejaVu Sans',sans-serif}
+#brand{position:absolute;top:4%;left:6%;font-size:1.05vw;letter-spacing:.16em;color:#237c86;font-weight:700}
+#series{position:absolute;top:4%;right:6%;font-size:.85vw;letter-spacing:.1em;color:#685f54}
+#viewport{position:absolute;inset:16% 5% 21%}
+#stage{width:100%;height:100%}
+#overlays{position:absolute;inset:0;pointer-events:none}
+.overlay{position:absolute;left:6%;right:6%;text-align:center;white-space:pre-line;font-weight:600;line-height:1.45}
+.top{top:9%;font-size:1.8vw}
+.lower-third{bottom:16%;font-size:1.2vw;color:#514b43;background:var(--film-background,#faf7ef);padding:.3em .65em}
+.center{top:43%;font-size:2vw}
+#caption{position:absolute;bottom:5%;left:12%;right:12%;text-align:center;font-size:1.7vw;line-height:1.45;font-weight:500}
+#caption span{background:#242424;color:#fff;padding:.3em .65em;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:.25em}
+#rule{position:absolute;bottom:2.5%;left:6%;right:6%;height:2px;background:#d9d2c7}
+#progress{height:100%;background:#237c86;width:0}
+</style></head><body>
+<div id="brand">MACHINOME</div><div id="series">LEONARDO · HOW IT WORKS</div>
+<div id="viewport"><div id="stage"></div></div><div id="overlays"></div><div id="caption"><span></span></div>
+<div id="rule"><div id="progress"></div></div>
+<script src="/viewer.js"></script><script src="/film.js"></script>
+</body></html>

@@ -3,5 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Draft authoring contract for scripted Machinome videos; renderer not implemented"
+  "description": "Scripted educational films rendered from Machinome viewers",
+  "engines": {"node": ">=22"},
+  "bin": {"videomaker": "bin/videomaker.mjs"},
+  "scripts": {"test": "node --test", "video": "node bin/videomaker.mjs"},
+  "dependencies": {"playwright": "1.62.0", "yaml": "2.8.1"}
 }
