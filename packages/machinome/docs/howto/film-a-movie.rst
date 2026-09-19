@@ -5,7 +5,7 @@ Machinome simulations. **Scaffold and draft authoring contract only.** No
 renderer, audio generation, encoding, hosting or publishing is implemented.
 
 The first consumer is the Leonardo gallery's hydraulic sawmill episode,
-`videos/hydraulic-sawmill/episode.mjs`, in that independent repository.
+`videos/hydraulic-sawmill/episode.yaml`, in that independent repository.
 It needs scripted cameras, assembly visibility, controlled simulation time,
 narration and explanatory overlays. Those concrete shots define the initial
 scope; additional effects need an episode that uses them.
@@ -13,10 +13,10 @@ scope; additional effects need an episode that uses them.
 ## Repository convention
 
 Every mechanical project owns a root `videos/` directory. Each episode lives
-in `videos/<episode-id>/`, with its executable source, narration, storyboard,
+in `videos/<episode-id>/`, with its readable screenplay, narration, storyboard,
 evidence and publication metadata. Generated audio, frames and video go under
 that episode's ignored `_build/` directory. The sources must work independently
-of this workspace's layout; resolve model paths from the episode module.
+of this workspace's layout; resolve paths from the YAML file containing them.
 
 Videomaker will consume those sources. It owns shared production machinery
 and reusable presentation defaults, not project-specific scripts or CAD.
@@ -24,10 +24,13 @@ The original simulation remains the sole authority for mechanical motion.
 
 ## Draft source format
 
-An episode is a dependency-free JavaScript ES module exporting a JSON-compatible
-object. See [FORMAT.md](docs/FORMAT.md). Node can import the first episode today;
-this does not render a video. The format is provisional until the rehearsal
-has been produced and inspected.
+An episode is a YAML screenplay: each shot puts its narration beside a
+plain-language description of what the viewer sees, followed by timing and
+camera cues. Read and edit `episode.yaml` directly in a text editor; no program
+is needed to inspect it. `production.yaml` holds camera coordinates, model
+paths, voice settings and credits. A future loader reads the same files.
+See [FORMAT.md](docs/FORMAT.md). The format is provisional until the rehearsal
+has been produced and inspected. No YAML loader is implemented yet.
 
 ## What must be built later
 
