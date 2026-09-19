@@ -10,9 +10,32 @@
 
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { frameBounds } from './camera';
+import { frameBounds, scriptedView } from './camera';
 
 const FOV = 50;
+
+describe('scriptedView', () => {
+  it('copies camera input and target without aliasing caller state', () => {
+    const position = new THREE.Vector3(10, 20, 30);
+    const target: [number, number, number] = [0, 1, 2];
+    const view = scriptedView({camera: position, target});
+    position.x = 999; target[1] = 999;
+    expect(view.camera.toArray()).toEqual([10, 20, 30]);
+    expect(view.target.toArray()).toEqual([0, 1, 2]);
+  });
+  it.each([[NaN, 2, 3], [Infinity, 2, 3], [1, 2], [1, 2, 3, 4]])(
+    'refuses malformed camera coordinates %j', (...values) => {
+      expect(() => scriptedView({camera: values as [number, number, number],
+        target: [0, 0, 0]})).toThrow(/camera/);
+    },
+  );
+  it('refuses an invalid target and coincident endpoints', () => {
+    expect(() => scriptedView({camera: [1, 2, 3], target: [0, NaN, 0]}))
+      .toThrow(/target/);
+    expect(() => scriptedView({camera: [1, 2, 3], target: [1, 2, 3]}))
+      .toThrow(/distinct/);
+  });
+});
 
 function unitBoxAt(center: THREE.Vector3): THREE.Box3 {
   return new THREE.Box3().setFromCenterAndSize(

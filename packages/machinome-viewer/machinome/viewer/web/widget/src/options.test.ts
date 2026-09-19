@@ -16,6 +16,13 @@ import {
 } from './options';
 
 describe('resolveOptions', () => {
+  it('allows on-demand rendering only for an externally controlled capture', () => {
+    const options = {renderMode: 'on-demand' as const, animation: 'external' as const,
+      autoplay: false, driverControls: 'none' as const, partControls: 'none' as const};
+    expect(resolveOptions(options).renderMode).toBe('on-demand');
+    expect(() => resolveOptions({...options, autoplay: true})).toThrow(/on-demand/);
+    expect(() => resolveOptions({...options, animation: 'inline'})).toThrow(/on-demand/);
+  });
   it('reproduces the published export behavior when given nothing', () => {
     const resolved = resolveOptions();
 

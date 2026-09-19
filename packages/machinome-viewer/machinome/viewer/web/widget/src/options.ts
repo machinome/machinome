@@ -65,6 +65,7 @@ export function assertDt(dt: number): number {
 }
 
 export interface ResolvedViewerOptions {
+  renderMode: 'continuous' | 'on-demand';
   baseUrl: string | null;
   animation: AnimationMode;
   driverControls: DriverControlsMode;
@@ -95,8 +96,15 @@ export interface ControlPlan {
 export function resolveOptions(
   options: ViewerOptions = {},
 ): ResolvedViewerOptions {
+  const renderMode = options.renderMode ?? 'continuous';
+  if (!['continuous', 'on-demand'].includes(renderMode)) throw new Error('Unknown renderMode');
+  if (renderMode === 'on-demand' && (options.animation !== 'external' || options.autoplay !== false
+      || options.driverControls !== 'none' || options.partControls !== 'none')) {
+    throw new Error('on-demand rendering requires external animation, autoplay false and no interactive controls');
+  }
   const time = Number.isFinite(options.time) ? options.time! : 0;
   return {
+    renderMode,
     baseUrl: options.baseUrl ?? null,
     animation: options.animation ?? 'inline',
     // Presented by default, like the animation bar: a self-contained

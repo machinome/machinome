@@ -145,8 +145,8 @@ describe('API_VERSION', () => {
   // no version, and a version 8 document published after it is byte for
   // byte the one published before. 13 stays SKIPPED: the in-flight
   // cycle `slide-and-turn-parts` claims it.
-  it('declares the Machinome host contract as version 20', () => {
-    expect(API_VERSION).toBe(20);
+  it('declares scripted camera control as version 21', () => {
+    expect(API_VERSION).toBe(21);
   });
 });
 

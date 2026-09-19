@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { frameBounds, ViewerView } from './camera';
+import { frameBounds, scriptedView, ViewerView } from './camera';
 import {
   AssemblyChangeNotifier, AssemblyListener, AssemblyNavigation,
   AssemblyNavigationState,
@@ -98,6 +98,8 @@ export interface ViewInput {
 }
 
 export interface ViewerOptions {
+  /** On-demand capture: no background render loop; externally posed documents only. */
+  renderMode?: 'continuous' | 'on-demand';
   baseUrl?: string;
   animation?: AnimationMode;
   driverControls?: DriverControlsMode;
@@ -229,6 +231,8 @@ export interface PartControlView {
 export interface ViewerHandle {
   dispose(): void;
   view(): View;
+  /** Adopt and render a camera/target without reloading or changing machine state. */
+  setView(view: ViewInput): void;
   reload(): Promise<void>;
   artifactChanged(path: string): Promise<void>;
   manifestChanged(): Promise<void>;
@@ -1417,6 +1421,7 @@ export async function mount(
   const replaceTree = async (view: View | null) => {
     const { document, table, program, machine: loaded,
             controls: declared } = await loadDocument(sourceUrl);
+    assertCaptureDocument(document);
     drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
     // Installed before the update that follows (design D6), in the same
     // place and order `drivers.reconcile(...)` already runs before it.
@@ -1450,6 +1455,13 @@ export async function mount(
     // subscribed.
     notifyAssemblyChange();
   };
+
+  function assertCaptureDocument(document: Manifest): void {
+    if (resolved.renderMode === 'on-demand' &&
+        ('program' in document || 'clocked' in document || Object.keys(document.instructions ?? {}).length > 0)) {
+      throw new Error('on-demand rendering requires a posed document without instructions');
+    }
+  }
 
   const refreshControls = (document: Manifest) => {
     controlElements.forEach((element) => element.remove());
@@ -1687,7 +1699,7 @@ export async function mount(
   observer.observe(container);
 
   let lastTimestamp: number | undefined;
-  renderer.setAnimationLoop((timestamp: number) => {
+  if (resolved.renderMode === 'continuous') renderer.setAnimationLoop((timestamp: number) => {
     const elapsed = lastTimestamp === undefined
       ? 0 : (timestamp - lastTimestamp) / 1000;
     lastTimestamp = timestamp;
@@ -1768,6 +1780,12 @@ export async function mount(
       releaseExpressions();
     },
     view: captureView,
+    setView(view: ViewInput) {
+      if (disposed) throw new Error('setView cannot use a disposed viewer');
+      const next = scriptedView(view);
+      applyFrame(next);
+      renderer.render(scene, camera);
+    },
     async reload() {
       await replaceTree(captureView());
     },
@@ -1786,6 +1804,7 @@ export async function mount(
     async manifestChanged() {
       const { document, table, program, controls: declared } =
         await loadDocument(sourceUrl);
+      assertCaptureDocument(document);
       drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
       // Installed before the update that follows (design D6): a
       // republish carrying a different table invalidates the free set

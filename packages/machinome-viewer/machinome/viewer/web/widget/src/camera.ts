@@ -5,6 +5,23 @@
  */
 
 import * as THREE from 'three';
+import type { ViewInput, VectorInput } from './viewer';
+
+/** Validate both endpoints before the caller changes any visible state. */
+export function scriptedView(view: ViewInput): ViewerView {
+  function vector(value: VectorInput, name: string): THREE.Vector3 {
+    const values = Array.isArray(value) ? value
+      : value instanceof THREE.Vector3 ? value.toArray() : [];
+    if (values.length !== 3 || !values.every(v => typeof v === 'number' && Number.isFinite(v))) {
+      throw new Error(`setView ${name} must contain three finite coordinates`);
+    }
+    return new THREE.Vector3(values[0], values[1], values[2]);
+  }
+  const camera = vector(view?.camera, 'camera');
+  const target = vector(view?.target, 'target');
+  if (camera.equals(target)) throw new Error('setView camera and target must be distinct');
+  return {camera, target};
+}
 
 export interface ViewerView {
   camera: THREE.Vector3;

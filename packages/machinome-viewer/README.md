@@ -89,6 +89,22 @@ back into the framework.
 
 ## Reading and moving the assembly
 
+Viewer API 21 adds `handle.setView({camera: [x, y, z], target: [x, y, z]})`.
+It changes and renders the camera on the existing mount without changing time,
+drivers or visibility, retaining the mount's up vector and field of view.
+Both vectors must be finite and distinct. Invalid input leaves the view intact;
+calling after disposal is refused. `view()` returns a detached snapshot.
+Together with the synchronously posing/rendering `setTime()`, this lets a host
+capture scripted posed animation frames after each update. The host owns camera
+interpolation and capture; the viewer keeps its geometry and Three.js internals.
+
+For offline posed capture, mount with `renderMode: 'on-demand'`,
+`animation: 'external'`, `autoplay: false`, `driverControls: 'none'` and
+`partControls: 'none'`. This omits the background rendering loop; host setters
+still render synchronously. Running/clocked documents and declared instructions
+are refused in this mode because they need a cadence. Normal mounts retain
+continuous rendering. This avoids spending CPU rendering between film frames.
+
 A mount handle's `assembly()` reads the published tree as `AssemblyNode`s,
 addressed by root-relative paths of sibling names; `setRoot(path | null)`
 focuses a subtree (`null` restores the document root) and

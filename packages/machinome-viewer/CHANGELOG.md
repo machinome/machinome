@@ -5,6 +5,14 @@ it carries release together and share one version.
 
 ## 0.2.0 — unreleased
 
+- Viewer API 21 adds `setView({camera, target})` for the Leonardo hydraulic
+  sawmill's scripted video. It validates and copies finite, distinct endpoints,
+  updates and renders the existing mount, and preserves mechanical and assembly
+  state. Camera paths and encoding remain the filming host's responsibility.
+  The same capture use case adds opt-in `renderMode: 'on-demand'` for externally
+  posed, noninteractive documents without instructions: host setters render,
+  with no background frame loop. Interactive mounts remain continuous.
+
 The viewer stops posing a machine and starts running one.
 
 - **The unreleased viewer adopts its final Machinome identity.** The
