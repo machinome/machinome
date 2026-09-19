@@ -1,0 +1,4 @@
+- [ ] Prove invalid and detached camera input behavior red, then implement.
+- [ ] Add setView to the handle and API 21; document synchronous rendering.
+- [ ] Run viewer unit suite/type checks/build; inspect originating sawmill frames.
+- [ ] Update baseline spec, record evidence and archive.
