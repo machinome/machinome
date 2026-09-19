@@ -14,7 +14,7 @@ a powered arbor drives the gear train, the escapement regulates its
 motion, and the motion works drive the hands. The pendulum swings behind
 the plates.
 
-.. solid-node:: examples/3dprintedclocks/docs/_exports/clock01
+.. machinome:: examples/3dprintedclocks/docs/_exports/clock01
    :height: 620px
 
 Press play to follow the pendulum and escapement. Increase playback speed
@@ -24,9 +24,9 @@ pendulum adjustments let you explore how calibration changes its rate.
 Open the external example
 =========================
 
-The Solid Node simulation lives in the
+The Machinome simulation lives in the
 `external simulation repository
-<https://github.com/LibreSolid/3DPrintedClocks/tree/solid-node-simulation/simulation/wall_clock_01>`_.
+<https://github.com/machinome/3DPrintedClocks/tree/b089545bfcb8bbb507e480c6381010cd8281fb89/simulation/wall_clock_01>`_.
 That repository adapts the original project linked above; the framework
 docs neither copy nor reimplement its clock design.
 
@@ -36,15 +36,15 @@ From a framework source checkout with the matching preview installed:
 
    git submodule update --init docs/examples/3dprintedclocks
    cd docs/examples/3dprintedclocks
-   solid develop wall_clock_01
+   machinome develop wall_clock_01
 
 To build or test it there:
 
 .. code-block:: bash
 
-   solid build wall_clock_01
-   solid test wall_clock_01
-   solid export -o docs/_exports/clock01 wall_clock_01
+   machinome build wall_clock_01
+   machinome test wall_clock_01
+   machinome export -o docs/_exports/clock01 wall_clock_01
 
 These commands run the external repository's own model and tests.
 The full geometric tests can take much longer than opening a cached model.
@@ -63,6 +63,6 @@ parts made from it, provide recipients the corresponding **Complete
 Source**, or its source location—not just STL files or a viewer export.
 See the project's licence and notices for the complete terms.
 
-That is the external clock project's licence. Solid Node and its own
+That is the external clock project's licence. Machinome and its own
 tutorial source remain Apache-2.0. See also :doc:`example-v8-engine`
 and :doc:`example-metamaquina2`.

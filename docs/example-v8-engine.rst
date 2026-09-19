@@ -14,10 +14,12 @@ valve it seats through a connected port, so the springs compress as the
 engine turns. Orbit around the model and follow the motion from the crank
 to the pistons and valve train.
 
-.. solid-node:: examples/v8-engine/docs/_exports/v8-engine
+.. machinome:: examples/v8-engine/docs/_exports/v8-engine
    :height: 620px
 
-You can check the project source code at its Github page: https://github.com/LibreSolid/example-v8-engine
+The model is built from the example repository's
+`pinned source revision
+<https://github.com/machinome/example-v8-engine/tree/fdf624b9d07831bda6baa690dfa7d6bf3aef400c>`_.
 
 Open the external example
 =========================
@@ -28,7 +30,7 @@ From a framework source checkout with the matching preview installed:
 
    git submodule update --init docs/examples/v8-engine
    cd docs/examples/v8-engine
-   solid develop
+   machinome develop
 
 The example owns its source and tests; the framework documentation embeds
 its export. See also :doc:`example-metamaquina2` and

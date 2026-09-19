@@ -337,7 +337,39 @@ declaration's arguments are; `axis`, `at`, `carries` or `range` as a
 whole MAY instead be a callable of ONE argument, which the framework
 SHALL call with the realized DECLARER — the node itself for a
 class-declared joint, the declaring parent for a site-declared one — and
-which SHALL return the components as plain numbers. A site-declared
+which SHALL return the components as plain numbers. EITHER BOUND of a
+`range` pair MAY instead be `None`, meaning unbounded on that side, or
+a CALLABLE of one argument, which states the bound as an expression
+over the joint's OWN COORDINATE and which the framework SHALL NOT
+resolve to a number at realization — it is applied where the bound is
+used, under the requirement "A declared range refuses a binding outside
+it" — or a `Bound(expression, reads=(...))`, which states the bound as
+an expression over the joint's own coordinate AND the coordinates it
+names. `expression` SHALL be a callable applied to the joint's own
+coordinate first and then to each read in the order `reads` states
+them, so a `Bound` with no reads means exactly what the one-argument
+callable means. Each read SHALL be named as a relation's end is named
+in a class body — a joint or port that body owns, a path through child
+declarations, or a driver of the declaring class — and SHALL be
+refused at CLASS DEFINITION by the same rules: a declaration held in a
+list, a repeated child, a child whose class declares no joint or
+several, a driver read sideways, and, additionally, a read that names
+the bounded coordinate itself. Under a RUNNING root a read SHALL
+additionally be a coordinate the run banks, and under a CLOCKED root a
+declared driver, a declared state or a joint coordinate a chain from the
+bank reaches — a read of a plain port or a derived coordinate being
+refused at simulation construction under the simulation requirements "A
+range bound may read other coordinates" and "A bound stops a clocked
+request on its path"; under every other root such a read is resolved and
+judged like any other. A
+`Bound`'s reads SHALL be resolved against the joint's DECLARER — the
+node itself for a class-declared joint, the declaring parent for a
+site-declared one — where the values
+are needed and never at realization: at the close of the enumeration
+that bound the coordinate untimed, and at simulation construction
+under a running or a clocked root. A callable given as the whole `range` and a
+callable or `Bound` given as one of its bounds SHALL be told apart by
+POSITION and SHALL keep their separate meanings. A site-declared
 joint's callable SHALL be able to read the declaring parent's resolved
 parameters and flags and anything that parent's own `__init__` has set,
 and SHALL NOT be able to read the child's placement, which does not exist
@@ -366,7 +398,9 @@ An argument that cannot resolve SHALL fail at realization, naming the
 class, the joint and the argument: a token that is not a declared
 parameter of the class, an `axis`, `at` or `carries` that is not three
 numbers, an `axis` of zero length, or a `range` that is not a `(lo, hi)`
-pair with `lo <= hi`.
+pair whose bounds are each a number, `None`, a callable or a `Bound` —
+the `lo <= hi` ordering being required where both resolve to numbers
+at realization and checked where each bound is evaluated otherwise.
 
 #### Scenario: A joint sized by a parameter
 
@@ -399,6 +433,40 @@ pair with `lo <= hi`.
 - **WHEN** two instances of one class differ only in the resolved value
   of a joint anchor
 - **THEN** they share one build identity and one set of artifacts
+
+#### Scenario: An expression bound is carried through realization
+
+- **WHEN** a class declares
+  `turn = Revolute(axis=(1, 0, 0), range=(lambda turn: 36 * floor(turn / 36), None))`
+  and the instance is realized
+- **THEN** realization succeeds, the joint's resolved range carries the
+  callable and the open bound as declared, and no number was computed
+  for either
+
+#### Scenario: A bound naming other coordinates is carried through realization
+
+- **WHEN** a class declares `p1 = Pin()`, `p2 = Pin()` and then
+  `turn = Revolute(axis=(0, 0, 1), range=(0, Bound(lambda turn, a, b: 90 * (abs(a) <= 0.05) * (abs(b) <= 0.05), reads=(p1.lift, p2.lift))))`
+  and the instance is realized
+- **THEN** realization succeeds, the joint's resolved range carries the
+  `Bound` as declared, no read was resolved and no number was computed
+
+#### Scenario: A bound on a site joint reads the declaring parent's subtree
+
+- **WHEN** a parent declares `key = Key()` and then
+  `plug = Plug(turn=Revolute(axis=(0, 0, 1), range=(0, Bound(lambda turn, travel: 90 * (travel >= 20), reads=(key.travel,)))))`
+- **THEN** the read `key.travel` is resolved against the realized
+  PARENT, the node that declared the site, and names that parent's
+  `key` child's coordinate
+
+#### Scenario: A read a class body cannot name is refused at class definition
+
+- **WHEN** a class body writes a `Bound` whose `reads` names a child
+  held in a list, a repeated child, a child whose class declares two
+  joints, a driver read off a child declaration, or the bounded
+  coordinate itself
+- **THEN** class definition raises naming the read and the rule it
+  breaks, exactly as the same end of a relation is refused
 
 #### Scenario: A defaulted carried point resolves at realization
 
@@ -433,10 +501,55 @@ under a root, and otherwise by its name and class, because a node bound
 before any walker linked it has no path to name. A binding that is not a plain
 number — a symbolic expression, a driver token — SHALL NOT be checked at
 bind time, because its value is not known there; a joint with no
-declared range SHALL accept any binding. A `Driver` bound to a joint
+declared range, and a bound stated as `None`, SHALL accept any binding
+on that side. A `Driver` bound to a joint
 SHALL keep its own declared range, which is presentation metadata and
 never a clamp, and the joint's range SHALL apply to the value that
 reaches the joint.
+
+A bound stated as a CALLABLE SHALL be applied, at the moment of
+binding, to THE VALUE BEING BOUND, and the binding refused when that
+value lies outside the pair so evaluated — the refusal naming the
+evaluated bound as well as the joint, the value, the unit and the node,
+and refusing likewise when the evaluated pair is reversed or is not a
+number. A bound that is not satisfied at its own argument therefore
+forbids every value and says so by name at the first binding. Under a
+RUNNING root the same declaration is additionally a physical stop,
+evaluated once per tick from the committed state, under the simulation
+requirement "A declared range is a physical stop located inside the
+tick"; under a CLOCKED root it is additionally a stop on a REQUEST'S
+PATH, evaluated from the state the request starts at and clipping the
+travel that request admits, under the simulation requirement "A bound
+stops a clocked request on its path"; under every other root a range
+refuses a binding and never clamps or stops.
+
+A bound stated as a `Bound` that reads other coordinates SHALL NOT be
+applied at the moment of binding, because the coordinates it reads
+are bound by the solver in an order the author does not state; the
+binding SHALL be recorded on the open enumeration and JUDGED WHEN THAT
+ENUMERATION CLOSES, after deferred relations have propagated, over the
+values then bound: the reads resolved against the declarer, the
+expression applied to the bound value and the read values, the pair
+ordered, and the value checked inclusive. A value outside the pair so
+evaluated SHALL raise the joint range error naming the node, the joint,
+the value, the unit, the evaluated bound AND every coordinate the bound
+read with the value it read. A read that holds no value or a symbolic
+one at the close SHALL NOT be judged, on the rule a symbolic binding
+already has. A coordinate a RUNNING simulation owns SHALL NOT be judged
+by the enumeration: the run located its stop and committed inside it,
+and one authority judges one binding. On that same rule, a coordinate a
+CLOCKED simulation compiled a constraint for SHALL NOT be judged by the
+enumeration at the pose a REQUEST makes — neither at the moment of
+binding nor at the close of that enumeration — because the clocked
+simulation clipped the request at that bound and judges the constraint
+itself, over the bank the request ends at, under the simulation
+requirement "A bound stops a clocked request on its path". Every pose
+that is NOT a request — construction, `state=`, `restore` — SHALL be
+judged here as it is judged today. A binding made outside any
+enumeration SHALL place the body and SHALL NOT be judged there, no pass
+being open to record it on — exactly as a read of an unbound coordinate
+made outside an enumeration is not recorded; it SHALL be judged at the
+close of the next enumeration that binds the coordinate again.
 
 #### Scenario: An out-of-range angle is refused by name
 
@@ -457,6 +570,70 @@ reaches the joint.
 
 - **WHEN** the same joint is bound to `-135` and then to `135`
 - **THEN** both bindings succeed, the bounds being inclusive
+
+#### Scenario: An open bound accepts anything on its side
+
+- **WHEN** a joint declares `range=(0, None)` and is bound to `10000`,
+  and then to `-1`
+- **THEN** the first binding succeeds and the second is refused naming
+  the joint, `-1` and the lower bound
+
+#### Scenario: A bound reading other coordinates is judged when the enumeration closes
+
+- **WHEN** an untimed root drives `plug.turn`, whose range is
+  `(0, Bound(lambda turn, a, b: 90 * (abs(a) <= 0.05) * (abs(b) <= 0.05), reads=(p1.lift, p2.lift)))`,
+  from a `turn` driver and the two lifts from a `feed` driver, and
+  `set_state(turn=30, feed=0)` leaves a lift at `5`
+- **THEN** the enumeration's close raises the joint range error naming
+  `plug.turn`, `30`, the evaluated upper bound `0`, `p1.lift` and
+  `p2.lift` with the values they held, whatever order the solver bound
+  them in
+
+#### Scenario: A bound reading other coordinates admits a possible pose
+
+- **WHEN** the same root is bound with `set_state(turn=30, feed=20)`,
+  which leaves both lifts at `0`
+- **THEN** the enumeration closes without error and the plug's body
+  carries the 30-degree turn
+
+#### Scenario: A read holding no value is not judged
+
+- **WHEN** a coordinate whose bound reads another is bound while that
+  other coordinate is left unbound by the enumeration
+- **THEN** the binding is placed and the enumeration closes without
+  judging that bound
+
+#### Scenario: A self-referential bound is evaluated at the value being bound
+
+- **WHEN** a joint declaring
+  `range=(lambda turn: 36 * floor(turn / 36), None)` is bound to `40`,
+  and then to `36`, and then to `0`
+- **THEN** every binding succeeds, because the lower bound evaluates to
+  `36`, `36` and `0` respectively, and the body carries the motion of
+  each
+
+#### Scenario: A bound no value can satisfy is refused by name
+
+- **WHEN** a joint declaring `range=(lambda turn: turn + 1, None)` is
+  bound to any number
+- **THEN** the binding is refused naming the joint, the value and the
+  evaluated bound
+
+#### Scenario: A clocked request stops at the bound instead of being refused
+
+- **WHEN** a clocked simulation's request would carry a coordinate declaring
+  `range=(0, 9)` to `20`
+- **THEN** the request admits only the travel that leaves the coordinate at
+  `9`, the pose binds `9` without judging it here, no joint range error is
+  raised, and the request reports the bound it met
+
+#### Scenario: A pose that is not a request is judged here as before
+
+- **WHEN** the same clocked model is constructed with a `state=` whose bank
+  poses that coordinate at `20`
+- **THEN** the binding is refused here, naming the node, the joint, `20` and
+  the range, because a construction has no path to clip and a machine cannot
+  be put where it cannot be
 
 ### Requirement: A joint takes part in a relation
 
@@ -648,7 +825,7 @@ whose line runs through the body's own origin is exactly this case.
 ### Requirement: Joint declarations
 
 The system SHALL provide the one-coordinate lower pairs as declarations
-exported from `solid_node.motion.joints`: `Revolute(axis, at=(0, 0, 0),
+exported from `machinome.motion.joints`: `Revolute(axis, at=(0, 0, 0),
 range=None, unit='deg')`, which turns a body about a line;
 `Prismatic(axis, at=(0, 0, 0), range=None, unit='mm')`, which slides a
 body along one; and `Orbit(axis, at=(0, 0, 0), carries=(0, 0, 0),
@@ -810,7 +987,7 @@ joint.
 ### Requirement: A free joint owns six coordinates and floats a body
 
 The system SHALL provide `Free(at=(0, 0, 0), angle_unit='deg',
-length_unit='mm')`, exported from `solid_node.motion.joints` beside the
+length_unit='mm')`, exported from `machinome.motion.joints` beside the
 one-coordinate pairs, for a body with no parent to be jointed to: a
 walking robot's chassis, a floating platform, anything whose pose against
 the world is stated rather than constrained. It SHALL be declared as a
@@ -1294,19 +1471,29 @@ them together: at the start of an assembly's simulate phase, in the same
 moment as the sweep that removes the operations that assembly applied,
 the framework SHALL clear the value and the binder record of every
 coordinate that assembly bound DURING ITS PREVIOUS SIMULATE PHASE —
-including a coordinate the author's own `simulate()` bound.
+including a coordinate the author's own `simulate()` bound — AND SHALL
+remove that coordinate's joint's whole placement from the node that owns
+it, whatever applied that placement and whether or not the sweep can see
+it.
 
 A coordinate SHALL therefore never go on holding a value whose motion
-has been swept. An assembly that binds a joint under a guard such as
-`if <coordinate>.value is None:` SHALL find the coordinate unbound on
-every run and SHALL rebind and re-place the body on every run, so the
-pose it states on the first enumeration is the pose it states on the
-second and the tenth.
+has been swept, and a joint's motion SHALL NOT outlive its coordinate's
+value: a body SHALL NOT stand at a pose no coordinate states. An assembly
+that binds a joint under a guard such as `if <coordinate>.value is None:`
+SHALL find the coordinate unbound on every run and SHALL rebind and
+re-place the body on every run, so the pose it states on the first
+enumeration is the pose it states on the second and the tenth; and an
+assembly that binds a joint under a guard that is TRUE on one instant and
+FALSE on the next SHALL leave the body at rest on that next instant, with
+nothing of the previous instant's placement on it.
 
 A binding made OUTSIDE any simulate phase — in `__init__`, in a test, or
 through a `render()` no walker drove — SHALL NOT be cleared, exactly as
 an operation applied outside a phase is never swept, and two assemblies
-that bind coordinates of one node SHALL clear only their own.
+that bind coordinates of one node SHALL clear only their own. A
+coordinate a running simulation owns SHALL NOT be cleared either, and
+neither SHALL its placement: the run binds outside every enumeration and
+rebinds on every tick.
 
 Between one enumeration and the next, a joint's coordinate SHALL go on
 reading what the last enumeration bound, so a test, a serializer or a
@@ -1334,4 +1521,69 @@ produced.
   walker and no simulate phase running, and then reads it
 - **THEN** the value and the placement are still there, because nothing
   recorded the binding on a phase and nothing swept it
+
+#### Scenario: A stale motion cannot outlive its value
+
+- **WHEN** a root binds a root-level leaf's joint under a guard that is
+  true at one instant and false at the next, and the placement standing
+  at the second instant was applied outside any simulate phase — so no
+  sweep can reach it
+- **THEN** the body is at rest at that second instant, carrying no
+  operation of the first instant's placement, and the coordinate is
+  unbound
+
+#### Scenario: The run's own placement is not cleared
+
+- **WHEN** a running simulation owns a leaf's joint coordinate and the
+  root is enumerated again
+- **THEN** the value and the placement the run made are both still
+  there, because the coordinate is the run's and nothing else clears it
+
+### Requirement: A joint's placement is replaced whole
+
+A joint's placement is every operation its last binding applied to the node,
+and the system SHALL remove ALL of them when that joint is placed again or
+cleared — however many operations the placement produced, and whatever has
+happened to the node's operation list in between. A tool that replaces a
+node's `operations` wholesale (the test runner's checkpoint restore, a pose
+capture, a test) SHALL NOT be able to strand an operation of a previous
+placement beside the new one, and SHALL NOT be able to make a later binding
+state a body's travel twice.
+
+A node carrying several joints SHALL be unaffected in its other joints:
+re-placing one removes that joint's operations and leaves every other
+joint's where they stand, at their own declared positions. Clearing a joint
+removes its placement and adds nothing.
+
+This is the other half of "An author-bound joint is cleared with its
+motion": that requirement drops a coordinate whose motion was swept, and
+this one drops the motion of a coordinate that is bound again.
+
+#### Scenario: A placement survives no wholesale replacement of the list
+
+- **WHEN** a leaf's prismatic coordinate is bound, the node's operation list
+  is then replaced with a copy of an earlier list that still holds that
+  placement's operation, and the coordinate is bound again
+- **THEN** the leaf carries exactly one translation from that joint, stating
+  the value bound last, and the body stands where its coordinate says
+
+#### Scenario: A many-operation placement goes as one
+
+- **WHEN** the same happens to a leaf carrying a `Free` joint, whose one
+  binding places several operations
+- **THEN** the leaf carries exactly one run of that joint's operations after
+  the second binding, and no operation of the first placement remains
+
+#### Scenario: A sibling joint is left alone
+
+- **WHEN** a node declaring two joints has one of them bound again after its
+  operation list was replaced
+- **THEN** only the re-bound joint's operations are replaced, the other
+  joint's placement is untouched, and the two still compose in declaration
+  order
+
+#### Scenario: Clearing removes a stranded placement too
+
+- **WHEN** a joint whose operation list was replaced under it is cleared
+- **THEN** no operation of its placement is left on the node
 

@@ -1,9 +1,9 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""Tests for the Sphinx extension (solid_node.sphinx): the
-``.. solid-node::`` directive embeds a `solid export` directory in the
+"""Tests for the Sphinx extension (machinome.sphinx): the
+``.. machinome::`` directive embeds a `machinome export` directory in the
 built HTML as an <iframe> onto the widget's index.html.
 
 The tests build tiny Sphinx projects in a temp dir against a fake
@@ -26,7 +26,7 @@ except ImportError:
 
 
 CONF_PY = """
-extensions = ['solid_node.sphinx']
+extensions = ['machinome.sphinx']
 """
 
 
@@ -49,15 +49,15 @@ class SphinxExtBaseTest(unittest.TestCase):
             fh.write(content)
 
     def make_export(self, relpath, widget=True):
-        """A fake `solid export` output directory under srcdir."""
+        """A fake `machinome export` output directory under srcdir."""
         export_dir = os.path.join(self.srcdir, relpath)
         models = os.path.join(export_dir, 'models')
         os.makedirs(models, exist_ok=True)
         manifest = {
-            'format': 'solid-node-export',
+            'format': 'machinome-export',
             'version': 1,
             'animation': {'fps': 30, 'frames': 360},
-            'root': {'name': 'part', 'type': 'SolidNode',
+            'root': {'name': 'part', 'type': 'Machinome',
                      'color': None, 'operations': [],
                      'model': 'models/part.stl'},
         }
@@ -68,7 +68,7 @@ class SphinxExtBaseTest(unittest.TestCase):
         if widget:
             with open(os.path.join(export_dir, 'index.html'), 'w') as fh:
                 fh.write('<html>widget page</html>')
-            with open(os.path.join(export_dir, 'solid-widget.js'),
+            with open(os.path.join(export_dir, 'machinome-viewer.js'),
                       'w') as fh:
                 fh.write('// bundle')
         return export_dir
@@ -99,10 +99,10 @@ class SphinxExtBaseTest(unittest.TestCase):
 class ManifestFormatSyncTest(unittest.TestCase):
 
     def test_extension_constant_matches_core(self):
-        # solid_node.sphinx duplicates the constant so it imports
+        # machinome.sphinx duplicates the constant so it imports
         # without the CAD stack -- they must never drift apart
-        from solid_node import sphinx as ext
-        from solid_node.core import export as core
+        from machinome import sphinx as ext
+        from machinome.core import export as core
         self.assertEqual(ext.MANIFEST_FORMAT, core.MANIFEST_FORMAT)
 
 
@@ -112,7 +112,7 @@ class DirectiveTest(SphinxExtBaseTest):
         self.make_export('spinner_export')
         self.write_doc('index.rst', (
             'Test\n====\n\n'
-            '.. solid-node:: spinner_export\n'
+            '.. machinome:: spinner_export\n'
         ))
 
         warnings = self.build()
@@ -120,12 +120,12 @@ class DirectiveTest(SphinxExtBaseTest):
         self.assertEqual(warnings, '')
         html = self.html()
         self.assertIn('<iframe', html)
-        self.assertIn('src="_solid_node/spinner_export/index.html"',
+        self.assertIn('src="_machinome/spinner_export/index.html"',
                       html)
 
-        copied = os.path.join(self.outdir, '_solid_node',
+        copied = os.path.join(self.outdir, '_machinome',
                               'spinner_export')
-        for name in ('manifest.json', 'index.html', 'solid-widget.js',
+        for name in ('manifest.json', 'index.html', 'machinome-viewer.js',
                      os.path.join('models', 'part.stl')):
             self.assertTrue(
                 os.path.exists(os.path.join(copied, name)),
@@ -136,7 +136,7 @@ class DirectiveTest(SphinxExtBaseTest):
         self.make_export('spinner_export')
         self.write_doc('index.rst', (
             'Test\n====\n\n'
-            '.. solid-node:: spinner_export\n'
+            '.. machinome:: spinner_export\n'
         ))
 
         self.build()
@@ -147,7 +147,7 @@ class DirectiveTest(SphinxExtBaseTest):
         self.make_export('spinner_export')
         self.write_doc('index.rst', (
             'Test\n====\n\n'
-            '.. solid-node:: spinner_export\n'
+            '.. machinome:: spinner_export\n'
             '   :height: 300px\n'
         ))
 
@@ -159,7 +159,7 @@ class DirectiveTest(SphinxExtBaseTest):
         self.make_export('spinner_export')
         self.write_doc('index.rst', (
             'Test\n====\n\n'
-            '.. solid-node:: spinner_export\n'
+            '.. machinome:: spinner_export\n'
             '   :t: 0.25\n'
             '   :autoplay: no\n'
         ))
@@ -167,7 +167,7 @@ class DirectiveTest(SphinxExtBaseTest):
         self.build()
 
         self.assertIn(
-            'src="_solid_node/spinner_export/index.html'
+            'src="_machinome/spinner_export/index.html'
             '?t=0.25&amp;autoplay=0"',
             self.html(),
         )
@@ -181,14 +181,14 @@ class DirectiveTest(SphinxExtBaseTest):
         ))
         self.write_doc('sub/page.rst', (
             'Page\n====\n\n'
-            '.. solid-node:: /spinner_export\n'
+            '.. machinome:: /spinner_export\n'
         ))
 
         warnings = self.build()
 
         self.assertEqual(warnings, '')
         self.assertIn(
-            'src="../_solid_node/spinner_export/index.html"',
+            'src="../_machinome/spinner_export/index.html"',
             self.html(os.path.join('sub', 'page.html')),
         )
 
@@ -196,8 +196,8 @@ class DirectiveTest(SphinxExtBaseTest):
         self.make_export('spinner_export')
         self.write_doc('index.rst', (
             'Test\n====\n\n'
-            '.. solid-node:: spinner_export\n\n'
-            '.. solid-node:: spinner_export\n'
+            '.. machinome:: spinner_export\n\n'
+            '.. machinome:: spinner_export\n'
             '   :t: 0.5\n'
         ))
 
@@ -205,7 +205,7 @@ class DirectiveTest(SphinxExtBaseTest):
 
         self.assertEqual(warnings, '')
         self.assertEqual(self.html().count('<iframe'), 2)
-        exports = os.listdir(os.path.join(self.outdir, '_solid_node'))
+        exports = os.listdir(os.path.join(self.outdir, '_machinome'))
         self.assertEqual(exports, ['spinner_export'])
 
 
@@ -214,19 +214,19 @@ class DirectiveErrorTest(SphinxExtBaseTest):
     def test_missing_export_dir_warns_with_hint(self):
         self.write_doc('index.rst', (
             'Test\n====\n\n'
-            '.. solid-node:: not_there\n'
+            '.. machinome:: not_there\n'
         ))
 
         warnings = self.build()
 
         self.assertIn('not_there', warnings)
-        self.assertIn('solid export', warnings)
+        self.assertIn('machinome export', warnings)
 
     def test_directory_without_manifest_warns(self):
         os.makedirs(os.path.join(self.srcdir, 'not_an_export'))
         self.write_doc('index.rst', (
             'Test\n====\n\n'
-            '.. solid-node:: not_an_export\n'
+            '.. machinome:: not_an_export\n'
         ))
 
         warnings = self.build()
@@ -237,7 +237,7 @@ class DirectiveErrorTest(SphinxExtBaseTest):
         self.make_export('spinner_export')
         self.write_doc('index.rst', (
             'Test\n====\n\n'
-            '.. solid-node:: spinner_export\n'
+            '.. machinome:: spinner_export\n'
             '   :t: 1.5\n'
         ))
 
@@ -253,7 +253,7 @@ class WidgetlessExportTest(SphinxExtBaseTest):
     def fake_widget(self):
         widget_dir = os.path.join(self.root, 'widget')
         os.makedirs(widget_dir)
-        bundle = os.path.join(widget_dir, 'solid-widget.js')
+        bundle = os.path.join(widget_dir, 'machinome-viewer.js')
         index = os.path.join(widget_dir, 'index.html')
         with open(bundle, 'w') as fh:
             fh.write('// package bundle')
@@ -265,20 +265,20 @@ class WidgetlessExportTest(SphinxExtBaseTest):
         self.make_export('spinner_export', widget=False)
         self.write_doc('index.rst', (
             'Test\n====\n\n'
-            '.. solid-node:: spinner_export\n'
+            '.. machinome:: spinner_export\n'
         ))
         bundle, index = self.fake_widget()
 
-        with patch('solid_node.sphinx.viewer_bundle.bundle_path',
+        with patch('machinome.sphinx.viewer_bundle.bundle_path',
                    return_value=bundle), \
-             patch('solid_node.sphinx.viewer_bundle.index_path',
+             patch('machinome.sphinx.viewer_bundle.index_path',
                    return_value=index):
             warnings = self.build()
 
         self.assertEqual(warnings, '')
-        copied = os.path.join(self.outdir, '_solid_node',
+        copied = os.path.join(self.outdir, '_machinome',
                               'spinner_export')
-        with open(os.path.join(copied, 'solid-widget.js')) as fh:
+        with open(os.path.join(copied, 'machinome-viewer.js')) as fh:
             self.assertEqual(fh.read(), '// package bundle')
         with open(os.path.join(copied, 'index.html')) as fh:
             self.assertEqual(fh.read(), '<html>package page</html>')
@@ -287,32 +287,32 @@ class WidgetlessExportTest(SphinxExtBaseTest):
         self.make_export('spinner_export', widget=True)
         self.write_doc('index.rst', (
             'Test\n====\n\n'
-            '.. solid-node:: spinner_export\n'
+            '.. machinome:: spinner_export\n'
         ))
         bundle, index = self.fake_widget()
 
-        with patch('solid_node.sphinx.viewer_bundle.bundle_path',
+        with patch('machinome.sphinx.viewer_bundle.bundle_path',
                    return_value=bundle), \
-             patch('solid_node.sphinx.viewer_bundle.index_path',
+             patch('machinome.sphinx.viewer_bundle.index_path',
                    return_value=index):
             self.build()
 
-        copied = os.path.join(self.outdir, '_solid_node',
+        copied = os.path.join(self.outdir, '_machinome',
                               'spinner_export')
-        with open(os.path.join(copied, 'solid-widget.js')) as fh:
+        with open(os.path.join(copied, 'machinome-viewer.js')) as fh:
             self.assertEqual(fh.read(), '// bundle')
 
     def test_no_widget_anywhere_warns_with_the_install_hint(self):
         self.make_export('spinner_export', widget=False)
         self.write_doc('index.rst', (
             'Test\n====\n\n'
-            '.. solid-node:: spinner_export\n'
+            '.. machinome:: spinner_export\n'
         ))
 
-        with patch('solid_node.sphinx.viewer_bundle.has_bundle',
+        with patch('machinome.sphinx.viewer_bundle.has_bundle',
                    return_value=False), \
-             patch('solid_node.sphinx.viewer_bundle.missing_bundle_remedy',
-                   return_value='pip install "solid-node[viewer]"'):
+             patch('machinome.sphinx.viewer_bundle.missing_bundle_remedy',
+                   return_value='pip install "machinome[viewer]"'):
             warnings = self.build()
 
-        self.assertIn('solid-node[viewer]', warnings)
+        self.assertIn('machinome[viewer]', warnings)

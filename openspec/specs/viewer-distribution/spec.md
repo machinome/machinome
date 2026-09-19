@@ -16,10 +16,32 @@ SHALL exist. When no viewer is installed, the framework SHALL instead report a
 failure that names the remedy — installing the `viewer` extra — and SHALL
 exit non-zero.
 
+The report SHALL also carry `documentVersions`, the list of node-tree
+document schema versions the installed viewer renders, so a framework channel
+that is about to publish or photograph a document can ask the fact it needs
+rather than infer it from an unrelated counter. A report that does not carry
+the field SHALL be read as `[1, 2, 3, 4]` — the versions every viewer
+released before the field existed renders — so an older viewer beside a newer
+framework keeps working and is described truthfully.
+
+#### Scenario: The report says which documents the viewer renders
+
+- **WHEN** a program runs the framework's viewer report against an
+  installation whose viewer declares the document versions it renders
+- **THEN** the result carries that list beside the bundle path, the export
+  page, the API version and the package version
+
+#### Scenario: A viewer that predates the field
+
+- **WHEN** the framework resolves an installed viewer whose report carries no
+  document-version list
+- **THEN** the framework treats it as rendering versions 1 to 4, and says so
+  wherever it names what the viewer can read
+
 #### Scenario: A host asks an installed framework for the viewer
 
 - **WHEN** a program runs the framework's viewer report against an installation
-  with `solid-node-viewer` installed
+  with `machinome-viewer` installed
 - **THEN** it receives, on standard output, the absolute path of an existing
   bundle file, the export page, the declared viewer API version and the viewer
   package version, and the process exits zero
@@ -27,9 +49,9 @@ exit non-zero.
 #### Scenario: A host asks an installation that has no bundle
 
 - **WHEN** a program runs the viewer report against an installation without
-  `solid-node-viewer`
+  `machinome-viewer`
 - **THEN** the process exits non-zero, standard output carries no result, and
-  the message names `pip install "solid-node[viewer]"`
+  the message names `pip install "machinome[viewer]"`
 
 ### Requirement: One answer about the bundle across framework channels
 
@@ -56,27 +78,29 @@ without loading the CAD runtime.
 ### Requirement: The viewer is an optional extra
 
 The framework SHALL declare the `viewer` extra, installing the
-`solid-node-viewer` distribution, and the `web-snapshot` extra, installing
-`solid-node-viewer[snapshot]`. The framework's own dependencies SHALL NOT
+`machinome-viewer` distribution, and the `web-snapshot` extra, installing
+`machinome-viewer[snapshot]`. The framework's own dependencies SHALL NOT
 include the viewer, and every framework operation that does not open, embed
 or photograph through the browser viewer SHALL work in an installation
-without it.
+without it. Interactive development through `machinome develop` SHALL require the
+viewer extra unless the caller explicitly selects the `--no-web` watch loop.
 
-#### Scenario: A plain installation is complete
+#### Scenario: A plain installation retains non-viewer operations
 
-- **WHEN** `pip install solid-node` runs without the extra
+- **WHEN** `pip install machinome` runs without the extra
 - **THEN** building, testing, exporting without the widget, snapshotting
-  through OpenSCAD and developing with the OpenSCAD viewer all work
+  through OpenSCAD, and developing with `--no-web` work, while ordinary
+  `machinome develop` fails naming the viewer extra
 
-#### Scenario: The extra brings the viewer
+#### Scenario: The extra brings the interactive viewer
 
-- **WHEN** `pip install "solid-node[viewer]"` runs
-- **THEN** `solid viewer` reports the installed bundle and `solid develop`
-  opens the web viewer by default
+- **WHEN** `pip install "machinome[viewer]"` runs
+- **THEN** `machinome viewer` reports the installed bundle and `machinome develop`
+  opens the browser viewer by default
 
 ### Requirement: The framework finds the installed viewer through its entry point
 
-The framework SHALL locate the viewer by loading the `solid_node.viewer`
+The framework SHALL locate the viewer by loading the `machinome.viewer`
 entry point group and calling its `bundle` entry, which returns the bundle
 path, the export page, the declared API version and the package version. The
 framework SHALL import no other code of the viewer package. When the group
@@ -104,7 +128,27 @@ server or capture code.
 
 #### Scenario: The interpreter's own viewer is the one used
 
-- **WHEN** a different `solid-node-viewer` executable appears earlier on the
+- **WHEN** a different `machinome-viewer` executable appears earlier on the
   PATH than the one installed beside the running interpreter
 - **THEN** the framework still runs the viewer installed beside its interpreter
 
+### Requirement: The framework resolves the Machinome viewer
+
+The `viewer` extra SHALL install `machinome-viewer`, and the framework SHALL
+locate it through the `machinome.viewer` entry point group. Beyond that lookup,
+the framework SHALL use it only through
+`python -m machinome_viewer describe|serve|capture` in the running
+interpreter. Absence and compatibility errors SHALL name
+`pip install "machinome[viewer]"` as the remedy. The framework SHALL import no
+viewer rendering, serving, or capture code.
+
+#### Scenario: A host asks an installation for its viewer
+
+- **WHEN** `machinome viewer` runs with `machinome-viewer` installed
+- **THEN** it reports the installed bundle through the `machinome.viewer`
+  entry point
+
+#### Scenario: Interactive development lacks the viewer
+
+- **WHEN** `machinome develop` runs without `machinome-viewer`
+- **THEN** it fails naming `pip install "machinome[viewer]"`

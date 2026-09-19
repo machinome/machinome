@@ -1,0 +1,5 @@
+# The probes below are real Solid projects for the same reason the test
+# fixtures are: the framework discovers a root through a manifest.
+
+[tool.solid-node]
+model = "probe_paths:Columns"

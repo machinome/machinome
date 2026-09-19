@@ -2,17 +2,476 @@
 History
 =======
 
-Unreleased
-----------
+Machinome 0.7.0 — in preparation
+-------------------------------
 
+**Source code for machines.** Machinome continues solid-node 0.6.0 with
+the same Git history, under the ``machinome`` GitHub organisation.
+The rename avoids confusion with Tim Berners-Lee's Solid project.
+The distribution, import package and command are now ``machinome``;
+project tables use ``[tool.machinome]`` and former ``SOLID_NODE_*``
+settings use ``MACHINOME_*``. No former import or command alias is shipped.
+
+This release describes a machine's parts, shared dimensions, movement,
+inputs and stored state together. Its user-facing summary and migration
+map are in ``docs/changelog.rst``, ``docs/releases/release-0.7.rst`` and
+``docs/upgrading.rst``. The complete engineering record is preserved in
+``docs/releases/development-0.7.rst``. Publication is still pending.
+
+* **A clocked stroke can be WATCHED: an instruction is one request.** A
+  clocked machine could compute a whole stroke exactly and could not show
+  it happening. The originating project is
+  ``projects/Calculators/Curta-Type-I-3x``, whose ``ClockedCurta``
+  declares ``'Turn crank': Instruction(by={'crank_rotation': 360},
+  duration=2)`` and got nothing for it: the table was published with no
+  meaning, ``trigger`` was refused BY NAME under a clocked root, and the
+  only way to turn the crank was one ``move`` that jumped a whole
+  revolution and posed the tree once at the end. Under a clocked root an
+  instruction is now ONE REQUEST and nothing else — ``by={id: travel}``
+  is ``move(id, by=travel)``, ``targets={id: value}`` is ``move(id,
+  to=value)``, through the same resolution every other base uses — and
+  ``trigger`` RETURNS that request, so a caller that pressed a button
+  holds exactly what a caller that moved the input holds. Such an
+  instruction names EXACTLY ONE driver: a request names exactly one
+  moving input, so an instruction naming two would be a SEQUENCE, which
+  is a program, and one naming none would move nothing; both are refused
+  where the machine is COMPILED, which is before any document exists, so
+  every instruction a version 8 document carries is one a consumer can
+  PLAY. The declared ``duration`` is carried and means NOTHING to the
+  machine — a request is a path, not an interval — and says how long a
+  CONSUMER draws the transition. A request now reports BOTH ENDS of the
+  path it travelled, ``origin`` and ``end``, taken verbatim from the bank
+  and so in the input's NATIVE units, the units every commit's ``value``
+  speaks: a drawer walks the moved input between them, applies every
+  commit already reached and poses from the bank, one solve and N poses,
+  with no machine work in the frame loop. The same project measured the
+  alternative and ruled it out: one stroke costs 0.07875 s in Python and
+  36.95 ms in Chromium, and the same stroke sliced into twenty
+  requests costs 1.56363 s and 647.7 ms. The DOCUMENT does not change:
+  no field, no key, no version bump, no producer change, and a version 8
+  document published after an instruction has a meaning is byte for byte
+  the one the same root published before it had one. The clocked
+  conformance corpus records a ``trigger`` step in each instruction form,
+  and both ends of every path, so the two runtimes are pinned to what a
+  BUTTON does and not merely to what a hand-made request does.
+
+* **A clocked machine publishes what it IS: document version 8.** A
+  machine with MEMORY could be built, tested and photographed, and could
+  not leave the process: every document producer refused a tree that
+  declared a ``State``, because a clocked pose reads its states as FREE
+  NAMES and a consumer that believed it could read the document would
+  resolve them to nothing. Such a tree now publishes **version 8**, a
+  rung read off the ROOT'S DECLARATION and DOMINATING every other, with a
+  top-level ``clocked`` object carrying the machine compile time decided:
+  every committing relation as its sources in written order, its ``at``
+  as ONE jump node and its level, one law expression per target and the
+  structural SHAPE of every input that can move that level; every
+  compiled constraint as its chain, its bound read under a minted
+  own-name, its jump plan and its per-input shapes, with the level left
+  as the consumer's own subtraction; the banked clock as the free name
+  ``time`` under ``Time.elapsed()`` and ``null`` otherwise; an
+  ``identity`` digest, so a bank taken against one machine is refused
+  against another; and the two ``limits`` a clocked path reaches.
+  ``states`` joins ``drivers`` as a SECOND table, because every key of
+  ``drivers`` is a handle a person may move and no key of ``states``
+  ever is, and there is no ``coordinates`` table, because a clocked bank
+  holds no joint coordinate and every number in it is already published.
+  A ``%`` in a published commit LAW is desugared to Python's floored
+  remainder, since the executor CALLS the project's callable rather than
+  evaluating the graph, while a chain, a bound and a constraint level
+  keep the document's truncated ``%``, which is what the framework
+  evaluates them by. A commit that computes an INFINITY or a NaN refuses
+  its whole request, naming the relation, the state and the value: that is
+  the rule the document states for a consumer, and the framework keeps it
+  on its own side too. Every declared ``Instruction`` is published in the
+  version 5 shape and given no runtime meaning; a control stays refused.
+  A build and an export WARN and publish where the installed viewer
+  cannot read version 8; ``solid snapshot --renderer web`` is refused
+  before the browser starts, writing no image and leaving no staging
+  directory; the OpenSCAD renderer, ``render()``, ``assemble()``,
+  ``build_stls()`` and ``solid test`` are untouched. The two runtimes now
+  share a clocked conformance corpus that is **exact, bit for bit** —
+  thirty machines, eighty-one steps, no tolerance window anywhere — with
+  its basis stated operation by operation and a coverage inventory the
+  generator refuses to write below. A tree that declares no ``State``
+  pays nothing and publishes a byte-identical document, and versions 5,
+  6 and 7, the running corpus and ``Time.running()`` are untouched.
+  Two landings the shared solver had no answer for were closed with it:
+  a crossing belongs to the request whose path CONTAINS its landing — so
+  a request ending exactly on a STRICT surface leaves it for the request
+  that begins there, which fires it, and a ``sign`` level moved off zero
+  now takes both of its rising steps — and the landing walk sizes its
+  first step by the SEGMENT it walks, so a bank standing outside a bound
+  with its coordinate at exactly zero reports its stop instead of
+  raising.
+
+* **A clock without a run: ``Time.elapsed()``, and an event on it.** A
+  machine that is OPERATED has elapsed seconds; a machine on a timeline
+  has a loop. Until now "elapsed seconds that never wrap" could be said
+  only as half of ``Time.running()``, whose other half retains every
+  coordinate and integrates every law at a fixed cadence — the
+  generality the clocked discipline exists not to pay for. ``time =
+  Time.elapsed()`` is now a THIRD spelling of the time base, declared by
+  the same rules as the other two, and the time base and the state
+  discipline are INDEPENDENT: only a declared ``State`` makes a model
+  clocked. A root declaring ``Time.elapsed()`` and no state is admitted
+  and equivalent — the same stepped simulation, the same reads, and a
+  document byte-identical to an undeclared root's — and what the base
+  adds is a MEANING for ``time``. Under a CLOCKED root it adds a banked
+  clock: ``time`` in the bank in seconds, initial ``0.0``, opened by
+  ``Sim(model, state={'time': ...})``, returned by ``sim.state``, read by
+  ``sim.time`` (the one refused name a declared elapsed base gives back),
+  carried by ``snapshot()``/``restore()`` and zeroed by ``reset()``. The
+  SAME verb moves it — ``sim.move('time', by=)`` or ``to=``, in seconds,
+  with every driver standing, or one driver with the clock standing —
+  and elapsed seconds never reverse, so a request that would run the
+  clock BACKWARDS is refused by name while zero is admitted, firing
+  nothing and posing what already stands. ``time`` is a SOURCE of a
+  committing relation exactly as a driver is: ``(time & engaged &
+  count).commits(count, at=release, law=advance)``, every RISING step of
+  ``at`` along the request's path one event located EXACTLY, ordered by
+  path, read pre-event and synchronously, with ties by identity of the
+  landing float. A pendulum's release is AFFINE in time, so it is solved
+  by one division and **no tolerance is introduced anywhere**; a level
+  that CURVES in the clock is refused at construction, naming the clock
+  and the primitive, and a relation the CLOCK alone can move is now legal
+  where one every source of which is a state stays refused. The clock is
+  delivered to the pose through the hook the posing walk already has, so
+  a request still costs ONE pose and a model with no clock takes exactly
+  the path it took before. **Nothing stops a clock**: a time request is
+  never clipped — a declared range is a mechanical stop and no interlock
+  holds the next second — and a coordinate that leaves its range at some
+  instant is an impossible pose whose request is refused whole.
+  Correspondingly a coordinate whose compiled chain follows the clock is
+  refused at simulation construction, by name, under the general rule
+  that any free name surviving a chain that is not a bank id is refused.
+  ``Time.running()`` is untouched in every particular — not its compile,
+  not its tick, not its document, not its meaning — and so is every
+  untimed and looping root.
+
+* **A bound stops a clocked request on its path.** The originating
+  project is ``projects/Calculators/Curta-Type-I-3x``, whose eight
+  interlocks are each a ``Bound`` on a joint, each quoted from the
+  manufacturer's booklet, and none of which needed a framework idea the
+  framework did not already have. What it could not do was OBEY them: a
+  request that would drive a mechanism through a stop was refused WHOLE
+  and committed nothing, which is a machine no maker can operate. A
+  declared ``range`` is now a physical STOP on a clocked request path.
+  The moving driver's travel is CLIPPED to the point where the bound is
+  met — exactly, solved and never searched — and the events are located
+  on the clipped path only; a request stopped at ZERO travel is
+  ADMITTED, moving nothing, firing nothing and reporting its stop, which
+  is what an interlock does. ``move`` returns the same value object with
+  two more fields: ``admitted``, the travel actually made in DESIGN
+  units, and ``stops``, each naming the bounded coordinate, the side, the
+  bound as it evaluated at the landing, the coordinate's value there, the
+  input's value and the fraction of the requested travel; ``record=N``
+  keeps a bounded ring ``sim.stops`` beside ``sim.commits``, which lifts
+  the previous refusal of that name. Each bound is compiled ONCE, at
+  construction, into one expression over the bank, by composing the
+  relations that determine the coordinate — wirings, derived coordinates,
+  ``law=`` relations and INTERMEDIATE PORTS alike — and the level is
+  classified per driver exactly as a commit's ``at`` is: affine is one
+  division, kinked is cut at its own breakpoints, a level that JUMPS is
+  partitioned at its own surfaces and solved piece by piece, and a CURVED
+  level is refused at construction by name. **No new locator, no new law
+  inspection, no sampling, no bisection and no tolerance at all.** The
+  bound is read as ``Time.running()`` reads it, with the REQUEST as the
+  quantum the tick was: the bounded coordinate's OWN value is the value
+  it held when the request started — which is what makes a ratchet's
+  floor the last seated tooth, and what makes an interlock stating a
+  FREEZE expressible at all — while each ``reads=`` coordinate takes its
+  value along the path, a read of a declared driver or a declared STATE
+  included. What the framework cannot follow it refuses at construction,
+  by name, naming the joint, the side and where the chain broke: a
+  bounded coordinate a ``simulate()`` binds by hand, a chain through a
+  law that is not an expression, a ``Bound`` reading something no chain
+  reaches. A ranged joint NOTHING binds — a decorative range on a part
+  that rests — is admitted instead, compiled as the constant it is and
+  examined by no request. During a REQUEST the clocked simulation is the
+  SOLE AUTHORITY for the constraints it compiled: the pose that ends a
+  request does not judge them, and the simulation judges them itself over
+  the final bank through the same chain, so a commit that carries a
+  coordinate out of range still refuses the request whole and commits
+  nothing. A pose that is NOT a request — construction, ``state=``,
+  ``restore`` — goes on being judged by the enumeration, unchanged in
+  every particular, and so do an untimed root and a running one.
+
+* **A state is a driver the machine writes, committed at an event.** The
+  originating project is ``projects/Calculators/Curta-Type-I-3x``, which
+  carries two models of one machine: a closed form that is fast and does
+  not OPERATE — turning the crank past a revolution carries nothing
+  forward, so the maker edits the registers by hand — and a running model
+  that operates and costs about 0.73 s per 0.1 s Python tick. The machine
+  between them is a CLOCKED one, and the framework had no word for it:
+  ``Time.running()`` bundles a time base with a mechanics that retains
+  EVERY coordinate and integrates EVERY law at a fixed cadence, while an
+  untimed root has no memory at all. A third state discipline now sits
+  between them, declared in the places the API already has.
+  ``State(default, range=, unit=, dtype=, scale=)`` is declared beside a
+  ``Driver``, takes exactly its arguments with exactly their meanings,
+  reads ``self.units`` exactly as a driver's value does and carries the
+  same instance-qualified id; everything that differs is about who writes
+  it, and ``set_state``, an ``Instruction``, a control and ``drives``
+  each refuse one by name.
+  ``(crank & units & tens).commits((units, tens), at=strokes,
+  law=registers)`` is the verb that writes it, beside ``drives`` in a
+  class body, on the same ``&`` groups, with both factories following the
+  law-factory protocol this layer already states: called ONCE, at
+  realization, with the realized owners, returning a callable over the
+  sources' values. No event object, no runtime handle, no per-relation
+  protocol. ``Sim(model)`` takes NO ``dt``; ``sim.move(input, by=|to=)``
+  moves one declared driver along a straight path, and every RISING
+  crossing on it is located EXACTLY — one division on an affine level,
+  one division per sub-interval on a kinked one, by the solver
+  ``Time.running()`` already owns — and committed in path order, each
+  event reading the state the previous one left. **No new locator, no new
+  knob, and no tolerance at all**: two relations fire at one event
+  exactly when their far-side landings are the SAME float, so ten
+  requests of one revolution give the same events as one request of ten,
+  which a tick-fraction tolerance could not have promised. A level the
+  moving driver CURVES is refused at construction naming the driver and
+  the primitive, rather than searched: a clocked model's whole value is
+  that its events are exact. Only RISING steps fire — the requirement
+  note assumed both edges do and the law neutralises the falling one, and
+  the project spike measured that false: with ``floor(crank / 360)`` and
+  no pawl, dragging the crank backwards commits a SECOND addition, 9 to
+  18 — and a mechanism that wants the other edge negates its own level.
+  A commit is evaluated at ONE POINT and never integrated, so a law made
+  entirely of jumps is a perfectly good commit where a running law of
+  that shape is refused as arithmetic, and ``at`` MAY read the state it
+  commits, which is what the Curta's per-digit clearing threshold needs.
+  SEVERAL relations may write one state, because the Curta's register
+  digit is written at the stroke end AND at the clearing reach — two
+  events, two inputs, and one relation states one ``at``; what is refused
+  is two answers for one value at ONE landing, and it is the REQUEST that
+  is refused, naming the state, both relations and the landing. Two
+  children of one class each declare their own state, told apart by the
+  PATH and never by the local name they share, which is what makes a
+  register of seventeen identical wheels one written line. A committing
+  relation whose sources are all STATES is refused at construction: its
+  level can never move, so it could never fire.
+  Between events nothing is retained: a pose is the existing untimed
+  enumeration over the drivers and the states, ``time`` is not in the
+  bank, and a clocked pose leaves ``self.time`` the symbolic ``$t``
+  exactly as the build path does. Measured on the two geometry-free
+  fixtures this cycle adds: **0.9 us per commit against 60 us per pose**,
+  a request with no event 82 us and one with ten events 428 us — the
+  commit is not the cost, the pose is, and a request pays for exactly one.
+  **A tree that declares no State is unchanged**: the states are
+  collected in the walk the enumeration already makes, no clocked code
+  path is entered for an empty state table, the clocked module is never
+  imported, and a stateless document is byte-identical to the one the
+  same model published before this existed (verified against ``81c5364``).
+  **A clocked model cannot be PUBLISHED yet**: the document version that
+  carries declared states is a later cycle's, so every document producer
+  refuses one by name — including ``solid snapshot --renderer web``,
+  which stages its document without entering the symbolic walk at all.
+  Rendering, assembling, STL building, ``solid test`` and an OpenSCAD
+  snapshot are untouched. Also refused, each by name and each a later
+  cycle's: a ``State`` under ``Time(loop=)`` (a loop replays from zero
+  and would replay every commit) and under ``Time.running()`` (whose
+  meaning is DEFINED as an ADR-121 self-read switch and deliberately not
+  implemented); a bound as a stop on a request path, which stays the
+  impossible pose it has always been — and a refused pose now refuses the
+  whole request, leaving the bank, the tree and the record standing,
+  rather than clipping the path where the machine stops; a port, joint
+  coordinate or derived
+  coordinate as a SOURCE; a broadcast ``commits``; a multi-input request;
+  and an instruction or a control under a clocked root.
+
+* **A kink is a cut, and a piecewise-affine quantity is solved.** Under a
+  running root the run has to follow a quantity along each tick's path —
+  a jump node's level, a law's skeleton, a determiner's value — and it
+  SOLVED that quantity where it was affine in the sources and SEARCHED it
+  everywhere else, at 64 samples per piece plus up to 64 bisection rounds
+  behind each bracket. Every CALL counted as non-affine, so ``clamp01``,
+  which is ``min(max(x, 0), 1)`` — two kinks whose three pieces are each
+  perfectly affine — was searched. That is how the framework's own
+  ``clamp``, ``ramp`` and ``piecewise`` are built, and how a motion
+  profile is normally written. Now ``abs``, ``min`` and ``max`` are
+  recognized as the CONTINUOUS SELECTIONS they are — each returns one of
+  its operands exactly — so a quantity built over them is PIECEWISE
+  AFFINE: its breakpoints are located exactly, in the graph's postorder,
+  each from the two endpoint values of the sub-interval the kinks inside
+  it have already produced, and every piece between them is solved as any
+  affine one is. No sampling, no bisection, no new tolerance, no new
+  knob, and nothing to declare. A kink breakpoint is NOT a crossing: the
+  law is continuous there, so it is recorded nowhere, enters no partition
+  an increment is summed over, moves no coordinate to the far side of
+  anything and counts toward no limit — which is why every answer a
+  machine gave before this is the answer it gives now. A law carrying no
+  kink meets no new code. Measured on the ``CurtaInterface`` fixture, six
+  dials cleared by one ``clamp01``-gated ring: **2 861 expression
+  evaluations per tick and 28 ticks/s before, 603 and 130 after**, and
+  the crossing the search reached 9.3e-14 from its exact answer is now
+  8.9e-16 from it. A curved law — a ``sin``, a ``sqrt``, a product of two
+  moving quantities — is searched exactly as before, including a kink
+  over a curved operand: the classification is structural and
+  conservative. **Nothing in a published document changes.** The
+  document's ``affine`` flag stays the two-valued statement it always
+  was, a piecewise-affine quantity publishes ``false``, no version moves,
+  and a consumer that has not learned to cut at a kink goes on searching
+  it — correct, and slower.
+* **Only what moves along a tick's path is evaluated.** A searched
+  crossing samples one graph 64 times per piece, and most of that graph
+  never changes over one path with one branch reading: a sibling
+  coordinate the tick does not move, a retained dial upstream of it, a
+  branch a jump already decided for the piece. The run now decides,
+  once per followed quantity per tick, which of a graph's nodes MOVE —
+  a source whose increment is non-zero, plus the driven coordinate
+  where a level is handed its own value per sample — and computes every
+  other node ONCE, reading it back at every later point instead of
+  recomputing it. The arithmetic is unchanged, node for node and
+  operator for operator, so every crossing, landing, branch reading,
+  increment, stop and refusal a machine gave before this is the answer
+  it gives now, bit for bit. No sampling, no bisection, no new
+  tolerance, no new knob, and nothing to declare; a machine whose
+  followed quantities move entirely, or whose graphs are small, pays
+  only the one classification walk it was going to make anyway.
+  Measured on the originating Curta's clearing dials, whose laws reach
+  through seventeen retained dials and fifteen carry sliders: **3.28 s
+  per 0.1 s tick before, 0.73 s after** — the same committed snapshot to
+  the byte. **Nothing in a published document changes**, and no
+  evaluation COUNT a probe reports moves either; what falls is the cost
+  inside one evaluation.
+* The conformance corpus now **catches a consumer that runs a block's
+  members in the order the document lists them.** The ``ShiftedCarry``
+  scenario ADR-122 added to pin a block's order replayed green under
+  that published listing regardless: its detent landed exactly on a
+  tick boundary, so the order never mattered. Its script now crosses the
+  gate strictly inside a tick, and a framework test replays it with the
+  block ordered as published rather than per piece and asserts the two
+  disagree.
+* **A selection decides which sources a law reads.** A mechanism's
+  dependencies may be SELECTED by where one of its own parts stands, so
+  that the union of what it reads over every selection is cyclic although
+  each selection's own dependencies are not: a Curta's fixed carry lever
+  is tripped by the dial the carriage has brought under it and advances
+  the dial beyond that one, and which dial is which follows the carriage.
+  Nothing new is declared — the selection is the comparison the model
+  already writes, a term multiplied by a gate on the coordinate that
+  selects. Under a running root such a union is a **BLOCK**: one entry of
+  the program, ordered once per PIECE of a tick rather than once per
+  program, so the program as a whole is acyclic again and nothing outside
+  a block changes. A **SELECTOR** is a jump node of a member's law whose
+  level quantity reads no coordinate the block determines, and a source
+  is **SWITCHED** when folding that node's branch to ZERO removes it from
+  the law — which ``floor``, ``ceil``, a remainder's quotient and a
+  comparison can do, because each holds its zero branch over an INTERVAL
+  of its level, and ``sign`` cannot, because its zero is a single point.
+  Over a stretch the selectors are located first, the stretch is cut at
+  each of their surfaces, and on each piece the branches read at the
+  MIDPOINT are SUBSTITUTED into every member's own integration rather
+  than located again — so the order the block chose and the branch a
+  member reads cannot disagree. A selection change ALONE moves nothing; a
+  block relation binds NOTHING at rest, so every coordinate it drives
+  needs the author's own guarded rest default; a selector crossing is a
+  crossing and not a stop; a declared range on a block coordinate still
+  stops it and an input reaching it only through an inactive selection is
+  not stopped by it; and what the block commits for a coordinate a piece
+  LANDED is the absolute value it advanced that coordinate to by the
+  stretch's end, landing and later motion both. Refused at construction
+  by relation identity: a wiring or a derived coordinate inside a block,
+  a cycle no selection breaks, an intermediate among a block's driven
+  ends, and a block member driving a group. A piece that still cannot be
+  ordered refuses the TICK, naming the piece, the selector branches and
+  the cycle, and commits nothing. **BREAKING for consumers:** a document
+  whose program carries a block declares ``version: 7``, because the
+  published ORDER of a block's members is a listing and not an execution
+  order — a runtime that executed them in it would move the machine by
+  whatever that order happened to give, silently, and by a different
+  amount for each order it might have chosen. No key is added: a consumer
+  re-derives the block from the edges' own ``needs`` and ``gives`` and its
+  selectors from the published plans. A program with no block publishes
+  the byte-identical version 6 or 5 document it always did, keeps its
+  order and its identity, and pays nothing per tick.
+* Fixed: a law that reads the coordinate it drives left that coordinate
+  one ulp from where it stood on a tick in which a source moved but the
+  branch-substituted law did not — ``(own + S) − S`` rounded whenever the
+  law's value was comparable in size to the coordinate. The walk now takes
+  the difference first, so a piece whose substituted law is unchanged
+  leaves the coordinate at the exact float it held.
+* A law may **read the coordinate it drives**. A coordinate named in a
+  relation's source group AND as its one driven end is a READ of that
+  end — ``(ring & wheel.turn).drives(wheel.turn, law=missing_tooth)`` —
+  and what the law sees there is the value the coordinate HOLDS, never a
+  value the same application is about to give it. That is the Curta's
+  missing-tooth clearing rack: a rack turns a register dial only while
+  its teeth reach it AND the dial is not already standing at its gap, so
+  a dial clears from any digit, the ring sweeps on past a dial that has
+  finished, a released ring keeps the partial clearing and an
+  already-cleared dial is not turned again. The read must be a SWITCH —
+  with every jump node replaced by its branch the law must no longer name
+  the coordinate, and a bare ``%`` is not one — and the driven end must be
+  a coordinate the run banks; both are refused at construction by
+  relation identity. Over a tick such a law is integrated PIECE BY PIECE:
+  the jump nodes that do not depend on the driven coordinate partition
+  the path as they always did, and inside each of their pieces the ones
+  that do are walked, their branches read at the piece's left end from
+  the value the coordinate retains there. After a cut the coordinate is
+  committed at the nearest representable value on the FAR SIDE of the
+  surface, and the run commits that float — so a dial that reached its
+  gap reads the same branch on every later tick and survives a snapshot
+  and a restore bit for bit. A gate's disengaged state must therefore
+  have WIDTH, the mechanism's own clearance, stated as a band about the
+  zero and entered from either side. Such a relation drives ONE
+  coordinate (a driven group naming one of its own members is refused; a
+  broadcast is admitted, each copy reading itself), binds NOTHING at rest
+  so the dial's rest value is the author's own guarded default, and is
+  refused by name under any time base but ``Time.running()``. A self-read
+  crossing is a crossing and not a stop; a declared range on the same
+  coordinate still stops it and wins where both fall in one segment.
+  **BREAKING for consumers:** a document whose program carries such a law
+  declares ``version: 6``, because a runtime evaluating a law edge as the
+  difference of its two endpoint evaluations would read it at both ends
+  and move the part by a different mechanism in silence. A program with
+  no self-read publishes the byte-identical version 5 document it always
+  did, and a law with no self-read takes the same path at the same cost.
+* A **marking**: what a rigid part carries on its surface, declared in
+  its class body as ``digits = Marking(Svg('dial.svg'), Wrapped(...),
+  color='#FFFFFF')`` beside its parameters and its children. The artwork
+  is an SVG resolved against the module that declared the marking and
+  reduced to its closed regions, holes nested and open paths ignored and
+  counted; the placement is ``Wrapped`` onto a cylinder (artwork X is
+  arc length, with a stated angular zero and an optional repeat pitch)
+  or ``Flat`` on a plane, both in the part's own frame, so the part's
+  placement carries the decal and nothing about time or a joint is
+  involved. A marking adds **no solid, no part and no printed piece**:
+  volume, bounds, STL and BREP bytes, piece id and every interference
+  and connectivity verdict are what they are without it, and it does not
+  key the part's artifacts. The build writes one surface mesh per
+  marking beside the part's ``.stl``, at the nominal surface with no
+  offset, following a wrap to the part's own tessellation precision, its
+  triangles wound away from the part so a viewer can lift the decal
+  clear without inspecting the part it belongs to; it has a currency of
+  its own, so editing the artwork rebuilds only the
+  decal and a lost decal comes back without re-deriving a solid, while
+  editing the declaration rebuilds the part as any source edit does. A
+  rigid node's published entry gains an optional additive ``markings``
+  list (``name``, ``model``, ``color`` and the marking's own ``mtime``,
+  with no placement and no ``piece``) that moves no document version, so
+  a tree that declares no marking publishes the same bytes as before,
+  and ``solid export`` copies each named marking under ``models/``. The
+  browser viewer draws markings in its own release; until then a model
+  that declares one publishes it and looks as it does today, and the
+  OpenSCAD path does not draw them at all.
+* **BREAKING:** OpenSCAD is no longer a ``solid develop`` viewer or automatic
+  fallback. It was solid-node's first reliable viewer, but as machine
+  simulation gained independent drivers, instructions and continuously
+  evaluated flexible parts, the browser viewer became the faithful machine
+  surface and the OpenSCAD GUI became a roadmap burden. Install
+  ``solid-node[viewer]`` and run ordinary ``solid develop`` (or ``--web``), or
+  use ``--no-web`` for the viewerless watch loop. ``OpenScadNode``,
+  ``Solid2Node``, legacy SCAD evaluation, SCAD output and the default
+  fixed-pose OpenSCAD snapshot renderer remain supported.
 * **BREAKING:** the browser viewer is no longer part of solid-node. It is
   the separate ``solid-node-viewer`` package, licensed AGPL-3.0-only, and
   installed through the new ``viewer`` extra: ``pip install
   "solid-node[viewer]"``. The framework stays Apache-2.0 and complete
-  without it. ``solid develop`` opens the browser viewer when the package
-  is installed and the OpenSCAD GUI otherwise; ``--web`` and ``--openscad``
-  are explicit and never substituted. ``solid export`` (unless
-  ``--no-widget``), the Sphinx directive, ``solid viewer`` and
+  for non-interactive use without it. ``solid develop`` requires the package;
+  ``--web`` remains an explicit spelling of that default. ``solid export``
+  (unless ``--no-widget``), the Sphinx directive, ``solid viewer`` and
   ``solid snapshot --renderer web`` need the extra and say so when it is
   absent; the snapshot default stays OpenSCAD regardless. The framework
   reaches the viewer through one entry point and runs it as a separate

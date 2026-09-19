@@ -1,0 +1,88 @@
+{
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "clocked": {
+    "bounds": [],
+    "clock": "time",
+    "commits": [
+      {
+        "at": {
+          "level": "((time + 0.5) / 1.0)",
+          "primitive": "floor"
+        },
+        "description": "(time, engaged, count) commits count",
+        "law": [
+          "(count + engaged)"
+        ],
+        "shapes": {
+          "time": "affine"
+        },
+        "sources": [
+          "time",
+          "engaged",
+          "count"
+        ],
+        "stated_by": "Regulator",
+        "targets": [
+          "count"
+        ]
+      }
+    ],
+    "identity": "2e172caadb36e7a531d000a95ebbd99d13492a6f6e17dbd31abe2788445e65e4",
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "max_crossings": 1000
+    },
+    "own": "_own"
+  },
+  "drivers": {
+    "engaged": {
+      "default": 1,
+      "dtype": "int",
+      "range": null,
+      "scale": null,
+      "unit": null
+    }
+  },
+  "format": "machinome-export",
+  "instructions": {},
+  "root": {
+    "children": [
+      {
+        "color": null,
+        "model": "bob",
+        "mtime": null,
+        "name": "bob",
+        "operations": [
+          [
+            "r",
+            "(12.0 * sin(((360.0 * time) / 2.0)))",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "type": "LeafNode"
+      }
+    ],
+    "color": null,
+    "mtime": null,
+    "name": "Regulator",
+    "operations": [],
+    "type": "AssemblyNode"
+  },
+  "states": {
+    "count": {
+      "default": 0,
+      "dtype": "int",
+      "range": null,
+      "scale": null,
+      "unit": null
+    }
+  },
+  "version": 8
+}

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,8 +7,8 @@ import re
 
 from unittest import TestCase
 from solid2 import cube
-from solid_node.node import Solid2Node
-from solid_node.node.base import _build_uniq_id
+from machinome.node import Solid2Node
+from machinome.node.base import _build_uniq_id
 from .base import BaseNodeTest
 
 

@@ -4,7 +4,7 @@ include LICENSE
 include NOTICE
 include README.rst
 
-recursive-include solid_node/manager/templates *
+recursive-include machinome/manager/templates *
 
 recursive-include tests *
 recursive-exclude * __pycache__

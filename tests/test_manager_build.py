@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,8 +8,8 @@ from contextlib import redirect_stderr
 from unittest import TestCase
 from unittest.mock import MagicMock, call, patch
 
-from solid_node.core.builder import BuildOutcome
-from solid_node.manager.build import Build, MODEL_NOT_FOUND, build_once
+from machinome.core.builder import BuildOutcome
+from machinome.manager.build import Build, MODEL_NOT_FOUND, build_once
 
 
 class BuildCommandTest(TestCase):
@@ -31,8 +31,8 @@ class BuildCommandTest(TestCase):
         render = MagicMock(exitcode=BuildOutcome.RENDERED.value)
         current = MagicMock(exitcode=BuildOutcome.CURRENT.value)
 
-        with patch('solid_node.manager.build.resolve_node'), \
-             patch('solid_node.manager.build.Process', side_effect=[render, current]) as process:
+        with patch('machinome.manager.build.resolve_node'), \
+             patch('machinome.manager.build.Process', side_effect=[render, current]) as process:
             command.handle(Namespace(path='model.py'))
 
         self.assertEqual(process.call_args_list, [

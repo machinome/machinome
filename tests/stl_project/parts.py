@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,7 +13,7 @@ would.
 
 import numpy as np
 
-from solid_node.node import StlNode
+from machinome.node import StlNode
 
 from .dimensions import MILLIMETRES_PER_INCH
 
@@ -117,3 +117,17 @@ class AdmittedLeakyPart(StlNode):
 
     stl_source = 'leaky.stl'
     require_watertight = False
+
+
+class AbsentBracket(StlNode):
+    """A declared mesh that was never fetched. Constructed nowhere but
+    `tests/test_missing_source_file.py`, which owns this class (and the
+    directory `DirectoryBracket` below names) so it can pass alone."""
+
+    stl_source = 'no-such-bracket.stl'
+
+
+class DirectoryBracket(StlNode):
+    """A declared source that resolves to a directory, not a file."""
+
+    stl_source = 'a_directory'

@@ -55,11 +55,11 @@ Node references
 
 A node is named by **reference**: a qualifier (`package.module:Class`),
 a file path, or a file path plus class (`path/to/file.py:Class`). With
-no reference, a node-scoped command like `solid develop` operates on
+no reference, a node-scoped command like `machinome develop` operates on
 the project's model, declared as `model = "package.module:Class"` under
-`[tool.solid-node]` in `pyproject.toml` — what `solid new` writes for
+`[tool.machinome]` in `pyproject.toml` — what `machinome new` writes for
 you. A project holding several machines declares them by name in
-`[tool.solid-node.models]`, and each name is then a reference of its
+`[tool.machinome.models]`, and each name is then a reference of its
 own; see :ref:`several-models`.
 
 A bare path resolves to the single node class defined in that file.
@@ -85,12 +85,17 @@ declare the node they bind to.
 Build identity and caching
 ==========================
 
-Solid Node caches every generated artifact in the build directory
+Machinome caches every generated artifact in the build directory
 (`_build` by default, see ``SOLID_BUILD_DIR`` in the :doc:`command
 line reference <cli>`): the SCAD and STL of OpenSCAD-family parts, a
 `.brep` with the exact geometry beside the STL of OCCT-backed parts,
 and a `.dxf` cut profile beside each sheet part — and rebuilds a part
-only when its source or its parameters change.
+only when its source or its parameters change. Within that one build
+directory, artifacts mirror the project's own package layout, so an
+assembly may live in any package relative to the parts it places —
+in a helper package below them, a sibling package beside them, or an
+ancestor package above them — and its generated SCAD still resolves
+every part it imports.
 
 Freshness combines source stamps with content-verified artifact identity.
 Source modification times retain nanosecond precision; touching unchanged

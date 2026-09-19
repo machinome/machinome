@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -119,10 +119,10 @@ def probe(snippet, argv=(), env=None, cwd=None, timeout=300):
     """Run `snippet` in a fresh interpreter and report what it imported.
 
     `argv` becomes the child's `sys.argv[1:]`, so a snippet may call
-    `solid_node.cli.manage()` and be dispatched exactly as the real command
+    `machinome.cli.manage()` and be dispatched exactly as the real command
     line dispatches it.
     """
-    with tempfile.TemporaryDirectory(prefix='solid-import-probe-') as scratch:
+    with tempfile.TemporaryDirectory(prefix='machinome-import-probe-') as scratch:
         snippet_path = os.path.join(scratch, 'snippet.py')
         report_path = os.path.join(scratch, 'report.json')
         with open(snippet_path, 'w') as handle:

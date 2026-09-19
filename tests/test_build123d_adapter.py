@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -21,8 +21,8 @@ import build123d as b3d
 import cadquery as cq
 from solid2 import cube
 
-from solid_node.exact import shape_from_rendered
-from solid_node.node import (Build123dNode, CadQueryNode, FusionNode,
+from machinome.exact import shape_from_rendered
+from machinome.node import (Build123dNode, CadQueryNode, FusionNode,
                              Solid2Node)
 
 
@@ -147,7 +147,7 @@ class Build123dConversionTest(TestCase):
                                places=6)
 
     def test_conversion_survives_a_brep_roundtrip(self):
-        from solid_node.exact import cached_shape, write_brep
+        from machinome.exact import cached_shape, write_brep
 
         shape = shape_from_rendered(b3d.Box(2, 2, 2))
         path = os.path.join(tempfile.mkdtemp(), 'part.brep')
@@ -162,7 +162,7 @@ class Build123dConversionTest(TestCase):
                                places=6)
 
     def test_shapes_from_both_backends_fuse_into_one_solid(self):
-        from solid_node.exact import fuse_shapes, solid_count
+        from machinome.exact import fuse_shapes, solid_count
 
         cadquery_shape = shape_from_rendered(cq.Workplane('XY').box(2, 2, 2))
         build123d_shape = shape_from_rendered(b3d.Box(2, 2, 2))
@@ -235,9 +235,9 @@ class Build123dArtifactTest(BuildDirTestCase):
         node.assemble()
 
         second = BuilderBox()
-        with patch('solid_node.node.exact_leaf.write_stl',
+        with patch('machinome.node.exact_leaf.write_stl',
                    side_effect=AssertionError('must not re-export')), \
-             patch('solid_node.node.exact_leaf.write_brep',
+             patch('machinome.node.exact_leaf.write_brep',
                    side_effect=AssertionError('must not re-export')):
             assembled = second.as_scad(second.render())
 
@@ -268,10 +268,10 @@ class Build123dArtifactTest(BuildDirTestCase):
         node = BuilderBox()
         node.assemble()
 
-        with patch('solid_node.node.base.require_openscad',
+        with patch('machinome.node.base.require_openscad',
                    side_effect=AssertionError(
                        'an exact backend must not check OpenSCAD')), \
-             patch('solid_node.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'an exact backend must not launch OpenSCAD')):
             node.generate_stl()
 
@@ -290,7 +290,7 @@ class Build123dExactnessTest(BuildDirTestCase):
         self.assertTrue(fusion.exact)
 
     def test_a_fusion_mixing_exact_backends_fuses_to_one_solid(self):
-        from solid_node.exact import solid_count
+        from machinome.exact import solid_count
 
         fusion = MixedBackendFusion()
         fusion.assemble()
@@ -349,7 +349,7 @@ class ExactAdapterIdentityTest(TestCase):
 class Build123dImportCostTest(TestCase):
 
     def test_importing_the_node_package_does_not_import_build123d(self):
-        """`solid_node.node` imports every adapter eagerly and importing
+        """`machinome.node` imports every adapter eagerly and importing
         build123d costs about 1.6 seconds, which a project on another
         backend should not pay. The adapter therefore recognises build123d
         results by module name instead of importing the library."""
@@ -358,7 +358,7 @@ class Build123dImportCostTest(TestCase):
 
         result = subprocess.run(
             [sys.executable, '-c',
-             'import sys; import solid_node.node;'
+             'import sys; import machinome.node;'
              ' print("build123d" in sys.modules)'],
             capture_output=True, text=True, check=True)
 

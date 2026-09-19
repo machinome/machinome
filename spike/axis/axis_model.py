@@ -12,7 +12,7 @@ mount. At x=0 the carriage clears the mount by 2 mm — overshoot past
 -2 mm interferes, which is what gives the scenario assertion teeth.
 
 The spike's local harness (steplab.py) is gone: drivers, instructions
-and the stepping loop are the shipped solid_node.simulation package,
+and the stepping loop are the shipped machinome.simulation package,
 and the port is the shipped TranslationalPort. What the spike declared
 in driver-native microsteps is declared in millimetres here — the
 design units a maker thinks in — which is the seam FINDINGS.md #4
@@ -21,9 +21,9 @@ named and this package closes.
 
 from solid2 import cube, cylinder, rotate, translate
 
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.motion.ports import TranslationalPort
-from solid_node.simulation import Driver, Instruction
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.motion.ports import TranslationalPort
+from machinome.simulation import Driver, Instruction
 
 # GT2 belt on a 20-tooth pulley: 40 mm/rev; 200 full steps x 16 microsteps.
 USTEPS_PER_REV = 200 * 16

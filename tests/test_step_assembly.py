@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -26,9 +26,9 @@ import cadquery as cq
 import numpy as np
 from OCP.gp import gp_Ax1, gp_Ax2, gp_Dir, gp_Pnt, gp_Trsf, gp_Vec
 
-from solid_node.node.adapters.step import STEPCAFControl_Reader, StepAssembly
-from solid_node.node.operations import Rotation, Translation
-from solid_node.node.adapters import step as step_module
+from machinome.node.adapters.step import STEPCAFControl_Reader, StepAssembly
+from machinome.node.operations import Rotation, Translation
+from machinome.node.adapters import step as step_module
 
 from .step_project import parts as _parts_module
 
@@ -37,12 +37,13 @@ PROJECT = os.path.dirname(os.path.realpath(_parts_module.__file__))
 
 NESTED_TWO_LEVEL_STEP = os.path.join(PROJECT, 'nested_two_level.step')
 AWKWARD_NAMES_STEP = os.path.join(PROJECT, 'awkward_names.step')
+DUPLICATE_NAMES_STEP = os.path.join(PROJECT, 'assembly_duplicate_names.step')
 
 #: The actuator's own file, read-only input for tasks 3.2 and 4.2 --
 #: not committed to this repository, so the tests it feeds are skipped
 #: when it is absent.
 ACTUATOR_STEP = (
-    '/home/asa/devel/libresolid-studio/projects/'
+    '/home/asa/devel/machinome-studio/projects/'
     'Internal-Cycloidal-Actuator/simulation/actuator/vendor/'
     'Internal Cycloidal Actuator.stp')
 
@@ -84,9 +85,26 @@ def build_awkward_names(path):
     root.export(path, exportType='STEP')
 
 
+def build_duplicate_names(path):
+    """Two distinct products sharing one name, in two sub-assemblies --
+    `cadquery.Assembly` refuses two same-named siblings, so duplication
+    needs two levels (task 1.4; the same shape `test_step_node.py`'s own
+    `build_duplicate_names` builds, authored again here so this module's
+    tests do not depend on that module having run first)."""
+    root = cq.Assembly(name='Root')
+    sub1 = cq.Assembly(name='Sub1')
+    sub1.add(cq.Workplane('XY').box(1, 1, 1), name='Pin')
+    sub2 = cq.Assembly(name='Sub2')
+    sub2.add(cq.Workplane('XY').box(2, 2, 2), name='Pin')
+    root.add(sub1, name='Sub1')
+    root.add(sub2, name='Sub2')
+    root.export(path, exportType='STEP')
+
+
 def setUpModule():
     build_nested_two_level(NESTED_TWO_LEVEL_STEP)
     build_awkward_names(AWKWARD_NAMES_STEP)
+    build_duplicate_names(DUPLICATE_NAMES_STEP)
 
 
 class ColdCacheTestCase(TestCase):
@@ -151,6 +169,46 @@ class StepAssemblyProductsTest(ColdCacheTestCase):
             StepAssembly(NESTED_TWO_LEVEL_STEP)
 
         self.assertEqual(reader.call_count, 1)
+
+
+##############################################
+# Section 1 (continued): identity, where a name does not identify a product
+
+
+class StepAssemblyIdentityTest(ColdCacheTestCase):
+    """Task 1.4: two products of one name are told apart from the report
+    alone, without reading their geometry."""
+
+    def test_two_products_of_one_name_report_distinct_identities_and_selectors(self):
+        assembly = StepAssembly(DUPLICATE_NAMES_STEP)
+
+        pins = [product for product in assembly.products
+               if product.name == 'Pin']
+
+        self.assertEqual(len(pins), 2)
+        self.assertNotEqual(pins[0].identity, pins[1].identity)
+        self.assertEqual({product.part_index for product in pins}, {1, 2})
+
+    def test_occurrences_report_the_identity_of_product_and_parent(self):
+        assembly = StepAssembly(DUPLICATE_NAMES_STEP)
+
+        pin_occurrences = [occurrence for occurrence in assembly.occurrences
+                           if occurrence.product_name == 'Pin']
+
+        self.assertEqual(len(pin_occurrences), 2)
+        identities = {occurrence.product_identity
+                     for occurrence in pin_occurrences}
+        self.assertEqual(len(identities), 2, 'each Pin has its own identity')
+        for occurrence in pin_occurrences:
+            self.assertIsNotNone(occurrence.parent_identity)
+
+        # None at the document root: the Sub1/Sub2 occurrences are placed
+        # directly in the free Root product.
+        root_occurrences = [occurrence for occurrence in assembly.occurrences
+                            if occurrence.parent_name is None]
+        self.assertGreater(len(root_occurrences), 0)
+        for occurrence in root_occurrences:
+            self.assertIsNone(occurrence.parent_identity)
 
 
 ##############################################

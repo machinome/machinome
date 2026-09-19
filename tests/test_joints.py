@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -31,24 +31,28 @@ import numpy as np
 from numpy.testing import assert_allclose
 from solid2 import cube
 
-from solid_node.motion.joints import (Free, Joint, JointRangeError, Orbit,
-                                      Prismatic, Revolute,
+from machinome.math import floor
+from machinome.motion.joints import (Bound, Free, Joint, JointRangeError,
+                                      Orbit, Prismatic, Revolute,
                                       declared_joints)
-from solid_node.motion.ports import (BoundPort, Port, RotationalPort,
-                                     TranslationalPort, declared_ports)
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.node import phase as _phase
-from solid_node.node.base import _compose_world_matrix
-from solid_node.node.assembly import _sweep
-from solid_node.core.serializer import serialize_node
-from solid_node.parameters import Count, Length, ParameterError
-from solid_node.simulation import Driver
+from machinome.motion.ports import (BoundPort, Port, RotationalPort,
+                                     TranslationalPort, declared_ports,
+                                     get_coordinate)
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.node import phase as _phase
+from machinome.node.base import _compose_world_matrix
+from machinome.node.assembly import _rest_children, _sweep
+from machinome.core.serializer import serialize_node
+from machinome.parameters import Count, Length, ParameterError
+from machinome.simulation import Driver
 
 from .base import BaseNodeTest
 from .import_probe import probe
 from .joint_project.arm import (Arbor, ArborStack, Arm, Forearm, Gantry,
                                 SiteArm, BEARING_PITCH)
 from .joint_project.parts import Carriage, Rod, Spool, Wheel
+from .running_project.machine import (ClassGateBody, Conditional, GateBody,
+                                      UnreadGateBody)
 
 
 # What Thor's own placing.py computes by hand for the elbow, quoted so a
@@ -112,7 +116,7 @@ class Mixed(Solid2Node):
 class JointDeclarationTest(BaseNodeTest):
 
     def test_the_kinds_are_exported_from_the_joints_module(self):
-        from solid_node.motion import joints
+        from machinome.motion import joints
 
         for name in ('Joint', 'Revolute', 'Prismatic', 'Orbit', 'Free',
                      'JointRangeError', 'declared_joints'):
@@ -149,9 +153,9 @@ class JointDeclarationTest(BaseNodeTest):
                          (-180, 180))
 
     def test_a_joint_is_not_a_parameter_a_driver_or_a_child(self):
-        from solid_node.node.declarative import declared_children
-        from solid_node.node.qualified import declared_drivers_of
-        from solid_node.parameters import declared_parameters
+        from machinome.node.declarative import declared_children
+        from machinome.node.qualified import declared_drivers_of
+        from machinome.parameters import declared_parameters
 
         self.assertEqual(declared_parameters(Hinge), {})
         self.assertEqual(declared_drivers_of(Hinge), {})
@@ -850,6 +854,26 @@ class NonZeroGuardedWinch(AssemblyNode):
             self.rotor = 20.0
 
 
+class RelayCarriage(Solid2Node):
+    travel = Prismatic(axis=(1, 0, 0), unit='mm')
+
+    def render(self):
+        return cube([2, 2, 2])
+
+
+class RelayBench(AssemblyNode):
+    """A joint bound by a RELATION, for `evidence.md` §6/§A5: `push`
+    re-solves fresh on every enumeration, so a coordinate it once bound
+    and a test then rebinds BY HAND outside any phase is exactly open
+    question 2's shape -- the permanent ghost `clear_solved` now closes
+    (`checkpoint-the-joint`)."""
+
+    push = Driver(default=0.0, unit='mm')
+    carriage = RelayCarriage()
+
+    push.drives(carriage.travel)
+
+
 class StaleAuthorBoundJointTest(BaseNodeTest):
 
     def test_a_rest_default_joint_stands_where_it_says_it_stands(self):
@@ -921,6 +945,39 @@ class StaleAuthorBoundJointTest(BaseNodeTest):
         # First's own clear does not touch the untagged hand rotation.
         self.assertTrue(any(operation.serialized[0] == 'r'
                             for operation in shared.operations))
+
+    def test_a_hand_bound_ghost_does_not_outlive_the_next_enumeration(self):
+        """evidence.md §6/§A5, open question 2: a coordinate a relation
+        once bound, then rebound BY HAND outside any phase while
+        something else replaces its node's operation list wholesale in
+        between -- the checkpoint restore's own shape -- strands a
+        PERMANENT ghost today (7.0 + 0.0, for good, once the relation
+        rebinds). It must not survive the next enumeration."""
+        bench = RelayBench()
+        bench.set_state(push=0.0, time=0.0)  # BUILD: the relation binds
+                                              # 0.0, tagged
+
+        bench.carriage.travel = 7.0          # hand-bound, untagged
+        snapshot = list(bench.carriage.operations)  # what a checkpoint
+                                                     # would save
+        bench.carriage.travel = 7.0          # hand-bound again: clears
+                                              # the first, untagged run
+        bench.carriage.operations[:] = snapshot  # a wholesale replacement:
+                                              # the FIRST hand run comes
+                                              # back, stale to what the
+                                              # joint recorded
+        bench.carriage.travel = 7.0          # hand-bound a third time:
+                                              # `clear` cannot find what
+                                              # it recorded
+
+        self.assertEqual(bench.carriage.travel.value, 7.0)
+
+        bench.set_state(push=0.0, time=0.0)  # the next enumeration re-solves
+
+        self.assertEqual(len(motions(bench.carriage)), 1)
+        self.assertEqual(bench.carriage.travel.value, 0.0)
+        self.assertEqual(motions(bench.carriage)[0].serialized[1],
+                         ['0.0', '0', '0'])
 
 
 ##############################################
@@ -2460,7 +2517,7 @@ def _derived_radius_and_phase(axis, at, carried, reference):
     the caller passes it. The positive sense is the joint's own: `b`,
     the axis crossed with the radius vector.
     """
-    from solid_node.motion.joints import _orbit_frame
+    from machinome.motion.joints import _orbit_frame
 
     axis = np.array(axis, dtype=float)
     axis = axis / np.linalg.norm(axis)
@@ -2629,7 +2686,7 @@ def _to_chassis(point, roll, pitch, yaw, height):
     reach the chassis's frame, so it is the project's own statement of
     what the composition IS, written before the framework had one.
     """
-    from solid_node.math import cos, sin
+    from machinome.math import cos, sin
 
     px, py, pz = point[0], point[1], point[2] - height
 
@@ -3174,7 +3231,7 @@ class SymbolicJointTest(BaseNodeTest):
         self.assertIn('$t', spinner.hinge.operations[1].serialized[1])
 
     def test_a_driver_read_publishes_the_driver_token(self):
-        from solid_node.core.serializer import symbolic_drivers
+        from machinome.core.serializer import symbolic_drivers
 
         class Driven(AssemblyNode):
             angle = Driver(default=0.0, unit='deg')
@@ -3250,6 +3307,111 @@ class RangeTest(BaseNodeTest):
         free.spin = 10_000
 
         self.assertEqual(free.spin.value, 10_000)
+
+    ##############################################
+    # An OPEN bound and an EXPRESSION bound (OpenSpec `ranges-are-stops`).
+    #
+    # Either bound of the pair may be `None`, meaning unbounded on that
+    # side, or a CALLABLE of one argument stating the bound as an
+    # expression over the joint's OWN coordinate. Untimed the callable is
+    # applied to THE VALUE BEING BOUND, which is the same meaning a
+    # number bound has with the bound computed from that value.
+
+    def test_an_open_bound_accepts_anything_on_its_side(self):
+        class HalfOpen(Solid2Node):
+            spin = Revolute(axis=(0, 0, 1), range=(0, None), unit='deg')
+
+            def render(self):
+                return cube(1, center=True)
+
+        node = HalfOpen()
+        node.spin = 10_000
+        self.assertEqual(node.spin.value, 10_000)
+
+        with self.assertRaises(JointRangeError) as raised:
+            HalfOpen().spin = -1
+        message = str(raised.exception)
+        for expected in ('spin', '-1', '0'):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, message)
+
+    def test_an_expression_bound_is_carried_through_realization(self):
+        class Ratchet(Solid2Node):
+            turn = Revolute(axis=(1, 0, 0),
+                            range=(lambda turn: 36 * floor(turn / 36), None),
+                            unit='deg')
+
+            def render(self):
+                return cube(1, center=True)
+
+        node = Ratchet()
+        low, high = declared_joints(Ratchet)['turn'].arguments(node)[2]
+        self.assertTrue(callable(low))
+        self.assertIsNone(high)
+
+    def test_a_self_referential_bound_is_evaluated_at_the_value(self):
+        class Ratchet(Solid2Node):
+            turn = Revolute(axis=(1, 0, 0),
+                            range=(lambda turn: 36 * floor(turn / 36), None),
+                            unit='deg')
+
+            def render(self):
+                return cube(1, center=True)
+
+        for value in (40, 36, 0, -720, 359):
+            with self.subTest(value=value):
+                node = Ratchet()
+                node.turn = value
+                self.assertEqual(node.turn.value, value)
+                self.assertEqual(len(motions(node)), 1)
+
+    def test_a_bound_no_value_can_satisfy_is_refused_by_name(self):
+        class Impossible(Solid2Node):
+            turn = Revolute(axis=(1, 0, 0), range=(lambda turn: turn + 1, None),
+                            unit='deg')
+
+            def render(self):
+                return cube(1, center=True)
+
+        for value in (0, 40, -5):
+            with self.subTest(value=value):
+                node = Impossible()
+                with self.assertRaises(JointRangeError) as raised:
+                    node.turn = value
+                message = str(raised.exception)
+                for expected in ('turn', str(value), str(value + 1)):
+                    with self.subTest(expected=expected):
+                        self.assertIn(expected, message)
+                self.assertIsNone(node.turn.value)
+
+    def test_a_bound_evaluating_to_something_else_is_refused_by_name(self):
+        class Wrong(Solid2Node):
+            turn = Revolute(axis=(1, 0, 0), range=(None, lambda turn: 'far'),
+                            unit='deg')
+
+            def render(self):
+                return cube(1, center=True)
+
+        with self.assertRaises(JointRangeError) as raised:
+            Wrong().turn = 10
+        message = str(raised.exception)
+        self.assertIn('turn', message)
+        self.assertIn('far', message)
+
+    def test_a_reversed_evaluated_pair_is_refused_by_name(self):
+        class Backwards(Solid2Node):
+            turn = Revolute(axis=(1, 0, 0),
+                            range=(lambda turn: 10.0, 5.0), unit='deg')
+
+            def render(self):
+                return cube(1, center=True)
+
+        with self.assertRaises(JointRangeError) as raised:
+            Backwards().turn = 7
+        message = str(raised.exception)
+        self.assertIn('turn', message)
+        self.assertIn('10', message)
+        self.assertIn('5', message)
 
 
 ##############################################
@@ -3591,7 +3753,7 @@ class JointDocumentTest(BaseNodeTest):
 
     def test_the_pose_differs_between_two_instants(self):
         import numpy as np
-        from solid_node.node.base import _compose_world_matrix
+        from machinome.node.base import _compose_world_matrix
 
         arm = Arm()
 
@@ -3611,7 +3773,7 @@ class JointDocumentTest(BaseNodeTest):
 MODULE_REPORT = (
     'import sys\n'
     "print(sorted(m for m in sys.modules\n"
-    "             if m == 'solid_node' or m.startswith('solid_node.')))\n")
+    "             if m == 'machinome' or m.startswith('machinome.')))\n")
 
 
 class JointImportCostTest(TestCase):
@@ -3621,10 +3783,10 @@ class JointImportCostTest(TestCase):
         return set(eval(result.stdout.strip())), result
 
     def test_joints_costs_what_ports_costs_and_no_more(self):
-        ports, _ = self.modules('import solid_node.motion.ports\n')
-        joints, result = self.modules('import solid_node.motion.joints\n')
+        ports, _ = self.modules('import machinome.motion.ports\n')
+        joints, result = self.modules('import machinome.motion.joints\n')
 
-        self.assertEqual(joints, ports | {'solid_node.motion.joints'})
+        self.assertEqual(joints, ports | {'machinome.motion.joints'})
         for absent in ('cadquery', 'OCP', 'trimesh'):
             with self.subTest(absent=absent):
                 self.assertFalse(result.imported(absent))
@@ -3633,10 +3795,10 @@ class JointImportCostTest(TestCase):
         """Cycle 3 filled `couplings`, and a relation relates two ports,
         so it costs exactly what `joints` costs (tests/test_couplings.py
         pins it from that side as well)."""
-        ports, _ = self.modules('import solid_node.motion.ports\n')
-        couplings, _ = self.modules('import solid_node.motion.couplings\n')
+        ports, _ = self.modules('import machinome.motion.ports\n')
+        couplings, _ = self.modules('import machinome.motion.couplings\n')
 
-        self.assertEqual(couplings, ports | {'solid_node.motion.couplings'})
+        self.assertEqual(couplings, ports | {'machinome.motion.couplings'})
 
 
 ##############################################
@@ -4203,7 +4365,7 @@ class CapturePosesSeesSiteJointTest(TestCase):
         import sys
 
         script_path = (
-            '/home/asa/devel/libresolid-studio/docs/'
+            '/home/asa/devel/machinome-studio/docs/'
             'motion-general-refactor/capture_poses.py')
         spec = importlib.util.spec_from_file_location(
             '_capture_poses_probe', script_path)
@@ -4281,8 +4443,8 @@ class SiteCarryImportCostTest(TestCase):
     `JointImportCostTest` already pins."""
 
     SNIPPET = (
-        'from solid_node.motion.joints import Revolute\n'
-        'from solid_node.node.operations import Rotation\n'
+        'from machinome.motion.joints import Revolute\n'
+        'from machinome.node.operations import Rotation\n'
         '\n'
         'class FakeNode:\n'
         "    name = 'fake'\n"
@@ -4296,7 +4458,7 @@ class SiteCarryImportCostTest(TestCase):
 
     def test_plain_import_still_costs_nothing_extra(self):
         result = probe(
-            'import solid_node.motion.joints\n' + MODULE_REPORT).check()
+            'import machinome.motion.joints\n' + MODULE_REPORT).check()
         modules = set(eval(result.stdout.strip()))
         self.assertNotIn('numpy', modules)
 
@@ -4305,3 +4467,306 @@ class SiteCarryImportCostTest(TestCase):
             self.SNIPPET
             + "import sys\nprint('numpy' in sys.modules)\n").check()
         self.assertEqual(result.stdout.strip(), 'True', result.stderr)
+
+
+##############################################
+# 8. A bound that reads other coordinates
+
+class BoundDeclarationTest(BaseNodeTest):
+    """(1.2) The four class-definition refusals.
+
+    Each is a class STATEMENT that must raise while the body runs, so it
+    is written inside the test method: a module-level one would break the
+    import of this file.
+    """
+
+    def test_a_read_held_in_a_list_is_refused(self):
+        with self.assertRaises(TypeError) as caught:
+            class Listed(AssemblyNode):
+                pins = [_BoundPin(), _BoundPin()]
+                plug = _BoundArbor(turn=Revolute(
+                    axis=(0, 0, 1), unit='deg',
+                    range=(0, Bound(lambda turn, lift: 90 * lift,
+                                    reads=(pins[0].lift,)))))
+        message = str(caught.exception)
+        self.assertIn('declaration held in a list', message)
+        self.assertIn('<attribute>-index', message)
+
+    def test_a_read_through_a_repeat_is_refused(self):
+        with self.assertRaises(TypeError) as caught:
+            class Repeated(AssemblyNode):
+                pins = _BoundPin().repeat(3)
+                plug = _BoundArbor(turn=Revolute(
+                    axis=(0, 0, 1), unit='deg',
+                    range=(0, Bound(lambda turn, lift: 90 * lift,
+                                    reads=(pins.lift,)))))
+        message = str(caught.exception)
+        self.assertIn('pins', message)
+        self.assertIn('SOURCE', message)
+
+    def test_a_read_of_a_child_declaring_two_joints_is_refused(self):
+        with self.assertRaises(TypeError) as caught:
+            class TwoJointed(AssemblyNode):
+                block = _TwoJoints()
+                plug = _BoundArbor(turn=Revolute(
+                    axis=(0, 0, 1), unit='deg',
+                    range=(0, Bound(lambda turn, lift: 90 * lift,
+                                    reads=(block,)))))
+        message = str(caught.exception)
+        self.assertIn('block', message)
+        self.assertIn('lift', message)
+        self.assertIn('spin', message)
+
+    def test_a_driver_read_sideways_off_a_child_is_refused(self):
+        with self.assertRaises(AttributeError) as caught:
+            class Sideways(AssemblyNode):
+                inner = _DriverHolder()
+                plug = _BoundArbor(turn=Revolute(
+                    axis=(0, 0, 1), unit='deg',
+                    range=(0, Bound(lambda turn, feed: 90 * feed,
+                                    reads=(inner.feed,)))))
+        self.assertIn('feed', str(caught.exception))
+
+    def test_a_read_of_the_bounded_coordinate_by_name_is_refused(self):
+        with self.assertRaises(TypeError) as caught:
+            class SelfNamed(AssemblyNode):
+                spin = Revolute(axis=(0, 0, 1), unit='deg')
+                spin.range = (0, Bound(lambda own, again: 90 * again,
+                                       reads=(spin,)))
+        message = str(caught.exception)
+        self.assertIn('spin', message)
+        self.assertIn('OWN coordinate', message)
+
+
+class BoundRealizationTest(BaseNodeTest):
+    """(1.3) Realization carries a `Bound` unevaluated, whichever way it
+    was declared."""
+
+    def test_a_site_declared_bound_survives_realization(self):
+        node = GateBody()
+        _rest_children(node)
+        joint = declared_joints(type(node.plug))['turn']
+        span = joint.arguments(node.plug)[2]
+        self.assertEqual(span[0], 0)
+        self.assertIsInstance(span[1], Bound)
+        self.assertEqual(len(span[1].reads), 2)
+        self.assertNotIn('_joint_bound_reads', node.plug.__dict__)
+
+    def test_a_class_declared_bound_survives_realization(self):
+        node = ClassGateBody()
+        _rest_children(node)
+        joint = declared_joints(type(node.plug))['turn']
+        span = joint.arguments(node.plug)[2]
+        self.assertIsInstance(span[1], Bound)
+        self.assertEqual(len(span[1].reads), 2)
+
+
+class BoundAtEnumerationCloseTest(BaseNodeTest):
+    """(1.3) A `Bound` side is judged when the enumeration CLOSES, over
+    the values then bound, whatever order the solver bound them in."""
+
+    def test_an_impossible_pose_is_refused_by_name(self):
+        for cls in (GateBody, ClassGateBody):
+            with self.subTest(cls=cls.__name__):
+                with self.assertRaises(JointRangeError) as caught:
+                    cls().set_state(twist=30, feed=0)
+                message = str(caught.exception)
+                self.assertIn('plug.turn', message)
+                self.assertIn('30', message)
+                self.assertIn('deg', message)
+                self.assertIn('p1.lift', message)
+                self.assertIn('p2.lift', message)
+                self.assertIn('5', message)
+
+    def test_a_possible_pose_is_admitted(self):
+        for cls in (GateBody, ClassGateBody):
+            with self.subTest(cls=cls.__name__):
+                node = cls()
+                node.set_state(twist=30, feed=20)
+                self.assertEqual(node.plug.turn.value, 30)
+                self.assertEqual(_lift_of(node, 'p1'), 0.0)
+                self.assertEqual(_lift_of(node, 'p2'), 0.0)
+
+    def test_a_read_left_unbound_is_not_judged(self):
+        node = UnreadGateBody()
+        node.set_state(twist=30)
+        self.assertEqual(node.plug.turn.value, 30)
+
+    def test_a_binding_outside_any_enumeration_is_not_judged(self):
+        node = GateBody()
+        _rest_children(node)
+        node.plug.turn = 30
+        self.assertEqual(node.plug.turn.value, 30)
+
+
+def _lift_of(node, name):
+    plug = node.plug if hasattr(node.plug, name) else node
+    return get_coordinate(getattr(plug, name), 'lift')._value
+
+
+class _BoundPin(Solid2Node):
+    lift = Prismatic(axis=(0, 0, 1), unit='mm')
+
+    def render(self):
+        return cube([2, 2, 2], center=True)
+
+
+class _BoundArbor(Solid2Node):
+    turn = Revolute(axis=(0, 0, 1), unit='deg')
+
+    def render(self):
+        return cube([4, 4, 4], center=True)
+
+
+class _TwoJoints(Solid2Node):
+    lift = Prismatic(axis=(0, 0, 1), unit='mm')
+    spin = Revolute(axis=(0, 0, 1), unit='deg')
+
+    def render(self):
+        return cube([4, 4, 4], center=True)
+
+
+class _DriverHolder(AssemblyNode):
+    feed = Driver(default=0.0, unit='mm')
+    pin = _BoundPin()
+
+    feed.drives(pin.lift, ratio=1.0)
+
+
+##############################################
+# checkpoint-the-joint: a placement is identified by the mark its
+# operations carry (`_joint_slot`, ADR-093's declaration slot), not by
+# the objects `place` happened to create. That mark is what stays true
+# across a wholesale replacement of `node.operations` -- a test
+# runner's checkpoint restore, a pose capture -- which is the one thing
+# `_joint_motion`'s recorded objects cannot survive. `evidence.md`
+# sections 1, 3 and 6 measure the doubling and the loss this produces
+# today; the scenarios below pin the joints-capability half, with no
+# runner in it.
+
+class CheckpointReplacementTest(BaseNodeTest):
+    """`Joint.clear` must remove a previous placement by the mark its
+    operations carry, so a tool that replaces `node.operations`
+    wholesale between two placements cannot strand one beside the
+    other."""
+
+    def test_a_replaced_operation_list_strands_no_stale_placement(self):
+        # evidence.md §1: the checkpoint saved while the FIRST placement
+        # stood is restored after a SECOND one replaced it, and a THIRD
+        # placement must not find the first one unreachable.
+        hinge = Hinge()
+        hinge.swing = 10
+        snapshot = list(hinge.operations)        # what a checkpoint saves
+        hinge.swing = 20                          # clear(10's run), place(20's)
+        hinge.operations[:] = snapshot            # a wholesale replacement:
+                                                   # the STALE 10 run comes back
+        hinge.swing = 30                          # clear() must still find it
+
+        self.assertEqual(len(motions(hinge)), 3)
+        self.assertEqual(motions(hinge)[1].serialized[1], '30')
+
+    def test_a_frees_whole_run_is_replaced_as_one_unit(self):
+        # evidence.md §3: a `Free`'s one binding places FOUR operations,
+        # and a replaced list must not strand any of them individually
+        # -- four become eight if the removal is not a unit.
+        body = FloatingChassis()
+        for name, value in (('roll', 12.0), ('pitch', -6.0),
+                            ('yaw', 18.0), ('x', 3.0), ('y', 1.5),
+                            ('z', 6.0)):
+            setattr(body.pose, name, value)
+        snapshot = list(body.operations)
+        self.assertEqual(len(snapshot), 4)
+        body.pose.roll = 0.0                      # re-places the whole joint
+        body.operations[:] = snapshot              # the stale run comes back
+        body.pose.roll = 25.0
+
+        self.assertEqual(len(motions(body)), 4)
+        for operation in motions(body):
+            self.assertEqual(operation._joint_slot, 0)
+
+    def test_a_sibling_joint_is_untouched_by_a_replaced_lists_re_place(self):
+        # `Slider` declares `travel` (slot 0) before `spin` (slot 1):
+        # re-placing `travel` after a wholesale replacement must remove
+        # only ITS run, leaving `spin`'s where it stands.
+        slider = Slider()
+        slider.travel = 10
+        slider.spin = 90
+        snapshot = list(slider.operations)
+        slider.travel = 40
+        slider.operations[:] = snapshot
+        slider.travel = 70
+
+        found = motions(slider)
+        self.assertEqual(len(found), 2)
+        self.assertEqual(found[0].serialized[1], ['70', '0', '0'])
+        self.assertEqual(found[1].serialized[1], '90')
+
+    def test_clearing_a_replaced_list_leaves_nothing_of_its_placement(self):
+        hinge = Hinge()
+        hinge.swing = 10
+        snapshot = list(hinge.operations)
+        hinge.swing = 20
+        hinge.operations[:] = snapshot
+
+        Hinge.swing.clear(hinge)
+
+        self.assertEqual(motions(hinge), [])
+
+
+class JointSlotTaggingTest(BaseNodeTest):
+    """Every joint kind's placement carries the mark `Joint.clear` will
+    depend on: `_joint_slot`, stamped by `apply_joint_motion` and
+    nothing else. A future placement path that bypasses that seam is
+    caught here rather than by a project."""
+
+    def test_every_joint_kind_stamps_its_declaration_slot(self):
+        on_origin = SelfTurning()
+        on_origin.swing = 12
+        self.assertEqual([operation._joint_slot
+                          for operation in motions(on_origin)], [0])
+
+        off_origin = Hinge()
+        off_origin.swing = 12
+        self.assertEqual([operation._joint_slot
+                          for operation in motions(off_origin)], [0, 0, 0])
+
+        prismatic = Slider()
+        prismatic.travel = 12
+        self.assertEqual([operation._joint_slot
+                          for operation in motions(prismatic)], [0])
+
+        orbit = CarriedDisk()
+        orbit.orbit = 12
+        self.assertEqual([operation._joint_slot
+                          for operation in motions(orbit)], [0])
+
+        free = FloatingChassis()
+        free.pose.roll = 5.0
+        free.pose.x = 1.0
+        run = motions(free)
+        self.assertEqual(len(run), 2)
+        self.assertEqual([operation._joint_slot for operation in run],
+                         [0, 0])
+
+
+class UntaggedPlacementLifetimeTest(BaseNodeTest):
+    """Revision 1's Finding A, at the joints-capability level: an
+    UNTAGGED placement -- the shape a checkpoint restore's re-place
+    makes, outside any phase -- must not outlive an enumeration that
+    leaves its coordinate unbound (`evidence.md` §A1/§A2/§A4)."""
+
+    def test_an_untagged_placement_does_not_outlive_the_enumeration(self):
+        node = Conditional()
+        node.set_keyframe(0)                      # the guard binds: TAGGED
+
+        # What a checkpoint restore's re-place does: place the joint
+        # again, from the value its coordinate holds, with no phase
+        # current -- untagged, exactly as `apply_joint_motion` marks a
+        # placement made outside one.
+        travel = get_coordinate(node.gate, 'travel')._value
+        type(node.gate).travel.place(node.gate, travel)
+
+        node.set_keyframe(1)                      # the guard does not bind
+
+        self.assertEqual(motions(node.gate), [])
+        self.assertIsNone(get_coordinate(node.gate, 'travel')._value)

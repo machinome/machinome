@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -21,7 +21,7 @@ from unittest.mock import Mock, patch
 
 import trimesh
 
-from solid_node.core.builder import (
+from machinome.core.builder import (
     get_build_dir, get_build_lock_path, project_build_lock,
 )
 
@@ -64,16 +64,16 @@ def lock_is_held(build_dir):
 
 
 def _run_build(project_root, build_dir):
-    """One real `solid build` of the scratch project, as a child process.
+    """One real `machinome build` of the scratch project, as a child process.
 
-    `solid_node.core.loader` appends the cwd to `sys.path` once, in the
+    `machinome.core.loader` appends the cwd to `sys.path` once, in the
     parent; this forked child inherits that entry, so the scratch project
     goes on the path explicitly too.
     """
     os.chdir(project_root)
     sys.path.insert(0, project_root)
     os.environ['SOLID_BUILD_DIR'] = build_dir
-    from solid_node.manager.build import Build
+    from machinome.manager.build import Build
     Build().handle(Namespace(path='flat_project/simple_pipe.py'))
 
 
@@ -85,10 +85,10 @@ class BuildDirectoryAnchorTest(TestCase):
     while the floor watched a tree nothing wrote to."""
 
     def setUp(self):
-        self.root = tempfile.mkdtemp(prefix='solid_node_build_anchor_')
+        self.root = tempfile.mkdtemp(prefix='machinome_build_anchor_')
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as stream:
-            stream.write('[tool.solid-node]\n'
+            stream.write('[tool.machinome]\n'
                          'model = "package.model:Model"\n')
         self.package = os.path.join(self.root, 'package')
         os.mkdir(self.package)
@@ -212,43 +212,41 @@ class LockParticipantsTest(TestCase):
         self.build_dir = os.path.join(self.root.name, '_build')
 
     def test_test_runner_releases_the_lock_before_running_tests(self):
-        from solid_node.manager.test import Test
+        from machinome.manager.test import Test
         runner = Test()
         node = Mock()
         observed = []
-        for phase in ('set_keyframe', 'render', 'assemble', 'build_stls'):
+        for phase in ('set_keyframe', 'build_stls'):
             getattr(node, phase).side_effect = (
                 lambda *_, phase=phase: observed.append(
                     (phase, lock_is_held(self.build_dir))))
 
         with patch.dict(os.environ, {'SOLID_BUILD_DIR': self.build_dir}), \
-             patch('solid_node.manager.test.load_node', return_value=node), \
+             patch('machinome.manager.test.load_node', return_value=node), \
              patch.object(runner, 'ensure_node_class'):
             runner.build_node('model.py')
 
         self.assertEqual(observed, [
             ('set_keyframe', True),
-            ('render', True),
-            ('assemble', True),
             ('build_stls', True),
         ])
         self.assertFalse(lock_is_held(self.build_dir),
                          'a test sweep would block the next build')
 
-    def test_builder_assembles_while_holding_the_lock(self):
+    def test_builder_prepares_while_holding_the_lock(self):
         import asyncio
-        from solid_node.core.builder import Builder, BuildOutcome
+        from machinome.core.builder import Builder, BuildOutcome
         builder = Builder('model.py', build_dir=self.build_dir, watch=False)
         node = Mock(mtime_ns=0)
         observed = []
 
-        def fail_during_assembly():
+        def fail_during_preparation():
             observed.append(lock_is_held(self.build_dir))
-            raise RuntimeError('deliberate assembly failure')
+            raise RuntimeError('deliberate preparation failure')
 
-        node.assemble.side_effect = fail_during_assembly
+        node._prepare.side_effect = fail_during_preparation
         with patch.dict(os.environ, {'SOLID_BUILD_DIR': self.build_dir}), \
-             patch('solid_node.core.builder.load_node', return_value=node):
+             patch('machinome.core.builder.load_node', return_value=node):
             outcome = asyncio.run(builder._start())
 
         self.assertEqual(outcome, BuildOutcome.FAILED)
@@ -256,14 +254,14 @@ class LockParticipantsTest(TestCase):
         self.assertFalse(lock_is_held(self.build_dir))
 
     def test_export_releases_the_lock_after_building(self):
-        from solid_node.core.export import export_node
+        from machinome.core.export import export_node
         node = Mock()
         observed = {}
         node.build_stls.side_effect = lambda: observed.update(
             held=lock_is_held(self.build_dir))
 
         with patch.dict(os.environ, {'SOLID_BUILD_DIR': self.build_dir}), \
-             patch('solid_node.core.export.serialize_node',
+             patch('machinome.core.export.serialize_node',
                    side_effect=RuntimeError('stop after the build')):
             with self.assertRaises(RuntimeError):
                 export_node(node, os.path.join(self.root.name, 'out'),
@@ -278,7 +276,7 @@ class ArtifactAssemblyContentionTest(TestCase):
 
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(
-            prefix='solid-artifact-lock-')
+            prefix='machinome-artifact-lock-')
         self.addCleanup(self.temporary.cleanup)
         self.root = os.path.join(self.temporary.name, 'project')
         os.makedirs(os.path.join(self.root, 'design'))
@@ -287,7 +285,7 @@ class ArtifactAssemblyContentionTest(TestCase):
 
     def write_project(self, source, test_source=None):
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as manifest:
-            manifest.write('[tool.solid-node]\n'
+            manifest.write('[tool.machinome]\n'
                            'model = "design.part:Part"\n')
         with open(os.path.join(self.root, 'design', 'part.py'), 'w') as module:
             module.write(source)
@@ -309,7 +307,7 @@ class ArtifactAssemblyContentionTest(TestCase):
             fcntl.flock(lock, fcntl.LOCK_EX)
             process = subprocess.Popen(
                 [sys.executable, '-c',
-                 'from solid_node.cli import manage; manage()', *command],
+                 'from machinome.cli import manage; manage()', *command],
                 cwd=self.root,
                 env=environment,
                 stdout=output,
@@ -344,7 +342,7 @@ class ArtifactAssemblyContentionTest(TestCase):
 
     def test_cadquery_build_materializes_nothing_before_lock_release(self):
         self.write_project(
-            'from solid_node.node import CadQueryNode\n'
+            'from machinome.node import CadQueryNode\n'
             'import cadquery as cq\n'
             'class Part(CadQueryNode):\n'
             '    def render(self):\n'
@@ -363,10 +361,10 @@ class ArtifactAssemblyContentionTest(TestCase):
         source_stl = os.path.join(self.root, 'design', 'source.stl')
         trimesh.creation.box().export(source_stl, file_type='stl')
         self.write_project(
-            'from solid_node.node import StlNode\n'
+            'from machinome.node import StlNode\n'
             'class Part(StlNode):\n'
             '    stl_source = "source.stl"\n',
-            'from solid_node.test import TestCase\n'
+            'from machinome.test import TestCase\n'
             'from .part import Part\n'
             'class PartTest(TestCase):\n'
             '    node = Part\n'
@@ -386,14 +384,14 @@ class PublishedModelFollowsSourceTest(TestCase):
     """The product property, driven through real builds of a real project:
     what a consumer reads is what the source says.
 
-    These render with OpenSCAD, exactly as `solid build` does in a user's
+    These render with OpenSCAD, exactly as `machinome build` does in a user's
     project, because the defect they guard against -- a build reporting the
     model current and publishing nothing -- was invisible to every test that
     mocked the render.
     """
 
     def setUp(self):
-        self.root = tempfile.mkdtemp(prefix='solid_node_build_lock_')
+        self.root = tempfile.mkdtemp(prefix='machinome_build_lock_')
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         shutil.copytree(FLAT_PROJECT, os.path.join(self.root, 'flat_project'),
                         ignore=shutil.ignore_patterns('__pycache__'))
@@ -402,7 +400,7 @@ class PublishedModelFollowsSourceTest(TestCase):
         # and its model through the manifest, not through the working
         # directory.
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as stream:
-            stream.write('[tool.solid-node]\n'
+            stream.write('[tool.machinome]\n'
                          'model = "flat_project.simple_pipe:SimplePipe"\n')
 
         self.build_dir = os.path.join(self.root, '_build')
@@ -426,7 +424,7 @@ class PublishedModelFollowsSourceTest(TestCase):
 
     def edit(self, radius):
         with open(self.source, 'w') as source:
-            source.write('from solid_node.node import Solid2Node\n'
+            source.write('from machinome.node import Solid2Node\n'
                          'from solid2 import cylinder\n\n\n'
                          'class SimplePipe(Solid2Node):\n\n'
                          '    def render(self):\n'
@@ -481,7 +479,7 @@ class LockSurvivesBuildDirectoryPreparationTest(TestCase):
     and lock nothing."""
 
     def test_the_held_lock_file_is_not_removed(self):
-        from solid_node.core.builder import prepare_build_dir
+        from machinome.core.builder import prepare_build_dir
         with tempfile.TemporaryDirectory() as root:
             build_dir = os.path.join(root, '_build')
             with project_build_lock(build_dir):

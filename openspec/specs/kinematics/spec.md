@@ -12,8 +12,8 @@ ADR-022 (cross-runtime degree-trig parity), ADR-028 (cached base meshes
 and single-matrix world composition), and ADR-056 stage 1 (multi-driver
 state binding).
 
-Code: `solid_node/node/operations.py`, `solid_node/node/assembly.py`,
-`solid_node/node/base.py`, `solid_node/math.py`.
+Code: `machinome/node/operations.py`, `machinome/node/assembly.py`,
+`machinome/node/base.py`, `machinome/math.py`.
 ## Requirements
 ### Requirement: Tri-consumer operation objects
 
@@ -21,18 +21,47 @@ The system SHALL represent transforms as first-class operation objects
 (`Rotation(angle, axis, node)`, `Translation(vector, node)`) that each render
 for three consumers: `.scad(obj)` (OpenSCAD wrap), `.mesh(mesh)` (trimesh
 transform with animated values resolved to floats; rotation applied in
-radians), and `.serialized` (wire form `['r', angle, axis]` / `['t',
-vector]`). Each operation SHALL also provide `.reversed`, and `.matrix()` —
-its 4×4 homogeneous world matrix, with animated values resolved through
-`as_number()` at access time and never cached, so a keyframe change is always
-reflected. The registry plus `unserialize()` SHALL round-trip the wire form.
-A new operation type MUST implement all of these surfaces and register
-itself.
+radians), and `.serialized` (standalone form `['r', angle, axis]` / `['t',
+vector]`, with expression strings for scalar values). Each operation SHALL also
+provide `.reversed`, and `.matrix()` — its 4×4 homogeneous world matrix, with
+animated values resolved through `as_number()` at access time and never cached,
+so a keyframe change is always reflected. The registry plus `unserialize()`
+SHALL round-trip the standalone form. A new operation type MUST implement all
+of these surfaces and register itself.
+
+A standalone shared scalar SHALL be self-contained and compact rather than
+requiring its fully expanded spelling or relying on bindings from a previous
+publication. Its textual representation need not match the former expanded
+string. Node-tree document producers SHALL translate such scalars into the
+document's existing expression language and bindings; standalone serialization
+SHALL NOT introduce a new grammar into published viewer documents.
+
+Generating SCAD and publishing a document SHALL leave the live operation's
+value unchanged. Numeric placement, operation order, reversal and keyframe
+updates SHALL retain their existing behavior.
 
 #### Scenario: Wire round-trip
 
 - **WHEN** an operation is serialized and passed through `unserialize()`
 - **THEN** an equivalent operation object is reconstructed
+
+#### Scenario: Shared standalone scalar round-trip
+
+- **WHEN** a rotation or translation with a shared scalar is serialized,
+  reconstructed and published under the same declared inputs
+- **THEN** it evaluates to the original operation's value without requiring
+  external bindings from an earlier document
+
+#### Scenario: SCAD expression is complete by itself
+
+- **WHEN** a shared motion scalar is emitted in a SCAD operation
+- **THEN** OpenSCAD can resolve it under its original input environment without
+  document-global generated bindings or expanded descendant duplication
+
+#### Scenario: Publishing does not change SCAD meaning
+
+- **WHEN** a tree is published and its SCAD is generated again
+- **THEN** publication has not mutated the operation values or their meaning
 
 ### Requirement: Chainable transform API
 
@@ -96,19 +125,63 @@ base mesh itself is never mutated.
 ### Requirement: Declared time base
 
 A root assembly MAY declare its time base as a class attribute named `time`
-holding a `Time(loop=<seconds>)` declaration, exported from
-`solid_node.motion.ports` — the module that answers what moves, alongside
-the port kinds — and no longer from `solid_node.node`.
-`loop` SHALL be a positive finite number of seconds: the span of machine time
-one turn of the animation timeline covers. The declaration SHALL be frozen
-class metadata readable off the class (`Root.time.loop`); assigning
-`self.time` SHALL fail naming `set_keyframe`.
+holding one of THREE declarations exported from `machinome.motion.ports` —
+the module that answers what moves, alongside the port kinds — and no
+longer from `machinome.node`: `Time(loop=<seconds>)`, the LOOPING base,
+`Time.running()`, the RUNNING base, or `Time.elapsed()`, the ELAPSED base.
+Under the looping base `loop` SHALL
+be a positive finite number of seconds: the span of machine time one turn
+of the animation timeline covers. Under the running base and the elapsed
+base `loop` SHALL be `None`, because elapsed simulation seconds never
+wrap. `Time()` with none of them SHALL be refused naming all three
+spellings. The declaration SHALL be
+frozen class metadata readable off the class (`Root.time.loop`, and
+`Root.time.mode` reading `'loop'`, `'running'` or `'elapsed'`); assigning
+`self.time` SHALL fail naming `set_keyframe`. Two declarations SHALL be
+equal, and SHALL hash alike, exactly when they declare the same base with
+the same `loop`: `Time.running()` and `Time.elapsed()` are NOT equal,
+though both carry `loop` `None`.
 
-A `Time` declaration SHALL be refused at class-definition time when it is
-bound to any attribute name other than `time`, or when the declaring class is
-not an `AssemblyNode`, each with an error naming the rule.
+A `Time` declaration of ANY base SHALL be refused at class-definition
+time when it is bound to any attribute name other than `time`, or when the
+declaring class is not an `AssemblyNode`, each with an error naming the
+rule. A declaration below the root SHALL be refused at the read, naming the
+descendant and the root, for every base alike.
 
-Under a declared time base `self.time` SHALL read machine time in seconds on
+Under the RUNNING base `self.time` SHALL read elapsed simulation seconds
+when bound — by a running simulation, which binds `k*dt` as the
+`simulation` capability states, or by `set_keyframe`/`set_state(time=)`,
+which callers state in seconds — and, unbound, bare `$t` exactly as an
+undeclared root reads, because elapsed seconds have no symbolic form until
+a compiled program is published. Every producer that reads the declaration
+SHALL treat a `loop` of `None` as no loop: the document's `animation`
+object SHALL carry no `loop` key, a snapshot at a fraction of the timeline
+SHALL keyframe the fraction as it does for an undeclared root, and a
+running root's document SHALL therefore be the document an undeclared root
+publishes. What the running base changes is what a simulation over the
+root owns and integrates, stated by the `simulation` capability; nothing
+else about the tree changes.
+
+Under the ELAPSED base `self.time` SHALL mean exactly what it means under
+the running base — elapsed simulation seconds that never wrap, the bound
+number when a simulation, `set_keyframe` or `set_state(time=)` bound one,
+and bare `$t` unbound — and every producer SHALL read its `loop` of `None`
+as no loop by the same sentence above, so an elapsed root's document SHALL
+also be the document an undeclared root publishes, byte for byte. What the
+elapsed base CHANGES is stated by the `simulation` capability and is
+confined to a CLOCKED root: there, and only there, `time` is a banked value
+of the simulation that a request may move. A root declaring the elapsed
+base whose tree declares no `State` SHALL be ADMITTED and SHALL be
+unchanged in every observable particular — the same fixed-`dt` stepping
+simulation, the same reads, the same published bytes — because the time
+base states what `time` MEANS and the state discipline alone selects which
+simulation runs over the tree.
+
+The elapsed base SHALL NOT be a route into the running mechanics: it SHALL
+NOT make a simulation own or integrate any coordinate, SHALL NOT compile a
+program, and SHALL NOT change anything about `Time.running()`.
+
+Under the LOOPING base `self.time` SHALL read machine time in seconds on
 every path:
 
 - unbound, it SHALL be the symbolic expression `$t * loop`, so the normalized
@@ -186,11 +259,76 @@ of the "Normalized animation time" requirement unchanged.
 #### Scenario: The time base is imported from the motion package
 
 - **WHEN** a root's module writes
-  `from solid_node.motion.ports import Time` and declares
+  `from machinome.motion.ports import Time` and declares
   `time = Time(loop=43200)`
 - **THEN** the declaration behaves exactly as it did when `Time` came from
-  `solid_node.node`, and `from solid_node.node import Time` raises
-  `ImportError` naming `solid_node.motion.ports`
+  `machinome.node`, and `from machinome.node import Time` raises
+  `ImportError` naming `machinome.motion.ports`
+
+#### Scenario: The running base is declared and readable off the class
+
+- **WHEN** a root declares `time = Time.running()`
+- **THEN** `type(root).time.mode` reads `'running'`, `type(root).time.loop`
+  reads `None`, `declared_time(type(root))` returns that declaration, and
+  `Time()` with no argument raises naming `Time(loop=...)`,
+  `Time.running()` and `Time.elapsed()`
+
+#### Scenario: Under the running base unbound time reads bare $t
+
+- **WHEN** a root declaring `Time.running()` is rendered with nothing bound
+- **THEN** `self.time` on the root and on a nested assembly reads `$t`,
+  `set_keyframe(2.5)` makes both read `2.5`, and clearing restores `$t`
+
+#### Scenario: The running base obeys the declaration rules
+
+- **WHEN** a leaf class declares `time = Time.running()`, a class body binds
+  `clock = Time.running()`, or a linked child assembly declares it under a
+  root and its `simulate()` reads `self.time`
+- **THEN** the first two fail at class definition naming the rule and the
+  third fails at the read naming the child and the root, exactly as
+  `Time(loop=...)` does
+
+#### Scenario: A running root publishes no loop
+
+- **WHEN** a root declaring `Time.running()` is exported and snapshotted at
+  a fraction of the timeline
+- **THEN** the document's `animation` object carries no `loop` key and is
+  byte-identical to an undeclared root's, and the snapshot keyframes the
+  fraction
+
+#### Scenario: The elapsed base is declared and readable off the class
+
+- **WHEN** a root declares `time = Time.elapsed()`
+- **THEN** `type(root).time.mode` reads `'elapsed'`, `type(root).time.loop`
+  reads `None`, and `declared_time(type(root))` returns that declaration
+  without constructing the node
+
+#### Scenario: Under the elapsed base unbound time reads bare $t
+
+- **WHEN** a root declaring `Time.elapsed()` is rendered with nothing bound
+- **THEN** `self.time` on the root and on a nested assembly reads `$t`,
+  `set_keyframe(2.5)` makes both read `2.5`, and clearing restores `$t`
+
+#### Scenario: The elapsed base obeys the declaration rules
+
+- **WHEN** a leaf class declares `time = Time.elapsed()`, a class body binds
+  `clock = Time.elapsed()`, or a linked child assembly declares it under a
+  root and its `simulate()` reads `self.time`
+- **THEN** the first two fail at class definition naming the rule and the
+  third fails at the read naming the child and the root, exactly as
+  `Time(loop=...)` does
+
+#### Scenario: An elapsed root that declares no state is unchanged
+
+- **WHEN** a root declaring `Time.elapsed()` and no `State` is simulated
+  with `Sim(node, dt)`, stepped, exported and snapshotted at a fraction of
+  the timeline
+- **THEN** the simulation is the ordinary fixed-`dt` stepping loop, `sim.time`
+  reads `tick * dt` seconds, each step binds exactly that number of seconds
+  as the tree's `time` — what a stepped simulation binds under every base
+  today, an undeclared root included — the document's `animation` object
+  carries no `loop` key and is byte-identical to the same tree declaring no
+  base at all, and the snapshot keyframes the fraction
 
 ### Requirement: Normalized animation time
 
@@ -213,7 +351,7 @@ to symbolic time while leaving any other bound snapshot entries in place.
 Because an assembly's re-render sweeps only the operations it drove, the
 operations a cleared subtree carries SHALL be the same symbolic expressions a
 never-keyframed render produces — including expressions built through
-`solid_node.math` — while static placement applied outside any assembly
+`machinome.math` — while static placement applied outside any assembly
 render SHALL survive unchanged and operations SHALL NOT accumulate across
 repeated `set_keyframe`/`clear_keyframe` cycles. `clear_keyframe()` SHALL be
 a no-op on non-animated nodes, mirroring `set_keyframe`.
@@ -240,7 +378,7 @@ serializer already has.
 
 #### Scenario: Clearing restores a non-linear symbolic expression
 
-- **WHEN** an assembly whose rotation is built with `solid_node.math` (for
+- **WHEN** an assembly whose rotation is built with `machinome.math` (for
   example `asin((r/l) * sin(360 * $t))`) is keyframed and then cleared
 - **THEN** its operation serializes to the deferred OpenSCAD expression string,
   identical to the one a fresh render produces, not to the numeric value the
@@ -268,7 +406,7 @@ serializer already has.
 
 ### Requirement: Degree-convention dual-mode math
 
-The system SHALL provide `solid_node/math.py` as the single `$t` math
+The system SHALL provide `machinome/math.py` as the single `$t` math
 semantics — OpenSCAD's degree conventions (`sin(90) == 1.0`, `asin(0.5) ==
 30.0`). Each function SHALL compute numerically when given a real number and
 emit an equivalent deferred OpenSCAD expression when given a symbolic value.
@@ -411,7 +549,7 @@ the emitted expression string.
 
 ### Requirement: Expression-safe vector helpers
 
-The system SHALL export from `solid_node.math` a small set of vector helpers
+The system SHALL export from `machinome.math` a small set of vector helpers
 built only from that module's own scalar functions, so a symbolic value or a
 declared parameter formula in any component rides through unchanged. Each
 takes and returns plain tuples of scalars, and every angle is in degrees,
@@ -463,13 +601,13 @@ dimensions follow from the scalar functions they compose.
 
 ### Requirement: The parity corpus covers every symbolic function
 
-The system SHALL name, in one place in `solid_node/math.py`, every OpenSCAD
+The system SHALL name, in one place in `machinome/math.py`, every OpenSCAD
 builtin the module may emit as a call, and every function that emits one
 SHALL take its name from that inventory rather than spelling it a second
 time. That inventory is the source of truth for what the corpus must cover;
 no consumer SHALL keep a second, hand-maintained list of the same names.
 
-The system SHALL pin every function `solid_node.math` can emit symbolically
+The system SHALL pin every function `machinome.math` can emit symbolically
 in the cross-runtime parity corpus, so no exported symbolic name reaches a
 published document without a fixture case behind it. The corpus SHALL keep
 its existing discipline: an expected value is a producer value, obtained by
@@ -759,6 +897,19 @@ snapshot entry with no declaration and SHALL remain bindable. A
 refused binding SHALL leave the tree's snapshot exactly as it was, in
 the same way an ambiguous binding does.
 
+Under a root declaring `Time.running()` a bound name MAY instead be the
+qualified id of a JOINT COORDINATE the tree publishes — `first.turn`,
+`chassis.pose.roll` — the same id the port enumeration reports under the
+owning node's instance path. Such an entry SHALL be delivered to the node
+that owns the coordinate, a leaf included, and bound through the one
+binding path a coordinate assignment takes, so the joint's declared range
+and placement apply as for any binding and the binder that called
+`set_state` is recorded; a name of several segments SHALL reach the joint
+that owns it and never set an attribute of that name. The ambiguity rule
+and the rollback rule SHALL cover such an entry as they cover a driver's.
+Under any other root a joint coordinate id SHALL be refused exactly as an
+undeclared name is.
+
 `render()` SHALL read a driver DECLARED on that node as an attribute of
 the node, under the name the declaration was made with: a node
 declaring `x = Driver(...)` reads its bound value as `self.x`. This
@@ -796,7 +947,9 @@ static placement applied outside any assembly render SHALL survive,
 exactly as the idempotent-render requirement already guarantees.
 
 On nodes that do not animate (leaves, fusions), `set_state` and
-`clear_state` SHALL be no-ops, mirroring `set_keyframe`.
+`clear_state` SHALL be no-ops, mirroring `set_keyframe` — except that,
+under a running root, an entry addressed to a leaf's own joint coordinate
+SHALL bind it as stated above.
 
 #### Scenario: A declared driver reads as an attribute
 
@@ -927,6 +1080,29 @@ On nodes that do not animate (leaves, fusions), `set_state` and
 - **THEN** the child reads `90` throughout that enumeration, including
   while its parent's phase runs, rather than `10`
 
+#### Scenario: A joint coordinate id binds under a running root
+
+- **WHEN** `set_state(**{'first.turn': 12.0, 'chassis.pose.roll': 3.0})` is
+  called on a root declaring `Time.running()`, `first` being a leaf owning
+  the joint `turn` and `chassis` an assembly owning a six-coordinate joint
+- **THEN** `first.turn` reads `12.0` and `chassis.pose.roll` reads `3.0`
+  on their owning nodes, both bodies are placed by the values, and no
+  attribute named `pose.roll` was set anywhere
+
+#### Scenario: A joint coordinate id is refused under a looping root
+
+- **WHEN** `set_state(**{'first.turn': 12.0})` is called on a root
+  declaring `Time(loop=2.0)` or no time base
+- **THEN** binding fails naming `first.turn` and listing the declared
+  driver ids, and no entry is left bound anywhere in the tree
+
+#### Scenario: A refused binding restores coordinates too
+
+- **WHEN** `set_state(**{'first.turn': 12.0, 'nobody.turn': 1.0})` is called
+  on a running root
+- **THEN** binding fails naming `nobody.turn` and `first.turn` reads what
+  it read before the call
+
 ### Requirement: Instance-qualified driver identity
 
 The system SHALL identify a driver instance by a qualified id: the
@@ -941,9 +1117,9 @@ stored on the node or the declaration.
 A symbolic driver reference SHALL be represented by a token whose
 string form is exactly the qualified id, interoperating with the
 existing symbolic expression machinery: ordinary arithmetic on the
-token SHALL produce well-formed expression strings, and the
-degree-convention dual-mode math functions SHALL accept it in symbolic
-mode unchanged.
+token SHALL produce deferred values that preserve shared operands and
+serialize to well-formed expressions. The degree-convention dual-mode math
+functions SHALL accept it in symbolic mode without project-code changes.
 
 Qualification SHALL fail loudly, naming the node and the cure, when it
 would pass through a segment that is not computable (an unlinked
@@ -956,15 +1132,15 @@ local name and SHALL NOT sanitize.
 - **WHEN** one assembly class declaring driver `motor` is instantiated
   as attributes `x_axis` and `y_axis` of a parent, and a linked pass
   reads each instance's driver symbolically
-- **THEN** the resulting expression strings reference `x_axis.motor`
+- **THEN** the resulting expressions reference `x_axis.motor`
   and `y_axis.motor` respectively
 
 #### Scenario: Token rides ordinary arithmetic and symbolic trig
 
 - **WHEN** a render computes `asin(0.25 * sin(token * 0.1125))` from a
   driver token in symbolic mode
-- **THEN** the expression string is well-formed with the qualified id
-  embedded, with no operator or math-function changes in project code
+- **THEN** the deferred value publishes a well-formed expression with the
+  qualified id embedded, with no operator or math-function changes in project code
 
 #### Scenario: Illegal id segment fails loudly
 
@@ -973,4 +1149,3 @@ local name and SHALL NOT sanitize.
 - **THEN** the operation fails naming the node and the illegal
   segment, rather than emitting an expression that parses as
   subtraction or colliding on the bare name
-

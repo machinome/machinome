@@ -1,9 +1,9 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-from solid_node.node import AssemblyNode
-from solid_node import math as snmath
+from machinome.node import AssemblyNode
+from machinome import math as snmath
 from .parts import Cube
 
 
@@ -17,7 +17,7 @@ class Conrod(AssemblyNode):
     (a fresh node.assemble(), no set_keyframe -- see
     tests/test_conrod_symbolic.py). A plain math.asin(...) call
     raises TypeError the moment it touches the symbolic time -- the
-    first non-linear mechanism kills `solid develop`. solid_node.math
+    first non-linear mechanism kills `machinome develop`. machinome.math
     must compute the correct numeric swing under set_keyframe AND
     build the equivalent OpenSCAD asin(...) expression, unevaluated,
     when self.time is still symbolic.

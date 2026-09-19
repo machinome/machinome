@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,10 +13,10 @@ which a coarser filesystem then truncates across a quantum boundary about
 half the time. A whole quantum disappears and nothing ever reports
 current.
 
-Observed for real, not imagined: solid-node 0.5.1 under Emscripten MEMFS
+Observed for real, not imagined: machinome 0.5.1 under Emscripten MEMFS
 failed freshness in 13 of 25 generations, every failure exactly one
 millisecond low, against 0/25 on native ext4 (browser-engine, change
-`prove-solid-node-runs-in-browser`, upstream finding 1,
+`prove-machinome-runs-in-browser`, upstream finding 1,
 `evidence/groundwork.md` task 1.4).
 
 `coarse_fs` supplies the millisecond filesystem. The failure direction is
@@ -33,8 +33,8 @@ from unittest import TestCase, mock
 import cadquery as cq
 from solid2 import cube
 
-from solid_node.node import CadQueryNode, FusionNode, Solid2Node
-from solid_node.node.base import StlRenderStart
+from machinome.node import CadQueryNode, FusionNode, Solid2Node
+from machinome.node.base import StlRenderStart
 
 from . import coarse_fs
 from .base import BaseNodeTest

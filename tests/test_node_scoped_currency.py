@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -21,8 +21,8 @@ every node in it and the fallback decides.
 import hashlib
 import os
 
-from solid_node import currency
-from solid_node.core.loader import load_node
+from machinome import currency
+from machinome.core.loader import load_node
 
 from tests.test_content_verified_currency import (
     DIMENSIONS, TRACE, ScratchProjectTest)
@@ -31,7 +31,7 @@ from tests.test_content_verified_currency import (
 PARTS = '''\
 import cadquery as cq
 
-from solid_node.node import CadQueryNode, FusionNode
+from machinome.node import CadQueryNode, FusionNode
 
 from . import trace
 from .dimensions import SIZE
@@ -70,7 +70,7 @@ class Stud(FusionNode):
 '''
 
 MACHINE = '''\
-from solid_node.node import AssemblyNode
+from machinome.node import AssemblyNode
 
 from .parts import Pin, Stud
 
@@ -230,8 +230,8 @@ class NodeScopedCurrencyTest(SharedFileTest):
     def test_the_fast_path_still_reads_no_source(self):
         node = self.build()
         from unittest.mock import patch
-        with patch('solid_node.currency.source_digest') as digest, \
-             patch('solid_node.currency.recorded_digest') as recorded:
+        with patch('machinome.currency.source_digest') as digest, \
+             patch('machinome.currency.recorded_digest') as recorded:
             self.assertTrue(node.spare._up_to_date(node.spare.stl_file))
             self.assertTrue(node.stud._up_to_date(node.stud.stl_file))
         digest.assert_not_called()

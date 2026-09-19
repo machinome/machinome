@@ -12,7 +12,7 @@ built to exercise is the shape of the EXPRESSIONS, not the mechanism:
 - a driver expression through a PORT and its unit scale (carriage),
 - a NON-LINEAR degree-trig expression of a driver-derived angle
   (the cover tilt), which is exactly the ADR-022 class that
-  `solid_node.math` exists for, and
+  `machinome.math` exists for, and
 - a MIXED expression containing BOTH `$t` and a driver term (the
   cover shift), which sub-question 4 must survive partial
   substitution, and
@@ -32,10 +32,10 @@ without it both instances would write one another's Axis-level .scad.
 
 from solid2 import cube, cylinder, rotate, translate
 
-import solid_node.math as sn_math
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.motion.ports import TranslationalPort
-from solid_node.simulation import Driver, Instruction
+import machinome.math as sn_math
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.motion.ports import TranslationalPort
+from machinome.simulation import Driver, Instruction
 
 # GT2 belt on a 20-tooth pulley: 40 mm/rev; 200 full steps x 16 microsteps.
 USTEPS_PER_REV = 200 * 16

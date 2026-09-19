@@ -8,7 +8,7 @@ and node identity/naming. Encodes ADR-001 (composite pattern), ADR-002
 (template-method lifecycle), ADR-003 (rigid vs non-rigid), ADR-004 (multi-CAD
 backend adapters), and ADR-026 (parameter-hashed artifact keys vs tree names).
 
-Code: `solid_node/node/` (`base.py`, `internal.py`, `leaf.py`, `fusion.py`,
+Code: `machinome/node/` (`base.py`, `internal.py`, `leaf.py`, `fusion.py`,
 `assembly.py`, `declarative.py`, `adapters/`).
 ## Requirements
 ### Requirement: Composite node tree
@@ -21,21 +21,23 @@ declared children under the `declarative-nodes` capability, in which case
 the framework substitutes the realized declared children minus the omitted
 ones before any consumer sees the result. A `LeafNode.render()` SHALL
 return a single geometry object, never a list and never `None`. Validation
-runs on every `assemble()` and enforces these contracts before any SCAD
-generation.
+runs during framework preparation before geometry production or SCAD
+presentation. Public `assemble()` uses that same preparation and retains its
+SCAD result; neutral consumers compose the tree without a SCAD union.
 
 #### Scenario: Internal node returns children
 
 - **WHEN** an `InternalNode` subclass's `render()` returns a list of
   `AbstractBaseNode` instances
-- **THEN** `assemble()` links each child, assembles it, and unions the
-  results (union applied only when there is more than one child)
+- **THEN** preparation links and prepares each child; `assemble()` presents
+  the assembly's children together, or the canonical fused geometry for a
+  fusion, preserving their placements
 
 #### Scenario: Internal node returns nothing
 
 - **WHEN** an `InternalNode` subclass with declared children defines a
   `render()` that positions them and returns nothing
-- **THEN** `assemble()` links, assembles and unions the declared children
+- **THEN** `assemble()` links, prepares and presents the declared children
   exactly as if `render()` had returned them in declaration order
 
 #### Scenario: Structural contract violations are rejected
@@ -51,9 +53,13 @@ generation.
 
 ### Requirement: Template-method render lifecycle
 
-The system SHALL control the node lifecycle through `assemble()`, which users
-do not override: render → simulate (assemblies only) → validate → `as_scad` →
-`generate_scad` → optional optimized STL import → apply queued operations.
+The system SHALL control preparation, validation, native artifact production
+and placement through a framework-owned lifecycle. Users SHALL NOT override
+that lifecycle. Native geometry consumers SHALL NOT require `as_scad()` or
+SCAD generation to prepare the tree or produce its native artifacts.
+Public `assemble()` SHALL remain a SCAD compatibility entry point over the
+same prepared tree: it requests SCAD presentation, preserves optimized imports
+and colours, and applies queued operations in their existing order.
 `assemble()` SHALL be idempotent — the result is memoized and `render()` is
 called at most once per instance. On an assembly the framework SHALL run
 `simulate()` after `render()` ONCE PER ENUMERATION of the tree, under the
@@ -64,7 +70,8 @@ walk's own descent within that same enumeration SHALL return the
 children at rest without running that assembly's phase again. Every
 assembly's motion is therefore in place before the walk reads any of the
 tree's geometry. Users override `render()` and `simulate()`, never
-`assemble()`.
+`assemble()` or the framework's preparation lifecycle. The same simulation
+ordering SHALL hold for native preparation and SCAD compatibility consumers.
 
 #### Scenario: Assemble is memoized
 
@@ -101,6 +108,13 @@ tree's geometry. Users override `render()` and `simulate()`, never
   subtree's geometry was composed, so a coordinate bound while the
   second subtree simulated still moves a body in the first
 
+#### Scenario: Native preparation is independent of SCAD presentation
+
+- **WHEN** an assembly of native artifact-owning leaves is exported or built
+  for geometry tests and its SCAD presentation methods are unavailable
+- **THEN** structure, validation, motion, geometry and publication succeed
+  without invoking those presentation methods
+
 ### Requirement: Rigid vs non-rigid distinction
 
 The system SHALL distinguish rigid nodes (`rigid = True`; can produce a cached
@@ -124,6 +138,15 @@ or a descendant of exactly one. A topmost rigid node is the boundary of one
 printed solid and the unit selected by whole-solid assertions; this definition
 does not itself run an assertion or guarantee that the solid's geometry is
 connected. A flexible leaf is never a topmost rigid node.
+
+Rigidity is also what decides where a **marking** may be declared under the
+`markings` capability. A marking is a surface feature in a part's own frame and
+is carried by that part's placement, so it SHALL be declared only on a rigid
+node; a marking declared on an `AssemblyNode`, on a flexible leaf, or on any
+other non-rigid node SHALL be refused when the class is created, naming the
+class and the attribute. A marking does not change what a node IS: it adds no
+solid, no child and no printed piece, so a node carrying markings remains
+exactly as rigid, as fusable and as printable as the same node without them.
 
 #### Scenario: An assembly cannot be fused
 
@@ -163,6 +186,21 @@ connected. A flexible leaf is never a topmost rigid node.
 - **THEN** it reports `False` while the node remains a leaf, and a
   `FusionNode` rendering it raises naming both nodes
 
+#### Scenario: Only a rigid node may carry a marking
+
+- **WHEN** an `AssemblyNode` subclass and a flexible leaf subclass each declare
+  a marking
+- **THEN** creating each class raises, naming the class and the attribute,
+  while the same declaration on a rigid leaf or a `FusionNode` is accepted
+
+#### Scenario: A marking does not change what a node is
+
+- **WHEN** a rigid leaf that declares two markings is fused into a
+  `FusionNode` and the fusion is built
+- **THEN** the fusion accepts it as a rigid child, the leaf remains a rigid
+  leaf, and the fusion's topmost-rigid-node status is what it is without the
+  markings
+
 ### Requirement: Animation-time access restrictions
 
 The system SHALL restrict the `time` property to `AssemblyNode`. `LeafNode`
@@ -187,8 +225,11 @@ solid-import leaf, `StepNode` (with `step_source` and `part`), whose part is
 one product of a STEP document under the `step-import`
 capability, and one
 flexible leaf kind, `MolejoNode`, whose part is a molejo shape spec fed by
-ports under the `flexible-parts` capability. Each adapter
-SHALL implement `as_scad()`; adapters
+ports under the `flexible-parts` capability. Native adapters SHALL provide
+geometry through their artifact/evaluation capability without requiring a
+custom `as_scad()` implementation. SCAD output SHALL remain available through
+the compatibility presentation layer. Existing SCAD-only adapter overrides
+SHALL remain usable through the explicit legacy boundary; adapters
 declaring a `namespace` (`Solid2Node`, `CadQueryNode`, `Build123dNode`,
 `OpenScadNode`, `Build123dSheetNode`, `StepNode`, `MolejoNode`) get
 namespace-based render
@@ -222,13 +263,16 @@ Python evaluator, and `StlNode` through no
 external tool at all: its artifact is materialized from the committed mesh.
 `StepNode` needs no external tool either: the kernel that reads its document
 is the one that writes its artifacts.
-Every adapter still emits SCAD, so the assembled document remains complete and
-the OpenSCAD GUI viewer can still open any project; emitting it does not imply
-that OpenSCAD renders it.
+Every adapter SHALL remain representable on the SCAD output path, so the
+assembled document retains its existing coverage, including the flexible-part
+snapshot limitations. SCAD presentation does not imply OpenSCAD artifact
+production and SHALL NOT be a prerequisite for a native adapter's geometry.
 
-An adapter that produces its artifact inside `as_scad()` SHALL produce it only
-when that artifact is not up to date, and SHALL return the same SCAD output in
-either case. This covers every artifact the adapter owns; the sheet adapter's
+An adapter's native artifact producer SHALL produce an artifact only when it
+is not up to date. A compatibility `as_scad()` request SHALL reuse that same
+producer when needed and SHALL return equivalent SCAD presentation whether the
+artifact was already current or just materialized. This covers every artifact
+the adapter owns; the sheet adapter's
 DXF is produced and guarded under the same rule, and the flexible adapter's
 snapshot artifact is guarded per binding as the `flexible-parts` capability
 specifies.
@@ -351,6 +395,20 @@ exact question is unaffected.
 - **THEN** its `.scad` artifacts are written as before, so the OpenSCAD GUI
   viewer can open the project when the binary is available
 
+#### Scenario: Native adapter participation needs no SCAD hook
+
+- **WHEN** a native adapter provides its validated local mesh artifact but no
+  custom SCAD conversion method
+- **THEN** it participates in assembly, export and geometry tests, and explicit
+  SCAD presentation can import that artifact through the compatibility layer
+
+#### Scenario: A legacy adapter override is honored
+
+- **WHEN** a project supplies geometry by overriding only the historical
+  `as_scad()` hook, including on a built-in adapter subclass
+- **THEN** the legacy boundary honors that override rather than silently using
+  an inherited native producer that would return different geometry
+
 ### Requirement: Parameter-hashed artifact identity
 
 The system SHALL give each node instance a `uniq_id` of the form
@@ -442,10 +500,23 @@ Direct reassignment, alias changes, replacement, append/removal, and same-length
 The system SHALL accept a class-level `color` in `#RRGGBB` form and reject
 any other non-None value with `ValueError` during colorization.
 
+A node's `color` remains one colour for the whole node and remains optional. A
+**marking** declared on a rigid node under the `markings` capability carries
+its own colour, validated in the same `#RRGGBB` form and rejected with the same
+`ValueError`, and required rather than optional: a marking with no colour would
+declare nothing. A marking's colour SHALL NOT change the node's own.
+
 #### Scenario: Invalid color
 
 - **WHEN** a node declares `color = 'red'`
 - **THEN** assembling it raises `ValueError`
+
+#### Scenario: A marking's colour is separate from the node's
+
+- **WHEN** a node declaring `color = '#222831'` carries a marking declaring
+  `color = '#FFFFFF'`
+- **THEN** the node's published colour is `#222831` and the marking's is
+  `#FFFFFF`
 
 ### Requirement: Leaf adapters are distinct types
 
@@ -504,4 +575,59 @@ naming the fusion, before SCAD, BREP, or STL publication.
 - **THEN** validation raises naming the fusion and explaining that a fusion
   requires at least one rigid child
 - **AND** no SCAD, BREP, or STL artifact for that fusion is published
+
+### Requirement: A source-bound leaf names its missing file
+
+A leaf adapter whose part comes from a file outside Python — `StlNode`
+(`stl_source`), `StepNode` (`step_source`), `JScadNode` (`jscad_source`) and
+`OpenScadNode` (`scad_source`) — SHALL refuse to construct when the file it
+declares is not there, and the refusal SHALL name the declaring class, the
+attribute and the value declared on it, and the absolute path the framework
+resolved that value to.
+
+The refusal SHALL happen when the node is CONSTRUCTED: the same moment at
+which a subclass declaring no source file at all is already refused, and the
+moment at which the declaration can first be judged. A class body that writes
+a child declaration constructs nothing, so declaring such a leaf inside
+another node's body SHALL NOT itself fail; the failure arrives when the
+parent is instantiated and realizes that child, before any geometry is read
+and before any artifact is written.
+
+A resolved path that exists but is not a regular file SHALL be refused in the
+same way and SHALL say that it is not a file, rather than being handed to the
+mesh or document reader.
+
+This governs a declaration that was already wrong when the model was loaded.
+It SHALL NOT change what happens to a source file that disappears after its
+node was constructed: that remains a build failure raised when the node's
+sources are read for freshness.
+
+#### Scenario: A declared file that is not there
+
+- **WHEN** a node whose adapter binds it to an external file is constructed,
+  and the file that adapter's source attribute names does not exist
+- **THEN** construction fails with an error naming the class, the source
+  attribute and its declared value, and the absolute path resolved from it,
+  and no artifact is written
+
+#### Scenario: The failure arrives when the parent realizes the child
+
+- **WHEN** an assembly's class body declares such a leaf as a child and the
+  leaf's file is absent
+- **THEN** importing the module holding that class body succeeds, and
+  instantiating the assembly fails with that same error
+
+#### Scenario: A declared source that is a directory
+
+- **WHEN** the path a source attribute resolves to exists but is a directory
+- **THEN** construction fails saying the path is not a file, naming the class
+  and the attribute, rather than the mesh or document reader failing on it
+  later
+
+#### Scenario: A source removed after the node was constructed
+
+- **WHEN** a node is constructed with its source file present and the file is
+  removed before the build reads its sources for freshness
+- **THEN** the build still fails on the missing source exactly as it does
+  today; the construction-time check does not apply retroactively
 

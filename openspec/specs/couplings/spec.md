@@ -13,18 +13,22 @@ declaration), ADR-066 (render at rest, simulate per instant), ADR-088
 (a joint owns one coordinate) and ADR-076 (mechanism laws as
 compositions over expression math).
 
-Code: `solid_node/motion/couplings.py`.
+Code: `machinome/motion/couplings.py`.
 ## Requirements
 ### Requirement: A relation is stated by `drives` in a class body
 
 The system SHALL provide `drives(other, ratio=None, offset=None,
 law=None)` on every declaration that can name a coordinate — a child
 declaration, a port declaration, a joint declaration, a `Driver`
-declaration, a path reference and a derived coordinate — and SHALL
-require no import to use it. `drives` SHALL be framework vocabulary and
-the ONLY vocabulary for relating two coordinates: the framework SHALL
-look up no method, attribute or hook of any name on a project's node
-class to discover what a relation means.
+declaration, a `State` declaration, a path reference and a derived
+coordinate — and SHALL require no import to use it. `drives` SHALL be
+framework vocabulary and the ONLY vocabulary for relating two coordinates:
+the framework SHALL look up no method, attribute or hook of any name on a
+project's node class to discover what a relation means.
+
+A `State` declaration SHALL be admitted as a SOURCE of `drives` exactly as a
+`Driver` is, and SHALL be refused as the DRIVEN end, at class definition,
+naming the relation and the state.
 
 `drives` SHALL be a STATEMENT: written bare in a class body, as
 `power.drives(centre, law=going_train)`, it SHALL be recorded on the
@@ -135,10 +139,16 @@ independently of every other instance of that class.
 - **THEN** the subclass enumerates all four, the base's first, and
   nothing was replaced
 
+#### Scenario: A state drives a coordinate
+
+- **WHEN** a class body states `units.drives(dial.turn, law=digit_angle)`
+  where `units` is a `State`
+- **THEN** the relation is recorded and solves from the state's bound value,
+  exactly as it would from a driver's
 ### Requirement: The law of a relation is an affine pair, or project code passed in
 
 The system SHALL provide `Affine(ratio, offset=0)`, exported from
-`solid_node.motion.couplings`, as the law `driven = ratio * driver +
+`machinome.motion.couplings`, as the law `driven = ratio * driver +
 offset`, evaluated in the driven end's own unit. `Affine` SHALL compute
 by ordinary arithmetic, so a symbolic driver value produces a symbolic
 result and a number produces a number, and SHALL be invertible as
@@ -385,6 +395,22 @@ a relation that would also bind its child end is a double binding, and
 the rule that binding a wired child end by hand is refused is
 unchanged.
 
+A RUNNING SIMULATION is a binder kind of its own (the `ports`
+capability's `RunBinder`), and the solver SHALL recognize it. A relation
+ALL of whose driven ends are run-bound SHALL be recorded as solved BY THE
+RUN, in neither direction, whatever its source ends hold: the run
+integrated it, and applying it again would bind a coordinate the run
+owns. A relation whose driven ends are not run-bound SHALL solve as
+today from its bound side; where that would bind a run-bound SOURCE
+backward it SHALL be refused as doubly bound naming the run as the other
+binder. A wiring whose target is run-bound SHALL likewise be recorded as
+applied by the run; a wiring whose target is a plain port SHALL apply
+from a run-bound source as from any bound source. A derived coordinate
+whose terms are run-bound SHALL be computed forward and bound as the
+formula, exactly as today; the run checks the formula's consistency on
+its own side. Every message that names a binder SHALL describe the run
+as the running simulation.
+
 Because a value slot keeps what was bound into it, the system SHALL
 make freshness explicit. At the START of an assembly's simulate phase,
 before the author's `simulate()` runs, the framework SHALL clear the
@@ -397,7 +423,13 @@ coordinate can never go on holding a value whose operations the sweep
 has already removed. The only values present when the solve runs are
 therefore those bound during the current enumeration of the tree: by
 this author's `simulate()`, by an ancestor's wiring or relation already
-applied in this enumeration, or by a driver read.
+applied in this enumeration, or by a driver read — and those a running
+simulation binds. A run-bound slot SHALL be EXEMPT from the clear: the
+run bound it outside any phase, owns its history and rebinds it on every
+tick, so the freshness rule SHALL leave its value and binder alone
+whatever enumeration last touched it, and an end that is run-bound SHALL
+read as BOUND at every attempt, before any question of freshness is
+asked.
 
 Because a coordinate this instance's own attempt reads as an END is not
 necessarily the current enumeration's value — tree order runs an
@@ -626,6 +658,30 @@ runner.
   previous enumeration's mark as UNBOUND and defers, and the pass's own
   fixpoint solves it only once the descendant's fresh rebind has landed
 
+#### Scenario: A run-bound coordinate survives the freshness clear
+
+- **WHEN** a running simulation binds every joint coordinate of a train
+  whose rest render had solved them through relations, and the tree is
+  enumerated at three successive ticks
+- **THEN** no phase clears a run-bound slot, every relation into a
+  run-bound coordinate is recorded as solved by the run, and nothing is
+  refused as doubly bound or unreached
+
+#### Scenario: A wiring into a run-bound joint is the run's
+
+- **WHEN** an arbor's joint coordinate is run-bound and the arbor wires it
+  down into a rod's joint and a wheel's plain port
+- **THEN** the rod's joint is recorded as applied by the run and holds
+  the run's value, and the wheel's port is bound from the run-bound source
+  exactly as from any bound source
+
+#### Scenario: A backward solve into a run-bound source is refused
+
+- **WHEN** a relation's driven end is a plain port the author's
+  `simulate()` binds and its source is a coordinate the run owns
+- **THEN** solving raises the doubly-bound refusal naming the relation,
+  the author's binding and the running simulation
+
 ### Requirement: Three refusals keep a wrong drive network from becoming a pose
 
 The system SHALL refuse, by name, each of the following, and SHALL name
@@ -649,12 +705,15 @@ reach the coordinate:
   and nothing else;
 - a DOUBLY BOUND coordinate: a relation would bind a coordinate that
   something else already bound during this enumeration of the tree —
-  the author's `simulate()`, a wiring, or another relation — or a
-  relation both of whose ends were already bound by other binders. Two
+  the author's `simulate()`, a wiring, another relation, or the running
+  simulation that owns it — or a relation both of whose ends were
+  already bound by other binders, a relation all of whose driven ends the
+  run owns excepted, since the run solved it. Two
   relations that would give the SAME value SHALL be refused as well:
   the framework SHALL NOT compare two values to decide whether a
   redundant statement agrees, because they are ordinarily symbolic
-  expressions, and the message SHALL name both binders;
+  expressions, and the message SHALL name both binders, the running
+  simulation described as such when it is one of them;
 - a NOT INVERTIBLE relation: the driven end is the bound one and the
   relation's law offers no inverse, or is an affine law whose ratio is
   numerically zero, or the relation is one copy of a BROADCAST, or the
@@ -739,6 +798,13 @@ deferred until the descendants had solved.
 - **THEN** the driven end is bound through the law's forward face and
   nothing is refused
 
+#### Scenario: The running simulation is named as a binder
+
+- **WHEN** an assembly's `simulate()` binds a joint coordinate the running
+  simulation owns
+- **THEN** the doubly-bound refusal names the coordinate, the assembly's
+  class and "the running simulation" as the two binders
+
 ### Requirement: Each end of a relation resolves to a coordinate, or to one per copy of a repeated child
 
 The system SHALL resolve each end of a relation to a coordinate, or to
@@ -757,7 +823,9 @@ kinds of end SHALL be:
 - a BROADCAST — a path one of whose segments is a REPEATED child
   declaration, `eccentric_bearings.orbit`, `column.beads.travel`,
   `legs.femur.lift` — resolving to ONE coordinate PER REALIZED COPY,
-  and permitted as the DRIVEN end only;
+  and permitted as the DRIVEN end only, or in the source group of the
+  relation that drives that same broadcast, where it is each copy's read
+  of itself;
 - a `Driver` declaration, resolving to the driver's value, which SHALL
   be a SOURCE only;
 - a DERIVED COORDINATE of the class;
@@ -777,17 +845,18 @@ one-source relation before the grouping is read.
 
 Every member of a group SHALL be an end of one of the kinds above and
 SHALL be checked as one, in its own role: a repeated child named as a
-SOURCE, a `Driver` named as a DRIVEN end, a node whose class declares
+SOURCE — other than the broadcast the same relation drives — a `Driver`
+named as a DRIVEN end, a node whose class declares
 several joints, and a path stopping on a joint that owns several
 coordinates SHALL each be refused inside a group exactly as outside it.
 Ends are coordinates, named ONE BY ONE. A group SHALL name at least TWO
 coordinates — an empty group and a group of one SHALL be refused,
 saying that one end is written without the group — and a group SHALL
-NOT hold another group. A coordinate SHALL be named ONCE in a group, and
-a coordinate named on BOTH sides of a relation whose ends name several
-coordinates SHALL be refused, saying that a coordinate is a source or a
-driven end of one relation and not both. A group SHALL NOT be a term of
-a derived coordinate.
+NOT hold another group. A coordinate SHALL be named ONCE in a group; a
+coordinate named on BOTH sides of a relation whose ends name several
+coordinates SHALL be a READ of that driven end rather than a refusal,
+under the requirement "A relation may name several coordinates at each
+end". A group SHALL NOT be a term of a derived coordinate.
 
 Where a DRIVEN group names a BROADCAST, every member of that group SHALL
 be a broadcast over the SAME repeated segment of the same path, so the
@@ -818,8 +887,12 @@ named one by one.
 A BROADCAST SHALL be refused at class definition when it is named as the
 SOURCE end, naming the path as written, the repeated declaration and its
 class, and saying that a relation's source is one value while the copies
-hold one each. A BROADCAST SHALL likewise be refused as a term of a
-derived coordinate, naming the formula and the path.
+hold one each — with ONE exception: the very broadcast the same relation
+DRIVES, which is not a second value but each copy's READ of itself, and
+which SHALL resolve per copy exactly as the driven end does, under the
+requirement "A relation may name several coordinates at each end". A
+BROADCAST SHALL likewise be refused as a term of a derived coordinate,
+naming the formula and the path.
 
 A path that STOPS on a joint owning several coordinates — `chassis.pose`
 — SHALL be refused at class definition naming the joint and listing its
@@ -850,12 +923,14 @@ child or a descendant of one. Whatever the classes alone decide SHALL
 be refused AT CLASS DEFINITION — an attribute no class along a path
 declares, a node end with the wrong number of joints, a driver as a
 driven end, a path through a list-held child, a broadcast named as the
-source end, a path through two repeated children, `ratio=` or
+source end of a relation that does not drive that same broadcast, a path
+through two repeated children, `ratio=` or
 `offset=` given together with `law=`, and every refusal a GROUP carries:
 a group of fewer than two coordinates, a group inside a group, a
-coordinate named twice in one group or on both sides of one relation, a
+coordinate named twice in ONE group, a
 driven group mixing a broadcast with an end that is not one or naming
-two different repeated segments, a group with `ratio=`/`offset=` or with
+two different repeated segments, a driven group one of whose members the
+source group also names, a group with `ratio=`/`offset=` or with
 no `law=`, `&` over something that is not a coordinate, and `&` over a
 relation — and whatever depends on the
 instance SHALL be refused AT REALIZATION, naming the relation, the path
@@ -1169,6 +1244,36 @@ relation: a law over several symbolic sources publishes several
 expressions, one per driven end, and the operations they lower to are
 those the same bindings written by hand would produce.
 
+A coordinate named BOTH as a source and as a driven end of ONE such
+relation SHALL be a READ of that driven end: the law SHALL be handed its
+owner exactly as it is handed any source's owner, in the position the
+source group writes it, and what the law reads there SHALL be the value
+the coordinate HOLDS and never a value that same application is about to
+give it. Such a relation SHALL be recognized only where an end names
+SEVERAL coordinates, SHALL be applied FORWARD only like any other
+relation of several ends, and SHALL be integrated under the simulation
+requirement "A law may read the coordinate it drives", which is the only
+reading that gives it a meaning.
+
+Such a relation SHALL drive exactly ONE coordinate. A relation whose
+driven end is a GROUP and whose source group names any member of that
+group SHALL be REFUSED at class definition, naming the relation and the
+coordinate, and saying that a relation reading its own driven end drives
+one coordinate — whether that member reads ITSELF or a SIBLING driven end
+of the same group. Where the driven end is a BROADCAST the relation still
+drives one coordinate per copy, and the source group's repeated member —
+the same broadcast — SHALL resolve per copy exactly as the driven end
+does, so each copy reads ITSELF and each copy is its own record. A
+coordinate named twice within ONE group SHALL stay refused, and a read of
+a coordinate some OTHER relation drives SHALL stay the ordinary source it
+has always been.
+
+Under a root that does NOT declare `Time.running()` such a relation SHALL
+be REFUSED by name at the close of the enumeration, naming the relation
+and the class that stated it and saying that a relation reading its own
+driven end states increments, which only a run integrates — rather than
+standing silently inert over a coordinate nothing moves.
+
 #### Scenario: A pawl deflects from two drums
 
 - **WHEN** a position states
@@ -1210,4 +1315,263 @@ those the same bindings written by hand would produce.
   coordinates was already bound by the author's `simulate()`
 - **THEN** the doubly-bound refusal names that coordinate and its two
   binders, and none of the other three was bound
+
+#### Scenario: A coordinate named on both sides is read, not refused
+
+- **WHEN** a class states
+  `(rack & wheel.turn).drives(wheel.turn, law=missing_tooth)` on a root
+  declaring `Time.running()`
+- **THEN** class definition succeeds, the law is called with the rack's
+  owner and the wheel's owner in that order, and the relation's one
+  record names `wheel.turn` as both a source and its driven end
+
+#### Scenario: A driven group with a self-read is refused
+
+- **WHEN** a class states
+  `(crank & lever.swing & pawl.turn).drives((lever.swing, pawl.turn), law=hysteresis)`
+- **THEN** class definition raises naming the relation and the coordinate
+  read, and saying that a relation reading its own driven end drives one
+  coordinate
+
+#### Scenario: Each copy of a broadcast reads itself
+
+- **WHEN** a class declaring `wheels = Wheel().repeat(6)` states
+  `(ring & wheels.turn).drives(wheels.turn, law=missing_tooth)`
+- **THEN** class definition succeeds although the source group names a
+  broadcast, six records are solved, one per copy, and each copy's law
+  read that copy's OWN turn rather than the first copy's
+
+#### Scenario: A coordinate named twice in one group is still refused
+
+- **WHEN** a class states
+  `(rack & wheel.turn & wheel.turn).drives(wheel.turn, law=...)`
+- **THEN** class definition raises naming the relation and the
+  coordinate, because one value would take two positions of the law
+
+#### Scenario: A self-read relation under no running root is refused
+
+- **WHEN** a root declaring no time base, or `Time(loop=4)`, states
+  `(rack & wheel.turn).drives(wheel.turn, law=missing_tooth)` and the
+  tree is rendered
+- **THEN** the enumeration refuses at its close naming the relation and
+  the class that stated it, and says that a relation reading its own
+  driven end states increments, which only a run integrates, and to
+  declare `time = Time.running()`
+
+### Requirement: A grouped source commits states at an event
+
+The system SHALL provide `commits(targets, at=, law=)` beside `drives`, on
+every declaration that can name a coordinate and on the `&` group built from
+them, requiring no import to use it, and SHALL be a STATEMENT recorded on the
+class being defined exactly as `drives` is: bare, or assigned to a name that
+reaches it and appears in every message about it. Read off the CLASS a named
+committing relation SHALL yield the declaration with its sources, its targets
+and its two factories as written; read off an INSTANCE it SHALL yield that
+instance's resolved record. `commits` called with no node class body
+executing SHALL be refused by name, and a class carrying one that is not an
+assembly SHALL be refused when the class is created, by the rules `drives`
+already obeys.
+
+`targets` SHALL name one `State` or several, written as a tuple or with `&`,
+in the order written. Every target SHALL be a `State`. A target that is not
+one, and a target named TWICE among the targets of that relation, SHALL each
+be refused at class definition, naming the relation as written and the
+coordinate. The duplicate judgement SHALL be made on the target's PATH AS
+WRITTEN — the path to the node that declares the state plus the local name —
+and never on the local name alone: two children of one class each declare
+their own state, so `a.digit` and `b.digit` are two targets and one relation
+MAY name both.
+
+A `State` a SECOND committing relation also targets SHALL NOT be refused,
+neither at class definition nor at simulation construction: a value the
+machine writes at two different events — a register digit written by the
+stroke that adds to it and by the clearing reach that zeroes it — has two
+writers and exactly one answer at each event. Two relations that would write
+one state AT ONE EVENT are refused as the request's own conflict, by the
+simulation capability, and nothing about that judgement belongs to a class
+body, which cannot see a landing.
+
+Every source SHALL be a `Driver`, a `State`, or the root's own `Time`
+declaration when that declaration is the ELAPSED base; the same `&` group
+grammar
+applies, flat and left-associative, with the same missing-parentheses
+refusal. A port, joint coordinate or derived coordinate named as a source
+SHALL be refused at class definition, by name, saying to name the drivers and
+states the port follows. A source group MAY name a target of the same
+relation: that is a READ of that target's value, and it SHALL be handed to
+both factories in the position the group writes it.
+
+The CLOCK named as a source SHALL be the declaration the class body holds
+under the name `time`, SHALL enter the `&` group and both factories exactly
+as a driver does — one positional argument in written order, carrying the
+banked seconds — and SHALL be addressed by the bare qualified id `time`. It
+SHALL be refused at class definition, by name and naming `Time.elapsed()`,
+when the declaration it names is `Time(loop=...)` or `Time.running()`,
+because an event is located on a clock that never wraps. The clock SHALL be
+refused as a TARGET of `commits` and as either end of `drives`, at class
+definition, by name: the clock is moved by a request and written by nothing.
+
+A class body that declares NO time base has no `time` name of the system's
+to refuse — a class body does not read a base class's attributes — so the
+system SHALL NOT claim a refusal it cannot raise there, and SHALL instead
+make the `&` group's refusals SYMMETRIC. A LEFT operand of `&` that is not a
+coordinate SHALL be refused by name exactly as a right operand already is,
+naming the operand and saying a group is a group of coordinates; where that
+operand is a MODULE the message SHALL add that the machine's clock is named
+only through the root's own `time = Time.elapsed()` declaration and that a
+body declaring no base has no clock to name. That refusal SHALL be reached
+only where the left operand carries no `&` of its own, so every group the
+system admits today SHALL be admitted unchanged. A body that binds no `time`
+at all SHALL raise Python's own `NameError` before any declaration is
+reached, and the system SHALL promise no message of its own there.
+
+`at` and `law` SHALL both be required and SHALL both follow the law-factory
+protocol this capability already states: a callable of two arguments, called
+exactly ONCE at realization with the realized owners — one owner for a side
+naming one coordinate, the tuple of owners in written order for a side naming
+several — returning a callable over the sources' values, one positional
+argument per source in written order. Neither SHALL receive an event object,
+a runtime handle, or any mutable per-tick state, and a committing relation
+SHALL add no second face to a law. `ratio=` and `offset=` SHALL be refused
+with `commits`, a committing relation having no affine default; a `.repeat()`
+broadcast on either side SHALL be refused by name.
+
+Both factories SHALL read and write NATIVE values: a commit law receives its
+sources as the state bank holds them and returns values in the same units,
+and a returned value SHALL NOT be passed through the design-unit conversion
+a driver applies to a move target. A target declaring `dtype=int` SHALL take
+the nearest whole native unit, rounded once at the commit; a target declaring
+a `scale` SHALL take the returned value unrescaled.
+
+`targets` MAY name a state through a PATH to the node that declares it,
+`carriage.result.units.digit`, exactly as a source may — a state belongs to
+the part that holds the value, and the relation belongs to the assembly that
+can see both ends.
+
+A `State` SHALL be refused as the driven end of `drives`, at class
+definition, naming the relation and the state: a state is written by its
+committing relation and by nothing else. A `State` MAY be a SOURCE of
+`drives`, exactly as a `Driver` may, which is how the pose is fed from the
+state.
+
+#### Scenario: A bare commits is recorded on the class
+
+- **WHEN** a class body contains
+  `(crank & units & tens).commits((units, tens), at=strokes, law=advance)`
+  with no assignment
+- **THEN** the class carries that committing relation, enumerable off the
+  class with its sources, its targets and its two factories, and no instance
+  was constructed
+
+#### Scenario: A named committing relation resolves per instance
+
+- **WHEN** a class body contains
+  `stroke = (crank & result).commits(result, at=strokes, law=registers)` and
+  two instances of that class are realized
+- **THEN** reading `stroke` off the class yields the declaration, reading it
+  off each instance yields that instance's own record, and each factory was
+  called once per instance with that instance's realized owners
+
+#### Scenario: A target is named through a path
+
+- **WHEN** a root's class body states
+  `(ring & dial.digit).commits(dial.digit, at=reach, law=clear)`, where
+  `digit` is a `State` declared on the `dial` CHILD and not on the root
+- **THEN** the relation is recorded on the root, both factories are handed
+  the realized `dial`'s own `digit` owner, the state enumerates as
+  `dial.digit`, and committing it writes that child's value
+
+#### Scenario: A source group may name its own target
+
+- **WHEN** a committing relation is written
+  `(ring & digit).commits(digit, at=reach, law=clear)`
+- **THEN** it is admitted, and both factories are handed the digit's owner in
+  the position the group writes it
+
+#### Scenario: Two relations may target one state
+
+- **WHEN** one class body states two committing relations both naming
+  `units` among their targets, on two different event levels
+- **THEN** the class is created carrying both, and each resolves on an
+  instance with its own two factories called once
+
+#### Scenario: One relation naming one target twice is refused
+
+- **WHEN** a class body states `.commits((a.digit, a.digit), at=..., law=...)`
+- **THEN** class definition fails printing the path `a.digit` and saying a
+  target is named once
+
+#### Scenario: Two children of one class are two targets
+
+- **WHEN** a class body states
+  `(crank & a.digit & b.digit).commits((a.digit, b.digit), at=..., law=...)`
+  where `a` and `b` are two children of ONE class declaring `digit`
+- **THEN** the relation is recorded with two targets, and committing it
+  writes each child's own value
+
+#### Scenario: A state as a driven end is refused
+
+- **WHEN** a class body states `crank.drives(units)` where `units` is a
+  `State`
+- **THEN** class definition fails naming the relation and the state, and says
+  a state is written by its committing relation
+
+#### Scenario: A ratio with commits is refused
+
+- **WHEN** a class body states `.commits(units, ratio=2.0)`
+- **THEN** class definition fails naming the relation, saying a committing
+  relation has no affine default and requires `at` and `law`
+
+#### Scenario: A broadcast commits is refused
+
+- **WHEN** a committing relation names a path through a `.repeat()`ed child
+  on either side
+- **THEN** class definition fails by name
+
+#### Scenario: The clock is a source beside a driver and a state
+
+- **WHEN** a root declaring `time = Time.elapsed()` states
+  `(time & engaged & count).commits(count, at=release, law=advance)`
+- **THEN** the class carries that committing relation with three sources in
+  written order, both factories are called once at realization, and each
+  returned callable receives the seconds first, the driver's value second
+  and the state's value third
+
+#### Scenario: The clock as a source under another base is refused
+
+- **WHEN** a class body declares `time = Time(loop=4)` or
+  `time = Time.running()` and names `time` among a committing relation's
+  sources
+- **THEN** class definition fails naming the relation, the base it declared
+  and `Time.elapsed()`
+
+#### Scenario: A body that declares no base names the module, and the group refuses it
+
+- **WHEN** a module that imported the stdlib `time` contains a class body
+  declaring no time base and writing `time & engaged` among a committing
+  relation's sources
+- **THEN** class definition fails naming the operand, saying a group is a
+  group of coordinates, and saying the machine's clock is named only through
+  the root's own `time = Time.elapsed()` declaration
+
+#### Scenario: A body that binds no time at all gets Python's own answer
+
+- **WHEN** a class body declaring no time base names `time` in a group and
+  nothing in the module or the builtins binds that name
+- **THEN** `NameError` is raised before any declaration of the framework is
+  reached, and no framework refusal is claimed for that case
+
+#### Scenario: A group of coordinates is admitted unchanged
+
+- **WHEN** any group the system admits today is written, its left operand
+  being a coordinate, a declaration or a group
+- **THEN** it is built exactly as it is built today, the left operand's own
+  `&` answering, and the left-operand refusal is never reached
+
+#### Scenario: The clock is not a target and not a driven end
+
+- **WHEN** a class body states `.commits(time, at=..., law=...)`, or
+  `time.drives(x)`, or `x.drives(time)`
+- **THEN** each fails at class definition by name, saying the clock is moved
+  by a request and written by nothing
 

@@ -7,7 +7,7 @@ Driving a machine
 
 :doc:`Animation <animation>` moves a model with one looping clock. A
 machine has more inputs than that: a carriage position, a crank angle,
-a valve lift. In Solid Node those are **drivers** — named inputs an
+a valve lift. In Machinome those are **drivers** — named inputs an
 assembly declares, with a default and the range a maker thinks in —
 and `self.time` is one driver among several rather than the only one.
 
@@ -22,8 +22,8 @@ ordinary attribute:
 
 .. code-block:: python
 
-    from solid_node.node import AssemblyNode
-    from solid_node.simulation import Driver
+    from machinome.node import AssemblyNode
+    from machinome.simulation import Driver
 
     TRAVEL = 160.0
 
@@ -57,7 +57,7 @@ than guessing:
   (``self.position = 12``) raises and names `set_state`, the one way a
   value is bound from Python.
 * **Reading** a driver that no snapshot has bound raises and names the
-  driver. In the viewer and in `solid export` the declared defaults
+  driver. In the viewer and in `machinome export` the declared defaults
   are bound for you.
 * A declaration whose name would **shadow** a node member — `render`,
   `color`, `time` — fails at class-definition time, before any
@@ -95,7 +95,7 @@ its instructions at the top:
 
 .. code-block:: python
 
-    from solid_node.simulation import Driver, Instruction
+    from machinome.simulation import Driver, Instruction
 
     class Plotter(AssemblyNode):
         """The machine: two instances of one Axis, and its instructions."""
@@ -152,18 +152,29 @@ current snapshot rather than replacing it — `set_keyframe(t)` is
 :doc:`Animating with time <animation>`). A name that no declaration
 backs is rejected on the spot, listing what is declared.
 
+Under a root declaring `Time.running()`, and only there, a bound name
+may instead be the qualified id of a JOINT COORDINATE the tree
+publishes — ``set_state(**{'first.turn': 12.0})``,
+``set_state(**{'chassis.pose.roll': 3.0})``. The entry is delivered to
+the node that owns the coordinate, a leaf included, and bound through the
+same path an assignment takes, so the joint's declared range and its
+placement apply exactly as they always do. That is how a running
+simulation binds its bank; a hand binding is not a run, so a coordinate a
+relation drives is still re-solved by that relation on the render that
+follows.
+
 Ports: how parts talk
 =====================
 
 A driver is an *input to the machine*. A **port** is a connection
 point *between parts*: a unit-tagged value slot a node declares, that
 its parent binds on every `simulate()` with `connect()`. Ports come
-from ``solid_node.motion.ports``, the module that answers what moves and
+from ``machinome.motion.ports``, the module that answers what moves and
 what drives what:
 
 .. code-block:: python
 
-    from solid_node.motion.ports import TranslationalPort
+    from machinome.motion.ports import TranslationalPort
 
     class SteppedAxis(AssemblyNode):
         motor = Driver(default=800, range=(0, 100), unit='ustep', dtype=int,
@@ -190,11 +201,11 @@ Joints: where a part may move
 
 A port carries a value; a **joint** says *where a body may move*, next
 to the body, once. The three one-coordinate declarations come from
-``solid_node.motion.joints``:
+``machinome.motion.joints``:
 
 .. code-block:: python
 
-    from solid_node.motion.joints import Prismatic, Revolute
+    from machinome.motion.joints import Prismatic, Revolute
 
     class Forearm(AssemblyNode):
         elbow = Revolute(axis=(0, 1, 0), at=(0, 0, 81.5),
@@ -283,6 +294,30 @@ at bind time. Nothing here is deprecated: a project that turns its parts
 by hand in `simulate()` keeps working, and both forms may sit on one
 node.
 
+**Either bound may be open, or an expression over the coordinate
+itself.** `None` as a bound means unbounded on that side, so
+`range=(0, None)` states a coordinate that may not go below zero and may
+go as far above it as the mechanism takes it. A bound given as a
+**callable of one argument** states itself as an expression over the
+joint's own coordinate, written in ``machinome.math``:
+
+.. code-block:: python
+
+    class InputArbor(AssemblyNode):
+        turn = Revolute(axis=(1, 0, 0),
+                        range=(lambda turn: 36 * floor(turn / 36), None))
+
+That is a ten-tooth ratchet: the lower bound is the last seated tooth
+and there is no upper one, because forward rotation is free. The bound
+is applied where it is USED — at the value being bound, so the same
+declaration poses at any angle, and once per tick from the committed
+bank under a running root, where it becomes a physical stop
+(:ref:`scenarios <scenarios>`). A bound that is not satisfied at its own
+argument — `lambda turn: turn + 1` — forbids every value, and the first
+binding says so by name. A callable given as the WHOLE `range`, called
+with the realized declarer and returning two numbers, keeps its own
+meaning: the two forms are told apart by position, not by arity.
+
 **A body may have more than one freedom, and the class says how they
 stack.** The joints declared on one class compose in **declaration
 order**, innermost first: the first declared is applied closest to the
@@ -348,7 +383,7 @@ it:
 
 .. code-block:: python
 
-    from solid_node.motion.joints import Orbit, Revolute
+    from machinome.motion.joints import Orbit, Revolute
 
     class CycloidalDisk(Solid2Node):
         spin  = Revolute(axis=(0, 0, 1), unit='deg')   # innermost: its own centre
@@ -390,7 +425,7 @@ hexapod uses four. ``Free`` is one declaration for all six:
 
 .. code-block:: python
 
-    from solid_node.motion.joints import Free
+    from machinome.motion.joints import Free
 
     class Chassis(AssemblyNode):
         pose = Free(angle_unit='deg', length_unit='mm')
@@ -460,7 +495,7 @@ child it is placing, read in the parent's frame, URDF's rule:
 
 .. code-block:: python
 
-    from solid_node.motion.joints import Revolute
+    from machinome.motion.joints import Revolute
 
     class Rack(AssemblyNode):
         screw = ZScrew(turn=Revolute(axis=(0, 0, 1), unit='deg'))
@@ -694,7 +729,7 @@ The law
 ``ratio=`` and ``offset=`` are the shorthand for ``Affine``, the one new
 name to import when you want it explicitly::
 
-    from solid_node.motion.couplings import Affine
+    from machinome.motion.couplings import Affine
 
     Affine(ratio, offset)   # driven = ratio * driver + offset
 
@@ -718,6 +753,66 @@ looks nothing up: there is no hook on your class, no registry of
 mechanism shapes, and no vocabulary of gears. A returned object needs a
 ``forward(x)``, and an ``inverse(y)`` if the relation may ever be read
 backwards; a plain function is taken as forward-only.
+
+What a law costs under a running root
+-------------------------------------
+
+Under ``time = Time.running()`` the run has to FOLLOW the quantities a
+law is built from along each tick — to find where a gate opens, where a
+``floor`` steps, where a declared range is reached. How it does that is
+read off the law's own expression, once, when the machine is compiled.
+You declare nothing and there is no knob.
+
+It **solves** — one division, exact — where the quantity is affine in
+its sources: a sum, a difference, a constant multiple, a division by a
+constant. It also solves where the quantity is *piecewise* affine, which
+is what ``abs``, ``min`` and ``max`` make it. Each of those returns one
+of its operands exactly, so the path is cut where they change which one
+— nothing is recorded there, and no part moves — and each piece is
+solved like any affine one. Every profile built on them solves:
+``clamp``, ``clamp01``, ``ramp`` and ``piecewise``, which is how a
+motion profile is normally written::
+
+    def tooth_window(driver, driven):
+        # SOLVED: two kinks, three affine pieces
+        return lambda angle: 4 + 72 * clamp01((angle - 113.5) / 11.25)
+
+It **searches** everything else — ``sin``, ``cos``, ``sqrt``, a power, a
+product of two moving quantities, a moving divisor — by sampling the
+tick at 64 sub-intervals and bisecting behind each bracket it finds.
+That is correct and it is slower: tens of evaluations of the law per
+crossing instead of a handful, per tick, per relation that has one. It
+is also less exact, by the bisection's own tolerance rather than by a
+float. The classification is conservative and structural, so a kink over
+a curved operand — ``max(0, sin(phase))`` — is searched: a piece of it
+may happen to be straight, but the expression does not say so.
+
+If a running machine is slower than you expect, that is where to look
+first: a profile written with ``clamp01`` costs almost nothing, and the
+same profile written with a ``sin`` costs the search on every tick.
+
+What a law costs when it reaches through a long chain of parts that stand
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A searched crossing samples the SAME expression sixty-four times over
+one tick, with one branch reading. Most of what that expression reads
+never changes over that stretch: every sibling coordinate the law reaches
+through that this tick does not move, every retained dial upstream of it,
+every branch a jump already decided for the piece. The run recognizes
+this on its own — nothing you write selects it, and there is no knob —
+and pays the cost of deciding which part of the expression can change
+only ONCE per followed quantity per tick, not once per sample.
+
+What this means for you: a law that reaches through a long chain of
+other parts' state — a register dial whose engagement depends on a
+detent cam, itself downstream of several other dials that happen to sit
+still this tick — is not charged for the length of that chain, only for
+the part of it that actually moves. Two laws with the same shape of
+motion cost about the same whether the sources they read are one
+coordinate away or fifteen, as long as most of them stand still on the
+tick in question. There is still no number this promises: how much a
+search costs still depends on how much of the expression moves, and a
+law whose entire chain moves on every tick is not helped by this at all.
 
 A relation over a repeated child
 ---------------------------------
@@ -838,7 +933,81 @@ kind — a delta printer's carriage height and a flexure stage's leg lean
 both are. Two symbolic rules already true of a one-source law stay true
 here: ``forward`` may not BRANCH on its arguments' values (a symbolic
 value is not comparable), and a non-linear function of a symbolic value
-must come from ``solid_node.math`` so it emits an OpenSCAD call.
+must come from ``machinome.math`` so it emits an OpenSCAD call.
+
+A selection decides which sources a law reads
+---------------------------------------------
+
+A mechanism's dependencies may be SELECTED by where one of its own parts
+stands. A Curta's carry levers belong to the fixed frame and its number
+dials ride on the carriage, so the same lever is tripped by dial ``s``
+and advances dial ``s + 1``, where ``s`` is the carriage position the
+maker chose. At any one position the dependencies are a chain; their
+UNION over the positions is a cycle, and the union is what a running
+program has to order.
+
+Nothing new is declared. The selection is the comparison the model
+already writes -- a term multiplied by a gate on the coordinate that
+selects::
+
+    (crank & seat.turn & levers.travel & dial.turn).drives(
+        dial.turn, law=advanced(place))
+
+Under a running root a cycle every selection breaks is a **BLOCK**: one
+entry of the program, ordered once per PIECE of a tick rather than once
+per program. The program as a whole is acyclic again, and nothing
+outside a block changes.
+
+A **SELECTOR** is a jump node of a block member's law whose LEVEL
+QUANTITY reads no coordinate the block determines -- so its branch is
+known before the block runs, from what the edges upstream already gave.
+``seat.turn >= place - 0.5`` is one; ``lever.travel >= 1`` is not,
+because the block determines the lever.
+
+A source is **SWITCHED** when folding a selector's branch to ZERO removes
+it from the law: a product with a zero factor is zero, so the term goes
+and every name only that term read goes with it. A branch counts as
+foldable only where the primitive holds ZERO over an INTERVAL of its
+level -- ``floor`` over ``[0, 1)``, ``ceil`` over ``(-1, 0]``, a
+remainder's quotient over ``(-1, 1)``, and a comparison over the whole of
+its false side. ``sign`` is the one that does not: its zero is a single
+POINT, the level exactly at zero, so a ``sign``-gated source is active on
+every real piece and gating a cycle on one is refused at construction
+rather than admitted and refused at the first tick.
+
+Over a stretch the block's selectors are located FIRST, by the machinery
+a jump crossing already uses, and the block then runs PIECE BY PIECE. On
+each piece every selector's branch is read at the MIDPOINT and
+SUBSTITUTED into each member's own integration rather than located again,
+so the order the block chose and the branch a member reads cannot
+disagree. The members are then ordered over what the fold leaves ACTIVE
+and run in that order, each by the rules that already govern it.
+
+Three things follow, and each is worth stating:
+
+* **A selection change alone moves nothing.** A selector is a jump node
+  and a jump never moves a part, so a carriage moved from one position to
+  another with the crank standing still contributes exactly zero to every
+  dial and every lever.
+* **A block relation binds NOTHING at rest**, as a law that reads its own
+  driven end does. Every coordinate a block drives therefore needs the
+  author's own guarded rest default -- ``if self.turn.value is None:
+  self.turn = 0`` -- and construction refuses by name when there is none.
+* **A piece that still cannot be ordered refuses the TICK**, naming the
+  piece, the selector branches it was read under and the relations on the
+  cycle, and committing nothing. The construction check catches every
+  cycle no selection can break; which branch VECTORS are reachable is
+  arithmetic about the selecting input, not structure, so a particular
+  selection that leaves two dependencies active at once is answered when
+  it happens.
+
+Refused at construction, by relation identity: a block containing a
+WIRING or a DERIVED COORDINATE (neither carries a jump node, so neither
+can be switched); a block whose members' unconditional dependencies are
+still cyclic; a block driving an INTERMEDIATE -- a plain port or a
+derived coordinate -- because a block advances its coordinates piece by
+piece and only a coordinate the run owns keeps that history; and a block
+member driving a GROUP.
 
 Derived coordinates
 -------------------
@@ -874,7 +1043,7 @@ When it refuses
 
 Solving refuses by name rather than posing a machine it cannot justify.
 Each of the four is its own error kind in
-``solid_node.motion.couplings``, and each message names the node paths,
+``machinome.motion.couplings``, and each message names the node paths,
 the relation as written and the ends:
 
 ``UnreachedCoordinate``
@@ -921,9 +1090,160 @@ Triggering one ramps every target from its current value to the named
 value over the duration, landing exactly on target; triggering another
 while one runs replaces the active ramp.
 
+An instruction may state travel instead of a landing place:
+``Instruction(by={'crank': 10.0}, duration=0.5)`` advances the crank ten
+degrees from wherever it stands, which is what "advance one step" means
+on a machine that is operated rather than positioned. Exactly one of
+``targets`` and ``by`` is stated; both, or neither, is refused at
+declaration. A relative instruction ramps relatively under every time
+base, and under a root declaring `Time.running()` it becomes a relative
+move on the run (see :doc:`Simulating and testing scenarios
+<scenarios>`). It is not published in the document's instructions table
+yet, so it drives a scenario rather than a viewer button.
+
 Declare machine-level moves on the machine, not on its parts: `Home`
 above belongs to the `Plotter`, because homing is something the whole
 machine does.
+
+.. _controls-on-parts:
+
+Controls: pressing, turning and sliding the part itself
+=======================================================
+
+An instruction becomes a button on a panel beside the model. A
+**control** puts the same request on the *part*: click the dial, and the
+dial advances. Declared in a ``controls`` dict beside ``instructions``,
+on a root that declares `Time.running()`:
+
+.. code-block:: python
+
+    class Pascaline(AssemblyNode):
+        time = Time.running()
+        units_entry = Driver(default=0.0, unit='digit')
+        units = DecimalModule()
+
+        instructions = {
+            'Add one': Instruction(by={'units_entry': 1.0}, duration=1.0),
+        }
+        controls = {
+            'units dial': Button(units.input.dial, 'Add one'),
+            'turn units': Turn(units.input.dial, units_entry),
+        }
+
+``Button(part, instruction)`` is a press on `part` submitting the named
+instruction — the panel's button, moved onto the part, carrying no
+movement of its own. ``Turn(part, input)`` is a drag on `part`, *about*
+the rotational coordinate that part rides, and ``Slide(part, input)`` is
+a drag *along* the translational one, each issued as a sequence of
+relative moves on `input`. A press has no direction, so a ``Button``
+names a sliding part as readily as a turning one.
+
+A control **moves nothing itself**. It names a request the run already
+accepts, so ownership, admission, stops and outcomes are exactly what
+`trigger`, `move` and `rate` state, and a blocked drag reports blocked
+and leaves no hidden backlog.
+
+The part is named the way a relation's path ends already are —
+``units.input.dial``, a declared child or a path of declared children
+through one — and the instruction and the input qualify through the
+declaring node's own path, exactly as an instruction's targets do. A
+`Turn`'s input is the ``Driver`` *declaration*, never a qualified id
+string; a driver of a child is named by declaring the control on the
+child.
+
+**The framework never guesses which part a hand means.** On a Pascaline,
+the tens dial is moved by the tens entry *and* by the carry from the
+column below, so nothing in the document can say which one a hand on it
+means; and the number drum turns with an input, yet a hand may not turn
+it, because the ratchet is on the input arbor and the drum sits under
+the lid. Only the author knows, so the binding is declared.
+
+**Say which freedom you mean when the body has two.** The gesture's
+coordinate is normally the one owned by the nearest ancestor-or-self of
+the part whose joint the run banks, and a body with one freedom needs
+nothing more. The Curta's crank both lifts and turns, and its register
+carriage does the same: there *is* no nearest joint, and a control on
+such a body is refused until it says which coordinate it means.
+``coordinate=`` is where it says so, naming the joint declaration by the
+same path a relation's end is written:
+
+.. code-block:: python
+
+    class Crank(AssemblyNode):
+        turn = Revolute(axis=(0, 0, 1), at=(0, 12, 0), unit='deg')
+        lift = Prismatic(axis=(0, 0, 1), unit='mm')
+        handle = Knob()
+
+    class Calculator(AssemblyNode):
+        time = Time.running()
+        rotation = Driver(default=0.0, unit='turn')
+        elevation = Driver(default=0.0, unit='mm')
+        crank = Crank()
+
+        controls = {
+            'turn the crank': Turn(crank.handle, rotation,
+                                   coordinate=crank.turn),
+            'lift the crank': Slide(crank.handle, elevation,
+                                    coordinate=crank.lift),
+        }
+
+The selected joint must pose the touched part or one of its ancestors in
+the same tree, must own exactly one coordinate, and must be one the run
+banks. It may be *further* from the part than the nearest one — a marker
+knob on a carriage selects the carriage's travel, which no walk up the
+tree would ever choose — but it may never reach sideways to another
+mechanism. Selection adds no joint, no edge and no source: it is a
+reading of the tree, and the program is the program it would be with no
+control declared at all.
+
+**The geometry is not declared, and neither is the ratio.** A gesture's
+axis and the point it turns about are read off the tree, being exactly
+the values the joint's own placement used. How far the input travels per
+unit of the part — ``per_unit`` in the published document — is
+**measured** from the compiled program at the rest bank, with that input
+displaced a little in each direction and nothing else moved. Stating
+that number in the class body would only repeat a relation the program
+already holds, and a number stated twice is a number that drifts.
+
+The reading is taken **at rest**. A law whose response to that input
+changes with state makes a pointer built on it lead or lag the part; the
+part still moves exactly what the run commits, so nothing is ever wrong,
+only less tight.
+
+Every mistake is refused with the facts, as early as the facts exist. At
+class definition, where the classes are known: a part the declaring
+class does not hold, a coordinate or a driver written where a part
+belongs, a repeated child, a misspelt path segment, a `Turn` over a
+driver the class does not declare, and a ``controls`` attribute that is
+not a table of controls — ``controls`` is a reserved name on a node
+class, so a mistyped table is never silently inert, and a ``coordinate=``
+that is not a joint of the declaring class or of a child it declares. At
+compile, where the program is known: a part no run-owned coordinate
+poses, a posing node declaring several joints or a joint owning several
+coordinates where nothing was selected, a selection that reaches
+sideways or names a joint owning several coordinates, a `Turn` over a
+coordinate that is not rotational or a `Slide` over one that is not
+translational, a drag whose input does not reach the coordinate (naming
+the inputs that do), a `Button` naming no declared instruction, and a
+control under a root that does not declare `Time.running()`. At
+publication: a drag whose input moves the part by nothing at rest, one
+whose two directions disagree, and a selected coordinate whose placement
+cannot be identified exactly.
+
+A version 5 document publishes the table beside ``instructions``,
+additively — a document that declares no control omits the key and is
+byte-identical to the one the framework published before controls
+existed. A translational or explicitly selected entry carries one field
+more, ``operation_span``: the half-open pair of indices identifying that
+coordinate's own placement inside the joint node's ``operations``, so a
+consumer builds the gesture's frame from the operations *outside* that
+block and never applies an inner joint's motion to an outer joint's
+line. An entry the framework inferred over a single rotational joint
+carries no span and is byte-identical to the entry published before this
+existed. What a viewer *does* with the table — the hover affordance, the
+pick, the drag handles, the quantum — is the browser viewer's own
+release, not the framework's; operating a sliding part or picking
+between the two freedoms of one body needs a viewer of API 13 or later.
 
 Driving it in the viewer
 ========================
@@ -931,7 +1251,7 @@ Driving it in the viewer
 Here is the plotter. Press `Center` or `Home`, and use the breadcrumb
 to step into an axis and drag its slider:
 
-.. solid-node:: _exports/two_axis_plotter
+.. machinome:: _exports/two_axis_plotter
    :height: 480px
 
 The controls are scoped by assembly layer, strictly:
@@ -966,4 +1286,8 @@ Sliders answer "what does this pose look like". The questions that
 follow — does the carriage clear the stop on the way home, how long
 does the move take, what does the trajectory look like — need the
 machine *stepped* deterministically in Python. That is the simulation
-layer: see :doc:`Simulating and testing scenarios <scenarios>`.
+layer: see :doc:`Simulating and testing scenarios <scenarios>`, whose
+last section covers the machine that keeps its history — a root
+declaring `Time.running()`, whose simulation owns every joint coordinate,
+moves it by increments, and integrates a law that jumps by locating its
+crossings inside the tick and subtracting them.

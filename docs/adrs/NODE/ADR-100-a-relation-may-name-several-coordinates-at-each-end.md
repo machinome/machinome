@@ -1,6 +1,8 @@
 # ADR-100: A Relation May Name Several Coordinates at Each End
 
-**Status:** Accepted
+**Status:** Accepted, its refusal of a coordinate named on both sides of one
+relation amended by [ADR-121](./ADR-121-a-law-may-read-the-coordinate-it-drives.md)
+(that sentence is a READ of the driven end; everything else below stands)
 **Date:** 2026-09-11
 **Extends:**
 - [ADR-089: `drives` relates two coordinates](./ADR-089-drives-relates-two-coordinates.md)

@@ -5,64 +5,58 @@
 Command line reference
 ======================
 
-The ``solid`` command follows the grammar::
+The ``machinome`` command follows the grammar::
 
-    solid <command> [reference] [options]
+    machinome <command> [reference] [options]
 
 where ``reference`` is a model name the project declares, a qualifier
 (``package.module:Class``), a Python file path, or a file path plus
 class. When omitted, the project's default model is used: the ``model``
-key of ``[tool.solid-node]`` in the nearest ancestor ``pyproject.toml``.
+key of ``[tool.machinome]`` in the nearest ancestor ``pyproject.toml``.
 See :ref:`several-models` for a project that declares more than one.
 
-Run ``solid <command> -h`` to see the options of each command.
+Run ``machinome <command> -h`` to see the options of each command.
 
-solid new
-=========
-
-::
-
-    solid new <name>
-
-Creates a new project directory ``<name>`` with a package, model module,
-``pyproject.toml`` manifest, and ``.gitignore``. Fails if ``<name>`` exists.
-
-solid develop
+machinome new
 =============
 
 ::
 
-    solid develop [reference] [--set NAME=VALUE ...] [--web] [--web-dev]
-                         [--no-web] [--openscad] [--debug-builder]
+    machinome new <name>
+
+Creates a new project directory ``<name>`` with a package, model module,
+``pyproject.toml`` manifest, and ``.gitignore``. Fails if ``<name>`` exists.
+
+machinome develop
+=================
+
+::
+
+    machinome develop [reference] [--set NAME=VALUE ...] [--web] [--web-dev]
+                         [--no-web] [--debug-builder]
                          [--callback URL]
 
 Runs everything needed to develop a project: monitors the filesystem,
 rebuilds the parts that changed, and opens a viewer that reloads
-automatically. Which viewer depends on what is installed: the browser
-viewer when the separate `solid-node-viewer
-<https://github.com/LibreSolid/solid-node-viewer>`_ package is present
-(``pip install "solid-node[viewer]"``; see :doc:`the viewer <viewer>`),
-the OpenSCAD GUI otherwise. An explicit flag is honoured or refused, never
-swapped for the other viewer.
+automatically. The viewer comes from the separate `machinome-viewer
+<https://github.com/machinome/machinome-viewer>`_ package
+(``pip install "machinome[viewer]"``; see :doc:`the viewer <viewer>`),
+and the command fails before starting development processes when it is absent.
 
 ``--web``
-    View the project in the browser at http://localhost:8000. The default
-    when ``solid-node-viewer`` is installed; without it, the command fails
-    naming the extra to install.
-
-``--openscad``
-    Open the project in the OpenSCAD GUI. The default when
-    ``solid-node-viewer`` is not installed. OpenSCAD reloads the generated
-    code when it changes, except while animating.
+    Explicitly view the project in the browser at http://localhost:8000,
+    the same behavior as the default. Without ``machinome-viewer``, the
+    command fails naming the extra to install.
 
 ``--web-dev``
-    For working on the browser viewer itself, from a source checkout of
-    ``solid-node-viewer``: the viewer additionally starts its own npm dev
-    server and proxies the page to it, so viewer code changes hot-reload too.
+    A compatibility request passed to the viewer. The matching 0.2.0
+    viewer serves a static development page and rebuilds its bundle on
+    demand; it does not start a separate frontend dev server, so this
+    request has no effect. See :doc:`viewer` for source development.
 
 ``--no-web``
     Run the watch-and-rebuild loop with no viewer at all, leaving
-    ``SOLID_NODE_PORT`` free. Use this when another program renders the
+    ``MACHINOME_PORT`` free. Use this when another program renders the
     published build directory itself and only needs the rebuilds; pair it
     with ``--callback URL`` to be told when a new build is ready. It cannot
     be combined with ``--web`` or ``--web-dev``.
@@ -70,7 +64,7 @@ swapped for the other viewer.
 ``--debug-builder``
     Run the builder in the foreground so breakpoints work. Automatic
     reload is disabled in this mode. To step into the browser viewer's
-    server instead, run it yourself: ``solid-node-viewer serve --build-dir
+    server instead, run it yourself: ``machinome-viewer serve --build-dir
     _build``.
 
 ``--callback URL``
@@ -78,14 +72,14 @@ swapped for the other viewer.
     build and every later complete rebuild. Available in normal web mode and
     with ``--no-web``. The callback is best effort: delivery failures are
     logged and never stop development. It cannot be combined with
-    ``--openscad`` or ``--web-dev``.
+    ``--web-dev``.
 
 ``--set NAME=VALUE``
     Set a declared parameter of the root node (:doc:`Declaring a machine
     <declaring>`); repeat the flag for several. The value is parsed by the
     parameter's kind — a float for ``Length``, ``Angle``, ``Ratio`` and
     ``Scalar``, an integer for ``Count``, ``true`` or ``false`` for
-    ``Flag``, the kinds declared from ``solid_node.parameters`` — and
+    ``Flag``, the kinds declared from ``machinome.parameters`` — and
     checked by its declared constraints. An unknown name
     fails listing the settable parameters; a derived parameter cannot be
     set; a root that declares nothing refuses the flag. A parameter
@@ -94,15 +88,15 @@ swapped for the other viewer.
     overrides. The flag is shared by every command that loads a node:
     ``build``, ``test``, ``snapshot`` and ``export`` take it too.
 
-solid build
-===========
+machinome build
+===============
 
 ::
 
-    solid build [reference] [--set NAME=VALUE ...]
-    solid build --all
+    machinome build [reference] [--set NAME=VALUE ...]
+    machinome build --all
 
-Builds the node once using the same ordinary pipeline as ``solid develop``,
+Builds the node once using the same ordinary pipeline as ``machinome develop``,
 publishes the complete current model in its build directory, and exits.
 ``--all`` builds every model the project declares (see
 :ref:`several-models`), in declaration order, each into its own build
@@ -115,15 +109,15 @@ or not at all, but a failed build can leave a partially updated model rather
 than the last complete set; ``errors.json`` reports it. A reader may likewise
 observe a mixed model while a build is running.
 
-solid test
-==========
+machinome test
+==============
 
 ::
 
-    solid test [reference] [--set NAME=VALUE ...] [--failfast]
+    machinome test [reference] [--set NAME=VALUE ...] [--failfast]
               [--exact | --faceted] [--volume-epsilon MM3]
               [--placement-quantum MM]
-    solid test --all [--failfast]
+    machinome test --all [--failfast]
 
 Builds the node selected by ``reference`` and runs its tests — the ``test_*``
 methods of the node itself (via ``TestCaseMixin``) and of its companion
@@ -132,8 +126,26 @@ any other test class, and the same class runs under plain ``pytest``
 unmodified. See :doc:`Test-driven CAD <testing>` and
 :doc:`Simulating and testing scenarios <scenarios>`.
 
+Prints ``Ran N tests in X seconds: P passed, F failed``, continued by
+``, S skipped``, ``, X expected failures`` and ``, U unexpected successes``
+for each of those counts that is non-zero — a run with none of them prints
+exactly that line, byte for byte, with no continuation. Exits 1 when any
+test failed or any test succeeded unexpectedly, 0 otherwise.
+
+A test that calls ``self.skipTest(reason)`` — in the method itself or in
+its ``setUp`` — or that carries ``unittest``'s skip decoration on the
+method or on the whole class, is reported skipped, named with its reason,
+and does not count as a failure. A test marked
+``@unittest.expectedFailure`` is reported an expected failure when it
+raises, with no traceback printed, and does not count as a failure either;
+one that does **not** raise is reported an unexpected success and **does**
+fail the run — the marking is now a false statement about the machine. See
+:doc:`How to skip a test and how to mark a known gap <testing>`.
+
 ``--failfast``
-    Stop the test run on the first failure.
+    Stop the test run on the first test that fails the run. A skip and an
+    expected failure are not failures and never stop it; an unexpected
+    success does.
 
 ``--exact`` / ``--faceted``
     The kernel every geometric assertion decides on: exact parts on their
@@ -162,28 +174,29 @@ unmodified. See :doc:`Test-driven CAD <testing>` and
     model built in its own build directory. A model that fails to load
     or build counts as one failure and the run goes on.
 
-solid snapshot
-==============
+machinome snapshot
+==================
 
 ::
 
-    solid snapshot [reference] [options]
+    machinome snapshot [reference] [--drive NAME=VALUE ...] [options]
 
 Renders the node to a PNG image without opening a viewer. The default
 OpenSCAD renderer is the fast inspection path; the optional web renderer
-hands the model to the installed ``solid-node-viewer``, which photographs it
+hands the model to the installed ``machinome-viewer``, which photographs it
 in headless Chromium and preserves a real alpha channel for compositing.
 
 .. code-block:: bash
 
-    $ solid snapshot -o front.png --viewall --autocenter
-    $ solid snapshot myproject.myproject:SimpleClock --time 0.25 --imgsize 800x600 --projection ortho
-    $ solid snapshot --renderer web -o transparent.png
+    $ machinome snapshot -o front.png --viewall --autocenter
+    $ machinome snapshot myproject.myproject:SimpleClock --time 0.25 --imgsize 800x600 --projection ortho
+    $ machinome snapshot --renderer web -o transparent.png
+    $ machinome snapshot --drive lift=20 -o lifted.png
 
 ``--renderer``
     ``openscad`` (default) or ``web``. The default stays ``openscad``
     whether or not the browser viewer is installed. Install the web renderer
-    with ``pip install "solid-node[web-snapshot]"`` (the viewer package with
+    with ``pip install "machinome[web-snapshot]"`` (the viewer package with
     its browser driver) and download the browser separately with
     ``playwright install chromium``. Neither renderer ever falls back to the
     other when its dependency is unavailable.
@@ -195,7 +208,37 @@ in headless Chromium and preserves a real alpha channel for compositing.
     Timeline fraction to render, between 0.0 and 1.0. Default: 0.0.
     For a declared twelve-hour loop, 0.25 means three hours. This
     poses the model through ``$t`` only; a driven machine renders at
-    its declared driver defaults.
+    its declared driver defaults unless ``--drive`` says otherwise.
+    Under a root declaring ``time = Time(loop=...)`` the fraction is
+    keyframed as the seconds it means, so the image shows what the
+    viewer's slider shows at that position. Under a root declaring
+    ``time = Time.running()`` there is no timeline to be a position on —
+    elapsed simulation seconds never wrap — so a non-zero ``--time`` is
+    refused by name, pointing at ``--drive``; ``--time 0.0``, the
+    default, is the instant the rest pose is defined at.
+
+``--drive NAME=VALUE``
+    Bind a declared driver by its qualified id before the image is
+    taken; repeatable. Drivers left unnamed stand at their declared
+    defaults.
+
+    .. code-block:: bash
+
+        $ machinome snapshot --drive units_entry=3 --drive tens_entry=1
+
+    It is distinct from ``--set``, which reaches the root's declared
+    *parameters*: a driver is not a parameter. A name that is no
+    declared driver of the tree fails listing the drivers the tree
+    publishes, and writes no image.
+
+    Under a running root the image is the untimed **rest pose** at those
+    driver values — the state a simulation itself starts from, and
+    admissible by construction. A ``--drive`` naming a JOINT COORDINATE
+    of a running root is refused by name: a coordinate's value is what
+    the run makes of it, and with no run to own it the enumeration that
+    binding runs would recompute it from the drivers and discard the
+    value. A state carrying HISTORY is not posed from the command line;
+    only a run knows which banks are reachable.
 
 ``--camera``
     Camera specification in OpenSCAD format. Either gimbal
@@ -236,12 +279,19 @@ With ``--renderer web``, explicitly supplying ``--projection``,
 the command names every unsupported option rather than silently ignoring it.
 ``--camera`` accepts both OpenSCAD camera forms under either renderer.
 
-solid export
-============
+``--renderer web`` also refuses, before it starts the browser, a document
+whose schema version the installed viewer does not render — naming the
+version, the versions the viewer renders and the viewer's package
+version, writing no image and leaving no staging directory. A running
+root publishes document version 5 (:doc:`Embedding models <embedding>`),
+so photographing one needs a viewer that reads it.
+
+machinome export
+================
 
 ::
 
-    solid export [reference] [options]
+    machinome export [reference] [options]
 
 Builds the node's STL meshes and writes a static, self-contained
 directory that renders the model — animations and driver controls
@@ -252,7 +302,7 @@ and how to use it.
 
 .. code-block:: bash
 
-    $ solid export -o export
+    $ machinome export -o export
     $ python -m http.server -d export   # view at http://localhost:8000
 
 ``-o``, ``--output``
@@ -273,15 +323,15 @@ and how to use it.
     Export only ``manifest.json`` and ``models/``, without the viewer
     page and JS bundle. Useful when the viewer is supplied elsewhere —
     for example by the Sphinx extension at documentation build time — and
-    the only way to export in an installation without ``solid-node-viewer``,
+    the only way to export in an installation without ``machinome-viewer``,
     since the widget files are copied from that package.
 
-solid models
-============
+machinome models
+================
 
 ::
 
-    solid models [--json]
+    machinome models [--json]
 
 Lists the project's models: name, state, reference, and which is the
 default. The state is read from each model's build directory and nothing
@@ -294,12 +344,12 @@ one entry whose name is null.
 
 .. _import-step:
 
-solid import-step
-==================
+machinome import-step
+=====================
 
 ::
 
-    solid import-step FILE [--into PACKAGE_DIR] [--model NAME]
+    machinome import-step FILE [--into PACKAGE_DIR] [--model NAME]
 
 Reads a STEP document's assembly structure and writes two files of
 project-owned, declarative source the pilot then edits: ``parts.py``,
@@ -307,11 +357,16 @@ one :ref:`StepNode <step-import>` subclass per product that is a part,
 and ``assembly.py``, one ``AssemblyNode`` subclass per assembly product,
 declaring one child per occurrence and a ``render()`` that places each
 one by ``rotate`` then ``translate`` at the document's own placement,
-under a comment naming the occurrence and the file it came from. The
-generated model is a **machine at rest**: it declares no driver and
-defines no ``simulate()`` — which joints move is a design decision the
-pilot makes in the source this command hands over, not a guess the
-document's placements could support.
+under a comment naming the occurrence and the file it came from. Every
+generated class is a **product**, never a name: two distinct products
+sharing one name each get their own class, and a generated class whose
+product name is shared by another product of the document also declares
+``part_index``, so every generated class selects exactly one product and
+the scaffolded model builds. The generated model is a **machine at
+rest**: it declares no driver and defines no ``simulate()`` — which
+joints move is a design decision the pilot makes in the source this
+command hands over, not a guess the document's placements could
+support.
 
 ``--into`` names the package directory the two files are written into,
 created if it does not exist, and given an ``__init__.py`` when it holds
@@ -321,21 +376,21 @@ product, or from the file's stem when that product is unnamed.
 
 The command **never overwrites**: when either file already exists it
 writes neither, names the one that stopped it, and exits 1 — the same
-rule ``solid new`` applies to its target directory, for the same reason.
+rule ``machinome new`` applies to its target directory, for the same reason.
 It writes nothing, either, when the document holds a placement that is
 not a proper rigid transform (a mirror or a scale): the framework's
 ``rotate``/``translate`` pair cannot state one, and the message names the
 occurrence with its determinant and scale factor.
 
-It takes no node reference and loads no node — like ``solid models``, it
+It takes no node reference and loads no node — like ``machinome models``, it
 never imports project code — but it does need the exact-geometry kernel
 to read the document, exactly as ``StepNode`` does; an installation
 without it is told so by name, with the remedy, rather than failing with
 an import traceback.
 
 The command never touches ``pyproject.toml``: it prints the
-``[tool.solid-node.models]`` line to add, along with the ``solid build``
-and ``solid develop`` invocations to try next — following ``solid
+``[tool.machinome.models]`` line to add, along with the ``machinome build``
+and ``machinome develop`` invocations to try next — following ``machinome
 models``, which reads the manifest and never writes it.
 
 .. _several-models:
@@ -346,10 +401,10 @@ Several models in one project
 A project that holds a family of machines — one repository, one shared
 library, one model per machine — declares them by name::
 
-    [tool.solid-node]
+    [tool.machinome]
     model = "wall_clock_01"
 
-    [tool.solid-node.models]
+    [tool.machinome.models]
     wall_clock_01 = "design.wall_clock_01.clock:WallClock01"
     wall_clock_02 = "design.wall_clock_02.clock:WallClock02"
 
@@ -357,7 +412,7 @@ Beside the table, ``model`` names the default by its key; leave it out and
 a command given no reference lists the names instead of guessing. A name
 is one word of letters, digits, underscores and hyphens, and may not be
 the name of a directory at the project root. Each declared model is a
-reference — ``solid build wall_clock_02``, ``solid develop wall_clock_01``
+reference — ``machinome build wall_clock_02``, ``machinome develop wall_clock_01``
 — and owns its own build directory, ``_build/<name>/``, with its own
 ``viewer.json``, ``errors.json`` and build lock, so building one never
 touches another. A reference that is not a declared name — a sub-assembly
@@ -370,21 +425,21 @@ Environment variables
     The build root, relative to the project root. Default: ``_build``. A
     declared model builds in ``<build root>/<name>``.
 
-``SOLID_NODE_PORT``
-    Port of the ``solid develop`` browser viewer. Default: 8000. Read by
-    the viewer's server, which inherits the environment ``solid`` loaded.
+``MACHINOME_PORT``
+    Port of the ``machinome develop`` browser viewer. Default: 8000. Read by
+    the viewer's server, which inherits the environment ``machinome`` loaded.
 
-``SOLID_NODE_FRONTEND_PORT``
-    Port of the viewer's npm dev server behind ``solid develop --web-dev``.
-    Default: 3000.
+``MACHINOME_FRONTEND_PORT``
+    Legacy frontend-port setting, default 3000. The current viewer has no
+    separate frontend server and ignores the forwarded setting.
 
 ``SOLID_TEST_KERNEL``
-    The comparison kernel of ``solid test`` when no ``--exact`` /
+    The comparison kernel of ``machinome test`` when no ``--exact`` /
     ``--faceted`` flag is given: ``exact`` (the default) or ``faceted``.
     Any other value is refused by name.
 
 ``SOLID_TEST_VOLUME_EPSILON``
-    The volume epsilon (mm³) of a faceted ``solid test`` run when no
+    The volume epsilon (mm³) of a faceted ``machinome test`` run when no
     ``--volume-epsilon`` is given. Default: 0. Not read by the exact
     kernel.
 
@@ -393,7 +448,7 @@ Environment variables
     ``--placement-quantum`` is given. Default: ``1e-9``. Read by both
     kernels.
 
-The ``solid`` command loads a ``.env`` file from the working directory
+The ``machinome`` command loads a ``.env`` file from the working directory
 at startup, so a project can pin its ports there — and a developer can
 select the faceted test kernel for one checkout without the choice
-reaching CI, which has no such file. ``solid new`` ignores ``.env``.
+reaching CI, which has no such file. ``machinome new`` ignores ``.env``.

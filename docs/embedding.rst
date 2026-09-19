@@ -1,15 +1,13 @@
 .. _embedding:
 
-===================================
-Embedding models in pages and docs
-===================================
+=====================================
+Embedding machines in pages and docs
+=====================================
 
-``solid export`` (see the :ref:`command line reference <cli>`) turns a
-node into a static directory that renders the model in any browser —
-animations and driver controls included, since operations are exported
-as raw symbolic expressions over ``$t`` and qualified driver ids and
-evaluated client-side. No server-side code is needed: any static file
-host works.
+``machinome export`` publishes a machine as a static directory.
+Its geometry, expressions, controls and any compiled simulation travel
+together, so a reader can inspect and operate it in the browser.
+No server-side CAD runtime is required.
 
 What an export contains
 =======================
@@ -17,164 +15,203 @@ What an export contains
 ::
 
     export/
-    ├── manifest.json     # the document (see below)
-    ├── models/           # one STL per distinct rigid part
-    │   └── ...
-    ├── index.html        # standalone viewer page
-    └── solid-widget.js   # the viewer bundle (three.js based)
+    ├── manifest.json
+    ├── models/
+    ├── index.html
+    └── machinome-viewer.js
 
-``manifest.json`` and ``models/`` are the data; ``index.html`` plus
-``solid-widget.js`` are the viewer (omitted with ``--no-widget``). The
-viewer files are copied from the installed `solid-node-viewer
-<https://github.com/LibreSolid/solid-node-viewer>`_ package — install it
-with ``pip install "solid-node[viewer]"`` — and an export that wants them
-in an installation without it fails saying so. The bundle is AGPL-3.0-only
-and says so in its first lines, together with the address of its source;
-publishing an export publishes that notice with it.
-Opening ``index.html`` over HTTP shows the model with orbit controls,
-play/pause and a timeline for animated nodes, and the
-:doc:`driver controls <driving>` for a machine that declares them.
+The manifest and models are the data. The page and bundle come from
+the independent `Machinome Viewer
+<https://github.com/machinome/machinome-viewer>`_ package, installed
+through ``machinome[viewer]``. ``--no-widget`` omits those viewer
+files. The viewer is AGPL-3.0-only and its bundle carries its source and
+licence notice.
 
-The manifest is a ``solid-node-export`` document carrying ``format``
-and ``version``, the ``animation`` parameters, a ``drivers`` table
-(qualified id → default, range, unit, dtype, scale), an
-``instructions`` table, an ordered ``bindings`` table when the model
-has one, the ``root`` node tree with its symbolic operations, and the
-printed-``pieces`` inventory. The declared ``version`` is a property of
-the *content*: a document with no drivers is version 1, drivers make it
-version 2, a flexible part makes it version 3, and a model whose
-operations repeat a subexpression makes it version 4, so documents
-published by earlier releases keep rendering.
+Serve the directory over HTTP. The page provides the appropriate
+controls for the machine: a timeline and input sliders for a posed
+model, running controls for a running model, or request handles and
+state readouts for a clocked model.
 
-``bindings`` is how a repeated subexpression reaches the wire once
-instead of once per use: each entry is ``{name, expression}``, named
-``_b0``, ``_b1``, … in the order a consumer must evaluate them (an
-entry names only ``$t``, a declared driver id, or an *earlier* entry),
-and an operation or a flexible leaf's ``params`` may hold one of those
-names in place of the expression it stands for. A model whose
-expressions repeat nothing publishes no ``bindings`` key at all, so an
-ordinary export is unaffected.
+Document and viewer versions
+=============================
+
+New manifests identify themselves as ``machinome-export``. Their
+schema version describes what the consumer must understand:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 15 85
+
+   * - Version
+     - Required capability
+   * - 1
+     - The legacy node-tree schema, without a driver table.
+   * - 2
+     - Driver and instruction tables; the current base document schema.
+   * - 3
+     - Flexible parts carried as shape specifications.
+   * - 4
+     - Shared expression ``bindings``.
+   * - 5
+     - A running root's compiled program and coordinate bank.
+   * - 6
+     - Running laws that read the coordinate they drive.
+   * - 7
+     - Selected relation blocks in a running program.
+   * - 8
+     - A clocked machine: stored states, committing relations and bounds.
+
+The current producer starts ordinary documents at 2, advances them for
+content that needs 3 or 4, and publishes running machines at 5, 6 or 7
+according to their laws. A tree declaring ``State`` publishes 8
+regardless of its other content. See :doc:`scenarios`.
+
+The matching viewer source is **0.2.0**, with **API 20**, accepting
+**document schemas 1–8** and both the new and legacy
+``solid-node-export`` families. It is still unpublished.
+``machinome viewer`` reports the installed package's ``version``,
+``apiVersion`` and ``documentVersions``; these are three separate
+contracts. Its package declaration is ``machinomeViewerApi``.
+API 20 also records the renamed browser global, bundle and DOM/CSS names.
+
+An incompatible viewer refuses the document. Build and export still
+publish with a warning; a web snapshot refuses before opening the browser.
+A viewer report without ``documentVersions`` is treated as reading 1–4.
 
 .. warning::
 
-   The viewer gained a version gate in 0.6, and older viewers have
-   none: a 0.5.x bundle pointed at a version 2 or 3 document will
-   **silently render only the part of the machine it can evaluate**
-   rather than refusing. If your host pins its own copy of
-   ``solid-widget.js``, upgrade it together with the framework. This
-   release's viewer refuses a document schema it cannot read, naming
-   the version.
+   A solid-node 0.5.x viewer predates the version gate and may silently
+   draw only part of a newer machine. Upgrade a pinned viewer bundle
+   with the framework and migrate the host names in :doc:`upgrading`.
 
-Embedding in any web page
-=========================
+Embedding in a web page
+========================
 
-Host the export directory and point an ``<iframe>`` at its
-``index.html``:
+The simplest host uses the exported page:
 
 .. code-block:: html
 
-    <iframe src="export/index.html" style="width: 100%; height: 480px; border: 0;">
+    <iframe src="export/index.html"
+            style="width: 100%; height: 480px; border: 0;">
     </iframe>
 
-Two URL query parameters control playback:
-
-``t`` (0.0 to 1.0)
-    The initial animation time.
-
-``autoplay=0``
-    Start paused. Combined with ``t`` this shows a static pose:
-    ``index.html?t=0.25&autoplay=0``.
-
-These two are the whole URL surface: a driver cannot yet be preset or
-the control chrome suppressed from a query string. A host that needs
-either drives the widget programmatically, below.
+``?t=0.25&autoplay=0`` selects a paused timeline pose.
+``?layout=inspector&sidebar=open`` selects the assembly inspector
+with its sidebar open; ``?layout=viewer`` selects the plain viewer.
+The standalone page selects the inspector, collapsed, by default.
+Timeline time does not seek a running machine's history or a clocked
+machine's elapsed clock. Use the JavaScript handles for those operations.
 
 The JavaScript API
-==================
+===================
 
-Hosts that load ``solid-widget.js`` directly may call
-``SolidNodeWidget.mount(target, manifestUrl, options)``. The package's
-``solidNodeViewerApi`` declaration, browser global, and each mount
-handle report API version 7 in the matching viewer source. It accepts
-document schema versions 1–4, including shared expression ``bindings``.
-This viewer is still a release preview; check ``solid viewer`` for
-the installed version rather than assuming an older bundle can read a
-new document.
-
-Camera options: ``view`` (camera and target), ``up`` and ``fov``; each
-vector may be a three-number tuple, and ``fov`` is in degrees. When
-omitted they preserve the established Z-up direction and 50° field of
-view. ``driverControls: 'none'`` suppresses the built-in sliders,
-buttons and breadcrumb, for a host that builds its own control UI:
+Load ``machinome-viewer.js`` and mount through its browser global:
 
 .. code-block:: javascript
 
-    const viewer = await SolidNodeWidget.mount('#model', 'manifest.json', {
+    const viewer = await MachinomeViewer.mount('#model', 'manifest.json', {
       view: { camera: [80, -60, 40], target: [0, 0, 0] },
       up: [0, 0, 1],
       fov: 22.5,
       driverControls: 'none',
+      partControls: 'none',
     });
 
-Playback time
--------------
+``target`` is an element or selector. Camera vectors are three
+numbers; field of view is in degrees. Defaults are Z-up and 50°.
+``driverControls: 'none'`` hides the built-in operating panel;
+``partControls: 'none'`` independently disables part gestures.
+The corresponding APIs remain available.
 
-``setTime(fraction)`` seeks within the normalized 0–1 timeline.
-For a document with ``animation.loop``, ``speed()`` and
-``setSpeed(value)`` read and set a positive, finite playback multiplier
-relative to machine seconds. A document without a declared loop keeps
-its ``frames / fps`` playback duration; its speed remains 1.
+Choose the operating handle
+----------------------------
 
-Driving from the host
----------------------
+For a posed document, ``drivers()`` and ``instructions()``
+list its declarations. ``driver(id)`` and ``setDriver(id, value)``
+read and write **native** units; driver ranges do not clamp.
+``onDriverChange(fn)`` subscribes and returns an unsubscribe function.
+``trigger(name)`` returns ``{done, cancel()}`` and plays the
+instruction as a ramp.
 
-The mount handle exposes the machine:
+For a running document, ``run()`` returns the running handle:
 
-``drivers()``
-    The document's driver table: qualified ids with default, range,
-    unit, dtype and scale.
+* ``move(input, {by, duration})``, ``move(input, {to, duration})``,
+  ``rate(input, rate)`` and ``trigger(name)`` submit operations in
+  design units. Their promises resolve with outcomes when commands retire.
+* ``start()``, ``pause()``, ``running()`` and
+  ``step(ticks)`` control execution.
+* ``state()``, ``coordinates()``, ``elapsed()``, ``tick()``
+  and ``dt()`` describe the run. ``onCommit(fn)`` and
+  ``onOutcome(fn)`` subscribe to its results.
+* ``cancel(input)``, ``snapshot()``, ``restore(snapshot)``
+  and ``reset()`` manage the session.
 
-``driver(id)`` / ``setDriver(id, value)``
-    Read and write one driver's current value. Values are in the
-    driver's **native** units (the units its default and state are
-    kept in), and ids are verbatim from the document. A declared
-    ``range`` is presentation metadata and never clamps.
+For a clocked document, ``machine()`` returns the synchronous
+machine handle:
 
-``onDriverChange(fn)``
-    Subscribe to value changes, whatever their source — a slider, a
-    running ramp, or another ``setDriver`` call.
+* ``move(input, {by})``, ``move(input, {to})`` and
+  ``trigger(name)`` each solve one request and return its admitted
+  travel, path ends, commits and stops. Requests use design units;
+  bank values and returned path ends use native units.
+* ``state()``, ``drivers()``, ``states()``, ``order()``
+  and ``identity()`` describe the machine and its bank.
+* ``snapshot()``, ``restore(snapshot)`` and ``reset()``
+  manage retained state. A snapshot from another machine is refused.
+* ``clock()`` returns the clock's name or ``null``.
+  ``move('time', {by: seconds})`` advances a declared elapsed clock;
+  ``clockPlaying()`` and ``setClockPlaying(playing)`` control
+  its browser transport.
 
-``instructions()`` / ``trigger(name)``
-    List the declared instructions, and run one. ``trigger`` returns
-    ``{done, cancel()}``: the ramp runs client-side over the
-    instruction's declared duration and lands exactly on target, and
-    a later ``trigger`` replaces an active ramp.
+``run()`` is null on a clocked document; ``machine()`` is null
+on a running document; both are null on a posed document. Direct
+``setDriver`` is not a substitute for a running or clocked request.
+Clocked host requests land immediately; the built-in panel draws their
+transitions. ``controls()`` lists declared part controls and their
+current screen locations even when gestures are suppressed.
 
-Moving one driver does not recompute the tree: which operations
-re-evaluate is decided by the free variables read off each parsed
-expression, so a host can wire a gauge to ``onDriverChange`` and
-drag values at frame rate. The handle also keeps the earlier
-navigation surface — assembly metadata, subtree focus and visibility,
-``setTime`` — unchanged.
+Navigation, playback and lifecycle
+-----------------------------------
+
+``assembly()`` reads the tree; ``setRoot(path | null)`` focuses
+a subtree; ``setVisible(path, visible)`` changes visibility.
+Paths are arrays of sibling names relative to the document root.
+``navigation()`` returns the current focus and hidden paths, and
+``onAssemblyChange(fn)`` subscribes to changes.
+
+``setTime(fraction)`` selects the normalized animation timeline.
+``speed()`` and ``setSpeed(value)`` control playback speed where
+the document supplies timed playback. They do not rewrite machine state.
+
+``view()`` reads the camera. ``reload()`` reloads the model;
+``manifestChanged()`` and ``artifactChanged(path)`` apply
+targeted updates. Call ``dispose()`` when removing the viewer.
+
+For the bundled assembly sidebar use
+``MachinomeViewer.mountInspector(target, url, options)``; its handle
+exposes ``viewer``, ``navigator``, ``sidebarOpen()``,
+``setSidebar(open)`` and ``dispose()``.
+A custom layout can instead attach
+``MachinomeViewer.mountNavigator(target, viewer, options)``.
+The viewer repository documents their full styling and keyboard contracts.
 
 Embedding in Sphinx documentation
 =================================
 
-The ``solid_node.sphinx`` extension provides a directive that embeds an
+The ``machinome.sphinx`` extension provides a directive that embeds an
 export in the built HTML. In ``conf.py``:
 
 .. code-block:: python
 
     extensions = [
         # ...
-        'solid_node.sphinx',
+        'machinome.sphinx',
     ]
 
 Then, in any document:
 
 .. code-block:: rst
 
-    .. solid-node:: exports/my_model
+    .. machinome:: exports/my_model
        :height: 300px
        :t: 0.25
        :autoplay: no
@@ -200,8 +237,16 @@ Options:
 The exports are generated ahead of the documentation build and
 committed (or produced by a CI step) — the Sphinx build itself never
 runs the CAD stack. A missing or invalid export directory fails the
-build with a message saying which ``solid export`` invocation would
+build with a message saying which ``machinome export`` invocation would
 create it.
+
+An embedded export whose document version the installed viewer does not
+render makes the directive **warn**, naming the export, the version it
+declares and the versions the viewer renders. It does not fail the
+build: the export is a committed artifact this build does not produce
+and cannot fix, and the embedded widget refuses such a document in the
+page, visibly. The check reads the version off the ``manifest.json``
+the directive already opens, and loads no CAD runtime to do it.
 
 The directive's options are ``:height:``, ``:t:`` and ``:autoplay:``
 only — like the URL surface, it cannot yet preset a driver or
@@ -210,7 +255,7 @@ controls showing at their defaults.
 
 Exports referenced by the directive may be made with ``--no-widget``:
 the extension completes them with the viewer files from the installed
-``solid-node-viewer`` package at build time, so the repository only needs
+``machinome-viewer`` package at build time, so the repository only needs
 to carry each model's ``manifest.json`` and STLs, and every embedded
 model shares one copy of the viewer source. A documentation build
 therefore needs the ``viewer`` extra installed; without it the build

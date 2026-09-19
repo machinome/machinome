@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -26,9 +26,9 @@ would defeat the change that shrinks it. This tree is small on purpose.
 
 from solid2 import cube
 
-import solid_node.math as m
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.simulation import Driver
+import machinome.math as m
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.simulation import Driver
 
 
 class Marker(Solid2Node):

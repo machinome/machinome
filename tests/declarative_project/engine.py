@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,8 +7,8 @@ the block they sit on."""
 
 from solid2 import cube
 
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.parameters import Count, Length
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.parameters import Count, Length
 from .parts import Piston
 
 STATION_PITCH = 44.0

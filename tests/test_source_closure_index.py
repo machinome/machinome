@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -36,9 +36,9 @@ from .source_set_project.block import Block
 from .source_set_project.cyl import Cyl
 from .source_set_project.jsblock import JsBlock
 from .source_set_project.lonely import Lonely
-from solid_node.core.loader import import_module_from_path
-from solid_node.node import sources
-from solid_node.node.sources import source_closure
+from machinome.core.loader import import_module_from_path
+from machinome.node import sources
+from machinome.node.sources import source_closure
 
 
 FIXTURE_CLASSES = (Cyl, Block, Lonely, JsBlock)
@@ -119,7 +119,7 @@ class ResolutionCostTest(BaseNodeTest):
         exactly the work being counted."""
         names = []
         for index in range(count):
-            name = f'solid_node_cost_fixture_{index}'
+            name = f'machinome_cost_fixture_{index}'
             module = ModuleType(name)
             module.__file__ = f'/nonexistent/bulk/{index}/pkg/mod{index}.py'
             module.__package__ = f'bulk{index}'
@@ -237,10 +237,10 @@ class LookupAgreementTest(TestCase):
             path = os.path.realpath(os.path.join(tmp, 'shared.py'))
             open(path, 'w').close()
 
-            first = ModuleType('solid_node_shared_first')
+            first = ModuleType('machinome_shared_first')
             first.__file__ = path
             first.__package__ = 'first_package'
-            second = ModuleType('solid_node_shared_second')
+            second = ModuleType('machinome_shared_second')
             second.__file__ = path
             second.__package__ = 'second_package'
 
@@ -276,7 +276,7 @@ class StaleIndexTest(TestCase):
         with open(os.path.join(package, 'sail.py'), 'w') as stream:
             stream.write('AREA = 0.8\n')
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as stream:
-            stream.write('[tool.solid-node]\nmodel = "kite.sail:Sail"\n')
+            stream.write('[tool.machinome]\nmodel = "kite.sail:Sail"\n')
         self.sail = os.path.realpath(os.path.join(package, 'sail.py'))
         self.spars = os.path.realpath(os.path.join(package, 'spars.py'))
 

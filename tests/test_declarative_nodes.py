@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -20,13 +20,13 @@ import sys
 
 from solid2 import cube
 
-from solid_node.motion.joints import (Free, Orbit, Prismatic, Revolute,
+from machinome.motion.joints import (Free, Orbit, Prismatic, Revolute,
                                       declared_joints)
-from solid_node.motion.ports import RotationalPort, declared_ports
-from solid_node.node import AssemblyNode, Solid2Node, declared_children
-from solid_node.node.base import _build_uniq_id
-from solid_node.node.declarative import ChildDeclaration, declared_child_nodes
-from solid_node.parameters import (Count, Flag, Length, ParameterError, Ratio,
+from machinome.motion.ports import RotationalPort, declared_ports
+from machinome.node import AssemblyNode, Solid2Node, declared_children
+from machinome.node.base import _build_uniq_id
+from machinome.node.declarative import ChildDeclaration, declared_child_nodes
+from machinome.parameters import (Count, Flag, Length, ParameterError, Ratio,
                                    Scalar, declared_parameters)
 
 from .base import BaseNodeTest
@@ -190,7 +190,7 @@ class DeclarativeSheetPartTest(BaseNodeTest):
     constructor argument. Everything else about the part can declare."""
 
     def test_thickness_stays_a_class_attribute(self):
-        from solid_node.node import Build123dSheetNode
+        from machinome.node import Build123dSheetNode
 
         with self.assertRaises(TypeError) as ctx:
             class Bad(Build123dSheetNode):
@@ -199,7 +199,7 @@ class DeclarativeSheetPartTest(BaseNodeTest):
 
     def test_a_sheet_part_declares_its_other_parameters(self):
         from build123d import Rectangle
-        from solid_node.node import Build123dSheetNode
+        from machinome.node import Build123dSheetNode
 
         class Panel(Build123dSheetNode):
             thickness = 3.0
@@ -676,7 +676,7 @@ class IdentityTest(BaseNodeTest):
         self.assertEqual(len({str(p) for p in placements}), 8)
 
     def test_the_root_is_loadable_with_defaults(self):
-        from solid_node.core.loader import load_node
+        from machinome.core.loader import load_node
         engine = load_node(os.path.join(
             self.basedir, 'declarative_project', 'engine.py:Engine'))
 
@@ -1123,9 +1123,9 @@ class SpecializationSharingTest(BaseNodeTest):
 class SpecializationDiscoveryTest(BaseNodeTest):
 
     def test_the_specialization_is_invisible_to_model_discovery(self):
-        from solid_node.core.loader import _defined_classes
-        from solid_node.node.base import AbstractBaseNode
-        from solid_node.node.sources import node_classes_in
+        from machinome.core.loader import _defined_classes
+        from machinome.node.base import AbstractBaseNode
+        from machinome.node.sources import node_classes_in
 
         module = sys.modules[__name__]
         path = module.__file__
@@ -1155,7 +1155,7 @@ class SpecializationDiscoveryTop(AssemblyNode):
 class SpecializationMetaclassTest(BaseNodeTest):
 
     def test_a_class_with_its_own_metaclass_specializes_through_it(self):
-        from solid_node.node.declarative import NodeMeta
+        from machinome.node.declarative import NodeMeta
 
         class OwnMeta(NodeMeta):
             built_through = []
@@ -1187,7 +1187,7 @@ class SpecializationOwnTypeGuardTest(BaseNodeTest):
     catches -- unrelated to any site joint."""
 
     def test_the_ordinary_own_type_guard_still_fires(self):
-        from solid_node.node.internal import InternalNode
+        from machinome.node.internal import InternalNode
 
         class Wrapper(InternalNode):
             def render(self):
@@ -1202,9 +1202,9 @@ class SpecializationOwnTypeGuardTest(BaseNodeTest):
 class SpecializationCacheBoundTest(BaseNodeTest):
 
     def test_class_keyed_caches_stay_bounded_by_declaration_sites(self):
-        from solid_node.motion.joints import _declared_cache
-        from solid_node.node.declarative import _children_cache
-        from solid_node.parameters import _parameters_cache
+        from machinome.motion.joints import _declared_cache
+        from machinome.node.declarative import _children_cache
+        from machinome.parameters import _parameters_cache
 
         class Leaf(Solid2Node):
             def render(self):

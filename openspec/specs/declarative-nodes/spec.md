@@ -14,8 +14,8 @@ resolved declared values) and ADR-064 (an internal render that returns
 nothing, with structural omission). Additive beside the constructor form
 the `node-model` capability specifies.
 
-Code: `solid_node/node/declarative.py`, `solid_node/node/base.py`,
-`solid_node/node/internal.py`, `solid_node/math.py`.
+Code: `machinome/node/declarative.py`, `machinome/node/base.py`,
+`machinome/node/internal.py`, `machinome/math.py`.
 ## Requirements
 ### Requirement: Typed parameter declarations
 
@@ -106,7 +106,7 @@ A dimension mismatch SHALL raise at class definition, before any instance
 exists. The result of a formula SHALL be a valid quantity whether or not a
 named kind exists for its exponents.
 
-The `solid_node.math` functions SHALL accept tokens and formulas. Each
+The `machinome.math` functions SHALL accept tokens and formulas. Each
 function that is a PRIMITIVE — one the module emits as a call in symbolic
 mode — SHALL carry a dimension rule of its own:
 
@@ -189,7 +189,7 @@ NOT convert units.
 
 - **WHEN** a class body computes `sqrt(z1 * z1 + z2 * z2) * module / 2`,
   `atan(z1 / z2)` and `cos(pitch_angle) * cone_distance` with the
-  `solid_node.math` names
+  `machinome.math` names
 - **THEN** the results are respectively a length, an angle and a length,
   and `sqrt(bore)` or `cos(bore)` raises a dimension error at class
   definition

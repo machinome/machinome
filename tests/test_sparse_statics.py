@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,7 +13,7 @@ import numpy as np
 from scipy import sparse
 from scipy.optimize import linprog
 
-import solid_node.test as test_module
+import machinome.test as test_module
 
 from .test_assembly_supported import SupportFixture, asserter
 

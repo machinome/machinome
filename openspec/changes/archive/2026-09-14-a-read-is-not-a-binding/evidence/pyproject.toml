@@ -1,0 +1,5 @@
+# The probe's fixture is a real Solid project: the framework discovers a
+# root through a manifest, so the fixture carries one of its own.
+
+[tool.solid-node]
+model = "fixture:Lock"

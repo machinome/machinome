@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -23,8 +23,8 @@ produces is a snapshot, and the assertions here are about the
 snapshot. Geometry is the scenario tests' subject.
 """
 
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, Instruction, Sim
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver, Instruction, Sim
 
 from .base import BaseNodeTest
 from .meta_project.machine import Machine
@@ -238,6 +238,17 @@ class DeferredActionTest(BaseNodeTest):
 
         self.assertEqual(held, 8000)
         self.assertEqual(sim.trajectory[50], (51, {'motor': 7920}))
+        self.assertEqual(sim.state['motor'], 0)
+
+    def test_an_untimed_trigger_still_returns_nothing(self):
+        """Task 7.2 of `play-the-instruction`, REGRESSION: only a
+        CLOCKED root's `trigger` gained a return value. An untimed root
+        starts a ramp and answers `None`, exactly as it always has --
+        the asymmetry is recorded rather than quietly widened."""
+        sim = Sim(Carriage(), DT)
+
+        self.assertIsNone(sim.trigger('Home X'))
+        sim.run(2.0)
         self.assertEqual(sim.state['motor'], 0)
 
     def test_an_unknown_instruction_is_reported_by_name(self):

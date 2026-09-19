@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -22,22 +22,22 @@ from unittest import TestCase
 
 from solid2 import cube, get_animation_time
 
-from solid_node.core.serializer import (bind_document, drivers_table,
+from machinome.core.serializer import (bind_document, drivers_table,
                                         serialize_node, symbolic_document)
-from solid_node.motion.couplings import (Affine, CouplingError,
+from machinome.motion.couplings import (Affine, CouplingError,
                                          DerivedCoordinate, DoublyBound,
                                          ForwardOnly, NotInvertible, Relation,
                                          UnreachedCoordinate,
                                          declared_relations)
-from solid_node.motion.joints import (Free, JointRangeError, Orbit, Prismatic,
+from machinome.motion.joints import (Free, JointRangeError, Orbit, Prismatic,
                                       Revolute, declared_joints)
-from solid_node.motion.ports import (RotationalPort, SignalPort,
+from machinome.motion.ports import (RotationalPort, SignalPort, Time,
                                      TranslationalPort, declared_ports)
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.node.declarative import SidewaysReadError
-from solid_node.node.qualified import DriverToken
-from solid_node.parameters import Count, Length, Ratio
-from solid_node.simulation import Driver
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.declarative import SidewaysReadError
+from machinome.node.qualified import DriverToken
+from machinome.parameters import Count, Length, Ratio
+from machinome.simulation import Driver
 
 from .base import BaseNodeTest
 from .import_probe import probe
@@ -46,7 +46,7 @@ from .coupling_project.parts import Belt, Link, Pulley, Rod, Wheel
 from .coupling_project.train import (Arbor, Arm, BackwardsTrain, PITCH_ARC,
                                      Train, Upper, Wrist, mesh)
 
-from solid_node.motion.couplings import PrematureRead
+from machinome.motion.couplings import PrematureRead
 
 
 # What the fixture train solves for, by hand, so a disagreement between
@@ -1113,6 +1113,11 @@ class GroupRefusalTest(BaseNodeTest):
         self.assertIn('once', message)
 
     def test_a_coordinate_on_both_sides_of_a_group_relation_is_refused(self):
+        # A coordinate on both sides is now a READ of the driven end
+        # (OpenSpec change `read-the-driven-coordinate`), and a relation
+        # that reads its own driven end drives ONE coordinate -- so this
+        # shape, whose driven end is a GROUP, is still refused, and says
+        # so.
         def body():
             class Bad(AssemblyNode):
                 a = SignalPort()
@@ -1124,7 +1129,7 @@ class GroupRefusalTest(BaseNodeTest):
         message = self._class_body(body)
         self.assertIn('source', message)
         self.assertIn('driven', message)
-        self.assertIn('not both', message)
+        self.assertIn('ONE coordinate', message)
 
     def test_a_group_as_a_term_of_a_formula_is_refused(self):
         def body():
@@ -1402,7 +1407,7 @@ class LawShapeTest(BaseNodeTest):
         becoming a pose") stay three; `PrematureRead` is a pre-existing
         fourth `CouplingError`, from a different requirement
         (whole-tree-fixpoint), untouched by this cycle."""
-        from solid_node.motion import couplings as couplings_module
+        from machinome.motion import couplings as couplings_module
 
         error_names = {
             name for name in couplings_module.__all__
@@ -2590,10 +2595,11 @@ class SymbolicFaceTest(BaseNodeTest):
         text = {entry['name']: entry['expression'] for entry in bindings}
 
         published = rotations(document, 'power')[0]
-        for name, expression in text.items():
-            published = published.replace(name, f'({expression})')
-        for name, expression in text.items():
-            published = published.replace(name, f'({expression})')
+        # Resolve the ordered table at arbitrary depth, without textual
+        # replacement confusing names such as _b1 and _b10.
+        if text:
+            definitions = ', '.join(f'{name}={expr}' for name, expr in text.items())
+            published = f'let({definitions}) {published}'
 
         for instant in (0.0, 12.0, -30.0):
             with self.subTest(instant=instant):
@@ -2723,7 +2729,7 @@ class CrossCycleTest(BaseNodeTest):
 MODULE_REPORT = (
     'import sys\n'
     "print(sorted(m for m in sys.modules\n"
-    "             if m == 'solid_node' or m.startswith('solid_node.')))\n")
+    "             if m == 'machinome' or m.startswith('machinome.')))\n")
 
 
 class CouplingImportCostTest(TestCase):
@@ -2733,11 +2739,11 @@ class CouplingImportCostTest(TestCase):
         return set(eval(result.stdout.strip())), result
 
     def test_couplings_costs_what_ports_costs_and_no_more(self):
-        ports, _ = self.modules('import solid_node.motion.ports\n')
+        ports, _ = self.modules('import machinome.motion.ports\n')
         couplings, result = self.modules(
-            'import solid_node.motion.couplings\n')
+            'import machinome.motion.couplings\n')
 
-        self.assertEqual(couplings, ports | {'solid_node.motion.couplings'})
+        self.assertEqual(couplings, ports | {'machinome.motion.couplings'})
         for absent in ('cadquery', 'OCP', 'trimesh'):
             with self.subTest(absent=absent):
                 self.assertFalse(result.imported(absent))
@@ -3586,3 +3592,206 @@ class SubclassReplacesRelationTest(BaseNodeTest):
 
         with self.assertRaises(AttributeError):
             ReplaceBase.drive.__get__(preview)
+
+
+##############################################
+# The RUNNING SIMULATION as a binder kind
+# (OpenSpec change ``run-owns-the-coordinates``)
+
+from machinome.motion.ports import RunBinder, binding_as, set_coordinate
+from .running_project.machine import BackDriven, TrainBody
+
+
+class RunBinderTest(BaseNodeTest):
+    """A running simulation binds outside every enumeration and owns
+    what it bound: the freshness clear leaves its slots alone, a relation
+    whose driven ends it owns is solved BY THE RUN, and a relation that
+    would read backwards into one of its coordinates is refused naming
+    it."""
+
+    def bind_as_run(self, bindings):
+        binder = RunBinder()
+        with binding_as(binder):
+            for node, name, value in bindings:
+                set_coordinate(node, name, value)
+        return binder
+
+    def test_a_run_bound_coordinate_survives_the_freshness_clear(self):
+        node = TrainBody()
+        node.set_state(crank=10.0, lever=100.0)
+        # The values the run holds are NOT the ones the relations would
+        # produce from the bound drivers, so a re-solve would show.
+        owned = [(node.first, 'turn', 40.0),
+                 (node.second, 'turn', -60.0),
+                 (node.slide, 'travel', 76.0),
+                 (node, 'spindle', 20.0)]
+        binder = self.bind_as_run(owned)
+        for enumeration in range(3):
+            with self.subTest(enumeration=enumeration):
+                node.render()
+                for owner, name, value in owned:
+                    slot = declared_ports(type(owner))[name].__get__(owner)
+                    self.assertEqual(slot._value, value)
+                    self.assertIs(slot.binder, binder)
+
+    def test_every_relation_into_a_run_owned_coordinate_is_the_runs(self):
+        node = TrainBody()
+        node.set_state(crank=10.0, lever=100.0)
+        self.bind_as_run([(node.first, 'turn', 40.0),
+                          (node.second, 'turn', -60.0),
+                          (node.slide, 'travel', 76.0),
+                          (node, 'spindle', 20.0)])
+        node.render()
+        for record in node.__dict__['_relations']:
+            with self.subTest(relation=record.described()):
+                self.assertEqual(record.direction, 'run')
+
+    def test_a_wiring_into_a_run_bound_joint_is_the_runs(self):
+        arbor = Arbor(index=0, wheel_teeth=60, pinion_teeth=8)
+        binder = self.bind_as_run([(arbor, 'turn', 30.0),
+                                   (arbor.rod, 'turn', 30.0)])
+        arbor.render()
+        rod = declared_ports(type(arbor.rod))['turn'].__get__(arbor.rod)
+        self.assertEqual(rod._value, 30.0)
+        self.assertIs(rod.binder, binder)
+        wheel = declared_ports(type(arbor.wheel))['turn'].__get__(arbor.wheel)
+        self.assertEqual(wheel._value, 30.0)
+        self.assertNotIsInstance(wheel.binder, RunBinder)
+
+    def test_a_backward_solve_into_a_run_bound_source_is_refused(self):
+        node = BackDriven()
+        node.set_state()
+        self.bind_as_run([(node.first, 'turn', 3.0)])
+        with self.assertRaises(DoublyBound) as caught:
+            node.render()
+        message = str(caught.exception)
+        self.assertIn('gauge', message)
+        self.assertIn('first.turn', message)
+        self.assertIn('running simulation', message)
+        self.assertIn("author's simulate()", message)
+
+
+##############################################
+# A law may read the coordinate it drives
+
+
+class SelfReadTest(BaseNodeTest):
+    """A coordinate named on BOTH sides of a relation naming several
+    ends is a READ of that relation's own driven end.
+
+    OpenSpec change `read-the-driven-coordinate`. The originating
+    mechanism is the Curta's clearing ring: a rack turns a dial only
+    while its teeth reach it AND the dial is not already standing at its
+    missing-tooth zero, so the law that moves the dial has to read where
+    the dial stands. What the run does with the read is
+    `tests/test_running_reads.py`; here is only the sentence, its
+    resolution and the four refusals around it.
+    """
+
+    def _class_body(self, body):
+        with self.assertRaises(TypeError) as raised:
+            body()
+        return str(raised.exception)
+
+    @staticmethod
+    def gate(sources, target):
+        return lambda rack, wheel: rack * (wheel % 360 > 0)
+
+    def test_a_coordinate_on_both_sides_is_read_not_refused(self):
+        class Clearing(AssemblyNode):
+            rack = Driver(default=0.0, unit='deg')
+            wheel = Arbor(index=0)
+
+            clearing = (rack & wheel.turn).drives(wheel.turn,
+                                                  law=SelfReadTest.gate)
+
+        relation = declared_relations(Clearing)[0]
+        self.assertEqual(relation.self_read, 1)
+        self.assertEqual(relation.driver.refs[1].key(),
+                         relation.driven.key())
+
+    def test_a_driven_group_with_a_self_read_is_refused(self):
+        def own_form():
+            class Bad(AssemblyNode):
+                crank = SignalPort()
+                child = GroupRod()
+
+                (crank & child.spin & child.lean).drives(
+                    (child.spin, child.lean),
+                    law=lambda *x: ForwardOnly(lambda *v: v))
+
+        def sibling_form():
+            class Bad(AssemblyNode):
+                crank = SignalPort()
+                child = GroupRod()
+
+                (crank & child.spin).drives(
+                    (child.lean, child.spin),
+                    law=lambda *x: ForwardOnly(lambda *v: v))
+
+        for form in (own_form, sibling_form):
+            with self.subTest(form=form.__name__):
+                message = self._class_body(form)
+                self.assertIn('spin', message)
+                self.assertIn('ONE coordinate', message)
+
+    def test_each_copy_of_a_broadcast_reads_itself(self):
+        seen = []
+
+        def gate(sources, target):
+            seen.append((sources, target))
+            return lambda ring, wheel: ring * (wheel % 360 > 0)
+
+        class Register(AssemblyNode):
+            time = Time.running()
+            ring = Driver(default=0.0, unit='deg')
+            wheels = Bead().repeat(4)
+
+            clearing = (ring & wheels.travel).drives(wheels.travel, law=gate)
+
+        register = Register()
+        records = register.clearing
+
+        self.assertEqual(len(records), 4)
+        for index, record in enumerate(records):
+            with self.subTest(copy=index):
+                self.assertIs(record.driver_ends[1].slot,
+                              record.driven_ends[0].slot)
+                self.assertIs(record.driver_ends[0].node, register)
+        slots = {id(record.driven_ends[0].slot) for record in records}
+        self.assertEqual(len(slots), 4)
+        self.assertEqual([owners[1] for owners, _target in seen],
+                         list(register.wheels))
+
+    def test_a_coordinate_named_twice_in_one_group_is_still_refused(self):
+        def body():
+            class Bad(AssemblyNode):
+                rack = SignalPort()
+                child = GroupRod()
+
+                (rack & child.spin & child.spin).drives(
+                    child.spin, law=lambda *x: ForwardOnly(lambda *v: v))
+
+        message = self._class_body(body)
+        self.assertIn('once', message)
+
+    def test_a_self_read_under_no_running_root_is_refused(self):
+        class Untimed(AssemblyNode):
+            rack = Driver(default=0.0, unit='deg')
+            wheel = Arbor(index=0)
+
+            (rack & wheel.turn).drives(wheel.turn, law=SelfReadTest.gate)
+
+        class Looping(Untimed):
+            time = Time(loop=4)
+
+        for root_class in (Untimed, Looping):
+            with self.subTest(root=root_class.__name__):
+                node = root_class()
+                with self.assertRaises(CouplingError) as caught:
+                    node.set_state()
+                message = str(caught.exception)
+                self.assertIn('wheel.turn', message)
+                self.assertIn(root_class.__name__, message)
+                self.assertIn('INCREMENTS', message)
+                self.assertIn('Time.running()', message)

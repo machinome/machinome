@@ -1,11 +1,11 @@
 [submodule "docs/examples/v8-engine"]
 	path = docs/examples/v8-engine
-	url = https://github.com/LibreSolid/example-v8-engine.git
+	url = https://github.com/machinome/example-v8-engine.git
 	branch = main
 [submodule "docs/examples/metamaquina2"]
 	path = docs/examples/metamaquina2
-	url = https://github.com/LibreSolid/Metamaquina2.git
+	url = https://github.com/machinome/Metamaquina2.git
 	branch = main
 [submodule "docs/examples/3dprintedclocks"]
 	path = docs/examples/3dprintedclocks
-	url = https://github.com/LibreSolid/3DPrintedClocks.git
+	url = https://github.com/machinome/3DPrintedClocks.git

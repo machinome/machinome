@@ -1,34 +1,46 @@
-Solid Node: design a machine
-================================
+Machinome: Source code for machines
+========================================
 
-Solid Node is a Python framework for designing machines. Describe their
-parts, how they fit together, and the relationships that make them move.
-Build assemblies with declared parameters, joints and mechanical
-relations; operate them interactively; and test their geometry through
-a movement.
+Machinome is a Python framework for describing a whole machine in source
+code. Its parts, dimensions, connections, movement and operating rules
+belong to one description. Change a shared dimension and the parts that
+depend on it change together. Turn a handle and the mechanism follows its
+declared relationships. Write a test for the clearance that must hold
+through the movement.
 
-Use the modelling tools that suit your design: CadQuery, build123d,
-OpenSCAD, SolidPython and JSCAD, alongside imported STEP and STL parts,
-sheet profiles and flexible parts. Solid Node supplies the assembly
-structure, motion, tests, incremental builds and shared viewer.
+A machine's source binds its pieces into a working whole. It can describe
+a printer's axes and belts, a clock's gear train and escapement, or a
+calculator's cranks and stored digits. Named inputs let a person operate
+the model; simulation and tests make its behaviour inspectable and
+repeatable. The optional browser viewer lets other people explore and
+operate the same machine from a shared web page.
 
-Start with the :doc:`quickstart`, then follow the tutorial one change
-at a time: model a part, assemble a base and pointer, animate the pointer,
-and test a pin's fit. Continue with parameters, joints, controls and
-scenarios. The tutorial is a small framework-owned demonstration, separate
-from the three complete machines in :doc:`examples`.
+Parts can be authored in CadQuery, build123d, OpenSCAD, SolidPython or
+JSCAD, imported from STEP or STL, cut from sheet profiles, or described as
+flexible springs, belts and cables. These are ways to supply the pieces;
+Machinome describes how they belong together.
+
+Start with the :doc:`quickstart`, then follow the tutorial: model a part,
+assemble a base and pointer, animate it, and test a pin's fit. Continue
+with shared parameters, joints, inputs and scenarios. The three
+:doc:`example machines <examples>` keep their complete designs in their
+own repositories.
 
 .. note::
 
-   This manual describes **0.7, in preparation**. The latest published
-   framework release is 0.6.0. See :doc:`upgrading` for migration and
-   :doc:`quickstart` for installation.
+   This is the **Machinome 0.7 manual (release in preparation)**. Machinome is the
+   continuation of **solid-node 0.6.0**; the project and GitHub organisation
+   have been renamed to avoid confusion with Tim Berners-Lee's Solid
+   project. The new name has no affiliation with that project.
+   See :doc:`upgrading` for the migration and :doc:`quickstart` for
+   source installation while the framework and matching viewer await
+   publication.
 
 .. toctree::
    :maxdepth: 1
    :caption: Getting started
 
-   why-solid-node
+   why-machinome
    quickstart
    upgrading
 
@@ -57,7 +69,9 @@ from the three complete machines in :doc:`examples`.
    :caption: Guides
 
    flexible-parts
+   markings
    node-tree
+   expression-graphs
    viewer
    embedding
 

@@ -1,10 +1,10 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 """A build subprocess must not inherit the parent's native runtime state.
 
-`solid build` resolves the model in its own process, to tell a missing model
+`machinome build` resolves the model in its own process, to tell a missing model
 from a failed build. That import runs the model's geometry, which leaves
 OCCT's OpenMP worker team live in the command process. If the build subprocess
 is then forked, it inherits libgomp's record of that team but none of its
@@ -44,7 +44,7 @@ def _tessellate(done_path):
 
 
 def _spin_native_worker_team():
-    """Leave the calling process in the state `solid build` is in after it
+    """Leave the calling process in the state `machinome build` is in after it
     has resolved a model: native worker threads up and idle."""
     import cadquery as cq
 
@@ -62,7 +62,7 @@ def _spin_native_worker_team():
 class BuildSubprocessReachesAnOutcomeTest(TestCase):
 
     def test_child_of_a_threaded_parent_finishes_its_work(self):
-        from solid_node.manager.build import Process
+        from machinome.manager.build import Process
 
         threads = _spin_native_worker_team()
         # If geometry in this process leaves no worker threads behind, the
@@ -118,30 +118,29 @@ class SubprocessTargetsSurviveAFreshInterpreterTest(TestCase):
         from argparse import Namespace
         from unittest.mock import MagicMock, patch
 
-        from solid_node.core.builder import BuildOutcome
-        from solid_node.manager.build import Build
+        from machinome.core.builder import BuildOutcome
+        from machinome.manager.build import Build
 
         current = MagicMock(exitcode=BuildOutcome.CURRENT.value)
-        with patch('solid_node.manager.build.resolve_node'), \
-             patch('solid_node.manager.build.Process',
+        with patch('machinome.manager.build.resolve_node'), \
+             patch('machinome.manager.build.Process',
                    return_value=current) as process:
             Build().handle(Namespace(path='model.py'))
 
-        self._assert_calls_picklable('solid build', process.call_args_list)
+        self._assert_calls_picklable('machinome build', process.call_args_list)
 
     def test_develop_subprocess_targets(self):
         from argparse import ArgumentParser, Namespace
         from unittest.mock import MagicMock, patch
 
-        from solid_node.manager.develop import Develop
+        from machinome.manager.develop import Develop
 
         command = Develop()
         # add_arguments is how the CLI reaches this command, and it is what
         # leaves an unpicklable ArgumentParser on the command object.
         command.add_arguments(ArgumentParser())
-        args = Namespace(path='model.py', openscad=True, web=False,
-                         web_dev=True, debug_builder=False, debug_web=False,
-                         no_web=False, callback=None)
+        args = Namespace(path='model.py', web=False, web_dev=False,
+                         debug_builder=False, no_web=True, callback=None)
 
         started = []
 
@@ -153,10 +152,9 @@ class SubprocessTargetsSurviveAFreshInterpreterTest(TestCase):
             started.append(child)
             return child
 
-        with patch('solid_node.manager.develop.require_openscad'), \
-             patch('solid_node.manager.develop.Process',
+        with patch('machinome.manager.develop.Process',
                    side_effect=record) as process:
             with self.assertRaises(SystemExit):
                 command.handle(args)
 
-        self._assert_calls_picklable('solid develop', process.call_args_list)
+        self._assert_calls_picklable('machinome develop', process.call_args_list)

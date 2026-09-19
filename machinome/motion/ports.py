@@ -1,0 +1,799 @@
+# Machinome - A framework for mechanical CAD projects
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: Apache-2.0
+
+"""Values that flow between nodes, including the root's own time channel.
+
+A driver's state is a number in the driver's own native unit -- a
+stepper counts microsteps, a leadscrew turns degrees -- while the
+geometry consuming it works in design units. A port is where that
+conversion is declared once, next to the mechanism that owns it,
+instead of being open-coded into every render() that reads the driver.
+
+Two things are deliberately separate here. The DECLARATION is a class
+attribute: stateless metadata (domain, unit, direction, scale) shared
+by every instance of the node class, and readable off the class itself
+so later tooling can enumerate a mechanism's connection points without
+constructing it. The bound VALUE lives in a per-instance slot the
+descriptor materializes on first access, so two instances of one node
+class never share a value. The spike (ADR-056, spike/FINDINGS.md seam
+2) conflated the two for drivers and had to reset() its way out; ports
+do not repeat that.
+
+Ports are kinematic in this version: a port carries an effort-like
+value only. The bond-graph flow variable (torque, force) ADR-056
+sketches is deliberately absent rather than half-present -- adding it
+is a future spec change, and code written against a port that has no
+flow slot cannot quietly come to depend on a wrong one.
+
+The root's own time channel lives here too, as `Time`. `AssemblyNode.time`
+is one entry of the driver snapshot with a symbolic fallback (ADR-008):
+bound, it reports the bound number; unbound, solid2's `$t`, the
+normalized 0..1 turn every document consumer plays. What that number
+MEANS was the binder's choice -- a keyframe bound a fraction, a stepped
+simulation bound seconds -- and nothing let the model settle it.
+
+A root assembly settles it here::
+
+    class WallClock(AssemblyNode):
+        time = Time(loop=12 * 3600)
+
+`loop` is the span of machine time, in seconds, that one turn of the
+timeline covers. From then on `self.time` reads SECONDS on every path:
+`$t * loop` when nothing is bound, so the published expressions carry
+the conversion and `$t` stays the slider; the bound number under
+`set_keyframe`, the testing decorators and `Sim`, all of which state
+seconds. Every assembly below the root reads the root's time base.
+
+The declaration is a data descriptor bound to the name `time` -- the
+same shape `DriverDeclaration` has, and for the same reason: the
+declaration is class metadata shared by every instance, the value
+belongs to one node's snapshot, and `self.time` has to stay the single
+read surface. It is not a driver: it is never enumerated into a
+document's `drivers` table, has no default to bind, and is published as
+`$t` already. `Time` reads as a port-kind thing for the same reason a
+port does: a declaration descriptor with a per-instance value, which is
+why it lives in this module rather than beside it.
+"""
+
+import math
+from contextlib import contextmanager
+from dataclasses import dataclass
+
+from machinome.node.phase import (current, current_enumeration, note_bound,
+                                   note_read, note_unbound_read)
+
+#: The one snapshot entry that is global by contract, and the free name a
+#: running document publishes its clock under. Declared here, beside
+#: `Time`, so the document producer and the run read one string.
+CLOCK_NAME = 'time'
+
+
+class BoundPort:
+    """The per-instance value slot of one declared port.
+
+    Holds no history: every simulate() rebinds it absolutely, exactly as
+    an assembly's re-simulation expresses absolute kinematics. `value`
+    is None until something binds it -- an unbound port is a wiring
+    mistake to be seen, not a zero to be silently assumed. A read is
+    reported to the lifecycle phase, so a render() that reads a port is
+    known for the legacy render it is.
+    """
+
+    # The wiring that owns this slot, as (declaring class, child
+    # attribute, keyword), or None. A wired coordinate has exactly one
+    # binder: the wiring rebinds it at the end of every simulate() of
+    # the parent that declared it, so a hand binding of the same slot
+    # would be silently overwritten and is refused instead.
+    wired_from = None
+
+    # What bound the value this slot holds, for the current enumeration
+    # of the tree: None for the author's own code, and otherwise
+    # whatever the framework was binding as -- a wiring, a relation, a
+    # derived coordinate. A coordinate has exactly one binder per
+    # enumeration, and this is what a double binding is refused by.
+    binder = None
+
+    # The enumeration (machinome.node.phase.Enumeration) whose bind
+    # this value and binder belong to, or None before anything ever
+    # bound this slot. See `clear_solved`.
+    _enum_marker = None
+
+    # The assembly whose OWN simulate phase most recently bound this
+    # slot -- not necessarily the node the slot belongs to, which may be
+    # a descendant several levels below whoever actually solved it -- or
+    # None before anything bound it inside a phase. Set by
+    # `phase.note_bound`; read by `couplings.ResolvedEnd.bound` to tell
+    # a value still WAITING for that assembly's next attempt (this
+    # enumeration) apart from one nothing due to run in this pass will
+    # ever touch again.
+    _bound_by = None
+
+    def __init__(self, declaration, node):
+        self.declaration = declaration
+        self.node = node
+        self._value = None
+
+    @property
+    def value(self):
+        note_read('read port', self.declaration.name)
+        if self._value is None:
+            note_unbound_read(self)
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = value
+
+    @property
+    def name(self):
+        return self.declaration.name
+
+    @property
+    def domain(self):
+        return self.declaration.domain
+
+    @property
+    def unit(self):
+        return self.declaration.unit
+
+    @property
+    def out(self):
+        return self.declaration.out
+
+    @property
+    def scale(self):
+        return self.declaration.scale
+
+    def __repr__(self):
+        return (f'<{self.domain} port {self.name} of '
+                f'{getattr(self.node, "name", self.node)}: {self.value!r}>')
+
+
+class Coordinate:
+    """What a port and a joint share as an END of a relation.
+
+    `drives` is framework vocabulary and needs no import, so it lives on
+    the declaration itself; the arithmetic is what builds a derived
+    coordinate, `wrist + 2 * tool`. Both delegate to
+    `machinome.motion.couplings` through a local import: couplings
+    imports THIS module (a relation relates two ports), so the edge only
+    goes one way at module scope.
+    """
+
+    def drives(self, other, ratio=None, offset=None, law=None):
+        from machinome.motion.couplings import relate
+
+        return relate(self, other, ratio, offset, law)
+
+    def __and__(self, other):
+        from machinome.motion.couplings import group_with
+
+        return group_with(self, other)
+
+    def __rand__(self, other):
+        from machinome.motion.couplings import refuse_left_operand
+
+        return refuse_left_operand(self, other)
+
+    def _ref(self):
+        from machinome.motion.couplings import coordinate_ref
+
+        return coordinate_ref(self)
+
+    def __add__(self, other):
+        return self._ref() + other
+
+    def __radd__(self, other):
+        return self._ref() + other
+
+    def __sub__(self, other):
+        return self._ref() - other
+
+    def __rsub__(self, other):
+        return (-self._ref()) + other
+
+    def __neg__(self):
+        return -self._ref()
+
+    def __mul__(self, other):
+        return self._ref() * other
+
+    def __rmul__(self, other):
+        return self._ref() * other
+
+    def __truediv__(self, other):
+        return self._ref() / other
+
+    def __float__(self):
+        return float(self._ref())
+
+
+class Port(Coordinate):
+    """A port declaration, made as a class attribute on a node.
+
+    A descriptor rather than an attribute created in __init__: the
+    declaration must be readable off the CLASS (see declared_ports),
+    and a node builds its children before calling super().__init__(),
+    so there is no single point where instance ports could be created
+    reliably. __get__ materializes the instance's slot lazily instead.
+    """
+
+    # Set by each subclass: what kind of quantity this port carries.
+    domain = None
+
+    # The class the declaration was made on, set by __set_name__. A
+    # wiring error has to be able to say which class a coordinate
+    # belongs to when it is not the one wiring it.
+    owner = None
+
+    def __init__(self, unit=None, out=False, scale=None):
+        # `scale` is design units per native unit of whatever drives
+        # this port -- millimetres per microstep, say. It belongs to
+        # the SINK because the sink is what knows its own design units;
+        # a source has no idea what it will be wired to.
+        self.unit = unit
+        self.out = out
+        self.scale = scale
+        self.name = None
+
+    def __set_name__(self, owner, name):
+        self.name = name
+        self.owner = owner
+
+    def __get__(self, instance, owner=None):
+        if instance is None:
+            return self
+        # Kept under one private key rather than as a public attribute:
+        # _attr_name_for scans a node's __dict__ to derive child names
+        # from the attributes holding them, and skips private keys.
+        slots = instance.__dict__.setdefault('_port_values', {})
+        slot = slots.get(self.name)
+        if slot is None:
+            slot = slots[self.name] = BoundPort(self, instance)
+        return slot
+
+    def __set__(self, instance, value):
+        # Assignment binds, exactly as connect() does, scale applied:
+        # `unit.crank = angle + phase` in a render() is the natural verb
+        # for feeding a declared port. Defining __set__ also makes this a
+        # DATA descriptor, so an assignment can never quietly replace the
+        # declaration with a raw number that a later read trips over.
+        bind(self.__get__(instance), value)
+
+    def __repr__(self):
+        return f'<{self.domain} port declaration {self.name}>'
+
+
+_wiring_depth = 0
+
+# What the framework is currently binding AS, or None when the binding
+# is the author's own. Module state of exactly the same shape as
+# `_wiring_depth` above, and for the same reason: `bind` is the one
+# binding path, and what reaches it has to be able to say who it is
+# without every caller threading an argument through.
+_binder = None
+
+
+class RunBinder:
+    """What a RUNNING SIMULATION binds as: the binder kind of the run
+    that owns a tree's coordinates (OpenSpec change
+    ``run-owns-the-coordinates``).
+
+    A marker and nothing else -- one instance per run, so a slot's
+    binder IS the run that bound it -- and it lives here, next to
+    `bind`, so the one binding path can recognize it and the solver can
+    reason about it without either of them importing the simulation
+    layer. It carries no import of its own, which is what keeps the
+    motion package's import cost exactly what it was.
+
+    `owner`, when set, is the `Run` that binds as this marker, so a run
+    whose tree a later simulation took over can name the one that took
+    it. Set by the run itself; never read by this module.
+
+    The run binds OUTSIDE every enumeration, in `set_state`'s delivery
+    walk, and rebinds the whole bank on every tick. Two consequences
+    live in this module: a slot the run owns accepts a binding from no
+    one else (`bind` below), and a WIRED coordinate the run owns is the
+    run's to bind rather than the wiring's -- the wiring is marked
+    applied instead, so nothing overwrites the run's value and the
+    "a wired coordinate has one binder" rule still holds, with the run
+    as that binder.
+    """
+
+    owner = None
+
+    def described(self):
+        return 'the running simulation'
+
+    def __repr__(self):
+        return '<the running simulation>'
+
+
+def run_owned(slot):
+    """Whether `slot` is a coordinate a running simulation currently
+    owns: it holds a value and a `RunBinder` put it there."""
+    return (getattr(slot, '_value', None) is not None
+            and isinstance(getattr(slot, 'binder', None), RunBinder))
+
+
+#: The coordinates a CLOCKED simulation compiled a constraint for, as
+#: `(id(node), joint name)` identities, held for the duration of ONE
+#: request's pose and empty everywhere else.
+#:
+#: A MARK rather than a binder: a clocked simulation binds no joint
+#: coordinate at all -- the relations bind them, and the double-binding
+#: rule rests on that identity -- so taking the binder over would change
+#: what the enumeration refuses. Empty by default, which is why the two
+#: judgement sites take exactly the branch they take today for an
+#: untimed or a running tree (OpenSpec change
+#: ``a-bound-stops-the-request``, design section 10).
+_clocked_marked = frozenset()
+
+
+def clocked_owned(node, name):
+    """Whether a CLOCKED simulation is, right now, the sole authority
+    for the range of joint `name` on `node`."""
+    if not _clocked_marked:
+        return False
+    return (id(node), name) in _clocked_marked
+
+
+@contextmanager
+def clocked_marking(marks):
+    """Inside this, the clocked simulation judges the constraints it
+    compiled and the enumeration does not."""
+    global _clocked_marked
+    previous = _clocked_marked
+    _clocked_marked = frozenset(marks)
+    try:
+        yield
+    finally:
+        _clocked_marked = previous
+
+
+@contextmanager
+def binding_as(binder):
+    """Inside this, every binding records `binder` as what bound it."""
+    global _binder
+    previous = _binder
+    _binder = binder
+    try:
+        yield
+    finally:
+        _binder = previous
+
+
+@contextmanager
+def wiring_binding():
+    """The wiring's own turn to bind: inside this, a wired coordinate
+    accepts the binding it otherwise refuses.
+
+    A wired coordinate has one binder, and it is the wiring. Everything
+    else that reaches `bind` for such a slot -- an author's
+    `self.wheel.turn = ...` in the parent that declared the wiring, a
+    `connect()` into it -- is refused by name rather than silently
+    overwritten at the end of the phase.
+    """
+    global _wiring_depth
+    _wiring_depth += 1
+    try:
+        yield
+    finally:
+        _wiring_depth -= 1
+
+
+def bind(sink, source):
+    """Bind `sink`'s value from `source`, converting through the sink's
+    declared scale. The one binding path: `connect()` and port
+    assignment both come here.
+
+    `source` is a bound port or a plain value; the value may be a
+    symbolic animation expression, which flows through unresolved
+    exactly as an operation value does. Binding belongs in simulate():
+    done in render() it is reported to the phase like a read, because
+    a once-only render() would bind once and never rebind.
+    """
+    note_read('bound port', sink.name)
+    if run_owned(sink) and not isinstance(_binder, RunBinder):
+        # A coordinate the run owns has exactly one binder, and it is
+        # the run -- or the DOCUMENT PRODUCER, which binds every joint
+        # coordinate symbolically for one walk and puts back exactly
+        # what it found (OpenSpec change `publish-the-mechanical-
+        # program`, design section 3). Admitting a `RunBinder` over a
+        # run-owned slot is what lets a scenario or a development server
+        # publish a tree its own run owns; it does not weaken the
+        # refusal below, because the binder that reaches here for an
+        # author's law is the RELATION's and never a run's.
+        # Raised as the couplings capability's own kind --
+        # imported here rather than at module scope, because a run
+        # binding exists only when couplings is already loaded, and a
+        # module-scope import would close the cycle ADR-089 keeps open.
+        from machinome.motion.couplings import DoublyBound, where
+
+        phase = current()
+        stated_by = (f'{type(phase.assembly).__name__}.simulate()'
+                     if phase is not None
+                     else f'{type(sink.node).__name__}')
+        raise DoublyBound(
+            f'{where(sink.node)}.{sink.name} is owned by '
+            f'{sink.binder.described()}, and {stated_by} would bind it '
+            f'too. A coordinate has exactly one binder, and under a '
+            f'running root the run is it: a law stated imperatively in '
+            f'simulate() belongs in a relation, which the run integrates '
+            f'over every tick. Write it as a relation, or bind the '
+            f'coordinate only under a guard that finds it unbound.')
+    if (sink.wired_from is not None and not _wiring_depth
+            and not isinstance(_binder, RunBinder)):
+        parent, attribute, keyword = sink.wired_from
+        raise ValueError(
+            f"cannot bind '{keyword}' of {attribute}: {parent} declares "
+            f"{attribute} = ...({keyword}=...), and that wiring binds it "
+            f"at the end of every simulate() of {parent}. A wired "
+            f"coordinate has one binder, so a binding here would be "
+            f"overwritten; bind {parent}'s own coordinate instead, or "
+            f"drop the wiring.")
+    if isinstance(source, BoundPort):
+        if source.value is None:
+            # An unbound source is a wiring order mistake -- the
+            # emitting node has not run yet -- and silently propagating
+            # None would surface it much later, as a broken operation
+            # value.
+            raise ValueError(
+                f'cannot connect {source.name} of '
+                f'{getattr(source.node, "name", source.node)}: it has '
+                'no value bound yet')
+        value = source.value
+    else:
+        value = source
+    if sink.scale is not None:
+        value = value * sink.scale
+    sink.value = value
+    sink.binder = _binder
+    # Which enumeration bound it, so a LATER assembly's `clear_solved`
+    # -- reading its OWN stale record of having bound this same slot on
+    # a PREVIOUS enumeration -- can tell that record apart from a FRESH
+    # claim another assembly already made earlier in THIS one, and
+    # leave that alone: two assemblies that alternate binding one
+    # coordinate across runs (an ancestor's relation this run, this
+    # node's own rest-default guard last run) must never have the
+    # later one's belated clear erase the earlier one's fresh value.
+    sink._enum_marker = current_enumeration()
+    note_bound(sink)
+    return sink
+
+
+class RotationalPort(Port):
+    """A port carrying an angle: a shaft, a crank, a stepper's count of
+    microsteps around its own axis."""
+
+    domain = 'rotational'
+
+
+class TranslationalPort(Port):
+    """A port carrying a position along an axis: a carriage, a piston,
+    a lift."""
+
+    domain = 'translational'
+
+
+class SignalPort(Port):
+    """A port carrying a dimensionless command value: an enable, a duty
+    cycle, a setpoint -- something with no mechanical domain."""
+
+    domain = 'signal'
+
+
+def declared_ports(node_class):
+    """Every port declared on `node_class`, by name.
+
+    Reads the class dictionaries directly, so nothing is instantiated
+    and no __get__ runs: a consumer can enumerate a mechanism's
+    connection points from the class alone. Walked base-first so a
+    subclass redeclaring an inherited port wins.
+
+    A JOINT's coordinate is reported here too, under the joint's name,
+    so every consumer of a node's connection points sees it without
+    knowing what a joint is. The seam is the duck-typed `coordinate`
+    attribute rather than an `isinstance` check on `Joint`, because
+    `machinome.motion.joints` imports THIS module -- a joint owns a
+    port -- and importing it back would close the cycle. A registry
+    would be state where none is needed; one attribute is the whole
+    contract, and a project adding a joint kind of its own inherits it.
+    A DERIVED COORDINATE -- a linear formula over other coordinates,
+    declared in a class body -- is reported here for the same reason and
+    through the same seam: it owns a port carrying the domain and unit
+    its terms share.
+
+    A joint owning SEVERAL coordinates -- a `Free` -- offers them as a
+    `coordinates` mapping whose keys are the names they already carry,
+    `<joint name>.<coordinate name>`, and every one of them is reported
+    under that name. So an enumerated port name is NOT guaranteed to be
+    a Python identifier: a consumer reaches a coordinate by the name
+    reported here, never by `getattr` on the node.
+    """
+    ports = {}
+    for klass in reversed(node_class.__mro__):
+        for name, value in vars(klass).items():
+            if isinstance(value, Port):
+                ports[name] = value
+                continue
+            owned = getattr(value, 'coordinates', None)
+            if (isinstance(owned, dict) and owned
+                    and all(isinstance(port, Port)
+                            for port in owned.values())):
+                # A joint of any arity: the keys are already the full
+                # names, so a joint owning one reports it under its own
+                # name exactly as it always did.
+                ports.update(owned)
+            elif isinstance(getattr(value, 'coordinate', None), Port):
+                ports[name] = value.coordinate
+    return ports
+
+
+def set_coordinate(node, name, value):
+    """Bind the coordinate `name` of `node`, whatever kind of name it
+    is: the one binding path a relation and a wiring take, and the one
+    an author's own assignment takes.
+
+    A name of one segment is an attribute of the node, and this is
+    `setattr`. A name of several -- a coordinate of a joint owning
+    several, `pose.roll` -- is NOT an attribute of the node, and
+    `setattr(node, 'pose.roll', value)` would silently create an
+    instance attribute and bind nothing; the head is read and the tail
+    assigned on what it yields, so the joint's own view binds it and
+    re-places the body.
+    """
+    head, _dot, tail = name.rpartition('.')
+    setattr(getattr(node, head) if head else node, tail, value)
+
+
+def get_coordinate(node, name):
+    """The bound slot of the coordinate `name` of `node`, whatever kind
+    of name it is: the reader that matches `set_coordinate`, and the
+    pair that makes a name `declared_ports` reports a name the
+    framework can read back as well as write.
+
+    Mirrors `set_coordinate` segment for segment: a name of one part is
+    an attribute of the node, and a name of several -- `pose.roll` -- is
+    the head read and the tail taken off what it yields. What is
+    returned is the SLOT -- the same `BoundPort` `node.pose.roll` itself
+    yields, carrying the coordinate's domain, unit and scale -- not its
+    value, so a slot nothing has bound reads back with `value is None`
+    rather than being confused with a name that names no coordinate at
+    all.
+
+    A name the enumerator does not report is refused by name, naming
+    the node, the name asked for and the names it does report, rather
+    than answered with `None`: the membership test is against
+    `declared_ports`, not against `getattr`, so a declared PARAMETER
+    whose name resembles a coordinate's cannot answer for one.
+    """
+    reported = declared_ports(type(node))
+    if name not in reported:
+        names = ', '.join(sorted(reported)) or 'none'
+        raise AttributeError(
+            f"{type(node).__name__} has no coordinate '{name}'; "
+            f"declared_ports reports: {names}.")
+    head, _dot, tail = name.rpartition('.')
+    return getattr(getattr(node, head) if head else node, tail)
+
+
+@dataclass(frozen=True)
+class Time:
+    """A root assembly's time base, in one of THREE spellings:
+    `time = Time(loop=<seconds>)`, `time = Time.running()` and
+    `time = Time.elapsed()`.
+
+    Frozen on purpose, like a driver declaration: an attribute that
+    could be assigned here would be state shared by every node of the
+    class. Readable off the class (`Root.time.loop`, `Root.time.mode`)
+    without constructing anything, so a producer can publish the loop
+    the way it publishes the driver table.
+
+    `loop` is the one field: the LOOPING base states the span of machine
+    time one turn of the timeline covers, and the two bases whose
+    seconds never wrap -- RUNNING and ELAPSED -- have none, so their
+    `loop` is `None` and every producer reading it reads no loop. A
+    constructor per base rather than a second field that must be
+    exclusive with the first: the declaration reads as the thing it
+    declares, and `Time()` with none of them is refused naming all
+    three.
+
+    The ELAPSED base is the RUNNING base's time WITHOUT the running
+    mechanics: elapsed seconds that never wrap, and no retained
+    coordinate and no integrated law (OpenSpec change
+    ``time-without-running``, design section 1). What tells the two
+    apart is not a field a document could carry -- both publish none --
+    so it is the private marker below, read only through `mode`.
+    """
+
+    loop: float = None
+
+    #: Whether this declaration is the ELAPSED base. Not a dataclass
+    #: field: `loop` is the one field, and a second would have to be
+    #: exclusive with it and would reach every producer that reads the
+    #: declaration. `False` on the class, set on the instance by
+    #: `elapsed()` alone.
+    _elapsed = False
+
+    #: The name the clock is addressed by wherever a declaration is
+    #: asked for its own -- the bank id of a banked clock, and the name
+    #: a committing relation's source is reported under. The same
+    #: string as `CLOCK_NAME`, held here so a declaration answers the
+    #: question every other declaration answers.
+    name = CLOCK_NAME
+
+    @classmethod
+    def elapsed(cls):
+        """The ELAPSED base: elapsed simulation seconds that never wrap,
+        and NO running mechanics (OpenSpec change
+        ``time-without-running``).
+
+        Built without `__init__`, exactly as `running()` is and for the
+        same reason. Under a CLOCKED root -- one whose tree declares a
+        `State` -- this is the base that puts `time` in the bank and
+        lets a request move it; over a tree that declares no state it
+        changes nothing observable at all, and says only what `time`
+        MEANS.
+        """
+        base = object.__new__(cls)
+        object.__setattr__(base, 'loop', None)
+        object.__setattr__(base, '_elapsed', True)
+        return base
+
+    @classmethod
+    def running(cls):
+        """The RUNNING base: elapsed simulation seconds that never wrap,
+        and mechanics that retain state (OpenSpec change
+        ``run-owns-the-coordinates``).
+
+        Built without `__init__` because `loop` is deliberately absent
+        here and present-and-validated there: one field, two bases, and
+        no sentinel to leak into a published document.
+        """
+        base = object.__new__(cls)
+        object.__setattr__(base, 'loop', None)
+        return base
+
+    @property
+    def mode(self):
+        """`'loop'`, `'running'` or `'elapsed'`: which base this
+        declaration is.
+
+        A property rather than a stored field so the two can never
+        disagree, and readable off the class through the declaration
+        exactly as `loop` is.
+        """
+        if self._elapsed:
+            return 'elapsed'
+        return 'running' if self.loop is None else 'loop'
+
+    def __post_init__(self):
+        loop = self.loop
+        if loop is None:
+            # TypeError, as it always was when `loop` was a required
+            # argument: this is a constructor that was not told which
+            # base it declares, not a loop of a wrong value.
+            raise TypeError(
+                'Time() states no base. Write Time(loop=<seconds>) -- the '
+                'span of machine time one turn of the timeline covers -- '
+                'or Time.running(), elapsed simulation seconds that never '
+                'wrap and mechanics that integrate every law, or '
+                'Time.elapsed(), those same seconds with no running '
+                'mechanics at all.')
+        if (isinstance(loop, bool) or not isinstance(loop, (int, float))
+                or not math.isfinite(loop) or loop <= 0):
+            raise ValueError(
+                f'Time(loop=...) must be a positive finite number of '
+                f'seconds, the span of machine time one turn of the '
+                f'timeline covers; got {loop!r}')
+        object.__setattr__(self, 'loop', float(loop))
+
+    ##############################################
+    # Two declarations are equal when they declare the same base
+
+    def __eq__(self, other):
+        """Equal exactly when the same BASE is declared.
+
+        The dataclass's generated `__eq__` compares the one field
+        `loop`, which is `None` for both bases whose seconds never wrap
+        -- so `Time.running() == Time.elapsed()` would be `True` while
+        the two mean different things. `mode` is what tells them apart
+        (it is a property and not a field precisely so that no producer
+        has to read it), so equality is defined over `(loop, mode)`
+        here. Defined in the body, which `@dataclass` never overwrites.
+        """
+        if not isinstance(other, Time):
+            return NotImplemented
+        return (self.loop, self.mode) == (other.loop, other.mode)
+
+    def __hash__(self):
+        """Hashed over the same pair `__eq__` compares.
+
+        Defined beside `__eq__` so the frozen declaration stays usable
+        as a dict key and a set member, which the dataclass's own hash
+        gave it: an explicit `__hash__` in the body is kept as an
+        explicit `__eq__` is.
+        """
+        return hash((self.loop, self.mode))
+
+    ##############################################
+    # The clock as a source
+
+    def drives(self, other, ratio=None, offset=None, law=None):
+        """Refused: a clock drives nothing.
+
+        The face exists so the refusal is the framework's and names the
+        clock, rather than Python's `AttributeError` on a declaration
+        that happens to carry no `drives` (OpenSpec change
+        ``time-without-running``).
+        """
+        from machinome.motion.couplings import relate
+
+        return relate(self, other, ratio, offset, law)
+
+    def commits(self, targets, at=None, law=None, **rejected):
+        """This clock, as the one source of a committing relation.
+
+        The verb lives on the coupling layer exactly as it does for a
+        driver; this is the face the root's own `time` declaration
+        offers it through.
+        """
+        from machinome.motion.couplings import commit
+
+        return commit(self, targets, at=at, law=law, **rejected)
+
+    def __and__(self, other):
+        from machinome.motion.couplings import group_with
+
+        return group_with(self, other)
+
+    def __rand__(self, other):
+        from machinome.motion.couplings import refuse_left_operand
+
+        return refuse_left_operand(self, other)
+
+    def __set_name__(self, owner, name):
+        if name != 'time':
+            raise TypeError(
+                f"{owner.__name__}.{name}: a time base is declared as "
+                f"'time', the property every simulate() reads; "
+                f"'{name}' would leave nothing to tie it to. Write "
+                f"time = Time(loop=...), time = Time.running(), or "
+                f"time = Time.elapsed().")
+        from machinome.node.assembly import AssemblyNode
+        if not issubclass(owner, AssemblyNode):
+            raise TypeError(
+                f'{owner.__name__} cannot declare a time base: only an '
+                f'AssemblyNode animates, so only an AssemblyNode has a '
+                f'time to declare the base of.')
+
+    def __get__(self, instance, owner=None):
+        if instance is None:
+            return self
+        from machinome.node.assembly import read_time
+        return read_time(instance)
+
+    def __set__(self, instance, value):
+        raise AttributeError(
+            f'time of {type(instance).__name__} cannot be assigned: its '
+            f'value belongs to the bound snapshot. Use '
+            f'set_keyframe({value!r}) -- in seconds, under a declared '
+            f'time base.')
+
+
+def declared_time(cls):
+    """The `Time` declaration of `cls`, or None when it declares none.
+
+    Base-first through the MRO, stopping at the first `time` found: a
+    subclass inherits its parent's declaration, and a class whose
+    nearest `time` is the base property declares nothing. A class with
+    no `time` at all -- not a node -- declares nothing either.
+    """
+    for klass in getattr(cls, '__mro__', ()):
+        found = vars(klass).get('time')
+        if found is None:
+            continue
+        return found if isinstance(found, Time) else None
+    return None

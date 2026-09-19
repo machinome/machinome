@@ -1,6 +1,6 @@
 """Spike: census of intersection work in a REAL animated suite run.
 
-Wraps solid_node.test._intersection_stats and solid_node.exact's kernel
+Wraps machinome.test._intersection_stats and machinome.exact's kernel
 entry points, then runs the v8-engine test suite. Reports, per call site:
 total calls, wall time, and how many calls repeat a key already seen --
 where the key is (part identities, RELATIVE placement), which is what a
@@ -16,8 +16,8 @@ import numpy as np
 BENCH = os.environ['BENCH']
 sys.path.insert(0, BENCH)
 
-import solid_node.test as test_module
-import solid_node.exact as exact_module
+import machinome.test as test_module
+import machinome.exact as exact_module
 
 STATS = collections.Counter()
 TIME = collections.defaultdict(float)
@@ -77,7 +77,7 @@ wrap_named(exact_module, 'placed_shape', 'occt_placed')
 wrap_named(exact_module, 'cached_shape', 'occt_import')
 wrap_named(test_module, '_cached_manifold', 'manifold_cache')
 
-from solid_node.cli import manage
+from machinome.cli import manage
 
 sys.argv = ['solid', 'test'] + sys.argv[1:]
 start = time.perf_counter()

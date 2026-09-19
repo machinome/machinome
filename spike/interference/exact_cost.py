@@ -14,10 +14,10 @@ import time
 import numpy as np
 
 sys.path.insert(0, os.environ.get('BENCH', '.'))
-from solid_node.exact import (cached_shape, placed_shape, intersect_shapes,
+from machinome.exact import (cached_shape, placed_shape, intersect_shapes,
                               solid_count, solid_volume)
 
-BUILD = ('/home/asa/devel/libresolid-studio/solid-node/'
+BUILD = ('/home/asa/devel/machinome-studio/machinome-framework/'
          'docs/examples/v8-engine/_build')
 
 

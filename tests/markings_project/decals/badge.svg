@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="6" height="4"
+     viewBox="0 0 6 4">
+  <!-- One closed region, in the MIXIN's own directory: the path
+       'badge.svg' resolves here and nowhere else. -->
+  <path d="M 1 1 L 5 1 L 5 3 L 1 3 Z" fill="black"/>
+</svg>

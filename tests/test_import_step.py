@@ -1,8 +1,8 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""`solid import-step`: the generator and the command.
+"""`machinome import-step`: the generator and the command.
 
 Two projects wrote the walk this scaffold now generates by hand
 (`Internal-Cycloidal-Actuator`, `openvmp`) -- this module proves the
@@ -20,6 +20,7 @@ import importlib
 import itertools
 import os
 import re
+import shutil
 import sys
 import tempfile
 from argparse import Namespace
@@ -29,14 +30,14 @@ from unittest.mock import patch
 import cadquery as cq
 import numpy as np
 
-from solid_node.manager import import_step
-from solid_node.manager.import_step import (
+from machinome.manager import import_step
+from machinome.manager.import_step import (
     ImportStep, _attribute_name_base, _class_name_base, generate_assembly,
     generate_parts,
 )
-from solid_node.node.adapters import step as step_module
-from solid_node.node.adapters.step import StepAssembly
-from solid_node.node.base import _compose_world_matrix
+from machinome.node.adapters import step as step_module
+from machinome.node.adapters.step import StepAssembly
+from machinome.node.base import _compose_world_matrix
 
 from .step_project import parts as _parts_module
 
@@ -46,8 +47,21 @@ PROJECT = os.path.dirname(os.path.realpath(_parts_module.__file__))
 SIMPLE_STEP = os.path.join(PROJECT, 'import_simple.step')
 NESTED_STEP = os.path.join(PROJECT, 'import_nested.step')
 REPEATED_STEP = os.path.join(PROJECT, 'import_repeated.step')
+DUPLICATE_NAMES_STEP = os.path.join(PROJECT, 'import_duplicate_names.step')
+DUP_SUBASSEMBLY_STEP = os.path.join(PROJECT, 'import_dup_subassembly.step')
 
 PACKAGE_NAMES = itertools.count()
+
+
+def _class_body(source, class_name):
+    """The exact text of one generated class's body -- up to the next
+    unindented `class` line or the end of the source -- for asserting
+    which children a specific generated class declares (task 1.5)."""
+    match = re.search(
+        rf'class {re.escape(class_name)}\(AssemblyNode\):\n(.*?)(?=\nclass |\Z)',
+        source, re.S)
+    assert match, f'{class_name!r} not found in generated source'
+    return match.group(1)
 
 
 def build_simple(path):
@@ -93,10 +107,43 @@ def build_repeated(path):
     root.export(path, exportType='STEP')
 
 
+def build_duplicate_names(path):
+    """Two distinct products sharing one name, in two sub-assemblies --
+    the same shape `test_step_node.py`'s own `build_duplicate_names`
+    builds, authored again here so this module's tests do not depend on
+    that module having run first (task 1.6, evidence.md §2)."""
+    root = cq.Assembly(name='Root')
+    sub1 = cq.Assembly(name='Sub1')
+    sub1.add(cq.Workplane('XY').box(1, 1, 1), name='Pin')
+    sub2 = cq.Assembly(name='Sub2')
+    sub2.add(cq.Workplane('XY').box(2, 2, 2), name='Pin')
+    root.add(sub1, name='Sub1')
+    root.add(sub2, name='Sub2')
+    root.export(path, exportType='STEP')
+
+
+def build_dup_subassembly(path):
+    """Two distinct sub-assemblies sharing one name ('Stage'), each
+    holding a different part -- `evidence/probe_dup_subassembly.py`,
+    verbatim (task 1.5, evidence.md §3)."""
+    root = cq.Assembly(name='Root')
+    for side, child_name, size in (('Left', 'Alpha', 1), ('Right', 'Beta', 2)):
+        holder = cq.Assembly(name=side)
+        stage = cq.Assembly(name='Stage')
+        stage.add(cq.Workplane('XY').box(size, size, size), name=child_name,
+                 loc=cq.Location(cq.Vector(size, 0, 0)))
+        holder.add(stage, name='Stage',
+                  loc=cq.Location(cq.Vector(0, size * 10, 0)))
+        root.add(holder, name=side)
+    root.export(path, exportType='STEP')
+
+
 def setUpModule():
     build_simple(SIMPLE_STEP)
     build_nested(NESTED_STEP)
     build_repeated(REPEATED_STEP)
+    build_duplicate_names(DUPLICATE_NAMES_STEP)
+    build_dup_subassembly(DUP_SUBASSEMBLY_STEP)
 
 
 class ColdCacheTestCase(TestCase):
@@ -146,7 +193,9 @@ class GeneratedPartsTest(ColdCacheTestCase):
 
         source, class_names = generate_parts(assembly, SIMPLE_STEP, PROJECT)
 
-        self.assertEqual(class_names['Fixed_Ring'], 'FixedRing')
+        fixed_ring = next(product for product in assembly.products
+                          if product.name == 'Fixed_Ring')
+        self.assertEqual(class_names[fixed_ring.identity], 'FixedRing')
         self.assertIn('class FixedRing(StepNode):', source)
         self.assertIn("step_source = 'import_simple.step'", source)
         self.assertIn("part = 'Fixed_Ring'", source)
@@ -158,9 +207,13 @@ class GeneratedPartsTest(ColdCacheTestCase):
 
         source, class_names = generate_parts(assembly, NESTED_STEP, PROJECT)
 
-        self.assertNotIn('Machine', class_names)
-        self.assertNotIn('Gearbox', class_names)
-        self.assertIn('Gear', class_names)
+        # `generate_parts` returns `{product.identity: class_name}` (design
+        # D3), so membership is checked by the product's identity, not by
+        # its name.
+        by_name = {product.name: product for product in assembly.products}
+        self.assertNotIn(by_name['Machine'].identity, class_names)
+        self.assertNotIn(by_name['Gearbox'].identity, class_names)
+        self.assertIn(by_name['Gear'].identity, class_names)
 
     def test_two_products_colliding_on_one_class_name_get_a_suffix(self):
         path = os.path.join(PROJECT, 'import_collision.step')
@@ -172,8 +225,27 @@ class GeneratedPartsTest(ColdCacheTestCase):
         assembly = StepAssembly(path)
         _, class_names = generate_parts(assembly, path, PROJECT)
 
-        self.assertEqual(class_names['Widget!'], 'Widget')
-        self.assertEqual(class_names['Widget#'], 'Widget_2')
+        by_name = {product.name: product for product in assembly.products}
+        self.assertEqual(class_names[by_name['Widget!'].identity], 'Widget')
+        self.assertEqual(class_names[by_name['Widget#'].identity], 'Widget_2')
+
+    def test_duplicate_names_get_two_distinct_classes_each_with_its_own_index(self):
+        """Task 1.6: `generate_parts` must not let the second `Pin`
+        product's class overwrite the first's (evidence.md §2). It fails
+        today with both products naming class `Pin_2`."""
+        assembly = StepAssembly(DUPLICATE_NAMES_STEP)
+
+        source, class_names = generate_parts(
+            assembly, DUPLICATE_NAMES_STEP, PROJECT)
+
+        pins = [product for product in assembly.products
+               if product.name == 'Pin']
+        self.assertEqual(len(pins), 2)
+        pin_classes = {class_names[pin.identity] for pin in pins}
+        self.assertEqual(len(pin_classes), 2,
+                         'the two Pin products must get two distinct classes')
+        self.assertIn('part_index = 1', source)
+        self.assertIn('part_index = 2', source)
 
 
 ##############################################
@@ -261,6 +333,82 @@ class GeneratedAssemblyTest(ColdCacheTestCase):
         self.assertNotIn('Driver', source)
         self.assertNotIn('def simulate', source)
 
+    def test_same_named_sub_assemblies_become_distinct_classes(self):
+        """Task 1.5: two distinct `Stage` sub-assemblies must not merge
+        into one class holding both children (evidence.md §3). It fails
+        today with one `Stage` class holding both `Alpha` and `Beta`."""
+        assembly = StepAssembly(DUP_SUBASSEMBLY_STEP)
+        _, class_names = generate_parts(
+            assembly, DUP_SUBASSEMBLY_STEP, PROJECT)
+
+        source, root_class = generate_assembly(
+            assembly, 'dup', DUP_SUBASSEMBLY_STEP, class_names)
+
+        self.assertIn('class Stage(AssemblyNode):', source)
+        self.assertIn('class Stage_2(AssemblyNode):', source)
+        first_body = _class_body(source, 'Stage')
+        second_body = _class_body(source, 'Stage_2')
+        self.assertIn('alpha = Alpha()', first_body)
+        self.assertNotIn('beta', first_body)
+        self.assertIn('beta = Beta()', second_body)
+        self.assertNotIn('alpha', second_body)
+
+
+##############################################
+# Section 3 (continued): every generated module parses (task 1.7)
+
+
+class GeneratedSourceCompilesTest(ColdCacheTestCase):
+    """A `render()` with no executable placement must still carry `pass`
+    (design D4): compiling `assembly.py` and `parts.py` for every fixture
+    this module and `test_step_node.py` author. Three of them raise
+    `IndentationError` today (evidence.md §4)."""
+
+    def _compile(self, step_path, into_dir=PROJECT):
+        assembly = StepAssembly(step_path)
+        parts_source, class_names = generate_parts(
+            assembly, step_path, into_dir)
+        assembly_source, _ = generate_assembly(
+            assembly, 'model', step_path, class_names)
+        compile(parts_source, 'parts.py', 'exec')
+        compile(assembly_source, 'assembly.py', 'exec')
+
+    def test_every_fixture_compiles(self):
+        directory = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, directory, ignore_errors=True)
+
+        fixtures = {
+            'import_simple': SIMPLE_STEP,
+            'import_nested': NESTED_STEP,
+            'import_repeated': REPEATED_STEP,
+            'duplicate_names': DUPLICATE_NAMES_STEP,
+            'dup_subassembly': DUP_SUBASSEMBLY_STEP,
+        }
+
+        # `test_step_node.py`'s own fixtures, authored again here so this
+        # test does not depend on that module having run first.
+        single_product = os.path.join(directory, 'single_product.step')
+        cq.exporters.export(cq.Workplane('XY').box(5, 5, 5), single_product)
+        fixtures['single_product'] = single_product
+
+        wrapped_single_part = os.path.join(
+            directory, 'wrapped_single_part.step')
+        wrapper = cq.Assembly(name='Wrapper')
+        wrapper.add(cq.Workplane('XY').box(6, 6, 6), name='SoloPart')
+        wrapper.export(wrapped_single_part, exportType='STEP')
+        fixtures['wrapped_single_part'] = wrapped_single_part
+
+        two_products = os.path.join(directory, 'two_products.step')
+        two = cq.Assembly(name='TwoProducts')
+        two.add(cq.Workplane('XY').box(4, 4, 4), name='ColouredPart')
+        two.add(cq.Workplane('XY').box(2, 2, 2), name='PlainPart')
+        two.export(two_products, exportType='STEP')
+        fixtures['two_products'] = two_products
+
+        for name, path in fixtures.items():
+            with self.subTest(fixture=name):
+                self._compile(path, into_dir=directory)
+
 
 ##############################################
 # Section 4: faithfulness -- the generated model composes what the
@@ -294,12 +442,12 @@ class GeneratedModelFaithfulnessTest(ColdCacheTestCase):
         os.makedirs(self._package_dir)
         open(os.path.join(self._package_dir, '__init__.py'), 'w').close()
         # A node's __init__ resolves its project root by walking up for
-        # a pyproject.toml carrying [tool.solid-node] -- constructing
+        # a pyproject.toml carrying [tool.machinome] -- constructing
         # the generated root class needs one to exist, even though this
         # test never builds or reads a manifest model reference.
         with open(os.path.join(self._root_dir.name, 'pyproject.toml'),
                  'w') as handle:
-            handle.write('[tool.solid-node]\n'
+            handle.write('[tool.machinome]\n'
                         f'model = "{self._package_name}.assembly:X"\n')
         sys.path.insert(0, self._root_dir.name)
         self.addCleanup(sys.path.remove, self._root_dir.name)
@@ -324,16 +472,32 @@ class GeneratedModelFaithfulnessTest(ColdCacheTestCase):
         `test_simulate_split.py`'s own render-composition tests use
         before reading a child's operations). Declared children are
         walked directly rather than through `.children`, so this proof
-        needs neither a build nor a linked tree."""
-        from solid_node.node.adapters.step import StepNode
-        from solid_node.node.declarative import declared_child_nodes
+        needs neither a build nor a linked tree.
+
+        A leaf is paired to the occurrence of the product it actually
+        selects -- `(leaf.part, leaf.part_index)` resolved through
+        `assembly.products` to that product's own identity (task 1.8) --
+        never by `leaf.part` alone: on a document with two same-named
+        products, matching by name alone would silently pair a leaf with
+        WHICHEVER of them the name-only lookup found first, the exact
+        defect this change repairs."""
+        from machinome.node.adapters.step import StepNode
+        from machinome.node.declarative import declared_child_nodes
 
         root_node.set_state()
 
-        by_product = {}
+        # `ProductInfo.part_index` is always populated -- 1 for a name no
+        # other product shares -- so a leaf declaring no `part_index`
+        # (the ordinary case) still resolves to the one product its name
+        # names.
+        product_by_selector = {
+            (product.name, product.part_index): product
+            for product in assembly.products}
+
+        by_product_identity = {}
         for occurrence in assembly.occurrences:
-            by_product.setdefault(occurrence.product_name, []).append(
-                occurrence)
+            by_product_identity.setdefault(
+                occurrence.product_identity, []).append(occurrence)
 
         leaves = []
 
@@ -350,12 +514,17 @@ class GeneratedModelFaithfulnessTest(ColdCacheTestCase):
         for leaf in leaves:
             # Every generated part class declares `part` (spec
             # "Generated part source"), so this is always the exact
-            # product name.
-            product_name = leaf.part
-            candidates = by_product.get(product_name, [])
+            # product name; `part_index` is declared only where the
+            # generator emitted one (design D3).
+            selector = (leaf.part, leaf.part_index if leaf.part_index
+                       is not None else 1)
+            product = product_by_selector.get(selector)
+            self.assertIsNotNone(product, f'no product for {selector}')
+            candidates = by_product_identity.get(product.identity, [])
             unmatched = [o for o in candidates
                         if id(o) not in matched]
-            self.assertTrue(unmatched, f'no free occurrence for {product_name}')
+            self.assertTrue(unmatched,
+                            f'no free occurrence for {product.identity}')
             occurrence = unmatched[0]
             matched.add(id(occurrence))
             composed = _compose_world_matrix(leaf)
@@ -376,6 +545,18 @@ class GeneratedModelFaithfulnessTest(ColdCacheTestCase):
 
     def test_a_repeated_model_is_faithful(self):
         assembly, root_class = self._write_and_import(REPEATED_STEP, 'bracket')
+        root_node = root_class()
+
+        self._assert_faithful(assembly, root_node)
+
+    def test_a_duplicate_named_model_is_faithful(self):
+        """Task 1.8: the scaffold's own generated selector must resolve
+        each `Pin` to its OWN occurrence, not to whichever occurrence a
+        name-only lookup happens to find first. It fails today because
+        both generated classes carry the same unusable `part = 'Pin'`
+        selector and the build itself raises the ambiguity error."""
+        assembly, root_class = self._write_and_import(
+            DUPLICATE_NAMES_STEP, 'dup')
         root_node = root_class()
 
         self._assert_faithful(assembly, root_node)
@@ -460,7 +641,7 @@ class ImportStepScaffoldTest(ImportStepCommandTestCase):
 
     def test_prints_manifest_lines_and_never_touches_pyproject(self):
         with open('pyproject.toml', 'w') as handle:
-            handle.write('[tool.solid-node]\nmodel = "x"\n')
+            handle.write('[tool.machinome]\nmodel = "x"\n')
         with open('pyproject.toml') as handle:
             before = handle.read()
 
@@ -476,7 +657,7 @@ class ImportStepScaffoldTest(ImportStepCommandTestCase):
             after = handle.read()
 
         self.assertEqual(before, after)
-        self.assertIn('[tool.solid-node.models]', printed)
+        self.assertIn('[tool.machinome.models]', printed)
         self.assertIn('actuator', printed)
         self.assertIn('assembly:Actuator', printed)
 
@@ -536,9 +717,9 @@ class ImportStepScaffoldTest(ImportStepCommandTestCase):
 class ImportStepCliHelpTest(TestCase):
 
     def test_import_step_appears_in_cli_help(self):
-        from solid_node.cli import COMMANDS
+        from machinome.cli import COMMANDS
 
         self.assertIn('import-step', COMMANDS)
         module, class_name = COMMANDS['import-step']
-        self.assertEqual(module, 'solid_node.manager.import_step')
+        self.assertEqual(module, 'machinome.manager.import_step')
         self.assertEqual(class_name, 'ImportStep')

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -15,7 +15,7 @@ import numpy as np
 import trimesh
 from solid2 import cube
 
-from solid_node.node import (
+from machinome.node import (
     Build123dNode,
     CadQueryNode,
     FusionNode,
@@ -24,14 +24,14 @@ from solid_node.node import (
     OpenScadNode,
     Solid2Node,
 )
-from solid_node.exact import (_placement_cache, _shape_cache,
+from machinome.exact import (_placement_cache, _shape_cache,
                               cached_shape, placed_shape,
                               solid_count, solid_volume, write_brep,
                               write_stl)
-from solid_node.node.base import StlRenderStart
-import solid_node.test as test_module
-from solid_node.test import TestCase as GeometryTestCase, _intersection_stats
-from solid_node.core.builder import Builder
+from machinome.node.base import StlRenderStart
+import machinome.test as test_module
+from machinome.test import TestCase as GeometryTestCase, _intersection_stats
+from machinome.core.builder import Builder
 from tests.exact_test_support import clear_exact_shape_caches
 
 
@@ -297,7 +297,7 @@ class ExactArtifactTest(TestCase):
         fusion = ExactFusion()
         fusion.assemble()
 
-        with patch('solid_node.node.base.Popen', side_effect=AssertionError(
+        with patch('machinome.node.base.Popen', side_effect=AssertionError(
                 'exact fusion must not launch OpenSCAD')):
             fusion.build_stls()
 
@@ -333,13 +333,16 @@ class ExactArtifactTest(TestCase):
 
         self.assertFalse(builder._artifacts_are_current())
 
-    def test_mixed_fusion_keeps_the_openscad_render_protocol(self):
+    def test_mixed_fusion_uses_direct_mesh_composition(self):
         fusion = MixedFusion()
-        fusion.assemble()
-        process = Mock(pid=12345)
-        with patch('solid_node.node.base.Popen', return_value=process):
-            with self.assertRaises(StlRenderStart):
-                fusion.generate_stl()
+        fusion.build_stls()
+        os.remove(fusion.stl_file)
+        with patch('machinome.node.base.require_openscad',
+                   side_effect=AssertionError('fusion must not use OpenSCAD')), \
+             patch('machinome.node.base.Popen',
+                   side_effect=AssertionError('fusion must not launch')):
+            fusion.generate_stl()
+        self.assertTrue(os.path.exists(fusion.stl_file))
 
 
 class ExactIntersectionTest(TestCase):
@@ -351,7 +354,7 @@ class ExactIntersectionTest(TestCase):
         left = self.box((2, 2, 2), 'left')
         right = self.box((2, 2, 2), 'right')
         right.operations.append(
-            __import__('solid_node.node.operations', fromlist=['Translation'])
+            __import__('machinome.node.operations', fromlist=['Translation'])
             .Translation([1, 0, 0], right))
 
         stats = _intersection_stats(left, right)
@@ -364,7 +367,7 @@ class ExactIntersectionTest(TestCase):
         left = self.box((2, 2, 2), 'left')
         right = self.box((2, 2, 2), 'right')
         right.operations.append(
-            __import__('solid_node.node.operations', fromlist=['Translation'])
+            __import__('machinome.node.operations', fromlist=['Translation'])
             .Translation([2, 0, 0], right))
 
         stats = _intersection_stats(left, right)
@@ -388,17 +391,17 @@ class ExactIntersectionTest(TestCase):
         failed = Mock()
         failed.IsDone.return_value = False
 
-        with patch('solid_node.exact.BRepAlgoAPI_Common', return_value=failed):
+        with patch('machinome.exact.BRepAlgoAPI_Common', return_value=failed):
             with self.assertRaisesRegex(RuntimeError, 'left.*right'):
                 _intersection_stats(left, right)
 
     def test_exact_aabb_culls_before_boolean(self):
         left = self.box((1, 1, 1), 'left')
         right = self.box((1, 1, 1), 'right')
-        from solid_node.node.operations import Translation
+        from machinome.node.operations import Translation
         right.operations.append(Translation([10, 0, 0], right))
 
-        with patch('solid_node.test.intersect_shapes',
+        with patch('machinome.test.intersect_shapes',
                    side_effect=AssertionError('boolean must be culled')):
             stats = _intersection_stats(left, right)
 
@@ -450,7 +453,7 @@ class ExactConnectivityAndEpsilonTest(TestCase):
         touching = ShapeNode(
             cq.Workplane('XY').box(2, 2, 2).val(), 'touching',
             matrix_parent=solid)
-        from solid_node.node.operations import Translation
+        from machinome.node.operations import Translation
         overlapping.operations.append(Translation([1, 0, 0], overlapping))
         touching.operations.append(Translation([2, 0, 0], touching))
 
@@ -461,7 +464,7 @@ class ExactConnectivityAndEpsilonTest(TestCase):
     def test_all_exact_perturbation_warns_and_ignores_epsilon(self):
         left = ShapeNode(cq.Workplane('XY').box(1, 1, 1).val(), 'left')
         right = ShapeNode(cq.Workplane('XY').box(1, 1, 1).val(), 'right')
-        from solid_node.node.operations import Translation
+        from machinome.node.operations import Translation
         right.operations.append(Translation([10, 0, 0], right))
 
         with self.assertWarnsRegex(UserWarning, 'assertFreeWithin.*ignored'):
@@ -474,7 +477,7 @@ class ExactConnectivityAndEpsilonTest(TestCase):
         mesh = trimesh.creation.box((1, 1, 1))
         exact = MeshShapeNode(shape, mesh, 'exact')
         faceted = MeshShapeNode(shape, mesh, 'faceted', exact=False)
-        from solid_node.node.operations import Translation
+        from machinome.node.operations import Translation
         faceted.operations.append(Translation([10, 0, 0], faceted))
 
         with warnings.catch_warnings(record=True) as caught:
@@ -503,7 +506,7 @@ class ExactConnectivityAndEpsilonTest(TestCase):
     def test_exact_pairwise_flush_contact_passes_and_warns(self):
         left = ShapeNode(cq.Workplane('XY').box(2, 2, 2).val(), 'left')
         right = ShapeNode(cq.Workplane('XY').box(2, 2, 2).val(), 'right')
-        from solid_node.node.operations import Translation
+        from machinome.node.operations import Translation
         right.operations.append(Translation([2, 0, 0], right))
         root = SimpleNamespace(rigid=False, children=(left, right),
                                operations=[], _parent=None)
@@ -529,12 +532,12 @@ class StlShapeNode(ShapeNode):
         self.stl_file = stl_file
 
     def base_mesh(self):
-        from solid_node.node.base import AbstractBaseNode
+        from machinome.node.base import AbstractBaseNode
         return AbstractBaseNode.base_mesh(self)
 
     @property
     def mesh(self):
-        from solid_node.node.base import AbstractBaseNode
+        from machinome.node.base import AbstractBaseNode
         return AbstractBaseNode.mesh.fget(self)
 
 
@@ -569,7 +572,7 @@ class FacetedKernelTest(TestCase):
             cq.Workplane('XY').box(*size).val(),
             self.stl(name, trimesh.creation.box(size)), name)
         if translation is not None:
-            from solid_node.node.operations import Translation
+            from machinome.node.operations import Translation
             node.operations.append(Translation(translation, node))
         return node
 
@@ -628,7 +631,7 @@ class FacetedKernelTest(TestCase):
         overlapping = StlShapeNode(
             self.unit_box, self.stl('over', trimesh.creation.box((2, 2, 2))),
             'overlapping', matrix_parent=solid)
-        from solid_node.node.operations import Translation
+        from machinome.node.operations import Translation
         overlapping.operations.append(Translation([1, 0, 0], overlapping))
 
         with _refuse_shape(left), _refuse_shape(overlapping), patch.object(
@@ -748,7 +751,7 @@ class MeshNeverJudgedOnTheExactPathTest(FacetedKernelTest):
         holey.faces = holey.faces[:-1]
         node = StlShapeNode(self.unit_box, self.stl(name, holey), name)
         if translation is not None:
-            from solid_node.node.operations import Translation
+            from machinome.node.operations import Translation
             node.operations.append(Translation(translation, node))
         return node
 

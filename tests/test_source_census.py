@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,8 +8,8 @@ import os
 import tempfile
 from unittest import TestCase, mock
 
-from solid_node import currency
-from solid_node.source_generation import (
+from machinome import currency
+from machinome.source_generation import (
     SourceCensus, SourceChanged, SourceGeneration, current_phase,
 )
 
@@ -30,7 +30,7 @@ class SourceCensusTest(TestCase):
         return path
 
     def test_overlapping_closures_observe_each_distinct_path_once(self):
-        import solid_node.source_generation as source_generation
+        import machinome.source_generation as source_generation
 
         observed = []
         resolved = []

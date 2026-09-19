@@ -1,12 +1,12 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 """A windmill-shaped root: a ratio-derived radius, a flag gating a
 guard, a legacy child, and a child whose height has no default."""
 
-from solid_node.node import AssemblyNode
-from solid_node.parameters import Flag, Length, Ratio
+from machinome.node import AssemblyNode
+from machinome.parameters import Flag, Length, Ratio
 from .parts import Guard, Rotor, Tower
 
 

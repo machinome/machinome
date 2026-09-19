@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -18,7 +18,7 @@ How the expected values are produced is the whole point. The same tree
 is serialized twice:
 
   * bound to a numeric snapshot, so every operation holds the number
-    Python computed through `solid_node.math` and solid2; and
+    Python computed through `machinome.math` and solid2; and
   * in symbolic driver mode with symbolic animation time, so every
     operation holds the wire expression the document publishes.
 
@@ -56,7 +56,7 @@ able to express its violation.
 Run from the framework worktree root:
 
     PYTHONPATH="$PWD" python \\
-        solid_node/viewers/widget/tools/generate_parity_fixture.py
+        machinome/viewers/widget/tools/generate_parity_fixture.py
 
 The generated JSON is committed, so the TypeScript suite runs with no
 Python and no CAD stack.
@@ -70,26 +70,26 @@ import sys
 ROOT = os.path.abspath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 SPIKE = os.path.join(ROOT, 'spike', 'expressions')
-# The fixture is committed in the solid-node-viewer repository, beside the
-# evaluator it pins: solid_node_viewer/widget/src/parity-fixture.json. This
+# The fixture is committed in the machinome-viewer repository, beside the
+# evaluator it pins: machinome_viewer/widget/src/parity-fixture.json. This
 # tool writes wherever it is told, and the viewer repository commits the
 # result; the numbers are this framework's, the test is the viewer's.
 FIXTURE = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-    ROOT, '..', 'solid-node-viewer', 'solid_node_viewer', 'widget', 'src',
+    ROOT, '..', 'machinome-viewer', 'machinome_viewer', 'widget', 'src',
     'parity-fixture.json')
 
 sys.path.insert(0, ROOT)
 sys.path.insert(0, SPIKE)
 
-from solid_node.core.serializer import (  # noqa: E402
+from machinome.core.serializer import (  # noqa: E402
     bind_document, drivers_table, serialize_node, symbolic_document,
 )
-from solid_node.simulation.driver import Driver  # noqa: E402
-from solid_node.simulation.enumeration import (  # noqa: E402
+from machinome.simulation.driver import Driver  # noqa: E402
+from machinome.simulation.enumeration import (  # noqa: E402
     bind_declared_defaults,
 )
 
-import solid_node.math as sn_math  # noqa: E402
+import machinome.math as sn_math  # noqa: E402
 
 from tests.expression_project.sharing import SharedValueTree  # noqa: E402
 from tests.expression_project.vocabulary import Vocabulary  # noqa: E402
@@ -176,7 +176,7 @@ def scalars(node):
 
 
 def document(node):
-    return serialize_node(node, lambda rigid: rigid.name)
+    return serialize_node(node, lambda rigid: rigid.name, graph_values=True)
 
 
 def numeric_scalars(snapshot):
@@ -290,7 +290,7 @@ def sharing_cases():
 
 
 def uncovered_builtins(cases, bindings=()):
-    """Every name `solid_node.math` may emit that no case, and no
+    """Every name `machinome.math` may emit that no case, and no
     `bindings` entry, exercises.
 
     The inventory is the module's own SYMBOLIC_BUILTINS, read here
@@ -438,11 +438,26 @@ def build():
     sharing, sharing_table, bindings = sharing_cases()
     cases.extend(sharing)
     table = dict(table, **sharing_table)
+    # Compile all native roots together. The sharing sub-corpus already has a
+    # local table; import that closure for those slots before minting the final
+    # fixture-wide table. Expected numeric values remain the original renders.
+    from machinome.core.expressions import bind_expressions
+    definitions = ', '.join(f"{b['name']} = {b['expression']}" for b in bindings)
+    expressions = [
+        f"let({definitions}) {case['expression']}"
+        if case['key'].startswith('sharing') else case['expression']
+        for case in cases
+    ]
+    rewritten, bindings, warnings = bind_expressions(expressions, table.keys())
+    if warnings:
+        raise SystemExit('the fixture contains an unreadable expression')
+    for case, expression in zip(cases, rewritten):
+        case['expression'] = expression
     missing = uncovered_builtins(cases, bindings)
     if missing:
         raise SystemExit(
             f'no case exercises {", ".join(missing)}, so the fixture would '
-            f'pin a vocabulary narrower than the one solid_node.math can '
+            f'pin a vocabulary narrower than the one machinome.math can '
             f'emit; add the call to tests/expression_project/vocabulary.py')
     return {
         'generated_by': 'tools/generate_parity_fixture.py',
@@ -451,11 +466,8 @@ def build():
                    'tests/expression_project/sharing.py'),
         'drivers': table,
         # Beside `cases`, as `viewer.json`/`manifest.json` carry `bindings`
-        # beside `root` (design.md D10): only the sharing corpus's document
-        # was passed through `bind_document`, so this table is scoped to
-        # its `sharing<N>|...` cases -- the spike machine's and the
-        # vocabulary corpus's cases are untouched, their pinned expressions
-        # exactly as they were before this cycle.
+        # beside `root`: the compiler now shares every symbolic corpus.
+        # Numeric expected values and keys still come from the same renders.
         'bindings': bindings,
         'cases': cases,
         'conversions': conversions(),

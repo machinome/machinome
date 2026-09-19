@@ -1,0 +1,338 @@
+{
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "bindings": [
+    {
+      "expression": "(10 * w1.digit)",
+      "name": "_b0"
+    },
+    {
+      "expression": "(w0.digit + _b0)",
+      "name": "_b1"
+    },
+    {
+      "expression": "(100 * w2.digit)",
+      "name": "_b2"
+    },
+    {
+      "expression": "(_b1 + _b2)",
+      "name": "_b3"
+    },
+    {
+      "expression": "(_b3 + operand)",
+      "name": "_b4"
+    },
+    {
+      "expression": "(_b4 % 10)",
+      "name": "_b5"
+    },
+    {
+      "expression": "(10 < 0.0)",
+      "name": "_b6"
+    },
+    {
+      "expression": "(_b4 / 10)",
+      "name": "_b7"
+    },
+    {
+      "expression": "floor(_b7)",
+      "name": "_b8"
+    },
+    {
+      "expression": "(_b8 % 10)",
+      "name": "_b9"
+    },
+    {
+      "expression": "(_b4 / 100)",
+      "name": "_b10"
+    },
+    {
+      "expression": "floor(_b10)",
+      "name": "_b11"
+    },
+    {
+      "expression": "(_b11 % 10)",
+      "name": "_b12"
+    },
+    {
+      "expression": "(4.0 * w0.digit)",
+      "name": "_b13"
+    },
+    {
+      "expression": "(10.0 + _b13)",
+      "name": "_b14"
+    },
+    {
+      "expression": "(4.0 * w1.digit)",
+      "name": "_b15"
+    },
+    {
+      "expression": "(110.0 + _b15)",
+      "name": "_b16"
+    },
+    {
+      "expression": "(4.0 * w2.digit)",
+      "name": "_b17"
+    },
+    {
+      "expression": "(210.0 + _b17)",
+      "name": "_b18"
+    }
+  ],
+  "clocked": {
+    "bounds": [],
+    "clock": null,
+    "commits": [
+      {
+        "at": {
+          "level": "(crank / 360)",
+          "primitive": "floor"
+        },
+        "description": "(crank, operand, w0.digit, w1.digit, w2.digit) commits (w0.digit, w1.digit, w2.digit)",
+        "law": [
+          "(_b5 + (10 * ((_b5 != 0.0) * ((_b5 < 0.0) != _b6))))",
+          "(_b9 + (10 * ((_b9 != 0.0) * ((_b9 < 0.0) != _b6))))",
+          "(_b12 + (10 * ((_b12 != 0.0) * ((_b12 < 0.0) != _b6))))"
+        ],
+        "shapes": {
+          "crank": "affine"
+        },
+        "sources": [
+          "crank",
+          "operand",
+          "w0.digit",
+          "w1.digit",
+          "w2.digit"
+        ],
+        "stated_by": "Register",
+        "targets": [
+          "w0.digit",
+          "w1.digit",
+          "w2.digit"
+        ]
+      },
+      {
+        "at": {
+          "level": "(ring - _b14)",
+          "primitive": ">="
+        },
+        "description": "(ring, w0.digit) commits w0.digit",
+        "law": [
+          "(w0.digit * (ring < _b14))"
+        ],
+        "shapes": {
+          "ring": "affine"
+        },
+        "sources": [
+          "ring",
+          "w0.digit"
+        ],
+        "stated_by": "Register",
+        "targets": [
+          "w0.digit"
+        ]
+      },
+      {
+        "at": {
+          "level": "(ring - _b16)",
+          "primitive": ">="
+        },
+        "description": "(ring, w1.digit) commits w1.digit",
+        "law": [
+          "(w1.digit * (ring < _b16))"
+        ],
+        "shapes": {
+          "ring": "affine"
+        },
+        "sources": [
+          "ring",
+          "w1.digit"
+        ],
+        "stated_by": "Register",
+        "targets": [
+          "w1.digit"
+        ]
+      },
+      {
+        "at": {
+          "level": "(ring - _b18)",
+          "primitive": ">="
+        },
+        "description": "(ring, w2.digit) commits w2.digit",
+        "law": [
+          "(w2.digit * (ring < _b18))"
+        ],
+        "shapes": {
+          "ring": "affine"
+        },
+        "sources": [
+          "ring",
+          "w2.digit"
+        ],
+        "stated_by": "Register",
+        "targets": [
+          "w2.digit"
+        ]
+      }
+    ],
+    "identity": "dcd1df0d08a3d8a5dfb5b66b4fef8eb4a4d15de698a68d9c0b1dc728556cfba4",
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "max_crossings": 1000
+    },
+    "own": "_own"
+  },
+  "drivers": {
+    "crank": {
+      "default": 0,
+      "dtype": null,
+      "range": null,
+      "scale": null,
+      "unit": "deg"
+    },
+    "operand": {
+      "default": 1,
+      "dtype": "int",
+      "range": [
+        0,
+        9
+      ],
+      "scale": null,
+      "unit": null
+    },
+    "ring": {
+      "default": 0.0,
+      "dtype": null,
+      "range": null,
+      "scale": null,
+      "unit": "deg"
+    }
+  },
+  "format": "machinome-export",
+  "instructions": {},
+  "root": {
+    "children": [
+      {
+        "children": [
+          {
+            "color": null,
+            "model": "face",
+            "mtime": null,
+            "name": "face",
+            "operations": [
+              [
+                "r",
+                "(36.0 * w0.digit)",
+                [
+                  0,
+                  0,
+                  1
+                ]
+              ]
+            ],
+            "type": "LeafNode"
+          }
+        ],
+        "color": null,
+        "mtime": null,
+        "name": "w0",
+        "operations": [],
+        "type": "AssemblyNode"
+      },
+      {
+        "children": [
+          {
+            "color": null,
+            "model": "face",
+            "mtime": null,
+            "name": "face",
+            "operations": [
+              [
+                "r",
+                "(36.0 * w1.digit)",
+                [
+                  0,
+                  0,
+                  1
+                ]
+              ]
+            ],
+            "type": "LeafNode"
+          }
+        ],
+        "color": null,
+        "mtime": null,
+        "name": "w1",
+        "operations": [],
+        "type": "AssemblyNode"
+      },
+      {
+        "children": [
+          {
+            "color": null,
+            "model": "face",
+            "mtime": null,
+            "name": "face",
+            "operations": [
+              [
+                "r",
+                "(36.0 * w2.digit)",
+                [
+                  0,
+                  0,
+                  1
+                ]
+              ]
+            ],
+            "type": "LeafNode"
+          }
+        ],
+        "color": null,
+        "mtime": null,
+        "name": "w2",
+        "operations": [],
+        "type": "AssemblyNode"
+      }
+    ],
+    "color": null,
+    "mtime": null,
+    "name": "Register",
+    "operations": [],
+    "type": "AssemblyNode"
+  },
+  "states": {
+    "w0.digit": {
+      "default": 0,
+      "dtype": "int",
+      "range": [
+        0,
+        9
+      ],
+      "scale": null,
+      "unit": null
+    },
+    "w1.digit": {
+      "default": 0,
+      "dtype": "int",
+      "range": [
+        0,
+        9
+      ],
+      "scale": null,
+      "unit": null
+    },
+    "w2.digit": {
+      "default": 0,
+      "dtype": "int",
+      "range": [
+        0,
+        9
+      ],
+      "scale": null,
+      "unit": null
+    }
+  },
+  "version": 8
+}

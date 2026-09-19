@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -6,10 +6,10 @@ import cadquery
 from molejo import Circle, Helix, Line, P, Shape
 from solid2 import cube
 
-from solid_node.math import cos
-from solid_node.node import AssemblyNode, CadQueryNode, MolejoNode
-from solid_node.motion.ports import TranslationalPort
-from solid_node.simulation import Driver
+from machinome.math import cos
+from machinome.node import AssemblyNode, CadQueryNode, MolejoNode
+from machinome.motion.ports import TranslationalPort
+from machinome.simulation import Driver
 
 #: The spring at rest, and how far the valve may push it down.
 FREE_HEIGHT = 46.8

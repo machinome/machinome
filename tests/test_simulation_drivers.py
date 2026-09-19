@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -17,9 +17,9 @@ produce is numbers, and an STL would only make the suite slower without
 answering a single question asked below.
 """
 
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, RampProgram
-from solid_node.simulation.driver import declared_drivers, driver_states
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver, RampProgram
+from machinome.simulation.driver import declared_drivers, driver_states
 
 from .base import BaseNodeTest
 from .meta_project.parts import Cube

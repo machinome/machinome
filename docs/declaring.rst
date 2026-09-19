@@ -12,8 +12,8 @@ replace the literal radius with a typed parameter:
 .. code-block:: python
 
     import cadquery as cq
-    from solid_node.node import CadQueryNode
-    from solid_node.parameters import Length
+    from machinome.node import CadQueryNode
+    from machinome.parameters import Length
 
     class ClockBase(CadQueryNode):
         radius = Length(100, min=10)
@@ -27,7 +27,7 @@ Open this part on its own:
 
 .. code-block:: bash
 
-    solid develop myproject.clock_base:ClockBase --set radius=120
+    machinome develop myproject.clock_base:ClockBase --set radius=120
 
 The larger disc should appear; the hole stays 6 mm. We changed a build
 parameter, so the geometry changes. That differs from a driver, which
@@ -36,7 +36,7 @@ moves the existing parts.
 To expose that setting on the whole clock, declare a root
 ``radius = Length(100, min=10)`` and change the child to
 ``base = ClockBase(radius=radius)``. Then
-``solid develop --set radius=120`` passes the value down.
+``machinome develop --set radius=120`` passes the value down.
 
 The rest of this page develops the same idea: parameter types, formulas,
 child propagation, repeated units and guards. It uses small independent
@@ -48,8 +48,8 @@ For example, a parameterized cylindrical part:
 .. code-block:: python
 
     import cadquery as cq
-    from solid_node.node import CadQueryNode
-    from solid_node.parameters import Length
+    from machinome.node import CadQueryNode
+    from machinome.parameters import Length
 
     class Piston(CadQueryNode):
 
@@ -120,6 +120,12 @@ One more declaration belongs to the root alone: its time base,
 timeline is and makes ``self.time`` read seconds everywhere below it. See
 :ref:`Declaring the time base <time-base>`.
 
+And one belongs to a rigid part alone: a **marking**, what the part
+carries on its surface — digits, an index mark, a scale, a label. It is
+none of the three layers above, because it says nothing about what is
+built: it adds no solid, no child and no printed piece, and it does not
+key the part's artifacts. See :doc:`Markings <markings>`.
+
 Kinds
 =====
 
@@ -149,17 +155,17 @@ A parameter is declared with a typed kind:
     The escape hatch: a number the algebra does not check.
 
 Every kind, the ``Quantity`` base below and the errors a bad declaration
-raises come from ``solid_node.parameters``, and nothing else does. Node
-classes come from ``solid_node.node``, ports and the declared time base
-from ``solid_node.motion.ports``, drivers from
-``solid_node.simulation``, so a module's import block says which of its
+raises come from ``machinome.parameters``, and nothing else does. Node
+classes come from ``machinome.node``, ports and the declared time base
+from ``machinome.motion.ports``, drivers from
+``machinome.simulation``, so a module's import block says which of its
 names build the machine, which move it, and which drive it:
 
 .. code-block:: python
 
-    from solid_node.node import AssemblyNode, CadQueryNode
-    from solid_node.parameters import Count, Flag, Length
-    from solid_node.simulation import Driver
+    from machinome.node import AssemblyNode, CadQueryNode
+    from machinome.parameters import Count, Flag, Length
+    from machinome.simulation import Driver
 
 Every kind takes an optional default and, for the numeric ones, ``min=``
 and ``max=``. Constraints are checked when the node is constructed, and a
@@ -177,7 +183,7 @@ A declaration may omit its default:
 A value that depends on the parent has no sensible default, and
 inventing one would be a quiet mistake. The parent supplies it; if
 nothing does, constructing the node raises naming the class and the
-parameter. That is also what happens when ``solid develop tower.py``
+parameter. That is also what happens when ``machinome develop tower.py``
 loads such a node directly — state the value with ``--set height=300``
 (see :ref:`root-overrides`).
 
@@ -212,7 +218,7 @@ addition, subtraction and negation need them equal:
 * ``bore + pressure_angle`` raises a ``DimensionError`` in the class
   body, on ``import``, before any geometry exists.
 
-The functions of ``solid_node.math`` take part: ``sqrt`` needs even
+The functions of ``machinome.math`` take part: ``sqrt`` needs even
 exponents and halves them, ``sin``/``cos``/``tan`` need an ``Angle`` and
 return a dimensionless quantity, and ``asin``/``acos``/``atan``/``atan2``
 take dimensionless arguments and return an ``Angle``. A bevel gear layer
@@ -220,7 +226,7 @@ reads exactly as it did in a hand-written parameter file:
 
 .. code-block:: python
 
-    from solid_node.math import atan, cos, sqrt
+    from machinome.math import atan, cos, sqrt
 
     class BevelDrive(AssemblyNode):
 
@@ -232,7 +238,7 @@ reads exactly as it did in a hand-written parameter file:
         cone_distance = module / 2 * sqrt(z1 * z1 + z2 * z2)
         axis_y        = cone_distance * cos(pitch_angle)
 
-The rest of ``solid_node.math`` takes part too, and its rules follow
+The rest of ``machinome.math`` takes part too, and its rules follow
 from the same idea. ``abs`` keeps its argument's kind; ``min`` and
 ``max`` need their two arguments to agree and keep that kind; ``sign``
 takes anything and gives a dimensionless -1, 0 or 1, because it compares
@@ -457,9 +463,9 @@ node can set them:
 
 .. code-block:: shell
 
-    solid build engine.py --set bore=32.0 --set count=6
-    solid develop windmill.py --set guard_installed=false
-    solid develop tower.py --set height=300
+    machinome build engine.py --set bore=32.0 --set count=6
+    machinome develop windmill.py --set guard_installed=false
+    machinome develop tower.py --set height=300
 
 A value is parsed by the parameter's kind — a float for ``Length``,
 ``Angle``, ``Ratio`` and ``Scalar``, an integer for ``Count``, ``true``
@@ -658,5 +664,5 @@ When you do migrate a class, know that:
   placement goes in ``render()`` and motion in ``simulate()``. Neither
   needs the constructor form back.
 * If a node class carries its own metaclass, derive it from
-  ``solid_node.node.declarative.NodeMeta``, the way ``CadQueryNode``'s
+  ``machinome.node.declarative.NodeMeta``, the way ``CadQueryNode``'s
   does.

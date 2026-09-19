@@ -1,10 +1,10 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 import math
 
-from solid_node.test import TestCase, testing_steps
+from machinome.test import TestCase, testing_steps
 
 from .conrod import Conrod
 

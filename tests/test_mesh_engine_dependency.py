@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -33,8 +33,8 @@ class AssertionModuleImportTest(TestCase):
 
     def test_assertion_module_imports_without_the_mesh_engine(self):
         result = run_python(
-            'import solid_node.test\n'
-            'print("IMPORTED", hasattr(solid_node.test, "TestCase"))\n')
+            'import machinome.test\n'
+            'print("IMPORTED", hasattr(machinome.test, "TestCase"))\n')
 
         self.assertIn('IMPORTED True', result.stdout, result.stderr)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -44,7 +44,7 @@ class AssertionModuleImportTest(TestCase):
         for the engine at all, or the dependency is still eager and only
         the error moved."""
         result = run_python(
-            'import solid_node.test, sys\n'
+            'import machinome.test, sys\n'
             'print("RESOLVED", "manifold3d" in sys.modules)\n')
 
         self.assertIn('RESOLVED False', result.stdout, result.stderr)

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,10 +13,10 @@ from unittest.mock import patch
 import numpy as np
 from trimesh.creation import box
 
-import solid_node.test as test_module
-from solid_node.mesh_engine import mesh_engine
-from solid_node.node.operations import Rotation, Translation
-from solid_node.test import TestCase as AssertingTestCase
+import machinome.test as test_module
+from machinome.mesh_engine import mesh_engine
+from machinome.node.operations import Rotation, Translation
+from machinome.test import TestCase as AssertingTestCase
 
 
 asserter = AssertingTestCase()
@@ -70,7 +70,7 @@ class AssemblyIntegrityTestCase(TestCase):
     def test_rigid_root_passes_without_loading_geometry(self):
         leaf = RigidNode('LeafWithoutBuiltGeometry')
 
-        with patch('solid_node.test._cached_manifold',
+        with patch('machinome.test._cached_manifold',
                    side_effect=AssertionError('geometry must not load')):
             asserter.assertNoSolidInterference(leaf)
 
@@ -94,7 +94,7 @@ class AssemblyIntegrityTestCase(TestCase):
         # is unchanged: an ingredient inside a fusion is not an
         # assembly part and its geometry is never read.
         original = test_module._cached_local_bounds
-        with patch('solid_node.test._cached_local_bounds',
+        with patch('machinome.test._cached_local_bounds',
                    wraps=original) as loaded_bounds:
             asserter.assertNoSolidInterference(assembly)
 
@@ -217,7 +217,7 @@ class AssemblyIntegrityTestCase(TestCase):
         with patch.object(
                 mesh_engine()[0], 'batch_boolean',
                 side_effect=AssertionError('no whole-assembly union')), \
-             patch('solid_node.test.trimesh.boolean.union',
+             patch('machinome.test.trimesh.boolean.union',
                    side_effect=AssertionError('no whole-assembly union')):
             asserter.assertNoSolidInterference(Assembly(
                 'Root', (first, second)))
@@ -226,7 +226,7 @@ class AssemblyIntegrityTestCase(TestCase):
         first = self.part('First')
         second = self.part('Second', [0.5, 0, 0])
 
-        with patch('solid_node.test._candidate_intersection',
+        with patch('machinome.test._candidate_intersection',
                    return_value=(True, 0.0)) as candidate:
             asserter.assertNoSolidInterference(
                 Assembly('Root', (first, second)))
@@ -237,7 +237,7 @@ class AssemblyIntegrityTestCase(TestCase):
         first = self.part('First')
         second = self.part('Second', [0.5, 0, 0])
 
-        with patch('solid_node.test._candidate_intersection',
+        with patch('machinome.test._candidate_intersection',
                    return_value=(False, 0.0)):
             asserter.assertNoSolidInterference(
                 Assembly('Root', (first, second)))
@@ -247,12 +247,90 @@ class AssemblyIntegrityTestCase(TestCase):
         second = self.part('Second', [0.5, 0, 0])
         smallest_positive = np.nextafter(0.0, 1.0)
 
-        with patch('solid_node.test._candidate_intersection',
+        with patch('machinome.test._candidate_intersection',
                    return_value=(False, smallest_positive)):
             with self.assertRaisesRegex(AssertionError,
                                         'intersection volume'):
                 asserter.assertNoSolidInterference(
                     Assembly('Root', (first, second)))
+
+    def test_finite_negative_faceted_candidates_pass_without_epsilon(self):
+        first, second = self.part('First'), self.part('Second')
+        root = Assembly('Root', (first, second))
+        for kernel in ('exact', 'faceted'):
+            for volume in (-9.947598300641403e-14,
+                           np.nextafter(0.0, -1.0), -1.0):
+                with self.subTest(kernel=kernel, volume=volume):
+                    stats = test_module.IntersectionStats(False, volume, False)
+                    with patch.object(test_module, '_policy',
+                                      test_module.ComparisonPolicy(kernel, 0)), \
+                         patch.object(test_module, '_candidate_intersection',
+                                      return_value=stats):
+                        asserter.assertNoSolidInterference(root)
+                    self.assertFalse(stats.is_empty)
+                    self.assertEqual(stats.volume, volume)
+
+    def test_signed_candidate_boundaries_preserve_failures(self):
+        root = Assembly('Root', (self.part('First'), self.part('Second')))
+        for exact in (False, True):
+            for volume in (np.nextafter(0.0, 1.0), 1.0,
+                           float('nan'), float('inf'), -float('inf')):
+                with self.subTest(exact=exact, volume=volume):
+                    stats = test_module.IntersectionStats(False, volume, exact)
+                    with patch.object(test_module, '_candidate_intersection',
+                                      return_value=stats):
+                        with self.assertRaisesRegex(AssertionError,
+                                                    'intersection volume'):
+                            asserter.assertNoSolidInterference(root)
+            for empty, volume in ((True, 0.0), (False, 0.0), (False, -0.0)):
+                with self.subTest(exact=exact, empty=empty, volume=volume):
+                    stats = test_module.IntersectionStats(empty, volume, exact)
+                    with patch.object(test_module, '_candidate_intersection',
+                                      return_value=stats):
+                        asserter.assertNoSolidInterference(root)
+
+    def test_exact_negative_candidate_still_fails(self):
+        root = Assembly('Root', (self.part('First'), self.part('Second')))
+        stats = test_module.IntersectionStats(False, -9.947598300641403e-14, True)
+        with patch.object(test_module, '_candidate_intersection',
+                          return_value=stats):
+            with self.assertRaisesRegex(AssertionError, 'intersection volume'):
+                asserter.assertNoSolidInterference(root)
+
+    def test_negative_candidate_does_not_hide_later_positive_pair(self):
+        root = Assembly('Root', tuple(self.part(name)
+                                      for name in ('First', 'Second', 'Third')))
+        results = [test_module.IntersectionStats(False, -1e-13, False),
+                   test_module.IntersectionStats(False, 0.25, False)]
+        with patch.object(test_module, '_bounds_candidates',
+                          return_value=iter(((0, 1), (1, 2)))), \
+             patch.object(test_module, '_candidate_intersection',
+                          side_effect=results) as candidate:
+            with self.assertRaisesRegex(AssertionError,
+                                        'Second.*Third.*0.25'):
+                asserter.assertNoSolidInterference(root)
+        self.assertEqual(candidate.call_count, 2)
+
+    def test_negative_and_zero_faceted_contact_remain_strict_pairwise(self):
+        first, second = self.part('First'), self.part('Second')
+        for volume in (-9.947598300641403e-14, 0.0):
+            with self.subTest(volume=volume):
+                stats = test_module.IntersectionStats(False, volume, False)
+                with patch.object(test_module, '_policy',
+                                  test_module.ComparisonPolicy('faceted', 0)), \
+                     patch.object(test_module, '_engine_intersection_stats',
+                                  return_value=stats):
+                    self.assertIs(test_module._intersection_stats(first, second),
+                                  stats)
+                    with self.assertRaisesRegex(AssertionError, 'should not intersect'):
+                        asserter.assertNotIntersecting(first, second)
+                    asserter.assertIntersecting(first, second)
+                    with self.assertRaisesRegex(AssertionError, 'should be free'):
+                        asserter.assertFreeWithin(first, 0.1, second,
+                                                 along=(1, 0, 0))
+                    asserter.assertBlockedBeyond(first, 0.1, second,
+                                                along=(1, 0, 0))
+                    self.assertEqual(first.operations, [])
 
     def test_sparse_candidate_sweep_does_not_visit_distant_pairs(self):
         bounds = [
@@ -261,7 +339,7 @@ class AssemblyIntegrityTestCase(TestCase):
             for index in range(100)
         ]
 
-        with patch('solid_node.test._boxes_disjoint',
+        with patch('machinome.test._boxes_disjoint',
                    wraps=test_module._boxes_disjoint) as disjoint:
             candidates = list(test_module._bounds_candidates(bounds))
 

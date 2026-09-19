@@ -1,0 +1,165 @@
+{
+  "format": "machinome-export",
+  "version": 6,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "ring": {
+      "default": 0.0,
+      "range": null,
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    },
+    "setter": {
+      "default": 0.0,
+      "range": null,
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {},
+  "bindings": [
+    {
+      "name": "_b0",
+      "expression": "(ring - 100.0)"
+    },
+    {
+      "name": "_b1",
+      "expression": "(_b0 / 400.0)"
+    },
+    {
+      "name": "_b2",
+      "expression": "(wheel.turn + 0.5)"
+    },
+    {
+      "name": "_b3",
+      "expression": "(_b2 / 360.0)"
+    }
+  ],
+  "program": {
+    "identity": "c209696c398769e1022efc07f77650a08764ce8e35d9ca9178ea913f6e3b10b4",
+    "clock": "time",
+    "coordinates": {
+      "ring": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "setter": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "wheel.turn": {
+        "kind": "coordinate",
+        "initial": 108.0,
+        "unit": "deg",
+        "domain": "rotational"
+      }
+    },
+    "intermediates": [],
+    "edges": [
+      {
+        "kind": "law",
+        "needs": [
+          "setter",
+          "ring",
+          "wheel.turn"
+        ],
+        "gives": [
+          "wheel.turn"
+        ],
+        "description": "(setter, ring, wheel.turn) drives wheel.turn",
+        "stated_by": "Clearing",
+        "expressions": [
+          "(setter + ((ring * (floor(_b1) == 0)) * ((_b2 - (360.0 * floor(_b3))) >= 1.0)))"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          {
+            "skeleton": "(setter + ((ring * _j1) * _j3))",
+            "jumps": [
+              {
+                "name": "_j0",
+                "primitive": "floor",
+                "level": "_b1",
+                "affine": true
+              },
+              {
+                "name": "_j1",
+                "primitive": "==",
+                "level": "(_j0 - 0)",
+                "affine": true
+              },
+              {
+                "name": "_j2",
+                "primitive": "floor",
+                "level": "_b3",
+                "affine": true
+              },
+              {
+                "name": "_j3",
+                "primitive": ">=",
+                "level": "((_b2 - (360.0 * _j2)) - 1.0)",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "spans": {},
+    "sources": {
+      "ring": [
+        "ring"
+      ],
+      "setter": [
+        "setter"
+      ],
+      "wheel.turn": [
+        "ring",
+        "setter"
+      ]
+    },
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "subdivisions": 64,
+      "bisection_rounds": 64,
+      "max_crossings": 1000,
+      "agreement": 1e-09
+    }
+  },
+  "root": {
+    "name": "Clearing",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": null,
+    "operations": [],
+    "children": [
+      {
+        "name": "wheel",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": null,
+        "operations": [
+          [
+            "r",
+            "wheel.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "model": "wheel"
+      }
+    ]
+  }
+}

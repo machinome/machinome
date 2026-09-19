@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -16,8 +16,8 @@ meshes are: no binary fixture is committed, so this module names files
 that exist only once the test suite has run.
 """
 
-from solid_node.node import StepNode
-from solid_node.node.adapters.step import solids_from_faces
+from machinome.node import StepNode
+from machinome.node.adapters.step import solids_from_faces
 
 from .dimensions import SCALE_FACTOR, SEWING_TOLERANCE
 
@@ -126,6 +126,49 @@ class AmbiguousPin(StepNode):
     part = 'Pin'
 
 
+class FirstPin(StepNode):
+    """The first of the two same-named `Pin` products, selected by its
+    index among the products of that name (the 1 mm cube, volume 1.000)."""
+
+    step_source = 'duplicate_names.step'
+    part = 'Pin'
+    part_index = 1
+
+
+class SecondPin(StepNode):
+    """The second of the two same-named `Pin` products (the 2 mm cube,
+    volume 8.000)."""
+
+    step_source = 'duplicate_names.step'
+    part = 'Pin'
+    part_index = 2
+
+
+class OutOfRangePinIndex(StepNode):
+    """`part_index` beyond the two products the name `Pin` has: refused,
+    never rounded to a neighbour."""
+
+    step_source = 'duplicate_names.step'
+    part = 'Pin'
+    part_index = 3
+
+
+class BelowRangePinIndex(StepNode):
+    """`part_index` below 1: refused."""
+
+    step_source = 'duplicate_names.step'
+    part = 'Pin'
+    part_index = 0
+
+
+class IndexWithNoPart(StepNode):
+    """`part_index` declared with no `part` to be relative to: refused,
+    because an index selects among the products of a declared name."""
+
+    step_source = 'duplicate_names.step'
+    part_index = 1
+
+
 class FaceOnlyPart(StepNode):
     """A product that carries only faces: no `adjust`, so it is rejected
     at admission."""
@@ -163,3 +206,17 @@ class BrokenAdjustPart(StepNode):
 
     def adjust(self, shape):
         return shape.Faces()[0]
+
+
+class AbsentPart(StepNode):
+    """A declared document that was never fetched. Constructed nowhere
+    but `tests/test_missing_source_file.py`, which owns this class (and
+    the directory `DirectoryPart` below names) so it can pass alone."""
+
+    step_source = 'no-such-part.step'
+
+
+class DirectoryPart(StepNode):
+    """A declared source that resolves to a directory, not a file."""
+
+    step_source = 'a_directory'

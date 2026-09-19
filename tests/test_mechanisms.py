@@ -1,14 +1,14 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""solid_node.mechanisms: the textbook mechanism laws the framework
+"""machinome.mechanisms: the textbook mechanism laws the framework
 carries once, so thirteen projects' `kinematics.py` stop rewriting them.
 
-Each law is a composition over `solid_node.math`, so it has that
+Each law is a composition over `machinome.math`, so it has that
 module's two faces -- numbers under a keyframe, a deferred OpenSCAD
 expression under symbolic time or a driver -- and emits no builtin
-`solid_node.math` does not already emit. There is no third, declared
+`machinome.math` does not already emit. There is no third, declared
 face: the laws carry degree literals (`180`, `360`) the dimension
 algebra cannot type as angles, so a declared token reaching one raises
 at class definition. All three of those are pinned below, alongside the
@@ -23,25 +23,26 @@ from unittest import TestCase
 from solid2 import get_animation_time
 from solid2.core.object_base import OpenSCADConstant
 
-from solid_node import math as snmath
-from solid_node.math import cos, sin
-from solid_node.mechanisms import (circle_intersection, crank_pin,
+from machinome import math as snmath
+from machinome.math import cos, sin
+from machinome.mechanisms import (circle_intersection, crank_pin,
                                    crank_rod_angle, delta_carriage, delta_rod,
                                    driving_angle, link_rise, meshed_angle,
                                    piston_height, screw_angle, screw_travel,
                                    triangle_angle)
-from solid_node.node import AssemblyNode
-from solid_node.parameters import Angle, DimensionError
+from machinome.node import AssemblyNode
+from machinome.parameters import Angle, DimensionError
+from tests.test_math import _expanded
 
 
 # --- the evaluator, lifted from tests/test_math.py ------------------------
 
 def _eval_openscad_expr(expr, t):
     """Tiny degree-aware evaluator for the OpenSCAD expression strings
-    solid_node.math generates, substituting a numeric $t. Lifted
+    machinome.math generates, substituting a numeric $t. Lifted
     verbatim from tests/test_math.py -- it is NOT part of the
     framework."""
-    py_expr = expr.replace('$t', repr(t))
+    py_expr = _expanded(expr).replace('$t', repr(t))
     py_expr = re.sub(r'\bsin\(', 'DEGSIN(', py_expr)
     py_expr = re.sub(r'\bcos\(', 'DEGCOS(', py_expr)
     py_expr = re.sub(r'\btan\(', 'DEGTAN(', py_expr)
@@ -312,7 +313,7 @@ def _parts(result):
 
 class SymbolicFaceTest(TestCase):
     """A law riding a symbolic driver builds an expression and raises
-    nothing, and the expression names only builtins solid_node.math
+    nothing, and the expression names only builtins machinome.math
     already emits."""
 
     #: The builtins the base module's own `_symbolic_call` sites use,
@@ -321,7 +322,7 @@ class SymbolicFaceTest(TestCase):
                              inspect.getsource(snmath)))
 
     def test_the_module_emits_the_names_we_think_it_does(self):
-        # A subset, not an equality: `solid_node.math`'s inventory of
+        # A subset, not an equality: `machinome.math`'s inventory of
         # builtins may grow, and this package does not care that it
         # does. What must hold is that the degree trig and `sqrt` these
         # laws are composed of are in it -- the real guard is
@@ -330,7 +331,7 @@ class SymbolicFaceTest(TestCase):
         self.assertTrue(
             {'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'sqrt'}
             <= self.EMITTED,
-            'solid_node.math stopped emitting {}'.format(
+            'machinome.math stopped emitting {}'.format(
                 {'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2',
                  'sqrt'} - self.EMITTED))
 
@@ -341,14 +342,14 @@ class SymbolicFaceTest(TestCase):
             with self.subTest(law=name):
                 for part in _parts(law(symbol)):
                     self.assertIsInstance(part, OpenSCADConstant)
-                    called = set(re.findall(r'([A-Za-z_]\w*)\s*\(', str(part)))
+                    called = set(re.findall(r'([A-Za-z_]\w*)\s*\(', _expanded(part)))
                     self.assertTrue(
                         called <= self.EMITTED,
                         '{} emits {}'.format(name, called - self.EMITTED))
 
     def test_the_piston_expression_is_cos_sin_and_sqrt(self):
         symbol = _drive(get_animation_time())
-        expression = str(piston_height(symbol, 15.0, 60.0))
+        expression = _expanded(piston_height(symbol, 15.0, 60.0))
         self.assertEqual(
             set(re.findall(r'([A-Za-z_]\w*)\s*\(', expression)),
             {'cos', 'sin', 'sqrt'})

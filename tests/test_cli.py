@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,17 +9,17 @@ from contextlib import redirect_stderr, redirect_stdout
 from unittest import TestCase
 from unittest.mock import patch
 
-from solid_node.cli import manage
+from machinome.cli import manage
 
 
 #: The commands that operate on a node (`needs_node`), and the handler each
 #: dispatches to. `new` and `viewer` are excluded: they take no reference.
 NODE_SCOPED_COMMANDS = {
-    'build': 'solid_node.manager.build.Build',
-    'develop': 'solid_node.manager.develop.Develop',
-    'export': 'solid_node.manager.export.Export',
-    'test': 'solid_node.manager.test.Test',
-    'snapshot': 'solid_node.manager.snapshot.Snapshot',
+    'build': 'machinome.manager.build.Build',
+    'develop': 'machinome.manager.develop.Develop',
+    'export': 'machinome.manager.export.Export',
+    'test': 'machinome.manager.test.Test',
+    'snapshot': 'machinome.manager.snapshot.Snapshot',
 }
 
 
@@ -29,8 +29,8 @@ class CommandFirstGrammarTest(TestCase):
     command's subparser rather than to the top-level parser."""
 
     def test_develop_parses_and_dispatches_with_path(self):
-        with patch.object(sys, 'argv', ['solid', 'develop', 'somefile.py']):
-            with patch('solid_node.manager.develop.Develop.handle') as handle:
+        with patch.object(sys, 'argv', ['machinome', 'develop', 'somefile.py']):
+            with patch('machinome.manager.develop.Develop.handle') as handle:
                 manage()
 
         self.assertTrue(handle.called)
@@ -38,38 +38,42 @@ class CommandFirstGrammarTest(TestCase):
         self.assertEqual(args.path, 'somefile.py')
 
     def test_build_parses_and_dispatches_with_path(self):
-        with patch.object(sys, 'argv', ['solid', 'build', 'somefile.py']):
-            with patch('solid_node.manager.build.Build.handle') as handle:
+        with patch.object(sys, 'argv', ['machinome', 'build', 'somefile.py']):
+            with patch('machinome.manager.build.Build.handle') as handle:
                 manage()
 
         self.assertTrue(handle.called)
         self.assertEqual(handle.call_args[0][0].path, 'somefile.py')
 
     def test_build_rejects_directory_reference(self):
-        with patch.object(sys, 'argv', ['solid', 'build', 'tests/flat_project']):
+        with patch.object(sys, 'argv', ['machinome', 'build', 'tests/flat_project']):
             with self.assertRaises(SystemExit) as ctx:
                 manage()
         self.assertEqual(ctx.exception.code, 2)
 
     def test_build_rejects_callback_option(self):
-        with patch.object(sys, 'argv', ['solid', 'build', 'model.py',
+        with patch.object(sys, 'argv', ['machinome', 'build', 'model.py',
                                         '--callback', 'http://listener']):
             with self.assertRaises(SystemExit) as ctx:
                 manage()
 
         self.assertEqual(ctx.exception.code, 2)
 
-    def test_develop_rejects_callback_with_openscad(self):
-        with patch.object(sys, 'argv', ['solid', 'develop', 'model.py',
-                                        '--openscad', '--callback',
-                                        'http://listener']):
-            with self.assertRaises(SystemExit) as ctx:
-                manage()
+    def test_develop_rejects_removed_openscad_option(self):
+        stderr = io.StringIO()
+        with patch.object(sys, 'argv', ['machinome', 'develop', 'model.py',
+                                        '--openscad']):
+            with patch('machinome.manager.develop.Develop.handle') as handle:
+                with redirect_stderr(stderr):
+                    with self.assertRaises(SystemExit) as ctx:
+                        manage()
 
         self.assertEqual(ctx.exception.code, 2)
+        self.assertIn('unrecognized arguments: --openscad', stderr.getvalue())
+        handle.assert_not_called()
 
     def test_develop_rejects_callback_with_web_dev(self):
-        with patch.object(sys, 'argv', ['solid', 'develop', 'model.py',
+        with patch.object(sys, 'argv', ['machinome', 'develop', 'model.py',
                                         '--web-dev', '--callback',
                                         'http://listener']):
             with self.assertRaises(SystemExit) as ctx:
@@ -80,10 +84,10 @@ class CommandFirstGrammarTest(TestCase):
     def test_develop_accepts_callback_with_no_web(self):
         """An external viewer host wants the rebuild loop and the
         build-ready notification, but not the framework's own viewer."""
-        with patch.object(sys, 'argv', ['solid', 'develop', 'model.py',
+        with patch.object(sys, 'argv', ['machinome', 'develop', 'model.py',
                                         '--no-web', '--callback',
                                         'http://listener']):
-            with patch('solid_node.manager.develop.Develop.handle') as handle:
+            with patch('machinome.manager.develop.Develop.handle') as handle:
                 manage()
 
         args = handle.call_args[0][0]
@@ -95,7 +99,7 @@ class CommandFirstGrammarTest(TestCase):
         `--no-web` as an unrecognized argument, which proves nothing about
         the conflict rule -- so require the error to name the conflict."""
         stderr = io.StringIO()
-        with patch.object(sys, 'argv', ['solid', 'develop', 'model.py',
+        with patch.object(sys, 'argv', ['machinome', 'develop', 'model.py',
                                         '--no-web', *flags]):
             with redirect_stderr(stderr):
                 with self.assertRaises(SystemExit) as ctx:
@@ -113,7 +117,7 @@ class CommandFirstGrammarTest(TestCase):
         self._assert_no_web_conflict('--web-dev')
 
     def test_test_rejects_directory_reference(self):
-        with patch.object(sys, 'argv', ['solid', 'test', 'tests/flat_project']):
+        with patch.object(sys, 'argv', ['machinome', 'test', 'tests/flat_project']):
             with self.assertRaises(SystemExit) as ctx:
                 manage()
         self.assertEqual(ctx.exception.code, 2)
@@ -124,7 +128,7 @@ class CommandFirstGrammarTest(TestCase):
         "use the manifest's model" (proved in test_loader_references)."""
         for command, target in NODE_SCOPED_COMMANDS.items():
             with self.subTest(command=command):
-                with patch.object(sys, 'argv', ['solid', command]):
+                with patch.object(sys, 'argv', ['machinome', command]):
                     with patch(f'{target}.handle') as handle:
                         manage()
                 self.assertTrue(handle.called)
@@ -137,7 +141,7 @@ class CommandFirstGrammarTest(TestCase):
         for command, target in NODE_SCOPED_COMMANDS.items():
             with self.subTest(command=command):
                 stderr = io.StringIO()
-                with patch.object(sys, 'argv', ['solid', command, directory]):
+                with patch.object(sys, 'argv', ['machinome', command, directory]):
                     with patch(f'{target}.handle') as handle:
                         with redirect_stderr(stderr):
                             with self.assertRaises(SystemExit) as ctx:
@@ -151,17 +155,17 @@ class CommandFirstGrammarTest(TestCase):
                 self.assertIn('path/to/file.py:Class', message)
 
     def test_old_order_exits_with_hint(self):
-        with patch.object(sys, 'argv', ['solid', 'somefile.py', 'develop']):
+        with patch.object(sys, 'argv', ['machinome', 'somefile.py', 'develop']):
             stderr = io.StringIO()
             with redirect_stderr(stderr):
                 with self.assertRaises(SystemExit) as ctx:
                     manage()
 
         self.assertEqual(ctx.exception.code, 2)
-        self.assertIn('solid {command} {path}', stderr.getvalue())
+        self.assertIn('machinome {command} {path}', stderr.getvalue())
 
     def test_no_args_prints_help_and_does_not_crash(self):
-        with patch.object(sys, 'argv', ['solid']):
+        with patch.object(sys, 'argv', ['machinome']):
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 manage()
@@ -169,8 +173,8 @@ class CommandFirstGrammarTest(TestCase):
         self.assertIn('usage', stdout.getvalue().lower())
 
     def test_new_dispatches_without_requiring_path(self):
-        with patch.object(sys, 'argv', ['solid', 'new', 'myproj']):
-            with patch('solid_node.manager.new.New.handle') as handle:
+        with patch.object(sys, 'argv', ['machinome', 'new', 'myproj']):
+            with patch('machinome.manager.new.New.handle') as handle:
                 manage()
 
         self.assertTrue(handle.called)
@@ -179,9 +183,31 @@ class CommandFirstGrammarTest(TestCase):
         self.assertFalse(hasattr(args, 'path'))
 
     def test_viewer_dispatches_without_requiring_path(self):
-        with patch.object(sys, 'argv', ['solid', 'viewer']):
-            with patch('solid_node.manager.viewer.Viewer.handle') as handle:
+        with patch.object(sys, 'argv', ['machinome', 'viewer']):
+            with patch('machinome.manager.viewer.Viewer.handle') as handle:
                 manage()
 
         self.assertTrue(handle.called)
         self.assertFalse(hasattr(handle.call_args[0][0], 'path'))
+
+
+class SnapshotDriveOptionTest(TestCase):
+    """`--drive NAME=VALUE` is repeatable and belongs to `snapshot`
+    alone: `--set` reaches the root's declared PARAMETERS, and a driver
+    is not a parameter."""
+
+    def test_drive_is_repeatable_and_reaches_the_handler(self):
+        argv = ['machinome', 'snapshot', 'model.py',
+                '--drive', 'units_entry=3', '--drive', 'tens_entry=1']
+        with patch.object(sys, 'argv', argv):
+            with patch('machinome.manager.snapshot.Snapshot.handle') as handle:
+                manage()
+        self.assertTrue(handle.called)
+        self.assertEqual(handle.call_args[0][0].drive,
+                         ['units_entry=3', 'tens_entry=1'])
+
+    def test_without_the_option_the_handler_sees_none(self):
+        with patch.object(sys, 'argv', ['machinome', 'snapshot', 'model.py']):
+            with patch('machinome.manager.snapshot.Snapshot.handle') as handle:
+                manage()
+        self.assertIsNone(handle.call_args[0][0].drive)

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -21,7 +21,7 @@ from contextlib import contextmanager
 from unittest import TestCase
 from unittest.mock import AsyncMock, Mock, call, patch
 
-from solid_node.core.builder import Builder, BuildOutcome
+from machinome.core.builder import Builder, BuildOutcome
 
 
 class _StableNode:
@@ -32,6 +32,7 @@ class _StableNode:
         self.children = ()
         self.rigid = False
         self.mtime_ns = 0
+        self._prepare = Mock()
         self.assemble = Mock()
 
 
@@ -62,7 +63,7 @@ class RetainedPassLoopTest(_InProcessBuilderTest):
 
     def setUp(self):
         super().setUp()
-        self.temporary = tempfile.TemporaryDirectory(prefix='solid-wp2-loop-')
+        self.temporary = tempfile.TemporaryDirectory(prefix='machinome-wp2-loop-')
         self.addCleanup(self.temporary.cleanup)
         self.builder = Builder(
             'model.py', build_dir=self.temporary.name, watch=False)
@@ -89,7 +90,7 @@ class RetainedPassLoopTest(_InProcessBuilderTest):
         self.builder._published_model_is_current = Mock(return_value=False)
         self.builder._write_viewer_snapshot = Mock(return_value=True)
 
-        with patch('solid_node.core.builder.load_node', return_value=self.node):
+        with patch('machinome.core.builder.load_node', return_value=self.node):
             outcome = asyncio.run(self.builder._start())
 
         self.assertEqual(outcome, BuildOutcome.CURRENT)
@@ -103,7 +104,7 @@ class RetainedPassLoopTest(_InProcessBuilderTest):
         """The assembled tree owns one ordered exact composition."""
         from types import SimpleNamespace
 
-        from solid_node.node.fusion import FusionNode
+        from machinome.node.fusion import FusionNode
 
         fusion = object.__new__(FusionNode)
         fusion.name = 'assembly'
@@ -137,13 +138,13 @@ class RetainedPassLoopTest(_InProcessBuilderTest):
         self.builder._published_model_is_current = Mock(return_value=False)
         self.builder._write_viewer_snapshot = Mock(return_value=True)
 
-        with patch('solid_node.node.fusion._compose_solid_matrix',
+        with patch('machinome.node.fusion._compose_solid_matrix',
                    return_value=object()), patch(
-                       'solid_node.node.fusion.placed_shape',
+                       'machinome.node.fusion.placed_shape',
                        side_effect=lambda shape, matrix: shape), patch(
-                           'solid_node.node.fusion.fuse_shapes',
+                           'machinome.node.fusion.fuse_shapes',
                            side_effect=fuse), patch(
-                               'solid_node.core.builder.load_node',
+                               'machinome.core.builder.load_node',
                                return_value=self.node):
             outcome = asyncio.run(self.builder._start())
 
@@ -164,7 +165,7 @@ class RetainedPassLoopTest(_InProcessBuilderTest):
         self.builder._published_model_is_current = Mock(return_value=False)
         self.builder._write_viewer_snapshot = Mock()
 
-        with patch('solid_node.core.builder.load_node', return_value=self.node):
+        with patch('machinome.core.builder.load_node', return_value=self.node):
             outcome = asyncio.run(self.builder._start())
 
         self.assertEqual(outcome, BuildOutcome.RENDERED)
@@ -176,7 +177,7 @@ class ReloadFailureWaitTest(_InProcessBuilderTest):
 
     def setUp(self):
         super().setUp()
-        self.temporary = tempfile.TemporaryDirectory(prefix='solid-wp2-reload-')
+        self.temporary = tempfile.TemporaryDirectory(prefix='machinome-wp2-reload-')
         self.addCleanup(self.temporary.cleanup)
         model = Path(self.temporary.name) / 'model.py'
         model.write_text('# recovery-watch target\n')
@@ -185,7 +186,7 @@ class ReloadFailureWaitTest(_InProcessBuilderTest):
             is_reload=True, watch=True)
         self.addCleanup(self.builder.observer.stop)
         self.node = _StableNode()
-        self.node.assemble.side_effect = RuntimeError('broken reload')
+        self.node._prepare.side_effect = RuntimeError('broken reload')
         self.node.trigger_stl = Mock()
 
     def test_reload_failure_waits_outside_lock_without_more_geometry(self):
@@ -209,11 +210,11 @@ class ReloadFailureWaitTest(_InProcessBuilderTest):
             self.builder.file_changed.set_result(True)
             return await building
 
-        with patch('solid_node.core.builder.load_node', return_value=self.node):
+        with patch('machinome.core.builder.load_node', return_value=self.node):
             outcome = asyncio.run(scenario())
 
         self.assertEqual(outcome, BuildOutcome.SOURCE_CHANGED)
-        self.node.assemble.assert_called_once_with()
+        self.node._prepare.assert_called_once_with()
         self.node.trigger_stl.assert_not_called()
         error = json.loads(
             (Path(self.temporary.name) / 'errors.json').read_text())
@@ -224,7 +225,7 @@ class OneShotLaterPassFailureTest(_InProcessBuilderTest):
     """A retained child remains a complete failure boundary."""
 
     def test_failure_after_a_completed_pass_is_fatal_without_publication(self):
-        with tempfile.TemporaryDirectory(prefix='solid-wp2-failure-') as root:
+        with tempfile.TemporaryDirectory(prefix='machinome-wp2-failure-') as root:
             builder = Builder('model.py', build_dir=root, watch=False)
             node = _StableNode()
             calls = 0
@@ -240,12 +241,12 @@ class OneShotLaterPassFailureTest(_InProcessBuilderTest):
             builder.generate_stl = AsyncMock(side_effect=render_then_fail)
             builder._published_model_is_current = Mock(return_value=False)
             builder._write_viewer_snapshot = Mock()
-            with patch('solid_node.core.builder.load_node', return_value=node):
+            with patch('machinome.core.builder.load_node', return_value=node):
                 outcome = asyncio.run(builder._start())
 
             self.assertEqual(outcome, BuildOutcome.FAILED)
             self.assertEqual(calls, 2)
-            node.assemble.assert_called_once_with()
+            node._prepare.assert_called_once_with()
             builder._write_viewer_snapshot.assert_not_called()
             error = json.loads((Path(root) / 'errors.json').read_text())
             self.assertIn('later retained pass failed', error['error'])
@@ -264,7 +265,7 @@ class _InjectedGeneration:
 
     def checkpoint(self, label):
         if label == self.fail_checkpoint:
-            from solid_node.source_generation import SourceChanged
+            from machinome.source_generation import SourceChanged
             raise SourceChanged(f'changed at {label}')
 
     @contextmanager
@@ -273,13 +274,13 @@ class _InjectedGeneration:
         if (label == self.fail_phase_entry
                 and self.phase_entries.count(label)
                 == self.fail_phase_entry_number):
-            from solid_node.source_generation import SourceChanged
+            from machinome.source_generation import SourceChanged
             raise SourceChanged(f'changed entering {label}')
         try:
             yield self
         finally:
             if label == self.fail_phase_exit:
-                from solid_node.source_generation import SourceChanged
+                from machinome.source_generation import SourceChanged
                 raise SourceChanged(f'changed leaving {label}')
 
 
@@ -287,7 +288,7 @@ class RetainedGenerationRaceTest(_InProcessBuilderTest):
 
     def setUp(self):
         super().setUp()
-        self.temporary = tempfile.TemporaryDirectory(prefix='solid-wp2-race-')
+        self.temporary = tempfile.TemporaryDirectory(prefix='machinome-wp2-race-')
         self.addCleanup(self.temporary.cleanup)
         self.node = _StableNode()
 
@@ -302,7 +303,7 @@ class RetainedGenerationRaceTest(_InProcessBuilderTest):
         return builder
 
     def run_builder(self, builder):
-        with patch('solid_node.core.builder.load_node', return_value=self.node):
+        with patch('machinome.core.builder.load_node', return_value=self.node):
             return asyncio.run(builder._start())
 
     def assert_stood_down(self, builder, outcome):
@@ -329,7 +330,7 @@ class RetainedGenerationRaceTest(_InProcessBuilderTest):
         outcome = self.run_builder(builder)
 
         self.assert_stood_down(builder, outcome)
-        self.node.assemble.assert_called_once_with()
+        self.node._prepare.assert_called_once_with()
         builder.generate_stl.assert_not_awaited()
 
     def test_source_replaced_between_retained_passes_stands_down(self):
@@ -358,7 +359,7 @@ class RetainedGenerationRaceTest(_InProcessBuilderTest):
         builder.generate_stl = AsyncMock(return_value=BuildOutcome.CURRENT)
 
         def reject_publication():
-            from solid_node.source_generation import SourceChanged
+            from machinome.source_generation import SourceChanged
             raise SourceChanged('changed before publication')
 
         builder._write_viewer_snapshot.side_effect = reject_publication
@@ -374,7 +375,7 @@ class FilesystemGenerationRaceTest(_InProcessBuilderTest):
 
     def setUp(self):
         super().setUp()
-        self.temporary = tempfile.TemporaryDirectory(prefix='solid-wp2-fs-race-')
+        self.temporary = tempfile.TemporaryDirectory(prefix='machinome-wp2-fs-race-')
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         self.source = self.root / 'model.py'
@@ -384,7 +385,7 @@ class FilesystemGenerationRaceTest(_InProcessBuilderTest):
         future = os.stat(self.anchor).st_mtime_ns + 10 ** 9
         os.utime(self.anchor, ns=(future, future))
         (self.root / 'pyproject.toml').write_text(
-            '[tool.solid-node]\nmodel = "model.py"\n')
+            '[tool.machinome]\nmodel = "model.py"\n')
         self.node = _StableNode()
         self.node.files = {str(self.source), str(self.anchor)}
         self.node.mtime_ns = future
@@ -405,7 +406,7 @@ class FilesystemGenerationRaceTest(_InProcessBuilderTest):
             self.node.mtime_ns)
 
     def run_builder(self):
-        with patch('solid_node.core.builder.load_node', return_value=self.node):
+        with patch('machinome.core.builder.load_node', return_value=self.node):
             return asyncio.run(self.builder._start())
 
     def test_same_maximum_replacement_before_lock_acquisition_stands_down(self):
@@ -415,7 +416,7 @@ class FilesystemGenerationRaceTest(_InProcessBuilderTest):
             yield
 
         self.builder.generate_stl = AsyncMock()
-        with patch('solid_node.core.builder.project_build_lock',
+        with patch('machinome.core.builder.project_build_lock',
                    changed_before_acquisition):
             outcome = self.run_builder()
 
@@ -425,7 +426,7 @@ class FilesystemGenerationRaceTest(_InProcessBuilderTest):
         self.builder._write_viewer_snapshot.assert_not_called()
 
     def test_same_maximum_replacement_between_retained_passes_stands_down(self):
-        from solid_node.source_generation import SourceGeneration
+        from machinome.source_generation import SourceGeneration
 
         owner = self
 
@@ -446,7 +447,7 @@ class FilesystemGenerationRaceTest(_InProcessBuilderTest):
             return BuildOutcome.RENDERED
 
         self.builder.generate_stl = AsyncMock(side_effect=completed_renderer)
-        with patch('solid_node.core.builder.project_source_generation',
+        with patch('machinome.core.builder.project_source_generation',
                    side_effect=lambda _: ChangeBetweenPasses(self.root)):
             outcome = self.run_builder()
 
@@ -459,14 +460,14 @@ class BuildSupervisorGenerationTest(TestCase):
     """Only source movement and no-progress contention are retry outcomes."""
 
     def test_source_change_retries_in_a_new_fresh_interpreter(self):
-        from solid_node.manager.build import Build, build_once
+        from machinome.manager.build import Build, build_once
 
         changed = Mock(exitcode=BuildOutcome.SOURCE_CHANGED.value)
         current = Mock(exitcode=BuildOutcome.CURRENT.value)
         command = Build()
         command.overrides = []
-        with patch('solid_node.manager.build.resolve_node'), patch(
-                'solid_node.manager.build.Process',
+        with patch('machinome.manager.build.resolve_node'), patch(
+                'machinome.manager.build.Process',
                 side_effect=[changed, current]) as process:
             status = command.build('model.py')
 
@@ -477,13 +478,13 @@ class BuildSupervisorGenerationTest(TestCase):
         ])
 
     def test_ordinary_one_shot_failure_is_fatal_not_a_generation_retry(self):
-        from solid_node.manager.build import Build, build_once
+        from machinome.manager.build import Build, build_once
 
         failed = Mock(exitcode=BuildOutcome.FAILED.value)
         command = Build()
         command.overrides = []
-        with patch('solid_node.manager.build.resolve_node'), patch(
-                'solid_node.manager.build.Process',
+        with patch('machinome.manager.build.resolve_node'), patch(
+                'machinome.manager.build.Process',
                 return_value=failed) as process:
             status = command.build('model.py')
 
@@ -521,8 +522,8 @@ class FreshProcessBatchTest(TestCase):
     PROJECT_SOURCE = '''\
 import os
 from solid2 import cube
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.parameters import Count, Length
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.parameters import Count, Length
 
 
 def record(event):
@@ -558,7 +559,7 @@ class Machine(AssemblyNode):
 '''
 
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix='solid-wp2-batch-')
+        self.temporary = tempfile.TemporaryDirectory(prefix='machinome-wp2-batch-')
         self.addCleanup(self.temporary.cleanup)
         self.root = self.make_project('retained')
         self.reference_root = self.make_project('single-pass-reference')
@@ -570,7 +571,7 @@ class Machine(AssemblyNode):
         (package / '__init__.py').write_text('')
         (package / 'solid.py').write_text(self.PROJECT_SOURCE)
         (root / 'pyproject.toml').write_text(
-            '[tool.solid-node]\nmodel = "bench.solid:Machine"\n')
+            '[tool.machinome]\nmodel = "bench.solid:Machine"\n')
         return root
 
     @contextmanager
@@ -588,7 +589,7 @@ class Machine(AssemblyNode):
             os.chdir(previous)
 
     def build(self, root, *, single_pass_reference=False):
-        import solid_node.manager.build as build_module
+        import machinome.manager.build as build_module
 
         real_process = build_module.Process
         children = []

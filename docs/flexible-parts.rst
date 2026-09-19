@@ -2,7 +2,7 @@ Flexible parts
 ==============
 
 Rigid motion changes a part's placement. A spring compressing or a cable
-bending changes the part's shape. Solid Node represents these with
+bending changes the part's shape. Machinome represents these with
 ``FlexibleNode``; its ``MolejoNode`` adapter uses
 `molejo <https://molejo.readthedocs.io>`_ shape descriptions.
 

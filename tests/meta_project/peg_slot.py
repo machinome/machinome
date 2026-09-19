@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -16,7 +16,7 @@ half-diagonal (~0.707), so the peg never touches at any angle -- the
 gamed fit the red fixture exercises.
 """
 
-from solid_node.node import Solid2Node
+from machinome.node import Solid2Node
 from solid2 import cube
 
 

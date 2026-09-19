@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,7 +9,7 @@ expressions is published once, named, and referenced -- except a bare
 number or a bare name, which is shorter written out than referenced
 (design.md D5). This is the producer side: `serialize_node` plus
 `symbolic_document` walk a tree exactly as before; a new pass over the
-document's collected expression strings (`solid_node/core/expressions.py`)
+document's collected expression strings (`machinome/core/expressions.py`)
 finds the sharing and rewrites the strings.
 """
 
@@ -24,18 +24,18 @@ from types import SimpleNamespace
 from solid2 import cube
 from solid2.core.object_base import scad_inline
 
-from solid_node.core.builder import Builder, project_build_lock
-from solid_node.core.export import export_node
-from solid_node.core import expressions as expr
-from solid_node.core.serializer import (
+from machinome.core.builder import Builder, project_build_lock
+from machinome.core.export import export_node
+from machinome.core import expressions as expr
+from machinome.core.serializer import (
     BINDINGS_DOCUMENT_VERSION, DOCUMENT_VERSION,
     animation_block, bind_document, document_version, drivers_table,
     instructions_table, serialize_node, symbolic_document,
 )
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.simulation import Driver
-from solid_node.simulation.enumeration import bind_declared_defaults
-import solid_node.math as m
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.simulation import Driver
+from machinome.simulation.enumeration import bind_declared_defaults
+import machinome.math as m
 
 from .base import BaseNodeTest
 from .flexible_project.spring import Engine as SpringEngine
@@ -532,7 +532,7 @@ class RepublicationStabilityTest(BaseNodeTest):
 
         shared = '(($t * 2.0) + 1.0)'
         node = SimpleNamespace(
-            name='part', _type='SolidNode', color=None, mtime=0,
+            name='part', _type='Machinome', color=None, mtime=0,
             operations=[
                 _FakeOperation(['r', shared, [0, 0, 1]]),
                 _FakeOperation(['t', [shared, shared, '0']]),

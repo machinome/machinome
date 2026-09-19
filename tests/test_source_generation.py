@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -22,17 +22,17 @@ from subprocess import CalledProcessError
 from types import SimpleNamespace
 from unittest import TestCase, mock
 
-from solid_node import currency
-from solid_node.core.builder import Builder, BuildOutcome
-from solid_node.core.loader import load_node, project_source_generation
-from solid_node.node import JScadNode
-from solid_node.node.base import StlRenderStart
-from solid_node.source_generation import SourceChanged, SourceGeneration
+from machinome import currency
+from machinome.core.builder import Builder, BuildOutcome
+from machinome.core.loader import load_node, project_source_generation
+from machinome.node import JScadNode
+from machinome.node.base import StlRenderStart
+from machinome.source_generation import SourceChanged, SourceGeneration
 
 
 MODEL = '''\
 from solid2 import cube
-from solid_node.node import Solid2Node
+from machinome.node import Solid2Node
 from .dimensions import VALUE
 
 
@@ -47,7 +47,7 @@ class Model(Solid2Node):
 class ScratchLoadProject(TestCase):
 
     def setUp(self):
-        self.root = tempfile.mkdtemp(prefix='solid-node-generation-')
+        self.root = tempfile.mkdtemp(prefix='machinome-generation-')
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         self.package = f'generation_fixture_{os.getpid()}_{id(self)}'
         self.package_dir = os.path.join(self.root, self.package)
@@ -56,7 +56,7 @@ class ScratchLoadProject(TestCase):
         self.write('dimensions.py', 'VALUE = 1\n')
         self.write('model.py', MODEL)
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as manifest:
-            manifest.write('[tool.solid-node]\n'
+            manifest.write('[tool.machinome]\n'
                            f'model = "{self.package}.model:Model"\n')
         self.reference = f'{self.package}.model:Model'
         self.dimensions = os.path.join(self.package_dir, 'dimensions.py')
@@ -105,7 +105,7 @@ class FreshProjectBytecodeTest(ScratchLoadProject):
 
     def test_atomic_replacement_after_read_rejects_old_live_classes(self):
         """Post-load disk identity cannot bless bytes read before replacement."""
-        import solid_node.source_generation as source_generation
+        import machinome.source_generation as source_generation
 
         original = source_generation._coherent_source_bytes
         replaced = False
@@ -262,7 +262,7 @@ class BuilderGenerationGuardTest(ScratchLoadProject):
         with open(artifact, 'w') as output:
             output.write('solid part\nendsolid part\n')
         node = SimpleNamespace(
-            rigid=True, name='part', _type='SolidNode', color=None, mtime=0,
+            rigid=True, name='part', _type='Machinome', color=None, mtime=0,
             operations=(), stl_file=artifact, files={source})
         builder = Builder('model.py', build_dir=self.root, watch=False)
         builder.node = node
@@ -332,7 +332,7 @@ class AsyncRendererGenerationGuardTest(TestCase):
 class ForeignSourceCacheTest(TestCase):
 
     def test_step_document_cache_rejects_same_mtime_replacement(self):
-        from solid_node.node.adapters import step
+        from machinome.node.adapters import step
 
         with tempfile.TemporaryDirectory() as root:
             path = os.path.join(root, 'part.step')
@@ -356,7 +356,7 @@ class ForeignSourceCacheTest(TestCase):
             self.assertEqual(read.call_count, 2)
 
     def test_step_read_before_phase_rejects_replacement_during_read(self):
-        from solid_node.node.adapters import step
+        from machinome.node.adapters import step
 
         with tempfile.TemporaryDirectory() as root:
             path = os.path.join(root, 'part.step')
@@ -403,6 +403,7 @@ class JScadGenerationGuardTest(TestCase):
             source_digest='new-digest',
             source_fingerprint='new-fingerprint',
             _up_to_date=lambda path: False,
+            artifact_import=mock.Mock(),
         )
 
     def test_source_replacement_after_renderer_preserves_old_artifact(self):
@@ -424,9 +425,8 @@ class JScadGenerationGuardTest(TestCase):
             return process
 
         with SourceGeneration(self.root) as generation, \
-             mock.patch('solid_node.node.adapters.jscad.Popen',
-                        side_effect=launch), \
-             mock.patch('solid_node.node.adapters.jscad.import_stl'):
+             mock.patch('machinome.node.adapters.jscad.Popen',
+                        side_effect=launch):
             with self.assertRaises(SourceChanged):
                 with generation.phase([self.source], label='assembly'):
                     JScadNode.as_scad(self.node(), None)
@@ -446,9 +446,8 @@ class JScadGenerationGuardTest(TestCase):
             process.communicate.side_effect = render
             return process
 
-        with mock.patch('solid_node.node.adapters.jscad.Popen',
-                        side_effect=launch), \
-             mock.patch('solid_node.node.adapters.jscad.import_stl'):
+        with mock.patch('machinome.node.adapters.jscad.Popen',
+                        side_effect=launch):
             with self.assertRaises(CalledProcessError):
                 JScadNode.as_scad(self.node(), None)
 

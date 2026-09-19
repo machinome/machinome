@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,10 +14,10 @@ afterwards carried the constants that keyframe computed instead of the
 
 These tests sit at the same layer as test_conrod_symbolic.py: real
 fixtures, assembled in-process, with the serialized operations
-inspected directly rather than parsed out of `solid test` output.
+inspected directly rather than parsed out of `machinome test` output.
 """
 
-from solid_node.node import AssemblyNode
+from machinome.node import AssemblyNode
 
 from .base import BaseNodeTest
 from .meta_project.conrod import Conrod

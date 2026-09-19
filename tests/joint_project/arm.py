@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -28,10 +28,10 @@ anchor once the bearing itself no longer does.
 there is something for its own frame to differ from.
 """
 
-from solid_node.motion.joints import Revolute
-from solid_node.node import AssemblyNode
-from solid_node.parameters import Count, Length
-from solid_node.simulation import Driver
+from machinome.motion.joints import Revolute
+from machinome.node import AssemblyNode
+from machinome.parameters import Count, Length
+from machinome.simulation import Driver
 
 from .parts import Carriage, Link, Rod, Wheel
 

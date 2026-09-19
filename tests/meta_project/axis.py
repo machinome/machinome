@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -12,7 +12,7 @@ cadence assertion at the tick the overlap appears. Geometry fidelity
 is beside the point; what the fixture has to provide is a mesh
 question a scenario can genuinely get wrong.
 
-Nothing here binds an opening snapshot. It used to: `solid test` builds
+Nothing here binds an opening snapshot. It used to: `machinome test` builds
 the node before any test class runs, and until the loader bound
 declared defaults across the tree, an assembly whose render() read a
 driver had to restate its own declarations in __init__. That workaround
@@ -20,8 +20,8 @@ is gone -- the declarations are the only place the defaults are
 written, and the build/test loader binds them.
 """
 
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, Instruction
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver, Instruction
 
 from .parts import Cube
 

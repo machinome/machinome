@@ -36,18 +36,15 @@ is the one place `self.time` and the :doc:`drivers <driving>` are read.
 The split is described in full in :ref:`Rest and motion
 <rest-and-motion>`.
 
-Rendered with ``solid export`` — press play to see the pointer rotate:
+Rendered with ``machinome export`` — press play to see the pointer rotate:
 
-.. solid-node:: _exports/simple_clock
+.. machinome:: _exports/simple_clock
    :height: 360px
 
 At this point you should see a rotating pointer in the viewer. Pause
 and scrub to 0.25: the pointer should have turned clockwise by 90 degrees.
 Change ``-360`` to ``-720`` and it makes two turns per loop.
 Restore ``-360`` before continuing.
-If you are using the Openscad viewer, you need to enable animation
-(View -> Animate) and set fps and number of frames.
-Reload is not automatic in Openscad while animating.
 
 Positioning operations
 ======================
@@ -83,13 +80,13 @@ Non-linear kinematics
 
 A linear expression of `self.time`, like ``-360 * self.time`` above,
 works out of the box. For non-linear movement — anything that needs
-trigonometry over time — use `solid_node.math`, which provides
+trigonometry over time — use `machinome.math`, which provides
 degree-based `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2` and
 `sqrt` matching OpenScad's semantics:
 
 .. code-block:: python
 
-    from solid_node.math import sin
+    from machinome.math import sin
 
     class Escapement(AssemblyNode):
 
@@ -103,7 +100,7 @@ viewer, where time is symbolic and the expression is evaluated
 client-side as you scrub the timeline, and in tests, where time is a
 plain number (see :ref:`testing_steps <testing-steps>`). Python's
 `math.sin` would crash on symbolic time — and it works in radians,
-while all angles in Solid Node are degrees.
+while all angles in Machinome are degrees.
 
 More than trigonometry
 ----------------------
@@ -112,7 +109,7 @@ Motion is rarely all curves. A mechanism holds at a stop, moves over
 part of a stroke and not the rest, counts whole steps, or follows a
 path you measured rather than derived — and none of that can branch on
 ``self.time``, because in the viewer there is no value to branch on.
-``solid_node.math`` carries the arithmetic that expresses those without
+``machinome.math`` carries the arithmetic that expresses those without
 a branch:
 
 * ``abs``, ``floor``, ``ceil``, ``sign``, ``min`` and ``max`` — the
@@ -135,7 +132,7 @@ what it is:
 
 .. code-block:: python
 
-    from solid_node.math import clamp01, piecewise
+    from machinome.math import clamp01, piecewise
 
     PROFILE = [(0.0, 0.0), (90.0, 0.0), (150.0, 12.0), (210.0, 0.0)]
 
@@ -170,7 +167,7 @@ Points, not just numbers
 The same three faces cover small vector arithmetic, so a point turned
 by a driver-derived angle survives the viewer::
 
-    from solid_node.math import polar, rotate_x
+    from machinome.math import polar, rotate_x
 
     class Finger(AssemblyNode):
 
@@ -183,13 +180,13 @@ about=...)`` turns a 2D point about a centre, and ``rotate_x``,
 ``rotate_y`` and ``rotate_z`` turn a 3D point about an axis. All
 degrees, all right-handed, all returning plain tuples.
 Before writing a mechanism out longhand over those functions, look in
-`solid_node.mechanisms`: it carries the laws projects kept rewriting —
+`machinome.mechanisms`: it carries the laws projects kept rewriting —
 the external spur-gear mesh, the lead screw, the slider-crank, linear
 delta kinematics, and the circle geometry a linkage keeps asking for.
-Each is a composition over `solid_node.math`, so it has that module's
+Each is a composition over `machinome.math`, so it has that module's
 numeric and symbolic faces — and only those two: a mechanism law carries
 degree literals the dimension algebra cannot type, so unlike the
-functions of `solid_node.math` it has no third, declared face, and
+functions of `machinome.math` it has no third, declared face, and
 reaching one from a class body raises there. Each states its frame, its
 zero and its sign in the family module it lives in. See :doc:`the API
 reference <api-reference>`.
@@ -212,14 +209,14 @@ The timeline is a loop from 0 to 1, and nothing above says how long a
 turn of it *is*. A machine modelled in real time declares that on its
 root:
 
-Node classes come from ``solid_node.node``; the time base comes from
-``solid_node.motion.ports``, the module that answers what moves and what
+Node classes come from ``machinome.node``; the time base comes from
+``machinome.motion.ports``, the module that answers what moves and what
 drives what:
 
 .. code-block:: python
 
-    from solid_node.node import AssemblyNode
-    from solid_node.motion.ports import Time
+    from machinome.node import AssemblyNode
+    from machinome.motion.ports import Time
 
     class WallClock(AssemblyNode):
 
@@ -232,7 +229,7 @@ drives what:
 timeline covers. From then on `self.time` reads **seconds** everywhere:
 here in `simulate()`, in every assembly below the root, in tests, under a
 :doc:`stepped simulation <scenarios>`, and when rendering a snapshot.
-The CLI's ``solid snapshot --time`` still takes a **timeline fraction**:
+The CLI's ``machinome snapshot --time`` still takes a **timeline fraction**:
 ``--time 0.25`` selects three hours into this twelve-hour loop. On the
 build and viewer path the value is the symbolic product ``$t * loop``, so
 the slider is still ``$t`` from 0 to 1 and the multiplication travels
@@ -247,12 +244,85 @@ a linked descendant is refused when read, naming both nodes. A
 sub-assembly loaded on its own, or under test, uses its own. A root that
 declares nothing keeps the 0..1 fraction it always had.
 
-The documents `solid build`, `solid export` and the web snapshot publish
+The documents `machinome build`, `machinome export` and the web snapshot publish
 carry the loop as ``animation.loop`` beside ``fps`` and ``frames``. The
 viewer plays such a loop at real time by default and offers a speed
 control to watch it faster — a twelve-hour clock at ×720 turns its hour
 hand once a minute; an older viewer that does not read the key keeps
 playing ``frames / fps`` seconds a turn, at the right pose throughout.
+
+A machine that never wraps: `Time.running()`
+============================================
+
+A loop is one turn of a cycle. A machine that is *operated* — a
+calculator cranked twice, a printer executing a program, a dial advanced
+a step at a time — has no cycle to normalize against, and its pose
+depends on where it already stood. For those the root declares the other
+base:
+
+.. code-block:: python
+
+    from machinome.motion.ports import Time
+
+    class Pascaline(AssemblyNode):
+
+        time = Time.running()
+
+`type(root).time.mode` reads ``'running'`` where a looping root's reads
+``'loop'``, and `loop` reads `None` — there is no span, because elapsed
+simulation seconds never wrap. `Time()` with no base is refused naming
+the spellings, and the declaration obeys the same rules a looping one
+does: only on the name ``time``, only on an `AssemblyNode`, only on the
+root.
+
+There is a third spelling, `Time.elapsed()`: the same unwrapping seconds
+WITHOUT the running mechanics. It says what ``time`` means and nothing
+about what a simulation owns, so a root declaring it and no `State` is
+indistinguishable from one declaring no base at all, and a root
+declaring it beside a `State` is a clocked machine whose clock is a
+banked value a request may move (see :doc:`scenarios`, "A machine with a
+CLOCK"). `mode` reads ``'elapsed'``; `Time.running()` and
+`Time.elapsed()` are never equal, though both read `loop` `None`.
+
+A clocked root's own preview is stated plainly, because it is not a new
+behaviour: the build poses the INITIAL BANK — every driver and every
+state at its declared default — and ``$t`` sweeps the timeline exactly as
+it does for an untimed root, so a geometry that is a formula of time
+animates while the bank stands. Under ``Time.elapsed()`` the published
+document carries the banked seconds under the free name ``time``, which
+is what lets a consumer pose the machine at the instant it stands at;
+under a clocked root declaring no base the document says so with a null
+clock, and ``self.time`` is the symbolic ``$t`` it has always been. The
+bank ADVANCES only on a request, which is a simulation's doing and not
+the timeline's.
+
+An instruction such a root declares is one REQUEST — see
+:doc:`scenarios`, "A button is a request" — and `Sim.trigger` returns it,
+carrying both ends of the path it travelled and every commit it fired in
+path order. That is what a consumer needs to DRAW the transition over the
+instruction's declared ``duration``: one solve, a pose per frame, and no
+machine work in the frame loop. The framework states the ends and the
+landings and stops there; it names no frame and no cadence, and playing a
+returned request in a browser is the viewer package's own work, on its own
+timetable, and is not part of this release.
+
+What the base changes is what a :doc:`simulation <scenarios>` over the
+root owns. Under it `Sim` owns every driver **and every joint
+coordinate** of the linked tree, keeps their history, and moves them by
+increments: a crank turned ten degrees twice leaves its arbor at forty,
+not at twenty. A law that JUMPS — a periodic window, a gate — has its
+crossings located inside the tick and the jumps subtracted, so a jump
+never moves a part. Nothing else about the tree changes.
+
+What it does not change yet is the published document. Unbound,
+`self.time` under a running root reads bare ``$t``, exactly as an
+undeclared root reads it, because elapsed seconds have no symbolic form
+until a later release publishes the compiled program; the ``animation``
+object carries no ``loop`` key, and `machinome build`, `machinome develop` and
+`machinome snapshot` behave exactly as they do for a root declaring no base.
+So the preview plays the machine as if time ran from 0 to 1 second —
+`set_keyframe(2.5)` still binds seconds — and the running behaviour lives
+in the simulation.
 
 Beyond the timeline: drivers
 ============================
@@ -277,7 +347,7 @@ numerically. That is what tests and single-instant renders do.
 
 Freezing is reversible: `clear_keyframe()` releases the assembly back
 to symbolic time and simulates again, so its operations hold `$t`
-expressions again — including expressions built with `solid_node.math`.
+expressions again — including expressions built with `machinome.math`.
 Rest placement — what `render()` did — is left alone, and nothing
 accumulates however often you freeze and release.
 
@@ -292,7 +362,7 @@ This matters when one program both inspects and publishes a model. An
 operation records whatever value `simulate()` computed, so a frozen node
 has no expression left to publish — exporting it would write the frozen
 numbers and produce a document that is valid, silent, and completely
-static. `solid export` never freezes, and `export_node` releases the
+static. `machinome export` never freezes, and `export_node` releases the
 node for you before serializing, so an export always carries the
 animation. It leaves the node released afterwards; call `set_keyframe`
 again if you still want a pose. To *show* one instant of an exported

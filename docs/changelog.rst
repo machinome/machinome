@@ -3,46 +3,68 @@
 Changelog
 =========
 
-0.7 — in preparation
----------------------
+Machinome 0.7.0 — in preparation
+--------------------------------
 
-0.7 makes the structure and motion of a machine explicit. The declarative
-API names its parameters and children; joints give bodies coordinates;
-relations connect those coordinates using the mechanism's actual laws.
+**Source code for machines.** This release continues solid-node 0.6.0
+under a new framework name and GitHub organisation. A machine's source
+binds its parts, shared dimensions, movement, controls and memory into
+one description that can be built, operated and tested.
 
-Highlights
-~~~~~~~~~~
+* **Rename and migration:** distribution/import/command ``machinome``,
+  ``[tool.machinome]``, ``MACHINOME_*``, and repository
+  ``machinome/machinome-framework``. There are no old import or command
+  aliases. New documents use ``machinome-export``; the matching viewer
+  still reads historical ``solid-node-export`` documents.
+* **Declarative machines:** typed parameters, derived dimensions,
+  guards, child declarations, repeated and optional structure, and root
+  overrides with ``--set``.
+* **Mechanical relationships:** revolute, prismatic, orbit and free
+  joints; scalar and multi-coordinate laws; repeated-child broadcasts;
+  and relations resolved across the machine tree. ``render()``
+  places the structure at rest; ``simulate()`` expresses its pose.
+* **Operation through time:** ``Time(loop=...)`` declares a cycle in
+  seconds. ``Time.running()`` selects running mechanics, with
+  movement and rate requests, crossings, state-dependent laws and
+  mechanical stops. Button, turn and slide declarations associate
+  on-screen gestures with the parts they operate.
+* **Machines with memory:** ``State``, committing relations and
+  ``Sim(machine)`` support event-driven requests without a timestep.
+  Clocked instructions make one request over one driver; an elapsed
+  clock supplies timed events. Stops limit admitted travel, and refused
+  requests retain the previous bank.
+* **Existing designs and readable parts:** exact STEP leaves, product
+  selection and assembly import, plus flat or wrapped SVG markings
+  that contribute no solid.
+* **Builds and project organisation:** native geometry preparation,
+  named models with separate build directories, shared expression
+  graphs, content-verified artifact reuse and fresh build processes.
+* **Tests:** selectable exact/faceted comparisons, faster interference
+  checks, strict simulation-time validation, and correct skip and
+  expected-failure accounting, including failure on unexpected success.
+* **Independent viewer:** ``machinome[viewer]`` selects the separate
+  AGPL-3.0-only package. Interactive ``develop`` requires it;
+  ``--no-web`` remains available. Matching viewer source 0.2.0
+  implements API 20 and schemas 1–8, including running and clocked
+  machines; it is not yet published.
+* **Documentation:** the original part → assembly → animation → fit-test
+  progression continues into declarations, joints and simulation.
+  Clock 01 joins V8 and Metamaquina 2 as an external example.
 
-* **Declarative models:** typed parameters, derived dimensions, guards,
-  child declarations, repetition and optional structure. Build identity
-  follows resolved values, and root parameters are configurable with
-  ``--set``.
-* **Mechanical motion:** revolute, prismatic, orbit and free joints;
-  invertible scalar relations, broadcasts and multi-coordinate laws.
-  Relations resolve across the machine tree.
-* **Rest and motion separated:** ``render()`` assembles the
-  machine at rest; ``simulate()`` binds its state at each instant.
-* **Real-time playback:** a declared ``Time(loop=...)`` makes
-  machine seconds explicit, with viewer speed controls.
-* **Existing designs:** exact STEP parts and STEP assembly import join
-  the modelling, mesh, sheet and flexible-part adapters.
-* **A separate browser viewer:** optional installation, an explicit
-  versioned boundary, and compact shared-expression documents.
-* **Build and test reliability:** content-verified artifact currency,
-  fresh build processes, selectable geometric comparison kernels and
-  strict simulation-time boundaries.
-* **Updated learning material:** the step-by-step part, assembly,
-  animation and fit-testing tutorial now uses declarative children,
-  with a joint-and-relation lesson building on the same small model.
-  Clock 01 joins V8 and Metamaquina 2 as a third external example.
+See :doc:`upgrading` before changing versions. In addition to the rename,
+ports moved to ``machinome.motion.ports``, joint frames changed during
+the preview, and hosts must update their viewer bundle. Existing
+constructor-based models and direct transforms remain supported.
 
-See :doc:`upgrading` before migrating: port imports changed, preview
-joint frames need checking, and an older viewer may not read new documents.
-Existing constructor-based nodes and direct motion transforms remain
-supported.
+.. toctree::
+   :maxdepth: 1
 
-The :doc:`detailed development record <releases/development-0.7>`
-preserves the implementation history, including intermediate preview APIs.
+   releases/release-0.7
+   releases/development-0.7
+
+The development record preserves intermediate decisions and spellings;
+the current guides describe the supported interface. Releases below
+retain the names used when they were published.
 
 v0.6.0
 ------

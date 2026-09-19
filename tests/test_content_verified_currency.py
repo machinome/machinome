@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -36,10 +36,10 @@ import time
 from unittest import TestCase
 from unittest.mock import patch
 
-from solid_node import currency
-from solid_node.core import pieces
-from solid_node.core.builder import Builder, BuildOutcome
-from solid_node.core.loader import load_node
+from machinome import currency
+from machinome.core import pieces
+from machinome.core.builder import Builder, BuildOutcome
+from machinome.core.loader import load_node
 
 
 # Each test gets its own project package name. The loader keeps imported
@@ -53,7 +53,7 @@ import os
 
 
 def record(name):
-    with open(os.environ['SOLID_NODE_RENDER_LOG'], 'a') as log:
+    with open(os.environ['MACHINOME_RENDER_LOG'], 'a') as log:
         log.write(name + '\\n')
 '''
 
@@ -64,7 +64,7 @@ SIZE = 4.0
 BLOCK = '''\
 import cadquery as cq
 
-from solid_node.node import CadQueryNode
+from machinome.node import CadQueryNode
 
 from . import trace
 from .dimensions import SIZE
@@ -80,7 +80,7 @@ class Block(CadQueryNode):
 PIN = '''\
 import cadquery as cq
 
-from solid_node.node import CadQueryNode
+from machinome.node import CadQueryNode
 
 from . import trace
 
@@ -94,7 +94,7 @@ class Pin(CadQueryNode):
 '''
 
 MACHINE = '''\
-from solid_node.node import AssemblyNode
+from machinome.node import AssemblyNode
 
 from .block import Block
 from .pin import Pin
@@ -127,14 +127,14 @@ class ScratchProjectTest(TestCase):
         environment.start()
         self.addCleanup(environment.stop)
 
-        self.root = tempfile.mkdtemp(prefix='solid-node-currency-')
+        self.root = tempfile.mkdtemp(prefix='machinome-currency-')
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         self.package = f'currency_fixture_{next(PROJECT_NAMES)}'
         package_dir = os.path.join(self.root, self.package)
         os.makedirs(package_dir)
 
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as manifest:
-            manifest.write('[tool.solid-node]\n'
+            manifest.write('[tool.machinome]\n'
                            f'model = "{self.package}.machine:Machine"\n')
         for name, content in self.project_files():
             self.write(name, content)
@@ -142,7 +142,7 @@ class ScratchProjectTest(TestCase):
         self.build_dir = os.path.join(self.root, '_build')
         os.environ['SOLID_BUILD_DIR'] = self.build_dir
         self.render_log = os.path.join(self.root, 'renders.log')
-        os.environ['SOLID_NODE_RENDER_LOG'] = self.render_log
+        os.environ['MACHINOME_RENDER_LOG'] = self.render_log
         self.reference = os.path.join(package_dir, 'machine.py') + ':Machine'
 
     ##############################################
@@ -374,9 +374,9 @@ class ContentVerifiedCurrencyTest(ScratchProjectTest):
         must not hash bytes or parse Python source."""
         node = self.build()
 
-        with patch('solid_node.currency.source_digest') as digest, \
-             patch('solid_node.currency._file_digest') as file_digest, \
-             patch('solid_node.currency._analysis') as analysis:
+        with patch('machinome.currency.source_digest') as digest, \
+             patch('machinome.currency._file_digest') as file_digest, \
+             patch('machinome.currency._analysis') as analysis:
             self.assertTrue(node.block._up_to_date(node.block.stl_file))
             self.assertTrue(node.block._up_to_date(node.block.brep_file))
 

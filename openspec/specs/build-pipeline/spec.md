@@ -10,22 +10,22 @@ ADR-018 (file-based error propagation, superseding the broker of
 ADR-016/017), the loader rules of ADR-026, and ADR-067 (fresh-interpreter
 build subprocesses).
 
-Code: `solid_node/core/loader.py`, `solid_node/core/builder.py`,
-`solid_node/core/processes.py`, `solid_node/node/base.py` (artifact/caching
+Code: `machinome/core/loader.py`, `machinome/core/builder.py`,
+`machinome/core/processes.py`, `machinome/node/base.py` (artifact/caching
 layer).
 ## Requirements
 ### Requirement: Project root discovery and model reference
 
 The system SHALL determine a project's root by walking upward from a discovery
 origin to the nearest ancestor `pyproject.toml` containing a
-`[tool.solid-node]` table, and SHALL treat the directory holding that file as
+`[tool.machinome]` table, and SHALL treat the directory holding that file as
 the project root.
 
 When the table has no `models` sub-table, its `model` key SHALL hold an
 entry-point object reference naming the project's model node, in the form
 `package.module:ClassName`, and the project SHALL have that one model.
 
-When the table has a `models` sub-table (`[tool.solid-node.models]`), each of
+When the table has a `models` sub-table (`[tool.machinome.models]`), each of
 its keys SHALL be a model name and each value an entry-point object reference
 in the form `package.module:ClassName`. A model name SHALL be one word of
 letters, digits, underscores and hyphens, starting with a letter or underscore,
@@ -56,7 +56,7 @@ node SHALL fail with an actionable error naming the origin it searched from.
 #### Scenario: Command run from a subdirectory
 
 - **WHEN** a user runs a node-scoped command from a subdirectory of a project
-  whose `pyproject.toml` declares `[tool.solid-node] model`
+  whose `pyproject.toml` declares `[tool.machinome] model`
 - **THEN** the project root is discovered from that manifest
 - **AND** the node's tracked source closure is the same set it would be from
   the project root
@@ -71,12 +71,12 @@ node SHALL fail with an actionable error naming the origin it searched from.
 #### Scenario: No manifest above the origin
 
 - **WHEN** a node-scoped command runs with no argument and no ancestor
-  `pyproject.toml` carries a `[tool.solid-node]` table
+  `pyproject.toml` carries a `[tool.machinome]` table
 - **THEN** the command exits nonzero with an error naming the search origin
 
 #### Scenario: A manifest declares several models and a default
 
-- **WHEN** a manifest declares `[tool.solid-node.models]` with
+- **WHEN** a manifest declares `[tool.machinome.models]` with
   `wall_clock_01 = "design.wall_clock_01.clock:WallClock01"` and
   `wall_clock_02 = "design.wall_clock_02.clock:WallClock02"`, and
   `model = "wall_clock_01"`
@@ -181,9 +181,13 @@ Whichever directory a command was run from, a project therefore has one build
 directory per model and — because the build lock is derived from it — one
 build lock per model.
 
-Artifacts per node: `.scad` (base geometry,
-no transforms), `.stl` (rendered), and `.stl.lock` during rendering. A node
-that is exact under the `exact-geometry` capability SHALL additionally write
+The ordinary `machinome build` and SCAD presentation path SHALL retain `.scad`
+(base geometry, no transforms) deliverables. Geometry/document-only consumers
+under `backend-neutral-materialization` SHALL NOT require or generate assembly
+SCAD deliverables, but SHALL still produce SCAD source when a selected backend
+needs it. Other artifacts remain `.stl` (rendered) and `.stl.lock` during
+external rendering. A node that is exact under the `exact-geometry` capability
+SHALL additionally write
 `.brep`, holding that node's unplaced exact geometry under the same basename.
 World-space spatial math does not use on-disk artifacts — the `mesh`
 property loads the plain `.stl` and applies operations in memory (the
@@ -195,6 +199,13 @@ path left as a symlink by an earlier layout SHALL be converted by moving the
 directory that symlink references into the ordinary build path. Build
 preparation SHALL NOT remove any other path merely because its name begins
 with the build directory's name and a dot.
+
+A rigid node that declares markings under the `markings` capability SHALL
+additionally write one artifact per marking under that same basename,
+distinguished by the marking's own declared name, so two markings on one part
+never collide and the file says which declaration produced it. Unlike the
+`.brep`, a marking artifact IS named by the published document, and it is
+published, coloured and copied on export like a model.
 
 The `.brep` artifact SHALL be private to the build. No viewer snapshot, export
 manifest, or other published document SHALL reference it, and its presence
@@ -283,10 +294,23 @@ SHALL NOT alter any document's schema.
 - **THEN** its artifacts, `viewer.json` and `errors.json` are written in the
   build root itself, at the paths they have today
 
+#### Scenario: A marking's artifact sits beside the part's mesh
+
+- **WHEN** a rigid node declaring the markings `digits` and `arrows` is built
+- **THEN** two marking artifacts sit beside its `.stl` under the same basename,
+  one distinguished by `digits` and one by `arrows`
+
+#### Scenario: A part declaring no marking writes no marking artifact
+
+- **WHEN** a rigid node that declares no marking is built
+- **THEN** its build directory holds exactly the artifacts it held before
+  markings existed
+
 ### Requirement: Mtime-equality caching
 
-The system SHALL treat an artifact as up to date on its metadata-only path iff
-it exists, its mtime equals the node's `mtime`, and its recorded source-set
+Subject to the producer recipe identity requirement below, the system SHALL
+treat an artifact as up to date on its metadata-only path iff it exists,
+its mtime equals the node's `mtime`, and its recorded source-set
 fingerprint equals the current fingerprint of every file tracked for the node
 (`node.files`, aggregated recursively from children). `node.mtime` remains the
 maximum source-file mtime across that set. After generating an artifact the
@@ -320,9 +344,11 @@ Where the system cannot store the exact stamp, the artifact SHALL fail the
 metadata-only path and enter content verification. Currency SHALL fail only in
 the safe direction for every observable source change.
 
-Whenever artifact mtime equality or source-set fingerprint equality fails, the
-system SHALL consult a content-verified fallback before rebuilding. It SHALL
-compare a digest of the node's tracked sources, as they are on disk now,
+When the producer recipe is compatible but artifact mtime equality or
+source-set fingerprint equality fails, the system SHALL consult a
+content-verified fallback before rebuilding. A mismatched producer recipe
+SHALL NOT enter that fallback. The fallback SHALL compare a digest of the
+node's tracked sources, as they are on disk now,
 against the digest recorded for that artifact when it was produced. When they
 agree, the system SHALL restamp the artifact to the current `node.mtime`,
 record the current source-set fingerprint with the digest, and treat it as
@@ -362,7 +388,8 @@ rather than looping.
 The currency record SHALL live inside the build directory, SHALL NOT be
 referenced by the published viewer document, and SHALL NOT change publication
 semantics. A successful sweep SHALL keep the record belonging to an artifact
-it keeps and SHALL NOT leave one behind for an artifact it removes. The reader
+it keeps and SHALL NOT leave one behind for an artifact it removes. For a
+producer whose recipe is unchanged, the reader
 SHALL accept a legacy digest-only record as having no fingerprint, validate it
 through the content fallback even when artifact mtime equality succeeds, and
 upgrade a matching record without re-deriving geometry. An unknown or malformed
@@ -404,7 +431,8 @@ SHALL track more files rather than fewer.
 
 #### Scenario: A timestamp moves but no content changes
 
-- **WHEN** every source file's mtime is rewritten with no byte changed, as a
+- **WHEN** the producer recipe is unchanged and every source file's mtime is
+  rewritten with no byte changed, as a
   clone, branch switch, stash pop, or copy can do
 - **THEN** the digest match prevents geometry from being re-derived, every
   artifact is restamped and records the current fingerprint, and the published
@@ -418,15 +446,16 @@ SHALL track more files rather than fewer.
 
 #### Scenario: The fast path is not slowed
 
-- **WHEN** an artifact's mtime and recorded source-set fingerprint match the
-  node's current source state
+- **WHEN** the producer recipe is compatible and an artifact's mtime and
+  recorded source-set fingerprint match the node's current source state
 - **THEN** currency is decided without reading source bytes for a digest or
   parsing Python source
 
 #### Scenario: A legacy digest-only record upgrades safely
 
-- **WHEN** an artifact's mtime equals the node mtime but its sidecar contains a
-  valid legacy digest with no source-set fingerprint
+- **WHEN** the producer recipe is unchanged and an artifact's mtime equals the
+  node mtime but its sidecar contains a valid legacy digest with no source-set
+  fingerprint
 - **THEN** the digest is verified and, if it matches, the artifact is not
   re-derived and the sidecar is upgraded with the current fingerprint
 
@@ -481,8 +510,8 @@ SHALL track more files rather than fewer.
 
 #### Scenario: Unchanged sources skip rendering
 
-- **WHEN** `generate_stl` runs and both the STL mtime and source-set fingerprint
-  match
+- **WHEN** `generate_stl` runs, the producer recipe is compatible, and both
+  the STL mtime and source-set fingerprint match
 - **THEN** no OpenSCAD process is launched
 
 #### Scenario: Missing exact geometry is not current
@@ -674,7 +703,7 @@ the build.
 
 - **WHEN** a project declares a test method calling
   `assertNoDisconnectedSolids`
-- **THEN** `solid build`, `solid develop` and `solid snapshot` neither discover
+- **THEN** `machinome build`, `machinome develop` and `machinome snapshot` neither discover
   nor execute it
 
 ### Requirement: Asynchronous STL render protocol
@@ -701,8 +730,10 @@ A `FusionNode` whose subtree is exact SHALL NOT use this protocol. It composes
 its own geometry under the `exact-geometry` capability and SHALL produce its
 `.stl` by tessellating that composition in process, stamping the mtime as any
 other artifact producer does, without launching a subprocess and without
-raising `StlRenderStart`. A fusion with any non-exact descendant keeps the
-subprocess protocol unchanged.
+raising `StlRenderStart`. A fusion with any non-exact descendant SHALL
+produce its artifact through direct mesh composition under
+`backend-neutral-materialization`, not this OpenSCAD subprocess protocol.
+Its OpenSCAD-authored children still use this protocol where required.
 
 Tessellation of an exact composition SHALL use the same deflection the
 `CadQueryNode` adapter already uses for leaf STL export, so a fused solid's
@@ -734,15 +765,15 @@ mesh is of the same quality as the leaves around it.
   OpenSCAD subprocess is launched for it, and `build_stls()` returns without
   waiting on a render job for that node
 
-#### Scenario: A faceted fusion keeps the subprocess protocol
+#### Scenario: A faceted fusion composes current child meshes
 
 - **WHEN** a `FusionNode` holding a non-exact descendant is built
-- **THEN** its STL is rendered by an OpenSCAD subprocess signalled by
-  `StlRenderStart`, as before
+- **THEN** its child artifacts become current before the fusion unions them
+  directly, and no OpenSCAD render job is launched for the fusion itself
 
 #### Scenario: The renderer is missing for a node that needs it
 
-- **WHEN** a stale mesh-backend node must be rendered and no `openscad` is on
+- **WHEN** a stale OpenSCAD-backed leaf must be rendered and no `openscad` is on
   the PATH
 - **THEN** the build fails naming that node and the reason its backend needs
   OpenSCAD, and no subprocess launch error surfaces in its place
@@ -771,7 +802,7 @@ in a fresh interpreter.
 
 #### Scenario: The parent has already run geometry
 
-- **WHEN** `solid build` resolves a model whose import runs geometry, leaving
+- **WHEN** `machinome build` resolves a model whose import runs geometry, leaving
   native worker threads live in the command's own process, and then starts its
   builder subprocess
 - **THEN** the subprocess renders and publishes the model and the command exits
@@ -779,14 +810,14 @@ in a fresh interpreter.
 
 #### Scenario: A cold build directory for a mesh-engine project
 
-- **WHEN** `solid build` runs against a project whose nodes render through the
+- **WHEN** `machinome build` runs against a project whose nodes render through the
   in-process mesh engine and whose build directory holds no current artifacts,
   so every artifact must be tessellated
 - **THEN** each artifact is rendered and published and the command exits 0
 
 #### Scenario: The watch loop respawns a builder
 
-- **WHEN** `solid develop` respawns its builder after a watched source file
+- **WHEN** `machinome develop` respawns its builder after a watched source file
   changes
 - **THEN** the new builder starts from a fresh interpreter, rebuilds from the
   edited source, and the loop continues
@@ -806,7 +837,7 @@ unclassified files SHALL remain filtered as recovery-watch noise.
 
 #### Scenario: Edit triggers rebuild cycle
 
-- **WHEN** a watched source file is saved during `solid develop`
+- **WHEN** a watched source file is saved during `machinome develop`
 - **THEN** the builder logs the change, exits, and is respawned to rebuild
   with the new source
 
@@ -841,11 +872,11 @@ cleanly on the next save so development continues.
 
 - **WHEN** a reload hits a SyntaxError in the edited file
 - **THEN** the traceback lands in `errors.json`, the web viewer can surface
-  it, and fixing the file resumes building without restarting `solid develop`
+  it, and fixing the file resumes building without restarting `machinome develop`
 
 #### Scenario: Broken project at launch
 
-- **WHEN** the first build after `solid develop` fails to load the node
+- **WHEN** the first build after `machinome develop` fails to load the node
 - **THEN** develop tears down its child processes and exits non-zero
 
 #### Scenario: Byte-identical build recovers prior failure state
@@ -934,6 +965,12 @@ published document names them. As with `.scad` inputs, a superseded one is
 therefore not removed by the sweep; mtime-equality caching means a superseded
 artifact is never read.
 
+A **marking** artifact under the `markings` capability is spared by
+**reference**, not by kind, because the published snapshot names it beside the
+part's model. A marking still declared is therefore kept, and a marking
+artifact whose declaration was deleted or renamed is removed by the next
+successful publication, exactly as a renamed node's artifact is.
+
 #### Scenario: A renamed node leaves nothing behind
 
 - **WHEN** a node is renamed and the project is rebuilt successfully
@@ -950,6 +987,19 @@ artifact is never read.
 - **WHEN** a build of exact nodes publishes successfully and sweeps
 - **THEN** every `.brep` written for a current node is still present, though
   the published snapshot names none of them
+
+#### Scenario: A declared marking survives the sweep
+
+- **WHEN** a project whose parts declare markings publishes successfully and
+  sweeps
+- **THEN** every marking artifact the snapshot names is still present
+
+#### Scenario: A dropped marking leaves nothing behind
+
+- **WHEN** a marking declaration is deleted and the project is rebuilt
+  successfully
+- **THEN** that marking's artifact is gone from the build directory and the
+  part's own artifacts are untouched
 
 ### Requirement: Error file lifecycle
 
@@ -981,7 +1031,7 @@ when it cannot.
 
 #### Scenario: Scaffolded project
 
-- **WHEN** a user creates a project with `solid new` and builds it
+- **WHEN** a user creates a project with `machinome new` and builds it
 - **THEN** neither the build path nor the project build lock appears as an
   untracked file
 
@@ -1005,7 +1055,7 @@ whole linked tree by qualified id — before the node's first render, so
 a driver-declaring project builds, tests, and serves through the CLI
 without binding its own defaults in `__init__` and without a running
 simulation. A tree declaring no drivers SHALL load exactly as before.
-Default binding SHALL live outside `solid_node/node/`, preserving the
+Default binding SHALL live outside `machinome/node/`, preserving the
 rule that the node layer never imports the simulation layer.
 
 #### Scenario: A driver-declaring project builds without self-binding
@@ -1123,3 +1173,112 @@ Atomic text and currency publication SHALL compare the desired state with the st
 
 - **WHEN** a tracked source's metadata changes while its node-scoped content stays byte-identical
 - **THEN** content verification refreshes the artifact stamp and currency record as required, without rewriting byte-identical SCAD content or reporting stale geometry current
+
+### Requirement: Producer recipe identity qualifies artifact currency
+
+The system SHALL distinguish artifacts made by different geometry or
+presentation recipes even when their project sources and parameter identity
+are unchanged. A producer recipe change SHALL invalidate the affected
+artifact before metadata or content-restamp reuse can certify it. A missing
+legacy recipe record SHALL be incompatible for a producer changed by this
+cycle, while unchanged producer recipes SHALL retain legacy source-record
+compatibility.
+
+A faceted fusion SHALL incorporate the current direct-mesh recipe and the
+relevant recipes of its child geometry into its currency. Nested fusions
+SHALL NOT reuse an enclosing artifact produced using superseded child
+geometry recipes. Recipe identity SHALL NOT change node names, parameter
+identity or artifact paths. Printed-piece identity SHALL continue to derive
+from the actual produced STL bytes.
+
+Recipe records SHALL remain private build metadata, published atomically
+with the existing source-currency discipline. This qualification SHALL NOT
+relax source checks, generation checks, artifact observations or publication
+ordering, and SHALL NOT turn every framework edit into an all-project rebuild.
+
+#### Scenario: An old fusion cache does not mask the new producer
+
+- **WHEN** a project's sources are unchanged but its fusion STL was produced
+  through the old OpenSCAD fusion recipe
+- **THEN** the first new build recomputes that fusion by direct mesh union and
+  records its new recipe, and the next unchanged build reuses it
+
+#### Scenario: A nested fusion follows its child's recipe
+
+- **WHEN** an enclosing fusion has a source-current artifact but a nested
+  fusion's production recipe has changed
+- **THEN** both affected fusion artifacts are rebuilt in dependency order
+
+#### Scenario: Unchanged exact geometry stays cached
+
+- **WHEN** exact leaf and exact fusion artifacts have unchanged source state
+  and unchanged production recipes
+- **THEN** upgrading this cycle does not re-derive their geometry merely
+  because the framework version changed
+
+#### Scenario: Content equality cannot bless the wrong recipe
+
+- **WHEN** an artifact's project-source digest matches but its recorded
+  producer recipe does not
+- **THEN** the artifact is rebuilt rather than restamped as current
+
+### Requirement: Generated SCAD imports resolve from the file that holds them
+
+Every import of a build artifact that the system writes into a generated
+`.scad` SHALL name that artifact by a path which resolves, from the
+directory holding that `.scad` file, to the artifact itself — because that
+is how OpenSCAD resolves an `import()`. This SHALL hold for every leaf kind
+that presents its geometry as an artifact (`Solid2Node`, the exact adapters,
+`StlNode`, `JScadNode`, and a flexible leaf's per-binding snapshot), for a
+node at any depth of the tree, whether or not the artifact was already
+current when the tree was assembled, and whatever package the importing node
+is declared in relative to the node whose artifact it names. An assembly
+declared in a different package from a part it places SHALL therefore
+render exactly the geometry it renders when the two are declared together.
+
+A path a project itself wrote — a call to `import_stl` inside a project's
+own `render()` — SHALL be reproduced exactly as the project wrote it. The
+rule governs the artifact imports the framework emits and nothing else.
+
+Where a node's own `.scad` and an ancestor's `.scad` both hold the same
+artifact import, each SHALL hold the spelling that resolves from its own
+directory; the two files SHALL NOT be required to hold the same text.
+
+#### Scenario: A parent in another package imports every leaf kind
+
+- **WHEN** an assembly declared in `sim/tools/` places a rigid leaf, an
+  exact leaf and a flexible leaf all declared in `sim/`, and the model is
+  built
+- **THEN** every `import(file = …)` in the assembly's generated `.scad`
+  names a file that exists relative to that `.scad`'s own directory
+
+#### Scenario: The second build spells it the same way
+
+- **WHEN** that model is built again with every artifact already current
+- **THEN** each import in the assembly's generated `.scad` still resolves
+  from that `.scad`'s directory, and the geometry the document presents is
+  unchanged
+
+#### Scenario: An intermediate assembly's own SCAD resolves from its own directory
+
+- **WHEN** a root in `sim/tools/` places an assembly declared in
+  `sim/sub/deep/` which places a leaf declared in `sim/`, and the model is
+  built
+- **THEN** the import in the intermediate assembly's own generated `.scad`
+  resolves from `sim/sub/deep`'s build directory, and the import in the
+  root's generated `.scad` resolves from the root's build directory
+
+#### Scenario: A project's own import is reproduced verbatim
+
+- **WHEN** a leaf's `render()` imports a file of the project's own by a
+  relative path
+- **THEN** the generated `.scad` holds that path exactly as written, with
+  no anchoring applied to it
+
+#### Scenario: A parent beside its parts is unchanged
+
+- **WHEN** an assembly and the leaves it places are declared in one package
+  and the model is built
+- **THEN** each leaf artifact is imported by its bare basename, exactly as
+  before this rule was stated
+

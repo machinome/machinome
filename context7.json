@@ -1,27 +1,32 @@
 {
   "$schema": "https://context7.com/schema/context7.json",
-  "projectTitle": "solid-node",
-  "description": "A framework to develop and manage mechanical CAD projects in Python",
+  "projectTitle": "Machinome",
+  "description": "Source code for machines: a Python framework binding parts, dimensions, motion, controls and tests into a whole.",
   "folders": [],
   "excludeFolders": [
     "docs/_exports",
+    "docs/_build",
     "docs/_static",
+    "docs/examples",
+    "docs/releases",
     "openspec",
-    "tests",
-    "solid_node/viewers/web/app",
-    "solid_node/viewers/widget"
+    "tests"
   ],
   "excludeFiles": [],
   "rules": [
-    "A project declares its model in a [tool.solid-node] table of its pyproject.toml; root/__init__.py and the NODE marker were removed in 0.5.0",
-    "Node-scoped commands take an optional reference: a Python file path, a path plus class, or a package.module:Class qualifier, and fall back to the manifest's model when omitted",
-    "Place assertNoSolidInterference and assertNoDisconnectedSolids on the root assembly node only. Each one already descends the entire subtree below the node it is given, so repeating them on child nodes tests the same solids again and wastes resources. assertNoPairwiseIntersections is deprecated in favour of assertNoSolidInterference",
-    "Prefer CadQuery nodes over other leaf types. They are the only exact node type, so their geometry is answered from the CAD kernel's boundary representation rather than an approximating triangle mesh, which allows more precise production processes. An internal node is exact only when every node in its subtree is exact",
-    "OpenSCAD is optional: an all-exact project builds, tests, exports and snapshots without it on the PATH",
-    "Write one node per file. The framework permits several nodes in a single file, but that defeats the build cache, which tracks work per source file: editing one node then invalidates and rebuilds every node beside it",
-    "Do not create an internal node that wraps a single leaf node. Use the leaf directly; a one-child assembly adds a tree level without expressing any relationship",
-    "As an assembly grows complex, group its assembly nodes into folders. The directory structure is how a reader navigates the model",
-    "The user watches the model render from the root node while changes are made, so sequence work in an order that keeps each change visible as it lands rather than leaving the model unrenderable until the end"
+    "Machinome 0.7 continues solid-node 0.6.0. Use the machinome distribution, machinome Python imports and command, [tool.machinome] configuration and MACHINOME_* replacements for former SOLID_NODE_* settings. No old command or import aliases are installed. See docs/upgrading.rst for retained SOLID_BUILD_DIR and SOLID_TEST_* settings.",
+    "A project declares its default model or named models in [tool.machinome] in pyproject.toml. Node commands accept a model name, package.module:Class, or file reference. Each named model has its own build directory; machinome models lists them.",
+    "Declare typed build parameters in machinome.parameters and child nodes in the class body. render() builds and places the structure at rest; simulate() expresses runtime pose. Constructor-based nodes remain supported.",
+    "Import ports and Time from machinome.motion.ports, joints from machinome.motion.joints, and Driver, State, Instruction and Sim from machinome.simulation.",
+    "Class-body joints use their body's own frame. Placement-site joints use the declaring parent's frame. Relations bind coordinates through declared laws; geometry, tests and publication share those relationships.",
+    "Choose simulation by the machine: plain Sim(model, dt=...) steps inputs, Time.running() selects running mechanics, and a State anywhere in the tree selects clocked Sim(model) without dt. Time.elapsed() adds non-wrapping seconds; under a clocked root it supplies the banked clock.",
+    "Exact parts include CadQuery, build123d, STEP and sheet leaves, with exact flexible geometry where molejo provides it. Exact-only fusions remain exact; meshes and faceted fusions use the faceted path.",
+    "OpenSCAD is needed for Solid2/raw OpenSCAD geometry and the OpenSCAD snapshot renderer. Native geometry builds and the optional web snapshot path do not universally require it.",
+    "Build freshness tracks each node's contributing source, including project-local imports. Several node classes may share a file without automatically invalidating unrelated sibling geometry.",
+    "Place whole-assembly integrity assertions at the root when that is the contract: assertNoSolidInterference and assertNoDisconnectedSolids already descend their subtrees. assertNoPairwiseIntersections is deprecated.",
+    "The optional machinome-viewer package owns browser rendering. machinome develop requires it; --no-web builds and watches without it. Check machinome viewer for the installed API and supported documentVersions.",
+    "Current viewer source is API 20 and reads schemas 1–8; clocked documents require 8. The viewer's independent publication status must be checked rather than inferred from the framework version.",
+    "Keep geometry and operating claims tied to runnable examples and tests. Simulated motion is not a claim of physical manufacturing validation."
   ],
   "previousVersions": [
     {

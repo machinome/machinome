@@ -4,7 +4,7 @@
 Examples
 ========
 
-Three machines show Solid Node applied to larger projects. Each has its
+Three machines show Machinome applied to larger projects. Each has its
 own page and live model, and each design lives in an independent source
 repository. They are examples to explore after the step-by-step tutorial,
 not code that you need to copy into your first project.
@@ -27,13 +27,20 @@ not code that you need to copy into your first project.
 
 :doc:`example-clock-01`
    A pendulum clock from Luke Wallin's 3DPrintedClocks, with a gear train,
-   escapement, motion works and pendulum. Its Solid Node model is read
+   escapement, motion works and pendulum. Its Machinome model is read
    from an external repository, not reimplemented in these docs.
 
 The example repositories retain their own licences. The framework tracks
 them as external Git submodules and builds their viewer exports; it does
 not copy their design source into the tutorial. Release-preview checkouts
 need the matching example revisions. See the source links on each page.
+
+.. note::
+
+   The 0.7 migration revisions are pinned by this checkout's submodules.
+   During release preparation they must be published to their example
+   repositories before the source links, a fresh public checkout and
+   hosted documentation builds can use them.
 
 Models used in the tutorial
 ===============================

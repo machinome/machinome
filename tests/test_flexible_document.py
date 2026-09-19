@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -24,14 +24,15 @@ export's `manifest.json`.
 
 import json
 import os
+from unittest.mock import patch
 
-from solid_node.core.builder import Builder, project_build_lock
-from solid_node.core.export import export_node
-from solid_node.core.serializer import (
+from machinome.core.builder import Builder, project_build_lock
+from machinome.core.export import export_node
+from machinome.core.serializer import (
     BINDINGS_DOCUMENT_VERSION, DOCUMENT_VERSION, FLEXIBLE_DOCUMENT_VERSION,
     document_version, serialize_node, symbolic_document,
 )
-from solid_node.simulation.enumeration import bind_declared_defaults
+from machinome.simulation.enumeration import bind_declared_defaults
 
 from .base import BaseNodeTest
 from .flexible_project import spring as fixture
@@ -272,6 +273,13 @@ class FlexibleExportTest(BaseNodeTest):
     def export(self, node):
         out_dir = os.path.join(self.build_dir, 'export_out')
         return export_node(node, out_dir, widget=False), out_dir
+
+    def test_geometry_export_does_not_request_a_flexible_scad_snapshot(self):
+        with patch.object(
+                fixture.Spring, 'as_scad',
+                side_effect=AssertionError('flexible SCAD requested')):
+            manifest, _ = self.export(bound_engine())
+        self.assertIsNotNone(find(manifest['root'], 'spring')['flexible'])
 
     def test_the_manifest_carries_the_spec_and_declares_version_three(self):
         """As `FlexiblePublishedBuildTest` above: the shared lift

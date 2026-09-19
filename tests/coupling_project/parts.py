@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,10 +14,10 @@ translational one.
 
 from solid2 import cube, cylinder
 
-from solid_node.motion.joints import Revolute
-from solid_node.motion.ports import RotationalPort, TranslationalPort
-from solid_node.node import Solid2Node
-from solid_node.parameters import Length
+from machinome.motion.joints import Revolute
+from machinome.motion.ports import RotationalPort, TranslationalPort
+from machinome.node import Solid2Node
+from machinome.parameters import Length
 
 
 class Wheel(Solid2Node):

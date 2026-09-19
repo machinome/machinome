@@ -37,13 +37,13 @@ jobs:
         continue-on-error: true
         run: |
           . venv/bin/activate
-          black --check solid_node tests
+          black --check machinome tests
 
       - name: Flake8
         continue-on-error: true
         run: |
           . venv/bin/activate
-          flake8 --max-line-length=89 solid_node tests
+          flake8 --max-line-length=89 machinome tests
 
   test:
     runs-on: ubuntu-latest
@@ -81,7 +81,7 @@ jobs:
       - name: Run tests
         run: |
           . venv/bin/activate
-          coverage run --source solid_node -m pytest
+          coverage run --source machinome -m pytest
           coverage report -m
 
   browser-snapshot:
@@ -108,12 +108,12 @@ jobs:
       - name: Install framework and browser snapshot dependencies
         run: |
           pip install -r requirements.txt -r requirements_dev.txt
-          pip install "solid-node-viewer[snapshot] @ git+https://github.com/LibreSolid/solid-node-viewer.git"
+          pip install "machinome-viewer[snapshot] @ git+https://github.com/machinome/machinome-viewer.git"
           playwright install --with-deps chromium
 
       - name: Run real browser snapshot test
         env:
-          SOLID_NODE_WEB_SNAPSHOT_E2E: "1"
+          MACHINOME_WEB_SNAPSHOT_E2E: "1"
         run: >-
           pytest
           tests/test_browser_renderer.py::BrowserSnapshotEndToEndTest
@@ -145,7 +145,7 @@ jobs:
             requirements.txt
 
       # The example exports ship the browser viewer, which is the separate
-      # solid-node-viewer package. Until it is on PyPI it is installed from
+      # machinome-viewer package. Until it is on PyPI it is installed from
       # its repository; its source distribution builds the widget itself,
       # so node is needed here for that build and nothing else.
       - uses: actions/setup-node@v4
@@ -155,27 +155,27 @@ jobs:
       - name: Install runtime, viewer and docs requirements
         run: |
           pip install -r requirements.txt -r docs/requirements.txt
-          pip install "solid-node-viewer @ git+https://github.com/LibreSolid/solid-node-viewer.git"
+          pip install "machinome-viewer @ git+https://github.com/machinome/machinome-viewer.git"
 
       - name: Generate V8 example export
         working-directory: docs/examples/v8-engine
         run: >-
           PYTHONPATH="$GITHUB_WORKSPACE" python -c
-          "from solid_node.cli import manage; manage()"
+          "from machinome.cli import manage; manage()"
           export -o docs/_exports/v8-engine --fps 30 --frames 360
 
       - name: Generate Metamaquina 2 example export
         working-directory: docs/examples/metamaquina2
         run: >-
           PYTHONPATH="$GITHUB_WORKSPACE" python -c
-          "from solid_node.cli import manage; manage()"
+          "from machinome.cli import manage; manage()"
           export -o docs/_exports/metamaquina2 --fps 30 --frames 360
 
       - name: Generate Clock 01 example export
         working-directory: docs/examples/3dprintedclocks
         run: >-
           PYTHONPATH="$GITHUB_WORKSPACE" python -c
-          "from solid_node.cli import manage; manage()"
+          "from machinome.cli import manage; manage()"
           export -o docs/_exports/clock01 wall_clock_01
 
       - name: Build docs (fail on warnings)
@@ -189,7 +189,7 @@ jobs:
       contents: write
 
     env:
-      SOLID_NODE_VERSION: "${{ github.ref_name }}"
+      MACHINOME_VERSION: "${{ github.ref_name }}"
 
     steps:
       - uses: actions/checkout@v3
@@ -209,8 +209,8 @@ jobs:
         run: |
           from os import getenv as env
           from packaging.version import parse
-          solid_node_version = str(parse(env("SOLID_NODE_VERSION")))
-          print(f"version={solid_node_version}", file=open(env("GITHUB_OUTPUT"), "a"), flush=True)
+          machinome_version = str(parse(env("MACHINOME_VERSION")))
+          print(f"version={machinome_version}", file=open(env("GITHUB_OUTPUT"), "a"), flush=True)
         shell: python
 
       - uses: actions/cache@v3
@@ -235,7 +235,7 @@ jobs:
       - name: Create release
         if: steps.package_version.outputs.version != null
         run: |
-          gh release create "$SOLID_NODE_VERSION" ./dist/* \
+          gh release create "$MACHINOME_VERSION" ./dist/* \
             --title "${{ steps.package_version.outputs.version }}" \
             --repo="$GITHUB_REPOSITORY"
         env:

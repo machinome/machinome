@@ -1,0 +1,357 @@
+{
+  "format": "machinome-export",
+  "version": 5,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "tens_entry": {
+      "default": 0.0,
+      "range": null,
+      "unit": "digit",
+      "dtype": null,
+      "scale": null
+    },
+    "units_entry": {
+      "default": 0.0,
+      "range": null,
+      "unit": "digit",
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {
+    "Add one": {
+      "by": {
+        "units_entry": 1.0
+      },
+      "duration": 1.0
+    },
+    "Add ten": {
+      "by": {
+        "tens_entry": 1.0
+      },
+      "duration": 1.0
+    }
+  },
+  "controls": {
+    "tens dial": {
+      "kind": "button",
+      "part": [
+        "tens",
+        "dial"
+      ],
+      "instruction": "Add ten",
+      "joint": [
+        "tens"
+      ],
+      "coordinate": "tens.turn",
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "turn tens": {
+      "kind": "turn",
+      "part": [
+        "tens",
+        "dial"
+      ],
+      "input": "tens_entry",
+      "per_unit": 36.0,
+      "joint": [
+        "tens"
+      ],
+      "coordinate": "tens.turn",
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "turn units": {
+      "kind": "turn",
+      "part": [
+        "units",
+        "dial"
+      ],
+      "input": "units_entry",
+      "per_unit": -36.0,
+      "joint": [
+        "units"
+      ],
+      "coordinate": "units.turn",
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "units dial": {
+      "kind": "button",
+      "part": [
+        "units",
+        "dial"
+      ],
+      "instruction": "Add one",
+      "joint": [
+        "units"
+      ],
+      "coordinate": "units.turn",
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "bindings": [
+    {
+      "name": "_b0",
+      "expression": "(36.0 * tens_entry)"
+    },
+    {
+      "name": "_b1",
+      "expression": "(units.turn - 100.0)"
+    },
+    {
+      "name": "_b2",
+      "expression": "(_b1 / 360.0)"
+    },
+    {
+      "name": "_b3",
+      "expression": "floor(_b2)"
+    },
+    {
+      "name": "_b4",
+      "expression": "(360.0 * _b3)"
+    },
+    {
+      "name": "_b5",
+      "expression": "(units.turn - _b4)"
+    },
+    {
+      "name": "_b6",
+      "expression": "(360.0 * _j0)"
+    },
+    {
+      "name": "_b7",
+      "expression": "(units.turn - _b6)"
+    }
+  ],
+  "program": {
+    "identity": "815db8ee39e7cd052a04331f51fa8b5d8091cb5d7cc3a8e2f810c6baeebce60e",
+    "clock": "time",
+    "coordinates": {
+      "tens_entry": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "units_entry": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "tens.turn": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "units.turn": {
+        "kind": "coordinate",
+        "initial": -0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      }
+    },
+    "intermediates": [],
+    "edges": [
+      {
+        "kind": "law",
+        "needs": [
+          "units_entry"
+        ],
+        "gives": [
+          "units.turn"
+        ],
+        "description": "units_entry drives units.turn",
+        "stated_by": "Columns",
+        "expressions": [
+          "(-36.0 * units_entry)"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          null
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "tens_entry",
+          "units.turn"
+        ],
+        "gives": [
+          "tens.turn"
+        ],
+        "description": "(tens_entry, units.turn) drives tens.turn",
+        "stated_by": "Columns",
+        "expressions": [
+          "(_b0 + (((60.0 * _b3) + (20.0 * min(max((((_b5 - 100.0) + 0.0) / 10.0), 0.0), 1.0))) + (40.0 * min(max((((_b5 - 110.0) + 0.0) / 40.0), 0.0), 1.0))))"
+        ],
+        "affine": [
+          false
+        ],
+        "plans": [
+          {
+            "skeleton": "(_b0 + (((60.0 * _j0) + (20.0 * min(max((((_b7 - 100.0) + 0.0) / 10.0), 0.0), 1.0))) + (40.0 * min(max((((_b7 - 110.0) + 0.0) / 40.0), 0.0), 1.0))))",
+            "jumps": [
+              {
+                "name": "_j0",
+                "primitive": "floor",
+                "level": "_b2",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "spans": {},
+    "sources": {
+      "tens.turn": [
+        "tens_entry",
+        "units_entry"
+      ],
+      "tens_entry": [
+        "tens_entry"
+      ],
+      "units.turn": [
+        "units_entry"
+      ],
+      "units_entry": [
+        "units_entry"
+      ]
+    },
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "subdivisions": 64,
+      "bisection_rounds": 64,
+      "max_crossings": 1000,
+      "agreement": 1e-09
+    }
+  },
+  "root": {
+    "name": "Columns",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": null,
+    "operations": [],
+    "children": [
+      {
+        "name": "units",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": null,
+        "operations": [
+          [
+            "r",
+            "units.turn",
+            [
+              1,
+              0,
+              0
+            ]
+          ]
+        ],
+        "children": [
+          {
+            "name": "dial",
+            "type": "LeafNode",
+            "color": null,
+            "mtime": null,
+            "operations": [],
+            "model": "dial"
+          }
+        ]
+      },
+      {
+        "name": "tens",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": null,
+        "operations": [
+          [
+            "r",
+            "tens.turn",
+            [
+              1,
+              0,
+              0
+            ]
+          ],
+          [
+            "t",
+            [
+              "60.0",
+              "0.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "children": [
+          {
+            "name": "dial",
+            "type": "LeafNode",
+            "color": null,
+            "mtime": null,
+            "operations": [],
+            "model": "dial"
+          }
+        ]
+      },
+      {
+        "name": "frame",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": null,
+        "operations": [
+          [
+            "t",
+            [
+              "0.0",
+              "-60.0",
+              "0.0"
+            ]
+          ]
+        ],
+        "model": "frame"
+      }
+    ]
+  }
+}

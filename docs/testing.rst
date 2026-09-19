@@ -5,18 +5,18 @@
 Test-driven CAD
 ===============
 
-Solid Node has a test runner and `solid_node.test.TestCase` extension to
+Machinome has a test runner and `machinome.test.TestCase` extension to
 run tests with meshes. As an example, you could use
 `assertNotIntersecting` to verify that two gears do not overlap during
 movement, or `assertIntersecting` to verify that a handle is not
 detached during movement.
 
 Tests can be written in two styles, both run by the same
-``solid test`` command:
+``machinome test`` command:
 
-* mixing `solid_node.test.TestCaseMixin` into the node class, so tests
+* mixing `machinome.test.TestCaseMixin` into the node class, so tests
   live next to the rendering logic — used through most of this page;
-* in a separate companion file, extending `solid_node.test.TestCase` —
+* in a separate companion file, extending `machinome.test.TestCase` —
   shown at the end, and the style the larger
   :doc:`V8 engine example <example-v8-engine>` uses.
 
@@ -38,7 +38,7 @@ First, to create a 6mm hole at the base, edit `myproject/clock_base.py`
 
 Rendered — the base with its 6 mm hole:
 
-.. solid-node:: _exports/clock_base_hole
+.. machinome:: _exports/clock_base_hole
    :height: 360px
 
 And a hole in the pointer, at `myproject/pointer.py`
@@ -56,7 +56,7 @@ And a hole in the pointer, at `myproject/pointer.py`
 
 Rendered — the pointer with its hole:
 
-.. solid-node:: _exports/pointer_hole
+.. machinome:: _exports/pointer_hole
    :height: 360px
 
 Now, you should see a hole through both pointer and
@@ -66,7 +66,7 @@ Let's make a pin through them. Create the file `myproject/pin.py`:
 
 .. code-block:: python
 
-    from solid_node.node import Solid2Node
+    from machinome.node import Solid2Node
     from solid2 import cube, cylinder, translate
 
     class Pin(Solid2Node):
@@ -76,14 +76,14 @@ Let's make a pin through them. Create the file `myproject/pin.py`:
 
 Rendered — the pin:
 
-.. solid-node:: _exports/pin
+.. machinome:: _exports/pin
    :height: 360px
 
 And at `myproject/myproject.py`, assemble the pin together:
 
 .. code-block:: python
 
-    from solid_node.node import AssemblyNode
+    from machinome.node import AssemblyNode
     from .clock_base import ClockBase
     from .pointer import Pointer
     from .pin import Pin
@@ -100,7 +100,7 @@ And at `myproject/myproject.py`, assemble the pin together:
 
 Rendered — the full clock with the pin fitted (press play):
 
-.. solid-node:: _exports/simple_clock_pin
+.. machinome:: _exports/simple_clock_pin
    :height: 360px
 
 The pin has the same nominal radius as the holes. Contact at one
@@ -115,13 +115,13 @@ For this exercise, set aside the generated ``test_myproject.py``
 starter tests; the checks below live on the model itself. We will add
 a companion test file again at the end of this chapter.
 
-We'll use `solid_node.test.TestCaseMixin`. Our SimpleClock
+We'll use `machinome.test.TestCaseMixin`. Our SimpleClock
 class will extend it, and we'll add two tests to `myproject/myproject.py`:
 
 .. code-block:: python
 
-    from solid_node.node import AssemblyNode
-    from solid_node.test import TestCaseMixin
+    from machinome.node import AssemblyNode
+    from machinome.test import TestCaseMixin
     from .clock_base import ClockBase
     from .pointer import Pointer
     from .pin import Pin
@@ -144,8 +144,8 @@ class will extend it, and we'll add two tests to `myproject/myproject.py`:
 
 First prove that these tests catch a bad fit. Temporarily make the pin
 too large: change ``r=3`` to ``r=3.1`` in
-``myproject/pin.py``. Stop ``solid develop`` and run
-``solid test``. Both tests should fail because the pin occupies
+``myproject/pin.py``. Stop ``machinome develop`` and run
+``machinome test``. Both tests should fail because the pin occupies
 material around each hole.
 
 Now reduce the radius to 2.99 in ``myproject/pin.py``:
@@ -162,7 +162,7 @@ its result can depend on the faceted representations.
 
 Rendered — the slimmer pin:
 
-.. solid-node:: _exports/pin_thin
+.. machinome:: _exports/pin_thin
    :height: 360px
 
 Run the tests again. At the initial pose the two tests should pass.
@@ -185,7 +185,7 @@ pieces in several moments of the animation:
 .. code-block:: python
 
     ...
-    from solid_node.test import TestCaseMixin, testing_steps
+    from machinome.test import TestCaseMixin, testing_steps
 
     class SimpleClock(AssemblyNode, TestCaseMixin):
         ...
@@ -230,7 +230,7 @@ While `@testing_steps` runs a test across a range of the animation,
 
 .. code-block:: python
 
-    from solid_node.test import TestCaseMixin, testing_instant
+    from machinome.test import TestCaseMixin, testing_instant
 
     class SimpleClock(AssemblyNode, TestCaseMixin):
         ...
@@ -239,11 +239,57 @@ While `@testing_steps` runs a test across a range of the animation,
         def test_pointer_at_half_turn(self):
             self.assertNotIntersecting(self.pointer, self.pin)
 
+Skipping a test and marking a known gap
+========================================
+
+A test that does not apply here — the exact kernel is not installed, a
+part this project does not have — says so with ``self.skipTest(reason)``,
+anywhere in the method or in ``setUp``:
+
+.. code-block:: python
+
+    def test_only_under_the_exact_kernel(self):
+        if not exact_kernel_available():
+            self.skipTest('the exact kernel is not available here')
+        ...
+
+A skipped test is reported by name, with its reason, and counts as neither
+a pass nor a failure; it cannot make the run exit non-zero on its own.
+`unittest`'s own decorators work too — ``@unittest.skip('why')`` on one
+method or on a whole test class, and ``@unittest.skipIf``/``@unittest.skipUnless``
+— and a skipped class runs no method's body and no ``setUpClass`` at all.
+
+Under ``@testing_steps``/``@testing_instant`` the unit of a skip is the
+INSTANT: a method that skips at one instant and passes at the rest is
+reported passed, saying how many instants it skipped; only a method that
+skips at every instant is reported skipped.
+
+A known, accepted gap — a regression the project has not fixed yet, or a
+kernel limit it is waiting on — is marked with ``@unittest.expectedFailure``
+instead of being deleted or left red:
+
+.. code-block:: python
+
+    import unittest
+
+    @unittest.expectedFailure
+    def test_full_precision_hobbing_profile(self):
+        self.assertAlmostEqual(measured_backlash, 0.0, places=4)
+
+A marked method that raises is reported an expected failure, with no
+traceback printed, and does not count as a failure. A marked method that
+does **not** raise is reported an unexpected success — the gap it names is
+gone, or was never real — and this **does** fail the run: a green suite
+must not stand over a statement about the machine that is no longer true.
+A skip takes precedence over the marking: a marked method that skips at
+every instant is reported skipped, neither an expected failure nor an
+unexpected success.
+
 Tests in a separate file
 ========================
 
 Instead of mixing `TestCaseMixin` into the node class, tests can live in
-their own file, extending `solid_node.test.TestCase`. The test runner
+their own file, extending `machinome.test.TestCase`. The test runner
 looks for a companion file next to the node being tested:
 
 * for a node in a package, like `windmill/__init__.py`, it loads
@@ -259,7 +305,7 @@ node as `self.simple_clock`. The clock tests from above, in a separate
 
 .. code-block:: python
 
-    from solid_node.test import TestCase, testing_steps
+    from machinome.test import TestCase, testing_steps
 
     class SimpleClockTest(TestCase):
 
@@ -271,7 +317,7 @@ node as `self.simple_clock`. The clock tests from above, in a separate
         def test_pin_runs_free_in_pointer(self):
             self.assertNotIntersecting(self.node.pointer, self.node.pin)
 
-Both styles are run by the same `solid test` command, and can be
+Both styles are run by the same `machinome test` command, and can be
 combined — this is how the :doc:`V8 engine <example-v8-engine>` keeps
 one test file per part.
 
@@ -363,7 +409,7 @@ Connectivity contracts
 Connectivity asks whether geometry hangs together inside one printed solid;
 it is local and invariant under rigid placement. Collision asks whether
 separately placed parts clash in the world and can change at each animation
-instant. Solid Node keeps those frames distinct:
+instant. Machinome keeps those frames distinct:
 
 * ``assertNoDisconnectedSolids(node)`` — starting at ``node``, descends
   through assemblies and stops at the first rigid node on each branch. Each
@@ -621,16 +667,16 @@ not of the model:
   run went from 28 minutes to a minute and a half with the same verdict on
   every comparison.
 
-Select the kernel with ``solid test --exact`` or ``solid test --faceted``.
+Select the kernel with ``machinome test --exact`` or ``machinome test --faceted``.
 Without a flag the ``SOLID_TEST_KERNEL`` environment variable decides
 (``exact`` or ``faceted``), and without that the run is exact. The
-``solid`` command loads the project's ``.env`` at startup, so a developer
+``machinome`` command loads the project's ``.env`` at startup, so a developer
 records the fast loop once, in that ignored checkout-local file::
 
     SOLID_TEST_KERNEL=faceted
 
 A CI runner has no such file and needs no configuration: its runs are
-exact. Keep ``.env`` out of the repository (``solid new`` ignores it) so
+exact. Keep ``.env`` out of the repository (``machinome new`` ignores it) so
 the choice never travels.
 
 A faceted run says what it is — a line before the first build names the
@@ -645,7 +691,7 @@ checks come from the exact run.
 Where solids meet exactly — a boss seated on a plate, a shaft at zero
 nominal clearance in its bore — their meshes overlap by slivers the exact
 kernel never sees. The **volume epsilon** is the developer's stated size
-for that noise: ``solid test --faceted --volume-epsilon 0.5`` (or
+for that noise: ``machinome test --faceted --volume-epsilon 0.5`` (or
 ``SOLID_TEST_VOLUME_EPSILON=0.5`` beside the kernel line in ``.env``)
 reports every intersection of at most 0.5 mm³ as empty for the whole run,
 before any assertion reads it. The default is 0, and a project whose
@@ -678,7 +724,7 @@ it already answered at a quarter of the run's cost.
 The **placement quantum** absorbs that noise: the relative matrix is
 divided by the quantum and rounded to integer cell indices, and two
 placements landing in the same cell are one question. It is selected the
-same way as the kernel and the epsilon — ``solid test
+same way as the kernel and the epsilon — ``machinome test
 --placement-quantum MM``, else ``SOLID_TEST_PLACEMENT_QUANTUM`` in
 ``.env``, else the framework's default of ``1e-9`` mm — and, unlike the
 volume epsilon, it applies under BOTH kernels: it identifies a question,

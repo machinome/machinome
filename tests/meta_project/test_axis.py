@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -6,14 +6,14 @@
 
 This class is the portability claim of the scenario layer, which is
 why it lives here rather than beside the framework's other tests: it
-is a companion test of a node file, so `solid test tests/meta_project/
+is a companion test of a node file, so `machinome test tests/meta_project/
 axis.py` runs it through the CLI, the loader, the builder and the
 runner -- and tests/test_simulation_scenario.py imports this same
 class so pytest runs it too. Neither runner is modified for it, and
 nothing in it is written for one runner or the other.
 """
 
-from solid_node.simulation import ScenarioTest
+from machinome.simulation import ScenarioTest
 
 from .axis import Axis
 

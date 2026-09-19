@@ -1,19 +1,19 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 """Framework-level regression for issue #19: a FRESH node.assemble()
-(no set_keyframe -- exactly the viewer/build path `solid develop`
+(no set_keyframe -- exactly the viewer/build path `machinome develop`
 takes) on a genuinely non-linear kinematic must complete, not raise,
 and must serialize the operation as the expected asin(...)-containing
 $t expression.
 
 Uses tests/meta_project/conrod.py (a real fixture, exercised
-end-to-end via `solid test` by tests/test_meta.py's
+end-to-end via `machinome test` by tests/test_meta.py's
 NonLinearSymbolicMathMetaTest) directly, instantiated and assembled
 in-process the way tests/test_two_pipes.py exercises flat_project
 fixtures -- this is the layer BELOW the meta harness: it inspects the
-serialized operation directly rather than parsing `solid test`
+serialized operation directly rather than parsing `machinome test`
 subprocess output."""
 
 from .base import BaseNodeTest

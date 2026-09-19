@@ -7,8 +7,8 @@ artifact consumers.
 ## Requirements
 ### Requirement: One-shot conventional node build
 
-The system SHALL provide `solid build [reference]`, using the same node
-reference resolution and ordinary build pipeline as `solid develop
+The system SHALL provide `machinome build [reference]`, using the same node
+reference resolution and ordinary build pipeline as `machinome develop
 [reference]`. It SHALL
 produce the complete current model in the normal project build directory and
 exit 0 without starting a watcher or viewer. Its exit status SHALL reflect
@@ -19,34 +19,34 @@ model.
 
 #### Scenario: Build the project model
 
-- **WHEN** a user runs `solid build` from a project whose manifest declares
-  `[tool.solid-node] model`
+- **WHEN** a user runs `machinome build` from a project whose manifest declares
+  `[tool.machinome] model`
 - **THEN** the command resolves that model, completes the ordinary model build
   in the project's normal build directory, and exits 0
 
 #### Scenario: Build publishes beside a running watch loop
 
-- **WHEN** a user runs `solid build` while `solid develop` is
+- **WHEN** a user runs `machinome build` while `machinome develop` is
   watching the same project
 - **THEN** the two builds serialise on the project build lock and the command
   exits 0 for a model that built correctly
 
 #### Scenario: The source moves while the build waits
 
-- **WHEN** the project source is edited while `solid build` is waiting for the
+- **WHEN** the project source is edited while `machinome build` is waiting for the
   project build lock
 - **THEN** the command rebuilds from the edited source and exits 0 with the
   current model published
 
 ### Requirement: Missing model is a distinct build outcome
 
-The system SHALL exit 66, documented as `MODEL_NOT_FOUND`, when `solid build`
+The system SHALL exit 66, documented as `MODEL_NOT_FOUND`, when `machinome build`
 cannot find the resolved model path; other build failures remain generic
 non-zero outcomes.
 
 #### Scenario: Build target does not exist
 
-- **WHEN** a user runs `solid build missing.py` and no such model path
+- **WHEN** a user runs `machinome build missing.py` and no such model path
   resolves
 - **THEN** the command exits 66 and reports the unresolved model path
 

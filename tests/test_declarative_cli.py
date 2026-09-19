@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -20,11 +20,11 @@ from contextlib import redirect_stderr
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from solid_node.cli import manage
-from solid_node.core.loader import load_node, parse_overrides
-from solid_node.manager.build import Build, build_once
-from solid_node.manager.develop import Develop, run_builder
-from solid_node.parameters import ParameterError
+from machinome.cli import manage
+from machinome.core.loader import load_node, parse_overrides
+from machinome.manager.build import Build, build_once
+from machinome.manager.develop import Develop, run_builder
+from machinome.parameters import ParameterError
 
 from .base import BASEDIR, BaseNodeTest
 from .declarative_project.engine import Engine
@@ -122,12 +122,12 @@ class CliFlagTest(TestCase):
 
     def test_every_node_command_accepts_set(self):
         for command, handler in (
-                ('build', 'solid_node.manager.build.Build.handle'),
-                ('develop', 'solid_node.manager.develop.Develop.handle'),
-                ('export', 'solid_node.manager.export.Export.handle'),
-                ('test', 'solid_node.manager.test.Test.handle'),
-                ('snapshot', 'solid_node.manager.snapshot.Snapshot.handle')):
-            argv = ['solid', command, 'model.py',
+                ('build', 'machinome.manager.build.Build.handle'),
+                ('develop', 'machinome.manager.develop.Develop.handle'),
+                ('export', 'machinome.manager.export.Export.handle'),
+                ('test', 'machinome.manager.test.Test.handle'),
+                ('snapshot', 'machinome.manager.snapshot.Snapshot.handle')):
+            argv = ['machinome', command, 'model.py',
                     '--set', 'bore=32.0', '--set', 'count=6']
             with patch.object(sys, 'argv', argv), patch(handler) as handle:
                 manage()
@@ -135,14 +135,14 @@ class CliFlagTest(TestCase):
             self.assertEqual(args.set, ['bore=32.0', 'count=6'], command)
 
     def test_the_flag_defaults_to_nothing(self):
-        with patch.object(sys, 'argv', ['solid', 'build', 'model.py']), \
-                patch('solid_node.manager.build.Build.handle') as handle:
+        with patch.object(sys, 'argv', ['machinome', 'build', 'model.py']), \
+                patch('machinome.manager.build.Build.handle') as handle:
             manage()
         self.assertEqual(handle.call_args[0][0].set, [])
 
     def test_commands_without_a_node_reject_it(self):
         stderr = io.StringIO()
-        with patch.object(sys, 'argv', ['solid', 'viewer', '--set', 'a=1']), \
+        with patch.object(sys, 'argv', ['machinome', 'viewer', '--set', 'a=1']), \
                 redirect_stderr(stderr), self.assertRaises(SystemExit) as ctx:
             manage()
         self.assertEqual(ctx.exception.code, 2)
@@ -155,7 +155,7 @@ class ManagerOverridesTest(TestCase):
         command.path = 'model.py'
         command.overrides = ['bore=32.0']
 
-        with patch('solid_node.manager.build.Builder') as builder:
+        with patch('machinome.manager.build.Builder') as builder:
             build_once(command.path, command.overrides)
 
         self.assertEqual(builder.call_args.kwargs['overrides'], ['bore=32.0'])
@@ -164,8 +164,8 @@ class ManagerOverridesTest(TestCase):
     def test_build_handle_records_the_overrides(self):
         command = Build()
         current = MagicMock(exitcode=0)
-        with patch('solid_node.manager.build.resolve_node'), \
-                patch('solid_node.manager.build.Process',
+        with patch('machinome.manager.build.resolve_node'), \
+                patch('machinome.manager.build.Process',
                       return_value=current):
             command.handle(Namespace(path='model.py', set=['bore=32.0']))
         self.assertEqual(command.overrides, ['bore=32.0'])
@@ -175,7 +175,7 @@ class ManagerOverridesTest(TestCase):
         develop.path = 'model.py'
         develop.overrides = ['bore=32.0']
 
-        with patch('solid_node.manager.develop.Builder') as builder:
+        with patch('machinome.manager.develop.Builder') as builder:
             run_builder(develop.path, develop.overrides, is_reload=True)
 
         self.assertEqual(builder.call_args.kwargs['overrides'], ['bore=32.0'])
@@ -189,7 +189,7 @@ class ManagerOverridesTest(TestCase):
                          web=False, web_dev=False, debug_builder=False,
                          debug_web=False, no_web=True, callback=None)
 
-        with patch('solid_node.manager.develop.Process',
+        with patch('machinome.manager.develop.Process',
                    return_value=builder_instance), \
                 self.assertRaises(SystemExit):
             develop.handle(args)
@@ -197,6 +197,6 @@ class ManagerOverridesTest(TestCase):
         self.assertEqual(develop.overrides, ['bore=32.0'])
 
     def test_the_builder_loads_with_its_overrides(self):
-        from solid_node.core.builder import Builder
+        from machinome.core.builder import Builder
         builder = Builder('model.py', watch=False, overrides=['bore=32.0'])
         self.assertEqual(builder.overrides, ['bore=32.0'])

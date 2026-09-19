@@ -14,7 +14,7 @@ import time
 BENCH = os.environ['BENCH']
 sys.path.insert(0, BENCH)
 
-import solid_node.test as test_module
+import machinome.test as test_module
 
 COUNTS = collections.Counter()
 TIME = collections.defaultdict(float)
@@ -67,7 +67,7 @@ def counting_placed(*arguments, **keywords):
 
 test_module._placed_intersection = counting_placed
 
-from solid_node.cli import manage
+from machinome.cli import manage
 
 sys.argv = ['solid', 'test'] + sys.argv[1:]
 start = time.perf_counter()

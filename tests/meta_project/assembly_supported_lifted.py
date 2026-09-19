@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,7 +11,7 @@ and fails at the second -- the assertion itself neither accepts nor sets
 a keyframe.
 """
 
-from solid_node.node import AssemblyNode
+from machinome.node import AssemblyNode
 
 from .support_parts import Block
 

@@ -31,14 +31,14 @@ import trimesh
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from solid_node.core.serializer import symbolic_drivers           # noqa: E402
-from solid_node.node.assembly import AssemblyNode                # noqa: E402
-from solid_node.node.base import _compose_world_matrix           # noqa: E402
-from solid_node.node.qualified import (DriverIdError, DriverToken,  # noqa: E402
+from machinome.core.serializer import symbolic_drivers           # noqa: E402
+from machinome.node.assembly import AssemblyNode                # noqa: E402
+from machinome.node.base import _compose_world_matrix           # noqa: E402
+from machinome.node.qualified import (DriverIdError, DriverToken,  # noqa: E402
                                        driver_id, instance_path)
-from solid_node.simulation import Sim                            # noqa: E402
-from solid_node.simulation.driver import declared_drivers        # noqa: E402
-from solid_node.simulation.enumeration import qualified_drivers  # noqa: E402
+from machinome.simulation import Sim                            # noqa: E402
+from machinome.simulation.driver import declared_drivers        # noqa: E402
+from machinome.simulation.enumeration import qualified_drivers  # noqa: E402
 
 from machine_model import Axis, Machine                          # noqa: E402
 from symbolic import collect_ops                                 # noqa: E402

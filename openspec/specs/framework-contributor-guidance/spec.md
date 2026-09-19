@@ -3,7 +3,7 @@
 ## Purpose
 
 Define the framework-owned orientation and verification guidance provided to
-solid-node contributors.
+machinome contributors.
 
 ## Requirements
 
@@ -30,7 +30,7 @@ assistant identity.
 
 #### Scenario: Framework behavior needs end-to-end proof
 - **WHEN** a contributor changes behavior involving node loading, rendering,
-  keyframes, meshes, or the `solid test` subprocess path
+  keyframes, meshes, or the `machinome test` subprocess path
 - **THEN** the briefing directs them to the meta-project harness and explains
   why paired valid and adversarial-invalid fixtures provide useful evidence.
 

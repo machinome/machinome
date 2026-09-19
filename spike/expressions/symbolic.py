@@ -8,12 +8,12 @@ deleted rather than adapted, exactly as `spike/axis/steplab.py` was
 when stage 2 landed:
 
 - `DriverToken` and `driver_id`/`instance_path` are
-  `solid_node.node.qualified`;
-- the binding walk is `solid_node.node.qualified.drive_tree`, reached
+  `machinome.node.qualified`;
+- the binding walk is `machinome.node.qualified.drive_tree`, reached
   publicly through `AssemblyNode.set_state` (numeric, by qualified id)
-  and `solid_node.core.serializer.symbolic_drivers` (symbolic);
+  and `machinome.core.serializer.symbolic_drivers` (symbolic);
 - the qualified enumeration is
-  `solid_node.simulation.enumeration.qualified_drivers`.
+  `machinome.simulation.enumeration.qualified_drivers`.
 
 What remains is not a shim. `collect_ops` is measurement: it reads back
 what a render actually produced, keyed the way this spike's transcript

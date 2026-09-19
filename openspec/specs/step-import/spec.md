@@ -2,7 +2,6 @@
 
 ## Purpose
 The STEP part leaf: how a STEP document becomes an exact part -- its declaration and freshness, the product selected by name with the inventory as the failure, the product's own frame, correction in code, the solid-admission gate, colour from the document, one read per file per process, and its exactness.
-
 ## Requirements
 ### Requirement: STEP source declaration and freshness
 
@@ -17,6 +16,15 @@ project-local modules it imports, because it carries geometry-affecting
 code — the `part` selection and the `adjust` hook — so editing the wrapper
 SHALL invalidate the node's artifacts. A subclass without `step_source`
 SHALL fail at construction with an error naming the class.
+
+A subclass whose `step_source` names a file that does not exist SHALL also
+fail at construction, with an error naming the class, `step_source` and the
+value declared on it, and the absolute path the declaration resolved to; a
+`step_source` resolving to something that exists but is not a regular file
+SHALL fail the same way, saying so. Neither failure SHALL substitute a
+placeholder solid, and neither SHALL be deferred to the moment the document
+is read — a vendor document that has not been fetched is a declaration to
+correct or a file to obtain, never geometry to invent.
 
 #### Scenario: The declared file resolves beside the wrapper module
 
@@ -43,6 +51,22 @@ SHALL fail at construction with an error naming the class.
 - **WHEN** a `StepNode` subclass declaring no `step_source` is instantiated
 - **THEN** an error is raised naming the class and the missing attribute
 
+#### Scenario: A declared document that is not there fails at construction
+
+- **WHEN** a `StepNode` subclass whose `step_source` names a file that does
+  not exist — a vendor document not yet fetched or extracted — is
+  instantiated
+- **THEN** an error is raised naming the class, `step_source` and its
+  declared value, and the absolute path resolved from it, and no document is
+  read and no artifact is written
+
+#### Scenario: A step_source naming a directory fails at construction
+
+- **WHEN** a `StepNode` subclass whose `step_source` resolves to a directory
+  is instantiated
+- **THEN** an error is raised saying the path is not a file, naming the class
+  and `step_source`, rather than the STEP reader failing on it later
+
 ### Requirement: One part selected out of the document by product name
 
 A STEP file SHALL be treated as a document of products, one of which a
@@ -61,6 +85,18 @@ never be selected by omission, so a document of several components SHALL
 NOT be handed to a node as one part unless the node names it; naming it
 SHALL still select it.
 
+A name is not always unique: a document may carry several distinct products
+under one name. A subclass SHALL therefore be able to declare `part_index`
+beside `part`, the 1-based position of the product it means among the
+products of that name, in the order the document lists them. The index
+SHALL be relative to the name, so a `part` and a `part_index` can never
+state different products; a subclass that declares `part_index` and no
+`part` SHALL be refused, because a node selecting by omission has no name to
+index. An index below 1, or beyond the number of products carrying the name,
+SHALL be refused naming the index and how many products the name has, and
+SHALL NEVER be rounded to a neighbouring product. `part_index = 1` beside a
+name only one product carries SHALL select that product.
+
 When a document has more than one candidate and `part` is unset, or when
 `part` names a
 product the file does not hold, the build SHALL fail with the file's
@@ -71,8 +107,15 @@ volume — so a developer or an agent learns the document's contents from the
 failure itself and no separate inspection tool has to exist. A product the
 file leaves unnamed SHALL appear in that inventory as unnamed.
 
+Every product whose name another product of the document shares SHALL carry
+its index in that inventory, so the selector a subclass must declare is read
+off the failure beside the bounds, solid count and volume that say which
+product is meant. A product whose name is its own SHALL be reported without
+an index.
+
 When two products of one name are present, selecting that name SHALL fail
-naming the ambiguity and describing both, rather than choosing one.
+naming the ambiguity, describing each match with its index, and saying that
+`part_index` chooses between them, rather than choosing one.
 
 #### Scenario: A file holding one part alone needs no selection
 
@@ -119,13 +162,43 @@ naming the ambiguity and describing both, rather than choosing one.
 - **WHEN** a document holds two distinct products of the same name and a
   `StepNode` names it
 - **THEN** the build fails naming the ambiguity and describing both
-  products, and no artifact is written
+  products, each with the index that would select it, and no artifact is
+  written
 
 #### Scenario: A sub-assembly is a selectable product
 
 - **WHEN** a `StepNode` names a sub-assembly of the document
 - **THEN** its geometry is that sub-assembly's components composed at their
   placements within it, as the document holds them
+
+#### Scenario: A shared name is resolved by its index
+
+- **WHEN** a document holds two distinct products named `Pin`, and two
+  `StepNode` subclasses name that product declaring `part_index = 1` and
+  `part_index = 2`
+- **THEN** each builds, and each holds the geometry of the product the
+  inventory listed under that index — the first the document lists and the
+  second
+
+#### Scenario: An index beyond the products of that name is refused
+
+- **WHEN** a `StepNode` declares a `part` two products carry and a
+  `part_index` of 3
+- **THEN** the build fails naming the index and the two products the name
+  has, listing them with their own indices, and no artifact is written
+
+#### Scenario: An index with no name is refused
+
+- **WHEN** a `StepNode` declares `part_index` and no `part`
+- **THEN** the build fails saying that an index selects among the products
+  of a declared name, and reports the document's inventory
+
+#### Scenario: A unique name is reported without an index
+
+- **WHEN** the inventory is reported for a document whose product names are
+  all distinct
+- **THEN** no product line carries an index, and the lines read exactly as
+  they do for a document that has no repeated name
 
 ### Requirement: The part arrives in the product's own frame
 
@@ -314,3 +387,4 @@ declares no `StepNode`.
 - **WHEN** a `StepNode` declares `angular_deflection = 0.5`
 - **THEN** its STL artifact holds strictly fewer triangles than the same
   node declaring nothing, and its `.brep` is unchanged
+

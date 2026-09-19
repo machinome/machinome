@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -47,10 +47,10 @@ import cadquery as cq
 import numpy as np
 from trimesh.creation import box
 
-import solid_node.test as test_module
-from solid_node.exact import _placement_cache, cached_shape, write_brep
-from solid_node.node.base import AbstractBaseNode, _compose_world_matrix
-from solid_node.node.operations import Rotation, Translation
+import machinome.test as test_module
+from machinome.exact import _placement_cache, cached_shape, write_brep
+from machinome.node.base import AbstractBaseNode, _compose_world_matrix
+from machinome.node.operations import Rotation, Translation
 
 
 class FakeNode:

@@ -1,23 +1,29 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 import io
 import os
 import tempfile
+import unittest
 from argparse import Namespace
 from contextlib import redirect_stdout, redirect_stderr
 from unittest import TestCase
 from unittest.mock import patch
 from trimesh.creation import box
-from solid_node.manager.test import Test as Runner, StopTestRun
-from solid_node import test as framework
-from solid_node.node.base import AbstractBaseNode
-from solid_node.node.operations import Translation
+from machinome.manager.test import Test as Runner, StopTestRun
+from machinome import test as framework
+from machinome.motion.ports import get_coordinate
+from machinome.node.base import AbstractBaseNode
+from machinome.node.operations import Translation
+from machinome.simulation import Sim
+from machinome.simulation.enumeration import bind_declared_defaults
+
+from .running_project.machine import Conditional, Floating, Train, TrainBody
 
 
 def with_instants(*values):
-    """Stand-in for solid_node.test.testing_steps/testing_instant: tags
+    """Stand-in for machinome.test.testing_steps/testing_instant: tags
     a plain function with the instants Test.run_test iterates over."""
     def decorator(method):
         method.testing_instants = list(values)
@@ -75,6 +81,203 @@ def run_class_tests_capturing_stdout(runner, node):
             runner.run_class_tests(node, node)
         except StopTestRun:
             pass
+
+
+def run_class_tests_capturing_output(runner, klass, node):
+    """Like run_class_tests_capturing_stdout, but returns the captured
+    text and accepts `klass` and `node` separately -- needed when the
+    methods under test live on a companion test case bound to a
+    different node object (the setUp-skip scenarios)."""
+    out = io.StringIO()
+    with redirect_stdout(out):
+        try:
+            runner.run_class_tests(klass, node)
+        except StopTestRun:
+            pass
+    return out.getvalue()
+
+
+class SkipTestMixin:
+    """A tiny stand-in for unittest.TestCase.skipTest: raises the same
+    exception the real method raises, without pulling in the rest of
+    TestCase -- FakeNode deliberately isn't one."""
+
+    def skipTest(self, reason=None):
+        raise unittest.SkipTest(reason)
+
+
+class SkipsOnlyInstantNode(SkipTestMixin, FakeNode):
+    def test_skip(self):
+        self.skipTest('the exact kernel is not available here')
+
+
+class ExpectedFailureRaisesNode(FakeNode):
+    @unittest.expectedFailure
+    def test_expected_fail(self):
+        raise AssertionError('the known kernel gap')
+
+
+class ExpectedFailurePassesNode(FakeNode):
+    @unittest.expectedFailure
+    def test_expected_fail(self):
+        pass
+
+
+class SkipMiddleInstantNode(SkipTestMixin, FakeNode):
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        self.calls.append(self.last_instant)
+        if self.last_instant == 1:
+            self.skipTest('nothing to compare at mid-sweep')
+
+
+class SkipEveryInstantNode(SkipTestMixin, FakeNode):
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        self.calls.append(self.last_instant)
+        self.skipTest('never applicable')
+
+
+class FailThenSkipNode(SkipTestMixin, FakeNode):
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        self.calls.append(self.last_instant)
+        if self.last_instant == 0:
+            raise AssertionError('a real regression')
+        if self.last_instant == 2:
+            self.skipTest('skipped at instant 2')
+
+
+class ExpectedFailureSweepNode(FakeNode):
+    @unittest.expectedFailure
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        self.calls.append(self.last_instant)
+        if self.last_instant == 1:
+            raise AssertionError('the known kernel gap')
+
+
+class ExpectedFailureAllSkipNode(SkipTestMixin, FakeNode):
+    @unittest.expectedFailure
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        self.calls.append(self.last_instant)
+        self.skipTest('never applicable')
+
+
+@unittest.skip('methods should not run')
+class SkippedWholeClassNode(FakeNode):
+    setup_called = False
+
+    @classmethod
+    def setUpClass(cls):
+        cls.setup_called = True
+
+    def test_a(self):
+        self.calls.append('a')
+
+    def test_b(self):
+        self.calls.append('b')
+
+
+class SetupSkipsCase(SkipTestMixin):
+    """A companion test case whose setUp skips before any instant runs
+    (reviewer's note 1): both test methods must be individually skipped,
+    and the run continues from one to the next."""
+
+    def __init__(self):
+        self.calls = []
+
+    def setUp(self):
+        self.calls.append('setup')
+        self.skipTest('the exact kernel is not available here')
+
+    def tearDown(self):
+        self.calls.append('teardown')
+
+    def test_a(self):
+        self.calls.append('a')
+
+    def test_b(self):
+        self.calls.append('b')
+
+
+class SetupRaisesCase:
+    """A companion whose setUp raises something other than SkipTest: the
+    run aborts exactly as it does today (reviewer's note 1) -- a
+    green-both-ways guard, not a RED case."""
+
+    def setUp(self):
+        raise RuntimeError('setup blew up')
+
+    def test_a(self):
+        pass
+
+
+class FakeChild:
+    """A minimal stand-in for a child node: `restore_children_checkpoints`
+    only reads and reassigns `operations`, and `re_place_declared_joints`
+    finds no joints declared on a plain class."""
+
+    def __init__(self):
+        self.operations = []
+
+
+class ChildOperationsGrowThenSkipNode(SkipTestMixin, FakeNode):
+    """A sweep whose instant 0 leaks an operation onto a child and whose
+    instant 1 skips: instant 2 must still see a restored child
+    (reviewer's note 3) -- restore_children_checkpoints already runs
+    after every instant unconditionally, skipped ones included, so this
+    is a guard rather than a RED case."""
+
+    def __init__(self, child):
+        super().__init__()
+        self.child = child
+        self.instant2_operations = None
+
+    @property
+    def children(self):
+        return [self.child]
+
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        if self.last_instant == 0:
+            self.child.operations.append('leaked')
+        elif self.last_instant == 1:
+            self.skipTest('mid-sweep')
+        else:
+            self.instant2_operations = list(self.child.operations)
+
+
+class FailfastSkipSweepNode(SkipTestMixin, FakeNode):
+    @with_instants(0, 1, 2)
+    def test_sweep(self):
+        self.calls.append(self.last_instant)
+        if self.last_instant == 1:
+            self.skipTest('mid-sweep')
+
+
+class FailfastExpectedFailureSweepThenPassNode(FakeNode):
+    # dir() visits these in alphabetical order, so test_a_expected_fail
+    # always runs before test_b_passes.
+    @unittest.expectedFailure
+    @with_instants(0, 1, 2)
+    def test_a_expected_fail(self):
+        self.calls.append(('a', self.last_instant))
+        if self.last_instant == 1:
+            raise AssertionError('the known kernel gap')
+
+    def test_b_passes(self):
+        self.calls.append('b')
+
+
+class FailfastUnexpectedSuccessNode(FakeNode):
+    @unittest.expectedFailure
+    def test_a_unexpectedly_passes(self):
+        self.calls.append('a')
+
+    def test_b_should_not_run(self):
+        self.calls.append('b')
 
 
 class FailfastInstantsLoopTest(TestCase):
@@ -156,6 +359,245 @@ class FailfastAbortsRunTest(TestCase):
         self.assertEqual(runner.num_failed, 1)
         self.assertEqual(runner.num_passed, 1)
         self.assertIn("Ran 2 tests", out.getvalue())
+
+
+class SkipAndExpectedFailureTest(TestCase):
+    """workflow/warts.md, Internal-Cycloidal-Actuator finding: the
+    instants loop and run_class_tests have no skip and no
+    expected-failure concept -- `unittest.SkipTest` is caught by the
+    bare `except Exception` and counted as a failure, and
+    `@unittest.expectedFailure` is read nowhere. Each method here is
+    RED against the unchanged runner for the reason recorded in
+    tasks.md 1.1/1.2; evidence.md's probes are the end-to-end
+    reproduction this file exercises unit by unit."""
+
+    def test_a_skip_is_reported_skipped_not_failed(self):
+        node = SkipsOnlyInstantNode()
+        runner = Runner()
+        runner.test_case = None
+
+        text = run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(runner.num_failed, 0)
+        self.assertEqual(getattr(runner, 'num_skipped', 0), 1)
+        self.assertIn(' skipped', text)
+        self.assertIn('the exact kernel is not available here', text)
+
+    def test_an_expected_failure_that_raises_is_not_a_failure(self):
+        node = ExpectedFailureRaisesNode()
+        runner = Runner()
+        runner.test_case = None
+
+        text = run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(runner.num_failed, 0)
+        self.assertEqual(getattr(runner, 'num_expected_failures', 0), 1)
+        self.assertNotIn('Traceback', text)
+        self.assertNotIn('the known kernel gap', text)
+
+    def test_an_expected_failure_that_passes_is_an_unexpected_success(self):
+        node = ExpectedFailurePassesNode()
+        runner = Runner()
+        runner.test_case = None
+
+        text = run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(runner.num_passed, 0)
+        self.assertEqual(getattr(runner, 'num_unexpected_successes', 0), 1)
+        self.assertIn('UNEXPECTED SUCCESS', text)
+
+    def test_a_skip_at_one_instant_does_not_fail_the_sweep(self):
+        node = SkipMiddleInstantNode()
+        runner = Runner()
+        runner.test_case = None
+
+        text = run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(node.calls, [0, 1, 2])
+        self.assertEqual(runner.num_passed, 1)
+        self.assertEqual(runner.num_failed, 0)
+        self.assertIn('1 of 3 instants skipped', text)
+
+    def test_a_sweep_that_skips_at_every_instant_is_one_skipped_test(self):
+        node = SkipEveryInstantNode()
+        runner = Runner()
+        runner.test_case = None
+
+        run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(getattr(runner, 'num_skipped', 0), 1)
+        self.assertEqual(runner.num_passed, 0)
+        self.assertEqual(runner.num_failed, 0)
+
+    def test_a_skip_does_not_overwrite_a_real_failures_traceback(self):
+        node = FailThenSkipNode()
+        runner = Runner()
+        runner.test_case = None
+
+        text = run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(runner.num_failed, 1)
+        self.assertIn('a real regression', text)
+        self.assertNotIn('SkipTest', text)
+
+    def test_a_marked_methods_sweep_runs_every_instant(self):
+        node = ExpectedFailureSweepNode()
+        runner = Runner()
+        runner.test_case = None
+
+        run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(node.calls, [0, 1, 2])
+        self.assertEqual(getattr(runner, 'num_expected_failures', 0), 1)
+        self.assertEqual(runner.num_failed, 0)
+
+    def test_a_skip_wins_over_the_expectation(self):
+        node = ExpectedFailureAllSkipNode()
+        runner = Runner()
+        runner.test_case = None
+
+        run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(getattr(runner, 'num_skipped', 0), 1)
+        self.assertEqual(getattr(runner, 'num_expected_failures', 0), 0)
+        self.assertEqual(getattr(runner, 'num_unexpected_successes', 0), 0)
+
+    def test_a_class_level_skip_runs_no_body_and_no_setup(self):
+        node = SkippedWholeClassNode()
+        runner = Runner()
+        runner.test_case = None
+
+        run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(node.calls, [])
+        self.assertFalse(SkippedWholeClassNode.setup_called)
+        self.assertEqual(getattr(runner, 'num_skipped', 0), 2)
+
+    def test_a_skip_declared_in_setup_skips_the_method_and_continues(self):
+        case = SetupSkipsCase()
+        node = FakeNode()
+        runner = Runner()
+        runner.test_case = case
+        runner.node = node
+
+        try:
+            text = run_class_tests_capturing_output(runner, case, node)
+        except unittest.SkipTest:
+            self.fail(
+                'a SkipTest raised from setUp escaped run_class_tests '
+                "instead of being reported as a skipped test "
+                "(reviewer's note 1)")
+
+        self.assertEqual(
+            case.calls, ['setup', 'teardown', 'setup', 'teardown'])
+        self.assertEqual(getattr(runner, 'num_skipped', 0), 2)
+        self.assertEqual(runner.num_failed, 0)
+        self.assertIn('the exact kernel is not available here', text)
+
+    def test_a_non_skip_setup_error_still_propagates(self):
+        case = SetupRaisesCase()
+        node = FakeNode()
+        runner = Runner()
+        runner.test_case = case
+        runner.node = node
+
+        with self.assertRaises(RuntimeError):
+            runner.run_class_tests(case, node)
+
+    def test_a_skip_between_instants_still_restores_the_children(self):
+        # reviewer's note 3: a skip at instant 1 after an operation was
+        # added at instant 0 must not leak into instant 2.
+        child = FakeChild()
+        node = ChildOperationsGrowThenSkipNode(child)
+        runner = Runner()
+        runner.test_case = None
+
+        run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(node.instant2_operations, [])
+
+    def test_failfast_does_not_break_the_sweep_on_a_skip(self):
+        node = FailfastSkipSweepNode()
+        runner = Runner()
+        runner.test_case = None
+        runner.node = node
+        runner.failfast = True
+
+        with redirect_stdout(io.StringIO()):
+            runner.run_tests()
+
+        self.assertEqual(node.calls, [0, 1, 2])
+        self.assertEqual(runner.num_passed, 1)
+        self.assertEqual(runner.num_failed, 0)
+
+    def test_failfast_does_not_break_on_a_marked_methods_raise(self):
+        node = FailfastExpectedFailureSweepThenPassNode()
+        runner = Runner()
+        runner.test_case = None
+        runner.node = node
+        runner.failfast = True
+
+        with redirect_stdout(io.StringIO()):
+            runner.run_tests()
+
+        self.assertEqual(
+            node.calls, [('a', 0), ('a', 1), ('a', 2), 'b'])
+        self.assertEqual(getattr(runner, 'num_expected_failures', 0), 1)
+        self.assertEqual(runner.num_failed, 0)
+
+    def test_failfast_stops_on_an_unexpected_success(self):
+        node = FailfastUnexpectedSuccessNode()
+        runner = Runner()
+        runner.test_case = None
+        runner.node = node
+        runner.failfast = True
+
+        with redirect_stdout(io.StringIO()):
+            runner.run_tests()
+
+        self.assertEqual(node.calls, ['a'])
+        self.assertEqual(getattr(runner, 'num_unexpected_successes', 0), 1)
+
+
+class ReportSummaryLineTest(TestCase):
+    """report()'s summary line: unchanged when nothing unusual happened
+    -- the ADR-090 discipline for this output -- and, when something
+    did, the three new counts appended before the kernel/quantum
+    note."""
+
+    def test_default_run_reports_todays_line_unchanged(self):
+        runner = Runner()
+        runner.num_tests = 3
+        runner.num_passed = 3
+        runner.num_failed = 0
+
+        out = io.StringIO()
+        with redirect_stdout(out):
+            runner.report(1.23)
+
+        self.assertIn(
+            'Ran 3 tests in 1.23 seconds: 3 passed, 0 failed\n',
+            out.getvalue())
+
+    def test_nonzero_counts_are_appended_before_the_kernel_note(self):
+        runner = Runner()
+        runner.num_tests = 8
+        runner.num_passed = 4
+        runner.num_failed = 0
+        runner.num_skipped = 1
+        runner.num_expected_failures = 2
+        runner.num_unexpected_successes = 1
+        runner.policy = framework.ComparisonPolicy('faceted', 0.0)
+
+        out = io.StringIO()
+        with redirect_stdout(out):
+            runner.report(1.0)
+
+        self.assertIn(
+            'Ran 8 tests in 1.00 seconds: 4 passed, 0 failed, '
+            '1 skipped, 2 expected failures, 1 unexpected success '
+            '(faceted kernel, volume epsilon 0 mm³)',
+            out.getvalue())
 
 
 class InstrumentedChild:
@@ -263,8 +705,193 @@ class RestoreChildrenCheckpointsTest(TestCase):
         self.assertEqual(child.mesh_access_count, 0)
 
 
+def built(klass):
+    """The rest-render build sequence `evidence/probe_checkpoint.py` and
+    `evidence/probe_conditional.py` use, off the public API: bind every
+    declared default, render at instant 0, and prepare the tree the way
+    the build/test loader does before handing it to the runner."""
+    node = klass()
+    bind_declared_defaults(node)
+    node.set_keyframe(0)
+    node._prepare()
+    return node
+
+
+def motion_count(node):
+    return len([operation for operation in node.operations
+               if getattr(operation, '_motion', False)])
+
+
+def travel_of(node):
+    """The travel every motion operation on `node` states, added up --
+    `evidence/bench/test_machine.py`'s `placement()`."""
+    total = 0.0
+    for operation in node.operations:
+        if getattr(operation, '_motion', False):
+            total += float(operation.serialized[1][0])
+    return total
+
+
+class RestoreChildrenCheckpointsJointTest(TestCase):
+    """`evidence.md`'s reproduction, driven through the runner's own
+    `save_children_checkpoints`/`restore_children_checkpoints`, off a
+    real running root: a checkpoint saved and restored around a joint's
+    placement must leave a CHILD standing at the coordinates it holds,
+    never twice its travel and never at rest while its coordinate reads
+    otherwise."""
+
+    def test_a_running_roots_checkpoint_restore_does_not_double_the_slide(self):
+        # evidence.md §1: doubled, 12.0 and 0.0, for a coordinate
+        # reading 0.0.
+        root = built(Train)
+        runner = Runner()
+
+        sim = Sim(root, 0.1)
+        sim.move('lever', to=120.0, duration=0.2)
+        sim.run(0.2)                                # a Sim poses the tree
+
+        runner.save_children_checkpoints(root)        # the checkpoint is taken
+
+        Sim(root, 0.1)                                # a second Sim poses it
+
+        runner.restore_children_checkpoints(root)      # the checkpoint is restored
+
+        Sim(root, 0.1)                                # a third Sim poses it
+
+        self.assertEqual(motion_count(root.slide), 1)
+        self.assertAlmostEqual(
+            travel_of(root.slide),
+            get_coordinate(root.slide, 'travel')._value)
+
+    def test_a_running_roots_geometry_is_not_lost_after_the_next_keyframe(self):
+        # evidence.md §7 (`BenchGeometry`): the checkpoint held the
+        # build's TAGGED operation; `set_keyframe`'s sweep removes it,
+        # and nothing re-places it because a running root's own
+        # coordinate is not re-solved by the enumeration.
+        root = built(Train)
+        runner = Runner()
+
+        runner.save_children_checkpoints(root)   # what the runner saves
+                                                  # before every test
+
+        sim = Sim(root, 0.1)
+        sim.move('lever', to=120.0, duration=0.2)
+        sim.run(0.2)                             # a Sim poses the tree
+
+        runner.restore_children_checkpoints(root)  # the checkpoint is restored
+        root.set_keyframe(0)                       # and set_keyframe(0) runs
+
+        self.assertEqual(motion_count(root.slide), 1)
+        self.assertAlmostEqual(
+            travel_of(root.slide),
+            get_coordinate(root.slide, 'travel')._value)
+
+    def test_a_frees_whole_run_is_not_doubled_by_the_restore(self):
+        # evidence.md §3: a `Free`'s one binding places FOUR operations;
+        # the restore must not leave two runs of four standing.
+        root = built(Floating)
+        runner = Runner()
+
+        sim = Sim(root, 0.1)
+        sim.move('rise', to=6.0, duration=0.2)
+        sim.run(0.2)
+
+        runner.save_children_checkpoints(root)
+        Sim(root, 0.1)
+        runner.restore_children_checkpoints(root)
+        Sim(root, 0.1)
+
+        self.assertEqual(motion_count(root.floater), 4)
+
+    def test_a_guarded_bindings_re_place_does_not_outlive_its_value(self):
+        # revision 1's Finding A (evidence.md §A1/§A2/§A4): GREEN on the
+        # unchanged framework, RED once the restore re-places from the
+        # coordinate (task 3.1) and before `clear_solved` drops the
+        # motion with the value (task 4.0).
+        root = built(Conditional)
+        runner = Runner()
+
+        runner.save_children_checkpoints(root)
+
+        root.set_keyframe(0)                     # instant 0: the guard binds
+        runner.restore_children_checkpoints(root)  # cleanup between instants
+
+        root.set_keyframe(1)                     # instant 1: the guard does
+                                                  # not bind -- the test
+                                                  # method's own assertion
+                                                  # runs here, before this
+                                                  # instant's own restore
+
+        self.assertEqual(motion_count(root.gate), 0)
+        self.assertIsNone(get_coordinate(root.gate, 'travel')._value)
+
+
+class RestoreChildrenCheckpointsControlTest(TestCase):
+    """The green-before-and-after controls: what the restore must go on
+    doing exactly as it did (`evidence.md` §4 and the existing insertion
+    coverage, extended to a child that also owns a joint)."""
+
+    def test_an_untimed_root_reports_the_same_placement_throughout(self):
+        # evidence.md §4: untouched under a keyframe-only test, because
+        # every placement is TAGGED and a wholesale restore cannot
+        # strand one the next render does not already drop.
+        node = built(TrainBody)
+        runner = Runner()
+        before = travel_of(node.slide)
+
+        for _ in range(3):
+            runner.save_children_checkpoints(node)
+            node.set_keyframe(0)
+            self.assertEqual(motion_count(node.slide), 1)
+            self.assertAlmostEqual(travel_of(node.slide), before)
+            runner.restore_children_checkpoints(node)
+            self.assertEqual(motion_count(node.slide), 1)
+            self.assertAlmostEqual(travel_of(node.slide), before)
+
+    def test_a_leaked_operation_is_reverted_on_a_child_that_also_owns_a_joint(self):
+        node = built(TrainBody)
+        runner = Runner()
+        runner.save_children_checkpoints(node)
+
+        leaked = Translation([5, 0, 0], node=None)
+        node.slide.operations.insert(0, leaked)
+
+        runner.restore_children_checkpoints(node)
+
+        self.assertNotIn(leaked, node.slide.operations)
+        self.assertEqual(motion_count(node.slide), 1)
+        self.assertAlmostEqual(
+            travel_of(node.slide),
+            get_coordinate(node.slide, 'travel')._value)
+
+    def test_a_child_declaring_no_joint_is_restored_unchanged(self):
+        node = built(TrainBody)
+        runner = Runner()
+        runner.save_children_checkpoints(node)
+        before = list(node.wheel.operations)
+
+        node.wheel.operations.append(Translation([1, 0, 0], node=None))
+        runner.restore_children_checkpoints(node)
+
+        self.assertEqual(node.wheel.operations, before)
+
+    def test_a_joint_on_the_node_under_test_itself_is_left_alone(self):
+        # The runner checkpoints `node.children`, never the node under
+        # test -- a joint the root declares on itself is neither
+        # reverted nor re-placed.
+        node = built(TrainBody)
+        runner = Runner()
+        node.spindle = 30.0
+        runner.save_children_checkpoints(node)
+
+        node.spindle = 60.0
+        runner.restore_children_checkpoints(node)
+
+        self.assertEqual(get_coordinate(node, 'spindle')._value, 60.0)
+
+
 class ResolvePathMappingTest(TestCase):
-    """`solid test` is routinely handed the TEST file instead of the
+    """`machinome test` is routinely handed the TEST file instead of the
     node file it exercises: `root/test_gear.py` instead of `root/gear.py`,
     or `root/test.py` instead of `root/__init__.py`. resolve_path() maps
     it back to the node file (the mirror image of loader.load_test's
@@ -341,7 +968,7 @@ class ResolvePathMappingTest(TestCase):
 class NoNodeClassInModuleTest(TestCase):
     """A module with no AbstractBaseNode subclass defined in it -- the
     case when a stray file, or (before this fix) a TEST file, is handed
-    to `solid test` -- must fail with a clear one-line error instead of
+    to `machinome test` -- must fail with a clear one-line error instead of
     the opaque `TypeError: 'NoneType' object is not callable` that
     calling the loader's None straight away used to produce."""
 
@@ -387,7 +1014,7 @@ class MultiTestCaseFixture(TestCase):
         open(os.path.join(self.root, 'boat', '__init__.py'), 'w').close()
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as stream:
             stream.write(
-                '[tool.solid-node]\nmodel = "boat.windmill:Windmill"\n')
+                '[tool.machinome]\nmodel = "boat.windmill:Windmill"\n')
         # Other test modules in this suite set SOLID_BUILD_DIR at import
         # time (some to an absolute path elsewhere in the repo); a build
         # driven from this scratch project must publish into ITS OWN
@@ -419,7 +1046,77 @@ class MultiTestCaseFixture(TestCase):
         return code, stdout.getvalue(), stderr.getvalue()
 
 
-WINDMILL_SOURCE = '''from solid_node.node import Solid2Node
+SKIP_ONLY_SOURCE = '''from machinome.node import Solid2Node
+from solid2 import cube
+
+
+class Widget(Solid2Node):
+    def render(self):
+        return cube(1, center=True)
+'''
+
+SKIP_ONLY_TEST_SOURCE = '''from machinome.test import TestCase
+from .widget import Widget
+
+
+class WidgetTest(TestCase):
+    node = Widget
+
+    def test_builds(self):
+        self.assertIsNotNone(self.node.mesh)
+
+    def test_skips(self):
+        self.skipTest('the exact kernel is not available here')
+'''
+
+UNEXPECTED_SUCCESS_SOURCE = '''from machinome.node import Solid2Node
+from solid2 import cube
+
+
+class Gadget(Solid2Node):
+    def render(self):
+        return cube(1, center=True)
+'''
+
+UNEXPECTED_SUCCESS_TEST_SOURCE = '''import unittest
+from machinome.test import TestCase
+from .gadget import Gadget
+
+
+class GadgetTest(TestCase):
+    node = Gadget
+
+    @unittest.expectedFailure
+    def test_marked_but_passes(self):
+        self.assertIsNotNone(self.node.mesh)
+'''
+
+
+class UnusualResultExitCodeTest(MultiTestCaseFixture):
+    """ADR-117: the exit-code contract moves in both directions -- a run
+    whose only unusual result is a skip must not fail the run, and a run
+    containing an unexpected success must (`manager/test.py:179-180`)."""
+
+    def test_a_run_with_only_a_skip_exits_zero(self):
+        node_path = self.write('boat/widget.py', SKIP_ONLY_SOURCE)
+        self.write('boat/test_widget.py', SKIP_ONLY_TEST_SOURCE)
+
+        code, stdout, stderr = self.run_solid_test(node_path)
+
+        self.assertEqual(code, 0, stderr)
+        self.assertIn('1 skipped', stdout)
+
+    def test_a_run_with_an_unexpected_success_exits_one(self):
+        node_path = self.write('boat/gadget.py', UNEXPECTED_SUCCESS_SOURCE)
+        self.write('boat/test_gadget.py', UNEXPECTED_SUCCESS_TEST_SOURCE)
+
+        code, stdout, stderr = self.run_solid_test(node_path)
+
+        self.assertEqual(code, 1, stderr)
+        self.assertIn('1 unexpected success', stdout)
+
+
+WINDMILL_SOURCE = '''from machinome.node import Solid2Node
 from solid2 import cube
 
 
@@ -433,7 +1130,7 @@ class Sail(Solid2Node):
         return cube(1, center=True)
 '''
 
-WINDMILL_TEST_SOURCE = '''from solid_node.test import TestCase
+WINDMILL_TEST_SOURCE = '''from machinome.test import TestCase
 from .windmill import Windmill, Sail
 
 
@@ -476,7 +1173,7 @@ class CompanionMultipleTestCasesRunTest(MultiTestCaseFixture):
         self.assertIn('2 passed, 0 failed', stdout)
 
 
-HULL_SOURCE = '''from solid_node.node import Solid2Node
+HULL_SOURCE = '''from machinome.node import Solid2Node
 from solid2 import cube
 
 
@@ -490,7 +1187,7 @@ class Deck(Solid2Node):
         return cube(1, center=True)
 '''
 
-HULL_TEST_UNDECLARED_SOURCE = '''from solid_node.test import TestCase
+HULL_TEST_UNDECLARED_SOURCE = '''from machinome.test import TestCase
 
 
 class HullTest(TestCase):
@@ -522,7 +1219,7 @@ class UndeclaredTestCaseInMultiNodeModuleTest(MultiTestCaseFixture):
         self.assertNotIn('passed', stdout)
 
 
-MAST_SOURCE = '''from solid_node.node import Solid2Node
+MAST_SOURCE = '''from machinome.node import Solid2Node
 from solid2 import cube
 
 
@@ -531,7 +1228,7 @@ class Mast(Solid2Node):
         return cube(1, center=True)
 '''
 
-MAST_TEST_SOURCE = '''from solid_node.test import TestCase
+MAST_TEST_SOURCE = '''from machinome.test import TestCase
 
 
 class MastTest(TestCase):
@@ -645,7 +1342,7 @@ class ComparisonKernelSelectionTest(TestCase):
 
     def test_a_two_argument_construction_means_the_default_quantum(self):
         # The seven positional two-argument ComparisonPolicy(...) sites in
-        # solid_node/test.py, solid_node/manager/test.py and this repo's
+        # machinome/test.py, machinome/manager/test.py and this repo's
         # own tests are none of them edited to pass a quantum (design.md
         # §6); this is what makes that mean "at the default quantum".
         self.assertEqual(
@@ -785,7 +1482,7 @@ class ComparisonKernelSelectionTest(TestCase):
 
         # The reference is resolved before any build; stopping there is
         # enough to see the policy already in force and announced.
-        with patch('solid_node.manager.test.resolve_node', record):
+        with patch('machinome.manager.test.resolve_node', record):
             with redirect_stdout(stdout), redirect_stderr(stderr):
                 with self.assertRaises(SystemExit):
                     Runner().handle(args)
@@ -798,7 +1495,7 @@ class ComparisonKernelSelectionTest(TestCase):
         stdout, stderr = io.StringIO(), io.StringIO()
         args = Namespace(path='whatever.py', failfast=False,
                          kernel=None, volume_epsilon=None)
-        with patch('solid_node.manager.test.resolve_node',
+        with patch('machinome.manager.test.resolve_node',
                    side_effect=SystemExit(0)):
             with redirect_stdout(stdout), redirect_stderr(stderr):
                 with self.assertRaises(SystemExit):
@@ -859,7 +1556,7 @@ class ComparisonKernelSelectionTest(TestCase):
             r'placement quantum 1e-06 mm\)')
 
 
-ROBOT_SOURCE = '''from solid_node.node import Solid2Node
+ROBOT_SOURCE = '''from machinome.node import Solid2Node
 from solid2 import cube
 
 
@@ -875,7 +1572,7 @@ class Boat(Solid2Node):
         return cube(1, center=True)
 '''
 
-ROBOT_TEST_SOURCE = '''from solid_node.test import TestCase
+ROBOT_TEST_SOURCE = '''from machinome.test import TestCase
 from boat.robot import Boat
 
 

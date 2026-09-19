@@ -20,7 +20,7 @@ inside the existing ``Pointer`` class; leave its geometry unchanged:
 
 .. code-block:: python
 
-   from solid_node.motion.joints import Revolute
+   from machinome.motion.joints import Revolute
 
    class Pointer(Solid2Node):
        turn = Revolute(axis=(0, 0, 1), unit="deg")
@@ -63,7 +63,7 @@ a driver and relation. Add the import and declarations to
 
 .. code-block:: python
 
-   from solid_node.simulation import Driver
+   from machinome.simulation import Driver
 
    class SimpleClock(AssemblyNode):
        angle = Driver(default=0, range=(-360, 0), unit="deg")

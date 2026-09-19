@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -10,7 +10,7 @@ on ``self.time`` reads machine seconds on every path: the symbolic
 and the stepped simulation, seconds through the testing decorators.
 Descendants read the root's time base; a declaration below the root is
 refused when read. Producers publish the loop beside ``fps`` and
-``frames``; ``solid snapshot --time`` converts its fraction to seconds.
+``frames``; ``machinome snapshot --time`` converts its fraction to seconds.
 
 Originating project: 3DPrintedClocks ``wall_clock_01``, whose twelve
 hour turn played in twelve seconds.
@@ -24,12 +24,12 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
-from solid_node.core.builder import Builder
-from solid_node.core.export import export_node
-from solid_node.core.serializer import animation_block
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.motion.ports import Time, declared_time
-from solid_node.test import testing_steps as steps_of
+from machinome.core.builder import Builder
+from machinome.core.export import export_node
+from machinome.core.serializer import animation_block
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.motion.ports import Time, declared_time
+from machinome.test import testing_steps as steps_of
 from solid2 import cube
 
 from .base import BaseNodeTest
@@ -151,12 +151,12 @@ class DeclarationTest(TestCase):
             clock.time = 3.0
 
     def test_time_is_exported_from_the_motion_package_not_the_node_one(self):
-        from solid_node.motion import ports
+        from machinome.motion import ports
         self.assertIs(ports.Time, Time)
         moved_name = 'Time'
         with self.assertRaises(ImportError) as raised:
-            exec(f'from solid_node.node import {moved_name}\n', {})
-        self.assertIn('solid_node.motion.ports', str(raised.exception))
+            exec(f'from machinome.node import {moved_name}\n', {})
+        self.assertIn('machinome.motion.ports', str(raised.exception))
 
 
 class SymbolicTimeTest(BaseNodeTest):
@@ -291,13 +291,13 @@ class PublishedLoopTest(BaseNodeTest):
 class SnapshotTimeTest(TestCase):
 
     def prepare(self, node, time):
-        from solid_node.manager.snapshot import Snapshot
+        from machinome.manager.snapshot import Snapshot
         snapshot = Snapshot.__new__(Snapshot)
         snapshot.path = 'model.py'
         snapshot.time = time
-        with (patch('solid_node.manager.snapshot.load_node',
+        with (patch('machinome.manager.snapshot.load_node',
                     return_value=node),
-              patch('solid_node.manager.snapshot.project_build_lock'),
+              patch('machinome.manager.snapshot.project_build_lock'),
               patch.object(node, 'set_keyframe') as keyframe,
               patch.object(node, 'assemble')):
             snapshot._load_and_prepare_node()
@@ -310,3 +310,331 @@ class SnapshotTimeTest(TestCase):
     def test_an_undeclared_root_is_keyframed_at_the_fraction(self):
         keyframe = self.prepare(Undeclared(), 0.5)
         keyframe.assert_called_once_with(0.5)
+
+
+##############################################
+# The RUNNING base (OpenSpec change ``run-owns-the-coordinates``)
+
+
+class Running(AssemblyNode):
+    """A root declaring elapsed simulation seconds that never wrap."""
+
+    time = Time.running()
+
+    def __init__(self):
+        self.pointer = Pointer()
+        super().__init__()
+
+    def render(self):
+        return [self.pointer]
+
+
+class RunningBaseDeclarationTest(TestCase):
+    """`Time.running()` is a second base with the same declaration rules
+    and its own `mode`."""
+
+    def test_the_running_declaration_is_readable_off_the_class(self):
+        self.assertIsInstance(Running.time, Time)
+        self.assertIsNone(Running.time.loop)
+        self.assertEqual(Running.time.mode, 'running')
+        self.assertIs(declared_time(Running), Running.time)
+
+    def test_the_looping_declaration_reports_its_own_mode(self):
+        self.assertEqual(Clock.time.mode, 'loop')
+
+    def test_time_with_neither_base_is_refused_naming_both_spellings(self):
+        with self.assertRaises(TypeError) as caught:
+            Time()
+        message = str(caught.exception)
+        self.assertIn('Time(loop=', message)
+        self.assertIn('Time.running()', message)
+        with self.assertRaises(TypeError):
+            Time(loop=None)
+
+    def test_only_the_name_time_may_hold_a_running_declaration(self):
+        with self.assertRaises(TypeError) as caught:
+            class Misnamed(AssemblyNode):
+                clock = Time.running()
+        self.assertIn('time', str(caught.exception))
+
+    def test_only_an_assembly_may_declare_the_running_base(self):
+        with self.assertRaises(TypeError) as caught:
+            class Leaf(Solid2Node):
+                time = Time.running()
+
+                def render(self):
+                    return cube(1)
+        self.assertIn('AssemblyNode', str(caught.exception))
+
+    def test_a_running_declaration_below_the_root_is_refused_when_read(self):
+        class RunningChild(AssemblyNode):
+            time = Time.running()
+
+            def __init__(self):
+                self.cube = Cube()
+                super().__init__()
+
+            def render(self):
+                return [self.cube]
+
+            def simulate(self):
+                self.cube.rotate(6 * self.time, [0, 0, 1])
+
+        class Composing(AssemblyNode):
+
+            def __init__(self):
+                self.child = RunningChild()
+                super().__init__()
+
+            def render(self):
+                return [self.child]
+
+        node = Composing()
+        with self.assertRaises(TypeError) as caught:
+            node.assemble()
+        message = str(caught.exception)
+        self.assertIn('child', message)
+        self.assertIn('Composing', message)
+
+
+class RunningBaseReadsTest(BaseNodeTest):
+    """Unbound, a running root reads bare `$t`, exactly as an undeclared
+    root does: elapsed seconds have no symbolic form until the compiled
+    program is published."""
+
+    def test_unbound_time_is_bare_t_on_root_and_descendant(self):
+        node = Running()
+        node.assemble()
+        self.assertEqual(str(node.time), '$t')
+        self.assertEqual(str(node.pointer.time), '$t')
+        self.assertEqual(rotation_strings(node.pointer.cube),
+                         [['r', '((360 * $t) / 3600)', [0, 0, 1]]])
+
+    def test_keyframes_bind_seconds_and_clearing_restores_the_symbol(self):
+        node = Running()
+        node.assemble()
+        node.set_keyframe(2.5)
+        self.assertEqual(node.time, 2.5)
+        self.assertEqual(node.pointer.time, 2.5)
+        node.clear_keyframe()
+        self.assertEqual(str(node.time), '$t')
+
+
+class RunningBasePublicationTest(BaseNodeTest):
+    """A running root's document is the document an undeclared root
+    publishes: no `loop` key, and a snapshot keyframes the fraction."""
+
+    def test_animation_block_of_a_running_root_carries_no_loop(self):
+        self.assertEqual(animation_block(Running()),
+                         {'fps': 30, 'frames': 360})
+        self.assertEqual(animation_block(Running()),
+                         animation_block(Undeclared()))
+
+    def test_a_running_root_has_no_timeline_to_keyframe(self):
+        """A non-zero `--time` used to keyframe a bare fraction into a
+        running root's clock and change nothing the machine does. Cycle
+        4 refuses it by name and points at `--drive`, which poses the
+        rest pose at given driver values (OpenSpec change
+        ``publish-the-mechanical-program``, design section 8.2)."""
+        from machinome.manager.snapshot import (Snapshot,
+                                                 SnapshotOptionError)
+        snapshot = Snapshot.__new__(Snapshot)
+        snapshot.path = 'model.py'
+        snapshot.time = 0.5
+        node = Running()
+        with (patch('machinome.manager.snapshot.load_node',
+                    return_value=node),
+              patch('machinome.manager.snapshot.project_build_lock'),
+              patch.object(node, 'set_keyframe') as keyframe,
+              patch.object(node, 'assemble')):
+            with self.assertRaises(SnapshotOptionError) as raised:
+                snapshot._load_and_prepare_node()
+        self.assertIn('--drive', str(raised.exception))
+        keyframe.assert_not_called()
+
+    def test_a_running_root_is_keyframed_at_zero(self):
+        from machinome.manager.snapshot import Snapshot
+        snapshot = Snapshot.__new__(Snapshot)
+        snapshot.path = 'model.py'
+        snapshot.time = 0.0
+        node = Running()
+        with (patch('machinome.manager.snapshot.load_node',
+                    return_value=node),
+              patch('machinome.manager.snapshot.project_build_lock'),
+              patch.object(node, 'set_keyframe') as keyframe,
+              patch.object(node, 'assemble')):
+            snapshot._load_and_prepare_node()
+        keyframe.assert_called_once_with(0.0)
+
+
+##############################################
+# The ELAPSED base (OpenSpec change ``time-without-running``)
+
+class Elapsed(AssemblyNode):
+    """A root declaring elapsed seconds that never wrap, and no state:
+    the `elapsed x none` square, which is admitted and EQUIVALENT."""
+
+    time = Time.elapsed()
+
+    def __init__(self):
+        self.pointer = Pointer()
+        super().__init__()
+
+    def render(self):
+        return [self.pointer]
+
+
+class ElapsedBaseDeclarationTest(TestCase):
+    """`Time.elapsed()` is a THIRD base with the same declaration rules
+    and its own `mode` (design section 1)."""
+
+    def test_the_elapsed_declaration_is_readable_off_the_class(self):
+        self.assertIsInstance(Elapsed.time, Time)
+        self.assertIsNone(Elapsed.time.loop)
+        self.assertEqual(Elapsed.time.mode, 'elapsed')
+        self.assertIs(declared_time(Elapsed), Elapsed.time)
+
+    def test_the_other_two_bases_still_report_their_own_mode(self):
+        self.assertEqual(Clock.time.mode, 'loop')
+        self.assertEqual(Running.time.mode, 'running')
+
+    def test_time_with_no_base_names_all_three_spellings(self):
+        with self.assertRaises(TypeError) as caught:
+            Time()
+        message = str(caught.exception)
+        self.assertIn('Time(loop=', message)
+        self.assertIn('Time.running()', message)
+        self.assertIn('Time.elapsed()', message)
+
+    def test_only_the_name_time_may_hold_an_elapsed_declaration(self):
+        with self.assertRaises(TypeError) as caught:
+            class Misnamed(AssemblyNode):
+                clock = Time.elapsed()
+        self.assertIn('time', str(caught.exception))
+
+    def test_only_an_assembly_may_declare_the_elapsed_base(self):
+        with self.assertRaises(TypeError) as caught:
+            class Leaf(Solid2Node):
+                time = Time.elapsed()
+
+                def render(self):
+                    return cube(1)
+        self.assertIn('AssemblyNode', str(caught.exception))
+
+    def test_an_elapsed_declaration_below_the_root_is_refused_when_read(self):
+        class ElapsedChild(AssemblyNode):
+            time = Time.elapsed()
+
+            def __init__(self):
+                self.cube = Cube()
+                super().__init__()
+
+            def render(self):
+                return [self.cube]
+
+            def simulate(self):
+                self.cube.rotate(6 * self.time, [0, 0, 1])
+
+        class Composing(AssemblyNode):
+
+            def __init__(self):
+                self.child = ElapsedChild()
+                super().__init__()
+
+            def render(self):
+                return [self.child]
+
+        node = Composing()
+        with self.assertRaises(TypeError) as caught:
+            node.assemble()
+        message = str(caught.exception)
+        self.assertIn('child', message)
+        self.assertIn('Composing', message)
+
+
+class ElapsedBaseReadsTest(BaseNodeTest):
+    """Unbound, an elapsed root reads bare `$t`, exactly as a running
+    root and an undeclared root do."""
+
+    def test_unbound_time_is_bare_t_on_root_and_descendant(self):
+        node = Elapsed()
+        node.assemble()
+        self.assertEqual(str(node.time), '$t')
+        self.assertEqual(str(node.pointer.time), '$t')
+        self.assertEqual(rotation_strings(node.pointer.cube),
+                         [['r', '((360 * $t) / 3600)', [0, 0, 1]]])
+
+    def test_keyframes_bind_seconds_and_clearing_restores_the_symbol(self):
+        node = Elapsed()
+        node.assemble()
+        node.set_keyframe(2.5)
+        self.assertEqual(node.time, 2.5)
+        self.assertEqual(node.pointer.time, 2.5)
+        node.clear_keyframe()
+        self.assertEqual(str(node.time), '$t')
+
+
+class ElapsedBasePublicationTest(BaseNodeTest):
+    """An elapsed root's document is the document an undeclared root
+    publishes: no `loop` key, and a snapshot keyframes the fraction."""
+
+    def test_animation_block_of_an_elapsed_root_carries_no_loop(self):
+        self.assertEqual(animation_block(Elapsed()),
+                         {'fps': 30, 'frames': 360})
+        self.assertEqual(animation_block(Elapsed()),
+                         animation_block(Undeclared()))
+
+    def test_an_elapsed_root_is_keyframed_at_the_fraction(self):
+        from machinome.manager.snapshot import Snapshot
+        snapshot = Snapshot.__new__(Snapshot)
+        snapshot.path = 'model.py'
+        snapshot.time = 0.25
+        node = Elapsed()
+        with (patch('machinome.manager.snapshot.load_node',
+                    return_value=node),
+              patch('machinome.manager.snapshot.project_build_lock'),
+              patch.object(node, 'set_keyframe') as keyframe,
+              patch.object(node, 'assemble')):
+            snapshot._load_and_prepare_node()
+        keyframe.assert_called_once_with(0.25)
+
+
+class TimeEqualityTest(TestCase):
+    """Two declarations are equal exactly when they declare the SAME
+    base: the dataclass's generated `__eq__` compares the one field
+    `loop`, which is `None` for BOTH bases whose seconds never wrap, so
+    equality is defined over `(loop, mode)` instead (closure of the
+    cycle's review; `evidence.md` section 4.4)."""
+
+    def test_the_two_unwrapping_bases_are_not_equal(self):
+        self.assertNotEqual(Time.running(), Time.elapsed())
+        self.assertNotEqual(Time.elapsed(), Time.running())
+
+    def test_the_two_unwrapping_bases_do_not_share_a_hash(self):
+        self.assertNotEqual(hash(Time.running()), hash(Time.elapsed()))
+
+    def test_a_base_equals_another_declaration_of_itself(self):
+        self.assertEqual(Time.elapsed(), Time.elapsed())
+        self.assertEqual(Time.running(), Time.running())
+        self.assertEqual(hash(Time.elapsed()), hash(Time.elapsed()))
+        self.assertEqual(hash(Time.running()), hash(Time.running()))
+
+    def test_a_looping_base_compares_by_its_loop(self):
+        self.assertEqual(Time(loop=4), Time(loop=4))
+        self.assertNotEqual(Time(loop=4), Time(loop=5))
+        self.assertEqual(hash(Time(loop=4)), hash(Time(loop=4)))
+
+    def test_a_looping_base_is_not_either_unwrapping_base(self):
+        self.assertNotEqual(Time(loop=4), Time.running())
+        self.assertNotEqual(Time(loop=4), Time.elapsed())
+
+    def test_a_declaration_is_not_equal_to_a_foreign_object(self):
+        self.assertNotEqual(Time.elapsed(), 'Time.elapsed()')
+        self.assertNotEqual(Time.elapsed(), None)
+
+    def test_a_declaration_stays_usable_in_a_set_and_a_dict(self):
+        bases = {Time(loop=4), Time(loop=4), Time.running(),
+                 Time.elapsed()}
+        self.assertEqual(len(bases), 3)
+        self.assertEqual({Time.elapsed(): 'elapsed'}[Time.elapsed()],
+                         'elapsed')

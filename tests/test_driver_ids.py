@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,7 +9,7 @@ every flat namespace that has to address a driver: the serialized
 document, the simulation bank, `set_state`. The cure is an id derived
 from the node's position in the LINKED tree -- `x_axis.motor` -- and a
 token whose string IS that id, so ordinary solid2 arithmetic and
-`solid_node.math`'s degree trig build the wire expression for free.
+`machinome.math`'s degree trig build the wire expression for free.
 
 Nothing here is stored on a node: the id is computed from the
 parent-derived names `_link_child` assigns, which is why a walk that
@@ -18,8 +18,8 @@ to the bare local name (which is exactly the silent collision this
 change exists to remove).
 """
 
-import solid_node.math as sn_math
-from solid_node.node.qualified import (
+import machinome.math as sn_math
+from machinome.node.qualified import (
     DriverIdError, DriverToken, declared_drivers_of, driver_id,
     drive_tree, instance_path,
 )

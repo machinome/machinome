@@ -6,15 +6,15 @@ Modeling parts
 ==============
 
 Continue from :doc:`quickstart` with the small part created by
-``solid new``. First change that part and inspect the result.
+``machinome new``. First change that part and inspect the result.
 Then compare how to make the same shape with other modelling backends.
 You can follow the SolidPython and CadQuery sections first and return
 to the other adapters when you need them.
 
-In Solid Node, a project is organized in a tree structure, with leaf
+In Machinome, a project is organized in a tree structure, with leaf
 nodes and internal nodes. **Leaf nodes** use underlying modelling
 libraries, namely **SolidPython**, **CadQuery**, **build123d**,
-**OpenScad** and **JScad**, to generate solid models — each leaf node is
+**OpenSCAD** and **JSCAD**, to generate solid models — each leaf node is
 one part.
 **Internal nodes** combine children nodes into assemblies and fusions,
 covered in :doc:`Combining parts <assemblies>`.
@@ -25,6 +25,13 @@ of the underlying library.
 Declare configurable values with typed parameters as in :doc:`declaring`.
 The examples below concentrate on each adapter's geometry contract;
 constructor-based nodes remain supported for existing projects.
+
+Geometry is prepared through the adapter's native producer before optional
+SCAD output. Exact adapters use OCCT, imported meshes stay meshes, JSCAD
+uses its own tool, and Solid2/raw OpenSCAD leaves use OpenSCAD. Faceted
+fusions compose child meshes through Manifold. An adapter that implements
+only ``as_scad()`` retains a compatibility path that may require OpenSCAD;
+native adapter authors implement ``materialize(rendered)``.
 
 There are five types of LeafNodes, each supporting one underlying
 technology to create solids:
@@ -52,6 +59,11 @@ And two whose part is not modelled here at all, but imported:
   `StlNode`, it is exact: a STEP product is a boundary representation
   the moment it is read.
 
+Whatever a part is modelled in, once it is rigid it can carry a
+**marking** — a drawing wrapped around it or laid flat on it, in a
+colour of its own, contributing no solid and no piece. See
+:doc:`Markings <markings>`.
+
 And one whose part does not hold still:
 
 * **MolejoNode** A flexible part — a spring, a belt, a cable — whose
@@ -62,15 +74,29 @@ And one whose part does not hold still:
 The following examples model a box with a hole in each technology.
 They are separate from the clock tutorial.
 
+.. _missing-source-file:
+
+Parts backed by source files
+----------------------------
+
+Four of these -- **OpenScadNode**, **JScadNode**, **StlNode** and
+**StepNode** -- bind a node to a file outside Python instead of authoring
+geometry in it. Each checks that its declared file is there when the node
+is *constructed*, before anything is read from it: the failure names the
+class, the declaring attribute and its declared value, and the absolute
+path the declaration resolved to. A declared path that exists but is a
+directory fails the same way, saying so, instead of failing later inside
+the mesh or document reader.
+
 Solid2Node
 ==========
 
-The starting structure created by `solid new` implements a **Solid2Node**
+The starting structure created by `machinome new` implements a **Solid2Node**
 node, which uses **solidpython2** to create models. Open `myproject/myproject.py`:
 
 .. code-block:: python
 
-    from solid_node.node import Solid2Node
+    from machinome.node import Solid2Node
     from solid2 import cube, cylinder, translate
 
     class DemoProject(Solid2Node):
@@ -80,9 +106,9 @@ node, which uses **solidpython2** to create models. Open `myproject/myproject.py
                 cube(50, 50, 50)
             ) - cylinder(r=10, h=100)
 
-Rendered with ``solid export`` and embedded below:
+Rendered with ``machinome export`` and embedded below:
 
-.. solid-node:: _exports/demo_project
+.. machinome:: _exports/demo_project
    :height: 360px
 
 Note that `translate` here is a **solid2** primitive, applied inside the
@@ -98,7 +124,7 @@ The same model can be obtained using **CadQuery**:
 .. code-block:: python
 
     import cadquery as cq
-    from solid_node.node import CadQueryNode
+    from machinome.node import CadQueryNode
 
     class DemoProject(CadQueryNode):
 
@@ -110,11 +136,11 @@ The same model can be obtained using **CadQuery**:
 
 The same box with a hole, this time rendered by CadQuery:
 
-.. solid-node:: _exports/demo_cadquery
+.. machinome:: _exports/demo_cadquery
    :height: 360px
 
 **TIP**: if you want to use CQ-editor, you can add `show_object` without
-conflicting with Solid Node:
+conflicting with Machinome:
 
 .. code-block:: python
 
@@ -134,7 +160,7 @@ modeler over OCCT, with a different API:
 .. code-block:: python
 
     from build123d import BuildPart, Box, Cylinder, Mode
-    from solid_node.node import Build123dNode
+    from machinome.node import Build123dNode
 
     class DemoProject(Build123dNode):
 
@@ -146,7 +172,7 @@ modeler over OCCT, with a different API:
 
 And the same box with a hole, rendered by build123d:
 
-.. solid-node:: _exports/demo_build123d
+.. machinome:: _exports/demo_build123d
    :height: 360px
 
 build123d offers two ways to write a model, and a node may `render()`
@@ -157,7 +183,7 @@ builder:
 .. code-block:: python
 
     from build123d import Box, Cylinder
-    from solid_node.node import Build123dNode
+    from machinome.node import Build123dNode
 
     class DemoProject(Build123dNode):
 
@@ -196,7 +222,7 @@ implements `profile()`, returning a build123d sketch, and declares the
 .. code-block:: python
 
     from build123d import Circle, Rectangle
-    from solid_node.node import Build123dSheetNode
+    from machinome.node import Build123dSheetNode
 
     class DemoProject(Build123dSheetNode):
 
@@ -207,7 +233,7 @@ implements `profile()`, returning a build123d sketch, and declares the
 
 The same square-with-a-hole, this time as a part cut from 6 mm sheet:
 
-.. solid-node:: _exports/demo_sheet
+.. machinome:: _exports/demo_sheet
    :height: 360px
 
 The node's solid is that profile extruded from the XY plane along +Z by
@@ -366,7 +392,7 @@ representation of it. Everything that reads the mesh sees the declared
 precision as a consequence of that, not as a separate contract:
 
 * the viewer and the exported STL carry the declared triangles;
-* under ``solid test --faceted``, every comparison is answered on the
+* under ``machinome test --faceted``, every comparison is answered on the
   compared nodes' meshes, so a coarse declaration can move a clearance
   verdict that the default (exact) kernel would not move — test a
   design whose clearances are close on the exact kernel, which is
@@ -388,11 +414,13 @@ OpenScadNode
 ============
 
 The same model can also be obtained using an **OpenScadNode**, which is a small
-python wrapper around an OpenScad module.
+python wrapper around an OpenScad module. A declared `scad_source` that
+does not resolve to a file is refused at construction
+(:ref:`missing-source-file`).
 
 .. code-block:: python
 
-    from solid_node.node import OpenScadNode
+    from machinome.node import OpenScadNode
 
     class DemoProject(OpenScadNode):
 
@@ -413,7 +441,7 @@ Create a file `myproject/demo.scad` with a module to create the model:
 
 And the same model again, driven by the OpenScad module above:
 
-.. solid-node:: _exports/demo_openscad
+.. machinome:: _exports/demo_openscad
    :height: 360px
 
 By default the module is expected to have the same name as the file
@@ -439,11 +467,13 @@ Finally, the model can also be obtained using a **JScadNode**, which similarly
 to OpenScadNode, it's a python wrapper around a JScad function.
 
 You need the **jscad** CLI tool installed in `$PATH`, and its node dependencies
-installed in the directory you run `solid` from.
+installed in the directory you run `machinome` from. A declared `jscad_source`
+that does not resolve to a file is refused at construction
+(:ref:`missing-source-file`).
 
 .. code-block:: python
 
-    from solid_node.node import JScadNode
+    from machinome.node import JScadNode
 
     class DemoProject(JScadNode):
 
@@ -469,7 +499,7 @@ Create a file `myproject/demo.js` with a module to create the model:
 
 And the same model once more, rendered by JScad:
 
-.. solid-node:: _exports/demo_jscad
+.. machinome:: _exports/demo_jscad
    :height: 360px
 
 .. _stl-import:
@@ -488,14 +518,16 @@ declares it, and name it:
 
 .. code-block:: python
 
-    from solid_node.node import StlNode
+    from machinome.node import StlNode
 
     class Bracket(StlNode):
 
         stl_source = 'bracket.stl'
 
 That is the whole declaration for a well-behaved file. `render()` is not
-an extension point here — the part is the mesh.
+an extension point here — the part is the mesh. A declared `stl_source`
+that does not resolve to a file is refused at construction
+(:ref:`missing-source-file`).
 
 The node does not import the file in place: it materializes
 **its own artifact** from it, exactly as every other leaf produces its
@@ -658,14 +690,16 @@ that declares it, and name it:
 
 .. code-block:: python
 
-    from solid_node.node import StepNode
+    from machinome.node import StepNode
 
     class Bracket(StepNode):
 
         step_source = 'vendor/bracket.step'
 
 A file holding exactly one product needs nothing more. `render()` is
-not an extension point here — the part is the document's product.
+not an extension point here — the part is the document's product. A
+declared `step_source` that does not resolve to a file is refused at
+construction (:ref:`missing-source-file`).
 
 Selecting a product by name
 ----------------------------
@@ -710,8 +744,38 @@ inventory does for a mesh:
 A sub-assembly is a selectable product too: naming one selects its
 components at their own internal placements, which is what you want
 when a vendor ships a gearbox as one shippable unit inside a bigger
-file. Two distinct products sharing one name fail naming the ambiguity
-and describing both, rather than guessing which was meant.
+file.
+
+A name is not always unique — a Fusion or AP214 export routinely
+carries several distinct products under one generic name (`COMPOUND`,
+`SHELL`, `SOLID`). Naming a shared name fails, describing every match
+and giving each its own index:
+
+.. code-block:: text
+
+    Bracket: /home/me/rc-car/vendor/hinge.step has 2 products named
+    'Pin'; the name is ambiguous between:
+      Pin #1: part, 1 occurrence, 1 solid, bounds (-0.500, -0.500, -0.500)..(0.500, 0.500, 0.500), volume 1.000
+      Pin #2: part, 1 occurrence, 1 solid, bounds (-1.000, -1.000, -1.000)..(1.000, 1.000, 1.000), volume 8.000
+    Declare `part_index` to choose between them.
+
+Declare `part_index` beside `part` to choose — the 1-based position of
+the product meant among the products of that name, in document order,
+exactly the number the inventory just printed:
+
+.. code-block:: python
+
+    class UpperPin(StepNode):
+
+        step_source = 'vendor/hinge.step'
+        part = 'Pin'
+        part_index = 2
+
+The inventory numbers a product's line only when its name is shared —
+a document whose product names are all distinct reads exactly as it
+always has, with no index anywhere. An index that names no product of
+that name — out of range, below 1, or declared with no `part` — fails
+by name, the same inventory attached, never rounded to a neighbour.
 
 The part arrives in its own frame
 ----------------------------------
@@ -769,7 +833,7 @@ helper this module provides:
 
 .. code-block:: python
 
-    from solid_node.node.adapters.step import solids_from_faces
+    from machinome.node.adapters.step import solids_from_faces
 
     class Battery(StepNode):
 
@@ -889,14 +953,14 @@ of returning a finished solid, `render()` returns a swept shape —  a
 closed profile carried along a path — described analytically with
 `molejo <https://molejo.readthedocs.io>`_, with the moving
 dimensions left as *parameters*, fed through ports declared from
-``solid_node.motion.ports``, the module that answers what moves and
+``machinome.motion.ports``, the module that answers what moves and
 what drives what:
 
 .. code-block:: python
 
     from molejo import Circle, Helix, P, Shape
-    from solid_node.node import MolejoNode
-    from solid_node.motion.ports import TranslationalPort
+    from machinome.node import MolejoNode
+    from machinome.motion.ports import TranslationalPort
 
     class ValveSpring(MolejoNode):
 
@@ -931,8 +995,8 @@ them, exactly as it connects any other port:
 
 .. code-block:: python
 
-    from solid_node.node import AssemblyNode
-    from solid_node.simulation import Driver
+    from machinome.node import AssemblyNode
+    from machinome.simulation import Driver
 
     FREE_HEIGHT = 46.8
 
@@ -978,11 +1042,10 @@ a flexible part declares schema version 3 rather than 2, which is what
 tells a viewer it must evaluate shape specs — see
 :doc:`Embedding models <embedding>`.
 
-OpenScad has no equivalent, so it gets a snapshot: the part is evaluated
-at its current state and written as an ordinary STL that the assembled
-`.scad` imports, which keeps the document complete enough for the
-OpenScad GUI to open any project. It is a still, not an animation — the
-same treatment every other machine input already gets there.
+SCAD has no equivalent live evaluator, so it gets a snapshot: the part is
+evaluated at its current state and written as an ordinary STL that the
+assembled `.scad` imports. This keeps SCAD output and the OpenSCAD snapshot
+renderer complete at that pose. It is a still, not an animation.
 
 Exact, with an honest tolerance
 -------------------------------
@@ -1013,7 +1076,7 @@ Where molejo comes from
 -----------------------
 
 `molejo <https://molejo.readthedocs.io>`_ is an ordinary dependency of
-solid-node — installed with it from `PyPI
+machinome — installed with it from `PyPI
 <https://pypi.org/project/molejo/>`_, with the ``brep`` extra that
 provides the exact geometry above. The two are pinned by minor
 version, because a molejo minor carries the shape-spec version it

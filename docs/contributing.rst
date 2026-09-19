@@ -9,9 +9,9 @@ the model and the framework's behaviour. A small example and a failing
 test make a useful starting point.
 
 Report issues and discuss changes on the
-`Solid Node repository <https://github.com/LibreSolid/solid-node>`_.
+`Machinome repository <https://github.com/machinome/machinome-framework>`_.
 See its
-`contribution guide <https://github.com/LibreSolid/solid-node/blob/main/CONTRIBUTING.rst>`_
+`contribution guide <https://github.com/machinome/machinome-framework/blob/main/CONTRIBUTING.rst>`_
 before proposing an implementation. The community workflow is an intended
 direction still being exercised by the maintainer, not a claim of an
 established contributor community.
@@ -22,5 +22,5 @@ and preserve their licences in their own repositories. Keep external
 design source out of the framework-owned tutorial.
 
 Browser-viewer changes belong to the separate
-`solid-node-viewer repository
-<https://github.com/LibreSolid/solid-node-viewer>`_.
+`machinome-viewer repository
+<https://github.com/machinome/machinome-viewer>`_.

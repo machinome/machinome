@@ -24,7 +24,7 @@ The joints spec's sentence today is
 > Joint motion and hand-written motion SHALL coexist on one node: both
 > are motion, and they apply in the order they were applied.
 
-`Joint.place` reaches `apply_motion` in `solid_node/node/base.py`, which
+`Joint.place` reaches `apply_motion` in `machinome/node/base.py`, which
 reaches `_insert_motion`, which puts the operation **at the end of the
 node's motion block** — after the motion already applied, before every
 rest operation. So the composition of two joints on one body is the order
@@ -51,9 +51,9 @@ Two related shapes fall out of the same gap:
 
 All of it is in `workflow/warts.md`, sections "3DPrintedClocks wall clock
 01 and Thor (2026-09-09, motion layer refactors)" and "Motion catalogue
-refactor (2026-09-09, every project onto `solid_node.motion`)". The
+refactor (2026-09-09, every project onto `machinome.motion`)". The
 campaign tracker is
-`libresolid-studio/docs/motion-general-refactor.md`: 16 projects done and
+`machinome-studio/docs/motion-general-refactor.md`: 16 projects done and
 archived, 9 deferred at stage A on a missing primitive. Each deferred
 project's reviewed proposal carries the sentence it wants to write; those
 sentences are the requirement.
@@ -146,7 +146,7 @@ meant to fit are MuJoCo's `free` and Modelica's `Joints.FreeMotion`.
    attributes, each behaving like any other joint coordinate. Rotation
    order fixed by the contract, translation outermost, matching the
    hexapod's `R_roll·R_pitch·R_yaw·T_height`. Spherical is out of scope.
-5. Everything stays in `solid_node.motion.joints`. No new module, nothing
+5. Everything stays in `machinome.motion.joints`. No new module, nothing
    moves, no re-export changes.
 
 Cycle 1 must not box cycles 2 and 3 in: the composition contract has to
@@ -285,7 +285,7 @@ the Internal Cycloidal Actuator proved:
 `T_Δ · T_c0 R_σ T_(−c0) · T_t R_r = T_c(θ) R_(r+σ) T_(−B)`, with `c0` the
 REST bore centre.
 
-**Serialization.** `solid_node/core/serializer.py:361` publishes
+**Serialization.** `machinome/core/serializer.py:361` publishes
 `[operation.serialized for operation in node.operations]` in list order,
 and the viewer replays that list in the same order (ADR-028). A reader of
 the document therefore sees the joint operations first, innermost, in

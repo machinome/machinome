@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -19,10 +19,10 @@ where `render`, `color`, `mesh` and thirty-odd others already live,
 and a collision would be silent.
 """
 
-from solid_node.core.serializer import symbolic_drivers
-from solid_node.node import AssemblyNode
-from solid_node.node.qualified import DriverToken, declared_drivers_of
-from solid_node.simulation import Driver
+from machinome.core.serializer import symbolic_drivers
+from machinome.node import AssemblyNode
+from machinome.node.qualified import DriverToken, declared_drivers_of
+from machinome.simulation import Driver
 
 from .base import BaseNodeTest
 from .meta_project.machine import Machine as QualifiedMachine

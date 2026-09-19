@@ -14,8 +14,8 @@ The system SHALL provide domain-typed port declarations for nodes:
 position), and `SignalPort` (carries a dimensionless command value),
 sharing a common `Port` base. These declarations, the port base, the
 binding helper and the declaration enumerator SHALL be exported from
-`solid_node.motion.ports`, the module that answers what moves and what
-carries a value, and SHALL NOT be exported from `solid_node.node`. A
+`machinome.motion.ports`, the module that answers what moves and what
+carries a value, and SHALL NOT be exported from `machinome.node`. A
 port declaration SHALL be made as a class attribute on a node and SHALL
 carry declaration metadata: its domain, a `unit` label, an optional
 direction marker (`out=True` for a port the node emits), and an optional
@@ -42,7 +42,7 @@ identifier, and a consumer SHALL reach a coordinate by the name the
 enumerator reports rather than by attribute access on the node.
 
 A NAME THE ENUMERATOR REPORTS SHALL BE A NAME THE FRAMEWORK CAN READ
-BACK. The system SHALL export from `solid_node.motion.ports` a matched
+BACK. The system SHALL export from `machinome.motion.ports` a matched
 pair over those names: `set_coordinate(node, name, value)`, which binds
 the coordinate through the one binding path every binder takes, and
 `get_coordinate(node, name)`, which SHALL return that coordinate's bound
@@ -62,9 +62,9 @@ extension per ADR-056; introducing it is a future spec change.
 #### Scenario: The port kinds are imported from the motion package
 
 - **WHEN** a project writes
-  `from solid_node.motion.ports import Port, RotationalPort, TranslationalPort, SignalPort, declared_ports`
+  `from machinome.motion.ports import Port, RotationalPort, TranslationalPort, SignalPort, declared_ports`
 - **THEN** every name resolves to the declaration it names, and the same
-  names are absent from `solid_node.node`
+  names are absent from `machinome.node`
 
 #### Scenario: Per-instance value isolation
 
@@ -140,7 +140,7 @@ SHALL bind a sink port to a source — a port or a plain numeric value —
 applying the sink's declared linear scale when one is present. `connect`
 SHALL remain a method of the internal node that performs it, not an
 imported name; the binding helper it calls SHALL be exported from
-`solid_node.motion.ports`. Assigning a
+`machinome.motion.ports`. Assigning a
 value to a port attribute of a node (`unit.crank = expression`) SHALL
 perform the same binding as `connect(expression, unit.crank)`, scale
 applied; a port declaration is a data descriptor, so such an assignment
@@ -293,18 +293,23 @@ a later change.
 
 ### Requirement: The motion package holds what moves
 
-The system SHALL provide a package `solid_node.motion` whose subject is
+The system SHALL provide a package `machinome.motion` whose subject is
 what moves and what drives what, laid out as three submodules so that an
 import line names the kind of thing it brings in:
 
-- `solid_node.motion.ports` — a value that flows between nodes: the port
+- `machinome.motion.ports` — a value that flows between nodes: the port
   declarations, their bound value slot, the binding helper, the
-  declaration enumerator, and the root's own time channel (`Time`, and
-  the enumerator that reads a class's time declaration);
-- `solid_node.motion.joints` — a pair that places a body: `Revolute` and
+  declaration enumerator, the root's own time channel (`Time`, with its
+  three bases `Time(loop=...)`, `Time.running()` and `Time.elapsed()`
+  told apart by `mode`,
+  and the enumerator that reads a class's time declaration), and the
+  binder kind a running simulation binds as (`RunBinder`), kept here so
+  the binding helper can recognize it without importing the simulation
+  layer;
+- `machinome.motion.joints` — a pair that places a body: `Revolute` and
   `Prismatic`, their error kind and their enumerator (capability
   `joints`);
-- `solid_node.motion.couplings` — a law between two coordinates: `Affine`,
+- `machinome.motion.couplings` — a law between two coordinates: `Affine`,
   the relation and derived-coordinate kinds, their error kinds and their
   enumerators (capability `couplings`).
 
@@ -314,18 +319,35 @@ exactly one import path for each name.
 
 #### Scenario: The submodules hold their kinds
 
-- **WHEN** a consumer imports `solid_node.motion.joints` and
-  `solid_node.motion.couplings`
+- **WHEN** a consumer imports `machinome.motion.joints` and
+  `machinome.motion.couplings`
 - **THEN** `Revolute` and `Prismatic` are read off the first and `Affine`
   off the second, and each module's docstring states its subject
 
 #### Scenario: The package itself exports nothing
 
 - **WHEN** a consumer reads any port, time-base, joint or coupling name
-  off `solid_node.motion` directly
+  off `machinome.motion` directly
 - **THEN** `AttributeError` is raised, so
-  `from solid_node.motion import RotationalPort` fails at the import and
+  `from machinome.motion import RotationalPort` fails at the import and
   the submodule path is the only path
+
+#### Scenario: The running base and the run binder are imported from the ports module
+
+- **WHEN** a consumer writes
+  `from machinome.motion.ports import Time, RunBinder` and declares
+  `time = Time.running()` on a root
+- **THEN** `type(root).time.mode` reads `'running'`, `type(root).time.loop`
+  reads `None`, and `RunBinder` is the class every running simulation's
+  binder is an instance of
+
+#### Scenario: The elapsed base is imported from the ports module
+
+- **WHEN** a consumer writes `from machinome.motion.ports import Time` and
+  declares `time = Time.elapsed()` on a root
+- **THEN** `type(root).time.mode` reads `'elapsed'` and
+  `type(root).time.loop` reads `None`, and no other import is needed to
+  declare the base
 
 ### Requirement: A port takes part in a relation
 
@@ -403,39 +425,74 @@ cleared.
 
 The system SHALL NOT export `Port`, `RotationalPort`,
 `TranslationalPort`, `SignalPort`, `declared_ports` or `Time` from
-`solid_node.node`, and SHALL NOT provide a module
-`solid_node.node.ports` or `solid_node.node.timebase`. There SHALL be no
+`machinome.node`, and SHALL NOT provide a module
+`machinome.node.ports` or `machinome.node.timebase`. There SHALL be no
 re-export, alias, or deprecation shim by which a project can keep
 importing them from the node package: a project that has not migrated
 SHALL fail at its import line.
 
 Reading one of those names — or either of the two removed submodule
-names — as an attribute of `solid_node.node` SHALL raise an error whose
-message names `solid_node.motion.ports` as the module that now answers
+names — as an attribute of `machinome.node` SHALL raise an error whose
+message names `machinome.motion.ports` as the module that now answers
 for it, so a reader of the failure learns where the name went. Because
 the import machinery converts that attribute failure, `from
-solid_node.node import <name>` SHALL raise `ImportError` carrying the
+machinome.node import <name>` SHALL raise `ImportError` carrying the
 same message.
 
 #### Scenario: The old path is refused
 
 - **WHEN** a project runs
-  `from solid_node.node import AssemblyNode, RotationalPort, SignalPort, Time`
+  `from machinome.node import AssemblyNode, RotationalPort, SignalPort, Time`
 - **THEN** the import raises `ImportError`, the message names
-  `solid_node.motion.ports` and shows the import line that replaces it,
+  `machinome.motion.ports` and shows the import line that replaces it,
   and no port or time-base name is bound
 
 #### Scenario: The removed submodules are gone
 
-- **WHEN** a consumer imports `solid_node.node` and reads
-  `solid_node.node.ports` or `solid_node.node.timebase`
+- **WHEN** a consumer imports `machinome.node` and reads
+  `machinome.node.ports` or `machinome.node.timebase`
 - **THEN** the read fails with a message naming
-  `solid_node.motion.ports`, and no such module exists on disk
+  `machinome.motion.ports`, and no such module exists on disk
 
 #### Scenario: A node class is still a node export
 
-- **WHEN** a project runs `from solid_node.node import AssemblyNode`
+- **WHEN** a project runs `from machinome.node import AssemblyNode`
   after the move
 - **THEN** it receives the same class it received before, so only the
   names that answer a different question have left the package
 
+### Requirement: A run-owned coordinate has one binder, the run
+
+A coordinate a running simulation has bound — its slot's binder being a
+`RunBinder` — SHALL accept a new binding only from that same run. Every
+other binding that reaches the one binding path for such a slot — an
+author's `simulate()` assignment, a `connect()`, a wiring's or a
+relation's application — SHALL be refused as doubly bound, naming the
+coordinate, the class whose `simulate()` is running (or the node that owns
+the coordinate when none is), and the running simulation, and saying that
+a law stated in `simulate()` belongs in a relation. The refusal SHALL be
+the same kind the couplings capability raises for two binders. A run's own
+rebinding SHALL be recorded with the run as the binder exactly as any
+binder is recorded, and the freshness rule of the couplings capability
+SHALL leave a run-bound slot alone.
+
+#### Scenario: An author assignment of a run-owned joint is refused
+
+- **WHEN** the running simulation owns `first.turn` and an assembly's
+  `simulate()` assigns `self.first.turn = 12.0`
+- **THEN** the binding raises the doubly-bound refusal naming `first.turn`,
+  the assembly's class and the running simulation, and the slot keeps the
+  run's value
+
+#### Scenario: The run rebinds its own coordinate
+
+- **WHEN** the run binds `first.turn` again on the next tick
+- **THEN** the binding is accepted, the slot's binder is the run, and the
+  joint's body is placed at the new value
+
+#### Scenario: A connect into a run-owned coordinate is refused
+
+- **WHEN** an assembly's `simulate()` calls `connect(source, child.turn)`
+  on a coordinate the run owns
+- **THEN** the binding is refused by the same rule, naming the coordinate
+  and the run

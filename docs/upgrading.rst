@@ -1,96 +1,149 @@
-Upgrading from 0.6 to 0.7
-=============================
+Upgrading from solid-node 0.6 to Machinome 0.7
+==================================================
 
-0.7 is in preparation. Use a separate environment to try the preview
-and keep the source revision with your project. See :doc:`quickstart`
-for preview installation; do not assume the published 0.6 package
-contains the APIs in this manual.
+Machinome 0.7 continues solid-node 0.6.0 with the same Git history.
+The framework and the GitHub organisation were renamed because
+`solid-node` could be mistaken for a node in Tim Berners-Lee's Solid
+project, and LibreSolid for a libre edition of it. **Source code for
+machines** describes this project's purpose.
+
+This manual documents 0.7 in release preparation. Use :doc:`quickstart`
+for a source installation until the packages are published.
+
+Change the names together
+--------------------------
+
+There is no ``solid_node`` import shim or ``solid`` command alias.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 38 62
+
+   * - Former name
+     - Machinome 0.7
+   * - Distribution ``solid-node``
+     - ``machinome``
+   * - Python imports ``solid_node.*``
+     - ``machinome.*``
+   * - Command ``solid``
+     - ``machinome``
+   * - Manifest ``[tool.solid-node]``
+     - ``[tool.machinome]``, including nested model tables
+   * - Environment ``SOLID_NODE_*``
+     - ``MACHINOME_*``, including settings in ``.env``
+   * - Repository ``LibreSolid/solid-node``
+     - ``machinome/machinome-framework``
+   * - Documentation ``solid-node.readthedocs.io``
+     - ``machinome.readthedocs.io``
+   * - Viewer ``solid-node-viewer`` / ``solid_node_viewer``
+     - ``machinome-viewer`` / ``machinome_viewer`` (command matches distribution)
+   * - Viewer entry point ``solid_node.viewer``
+     - ``machinome.viewer``
+   * - Mechanics ``solid-mechanics`` / ``solid_mechanics``
+     - ``machinome-mechanics`` / ``machinome_mechanics``
+   * - Sphinx ``solid_node.sphinx`` / ``.. solid-node::``
+     - ``machinome.sphinx`` / ``.. machinome::``
+   * - Browser ``SolidNodeWidget`` / ``solid-widget.js``
+     - ``MachinomeViewer`` / ``machinome-viewer.js``
+   * - DOM/API ``data-solid-widget`` / ``solidNodeViewerApi``
+     - ``data-machinome-widget`` / ``machinomeViewerApi``
+
+Update requirements, scripts, CI, imports, configuration and embedding
+hosts as one migration. Recognised old manifest tables and environment
+names fail with migration messages. New documents use
+``format: "machinome-export"``; the matching viewer still reads committed
+``solid-node-export`` documents. The rename alone does not change a
+document's schema version. Historical release records retain the old names.
+
+The prefix migration applies to former ``SOLID_NODE_*`` settings.
+The current implementation still reads ``SOLID_BUILD_DIR``,
+``SOLID_TEST_KERNEL``, ``SOLID_TEST_VOLUME_EPSILON`` and
+``SOLID_TEST_PLACEMENT_QUANTUM`` under those names; do not mechanically
+rename them. See :doc:`cli` for the complete environment table.
 
 Update port imports
------------------------
+--------------------
 
-Ports now live in ``solid_node.motion.ports``, not
-``solid_node.node``. There is no compatibility re-export:
+Ports and time declarations live in ``machinome.motion.ports``, not
+``machinome.node``. Parameter kinds live in ``machinome.parameters``:
 
 .. code-block:: python
 
-   from solid_node.node import AssemblyNode, CadQueryNode
-   from solid_node.parameters import Length, Count
-   from solid_node.motion.ports import RotationalPort, TranslationalPort, Time
-   from solid_node.motion.joints import Revolute, Prismatic
-   from solid_node.simulation import Driver, Instruction, Sim
+   from machinome.node import AssemblyNode, CadQueryNode
+   from machinome.parameters import Length, Count
+   from machinome.motion.ports import RotationalPort, TranslationalPort, Time
+   from machinome.motion.joints import Revolute, Prismatic
+   from machinome.simulation import Driver, State, Instruction, Sim
 
-Joints and relations are new ways to express motion, not a requirement
-to rewrite every existing ``rotate()`` or ``translate()``.
-
-Adopt declarations incrementally
-------------------------------------
-
-Constructor-based nodes still work. For new or migrated nodes, declare
-typed parameters and children in the class body. The framework derives
-parameter resolution, propagation, guards and build identity.
-
-Keep CAD construction inside the leaf's ``render()``.
-Moving to declarations does not require rewriting your CAD geometry.
-See :doc:`declaring` for derived dimensions, repeated children,
-optional structure and ``--set``.
-
-If you used an unreleased declarative preview, import its parameter
-kinds from ``solid_node.parameters``, not ``solid_node.node``.
+Constructor-based nodes and direct ``rotate()`` / ``translate()``
+motion remain supported. Adopt typed parameters and declared children
+incrementally; keep CAD construction in each leaf's ``render()``.
+See :doc:`declaring`.
 
 Separate rest from motion
------------------------------
+---------------------------
 
-Keep child creation and rest placement in ``render()``.
-Move runtime bindings and transformations to ``simulate()``.
-A legacy ``render()`` that reads time, drivers or ports remains
-supported but warns and reruns per binding.
+Create children and place them at rest in ``render()``. Put runtime
+bindings and transformations in ``simulate()``. A legacy ``render()``
+that reads time, drivers or ports remains supported but warns and reruns
+per binding. Do not recreate children or accumulate transforms in
+``simulate()``.
 
-Do not reconstruct children in ``simulate()``, accumulate motion
-from a previous instant, or use a driver as a build parameter.
+A class-body joint uses the declaring body's own frame; a joint declared
+where a parent places a child uses that parent's frame. Preview projects
+using the earlier joint semantics must recheck axes and anchors.
+See :doc:`motion` and :doc:`driving`.
 
-Choose a time base
-----------------------
+Choose the simulation your machine needs
+-----------------------------------------
 
-Without a declaration, timeline time keeps its normalized 0–1 meaning.
-Opt into seconds with ``time = Time(loop=<seconds>)`` on the root.
-Update motion formulas and test spans together.
+An undeclared timeline remains normalized from 0 to 1.
+``Time(loop=seconds)`` gives it a duration; ``set_keyframe()`` and
+testing decorators then take seconds, while ``snapshot --time``
+still takes a timeline fraction.
 
-With that declaration, ``set_keyframe()`` and test decorators
-take seconds. ``solid snapshot --time`` still takes a timeline
-fraction. Stepped ``Sim`` time is always seconds and must lie
-on its fixed tick grid.
+``Time.running()`` opts into a simulation that integrates movement
+and retains coordinate history. Use movement requests, not direct
+position assignment, to operate it. ``Time.elapsed()`` declares
+non-wrapping seconds without selecting running mechanics.
 
-Check joint frames in preview projects
-------------------------------------------
-
-A class-body joint is expressed in the declaring body's own frame.
-A joint passed where a parent declares a child is expressed in that
-parent's frame. If you used an earlier 0.7 preview with parent-frame
-class joints, recheck anchors and axes; a translated body's default
-pivot is now its own origin. See :doc:`motion` and :doc:`driving`.
+Declaring a ``State`` anywhere in the tree selects a clocked machine:
+``Sim(machine)`` accepts requests without ``dt``, and committing
+relations write memory at events. Add ``Time.elapsed()`` when those
+events need a clock. A state is not a user input; instructions and
+``set_state`` cannot write it. Clocked instructions name exactly one
+driver, and their duration controls the viewer's drawing of the request.
+See :doc:`scenarios` for the separate execution models and their limits.
 
 Install a matching viewer
------------------------------
+--------------------------
 
-The browser viewer is now the independent, AGPL-3.0-only
-`solid-node-viewer <https://github.com/LibreSolid/solid-node-viewer>`_
-package. The framework stays Apache-2.0 and works without it.
-Install the ``viewer`` extra for browser development or widget exports.
+The independent AGPL-3.0-only viewer is installed through the ``viewer``
+extra. It is required by ordinary ``machinome develop``.
+``--no-web`` retains the watch-and-build loop. OpenSCAD remains a
+modelling backend and snapshot renderer; ``develop --openscad`` is no
+longer an interactive-viewer option.
 
-Use a viewer supporting document schemas 1–4 for this framework source.
-Repeated symbolic subexpressions can produce schema 4. Hosts that
-bundle a widget should update it and check ``solid viewer``
-instead of relying on an older bundle accepting a new document.
-See :doc:`embedding` for the current API.
+The matching viewer source is 0.2.0, API 20, reading document schemas
+1–8; publication is still pending. Check ``machinome viewer`` for the
+installed package, API and ``documentVersions``. A clocked machine
+requires schema 8; running models require 5, 6 or 7 according to the
+laws they carry. Hosts must update their bundle and the renamed
+JavaScript/DOM surface together. See :doc:`embedding`.
 
-Verify the project
-----------------------
+The ``mechanics`` extra selects the independent
+``machinome-mechanics`` package. The ``studio`` extra names
+Machinome Studio, which remains experimental and unpublished and cannot
+yet be installed from an index.
 
-Build every named model, rerun its mechanical and scenario tests, inspect
-representative poses, and regenerate exports. A green state-only test
-does not establish geometric fit. Treat changes to parameters, joint
-frames and timing laws as design changes that need their own evidence.
+Verify your project
+---------------------
 
-The fresh-environment requirement in the 0.6 release notes concerns the
-OCCT transition from 0.5; it is not a new 0.7 port-import requirement.
+Run ``machinome models``, build every named model, rerun mechanical
+and scenario tests, inspect representative poses, and regenerate exports.
+A state-only test does not establish geometric fit.
+
+Start with a clean virtual environment so an old ``solid`` executable
+or old viewer cannot mask a missed rename. For users coming from 0.5,
+reinstallation is also required by the OCCT dependency transition
+introduced in 0.6; source must then be migrated to the 0.7 names above.

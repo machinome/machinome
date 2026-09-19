@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"
+     viewBox="0 0 10 10">
+  <!-- Nothing but open paths: a decal with nothing in it. -->
+  <path d="M 0 0 L 10 0 L 10 10" fill="none" stroke="black"
+        stroke-width="0.1"/>
+  <path d="M 1 1 L 9 9" fill="none" stroke="black" stroke-width="0.1"/>
+</svg>

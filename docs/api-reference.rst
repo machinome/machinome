@@ -8,15 +8,15 @@ API Reference
 Nodes
 =========
 
-All node classes are importable from ``solid_node.node``; the parameters
-they declare come from ``solid_node.parameters``. A project is a
+All node classes are importable from ``machinome.node``; the parameters
+they declare come from ``machinome.parameters``. A project is a
 tree of nodes: leaf nodes generate solids with an underlying modelling
 library, internal nodes combine their children.
 
 Common node API
 -------------------
 
-.. autoclass:: solid_node.node.base.AbstractBaseNode
+.. autoclass:: machinome.node.base.AbstractBaseNode
 
    .. method:: render()
 
@@ -75,10 +75,10 @@ Common node API
 Leaf nodes
 --------------
 
-.. autoclass:: solid_node.node.leaf.LeafNode
+.. autoclass:: machinome.node.leaf.LeafNode
    :members: time
 
-.. autoclass:: solid_node.node.exact_leaf.ExactLeafNode
+.. autoclass:: machinome.node.exact_leaf.ExactLeafNode
    :members: exact, shape
 
    .. attribute:: linear_deflection
@@ -86,7 +86,7 @@ Leaf nodes
       The maximum distance, in millimetres, between this node's ``.stl``
       artifact and the surface it approximates (OCCT's own
       ``theLinDeflection``). Declared as a class attribute, like
-      :attr:`~solid_node.node.SheetLeafNode.thickness`; defaults to
+      :attr:`~machinome.node.SheetLeafNode.thickness`; defaults to
       ``0.1``. See :ref:`tessellation-precision`.
 
    .. attribute:: angular_deflection
@@ -96,14 +96,14 @@ Leaf nodes
       ``theAngDeflection``). Defaults to ``0.1``. See
       :ref:`tessellation-precision`.
 
-.. autoclass:: solid_node.node.Solid2Node
+.. autoclass:: machinome.node.Solid2Node
    :members: as_number
 
-.. autoclass:: solid_node.node.CadQueryNode
+.. autoclass:: machinome.node.CadQueryNode
 
-.. autoclass:: solid_node.node.Build123dNode
+.. autoclass:: machinome.node.Build123dNode
 
-.. autoclass:: solid_node.node.SheetLeafNode
+.. autoclass:: machinome.node.SheetLeafNode
    :members: profile, render, validated_profile
 
    .. attribute:: thickness
@@ -117,10 +117,10 @@ Leaf nodes
       Path of the node's nominal cut file, written beside its ``.stl``
       and ``.brep``.
 
-.. autoclass:: solid_node.node.Build123dSheetNode
+.. autoclass:: machinome.node.Build123dSheetNode
    :members: profile
 
-.. autoclass:: solid_node.node.OpenScadNode
+.. autoclass:: machinome.node.OpenScadNode
    :members: __init__
 
    .. attribute:: scad_source
@@ -133,7 +133,7 @@ Leaf nodes
       Name of the module to call inside :attr:`scad_source`. Defaults to
       the file name without the ``.scad`` extension.
 
-.. autoclass:: solid_node.node.JScadNode
+.. autoclass:: machinome.node.JScadNode
 
    .. attribute:: jscad_source
 
@@ -141,7 +141,7 @@ Leaf nodes
       python file declaring the node. The file must export a ``main``
       function.
 
-.. autoclass:: solid_node.node.StlNode
+.. autoclass:: machinome.node.StlNode
 
    .. method:: adjust(mesh)
 
@@ -167,28 +167,28 @@ Leaf nodes
       file. A multi-body file with no ``body`` fails with a per-body
       inventory of centroid, bounds and volume.
 
-.. autoclass:: solid_node.node.StepNode
+.. autoclass:: machinome.node.StepNode
 
    An exact part selected from a STEP document. See :doc:`leaf-nodes`
    for source paths, product selection and `adjust()`.
 
-.. autoclass:: solid_node.node.FlexibleNode
+.. autoclass:: machinome.node.FlexibleNode
 
-.. autoclass:: solid_node.node.MolejoNode
+.. autoclass:: machinome.node.MolejoNode
    :members: shape_tolerance
 
 Internal nodes
 ------------------
 
-.. autoclass:: solid_node.node.internal.InternalNode
+.. autoclass:: machinome.node.internal.InternalNode
    :members: connect
 
-.. autoclass:: solid_node.node.AssemblyNode
+.. autoclass:: machinome.node.AssemblyNode
    :members: simulate, set_state, set_keyframe, clear_keyframe, time
 
-.. autoclass:: solid_node.motion.ports.Time
+.. autoclass:: machinome.motion.ports.Time
 
-.. autoclass:: solid_node.node.FusionNode
+.. autoclass:: machinome.node.FusionNode
    :members: time
 
    .. attribute:: linear_deflection
@@ -205,59 +205,61 @@ Parameters
 ==============
 
 The knobs that decide what machine gets built, importable from
-``solid_node.parameters`` and from nowhere else. A parameter is declared
+``machinome.parameters`` and from nowhere else. A parameter is declared
 as a class attribute, is fixed for the life of an instance, enters the
 node's build identity, and reads back inside ``render()`` as a plain
-number. Contrast :class:`~solid_node.simulation.Driver`, which is a
+number. Contrast :class:`~machinome.simulation.Driver`, which is a
 runtime input and changes every instant. See :doc:`Declaring a machine
 <declaring>`.
 
-.. autoclass:: solid_node.parameters.Length
+.. autoclass:: machinome.parameters.Length
 
-.. autoclass:: solid_node.parameters.Angle
+.. autoclass:: machinome.parameters.Angle
 
-.. autoclass:: solid_node.parameters.Count
+.. autoclass:: machinome.parameters.Count
 
-.. autoclass:: solid_node.parameters.Ratio
+.. autoclass:: machinome.parameters.Ratio
 
-.. autoclass:: solid_node.parameters.Scalar
+.. autoclass:: machinome.parameters.Scalar
 
-.. autoclass:: solid_node.parameters.Flag
+.. autoclass:: machinome.parameters.Flag
 
-.. autoclass:: solid_node.parameters.Quantity
+.. autoclass:: machinome.parameters.Quantity
 
-.. autofunction:: solid_node.parameters.declared_parameters
+.. autofunction:: machinome.parameters.declared_parameters
 
-.. autofunction:: solid_node.node.declared_children
+.. autofunction:: machinome.node.declared_children
 
 Ports
 =========
 
 Domain-typed connection points between nodes, importable from
-``solid_node.motion.ports``. A port is declared as a class attribute; the
+``machinome.motion.ports``. A port is declared as a class attribute; the
 parent assembly binds it every ``simulate()`` with
-:meth:`~solid_node.node.internal.InternalNode.connect`. See
+:meth:`~machinome.node.internal.InternalNode.connect`. See
 :doc:`Driving a machine <driving>`.
 
-.. autoclass:: solid_node.motion.ports.Port
+.. autoclass:: machinome.motion.ports.Port
 
-.. autoclass:: solid_node.motion.ports.RotationalPort
+.. autoclass:: machinome.motion.ports.RotationalPort
 
-.. autoclass:: solid_node.motion.ports.TranslationalPort
+.. autoclass:: machinome.motion.ports.TranslationalPort
 
-.. autoclass:: solid_node.motion.ports.SignalPort
+.. autoclass:: machinome.motion.ports.SignalPort
 
-.. autofunction:: solid_node.motion.ports.declared_ports
+.. autofunction:: machinome.motion.ports.declared_ports
 
-.. autofunction:: solid_node.motion.ports.get_coordinate
+.. autofunction:: machinome.motion.ports.get_coordinate
 
-.. autofunction:: solid_node.motion.ports.set_coordinate
+.. autoclass:: machinome.motion.ports.RunBinder
+
+.. autofunction:: machinome.motion.ports.set_coordinate
 
 Joints
 ==========
 
 The joint declarations, importable from
-``solid_node.motion.joints``. A joint is declared as a class attribute of
+``machinome.motion.joints``. A joint is declared as a class attribute of
 the node it moves and states where that node may move in its own frame.
 A joint supplied at a child's declaration site instead uses the declaring
 parent's frame. Reading a one-coordinate joint gives a port,
@@ -274,23 +276,23 @@ order, first declared innermost, and a joint owning several coordinates
 occupies one position in that order like any other. See
 :doc:`Driving a machine <driving>`.
 
-.. autoclass:: solid_node.motion.joints.Revolute
+.. autoclass:: machinome.motion.joints.Revolute
 
-.. autoclass:: solid_node.motion.joints.Prismatic
+.. autoclass:: machinome.motion.joints.Prismatic
 
-.. autoclass:: solid_node.motion.joints.Orbit
+.. autoclass:: machinome.motion.joints.Orbit
 
-.. autoclass:: solid_node.motion.joints.Free
+.. autoclass:: machinome.motion.joints.Free
 
-.. autoexception:: solid_node.motion.joints.JointRangeError
+.. autoexception:: machinome.motion.joints.JointRangeError
 
-.. autofunction:: solid_node.motion.joints.declared_joints
+.. autofunction:: machinome.motion.joints.declared_joints
 
 Couplings
 =============
 
 The relation between two coordinates, importable from
-``solid_node.motion.couplings``. ``drives`` itself needs no import — it
+``machinome.motion.couplings``. ``drives`` itself needs no import — it
 is on every declaration that can name a coordinate — and this module
 holds the law it carries, the errors it refuses with, and the
 enumerator. An end may be several coordinates, joined with ``&`` (also
@@ -298,58 +300,150 @@ needing no import, and free on every declaration that carries
 ``drives``) or, on the driven side, written as a tuple. See
 :doc:`Driving a machine <driving>`.
 
-.. autoclass:: solid_node.motion.couplings.Affine
+.. autoclass:: machinome.motion.couplings.Affine
 
-.. autoclass:: solid_node.motion.couplings.Relation
+.. autoclass:: machinome.motion.couplings.Relation
 
-.. autoclass:: solid_node.motion.couplings.DerivedCoordinate
+.. autoclass:: machinome.motion.couplings.DerivedCoordinate
 
-.. autoexception:: solid_node.motion.couplings.CouplingError
+.. autoexception:: machinome.motion.couplings.CouplingError
 
-.. autoexception:: solid_node.motion.couplings.UnreachedCoordinate
+.. autoexception:: machinome.motion.couplings.UnreachedCoordinate
 
-.. autoexception:: solid_node.motion.couplings.DoublyBound
+.. autoexception:: machinome.motion.couplings.DoublyBound
 
-.. autoexception:: solid_node.motion.couplings.NotInvertible
+.. autoexception:: machinome.motion.couplings.NotInvertible
 
-.. autoexception:: solid_node.motion.couplings.PrematureRead
+.. autoexception:: machinome.motion.couplings.PrematureRead
 
-.. autofunction:: solid_node.motion.couplings.declared_relations
+.. autofunction:: machinome.motion.couplings.declared_relations
 
 Simulation
 ==============
 
-The stepped simulation layer lives in ``solid_node.simulation``. See
+The stepped simulation layer lives in ``machinome.simulation``. See
 :doc:`Driving a machine <driving>` for drivers and instructions, and
 :doc:`Simulating and testing scenarios <scenarios>` for the loop and
 scenario tests.
 
-.. autoclass:: solid_node.simulation.Driver
+.. autoclass:: machinome.simulation.Driver
 
-.. autoclass:: solid_node.simulation.Instruction
+.. autoclass:: machinome.simulation.Instruction
 
-.. autoclass:: solid_node.simulation.RampProgram
+.. autoclass:: machinome.simulation.Button
 
-.. autoclass:: solid_node.simulation.Sim
-   :members: at, every, trigger, run, state, time,
-             cadence_costs, assertion_stats
+.. autoclass:: machinome.simulation.Turn
 
-   .. attribute:: trajectory
+.. autoclass:: machinome.simulation.Slide
 
-      The recorded ``(tick, states)`` history of the run, one entry
-      per stepped tick.
+.. autoclass:: machinome.simulation.RampProgram
 
-.. autoclass:: solid_node.simulation.ScenarioTest
+.. autoclass:: machinome.simulation.Sim
+   :members: at, every, trigger, run, state, time, trajectory, crossings,
+             stops, running, move, rate, commands, snapshot, restore,
+             reset, initial, program, cadence_costs, assertion_stats
+
+Running simulation
+------------------
+
+Under a root declaring ``Time.running()`` a simulation owns every driver
+and every joint coordinate of the linked tree, keeps their history and
+moves them by increments. The engine and the compile step below are
+imported only when such a simulation is constructed.
+
+.. autoclass:: machinome.simulation.run.Run
+
+.. autoclass:: machinome.simulation.run.Command
+   :members: requested, admitted, remaining, rate, cancel
+
+.. autoclass:: machinome.simulation.run.RunSnapshot
+
+.. autoexception:: machinome.simulation.RunConflict
+
+.. autoclass:: machinome.simulation.program.Program
+   :members: described, published, published_names
+
+.. autofunction:: machinome.simulation.program.compile_program
+
+.. autofunction:: machinome.simulation.program.program_of
+
+.. autofunction:: machinome.simulation.program.release_tree
+
+.. autofunction:: machinome.simulation.program.qualified_coordinates
+
+.. autoclass:: machinome.simulation.program.JumpPlan
+
+.. autoclass:: machinome.simulation.Crossing
+
+.. autoclass:: machinome.simulation.Stop
+
+.. autoexception:: machinome.simulation.UnsupportedLaw
+
+.. autoexception:: machinome.simulation.TooManyCrossings
+
+.. autoclass:: machinome.simulation.ScenarioTest
    :members: simulation, scenario_node
 
-.. autofunction:: solid_node.simulation.qualified_drivers
+.. autofunction:: machinome.simulation.qualified_drivers
 
-.. autofunction:: solid_node.simulation.qualified_instructions
+.. autofunction:: machinome.simulation.qualified_instructions
+
+Clocked simulation
+------------------
+
+Under a root whose tree declares a ``State`` a simulation holds a BANK of
+every driver and every state and moves it on REQUESTS, each a straight
+path whose every rising event is solved exactly. There is no ``dt``, and
+the executor below is imported only when such a simulation is
+constructed.
+
+``sim.trigger(name)`` under such a root is one request — the one the
+named instruction states — and returns it.
+
+.. autoclass:: machinome.simulation.clocked.Clocked
+   :members: move, state, commits, stops, snapshot, restore, reset
+
+``initial`` is a ``ClockedSnapshot`` of the initial bank. Restore it
+through the simulation's session API to return to that state.
+``Sim.trigger(name)`` dispatches the instruction as one clocked request.
+
+.. autoclass:: machinome.simulation.clocked.Request
+
+.. autoclass:: machinome.simulation.clocked.Commit
+   :members: relation
+
+.. autoclass:: machinome.simulation.clocked.ClockedSnapshot
+
+.. autoexception:: machinome.simulation.clocked.ClockedError
+
+The conformance corpus
+----------------------
+
+``tools/generate_running_corpus.py`` writes ``tests/running-corpus.json``
+from the framework's own run: for each of a set of small running roots,
+the program-bearing keys of the document it publishes, a script of
+commands, and every tick of the run with its bank, crossings, stops and
+command outcomes. Every expected value in it is a value the run
+PRODUCED, never one recomputed a second way, so a disagreement means the
+other runtime drifted. The framework's suite replays it
+(``tests/test_running_corpus.py``) and the browser viewer replays its own
+committed copy.
+
+The generator refuses to write a corpus that misses any of the features
+the export capability lists — each discontinuous primitive, a
+multi-source law, a stop inside a tick, an expression bound, a blocked
+command, a rate, a snapshot and a restore, both instruction forms, and a
+tick carrying both a crossing and a stop — so the corpus's width cannot
+narrow by accident.
+
+.. code-block:: bash
+
+    $ PYTHONPATH="$PWD" python tools/generate_running_corpus.py
 
 Expression math
 ===================
 
-``solid_node.math`` is the one expression semantics: OpenSCAD's degree
+``machinome.math`` is the one expression semantics: OpenSCAD's degree
 conventions, computed on plain numbers, deferred as an OpenSCAD
 expression when a value is symbolic (animation time or a driver), and
 carrying dimension rules when a value is a declared parameter. See
@@ -362,24 +456,24 @@ Primitives
 --------------
 
 The functions the module emits as an OpenSCAD call. Every name it can
-emit is listed in ``solid_node.math.SYMBOLIC_BUILTINS``, and each is a
+emit is listed in ``machinome.math.SYMBOLIC_BUILTINS``, and each is a
 builtin OpenSCAD and JavaScript's ``Math`` both carry with the same
 semantics.
 
-.. autofunction:: solid_node.math.sin
-.. autofunction:: solid_node.math.cos
-.. autofunction:: solid_node.math.tan
-.. autofunction:: solid_node.math.asin
-.. autofunction:: solid_node.math.acos
-.. autofunction:: solid_node.math.atan
-.. autofunction:: solid_node.math.atan2
-.. autofunction:: solid_node.math.sqrt
-.. autofunction:: solid_node.math.abs
-.. autofunction:: solid_node.math.floor
-.. autofunction:: solid_node.math.ceil
-.. autofunction:: solid_node.math.sign
-.. autofunction:: solid_node.math.min
-.. autofunction:: solid_node.math.max
+.. autofunction:: machinome.math.sin
+.. autofunction:: machinome.math.cos
+.. autofunction:: machinome.math.tan
+.. autofunction:: machinome.math.asin
+.. autofunction:: machinome.math.acos
+.. autofunction:: machinome.math.atan
+.. autofunction:: machinome.math.atan2
+.. autofunction:: machinome.math.sqrt
+.. autofunction:: machinome.math.abs
+.. autofunction:: machinome.math.floor
+.. autofunction:: machinome.math.ceil
+.. autofunction:: machinome.math.sign
+.. autofunction:: machinome.math.min
+.. autofunction:: machinome.math.max
 
 There is deliberately no ``round`` and no ``mod``: OpenSCAD, JavaScript
 and Python round halves three different ways, and OpenSCAD spells
@@ -393,13 +487,13 @@ Built out of the primitives and ordinary arithmetic, so what they do to
 dimensions follows from the primitives' rules rather than from a rule of
 their own.
 
-.. autofunction:: solid_node.math.clamp
-.. autofunction:: solid_node.math.clamp01
-.. autofunction:: solid_node.math.ramp
-.. autofunction:: solid_node.math.lerp
-.. autofunction:: solid_node.math.wrap
-.. autofunction:: solid_node.math.piecewise
-.. autofunction:: solid_node.math.bump
+.. autofunction:: machinome.math.clamp
+.. autofunction:: machinome.math.clamp01
+.. autofunction:: machinome.math.ramp
+.. autofunction:: machinome.math.lerp
+.. autofunction:: machinome.math.wrap
+.. autofunction:: machinome.math.piecewise
+.. autofunction:: machinome.math.bump
 
 Vector helpers
 ------------------
@@ -408,18 +502,18 @@ Composition over the scalar functions, so a symbolic component or a
 declared formula rides through. Angles are degrees, positive
 counter-clockwise, as everywhere else.
 
-.. autofunction:: solid_node.math.polar
-.. autofunction:: solid_node.math.turn
-.. autofunction:: solid_node.math.rotate_x
-.. autofunction:: solid_node.math.rotate_y
-.. autofunction:: solid_node.math.rotate_z
+.. autofunction:: machinome.math.polar
+.. autofunction:: machinome.math.turn
+.. autofunction:: machinome.math.rotate_x
+.. autofunction:: machinome.math.rotate_y
+.. autofunction:: machinome.math.rotate_z
 
 Mechanisms
 ==============
 
 The textbook mechanism laws, importable from
-``solid_node.mechanisms``. Each is a composition over
-``solid_node.math`` and so has two of that module's three faces: it
+``machinome.mechanisms``. Each is a composition over
+``machinome.math`` and so has two of that module's three faces: it
 computes a number when the node is posed at a keyframe, and builds the
 equivalent deferred OpenSCAD expression when its driving argument is
 animation time or a driver. The third — a formula over declared
@@ -458,9 +552,9 @@ centres a tooth on +X, so its gap centre is ``180 / teeth``; MrBunsy's
 tooth tip ``gap_angle + tooth_angle / 2``, both negated for a flipped
 part and zero for a lantern pinion.
 
-.. autofunction:: solid_node.mechanisms.meshed_angle
+.. autofunction:: machinome.mechanisms.meshed_angle
 
-.. autofunction:: solid_node.mechanisms.driving_angle
+.. autofunction:: machinome.mechanisms.driving_angle
 
 Screws
 ----------
@@ -472,9 +566,9 @@ screw, or a lever that inverts is the caller's minus sign, where it can
 be read beside the reason for it. ``lead`` is the advance per turn —
 pitch times starts, never bare pitch.
 
-.. autofunction:: solid_node.mechanisms.screw_travel
+.. autofunction:: machinome.mechanisms.screw_travel
 
-.. autofunction:: solid_node.mechanisms.screw_angle
+.. autofunction:: machinome.mechanisms.screw_angle
 
 Cranks
 ----------
@@ -485,11 +579,11 @@ plane normal, the cylinder axis is *along*, the other coordinate is
 centre. A caller whose crank axis is elsewhere maps these with its own
 frame rotation.
 
-.. autofunction:: solid_node.mechanisms.crank_pin
+.. autofunction:: machinome.mechanisms.crank_pin
 
-.. autofunction:: solid_node.mechanisms.crank_rod_angle
+.. autofunction:: machinome.mechanisms.crank_rod_angle
 
-.. autofunction:: solid_node.mechanisms.piston_height
+.. autofunction:: machinome.mechanisms.piston_height
 
 Deltas
 ----------
@@ -502,9 +596,9 @@ rather than one about the perpendicular the lean happens about, because
 a ``Rotation``'s axis cannot carry a driver symbol; pose a rod authored
 along Z by ``-tilt`` about Y, then ``azimuth`` about Z.
 
-.. autofunction:: solid_node.mechanisms.delta_carriage
+.. autofunction:: machinome.mechanisms.delta_carriage
 
-.. autofunction:: solid_node.mechanisms.delta_rod
+.. autofunction:: machinome.mechanisms.delta_rod
 
 Linkages
 ------------
@@ -512,25 +606,25 @@ Linkages
 Circle geometry. ``side = 1`` picks the intersection to the left of the
 direction from the first centre to the second. None of the three guards
 an unreachable configuration: a ``sqrt`` or ``acos`` out of range raises
-numerically, exactly as ``solid_node.math`` raises, and is NaN
+numerically, exactly as ``machinome.math`` raises, and is NaN
 symbolically, exactly as OpenSCAD and the viewer are — a guard would
 have to invent a pose that does not exist.
 
-.. autofunction:: solid_node.mechanisms.circle_intersection
+.. autofunction:: machinome.mechanisms.circle_intersection
 
-.. autofunction:: solid_node.mechanisms.triangle_angle
+.. autofunction:: machinome.mechanisms.triangle_angle
 
-.. autofunction:: solid_node.mechanisms.link_rise
+.. autofunction:: machinome.mechanisms.link_rise
 
 Testing
 ===========
 
-The testing API lives in ``solid_node.test``. See
+The testing API lives in ``machinome.test``. See
 :doc:`Test-driven CAD <testing>` for a walkthrough of both ways of
 writing tests: mixing ``TestCaseMixin`` into a node class, or writing a
 ``TestCase`` in a separate file.
 
-.. autoclass:: solid_node.test.TestCase
+.. autoclass:: machinome.test.TestCase
    :members:
 
    ``assertNoDisconnectedSolids(node)`` checks that every topmost rigid solid
@@ -550,13 +644,13 @@ writing tests: mixing ``TestCaseMixin`` into a node class, or writing a
    ``assertNoPairwiseIntersections`` leaf sweep is deprecated and retained
    only for compatibility.
 
-.. autoclass:: solid_node.test.TestCaseMixin
+.. autoclass:: machinome.test.TestCaseMixin
 
-.. autofunction:: solid_node.test.testing_steps
+.. autofunction:: machinome.test.testing_steps
 
-.. autofunction:: solid_node.test.testing_instant
+.. autofunction:: machinome.test.testing_instant
 
 Decorators
 ==============
 
-.. autofunction:: solid_node.node.decorators.property_as_number
+.. autofunction:: machinome.node.decorators.property_as_number

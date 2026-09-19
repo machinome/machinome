@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -57,14 +57,14 @@ def run_python(snippet):
 
 
 def run_solid_test(path):
-    """Run `solid test <path>` with no importable `manifold3d`.
+    """Run `machinome test <path>` with no importable `manifold3d`.
 
     Mirrors `tests/test_meta.py`'s subprocess harness, so a verdict here
     is comparable test-for-test with the same fixture's ordinary run.
     """
     return subprocess.run(
         [sys.executable, '-c',
-         BLOCKER + 'from solid_node.cli import manage; manage()',
+         BLOCKER + 'from machinome.cli import manage; manage()',
          'test', path],
         cwd=REPO_DIR,
         env=dict(os.environ, SOLID_BUILD_DIR=BUILD_DIR, PYTHONPATH=REPO_DIR),

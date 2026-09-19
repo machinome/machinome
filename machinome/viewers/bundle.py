@@ -1,0 +1,146 @@
+# Machinome - A framework for mechanical CAD projects
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: Apache-2.0
+
+"""Find the browser viewer this framework does not carry.
+
+The viewer is `machinome-viewer`, a separately licensed package installed
+through the ``viewer`` extra. It registers one entry point,
+``machinome.viewer``, whose ``bundle`` entry resolves to a function that
+returns where the built bundle and the standalone export page are, and which
+viewer API version the widget declares. That entry point is the whole of
+what this module -- and this framework -- imports of the viewer. Everything
+else the framework asks of it runs as a separate process, through
+:func:`viewer_command`.
+
+Only the standard library is imported here, so that answering costs no
+browser bundle, no web framework and no CAD stack.
+"""
+
+import sys
+from importlib.metadata import entry_points
+from pathlib import Path
+
+ENTRY_POINT_GROUP = 'machinome.viewer'
+ENTRY_POINT_NAME = 'bundle'
+BUNDLE_NAME = 'machinome-viewer.js'
+INSTALL_REMEDY = (
+    'The browser viewer is not installed. It is the separate '
+    'machinome-viewer package; install it with: '
+    'pip install "machinome[viewer]"'
+)
+
+
+class ViewerUnavailable(Exception):
+    """No usable viewer is installed; the message is the remedy."""
+
+
+def _entry():
+    for entry in entry_points(group=ENTRY_POINT_GROUP):
+        if entry.name == ENTRY_POINT_NAME:
+            return entry
+    return None
+
+
+def describe():
+    """The installed viewer: ``path``, ``index``, ``apiVersion``, ``version``.
+
+    Raises :class:`ViewerUnavailable` naming the remedy when the viewer
+    package is not installed, or -- with the viewer's own words -- when it is
+    installed but carries no built bundle.
+    """
+    entry = _entry()
+    if entry is None:
+        raise ViewerUnavailable(INSTALL_REMEDY)
+    try:
+        return entry.load()()
+    except Exception as error:
+        raise ViewerUnavailable(str(error)) from error
+
+
+def has_bundle():
+    """Whether a usable viewer is installed beside this framework."""
+    try:
+        describe()
+    except ViewerUnavailable:
+        return False
+    return True
+
+
+def missing_bundle_remedy():
+    """What to do about the viewer that is not there."""
+    try:
+        describe()
+    except ViewerUnavailable as error:
+        return str(error)
+    return None
+
+
+def bundle_path():
+    """Return the installed viewer bundle path."""
+    return Path(describe()['path'])
+
+
+def index_path():
+    """Return the installed standalone export page path."""
+    return Path(describe()['index'])
+
+
+def api_version():
+    """Return the viewer API version the installed widget declares."""
+    return describe()['apiVersion']
+
+
+#: What a report that carries no ``documentVersions`` means: every viewer
+#: released before the field existed renders exactly these, so an older
+#: viewer beside a newer framework keeps working and is described
+#: truthfully.
+DOCUMENT_VERSIONS_BEFORE_THE_FIELD = [1, 2, 3, 4]
+
+
+def document_versions():
+    """The node-tree document schema versions the installed viewer renders.
+
+    Asked of the report rather than inferred from the viewer's own release
+    counter: a framework channel about to publish or photograph a document
+    needs the fact it is asking for, and the report should state it.
+    """
+    return describe().get('documentVersions',
+                          DOCUMENT_VERSIONS_BEFORE_THE_FIELD)
+
+
+def unreadable_document(version):
+    """The three facts about a document the installed viewer cannot read,
+    as one sentence, or None when there is nothing to say.
+
+    The version written, the versions the installed viewer renders and
+    the viewer's package version -- and None both when the viewer renders
+    it and when no viewer is installed at all, which is not a document
+    problem. What to DO about it is the caller's: a producer writes the
+    document anyway and warns, a capture refuses before it starts.
+    """
+    try:
+        rendered = document_versions()
+    except ViewerUnavailable:
+        return None
+    if version in rendered:
+        return None
+    try:
+        installed = describe().get('version')
+    except ViewerUnavailable:  # pragma: no cover - describe just answered
+        installed = None
+    return (
+        f'this model needs document version {version}, and the installed '
+        f'browser viewer renders '
+        f'{", ".join(str(one) for one in rendered)} '
+        f'(machinome-viewer {installed})')
+
+
+def viewer_command():
+    """The viewer's command line, run through this interpreter.
+
+    The viewer installed beside the interpreter running ``machinome`` is the one
+    asked; a ``machinome-viewer`` script earlier on the PATH from another
+    environment is never picked up by accident.
+    """
+    return [sys.executable, '-m', 'machinome_viewer']

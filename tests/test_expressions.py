@@ -1,12 +1,12 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""`solid_node/core/expressions.py`: the expression language reader.
+"""`machinome/core/expressions.py`: the expression language reader.
 
 The grammar is exactly what the two producers emit (design.md D2): solid2's
 `OpenSCADConstant.__operator_base__` / `__unary_operator_base__` / `__abs__`,
-and `solid_node.math._symbolic_call`. Every case here is built by calling the
+and `machinome.math._symbolic_call`. Every case here is built by calling the
 real producer where possible, rather than typed by hand, so the corpus is
 honest about what the parser has to read.
 """
@@ -16,12 +16,12 @@ from unittest import TestCase
 from solid2.core.object_base import OpenSCADConstant
 from solid2 import get_animation_time
 
-from solid_node.core.expressions import (
+from machinome.core.expressions import (
     BindingTableError, ExpressionError, Interner, bind_expressions, parse,
     render,
 )
-from solid_node.node.qualified import DriverToken
-import solid_node.math as m
+from machinome.node.qualified import DriverToken
+import machinome.math as m
 
 
 def _text(value):
@@ -288,16 +288,15 @@ class UnknownNameDoesNotRefuseTheBuildTest(TestCase):
         is still a defect -- unreachable from a real model, reachable only
         by patching internals, exactly as the other wrong-table tests in
         `tests/test_expression_bindings.py` are."""
-        from solid_node.core import expressions as expr
+        from machinome.core import expressions as expr
 
         bindings = [{'name': '_b0', 'expression': '_b7'}]
         with self.assertRaises(BindingTableError):
             expr._validate_bindings(bindings, driver_ids=[], prefix='_b')
 
 
-class DeepChainFallsBackToVerbatimTest(TestCase):
-    """Adversarial finding 2: exhausting the parser's stack depth is
-    handled exactly like unreadable text, never a crash out of the build."""
+class DeepChainSharingTest(TestCase):
+    """Deep valid expressions now share without a recursion fallback."""
 
     def _left_nested_chain(self, depth):
         """`((((($t + 0) + 1) + 2) + 3) ...)`, the shape solid2 itself
@@ -308,19 +307,14 @@ class DeepChainFallsBackToVerbatimTest(TestCase):
             text = f'({text} + {i})'
         return text
 
-    def test_a_very_deep_chain_is_published_verbatim_with_a_warning(self):
+    def test_a_very_deep_chain_is_shared_without_a_warning(self):
         deep = self._left_nested_chain(3000)
 
         rewritten, bindings, warnings = bind_expressions([deep, deep], [])
 
-        # Unreadable-by-depth, not shared: nothing binds it, both
-        # occurrences pass through byte-identical to the input.
-        self.assertEqual(rewritten, [deep, deep])
-        self.assertEqual(bindings, [])
-        self.assertEqual(len(warnings), 2)
-        self.assertIn('deeply nested', warnings[0])
-        self.assertLess(len(warnings[0]), 1000,
-                        'the warning must truncate the offending text')
+        self.assertEqual(rewritten, [bindings[-1]['name']] * 2)
+        self.assertEqual(len(bindings), 3000)
+        self.assertEqual(warnings, [])
 
     def test_a_shallow_shared_expression_beside_it_still_binds(self):
         deep = self._left_nested_chain(3000)
@@ -331,7 +325,7 @@ class DeepChainFallsBackToVerbatimTest(TestCase):
             [deep, shallow_a, shallow_b], [])
 
         self.assertEqual(rewritten[0], deep)
-        self.assertEqual(len(warnings), 1)
+        self.assertEqual(warnings, [])
         self.assertEqual(bindings, [{'name': '_b0', 'expression': 'floor($t)'}])
         self.assertEqual(rewritten[1], '(_b0 + 1.0)')
         self.assertEqual(rewritten[2], '(_b0 + 2.0)')

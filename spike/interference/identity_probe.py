@@ -11,9 +11,9 @@ import sys
 BENCH = os.environ['BENCH']
 sys.path.insert(0, BENCH)
 
-from solid_node.core.loader import load_node
-from solid_node.exact import shape_identity
-from solid_node.node.base import AbstractBaseNode
+from machinome.core.loader import load_node
+from machinome.exact import shape_identity
+from machinome.node.base import AbstractBaseNode
 
 node = load_node(sys.argv[1])
 node.assemble()

@@ -1,4 +1,4 @@
-# Contributor briefing — working on the solid-node framework
+# Contributor briefing — working on the machinome framework
 
 This is a compact orientation to the framework and its verification tools. For
 the current architecture, read [the architecture synthesis](architecture.md).
@@ -8,21 +8,21 @@ architectural choice, read [`docs/adrs/`](adrs/README.md).
 
 ## Layout
 
-- `solid_node/node/` — the node tree: `base.py` defines
+- `machinome/node/` — the node tree: `base.py` defines
   `AbstractBaseNode`; `internal.py`, `assembly.py`, `fusion.py`, and `leaf.py`
   define the tree roles; `adapters/` contains CAD backends; and
   `operations.py` defines transformations.
-- `solid_node/manager/` and `solid_node/cli.py` — the `solid` command and its
+- `machinome/manager/` and `machinome/cli.py` — the `machinome` command and its
   commands, including development, testing, snapshots, scaffolding, and
   export.
-- `solid_node/core/loader.py` — node and test loading conventions.
-- `solid_node/test.py` — mesh-oriented test cases and assertions.
-- `solid_node/viewers/` — the OpenSCAD viewer and snapshotter, the lookup of
-  the installed `solid-node-viewer` package (its lightweight entry-point
+- `machinome/core/loader.py` — node and test loading conventions.
+- `machinome/test.py` — mesh-oriented test cases and assertions.
+- `machinome/viewers/` — the OpenSCAD snapshot renderer, the lookup of
+  the installed `machinome-viewer` package (its lightweight entry-point
   provider is imported and called here), and the staging half of the web
   snapshot renderer. The viewer's serving and capture modules run in separate
   processes, and the browser viewer itself is maintained in the independent
-  solid-node-viewer repository.
+  machinome-viewer repository.
 - `tests/` — the Python test suite. `tests/meta_project/` with
   `tests/test_meta.py` forms the end-to-end meta-project harness.
 
@@ -30,11 +30,11 @@ architectural choice, read [`docs/adrs/`](adrs/README.md).
 
 Use direct pytest coverage for local units and CLI behavior. Use the
 meta-project harness when the claim depends on real node loading, rendering,
-keyframes, meshes, or the `solid test` subprocess path. Fake nodes and mocks
+keyframes, meshes, or the `machinome test` subprocess path. Fake nodes and mocks
 are useful at a local boundary but cannot establish that the real rendering and
 test pipeline behaves correctly.
 
-The meta-project harness runs small real solid-node projects. Their tests may
+The meta-project harness runs small real machinome projects. Their tests may
 be deliberately green, proving the stated contract, or deliberately red,
 proving that an invalid project is rejected for the intended reason rather
 than because of an import error or vacuous pass.

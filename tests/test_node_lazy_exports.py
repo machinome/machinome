@@ -1,14 +1,14 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""`solid_node.node` resolves its backend exports on first access.
+"""`machinome.node` resolves its backend exports on first access.
 
 The package used to re-export every backend class eagerly, so importing
-ANY module under it -- `from solid_node.node.base import AbstractBaseNode`,
+ANY module under it -- `from machinome.node.base import AbstractBaseNode`,
 which the loader, the builder, the piece inventory, the test manager and
 the simulation enumerator all do -- ran that whole list and dragged in
-`solid_node.exact` -> `cadquery`, 1.84 s on every `solid` invocation.
+`machinome.exact` -> `cadquery`, 1.84 s on every `machinome` invocation.
 
 Two things have to stay true at once, so both are pinned here: nothing
 is imported until it is named, and what comes back when it IS named is
@@ -27,51 +27,60 @@ from unittest import TestCase
 
 from .import_probe import probe
 
-import solid_node.node
+import machinome.node
 
 
-# The names `solid_node/node/__init__.py` exported eagerly before this
+# The names `machinome/node/__init__.py` exported eagerly before this
 # change, each with the submodule that defines it. Written out here
 # rather than read from the package under test: a table that agreed with
 # itself would prove nothing about what consumers used to import.
 EXPECTED_EXPORTS = {
-    'StlRenderStart': 'solid_node.node.base',
-    'AssemblyNode': 'solid_node.node.assembly',
-    'FusionNode': 'solid_node.node.fusion',
-    'CadQueryNode': 'solid_node.node.adapters.cadquery',
-    'Build123dNode': 'solid_node.node.adapters.build123d',
-    'SheetLeafNode': 'solid_node.node.sheet_leaf',
-    'Build123dSheetNode': 'solid_node.node.adapters.build123d_sheet',
-    'FlexibleNode': 'solid_node.node.flexible',
-    'MolejoNode': 'solid_node.node.adapters.molejo',
-    'Solid2Node': 'solid_node.node.adapters.solid2',
-    'OpenScadNode': 'solid_node.node.adapters.openscad',
-    'JScadNode': 'solid_node.node.adapters.jscad',
-    'StlNode': 'solid_node.node.adapters.stl',
-    'StepNode': 'solid_node.node.adapters.step',
-    'property_as_number': 'solid_node.node.decorators',
+    'StlRenderStart': 'machinome.node.base',
+    'AssemblyNode': 'machinome.node.assembly',
+    'FusionNode': 'machinome.node.fusion',
+    'CadQueryNode': 'machinome.node.adapters.cadquery',
+    'Build123dNode': 'machinome.node.adapters.build123d',
+    'SheetLeafNode': 'machinome.node.sheet_leaf',
+    'Build123dSheetNode': 'machinome.node.adapters.build123d_sheet',
+    'FlexibleNode': 'machinome.node.flexible',
+    'MolejoNode': 'machinome.node.adapters.molejo',
+    'Solid2Node': 'machinome.node.adapters.solid2',
+    'OpenScadNode': 'machinome.node.adapters.openscad',
+    'JScadNode': 'machinome.node.adapters.jscad',
+    'StlNode': 'machinome.node.adapters.stl',
+    'StepNode': 'machinome.node.adapters.step',
+    'property_as_number': 'machinome.node.decorators',
     # Added by the declarative node API, lazily like the rest. Only the
     # STRUCTURE half: the parameter kinds this package also exported for
-    # one unreleased cycle now live in `solid_node.parameters` and are
+    # one unreleased cycle now live in `machinome.parameters` and are
     # pinned out of here by ParameterModuleSurface below.
-    'declared_children': 'solid_node.node.declarative',
+    'declared_children': 'machinome.node.declarative',
+    # Added by `carry-markings-on-a-part`: what a part carries on its
+    # surface is an answer to "what has shape", so the four names are
+    # node exports -- and deferred like the rest, since the artwork
+    # reduction's build123d and the mesh build's trimesh are reached
+    # inside the build and never at import.
+    'Marking': 'machinome.node.markings',
+    'Wrapped': 'machinome.node.markings',
+    'Flat': 'machinome.node.markings',
+    'Svg': 'machinome.node.markings',
 }
 
 # What the node package must NOT answer for. A build parameter is imported
-# from `solid_node.parameters`, and one import line saying which of its
+# from `machinome.parameters`, and one import line saying which of its
 # names is a node kind and which is a knob is the whole point of the split;
 # a re-export here would quietly restore the ambiguity.
 PARAMETER_NAMES = ('Quantity', 'Length', 'Angle', 'Count', 'Ratio', 'Scalar',
                    'Flag', 'declared_parameters')
 
 # The names and the two submodules `motion-package` moved out of the node
-# package entirely, each now answering for `solid_node.motion.ports`
+# package entirely, each now answering for `machinome.motion.ports`
 # instead. No re-export, no alias, no shim: reading any of these off
-# `solid_node.node` must fail naming the new home.
+# `machinome.node` must fail naming the new home.
 MOVED_NAMES = ('Port', 'RotationalPort', 'TranslationalPort', 'SignalPort',
               'declared_ports', 'Time', 'ports', 'timebase')
 
-# The exports whose submodule reaches `solid_node.exact` -> `cadquery`.
+# The exports whose submodule reaches `machinome.exact` -> `cadquery`.
 EXACT_EXPORTS = ('FusionNode', 'CadQueryNode', 'Build123dNode',
                  'Build123dSheetNode', 'StepNode')
 
@@ -113,24 +122,24 @@ class NodePackageImportCost(TestCase):
         return result
 
     def test_importing_the_node_package_does_not_import_cadquery(self):
-        result = self._ran('import solid_node.node\n')
+        result = self._ran('import machinome.node\n')
         self.assertFalse(result.imported('cadquery'),
-                         'importing solid_node.node imported cadquery')
-        self.assertFalse(result.imported('solid_node.exact'),
-                         'importing solid_node.node imported the exact stack')
+                         'importing machinome.node imported cadquery')
+        self.assertFalse(result.imported('machinome.exact'),
+                         'importing machinome.node imported the exact stack')
 
     def test_importing_the_node_base_does_not_import_cadquery(self):
         # The path that actually hurts: every core consumer imports
-        # `solid_node.node.base`, which runs the package __init__ first.
+        # `machinome.node.base`, which runs the package __init__ first.
         result = self._ran(
-            'from solid_node.node.base import AbstractBaseNode\n')
+            'from machinome.node.base import AbstractBaseNode\n')
         self.assertFalse(result.imported('cadquery'),
-                         'importing solid_node.node.base imported cadquery')
+                         'importing machinome.node.base imported cadquery')
 
     def test_importing_a_faceted_backend_does_not_import_cadquery(self):
         # An OpenSCAD/solid2-only project names Solid2Node and nothing
         # else; it must not pay for the exact stack.
-        result = self._ran('from solid_node.node import Solid2Node\n')
+        result = self._ran('from machinome.node import Solid2Node\n')
         self.assertFalse(result.imported('cadquery'),
                          'resolving Solid2Node imported cadquery')
 
@@ -139,7 +148,7 @@ class NodePackageImportCost(TestCase):
         for name in EXACT_EXPORTS:
             with self.subTest(name=name):
                 result = self._ran(
-                    f'from solid_node.node import {name}\n'
+                    f'from machinome.node import {name}\n'
                     f'assert isinstance({name}, type), {name!r}\n')
                 self.assertTrue(result.imported('cadquery'),
                                 f'resolving {name} did not import cadquery')
@@ -148,13 +157,13 @@ class NodePackageImportCost(TestCase):
         # design D10 / ADR-078: OCP is the boundary-representation
         # kernel's own package, and StepNode's reader lives inside it;
         # a bare package import must not pull it in.
-        result = self._ran('import solid_node.node\n')
+        result = self._ran('import machinome.node\n')
         self.assertFalse(result.imported('OCP'),
-                         'importing solid_node.node imported OCP')
+                         'importing machinome.node imported OCP')
 
     def test_naming_step_node_imports_the_step_reader(self):
         result = self._ran(
-            'from solid_node.node import StepNode\n'
+            'from machinome.node import StepNode\n'
             'assert isinstance(StepNode, type), StepNode\n')
         self.assertTrue(result.imported('OCP'),
                         'resolving StepNode did not import OCP')
@@ -164,23 +173,23 @@ class NodePackageExports(TestCase):
     """Every name the package used to export still resolves, unchanged."""
 
     def test_all_lists_exactly_the_names_exported_before(self):
-        self.assertEqual(sorted(solid_node.node.__all__),
+        self.assertEqual(sorted(machinome.node.__all__),
                          sorted(EXPECTED_EXPORTS))
 
     def test_every_export_is_the_object_its_submodule_defines(self):
         for name, module_name in EXPECTED_EXPORTS.items():
             with self.subTest(name=name):
                 module = importlib.import_module(module_name)
-                self.assertIs(getattr(solid_node.node, name),
+                self.assertIs(getattr(machinome.node, name),
                               getattr(module, name))
 
     def test_a_resolved_export_is_a_real_class_not_a_proxy(self):
         # CadQueryNode is built by the CheckCQEditor metaclass and
         # consumers test it with issubclass, so a proxy would break them
         # in ways an attribute-forwarding test would not notice.
-        from solid_node.node import CadQueryNode
-        from solid_node.node.adapters.cadquery import CheckCQEditor
-        from solid_node.node.exact_leaf import ExactLeafNode
+        from machinome.node import CadQueryNode
+        from machinome.node.adapters.cadquery import CheckCQEditor
+        from machinome.node.exact_leaf import ExactLeafNode
 
         self.assertIsInstance(CadQueryNode, type)
         self.assertIs(type(CadQueryNode), CheckCQEditor)
@@ -188,7 +197,7 @@ class NodePackageExports(TestCase):
 
     def test_star_import_binds_every_exported_name(self):
         result = probe(
-            'from solid_node.node import *\n'
+            'from machinome.node import *\n'
             f'missing = [n for n in {sorted(EXPECTED_EXPORTS)!r} '
             'if n not in dir()]\n'
             'print(missing)\n')
@@ -196,7 +205,7 @@ class NodePackageExports(TestCase):
         self.assertEqual(result.stdout.strip(), '[]')
 
     def test_dir_offers_the_exported_names(self):
-        listed = dir(solid_node.node)
+        listed = dir(machinome.node)
         for name in EXPECTED_EXPORTS:
             with self.subTest(name=name):
                 self.assertIn(name, listed)
@@ -208,7 +217,7 @@ class NodePackageExports(TestCase):
         # It has to be observed in a fresh interpreter: by the time this
         # suite runs, the names are long since resolved.
         result = probe(
-            'import solid_node.node as node\n'
+            'import machinome.node as node\n'
             "print('BEFORE', 'StlNode' in vars(node))\n"
             'first = node.StlNode\n'
             "print('AFTER', vars(node).get('StlNode') is first)\n"
@@ -219,13 +228,13 @@ class NodePackageExports(TestCase):
 
     def test_an_unknown_name_still_raises_attribute_error(self):
         with self.assertRaises(AttributeError):
-            solid_node.node.NoSuchNode
+            machinome.node.NoSuchNode
 
     def test_an_unknown_name_is_not_reported_as_an_import_failure(self):
         result = probe(
-            'import solid_node.node\n'
+            'import machinome.node\n'
             'try:\n'
-            '    solid_node.node.NoSuchNode\n'
+            '    machinome.node.NoSuchNode\n'
             'except AttributeError:\n'
             "    print('ATTRIBUTE_ERROR')\n"
             'except Exception as other:\n'
@@ -240,7 +249,7 @@ class NodePackageSubmodules(TestCase):
     """Submodule attributes survive losing the eager imports.
 
     `from .assembly import AssemblyNode` used to bind
-    `solid_node.node.assembly` as a side effect of the import machinery,
+    `machinome.node.assembly` as a side effect of the import machinery,
     so a consumer could read it after importing only the package. The
     accessor has to resolve submodule names too, or that quietly breaks.
     """
@@ -249,20 +258,20 @@ class NodePackageSubmodules(TestCase):
         for submodule in ('assembly', 'operations', 'adapters'):
             with self.subTest(submodule=submodule):
                 result = probe(
-                    'import solid_node.node\n'
-                    f'module = solid_node.node.{submodule}\n'
+                    'import machinome.node\n'
+                    f'module = machinome.node.{submodule}\n'
                     'print(module.__name__)\n')
                 self.assertEqual(result.status, 0, result.stderr)
                 self.assertEqual(result.stdout.strip(),
-                                 f'solid_node.node.{submodule}')
+                                 f'machinome.node.{submodule}')
 
     def test_a_submodule_attribute_is_the_imported_module(self):
-        module = importlib.import_module('solid_node.node.assembly')
-        self.assertIs(solid_node.node.assembly, module)
+        module = importlib.import_module('machinome.node.assembly')
+        self.assertIs(machinome.node.assembly, module)
 
     def test_reading_a_submodule_does_not_import_its_siblings(self):
-        result = probe('import solid_node.node\n'
-                       'solid_node.node.assembly\n'
+        result = probe('import machinome.node\n'
+                       'machinome.node.assembly\n'
                        "print('DONE')\n")
         self.assertEqual(result.stdout.strip(), 'DONE', result.stderr)
         self.assertFalse(result.imported('cadquery'),
@@ -270,7 +279,7 @@ class NodePackageSubmodules(TestCase):
 
 
 class NodePackageMovedNames(TestCase):
-    """Ports and the declared time base answer from `solid_node.motion.ports`
+    """Ports and the declared time base answer from `machinome.motion.ports`
     now, not from this package -- `motion-package`'s deliberate,
     unshimmed break. `tests/test_motion_package.py` owns the fuller
     behavioural pin; this class keeps the moved names inside the same
@@ -280,7 +289,7 @@ class NodePackageMovedNames(TestCase):
     def test_a_moved_name_is_not_in_all(self):
         for name in MOVED_NAMES:
             with self.subTest(name=name):
-                self.assertNotIn(name, solid_node.node.__all__)
+                self.assertNotIn(name, machinome.node.__all__)
 
     def test_reading_a_moved_name_names_its_new_home(self):
         # ImportError, not AttributeError: CPython's `from X import Y`
@@ -291,18 +300,18 @@ class NodePackageMovedNames(TestCase):
         for name in MOVED_NAMES:
             with self.subTest(name=name):
                 with self.assertRaises(ImportError) as raised:
-                    getattr(solid_node.node, name)
-                self.assertIn('solid_node.motion.ports', str(raised.exception))
+                    getattr(machinome.node, name)
+                self.assertIn('machinome.motion.ports', str(raised.exception))
 
     def test_importing_a_moved_name_raises_import_error(self):
         for name in ('Port', 'RotationalPort', 'TranslationalPort',
                      'SignalPort', 'declared_ports', 'Time'):
             with self.subTest(name=name):
                 result = probe(
-                    f'from solid_node.node import {name}\n'
+                    f'from machinome.node import {name}\n'
                     "print('NO_ERROR')\n")
                 self.assertNotEqual(result.stdout.strip(), 'NO_ERROR')
-                self.assertIn('solid_node.motion.ports', result.stderr)
+                self.assertIn('machinome.motion.ports', result.stderr)
 
 
 class NodePackageBrokenBackend(TestCase):
@@ -317,7 +326,7 @@ class NodePackageBrokenBackend(TestCase):
     def _access(self, expression):
         return probe(
             CADQUERY_ABSENT +
-            'import solid_node.node\n'
+            'import machinome.node\n'
             'try:\n'
             f'    {expression}\n'
             'except AttributeError as wrong:\n'
@@ -334,29 +343,29 @@ class NodePackageBrokenBackend(TestCase):
         # dependency and stays one. It is a claim about WHEN the failure
         # is allowed to happen: at first use of a name that needs it.
         result = probe(CADQUERY_ABSENT +
-                       'import solid_node.node\n'
+                       'import machinome.node\n'
                        "print('IMPORTED')\n")
         self.assertEqual(result.stdout.strip(), 'IMPORTED', result.stderr)
         self.assertNotIn('Traceback', result.stderr)
 
     def test_a_broken_backend_raises_the_underlying_import_error(self):
-        result = self._access('solid_node.node.CadQueryNode')
+        result = self._access('machinome.node.CadQueryNode')
         self.assertEqual(result.status, 0, result.stderr)
         reported = result.stdout.strip()
         self.assertTrue(reported.startswith('IMPORT_ERROR'), reported)
         self.assertIn('cadquery', reported)
 
     def test_the_reported_failure_names_the_requested_export(self):
-        result = self._access('solid_node.node.CadQueryNode')
+        result = self._access('machinome.node.CadQueryNode')
         self.assertEqual(result.status, 0, result.stderr)
         self.assertIn('CadQueryNode', result.stdout)
 
     def test_hasattr_does_not_turn_a_broken_backend_into_a_missing_name(self):
         result = probe(
             CADQUERY_ABSENT +
-            'import solid_node.node\n'
+            'import machinome.node\n'
             'try:\n'
-            "    present = hasattr(solid_node.node, 'CadQueryNode')\n"
+            "    present = hasattr(machinome.node, 'CadQueryNode')\n"
             'except ImportError as failure:\n'
             "    print('IMPORT_ERROR', failure)\n"
             'else:\n'
@@ -368,7 +377,7 @@ class NodePackageBrokenBackend(TestCase):
 
 
 class ParameterModuleSurface(TestCase):
-    """Build parameters come from `solid_node.parameters`, and only there.
+    """Build parameters come from `machinome.parameters`, and only there.
 
     Two properties, and the second is the one that decays: a module can
     be created without anyone noticing that the old path still works, and
@@ -391,28 +400,28 @@ class ParameterModuleSurface(TestCase):
                 'DimensionError', 'ParameterError')
 
     def test_the_module_exports_the_parameter_vocabulary(self):
-        import solid_node.parameters as parameters
+        import machinome.parameters as parameters
 
         self.assertEqual(sorted(parameters.__all__), sorted(self.EXPECTED))
 
     def test_the_node_package_does_not_export_a_parameter(self):
         for name in PARAMETER_NAMES:
             with self.subTest(name=name):
-                self.assertNotIn(name, solid_node.node.__all__)
+                self.assertNotIn(name, machinome.node.__all__)
                 with self.assertRaises(AttributeError) as raised:
-                    getattr(solid_node.node, name)
+                    getattr(machinome.node, name)
                 self.assertIn(name, str(raised.exception))
 
     def test_importing_parameters_imports_nothing_else(self):
-        result = probe('import solid_node.parameters\n'
+        result = probe('import machinome.parameters\n'
                        "print('DONE')\n")
         self.assertEqual(result.stdout.strip(), 'DONE', result.stderr)
         self.assertFalse(result.imported('cadquery'),
-                         'importing solid_node.parameters imported cadquery')
+                         'importing machinome.parameters imported cadquery')
         self.assertEqual(
-            result.imported_under('solid_node'),
-            {'solid_node', 'solid_node.parameters'},
-            'importing solid_node.parameters reached another framework '
+            result.imported_under('machinome'),
+            {'machinome', 'machinome.parameters'},
+            'importing machinome.parameters reached another framework '
             'module')
 
     def test_the_names_are_bound_eagerly(self):
@@ -420,7 +429,7 @@ class ParameterModuleSurface(TestCase):
         # defer, and deferral would be indirection a reader has to unpick
         # for no gain. Read out of the module dict, which an accessor
         # would not have populated.
-        import solid_node.parameters as parameters
+        import machinome.parameters as parameters
 
         for name in self.EXPECTED:
             with self.subTest(name=name):
@@ -435,7 +444,7 @@ class ParameterModuleSurface(TestCase):
         # declaration resolves its arguments with, and the enumerator
         # construction reads -- and those are imports, pinned here to
         # come from the parameter module and nowhere else.
-        from solid_node.node import declarative
+        from machinome.node import declarative
 
         for name in ('Length', 'Angle', 'Count', 'Ratio', 'Scalar',
                      'Quantity', 'Flag', 'Expression', 'Formula'):
@@ -445,4 +454,4 @@ class ParameterModuleSurface(TestCase):
         for name in ('Declaration', 'evaluate', 'declared_parameters'):
             with self.subTest(name=name):
                 self.assertEqual(getattr(declarative, name).__module__,
-                                 'solid_node.parameters')
+                                 'machinome.parameters')

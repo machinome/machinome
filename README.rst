@@ -1,89 +1,122 @@
-==========
-Solid Node
-==========
+=========
+Machinome
+=========
 
+**Source code for machines**
 
-.. image:: https://img.shields.io/pypi/v/solid-node.svg
-        :target: https://pypi.org/project/solid-node/
-        :alt: PyPI Version
+.. image:: https://img.shields.io/pypi/v/machinome.svg
+   :target: https://pypi.org/project/machinome/
+   :alt: PyPI version
 
-.. image:: https://readthedocs.org/projects/solid-node/badge/?version=latest
-        :target: https://solid-node.readthedocs.io/en/latest/
-        :alt: Documentation Status
+.. image:: https://readthedocs.org/projects/machinome/badge/?version=latest
+   :target: https://machinome.readthedocs.io/en/latest/
+   :alt: Documentation status
 
+Machinome is a Python framework for giving a machine source code.
+Describe its parts, the dimensions they share, how they fit together,
+what moves, and the relationships that make the whole machine work.
+Its geometry, operating behaviour and tests belong to the same project.
 
-**Describe a machine, not just its parts.**
+A gear ratio connects the gears you see to the movement you test.
+An input moves the parts it drives. A spring follows the mechanism
+that compresses it. A calculator remembers its digits when the crank
+returns to rest. These relationships are explicit in the machine's
+source, where they can be inspected, changed and tested.
 
-Solid Node is a Python framework for designing and simulating machines.
-Declare the parts, the dimensions they share, the joints that let them
-move, and the relationships that make them work together. Inspect the
-assembly, operate its controls, and test mechanical requirements in the
-same project.
+Supply parts using CadQuery, build123d, OpenSCAD/SolidPython or JSCAD;
+reuse STEP and STL designs; derive sheet parts from cutting profiles;
+and describe flexible springs, belts and cables with
+`molejo <https://molejo.readthedocs.io>`_.
+Machinome binds the pieces together through assemblies, shared parameters,
+joints, laws, inputs and stored state. Incremental builds give feedback
+as you edit. The optional browser viewer lets people operate and explore
+the machine, including from an exported static web page.
 
-Keep the CAD tools that suit your design: CadQuery, build123d,
-OpenSCAD/SolidPython and JSCAD, alongside imported STEP and STL parts,
-sheet profiles, and flexible springs, belts and cables through
-`molejo <https://molejo.readthedocs.io>`_. Solid Node supplies the
-machine structure, motion, incremental builds, tests and export.
+Machinome is developed empirically from mechanical projects, with
+AI-assisted design and implementation. The
+`Machinome organisation <https://github.com/machinome>`_ holds examples
+and simulations of open-source machines. Simulation and geometric tests
+provide evidence about those models; they do not establish that every
+design has been manufactured or physically validated.
 
-A gear ratio should connect the gears you see to the movement you test.
-A parameter change should reach the parts that depend on it. A design
-shared on a website should be something a reader can inspect and operate.
-Those are the relationships Solid Node is built around.
+Version 0.7 and the new name
+============================
+
+Machinome 0.7 is the direct continuation of **solid-node 0.6.0**.
+The framework and GitHub organisation were renamed to avoid confusion
+with Tim Berners-Lee's Solid project: `solid-node` sounded like a Solid
+node, and `LibreSolid` like a libre edition of Solid. Machinome has no
+affiliation with that project.
+
+**0.7 is in release preparation.** This checkout documents its current
+source. The framework and matching independent viewer still need to be
+published. See the
+`quickstart <https://machinome.readthedocs.io/en/latest/quickstart.html>`_
+for installation from matching source checkouts; after publication, the
+normal entry is:
+
+.. code-block:: bash
+
+   pip install "machinome[viewer]>=0.7,<0.8"
+   machinome new myproject
+   cd myproject
+   machinome develop
+
+The default template uses SolidPython and needs the OpenSCAD executable.
+The
+`migration guide <https://machinome.readthedocs.io/en/latest/upgrading.html>`_
+maps imports, commands, configuration and viewer integration from 0.6.
+There is no ``solid_node`` import shim or ``solid`` command alias.
 
 Learn it one step at a time
 ===========================
 
-The `tutorial <https://solid-node.readthedocs.io/en/latest/quickstart.html>`_
-starts with a part, combines a base and pointer into a simple assembly,
-animates it, and adds a pin with tests for its fit. From there, learn
-parameters, joints, drivers and scenarios.
+The `tutorial <https://machinome.readthedocs.io/en/latest/quickstart.html>`_
+starts with a part, combines a base and pointer into an assembly,
+animates it, and tests a pin's fit. Continue with shared parameters,
+joints, drivers, instructions and simulation.
 
-For complete machines, explore the three external examples:
-`V8 engine <https://solid-node.readthedocs.io/en/latest/example-v8-engine.html>`_,
-`Metamaquina 2 <https://solid-node.readthedocs.io/en/latest/example-metamaquina2.html>`_,
-and `Clock 01 <https://solid-node.readthedocs.io/en/latest/example-clock-01.html>`_.
-Each keeps its design source in its own repository.
+Explore the complete
+`V8 engine <https://machinome.readthedocs.io/en/latest/example-v8-engine.html>`_,
+`Metamaquina 2 <https://machinome.readthedocs.io/en/latest/example-metamaquina2.html>`_,
+and `Clock 01 <https://machinome.readthedocs.io/en/latest/example-clock-01.html>`_.
+Each keeps its design source and licence in its own repository.
 
-* `User manual <https://solid-node.readthedocs.io/en/latest/>`_
-* `Migrating from 0.6 <https://solid-node.readthedocs.io/en/latest/upgrading.html>`_
+* `User manual <https://machinome.readthedocs.io/en/latest/>`_
+* `0.7 release notes <https://machinome.readthedocs.io/en/latest/releases/release-0.7.html>`_
+* `Source repository <https://github.com/machinome/machinome-framework>`_
 
-This checkout documents **0.7, in preparation**. The latest published
-framework is 0.6.0; the quickstart distinguishes preview installation
-from the installation command to use after release.
+The framework is **Apache-2.0**. The optional
+`Machinome Viewer <https://github.com/machinome/machinome-viewer>`_
+is **AGPL-3.0-only**, installed through ``viewer``.
+Ordinary ``machinome develop`` requires it. Without it, the framework
+builds, tests, exports with ``--no-widget``, watches with
+``develop --no-web``, and takes fixed-pose OpenSCAD snapshots.
 
-Solid Node is Apache-2.0. The optional browser viewer is the independent
-AGPL-3.0-only `solid-node-viewer
-<https://github.com/LibreSolid/solid-node-viewer>`_ package, installed
-through the ``viewer`` extra once published. Without it, the
-framework uses OpenSCAD as its viewer. Designs retain their own
-licences in their external repositories. The framework's tutorial is
-Apache-2.0 and contains no source adapted from those projects.
+The ``mechanics`` extra installs the independent
+``machinome-mechanics`` helpers. The ``studio`` extra is reserved for
+Machinome Studio, an experimental, unpublished harness; it cannot yet
+resolve from a package index.
 
-Motion is prescribed kinematics, not a general dynamics simulation.
-Geometric tests help establish specific fits, clearances and support
-conditions; they do not replace manufacturing review or physical tests.
-
-Working on solid-node itself
+Working on Machinome itself
 ============================
 
 This section is for contributors — humans and coding agents — who modify the
-framework in this repository. For *using* solid-node in your own mechanical
+framework in this repository. For *using* machinome in your own mechanical
 project, see the documentation above.
 
 Development environment
 -----------------------
 
 Requirements: Python >= 3.11. Node.js is not needed: the browser viewer and
-its widget live in the separate `solid-node-viewer
-<https://github.com/LibreSolid/solid-node-viewer>`_ repository, and the tests
+its widget live in the separate `machinome-viewer
+<https://github.com/machinome/machinome-viewer>`_ repository, and the tests
 that need a viewer skip unless that package is installed. `OpenSCAD
 <https://openscad.org/>`_ is conditional: put it on the PATH when working on
-SolidPython2/Solid2 or raw OpenSCAD nodes, faceted fusions, symbolic Solid2
-animation values, the ``solid develop --openscad`` viewer, or the default
-OpenSCAD snapshot renderer. All-exact projects — CadQuery, build123d, or the
-two mixed — build, test, and export without it; use
-``solid snapshot --renderer web`` for snapshots on a machine without OpenSCAD.
+SolidPython2/Solid2 or raw OpenSCAD nodes, or the default OpenSCAD snapshot
+renderer. All-exact projects — CadQuery,
+build123d, or the two mixed — build, test, and export without it; use
+``machinome snapshot --renderer web`` for snapshots on a machine without OpenSCAD.
 
 `manifold3d <https://pypi.org/project/manifold3d/>`_ is installed by default
 and is conditional in the same sense: it decides faceted geometry, so it is
@@ -99,8 +132,8 @@ example machines):
 
 .. code-block:: bash
 
-    $ git clone --recurse-submodules https://github.com/LibreSolid/solid-node.git
-    $ cd solid-node
+    $ git clone --recurse-submodules https://github.com/machinome/machinome-framework.git
+    $ cd machinome-framework
 
 Create a virtualenv and install the package in editable mode with the dev
 dependencies:
@@ -111,7 +144,7 @@ dependencies:
     $ source .venv/bin/activate
     $ pip install -e ".[dev]"
 
-The ``solid`` CLI entrypoint (``solid_node/cli.py``) is now on the PATH of
+The ``machinome`` CLI entrypoint (``machinome/cli.py``) is now on the PATH of
 the virtualenv.
 
 Running tests
@@ -137,20 +170,20 @@ Notes:
   .. code-block:: bash
 
       $ playwright install chromium
-      $ SOLID_NODE_WEB_SNAPSHOT_E2E=1 pytest tests/test_browser_renderer.py::BrowserSnapshotEndToEndTest
+      $ MACHINOME_WEB_SNAPSHOT_E2E=1 pytest tests/test_browser_renderer.py::BrowserSnapshotEndToEndTest
 
   The ordinary suite leaves this environment variable unset and skips the
   capture, even when the viewer is installed. With the opt-in set, a missing
   viewer or browser is a setup failure. The dedicated CI browser-snapshot job
   installs both dependencies, sets the opt-in, and runs this same test.
 * ``tests/meta_project/`` together with ``tests/test_meta.py`` is the
-  end-to-end meta-project harness: it runs small real solid-node projects —
+  end-to-end meta-project harness: it runs small real machinome projects —
   both deliberately green and deliberately red fixtures — to prove the
-  loading, rendering, and ``solid test`` subprocess paths. Use it when a
+  loading, rendering, and ``machinome test`` subprocess paths. Use it when a
   change touches behavior that direct unit tests cannot establish; see
   `docs/contributor-briefing.md <docs/contributor-briefing.md>`_ for when and
   why.
-* The browser viewer's own tests live in the ``solid-node-viewer``
+* The browser viewer's own tests live in the ``machinome-viewer``
   repository. ``tools/generate_parity_fixture.py`` produces, from this
   framework's render results, the parity fixture that repository commits
   beside its expression evaluator.
@@ -158,16 +191,16 @@ Notes:
 Where things live
 -----------------
 
-* ``solid_node/node/`` — the node tree (base, assembly, fusion, leaf, CAD
+* ``machinome/node/`` — the node tree (base, assembly, fusion, leaf, CAD
   backend adapters, operations)
-* ``solid_node/manager/`` and ``solid_node/cli.py`` — the ``solid`` command:
+* ``machinome/manager/`` and ``machinome/cli.py`` — the ``machinome`` command:
   develop loop, test, snapshot, new, export
-* ``solid_node/core/`` — build pipeline, loader, caching
-* ``solid_node/simulation/`` — drivers, instructions, the stepped ``Sim``
+* ``machinome/core/`` — build pipeline, loader, caching
+* ``machinome/simulation/`` — drivers, instructions, the stepped ``Sim``
   loop, and ``ScenarioTest``
-* ``solid_node/test.py`` — mesh-oriented test cases and assertions
-* ``solid_node/viewers/`` — the OpenSCAD viewer and snapshotter, the lookup
-  of the installed ``solid-node-viewer`` package, and the staging half of the
+* ``machinome/test.py`` — mesh-oriented test cases and assertions
+* ``machinome/viewers/`` — the OpenSCAD snapshot renderer, the lookup
+  of the installed ``machinome-viewer`` package, and the staging half of the
   web snapshot renderer (the photograph itself is the viewer's)
 * ``tests/`` — Python test suite
 * ``docs/`` — Sphinx documentation, architecture synthesis, ADRs
@@ -237,5 +270,5 @@ Contributing
 ============
 
 Bug reports and pull requests are welcome at
-https://github.com/LibreSolid/solid-node — see
+https://github.com/machinome/machinome-framework — see
 `CONTRIBUTING.rst <CONTRIBUTING.rst>`_ and the development discipline above.

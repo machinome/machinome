@@ -1,0 +1,16 @@
+Running WidgetTest.test_expected_failure_passes.UNEXPECTED SUCCESS!
+Running WidgetTest.test_expected_failure_raises. expected failure
+Running WidgetTest.test_plain_fail.FAIL!
+Traceback (most recent call last):
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/solid_node/manager/test.py", line 401, in run_test
+    method()
+  File "/home/asa/devel/libresolid-studio/solid-node/WTs/fix-warts/openspec/changes/honour-skip-and-xfail/evidence/skip_xfail_project/test_widget.py", line 23, in test_plain_fail
+    raise AssertionError('a real regression')
+AssertionError: a real regression
+
+Running WidgetTest.test_plain_pass. passed
+Running WidgetTest.test_skippeds skipped: the exact kernel is not available here
+
+Ran 5 tests in 0.13 seconds: 1 passed, 1 failed, 1 skipped, 1 expected failure, 1 unexpected success
+
+[exit code 1]

@@ -48,9 +48,9 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr .pytest_cache
 
 lint/flake8: ## check style with flake8
-	flake8 solid_node tests
+	flake8 machinome tests
 lint/black: ## check style with black
-	black --check solid_node tests
+	black --check machinome tests
 
 lint: lint/flake8 lint/black ## check style
 
@@ -61,15 +61,15 @@ test-all: ## run tests on every Python version with tox
 	tox
 
 coverage: ## check code coverage quickly with the default Python
-	coverage run --source solid_node -m pytest
+	coverage run --source machinome -m pytest
 	coverage report -m
 	coverage html
 	$(BROWSER) htmlcov/index.html
 
 docs: ## generate Sphinx HTML documentation, including API docs
-	rm -f docs/solid_node.rst
+	rm -f docs/machinome.rst
 	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ solid_node
+	sphinx-apidoc -o docs/ machinome
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
 	$(BROWSER) docs/_build/html/index.html

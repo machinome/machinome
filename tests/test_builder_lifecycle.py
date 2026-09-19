@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -16,9 +16,9 @@ from trimesh.creation import box
 from trimesh.util import concatenate
 from watchdog.events import DirModifiedEvent, FileModifiedEvent
 
-from solid_node.core.builder import (Builder, BuildOutcome, atomic_write,
+from machinome.core.builder import (Builder, BuildOutcome, atomic_write,
                                      write_error)
-from solid_node.node.base import StlRenderStart
+from machinome.node.base import StlRenderStart
 
 from .test_build_lock import lock_is_held
 
@@ -45,7 +45,7 @@ class BuilderLifecycleTest(TestCase):
         current = os.path.join(self.root, 'part.stl')
         open(old, 'w').write('old')
         open(current, 'w').write('current')
-        node = SimpleNamespace(rigid=True, name='part', _type='SolidNode',
+        node = SimpleNamespace(rigid=True, name='part', _type='Machinome',
                                color=None, mtime=0, operations=(),
                                stl_file=current)
         self.builder.node = node
@@ -59,7 +59,7 @@ class BuilderLifecycleTest(TestCase):
         current = os.path.join(self.root, 'part.stl')
         open(current, 'w').write('current')
         self.builder.node = SimpleNamespace(
-            rigid=True, name='part', _type='SolidNode', color=None, mtime=0,
+            rigid=True, name='part', _type='Machinome', color=None, mtime=0,
             operations=(), stl_file=current)
         self.builder._write_viewer_snapshot()
         self.assertFalse(os.path.exists(os.path.join(self.root, 'errors.json')))
@@ -68,7 +68,7 @@ class BuilderLifecycleTest(TestCase):
         artifact = os.path.join(self.root, 'part.stl')
         open(artifact, 'w').write('current')
         self.builder.node = SimpleNamespace(
-            rigid=True, name='part', _type='SolidNode', color=None, mtime=0,
+            rigid=True, name='part', _type='Machinome', color=None, mtime=0,
             operations=(), stl_file=artifact)
         self.assertTrue(self.builder._write_viewer_snapshot())
         document = os.path.join(self.root, 'viewer.json')
@@ -89,7 +89,7 @@ class BuilderLifecycleTest(TestCase):
         write_error('previous', self.root)
         self.builder.node = Mock()
 
-        with patch('solid_node.core.builder.serialize_node',
+        with patch('machinome.core.builder.serialize_node',
                    side_effect=RuntimeError('cannot serialize')):
             with self.assertRaisesRegex(RuntimeError, 'cannot serialize'):
                 self.builder._write_viewer_snapshot()
@@ -169,11 +169,14 @@ class FakeNode:
         self.children = children
         self.files = []
         self.name = name
-        self._type = 'SolidNode'
+        self._type = 'Machinome'
         self.color = None
         self.operations = ()
 
     def assemble(self):
+        pass
+
+    def _prepare(self):
         pass
 
     @property
@@ -224,7 +227,7 @@ class PublicationGeometryTest(TestCase):
                 node = FakeNode(artifact, mtime=0, name='broken-gear')
                 builder = Builder('model.py', build_dir=build_dir, watch=False)
 
-                with patch('solid_node.core.builder.load_node',
+                with patch('machinome.core.builder.load_node',
                            return_value=node), \
                      patch.object(builder, 'generate_stl',
                                   return_value=BuildOutcome.CURRENT):
@@ -314,7 +317,7 @@ class RedundantAndSupersededBuildTest(TestCase):
         document = self.publish_matching_document(builder, node)
         before = os.stat(document).st_mtime_ns
 
-        with patch('solid_node.core.builder.load_node', return_value=node), \
+        with patch('machinome.core.builder.load_node', return_value=node), \
              patch.object(builder, 'generate_stl') as generate, \
              patch.object(builder, '_notify_callback') as callback:
             outcome = asyncio.run(builder._start())
@@ -345,8 +348,8 @@ class RedundantAndSupersededBuildTest(TestCase):
             self.assertFalse(lock_held)
             notifications.append('recovered')
 
-        with patch('solid_node.core.builder.load_node', return_value=node), \
-             patch('solid_node.core.builder.project_build_lock',
+        with patch('machinome.core.builder.load_node', return_value=node), \
+             patch('machinome.core.builder.project_build_lock',
                    recording_lock), \
              patch.object(builder, 'generate_stl') as generate, \
              patch.object(builder, '_notify_callback', side_effect=notify):
@@ -366,7 +369,7 @@ class RedundantAndSupersededBuildTest(TestCase):
         builder, node = self.build_fixture(artifact_current=True)
         document = os.path.join(builder.build_dir, 'viewer.json')
 
-        with patch('solid_node.core.builder.load_node', return_value=node), \
+        with patch('machinome.core.builder.load_node', return_value=node), \
              patch.object(builder, 'generate_stl') as generate, \
              patch.object(builder, '_notify_callback') as callback:
             outcome = asyncio.run(builder._start())
@@ -403,7 +406,7 @@ class RedundantAndSupersededBuildTest(TestCase):
             builder.file_changed.set_result(True)
             return await building
 
-        with patch('solid_node.core.builder.load_node', return_value=node), \
+        with patch('machinome.core.builder.load_node', return_value=node), \
              patch.object(builder, 'generate_stl') as generate:
             outcome = asyncio.run(scenario())
 
@@ -420,8 +423,8 @@ class RedundantAndSupersededBuildTest(TestCase):
             node.mtime_ns += 10 ** 9   # an edit landed while this build waited
             yield
 
-        with patch('solid_node.core.builder.load_node', return_value=node), \
-             patch('solid_node.core.builder.project_build_lock',
+        with patch('machinome.core.builder.load_node', return_value=node), \
+             patch('machinome.core.builder.project_build_lock',
                    lock_taken_late), \
              patch.object(builder, 'generate_stl') as generate, \
              patch.object(builder, '_write_viewer_snapshot') as snapshot:
@@ -466,7 +469,7 @@ class BuildCallbackTest(TestCase):
                           callback='http://listener/build-ready')
         events = []
 
-        with patch('solid_node.core.builder.load_node',
+        with patch('machinome.core.builder.load_node',
                    return_value=Mock(children=())), \
              patch.object(builder, 'generate_stl',
                           return_value=BuildOutcome.CURRENT), \
@@ -494,9 +497,9 @@ class BuildCallbackTest(TestCase):
             finally:
                 held.append('released')
 
-        with patch('solid_node.core.builder.load_node',
+        with patch('machinome.core.builder.load_node',
                    return_value=Mock(children=())), \
-             patch('solid_node.core.builder.project_build_lock',
+             patch('machinome.core.builder.project_build_lock',
                    recording_lock), \
              patch.object(builder, 'generate_stl',
                           return_value=BuildOutcome.CURRENT), \
@@ -510,7 +513,7 @@ class BuildCallbackTest(TestCase):
     def test_failed_build_does_not_notify_callback(self):
         builder = Builder('model.py', build_dir=self.root, watch=False,
                           callback='http://listener/build-ready')
-        with patch('solid_node.core.builder.load_node',
+        with patch('machinome.core.builder.load_node',
                    side_effect=RuntimeError('broken model')), \
              patch.object(builder, '_notify_callback') as callback:
             outcome = asyncio.run(builder._start())
@@ -531,14 +534,14 @@ class ViewerSnapshotContentTest(TestCase):
         with open(artifact, 'w') as handle:
             handle.write('solid part')
         builder.node = SimpleNamespace(
-            name='part', rigid=True, _type='SolidNode', color=None, mtime=0,
+            name='part', rigid=True, _type='Machinome', color=None, mtime=0,
             operations=(), stl_file=artifact)
 
         builder._write_viewer_snapshot()
 
         with open(os.path.join(root, 'viewer.json')) as snapshot:
             data = json.load(snapshot)
-        self.assertEqual(data['format'], 'solid-node-export')
+        self.assertEqual(data['format'], 'machinome-export')
         # Schema v2 (instance-qualified drivers): a tree declaring no
         # driver publishes an empty table and is otherwise the document
         # version 1 published.
@@ -577,7 +580,7 @@ class PublicationOrderingTest(TestCase):
             path = os.path.join(self.root, f'{name}.stl')
             with open(path, 'w') as artifact:
                 artifact.write(name)
-            return SimpleNamespace(name=name, rigid=True, _type='SolidNode',
+            return SimpleNamespace(name=name, rigid=True, _type='Machinome',
                                    color=None, mtime=0, operations=(),
                                    stl_file=path)
         children = [leaf(name) for name in names]
@@ -600,7 +603,7 @@ class PublicationOrderingTest(TestCase):
                     os.path.join(self.root, 'added.stl')))
             real_write(path, content)
 
-        with patch('solid_node.core.builder.atomic_write', watching_write):
+        with patch('machinome.core.builder.atomic_write', watching_write):
             self.builder._write_viewer_snapshot()
 
         self.assertEqual(observed, [True],
@@ -621,7 +624,7 @@ class PublicationOrderingTest(TestCase):
                     os.path.join(self.root, 'dropped.stl')))
 
         self.builder.node = self.node_for('part')
-        with patch('solid_node.core.builder.atomic_write', watching_write):
+        with patch('machinome.core.builder.atomic_write', watching_write):
             self.builder._write_viewer_snapshot()
 
         self.assertEqual(observed, [True],
@@ -660,7 +663,7 @@ class PublicationOrderingTest(TestCase):
         self.builder._write_viewer_snapshot()
         before = sorted(os.listdir(self.root))
 
-        with patch('solid_node.core.builder.load_node',
+        with patch('machinome.core.builder.load_node',
                    side_effect=RuntimeError('broken model')):
             outcome = asyncio.run(self.builder._start())
 
