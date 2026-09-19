@@ -14,18 +14,29 @@ Machinome
 
 **The Open Source framework for designing and simulating machines**
 
-A machine is a tree of Python nodes: leaf parts modelled with the CAD
-backend that suits them (OpenSCAD/SolidPython, CadQuery, build123d,
-JSCAD), plus laser-cut sheets, imported STL meshes, and flexible parts
-whose shape follows machine state (via `molejo
-<https://molejo.readthedocs.io>`_, a required dependency). The machine
-declares named driver inputs the browser viewer turns into sliders and
-buttons, a deterministic simulation steps them in Python, and
-mechanical assertions — interference, connectivity, support against
-gravity — run as ordinary tests.
+**Note:** SolidNode framework is being renamed to Machinome.
+
+Machinome is a Python framework that allows representing a machine using
+software code. It allows testing mechanical relations between parts before
+prototype production and simulating the whole machine in the browser
+(through the separate package machinome-viewer).
+
+It's development is agentic, using OpenSpec, and empirical. With Machinome,
+AI agents have shown good capacity of building mechanical projects that looks
+functional in the simulations (although I haven't produced them yet). In this
+GitHub organization you'll find tens of open source mechanical projects that
+have been simulated using Machinome and AI agents.
+
+The state of things are a bit messy now in the project rename from SolidNode to
+Machinome, v0.7 will come in the next days, the code is all here. The instructions
+in this file are not functional yet, check v0.6.0 tag.
+
+This is the last human written line of this README.
 
 * Open Source: Apache License 2.0
-* Documentation: https://machinome.readthedocs.io
+* Stable documentation: https://solid-node.readthedocs.io
+* Upcoming documentation: https://machinome.readthedocs.io
+
 
 Quickstart
 ==========
