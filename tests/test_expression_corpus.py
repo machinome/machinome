@@ -1,8 +1,8 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""The parity corpus covers every name `solid_node.math` can emit.
+"""The parity corpus covers every name `machinome.math` can emit.
 
 ADR-022's enforcement is only as wide as the corpus behind it, so a
 symbolic function added to the module without a case is a name no
@@ -11,7 +11,7 @@ regenerate when one is uncovered; this says the same thing in the
 framework's own suite, where it is seen without running the generator
 and without the CAD stack the spike's corpus needs.
 
-Both read `solid_node.math.SYMBOLIC_BUILTINS`. Neither keeps a list.
+Both read `machinome.math.SYMBOLIC_BUILTINS`. Neither keeps a list.
 
 ADR-080 adds a second surface: a call can live entirely inside a
 `bindings` entry and appear in no operation's own expression text, so the
@@ -22,8 +22,8 @@ same widening `uncovered_builtins` needed in `tools/generate_parity_fixture.py`.
 import re
 from unittest import TestCase
 
-import solid_node.math as snmath
-from solid_node.core.serializer import (
+import machinome.math as snmath
+from machinome.core.serializer import (
     bind_document, drivers_table, serialize_node, symbolic_document,
 )
 
@@ -60,7 +60,7 @@ class CorpusCoverageTest(TestCase):
         missing = sorted(set(snmath.SYMBOLIC_BUILTINS) - called)
         self.assertEqual(
             missing, [],
-            f'{", ".join(missing)} can be emitted by solid_node.math but no '
+            f'{", ".join(missing)} can be emitted by machinome.math but no '
             f'operation in tests/expression_project/vocabulary.py puts it on '
             f'the wire, so the parity fixture would not pin it')
 

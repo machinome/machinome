@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -25,10 +25,10 @@ import tracemalloc
 from unittest import TestCase
 from unittest.mock import patch
 
-from solid_node.core.serializer import instructions_table
-from solid_node.motion.couplings import DoublyBound
-from solid_node.motion.ports import get_coordinate
-from solid_node.simulation import Instruction, RunConflict, Sim, UnsupportedLaw
+from machinome.core.serializer import instructions_table
+from machinome.motion.couplings import DoublyBound
+from machinome.motion.ports import get_coordinate
+from machinome.simulation import Instruction, RunConflict, Sim, UnsupportedLaw
 
 from .base import BaseNodeTest
 from .running_project.machine import (Backwards, Clearing, ContinuousRead,
@@ -878,7 +878,7 @@ class FollowerTest(BaseNodeTest):
     and is never marked as the run's."""
 
     def test_the_port_follows_and_keeps_the_author_as_its_binder(self):
-        from solid_node.motion.ports import RunBinder
+        from machinome.motion.ports import RunBinder
 
         node = Follower()
         sim = Sim(node, 0.1)
@@ -906,7 +906,7 @@ class RelativeInstructionDocumentTest(BaseNodeTest):
     """(2.25) A relative instruction is not yet published."""
 
     def test_the_table_carries_the_absolute_entry_only(self):
-        from solid_node.core.serializer import symbolic_document
+        from machinome.core.serializer import symbolic_document
 
         node = Train()
         with symbolic_document(node) as (_declarations, instructions):
@@ -921,8 +921,8 @@ class ReservedClockNameTest(BaseNodeTest):
     would be silently overwritten every tick."""
 
     def test_a_driver_qualifying_to_time_is_refused_at_construction(self):
-        from solid_node.simulation import sim as sim_module
-        from solid_node.simulation.driver import Driver as Declaration
+        from machinome.simulation import sim as sim_module
+        from machinome.simulation.driver import Driver as Declaration
 
         real = sim_module.qualified_drivers
 
@@ -990,7 +990,7 @@ class OneTreeOneOwnerTest(BaseNodeTest):
         self.assertIn('first.turn', message)
 
     def test_two_scenarios_of_one_class_run_off_one_built_node(self):
-        from solid_node.simulation.scenario import ScenarioTest
+        from machinome.simulation.scenario import ScenarioTest
 
         class Scenario(ScenarioTest):
             node = Train
@@ -1028,7 +1028,7 @@ class StatedBelowRunTest(BaseNodeTest):
         self.assertAlmostEqual(sim.state['d1.lift'], -1.0)
 
     def test_publishing_under_that_run_leaves_the_bank_alone(self):
-        from solid_node.core.serializer import symbolic_document
+        from machinome.core.serializer import symbolic_document
 
         node = StatedBelow()
         sim = Sim(node, 0.05)
@@ -1150,10 +1150,10 @@ class SelfReadRestTest(BaseNodeTest):
         reaches the compile with the two disagreeing. The compile's own
         slot comparison stands behind this as a backstop for the
         invariant."""
-        from solid_node.node import AssemblyNode
-        from solid_node.motion.ports import Time
-        from solid_node.parameters import Angle
-        from solid_node.simulation import Driver
+        from machinome.node import AssemblyNode
+        from machinome.motion.ports import Time
+        from machinome.parameters import Angle
+        from machinome.simulation import Driver
 
         from .running_project.machine import missing_tooth_pair
         from .running_project.parts import Arbor

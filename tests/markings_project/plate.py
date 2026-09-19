@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,8 +11,8 @@ them inherited from a plain mixin in another directory, so a part with
 two decals and the mixin rule are the same fixture.
 """
 
-from solid_node.node import StlNode
-from solid_node.node.markings import Marking, Svg, Wrapped
+from machinome.node import StlNode
+from machinome.node.markings import Marking, Svg, Wrapped
 
 from .decals.badge import BadgeDecal
 

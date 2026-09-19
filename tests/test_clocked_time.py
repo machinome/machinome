@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -19,12 +19,12 @@ exercised by this cycle.
 import json
 import math
 
-from solid_node.motion.joints import JointRangeError
-from solid_node.motion.ports import Time
-from solid_node.scad_expression import GraphValue
-from solid_node.simulation import Sim
-from solid_node.simulation import clocked as clocked_module
-from solid_node.simulation.clocked import ClockedError
+from machinome.motion.joints import JointRangeError
+from machinome.motion.ports import Time
+from machinome.scad_expression import GraphValue
+from machinome.simulation import Sim
+from machinome.simulation import clocked as clocked_module
+from machinome.simulation.clocked import ClockedError
 
 from .base import BaseNodeTest
 from .clocked_project.pendulum import (A, DIGIT, FIRST, QUARTER, STROKE, T,
@@ -92,7 +92,7 @@ class StatelessElapsedTest(BaseNodeTest):
         self.assertEqual(str(node.time), '$t')
 
     def _body(self, node):
-        from solid_node.core.serializer import (document_body, drivers_table,
+        from machinome.core.serializer import (document_body, drivers_table,
                                                 serialize_node,
                                                 symbolic_document)
 
@@ -167,8 +167,8 @@ class BankTest(BaseNodeTest):
         """The no-collision claim, ASSERTED: a bare bank id belongs only
         to a root-declared driver or state, and one named `time` never
         reaches the bank at all."""
-        from solid_node.node import AssemblyNode
-        from solid_node.simulation import Driver
+        from machinome.node import AssemblyNode
+        from machinome.simulation import Driver
 
         with self.assertRaises(TypeError) as caught:
             class Colliding(AssemblyNode):
@@ -436,7 +436,7 @@ class ClockAsASourceTest(BaseNodeTest):
     refusal says (design section 5)."""
 
     def test_the_clock_is_a_source_beside_a_driver_and_a_state(self):
-        from solid_node.motion.couplings import declared_commitments
+        from machinome.motion.couplings import declared_commitments
 
         commitments = declared_commitments(Regulator)
         self.assertEqual(len(commitments), 1)
@@ -451,9 +451,9 @@ class ClockAsASourceTest(BaseNodeTest):
             seen.append((sources, targets))
             return lambda time, engaged, count: count + 1
 
-        from solid_node.math import floor
-        from solid_node.node import AssemblyNode
-        from solid_node.simulation import Driver, State
+        from machinome.math import floor
+        from machinome.node import AssemblyNode
+        from machinome.simulation import Driver, State
 
         class Watched(AssemblyNode):
             time = Time.elapsed()
@@ -485,9 +485,9 @@ class ClockAsASourceTest(BaseNodeTest):
 
     def test_the_clock_under_another_base_is_refused_at_class_definition(
             self):
-        from solid_node.math import floor
-        from solid_node.node import AssemblyNode
-        from solid_node.simulation import Driver, State
+        from machinome.math import floor
+        from machinome.node import AssemblyNode
+        from machinome.simulation import Driver, State
 
         def level(sources, targets):
             return lambda time, count: floor(time)
@@ -511,10 +511,10 @@ class ClockAsASourceTest(BaseNodeTest):
 
     def test_the_clock_is_refused_as_a_target_and_as_either_end_of_drives(
             self):
-        from solid_node.math import floor
-        from solid_node.motion.joints import Revolute
-        from solid_node.node import AssemblyNode, Solid2Node
-        from solid_node.simulation import Driver, State
+        from machinome.math import floor
+        from machinome.motion.joints import Revolute
+        from machinome.node import AssemblyNode, Solid2Node
+        from machinome.simulation import Driver, State
         from solid2 import cube
 
         class Face(Solid2Node):
@@ -580,8 +580,8 @@ class ClockAsASourceTest(BaseNodeTest):
     def test_a_group_of_coordinates_is_admitted_unchanged(self):
         """The reflected `&` is reached only where the left operand
         carries no `&` of its own, so no admitted group changes."""
-        from solid_node.motion.couplings import Coordinates
-        from solid_node.node.qualified import declared_drivers_of
+        from machinome.motion.couplings import Coordinates
+        from machinome.node.qualified import declared_drivers_of
         from .clocked_project.counter import Counter
 
         crank = declared_drivers_of(Counter)['crank']
@@ -605,8 +605,8 @@ class ProducerTest(BaseNodeTest):
     """
 
     def _built(self, node):
-        from solid_node.node import StlRenderStart
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.node import StlRenderStart
+        from machinome.simulation.enumeration import bind_declared_defaults
 
         bind_declared_defaults(node)
         node.assemble()
@@ -640,7 +640,7 @@ class ProducerTest(BaseNodeTest):
     def _manifest(self, node, name):
         import os
 
-        from solid_node.core.export import export_node
+        from machinome.core.export import export_node
 
         out_dir = os.path.join(self.build_dir, name)
         export_node(self._built(node), out_dir, widget=False)
@@ -659,8 +659,8 @@ class ProducerTest(BaseNodeTest):
     def test_the_build_publishes_the_same_snapshot(self):
         import os
 
-        from solid_node.core.builder import Builder
-        from solid_node.core.pieces import PieceInventory
+        from machinome.core.builder import Builder
+        from machinome.core.pieces import PieceInventory
 
         def viewer(node, name):
             builder = Builder.__new__(Builder)
@@ -679,7 +679,7 @@ class ProducerTest(BaseNodeTest):
                          json.dumps(undeclared, sort_keys=True))
 
     def test_publication_still_refuses_the_clocked_root(self):
-        from solid_node.core.serializer import (ClockedDocumentError,
+        from machinome.core.serializer import (ClockedDocumentError,
                                                 document_body)
 
         node = self._built(Regulator())

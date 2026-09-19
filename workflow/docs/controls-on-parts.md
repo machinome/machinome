@@ -27,7 +27,7 @@ The cycle departs from this note in three places, each recorded in its
    entry with `origin` is a superset of the one §4 describes.
 2. **Not every producer publishes the table** (design §9). The build's
    `viewer.json` and the export's `manifest.json` do; the headless
-   `solid snapshot --renderer web` capture does NOT. That capture bakes
+   `machinome snapshot --renderer web` capture does NOT. That capture bakes
    one instant, holds numbers rather than expressions, and already
    publishes an empty instructions table — so a button naming an
    instruction its own document does not list would be inconsistent, and
@@ -271,8 +271,8 @@ versions 1 to 4 reaches exactly the code it always did.
 
 | Cycle | Repository | Base | Depends on |
 | --- | --- | --- | --- |
-| `declare-controls-on-parts` (planned and implemented; base `33d8bf5`) | solid-node, worktree `WTs/controls-on-parts` | main `33d8bf5` | nothing |
-| `drive-the-run-by-touch` | solid-node-viewer | the `viewer-navigator` branch head `644b504` (cycle 3 archived, API 11 → 12), or main once the pilot integrates that branch | the framework cycle's document |
+| `declare-controls-on-parts` (planned and implemented; base `33d8bf5`) | machinome, worktree `WTs/controls-on-parts` | main `33d8bf5` | nothing |
+| `drive-the-run-by-touch` | machinome-viewer | the `viewer-navigator` branch head `644b504` (cycle 3 archived, API 11 → 12), or main once the pilot integrates that branch | the framework cycle's document |
 | `turn-the-dials` | Pascaline-module | its main | both |
 
 The shop needs no change: the studio mounts the widget and inherits the

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -16,11 +16,11 @@ of task 4 beside it. The originating project is
 `projects/Calculators/Curta-Type-I-3x`.
 """
 
-from solid_node.motion.joints import JointRangeError
-from solid_node.node import AssemblyNode
-from solid_node.scad_expression import GraphValue
-from solid_node.simulation import Sim
-from solid_node.simulation.clocked import ClockedError
+from machinome.motion.joints import JointRangeError
+from machinome.node import AssemblyNode
+from machinome.scad_expression import GraphValue
+from machinome.simulation import Sim
+from machinome.simulation.clocked import ClockedError
 
 from .base import BaseNodeTest
 from .clocked_project.counter import Counter, Stateless
@@ -367,7 +367,7 @@ class BoundTest(BaseNodeTest):
         self.assertEqual(len(sim.commits), 2)
 
     def test_a_restore_whose_pose_is_refused_changes_nothing(self):
-        from solid_node.simulation.clocked import ClockedSnapshot
+        from machinome.simulation.clocked import ClockedSnapshot
 
         sim = Sim(unsupported.Bounded())
         sim.move('crank', by=360.0)
@@ -536,7 +536,7 @@ class TriggerTest(BaseNodeTest):
         """Task 3.3: a request is a PATH and not an interval, so two
         roots differing ONLY in the declared duration make equal
         requests and equal banks."""
-        from solid_node.simulation import Driver, Instruction, State
+        from machinome.simulation import Driver, Instruction, State
 
         from .clocked_project.counter import advance, strokes
         from .clocked_project.parts import Dial
@@ -585,7 +585,7 @@ class TriggerTest(BaseNodeTest):
         """The resolution is the EXISTING one: an instruction declared
         on a child is `child.Name` and its class-local target resolves
         against the declaring node's own path."""
-        from solid_node.simulation import Driver, Instruction, State
+        from machinome.simulation import Driver, Instruction, State
 
         from .clocked_project.counter import advance, strokes
         from .clocked_project.parts import Dial

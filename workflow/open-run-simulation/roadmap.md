@@ -44,13 +44,13 @@ package-start dependencies are historical.
 
 ## Repository ownership and checkpoints
 
-Paths are relative to `/home/asa/devel/libresolid-studio`. Each row is an
+Paths are relative to `/home/asa/devel/machinome-studio`. Each row is an
 independent repository; this is standalone work, not a shop sprint.
 
 | Owner | Working location | Recorded content checkpoint | Role |
 | --- | --- | --- | --- |
-| Framework | `solid-node/WTs/open-run-simulation/` | Primary base `6e41f2da132a8604f9b68895967247fb8876fc4d`; preceding planning head `67b767ae40c7058bbc38c174b365ff576fd6d301` | Shared authoring, compiler/program contract, Python run, export and producer fixtures |
-| Viewer | `solid-node-viewer/WTs/open-run-simulation/` | Recorded base `6fb082ba9823fb0839631bd4a3ecbf4a41b33b64` | Worker execution, controls, rendering, replay and publication lifecycle |
+| Framework | `machinome/WTs/open-run-simulation/` | Primary base `6e41f2da132a8604f9b68895967247fb8876fc4d`; preceding planning head `67b767ae40c7058bbc38c174b365ff576fd6d301` | Shared authoring, compiler/program contract, Python run, export and producer fixtures |
+| Viewer | `machinome-viewer/WTs/open-run-simulation/` | Recorded base `6fb082ba9823fb0839631bd4a3ecbf4a41b33b64` | Worker execution, controls, rendering, replay and publication lifecycle |
 | Pascaline module | `projects/Calculators/Pascaline-module/` | `36e72e70f598a6d3fff9f0d59801e021824389b7` | First feature-development and acceptance project; source fit, project laws and three-column validation |
 | Historical Pascaline | `projects/Vibecoded-demos/pascaline/WTs/open-run-simulation/` | Restoration `1b0bb5c7979451ce4bc6ffbea187408078229930`; running draft `135f94f2680d1819557a11a4dd903be5a5300a31` | Second validation: full-machine stress test |
 | Curta | `projects/Calculators/Curta-Type-I-3x/WTs/open-run-simulation/` | Mechanical checkpoint `d7bf44b5ddd7ffb5b2521fdb5979c7fc1f6adff9`; disposition `4f332d052234e7225b868f8229df241d6d5043d4` | Third validation: scoped carry rig, then full-machine stress test |
@@ -302,7 +302,7 @@ isolated `open-run-simulation` worktree, based on primary `6e41f2d`.
 
 Pilot direction after the interface review. The framework cycles stack in
 this worktree rather than one worktree per change, the viewer cycle runs in
-`solid-node-viewer/WTs/open-run-simulation`, and the module's work runs in
+`machinome-viewer/WTs/open-run-simulation`, and the module's work runs in
 `projects/Calculators/Pascaline-module/WTs/open-run-simulation`. Every `main`
 stays the pilot's.
 
@@ -327,7 +327,7 @@ for the pilot to test. Release placement is still undecided.
 ### Cycle 1 landed, 2026-09-13
 
 `run-owns-the-coordinates` is implemented on branch `open-run-simulation`
-in `solid-node/WTs/open-run-simulation`, two commits from base
+in `machinome/WTs/open-run-simulation`, two commits from base
 `1d6f794` — the planning commit `a1d54cc` and the implementation commit
 below. `Time.running()`, the bank of every driver and joint coordinate,
 the run as a binder the solver recognizes, continuous-law integration
@@ -360,7 +360,7 @@ Open questions the pilot owns, carried from the change's `design.md`:
 ### Cycle 2 landed, 2026-09-13
 
 `integrate-jumps` is implemented on branch `open-run-simulation` in
-`solid-node/WTs/open-run-simulation`, two commits from cycle 1's own head
+`machinome/WTs/open-run-simulation`, two commits from cycle 1's own head
 `5b7f4d0` — the planning commit `84e0d1d` and the implementation commit
 this line is part of. The refusal of `floor`, `ceil`, `sign`, `%` and a
 comparison is lifted: a jump-carrying law compiles into a JUMP PLAN, and
@@ -431,7 +431,7 @@ Open questions the pilot owns, carried from the change's `design.md`:
 ### Cycle 3 landed, 2026-09-13
 
 `ranges-are-stops` is implemented on branch `open-run-simulation` in
-`solid-node/WTs/open-run-simulation`, two commits from cycle 2's own head
+`machinome/WTs/open-run-simulation`, two commits from cycle 2's own head
 `8019c6d` — the planning commit `5045b9c` and the implementation commit
 this line is part of. A joint's declared `range` is now the physical stop
 it states rather than a refusal of the tick: when a tick would take a
@@ -517,7 +517,7 @@ Open questions the pilot owns, carried from the change's `design.md`:
 ### Cycle 4 landed, 2026-09-13
 
 `publish-the-mechanical-program` is implemented on branch
-`open-run-simulation` in `solid-node/WTs/open-run-simulation`, two commits
+`open-run-simulation` in `machinome/WTs/open-run-simulation`, two commits
 from cycle 3's own head `9a05e90` — the planning commit `5e0860f` and the
 implementation commit this line is part of. A running root's document is
 now **schema version 5**: beside the geometry it carries a `program`
@@ -540,7 +540,7 @@ committed as `tests/base_documents/`.
 The bump is not additive, and the framework asks the installed viewer
 what it reads through the existing entry point
 (`bundle.document_versions()`, `[1, 2, 3, 4]` when the field is absent):
-`solid build`, `solid develop` and `solid export` publish and warn once,
+`machinome build`, `machinome develop` and `machinome export` publish and warn once,
 the Sphinx directive warns about a committed export it embeds without
 failing the build and without loading the CAD runtime, and `solid
 snapshot --renderer web` refuses before the browser starts. `solid
@@ -591,7 +591,7 @@ Open questions the pilot owns, carried from the change's `design.md`:
   the program the run executes, so a root with no program has none to
   publish; it is the one behaviour change a project outside this campaign
   could meet.
-- Should `solid snapshot` be able to photograph a REACHABLE run state — a
+- Should `machinome snapshot` be able to photograph a REACHABLE run state — a
   `sim.snapshot()` written to a file and replayed — rather than only the
   rest pose at given driver values? This cycle offers the rest pose.
 - Should a version 4 document gain the relative instruction under a key

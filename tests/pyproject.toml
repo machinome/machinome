@@ -3,5 +3,5 @@
 # carry one rather than borrowing the framework's. The framework repository
 # itself is not a Solid project and declares no model.
 
-[tool.solid-node]
+[tool.machinome]
 model = "flat_project.simple_cylinder:SimpleCylinder"

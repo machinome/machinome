@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,7 +11,7 @@ merely if it reads a file.
 
 import cadquery as cq
 
-from solid_node.node import AssemblyNode, CadQueryNode, FusionNode
+from machinome.node import AssemblyNode, CadQueryNode, FusionNode
 
 from .parts import ColouredPart, SingleProduct
 

@@ -39,14 +39,14 @@ between two joint coordinates:
 | STEP AP242 kinematics | revolute, prismatic, cylindrical, screw, spherical, planar, universal pairs | gear and rack-and-pinion as low-order pairs "with motion coupling"; point-on-curve and point-on-surface for cams |
 | URDF / SDF | joint types | `mimic` (multiplier, offset); `gearbox` |
 
-The pilot's intention is that solid-node's mechanics layer fits MuJoCo and
+The pilot's intention is that machinome's mechanics layer fits MuJoCo and
 Modelica. So the layer is Reuleaux's two categories, stated the way those
 systems state them: a **joint** that is a pair, and a **coupling** that
 relates two joint coordinates. Not a catalogue of mechanisms.
 
 The shop's `docs/mujoco-viability.md` (2026-09-06) reached the same first
 step from the other side: there is no joint topology to export from a
-solid-node tree today, because a revolute joint is "an emergent property of
+machinome tree today, because a revolute joint is "an emergent property of
 the author having written `self.rotate(self.angle, [0, 0, 1])`", and its
 recommendation was "declared joints first".
 
@@ -96,7 +96,7 @@ elbow_pulley.turn.drives(elbow_belt.travel, ratio=pitch_arc(117))
   affine relation with `ratio` and `offset`. The framework holds no list of
   shapes; a class that drives in a way nobody has written yet is written in
   the project and moves into the framework only when a second project writes
-  it. The existing `solid_node.mechanisms` functions (`meshed_angle`,
+  it. The existing `machinome.mechanisms` functions (`meshed_angle`,
   `screw_travel`, ...) remain available as ways to compute a ratio and
   offset; they are not vocabulary.
 - **Direction is mechanical; solving is not.** The sentence states which way
@@ -128,7 +128,7 @@ that is not a Reuleaux pair. In MuJoCo a linear one is a `tendon/fixed`.
 
 ## Fit with the targets
 
-| solid-node | MuJoCo | Modelica MultiBody |
+| machinome | MuJoCo | Modelica MultiBody |
 | --- | --- | --- |
 | `Revolute`, `Prismatic` with axis, anchor, range | `joint type="hinge"` / `"slide"` with `axis`, `pos`, `range`, inside the body | `Joints.Revolute(n=axis)` / `Joints.Prismatic` between frames, with limits |
 | `a.drives(b)` affine | `equality/joint` with `polycoef` (linear case) | `Rotational.IdealGear` ratio, or `Joints.GearConstraint` |

@@ -224,7 +224,7 @@ cut from, not a ratified interface, and every name in it may change.
 **Declaration.** A state is a driver the machine writes:
 
 ```python
-from solid_node.simulation import Driver, State
+from machinome.simulation import Driver, State
 
 class Curta(LayeredSource):
     crank = Driver(default=0, unit='deg')          # unbounded; the pawl bounds the joint

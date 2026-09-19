@@ -212,7 +212,7 @@ pilot-approved markings unchanged. Its direct-operation tasks 6.1–6.6 remain
 open; passing prerequisites is not a completed interactive Curta.
 
 This note was prepared on framework branch `curta-shifted-carry-requirement`
-in `solid-node/WTs/curta-shifted-carry-requirement`, based on the clean main
+in `machinome/WTs/curta-shifted-carry-requirement`, based on the clean main
 commit named above. It is a documentation-only pre-spec record, not an
 OpenSpec planning commit or ratification. No framework, viewer or project
 implementation is included, and no integration or publication is implied.

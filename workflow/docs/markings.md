@@ -4,7 +4,7 @@ Status: design note, **not ratified, not implemented, not a public API
 promise**. Date: 2026-09-15. Written at the pilot's request from a finding in
 `projects/Calculators`, recorded in `../warts.md` under *Calculators
 (2026-09-15)*, so that another agent can take the work up under
-`libresolid-studio/skills/framework-change/SKILL.md`. Every name below is a
+`machinome-studio/skills/framework-change/SKILL.md`. Every name below is a
 placeholder for the pilot to rename. Nothing in any repository is changed by
 this document, and where it and a baseline spec or an accepted ADR disagree,
 the spec and the ADR are right and this note is stale.
@@ -48,7 +48,7 @@ The same shape appears in `projects/Calculators/Pascaline-module`, whose
 
 Read the `Mods/Printed Lettering/dials/` listing and the concept is already
 stated by the file names: **one part, several colour bodies, one manufacturing
-unit.** 3MF says it natively. solid-node cannot say it at all.
+unit.** 3MF says it natively. machinome cannot say it at all.
 
 The cost is not cosmetic. A Curta model that computes its register value
 **cannot display it**. Drive the crank in the browser and the machine gives no
@@ -59,11 +59,11 @@ catalogue.
 ## 2. What the framework can say today, and what it costs
 
 `color` is one class attribute per node, defaulting to `None`
-(`solid_node/node/base.py:569`), validated to a single `#RRGGBB` and applied
+(`machinome/node/base.py:569`), validated to a single `#RRGGBB` and applied
 whole-node in `_colorize` (`base.py:1002-1010`). It reaches the document as
-one scalar field (`solid_node/core/serializer.py:645`) and the viewer resolves
+one scalar field (`machinome/core/serializer.py:645`) and the viewer resolves
 it to exactly one `MeshStandardMaterial` per mesh
-(`solid-node-viewer`, `solid_node_viewer/widget/src/tree.ts:55,106`). There is
+(`machinome-viewer`, `machinome_viewer/widget/src/tree.ts:55,106`). There is
 no vocabulary for a region of a part anywhere in that chain, and none for a
 finishing step.
 
@@ -110,7 +110,7 @@ cutter, which upstream had to draw by hand — and note that
 unwrapped circumference. `coprinted` emits body and glyphs as a
 multi-material 3MF, which is what `Mods/Printed Lettering` hand-assembled.
 There is a precedent for a per-part nominal 2D artifact in
-`solid_node/node/adapters/build123d_sheet.py`, whose `_export_dxf` writes the
+`machinome/node/adapters/build123d_sheet.py`, whose `_export_dxf` writes the
 authored profile at model scale with no kerf on the stated ground that
 "compensation is a property of a machine and a material, not of the part".
 A marking's artwork is nominal for the same reason.
@@ -172,7 +172,7 @@ text, it wants its own cycle and an explicit answer on font provenance.
 
 This is two changes in two repositories — the framework's and the viewer's —
 and the contract between them is specified on both sides, as with
-`solid_node.viewer` and `solid-node-viewer describe|serve|capture`.
+`machinome.viewer` and `machinome-viewer describe|serve|capture`.
 
 **Framework side.** A rigid node's document entry gains a `markings` field:
 absent, or a list, each entry naming its artwork reference, its placement, its

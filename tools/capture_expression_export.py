@@ -11,8 +11,8 @@ from playwright.sync_api import sync_playwright
 
 PAGE = b'''<!doctype html><html><head><style>
 html,body,#host{margin:0;width:100%;height:100%;overflow:hidden;background:#eee}
-</style></head><body><div id="host"></div><script src="solid-widget.js"></script>
-<script>SolidNodeWidget.mount('#host','manifest.json',{
+</style></head><body><div id="host"></div><script src="machinome-viewer.js"></script>
+<script>MachinomeViewer.mount('#host','manifest.json',{
 animation:'external',driverControls:'none',autoplay:false}).then(h=>window.probe=h)
 .catch(e=>window.failure=String(e));</script></body></html>'''
 

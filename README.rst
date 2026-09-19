@@ -1,14 +1,14 @@
 ==========
-Solid Node
+Machinome
 ==========
 
 
-.. image:: https://img.shields.io/pypi/v/solid-node.svg
-        :target: https://pypi.org/project/solid-node/
+.. image:: https://img.shields.io/pypi/v/machinome.svg
+        :target: https://pypi.org/project/machinome/
         :alt: PyPI Version
 
-.. image:: https://readthedocs.org/projects/solid-node/badge/?version=latest
-        :target: https://solid-node.readthedocs.io/en/latest/
+.. image:: https://readthedocs.org/projects/machinome/badge/?version=latest
+        :target: https://machinome.readthedocs.io/en/latest/
         :alt: Documentation Status
 
 
@@ -25,22 +25,22 @@ mechanical assertions — interference, connectivity, support against
 gravity — run as ordinary tests.
 
 * Open Source: Apache License 2.0
-* Documentation: https://solid-node.readthedocs.io
+* Documentation: https://machinome.readthedocs.io
 
 Quickstart
 ==========
 
 .. code-block:: bash
 
-    $ pip install "solid-node[viewer]"
-    $ solid new myproject
+    $ pip install "machinome[viewer]"
+    $ machinome new myproject
 
-The ``viewer`` extra installs the browser viewer, `solid-node-viewer
-<https://github.com/LibreSolid/solid-node-viewer>`_. It is a separate
-package because it is licensed differently: solid-node is **Apache-2.0**,
+The ``viewer`` extra installs the browser viewer, `machinome-viewer
+<https://github.com/machinome/machinome-viewer>`_. It is a separate
+package because it is licensed differently: machinome is **Apache-2.0**,
 the viewer is **AGPL-3.0-only**. It is the sole interactive development
-viewer: ``solid develop`` requires the extra and names that installation
-remedy when it is absent. A plain ``solid-node`` installation remains useful
+viewer: ``machinome develop`` requires the extra and names that installation
+remedy when it is absent. A plain ``machinome`` installation remains useful
 without an interactive viewer: it builds, tests, exports with ``--no-widget``,
 runs the ``--no-web`` development watch loop, and takes fixed-pose snapshots
 through OpenSCAD. OpenSCAD and SolidPython modelling and SCAD output remain
@@ -48,6 +48,13 @@ supported. To discover the installed bundle, the framework imports and calls
 only the viewer's lightweight entry-point provider. It launches the viewer's
 serving and browser-capture code in separate processes and does not import
 those modules.
+
+The other integration extras follow the same package boundary:
+``pip install "machinome[mechanics]"`` installs the independent
+``machinome-mechanics`` helpers, while ``pip install "machinome[studio]"``
+is the reserved installation route for Machinome Studio. Studio remains
+experimental and unpublished, so that extra will resolve from a package index
+only after Studio is published.
 
 Upgrading from 0.5.x requires **reinstalling the environment** rather
 than upgrading in place: the shared OCCT binding moves and its versions
@@ -58,31 +65,31 @@ viewer and a separate Chromium download:
 
 .. code-block:: bash
 
-    $ pip install "solid-node[web-snapshot]"
+    $ pip install "machinome[web-snapshot]"
     $ playwright install chromium
-    $ solid snapshot --renderer web -o transparent.png
+    $ machinome snapshot --renderer web -o transparent.png
 
-See `the docs <https://solid-node.readthedocs.io>`_.
+See `the docs <https://machinome.readthedocs.io>`_.
 
-Working on solid-node itself
+Working on machinome itself
 ============================
 
 This section is for contributors — humans and coding agents — who modify the
-framework in this repository. For *using* solid-node in your own mechanical
+framework in this repository. For *using* machinome in your own mechanical
 project, see the documentation above.
 
 Development environment
 -----------------------
 
 Requirements: Python >= 3.11. Node.js is not needed: the browser viewer and
-its widget live in the separate `solid-node-viewer
-<https://github.com/LibreSolid/solid-node-viewer>`_ repository, and the tests
+its widget live in the separate `machinome-viewer
+<https://github.com/machinome/machinome-viewer>`_ repository, and the tests
 that need a viewer skip unless that package is installed. `OpenSCAD
 <https://openscad.org/>`_ is conditional: put it on the PATH when working on
 SolidPython2/Solid2 or raw OpenSCAD nodes, symbolic Solid2 animation values,
 or the default OpenSCAD snapshot renderer. All-exact projects — CadQuery,
 build123d, or the two mixed — build, test, and export without it; use
-``solid snapshot --renderer web`` for snapshots on a machine without OpenSCAD.
+``machinome snapshot --renderer web`` for snapshots on a machine without OpenSCAD.
 
 `manifold3d <https://pypi.org/project/manifold3d/>`_ is installed by default
 and is conditional in the same sense: it decides faceted geometry, so it is
@@ -98,8 +105,8 @@ Metamaquina2 projects):
 
 .. code-block:: bash
 
-    $ git clone --recurse-submodules https://github.com/LibreSolid/solid-node.git
-    $ cd solid-node
+    $ git clone --recurse-submodules https://github.com/machinome/machinome-framework.git
+    $ cd machinome-framework
 
 Create a virtualenv and install the package in editable mode with the dev
 dependencies:
@@ -110,7 +117,7 @@ dependencies:
     $ source .venv/bin/activate
     $ pip install -e ".[dev]"
 
-The ``solid`` CLI entrypoint (``solid_node/cli.py``) is now on the PATH of
+The ``machinome`` CLI entrypoint (``machinome/cli.py``) is now on the PATH of
 the virtualenv.
 
 Running tests
@@ -135,20 +142,20 @@ Notes:
 
   .. code-block:: bash
 
-      $ SOLID_NODE_WEB_SNAPSHOT_E2E=1 pytest tests/test_browser_renderer.py::BrowserSnapshotEndToEndTest
+      $ MACHINOME_WEB_SNAPSHOT_E2E=1 pytest tests/test_browser_renderer.py::BrowserSnapshotEndToEndTest
 
   The ordinary suite leaves this environment variable unset and skips the
   capture, even when the viewer is installed. With the opt-in set, a missing
   viewer or browser is a setup failure. The dedicated CI browser-snapshot job
   installs both dependencies, sets the opt-in, and runs this same test.
 * ``tests/meta_project/`` together with ``tests/test_meta.py`` is the
-  end-to-end meta-project harness: it runs small real solid-node projects —
+  end-to-end meta-project harness: it runs small real machinome projects —
   both deliberately green and deliberately red fixtures — to prove the
-  loading, rendering, and ``solid test`` subprocess paths. Use it when a
+  loading, rendering, and ``machinome test`` subprocess paths. Use it when a
   change touches behavior that direct unit tests cannot establish; see
   `docs/contributor-briefing.md <docs/contributor-briefing.md>`_ for when and
   why.
-* The browser viewer's own tests live in the ``solid-node-viewer``
+* The browser viewer's own tests live in the ``machinome-viewer``
   repository. ``tools/generate_parity_fixture.py`` produces, from this
   framework's render results, the parity fixture that repository commits
   beside its expression evaluator.
@@ -156,16 +163,16 @@ Notes:
 Where things live
 -----------------
 
-* ``solid_node/node/`` — the node tree (base, assembly, fusion, leaf, CAD
+* ``machinome/node/`` — the node tree (base, assembly, fusion, leaf, CAD
   backend adapters, operations)
-* ``solid_node/manager/`` and ``solid_node/cli.py`` — the ``solid`` command:
+* ``machinome/manager/`` and ``machinome/cli.py`` — the ``machinome`` command:
   develop loop, test, snapshot, new, export
-* ``solid_node/core/`` — build pipeline, loader, caching
-* ``solid_node/simulation/`` — drivers, instructions, the stepped ``Sim``
+* ``machinome/core/`` — build pipeline, loader, caching
+* ``machinome/simulation/`` — drivers, instructions, the stepped ``Sim``
   loop, and ``ScenarioTest``
-* ``solid_node/test.py`` — mesh-oriented test cases and assertions
-* ``solid_node/viewers/`` — the OpenSCAD snapshot renderer, the lookup
-  of the installed ``solid-node-viewer`` package, and the staging half of the
+* ``machinome/test.py`` — mesh-oriented test cases and assertions
+* ``machinome/viewers/`` — the OpenSCAD snapshot renderer, the lookup
+  of the installed ``machinome-viewer`` package, and the staging half of the
   web snapshot renderer (the photograph itself is the viewer's)
 * ``tests/`` — Python test suite
 * ``docs/`` — Sphinx documentation, architecture synthesis, ADRs
@@ -235,5 +242,5 @@ Contributing
 ============
 
 Bug reports and pull requests are welcome at
-https://github.com/LibreSolid/solid-node — see
+https://github.com/machinome/machinome-framework — see
 `CONTRIBUTING.rst <CONTRIBUTING.rst>`_ and the development discipline above.

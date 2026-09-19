@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,12 +13,12 @@ import cadquery as cq
 from solid2 import cube
 from solid2.core.object_base import OpenSCADConstant
 
-from solid_node.manager.snapshot import Snapshot
-from solid_node.node import (Build123dNode, CadQueryNode, FusionNode,
+from machinome.manager.snapshot import Snapshot
+from machinome.node import (Build123dNode, CadQueryNode, FusionNode,
                              JScadNode, Solid2Node)
-from solid_node.openscad import OpenScadUnavailable, openscad_binary
-from solid_node.viewers import openscad as openscad_viewer
-from solid_node.viewers.openscad import OpenScadRenderer
+from machinome.openscad import OpenScadUnavailable, openscad_binary
+from machinome.viewers import openscad as openscad_viewer
+from machinome.viewers.openscad import OpenScadRenderer
 
 
 class ExactBox(CadQueryNode):
@@ -90,8 +90,8 @@ class OpenScadDependencyTest(TestCase):
         node = FacetedBox(name='housing')
         node.assemble()
 
-        with patch('solid_node.openscad.shutil.which', return_value=None), \
-             patch('solid_node.node.base.Popen', side_effect=AssertionError(
+        with patch('machinome.openscad.shutil.which', return_value=None), \
+             patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'the subprocess must not be attempted')):
             with self.assertRaisesRegex(
                     RuntimeError, 'housing.*Solid2Node.*install OpenSCAD'):
@@ -102,10 +102,10 @@ class OpenScadDependencyTest(TestCase):
         node.build_stls()
         os.remove(node.stl_file)
 
-        with patch('solid_node.node.base.require_openscad',
+        with patch('machinome.node.base.require_openscad',
                    side_effect=AssertionError(
                        'faceted fusion must not check OpenSCAD')), \
-             patch('solid_node.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'the subprocess must not be attempted')):
             node.generate_stl()
 
@@ -115,10 +115,10 @@ class OpenScadDependencyTest(TestCase):
         node = ExactPair()
         node.assemble()
 
-        with patch('solid_node.node.base.require_openscad',
+        with patch('machinome.node.base.require_openscad',
                    side_effect=AssertionError(
                        'exact geometry must not check OpenSCAD')), \
-             patch('solid_node.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'exact geometry must not launch OpenSCAD')):
             node.generate_stl()
 
@@ -129,10 +129,10 @@ class OpenScadDependencyTest(TestCase):
         node = Build123dBox()
         node.assemble()
 
-        with patch('solid_node.node.base.require_openscad',
+        with patch('machinome.node.base.require_openscad',
                    side_effect=AssertionError(
                        'exact geometry must not check OpenSCAD')), \
-             patch('solid_node.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'exact geometry must not launch OpenSCAD')):
             node.generate_stl()
 
@@ -143,10 +143,10 @@ class OpenScadDependencyTest(TestCase):
         node = MixedExactPair()
         node.assemble()
 
-        with patch('solid_node.node.base.require_openscad',
+        with patch('machinome.node.base.require_openscad',
                    side_effect=AssertionError(
                        'exact geometry must not check OpenSCAD')), \
-             patch('solid_node.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'exact geometry must not launch OpenSCAD')):
             node.generate_stl()
 
@@ -156,8 +156,8 @@ class OpenScadDependencyTest(TestCase):
     def test_symbolic_value_missing_binary_names_node_and_evaluation(self):
         node = FacetedBox(name='animated-arm')
 
-        with patch('solid_node.openscad.shutil.which', return_value=None), \
-             patch('solid_node.node.adapters.solid2.Popen',
+        with patch('machinome.openscad.shutil.which', return_value=None), \
+             patch('machinome.node.adapters.solid2.Popen',
                    side_effect=AssertionError('must fail before launch')):
             with self.assertRaisesRegex(
                     RuntimeError, 'animated-arm.*symbolic.*OpenSCAD'):
@@ -175,7 +175,7 @@ class OpenScadDependencyTest(TestCase):
         runner = Mock(side_effect=AssertionError('must fail before launch'))
 
         with patch.dict(os.environ, {'DISPLAY': ':1'}), \
-             patch('solid_node.openscad.shutil.which', return_value=None):
+             patch('machinome.openscad.shutil.which', return_value=None):
             with self.assertRaisesRegex(
                     RuntimeError,
                     'OpenSCAD snapshot renderer.*--renderer web'):
@@ -193,10 +193,10 @@ class OpenScadDependencyTest(TestCase):
             preview=False, view=None, renderer='openscad',
         )
         browser_render = patch(
-            'solid_node.viewers.browser.BrowserRenderer.render')
+            'machinome.viewers.browser.BrowserRenderer.render')
         with patch.object(snapshot, '_load_and_prepare_node',
                           return_value=Mock(scad_file='part.scad')), \
-             patch('solid_node.manager.snapshot.OPENSCAD_RENDERER.render',
+             patch('machinome.manager.snapshot.OPENSCAD_RENDERER.render',
                    side_effect=OpenScadUnavailable(
                        'the OpenSCAD snapshot renderer',
                        'rendering launches OpenSCAD', 'use --renderer web')), \
@@ -215,10 +215,10 @@ class JScadDependencyBoundaryTest(TestCase):
         node = object.__new__(JScadNode)
         node.stl_file = 'current.stl'
         with patch.object(JScadNode, '_up_to_date', return_value=True), \
-             patch('solid_node.node.base.require_openscad',
+             patch('machinome.node.base.require_openscad',
                    side_effect=AssertionError(
                        'current JSCAD artifact must not check OpenSCAD')), \
-             patch('solid_node.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'JSCAD must not launch OpenSCAD')):
             node.generate_stl()
 
@@ -239,9 +239,9 @@ class JScadDependencyBoundaryTest(TestCase):
                     process.communicate.side_effect = render_jscad
                     return process
 
-                with patch('solid_node.node.adapters.jscad.Popen',
+                with patch('machinome.node.adapters.jscad.Popen',
                            side_effect=launch_jscad), \
-                     patch('solid_node.node.base.require_openscad',
+                     patch('machinome.node.base.require_openscad',
                            side_effect=AssertionError(
                                'JSCAD must not check OpenSCAD')):
                     node = JsBlock()
@@ -262,7 +262,7 @@ class OpenScadAvailabilityTest(TestCase):
 
     def test_binary_is_resolved_only_once_per_process(self):
         openscad_binary.cache_clear()
-        with patch('solid_node.openscad.shutil.which',
+        with patch('machinome.openscad.shutil.which',
                    return_value='/usr/bin/openscad') as which:
             self.assertEqual(openscad_binary(), '/usr/bin/openscad')
             self.assertEqual(openscad_binary(), '/usr/bin/openscad')

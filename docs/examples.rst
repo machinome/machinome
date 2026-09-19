@@ -16,7 +16,7 @@ with the documentation itself and indexed at the bottom.
    example-metamaquina2
 
 :doc:`example-v8-engine`
-   A vibe-coded V8, built to demonstrate solid-node and strengthen the
+   A vibe-coded V8, built to demonstrate machinome and strengthen the
    framework: nested rotations and translations enough to test
    rendering parity across every backend, with valve springs that
    compress as the engine turns.

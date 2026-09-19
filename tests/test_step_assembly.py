@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -26,9 +26,9 @@ import cadquery as cq
 import numpy as np
 from OCP.gp import gp_Ax1, gp_Ax2, gp_Dir, gp_Pnt, gp_Trsf, gp_Vec
 
-from solid_node.node.adapters.step import STEPCAFControl_Reader, StepAssembly
-from solid_node.node.operations import Rotation, Translation
-from solid_node.node.adapters import step as step_module
+from machinome.node.adapters.step import STEPCAFControl_Reader, StepAssembly
+from machinome.node.operations import Rotation, Translation
+from machinome.node.adapters import step as step_module
 
 from .step_project import parts as _parts_module
 
@@ -43,7 +43,7 @@ DUPLICATE_NAMES_STEP = os.path.join(PROJECT, 'assembly_duplicate_names.step')
 #: not committed to this repository, so the tests it feeds are skipped
 #: when it is absent.
 ACTUATOR_STEP = (
-    '/home/asa/devel/libresolid-studio/projects/'
+    '/home/asa/devel/machinome-studio/projects/'
     'Internal-Cycloidal-Actuator/simulation/actuator/vendor/'
     'Internal Cycloidal Actuator.stp')
 

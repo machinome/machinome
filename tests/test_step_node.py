@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -40,10 +40,10 @@ from unittest.mock import patch
 import cadquery as cq
 import trimesh
 
-from solid_node.exact import cached_shape
-from solid_node.node import StepNode
-from solid_node.node.adapters import step as step_module
-from solid_node.node.adapters.step import STEPCAFControl_Reader
+from machinome.exact import cached_shape
+from machinome.node import StepNode
+from machinome.node.adapters import step as step_module
+from machinome.node.adapters.step import STEPCAFControl_Reader
 
 from .step_project import assemblies, parts
 from .utils import edit_source
@@ -667,8 +667,8 @@ class StepExactnessTest(BuildDirTestCase):
         self.assertAlmostEqual(reloaded.Volume(), 125.0, places=3)
 
     def test_a_project_of_step_leaves_builds_with_no_openscad_on_the_path(self):
-        with patch('solid_node.openscad.shutil.which', return_value=None), \
-             patch('solid_node.node.base.Popen', side_effect=AssertionError(
+        with patch('machinome.openscad.shutil.which', return_value=None), \
+             patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'no external renderer may be launched')):
             node = assemblies.TwoStepParts()
             node.build_stls()

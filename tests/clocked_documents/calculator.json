@@ -465,7 +465,7 @@
       "unit": "digit"
     }
   },
-  "format": "solid-node-export",
+  "format": "machinome-export",
   "instructions": {
     "Set four": {
       "duration": 0.5,

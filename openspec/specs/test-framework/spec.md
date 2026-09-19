@@ -12,9 +12,9 @@ ADR-039 (topmost-rigid solid integrity), ADR-040 (topmost-rigid assembly
 integrity certificate), and ADR-073 (the comparison kernel as a property of
 the test run).
 
-Code: `solid_node/test.py`, `solid_node/manager/test.py`. The framework's own
+Code: `machinome/test.py`, `machinome/manager/test.py`. The framework's own
 regression net is `tests/test_meta.py` over fixtures in `tests/meta_project/`
-(paired green/red contracts run through `solid test` end-to-end).
+(paired green/red contracts run through `machinome test` end-to-end).
 ## Requirements
 ### Requirement: Test declaration and binding
 
@@ -36,7 +36,7 @@ stripped (e.g. `SimpleClockTest` → `self.simple_clock`).
 
 #### Scenario: Companion test binding
 
-- **WHEN** `solid test` runs a `GearTest(TestCase)` next to `gear.py`
+- **WHEN** `machinome test` runs a `GearTest(TestCase)` next to `gear.py`
 - **THEN** test methods can reference the node as both `self.node` and
   `self.gear`
 
@@ -121,14 +121,14 @@ the exact kernel the run's output is unchanged.
 
 #### Scenario: A file reference runs every node in the file
 
-- **WHEN** a user runs `solid test windmill/model.py` on a file defining two
+- **WHEN** a user runs `machinome test windmill/model.py` on a file defining two
   node classes, each with a companion test case declaring it
 - **THEN** both nodes are built and the test methods of both test cases are
   counted in the summary
 
 #### Scenario: A sub-assembly no test declares is not built
 
-- **WHEN** a user runs `solid test boat/robot.py` on a file defining a machine
+- **WHEN** a user runs `machinome test boat/robot.py` on a file defining a machine
   and a sub-assembly that cannot be built on its own, and the companion's
   test cases declare only the machine
 - **THEN** the machine is built and tested, the sub-assembly is never built,
@@ -136,20 +136,20 @@ the exact kernel the run's output is unchanged.
 
 #### Scenario: A file with no companion builds every node
 
-- **WHEN** a user runs `solid test boat/hull.py` on a file defining two node
+- **WHEN** a user runs `machinome test boat/hull.py` on a file defining two node
   classes and no companion test file
 - **THEN** both nodes are built and the run reports zero tests
 
 #### Scenario: A faceted run is labelled as one
 
-- **WHEN** `solid test --faceted --volume-epsilon 0.5` runs a project
+- **WHEN** `machinome test --faceted --volume-epsilon 0.5` runs a project
 - **THEN** a line before the first build names the faceted kernel and the
   epsilon, and the summary line ends with `(faceted kernel, volume epsilon
   0.5 mm³)`
 
 #### Scenario: An exact run reads as it always did
 
-- **WHEN** `solid test` runs without a kernel selection and without
+- **WHEN** `machinome test` runs without a kernel selection and without
   `SOLID_TEST_KERNEL` in the environment
 - **THEN** no kernel line is printed and, when no test was skipped,
   expected to fail, or unexpectedly successful, the summary line is exactly
@@ -1119,7 +1119,7 @@ mixin, decorator, or registry SHALL cause it to run.
 
 - **WHEN** a project whose geometry is disconnected declares no test calling
   `assertNoDisconnectedSolids`
-- **THEN** `solid test` adds no integrity test to its count and reports no
+- **THEN** `machinome test` adds no integrity test to its count and reports no
   connectivity failure
 
 #### Scenario: An animated solid is asserted like a static one
@@ -1585,7 +1585,7 @@ never of the model: a node's `exact` attribute SHALL keep reporting whether
 its geometry is exact, and neither the build nor any artifact SHALL depend on
 the kernel a test run selects.
 
-`solid test` SHALL resolve the kernel from the mutually exclusive `--exact` /
+`machinome test` SHALL resolve the kernel from the mutually exclusive `--exact` /
 `--faceted` flags, else from the `SOLID_TEST_KERNEL` environment variable
 (`exact` or `faceted`; any other value is an error naming the variable), else
 `exact`. It SHALL resolve the epsilon from `--volume-epsilon`, else from
@@ -1607,7 +1607,7 @@ SHALL be accepted by the exact kernel, because it identifies a question and
 not a quantity of material, and both kernels' verdicts pass through the same
 memo. A quantum of `0` SHALL be accepted and SHALL mean the exact-bytes key.
 
-Outside `solid test` — a `ScenarioTest` under pytest, an assertion driven
+Outside `machinome test` — a `ScenarioTest` under pytest, an assertion driven
 directly — the framework SHALL resolve the same policy from the environment
 at the first comparison of the process, with the same defaults and the same
 errors.
@@ -1626,64 +1626,64 @@ preserved summary prefix and beside the faceted label when both apply.
 
 #### Scenario: The default run is the exact run
 
-- **WHEN** `solid test` runs with no kernel flag and no `SOLID_TEST_KERNEL`
+- **WHEN** `machinome test` runs with no kernel flag and no `SOLID_TEST_KERNEL`
 - **THEN** every comparison of two exact nodes uses the boundary-representation
   kernel and the run's output is unchanged
 
 #### Scenario: A checkout selects the faceted kernel once
 
 - **WHEN** the project's `.env` contains `SOLID_TEST_KERNEL=faceted` and
-  `solid test` runs without a kernel flag
+  `machinome test` runs without a kernel flag
 - **THEN** every comparison uses the faceted path and the run says so
 
 #### Scenario: A flag overrides the environment
 
-- **WHEN** `SOLID_TEST_KERNEL=faceted` is set and `solid test --exact` runs
+- **WHEN** `SOLID_TEST_KERNEL=faceted` is set and `machinome test --exact` runs
 - **THEN** the run uses the exact kernel and prints no kernel line
 
 #### Scenario: An epsilon offered to the exact kernel is refused
 
-- **WHEN** `solid test --exact --volume-epsilon 0.5` or
-  `solid test --volume-epsilon 0.5` with no faceted selection is run
+- **WHEN** `machinome test --exact --volume-epsilon 0.5` or
+  `machinome test --volume-epsilon 0.5` with no faceted selection is run
 - **THEN** the command exits with an error saying the exact kernel has nothing
   for an epsilon to absorb, before any node is built
 
 #### Scenario: An unknown kernel name is refused
 
 - **WHEN** `SOLID_TEST_KERNEL=fast` is set
-- **THEN** `solid test` exits with an error naming the variable and the two
+- **THEN** `machinome test` exits with an error naming the variable and the two
   accepted values
 
 #### Scenario: The default placement quantum needs no selection
 
-- **WHEN** `solid test` runs with no `--placement-quantum` and no
+- **WHEN** `machinome test` runs with no `--placement-quantum` and no
   `SOLID_TEST_PLACEMENT_QUANTUM`
 - **THEN** the run's policy carries the framework's default quantum and the
   run's output is byte-for-byte what it is without this option
 
 #### Scenario: A quantum offered to the exact kernel is accepted
 
-- **WHEN** `solid test --exact --placement-quantum 1e-6` runs
+- **WHEN** `machinome test --exact --placement-quantum 1e-6` runs
 - **THEN** the run compares on the exact kernel with that quantum, and no
   error is raised
 
 #### Scenario: A checkout selects a placement quantum
 
 - **WHEN** the project's `.env` contains `SOLID_TEST_PLACEMENT_QUANTUM=1e-6`
-  and `solid test` runs without the flag
+  and `machinome test` runs without the flag
 - **THEN** the run's policy carries `1e-6` mm
 
 #### Scenario: The quantum flag beats the environment
 
 - **WHEN** `SOLID_TEST_PLACEMENT_QUANTUM=1e-6` is set and
-  `solid test --placement-quantum 0` runs
+  `machinome test --placement-quantum 0` runs
 - **THEN** the run's policy carries `0` and the memo keys on exact matrix
   bytes
 
 #### Scenario: A negative or non-finite quantum is refused
 
-- **WHEN** `solid test --placement-quantum -1` runs, or
-  `SOLID_TEST_PLACEMENT_QUANTUM=-1` is set, or `solid test
+- **WHEN** `machinome test --placement-quantum -1` runs, or
+  `SOLID_TEST_PLACEMENT_QUANTUM=-1` is set, or `machinome test
   --placement-quantum inf` runs, or `SOLID_TEST_PLACEMENT_QUANTUM=nan` is set
 - **THEN** the command exits with an error naming the flag or the variable,
   before any node is built
@@ -1691,7 +1691,7 @@ preserved summary prefix and beside the faceted label when both apply.
 #### Scenario: A non-numeric quantum in the environment is refused
 
 - **WHEN** `SOLID_TEST_PLACEMENT_QUANTUM=tight` is set
-- **THEN** `solid test` exits with an error naming the variable and saying the
+- **THEN** `machinome test` exits with an error naming the variable and saying the
   value is a length in mm
 
 #### Scenario: A non-default quantum is named on the summary line

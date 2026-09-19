@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,10 +8,10 @@ from unittest import TestCase
 
 from solid2 import cube
 
-from solid_node.core.serializer import serialize_node
-from solid_node.node.assembly import AssemblyNode, _rest_children
-from solid_node.node.base import AbstractBaseNode
-from solid_node.node.qualified import drive_tree
+from machinome.core.serializer import serialize_node
+from machinome.node.assembly import AssemblyNode, _rest_children
+from machinome.node.base import AbstractBaseNode
+from machinome.node.qualified import drive_tree
 
 # `whole-tree-fixpoint` split the state-propagation walk in two: the
 # rest-only descent that DELIVERS a `set_state` snapshot (`_rest_children`,

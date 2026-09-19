@@ -7,7 +7,7 @@ Driving a machine
 
 :doc:`Animation <animation>` moves a model with one looping clock. A
 machine has more inputs than that: a carriage position, a crank angle,
-a valve lift. In Solid Node those are **drivers** — named inputs an
+a valve lift. In Machinome those are **drivers** — named inputs an
 assembly declares, with a default and the range a maker thinks in —
 and `self.time` is one driver among several rather than the only one.
 
@@ -22,8 +22,8 @@ ordinary attribute:
 
 .. code-block:: python
 
-    from solid_node.node import AssemblyNode
-    from solid_node.simulation import Driver
+    from machinome.node import AssemblyNode
+    from machinome.simulation import Driver
 
     TRAVEL = 160.0
 
@@ -57,7 +57,7 @@ than guessing:
   (``self.position = 12``) raises and names `set_state`, the one way a
   value is bound from Python.
 * **Reading** a driver that no snapshot has bound raises and names the
-  driver. In the viewer and in `solid export` the declared defaults
+  driver. In the viewer and in `machinome export` the declared defaults
   are bound for you.
 * A declaration whose name would **shadow** a node member — `render`,
   `color`, `time` — fails at class-definition time, before any
@@ -95,7 +95,7 @@ its instructions at the top:
 
 .. code-block:: python
 
-    from solid_node.simulation import Driver, Instruction
+    from machinome.simulation import Driver, Instruction
 
     class Plotter(AssemblyNode):
         """The machine: two instances of one Axis, and its instructions."""
@@ -169,12 +169,12 @@ Ports: how parts talk
 A driver is an *input to the machine*. A **port** is a connection
 point *between parts*: a unit-tagged value slot a node declares, that
 its parent binds on every `simulate()` with `connect()`. Ports come
-from ``solid_node.motion.ports``, the module that answers what moves and
+from ``machinome.motion.ports``, the module that answers what moves and
 what drives what:
 
 .. code-block:: python
 
-    from solid_node.motion.ports import TranslationalPort
+    from machinome.motion.ports import TranslationalPort
 
     class SteppedAxis(AssemblyNode):
         motor = Driver(default=800, range=(0, 100), unit='ustep', dtype=int,
@@ -201,11 +201,11 @@ Joints: where a part may move
 
 A port carries a value; a **joint** says *where a body may move*, next
 to the body, once. The three one-coordinate declarations come from
-``solid_node.motion.joints``:
+``machinome.motion.joints``:
 
 .. code-block:: python
 
-    from solid_node.motion.joints import Prismatic, Revolute
+    from machinome.motion.joints import Prismatic, Revolute
 
     class Forearm(AssemblyNode):
         elbow = Revolute(axis=(0, 1, 0), at=(0, 0, 81.5),
@@ -299,7 +299,7 @@ itself.** `None` as a bound means unbounded on that side, so
 `range=(0, None)` states a coordinate that may not go below zero and may
 go as far above it as the mechanism takes it. A bound given as a
 **callable of one argument** states itself as an expression over the
-joint's own coordinate, written in ``solid_node.math``:
+joint's own coordinate, written in ``machinome.math``:
 
 .. code-block:: python
 
@@ -383,7 +383,7 @@ it:
 
 .. code-block:: python
 
-    from solid_node.motion.joints import Orbit, Revolute
+    from machinome.motion.joints import Orbit, Revolute
 
     class CycloidalDisk(Solid2Node):
         spin  = Revolute(axis=(0, 0, 1), unit='deg')   # innermost: its own centre
@@ -425,7 +425,7 @@ hexapod uses four. ``Free`` is one declaration for all six:
 
 .. code-block:: python
 
-    from solid_node.motion.joints import Free
+    from machinome.motion.joints import Free
 
     class Chassis(AssemblyNode):
         pose = Free(angle_unit='deg', length_unit='mm')
@@ -495,7 +495,7 @@ child it is placing, read in the parent's frame, URDF's rule:
 
 .. code-block:: python
 
-    from solid_node.motion.joints import Revolute
+    from machinome.motion.joints import Revolute
 
     class Rack(AssemblyNode):
         screw = ZScrew(turn=Revolute(axis=(0, 0, 1), unit='deg'))
@@ -729,7 +729,7 @@ The law
 ``ratio=`` and ``offset=`` are the shorthand for ``Affine``, the one new
 name to import when you want it explicitly::
 
-    from solid_node.motion.couplings import Affine
+    from machinome.motion.couplings import Affine
 
     Affine(ratio, offset)   # driven = ratio * driver + offset
 
@@ -933,10 +933,10 @@ kind — a delta printer's carriage height and a flexure stage's leg lean
 both are. Two symbolic rules already true of a one-source law stay true
 here: ``forward`` may not BRANCH on its arguments' values (a symbolic
 value is not comparable), and a non-linear function of a symbolic value
-must come from ``solid_node.math`` so it emits an OpenSCAD call.
+must come from ``machinome.math`` so it emits an OpenSCAD call.
 
 A selection decides which sources a law reads
---------------------------------------------
+---------------------------------------------
 
 A mechanism's dependencies may be SELECTED by where one of its own parts
 stands. A Curta's carry levers belong to the fixed frame and its number
@@ -1043,7 +1043,7 @@ When it refuses
 
 Solving refuses by name rather than posing a machine it cannot justify.
 Each of the four is its own error kind in
-``solid_node.motion.couplings``, and each message names the node paths,
+``machinome.motion.couplings``, and each message names the node paths,
 the relation as written and the ends:
 
 ``UnreachedCoordinate``
@@ -1251,7 +1251,7 @@ Driving it in the viewer
 Here is the plotter. Press `Center` or `Home`, and use the breadcrumb
 to step into an axis and drag its slider:
 
-.. solid-node:: _exports/two_axis_plotter
+.. machinome:: _exports/two_axis_plotter
    :height: 480px
 
 The controls are scoped by assembly layer, strictly:

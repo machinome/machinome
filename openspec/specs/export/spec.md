@@ -8,25 +8,25 @@ widget viewer). Encodes ADR-020 (static export and embeddable viewer
 widget); the manifest is a versioned public contract shared by the exporter,
 the widget, and the Sphinx extension.
 
-Code: `solid_node/core/export.py`, `solid_node/manager/export.py`; the
-widget files come from the installed solid-node-viewer package through
-`solid_node/viewers/bundle.py`.
+Code: `machinome/core/export.py`, `machinome/manager/export.py`; the
+widget files come from the installed machinome-viewer package through
+`machinome/viewers/bundle.py`.
 ## Requirements
 ### Requirement: Export artifact contents
 
 The system SHALL export a node by building all STLs and writing an output
 directory containing `manifest.json`, a `models/` directory, and — unless
 widget-less export is requested — `index.html` plus the prebuilt
-`solid-widget.js` bundle, both copied from the installed viewer package. If
+`machinome-viewer.js` bundle, both copied from the installed viewer package. If
 the viewer package is not installed, export SHALL fail with
-`WidgetBundleMissing` naming `pip install "solid-node[viewer]"` and
+`WidgetBundleMissing` naming `pip install "machinome[viewer]"` and
 `--no-widget` as the alternatives.
 
 The `models/` directory SHALL also hold a copy of every **marking** artifact
 the manifest names under the `markings` capability, preserving that artifact's
 path relative to the selected build directory exactly as a model's is, so the
 export stays self-contained: a consumer reading the manifest from a static host
-resolves every marking without a solid-node process and without any path
+resolves every marking without a machinome process and without any path
 outside the export directory. A marking artifact outside its resolved build
 directory SHALL fail export before the requested output is created or
 modified, as a model artifact outside it already does.
@@ -40,7 +40,7 @@ modified, as a model artifact outside it already does.
 #### Scenario: Export without the viewer
 
 - **WHEN** export runs with the widget requested in an installation without
-  `solid-node-viewer`
+  `machinome-viewer`
 - **THEN** it fails naming the extra and `--no-widget`, and writes no output
   directory
 
@@ -53,7 +53,7 @@ modified, as a model artifact outside it already does.
 ### Requirement: Manifest contract
 
 The manifest SHALL retain the document name `manifest.json` and SHALL declare
-`format: "solid-node-export"`, `animation: {fps, frames}`, a
+`format: "machinome-export"`, `animation: {fps, frames}`, a
 `drivers` table, an `instructions` table, and a
 `root` tree with the same observable schema and child-name behavior as the
 normal-build `viewer.json`. When the exported root declares a time base the
@@ -275,7 +275,7 @@ the nominal cylinder or plane with no separation of its own.
 #### Scenario: The OpenSCAD renderer does not draw markings
 
 - **WHEN** a model whose parts declare markings is photographed with the
-  OpenSCAD snapshot renderer, or opened by `solid develop` without the viewer
+  OpenSCAD snapshot renderer, or opened by `machinome develop` without the viewer
   extra
 - **THEN** it renders exactly as the same model without the markings, and
   neither the build nor the render fails
@@ -295,16 +295,16 @@ one file, and same-named scripts in different directories do not collide.
 ### Requirement: Embeddable widget behavior
 
 The export channel SHALL ship the installed viewer's bundle as an auto-mounting
-bundle, so an export directory renders on any static host with no solid-node
+bundle, so an export directory renders on any static host with no machinome
 process running. It SHALL keep its published names — the bundle
-`solid-widget.js`, the auto-mount attribute
+`machinome-viewer.js`, the auto-mount attribute
 `data-solid-widget="<manifest url>"`, and the browser global
-`SolidNodeWidget` — and SHALL auto-mount every element carrying that attribute
+`MachinomeViewer` — and SHALL auto-mount every element carrying that attribute
 once the page is ready, presenting animation as an always-visible inline bar.
 The page query string SHALL set the initial state: `?t=<0..1>` for time,
 `?autoplay=0` to start paused. How the model itself is rendered — tree
 composition, camera, colour, and animation semantics — is the
-`viewer-package` capability of solid-node-viewer, which the export channel
+`viewer-package` capability of machinome-viewer, which the export channel
 embeds rather than reimplements.
 
 #### Scenario: Static pose embed
@@ -316,7 +316,7 @@ embeds rather than reimplements.
 
 - **WHEN** the export directory is served by any static file host or opened
   through an iframe
-- **THEN** the widget renders and animates with no solid-node process running
+- **THEN** the widget renders and animates with no machinome process running
 
 #### Scenario: An existing host page keeps working
 
@@ -331,7 +331,7 @@ by the `printed-pieces` capability, with each piece's `models` references rooted
 beneath the export's `models/` directory so they resolve to the copied artifacts
 inside the export. The export SHALL therefore remain self-contained: a consumer
 reading the inventory from a static host resolves every piece without a
-solid-node process and without any path outside the export directory.
+machinome process and without any path outside the export directory.
 
 Model deduplication is unchanged — one copied STL per distinct rigid artifact —
 and the inventory SHALL be reported on top of it, so several deduplicated

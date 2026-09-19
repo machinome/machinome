@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -26,13 +26,13 @@ import json
 import os
 from unittest.mock import patch
 
-from solid_node.core.builder import Builder, project_build_lock
-from solid_node.core.export import export_node
-from solid_node.core.serializer import (
+from machinome.core.builder import Builder, project_build_lock
+from machinome.core.export import export_node
+from machinome.core.serializer import (
     BINDINGS_DOCUMENT_VERSION, DOCUMENT_VERSION, FLEXIBLE_DOCUMENT_VERSION,
     document_version, serialize_node, symbolic_document,
 )
-from solid_node.simulation.enumeration import bind_declared_defaults
+from machinome.simulation.enumeration import bind_declared_defaults
 
 from .base import BaseNodeTest
 from .flexible_project import spring as fixture

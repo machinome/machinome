@@ -1,11 +1,11 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 """`trimesh` belongs to the path that reads meshes, not to every path
 that touches a node module.
 
-`solid_node/node/base.py` used to import `trimesh` at module scope for a
+`machinome/node/base.py` used to import `trimesh` at module scope for a
 single call site inside `cached_base_mesh`, so every command that reached
 any node module paid 0.64 s for a mesh library it might never ask a
 question of. These tests pin the deferral from both sides: importing the
@@ -27,9 +27,9 @@ from unittest import TestCase
 import trimesh
 from trimesh.creation import box
 
-from solid_node.node import base
-from solid_node.node.base import cached_base_mesh
-from solid_node._artifact import artifact_cache_key
+from machinome.node import base
+from machinome.node.base import cached_base_mesh
+from machinome._artifact import artifact_cache_key
 
 from .import_probe import probe, probe_import
 
@@ -40,23 +40,23 @@ class MeshLibraryImportTest(TestCase):
     since the test runner has loaded the whole framework by now."""
 
     def test_importing_node_base_does_not_import_trimesh(self):
-        result = probe_import('solid_node.node.base')
+        result = probe_import('machinome.node.base')
 
         self.assertEqual(result.status, 0, result.stderr)
         self.assertFalse(
             result.imported('trimesh'),
-            'importing solid_node.node.base reached for trimesh; the mesh '
+            'importing machinome.node.base reached for trimesh; the mesh '
             'library must be imported by the path that reads meshes')
 
     def test_reading_a_mesh_imports_trimesh_and_returns_it(self):
         """The deferral must not have turned into an omission: the path
         that loads an STL still loads it, through the real library."""
-        with tempfile.TemporaryDirectory(prefix='solid-mesh-defer-') as scratch:
+        with tempfile.TemporaryDirectory(prefix='machinome-mesh-defer-') as scratch:
             stl_file = os.path.join(scratch, 'part.stl')
             box((2, 3, 4)).export(stl_file)
 
             result = probe(
-                'from solid_node.node.base import cached_base_mesh\n'
+                'from machinome.node.base import cached_base_mesh\n'
                 f'mesh = cached_base_mesh({stl_file!r})\n'
                 'print("VOLUME", round(mesh.volume, 6))\n')
 

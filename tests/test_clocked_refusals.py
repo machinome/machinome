@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -18,11 +18,11 @@ simulation that makes them.
 
 from unittest import TestCase
 
-from solid_node.motion.joints import Revolute
-from solid_node.motion.ports import RotationalPort, Time
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, State, Turn
-from solid_node.simulation.enumeration import bind_declared_defaults
+from machinome.motion.joints import Revolute
+from machinome.motion.ports import RotationalPort, Time
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver, State, Turn
+from machinome.simulation.enumeration import bind_declared_defaults
 
 from .clocked_project.counter import Counter, advance, strokes
 from .clocked_project.parts import Dial
@@ -275,7 +275,7 @@ class CommitDeclarationRefusalTest(TestCase):
         self.assertIn('class body', str(caught.exception))
 
     def test_a_commits_on_a_leaf_is_refused(self):
-        from solid_node.node import Solid2Node
+        from machinome.node import Solid2Node
 
         with self.assertRaises(TypeError) as caught:
             class Leafy(Solid2Node):
@@ -303,8 +303,8 @@ class InstructionArityRefusalTest(TestCase):
     """
 
     def test_an_instruction_naming_two_drivers_is_refused(self):
-        from solid_node.simulation import Sim
-        from solid_node.simulation.clocked import ClockedError
+        from machinome.simulation import Sim
+        from machinome.simulation.clocked import ClockedError
 
         from .clocked_project import unsupported
 
@@ -317,8 +317,8 @@ class InstructionArityRefusalTest(TestCase):
         self.assertIn('exactly one', message)
 
     def test_an_instruction_naming_no_driver_is_refused(self):
-        from solid_node.simulation import Sim
-        from solid_node.simulation.clocked import ClockedError
+        from machinome.simulation import Sim
+        from machinome.simulation.clocked import ClockedError
 
         from .clocked_project import unsupported
 
@@ -332,8 +332,8 @@ class InstructionArityRefusalTest(TestCase):
         """Task 2.4, REGRESSION: `Instructed` names exactly one target
         and that target is a State, so it must still be refused by the
         State message and not by the new count."""
-        from solid_node.simulation import Sim
-        from solid_node.simulation.clocked import ClockedError
+        from machinome.simulation import Sim
+        from machinome.simulation.clocked import ClockedError
 
         from .clocked_project import unsupported
 

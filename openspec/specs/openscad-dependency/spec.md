@@ -18,7 +18,7 @@ The paths that require it are exactly:
   adapter that supplies such geometry through the compatibility boundary;
 - evaluating a legacy `Solid2Node` symbolic value through `as_number()` when
   it needs OpenSCAD evaluation, not a natively evaluable graph value;
-- rendering an image with `solid snapshot --renderer openscad`.
+- rendering an image with `machinome snapshot --renderer openscad`.
 
 No other operation SHALL require it. In particular, a project whose model is
 entirely exact under the `exact-geometry` capability SHALL build, test, publish,
@@ -51,7 +51,7 @@ still require the binary when their own geometry must be produced.
 
 #### Scenario: An all-exact project develops without OpenSCAD
 
-- **WHEN** `solid develop` runs for an all-exact project with the browser
+- **WHEN** `machinome develop` runs for an all-exact project with the browser
   viewer installed and no `openscad` on the PATH
 - **THEN** the build and browser viewer run normally and no OpenSCAD
   availability check occurs
@@ -125,7 +125,7 @@ never reaches a requiring path is never asked for the binary.
 
 #### Scenario: The OpenSCAD renderer cannot run
 
-- **WHEN** `solid snapshot --renderer openscad` runs and no `openscad` is on
+- **WHEN** `machinome snapshot --renderer openscad` runs and no `openscad` is on
   the PATH
 - **THEN** it fails naming the missing binary and `--renderer web` as the
   alternative, and renders no image through the web renderer on its own

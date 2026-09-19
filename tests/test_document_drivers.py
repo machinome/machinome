@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -25,12 +25,12 @@ the spike proved needs no machinery at all.
 import json
 import os
 
-from solid_node.core.export import export_node
-from solid_node.core.serializer import (
+from machinome.core.export import export_node
+from machinome.core.serializer import (
     DOCUMENT_VERSION, drivers_table, instructions_table, serialize_node,
     symbolic_document, symbolic_drivers,
 )
-from solid_node.simulation.enumeration import bind_declared_defaults
+from machinome.simulation.enumeration import bind_declared_defaults
 
 from .base import BaseNodeTest
 from .meta_project.axis import Axis as RootAxis
@@ -103,7 +103,7 @@ class SymbolicSerializationTest(BaseNodeTest):
     def test_the_numeric_door_is_not_relaxed(self):
         """A token still cannot be bound through `set_state`: the
         symbolic mode is a different path, not a weaker validator."""
-        from solid_node.node.qualified import DriverToken
+        from machinome.node.qualified import DriverToken
 
         machine = Machine()
         with self.assertRaises(TypeError):

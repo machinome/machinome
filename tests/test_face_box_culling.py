@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -44,8 +44,8 @@ from unittest.mock import patch
 import cadquery as cq
 import numpy as np
 
-import solid_node.test as test_module
-from solid_node.exact import cached_shape, write_brep
+import machinome.test as test_module
+from machinome.exact import cached_shape, write_brep
 from tests.exact_test_support import clear_exact_shape_caches
 
 
@@ -693,7 +693,7 @@ class FaceBoxCacheTest(FaceBoxCullingTestCase):
         self.assertEqual(first.dtype, np.float64)
 
     def test_a_rebuild_evicts_the_cached_face_boxes(self):
-        from solid_node.exact import _face_box_cache, _shape_keys
+        from machinome.exact import _face_box_cache, _shape_keys
 
         path = os.path.join(self.tmpdir.name, 'evict.brep')
         write_brep(cq.Workplane('XY').box(2, 2, 2).val(), path, 1 * 10 ** 9)
@@ -710,7 +710,7 @@ class FaceBoxCacheTest(FaceBoxCullingTestCase):
                          'a rebuild did not evict the old face boxes')
 
     def test_a_shape_with_no_identity_is_measured_and_not_cached(self):
-        from solid_node.exact import _face_box_cache
+        from machinome.exact import _face_box_cache
 
         shape = cq.Workplane('XY').box(2, 2, 2).val()
         before = len(_face_box_cache)

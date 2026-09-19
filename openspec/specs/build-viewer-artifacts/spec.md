@@ -4,13 +4,12 @@
 
 Complete normal-build viewer state for private local framework consumers.
 ## Requirements
-
 ### Requirement: Complete builds publish a viewer snapshot
 
 The builder SHALL publish the versioned viewer snapshot named `viewer.json` in
 the normal build directory only after the current project model has assembled
 and every required STL artifact is current. The document SHALL declare
-`format: "solid-node-export"`, the schema version its content needs, an
+`format: "machinome-export"`, the schema version its content needs, an
 `animation` object with numeric
 `fps` and `frames`, and a `root` with the same observable schema and child-name
 behavior as export `manifest.json`. When the root assembly declares a time
@@ -65,7 +64,7 @@ the document's own refusal is the consumer's to make.
 
 #### Scenario: A running model publishes its program
 
-- **WHEN** `solid build <project>` completes a model whose root declares
+- **WHEN** `machinome build <project>` completes a model whose root declares
   `time = Time.running()`
 - **THEN** its `viewer.json` declares `version: 5`, carries a `program`
   object naming every bank coordinate and every compiled edge, and its joint
@@ -73,14 +72,14 @@ the document's own refusal is the consumer's to make.
 
 #### Scenario: An untimed build is unchanged
 
-- **WHEN** `solid build <project>` completes a model whose root declares no
+- **WHEN** `machinome build <project>` completes a model whose root declares no
   time base
 - **THEN** its `viewer.json` has no `program` key and is byte-identical to
   the snapshot published for that model before this change
 
 #### Scenario: A viewer that cannot read what was written
 
-- **WHEN** `solid build <project>` publishes a version 5 document in an
+- **WHEN** `machinome build <project>` publishes a version 5 document in an
   installation whose viewer reports that it renders versions 1 to 4
 - **THEN** the build completes, the document is published, and one warning
   names the version written, the versions the viewer renders and the viewer's
@@ -94,18 +93,18 @@ the document's own refusal is the consumer's to make.
   included — and does not republish
 
 #### Scenario: A complete model is built once
-- **WHEN** `solid build <project>` completes successfully
+- **WHEN** `machinome build <project>` completes successfully
 - **THEN** its `_build` directory contains `viewer.json` with the shared format
   and node fields, and each rigid model path resolves relative to that same
   published build directory
 
 #### Scenario: A completed animated model is published
-- **WHEN** `solid build <project>` completes a model with a `$t` operation
+- **WHEN** `machinome build <project>` completes a model with a `$t` operation
 - **THEN** its `viewer.json` contains numeric `animation.fps` and `animation.frames` values alongside the root tree
 
 #### Scenario: A declared time base is published
 
-- **WHEN** `solid build <project>` completes a model whose root declares
+- **WHEN** `machinome build <project>` completes a model whose root declares
   `time = Time(loop=43200)`
 - **THEN** its `viewer.json` carries `animation.loop == 43200` beside `fps`
   and `frames`, the document version is the one its tree content already
@@ -113,20 +112,20 @@ the document's own refusal is the consumer's to make.
 
 #### Scenario: An undeclared root publishes no loop
 
-- **WHEN** `solid build <project>` completes a model whose root declares no
+- **WHEN** `machinome build <project>` completes a model whose root declares no
   time base
 - **THEN** its `viewer.json` `animation` object has no `loop` key
 
 #### Scenario: A model whose expressions repeat a subexpression
 
-- **WHEN** `solid build <project>` completes a model in which one
+- **WHEN** `machinome build <project>` completes a model in which one
   subexpression appears in the operations of several nodes
 - **THEN** its `viewer.json` declares `version: 4`, carries a non-empty
   ordered `bindings` array, and holds that subexpression's text exactly once
 
 #### Scenario: A model with nothing shared publishes the document it always did
 
-- **WHEN** `solid build <project>` completes a model whose expressions repeat
+- **WHEN** `machinome build <project>` completes a model whose expressions repeat
   no subexpression
 - **THEN** its `viewer.json` has no `bindings` key and is byte-identical to the
   snapshot published for that model before bindings existed
@@ -153,7 +152,7 @@ snapshot naming readable model files, and SHALL report the failure through
 rather than the preceding complete one.
 
 #### Scenario: A later project edit fails to build
-- **WHEN** a later `solid develop` build fails after a completed publication
+- **WHEN** a later `machinome develop` build fails after a completed publication
 - **THEN** the callback is not emitted, `errors.json` reports the failure, and
   the snapshot readable from `_build` still names model files that are present
   and complete
@@ -174,7 +173,7 @@ publication of the tree.
 
 #### Scenario: A complete build publishes its pieces
 
-- **WHEN** `solid build <project>` completes successfully
+- **WHEN** `machinome build <project>` completes successfully
 - **THEN** its `viewer.json` contains a `pieces` list beside `root`, every rigid
   node carries a `piece` id present in that list, and every model the inventory
   names resolves relative to that same published build directory
@@ -190,3 +189,21 @@ publication of the tree.
 - **WHEN** a build publishes a snapshot and sweeps artifacts it no longer
   references
 - **THEN** every model named by the inventory survives the sweep
+
+### Requirement: New documents carry the Machinome format identity
+
+Every `viewer.json` and `manifest.json` published by Machinome 0.7 SHALL carry
+`format: "machinome-export"`. No other document behavior or version is changed
+by the product rename. The coordinated viewer SHALL continue accepting
+`format: "solid-node-export"` documents produced and committed by solid-node
+0.6 and earlier.
+
+#### Scenario: Machinome publishes a build
+
+- **WHEN** Machinome 0.7 completes a build or export
+- **THEN** its document declares `format: "machinome-export"`
+
+#### Scenario: A maker retains a committed 0.6 export
+
+- **WHEN** the renamed viewer opens its `solid-node-export` document
+- **THEN** the format identity alone does not prevent the document rendering

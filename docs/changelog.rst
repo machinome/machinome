@@ -8,6 +8,19 @@ Changelog
 Unreleased
 ----------
 
+**The framework becomes Machinome 0.7.** The distribution and import package
+are now ``machinome``, the command is ``machinome``, project declarations use
+``[tool.machinome]``, and runtime settings use ``MACHINOME_*``. The repository
+moves from ``LibreSolid/solid-node`` to
+``machinome/machinome-framework``. This is a clean package/API break: 0.7 does
+not ship ``solid_node`` or the ``solid`` command. It does detect the former
+project table and environment prefix and reports their replacements. New
+exports use ``machinome-export``; Machinome Viewer accepts the legacy
+``solid-node-export`` format so committed 0.6 artifacts remain viewable. The
+optional packages are selected with ``machinome[viewer]`` and
+``machinome[mechanics]``; ``machinome[studio]`` names the future Studio extra
+but remains unavailable while Machinome Studio is unpublished.
+
 **A skipped test is not a failure, and an unexpected success fails the
 run.** ``solid test``'s runner had no skip concept and no
 expected-failure concept: every method ran under one bare ``except

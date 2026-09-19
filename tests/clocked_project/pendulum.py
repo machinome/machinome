@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -22,7 +22,7 @@ Two spellings differ from `design.md` section 5, both deliberately and
 neither a design change:
 
 - the pose is written `A * sin(360 * t / T)` rather than
-  `A * sin(2 * pi * t / T)`, because `solid_node.math.sin` takes
+  `A * sin(2 * pi * t / T)`, because `machinome.math.sin` takes
   DEGREES. It is the same function of time;
 - `A` is the bob's amplitude in degrees and `T` its period in seconds,
   so the release level `floor((t + T / 4) / (T / 2))` rises at
@@ -32,11 +32,11 @@ neither a design change:
 
 from solid2 import cube, cylinder
 
-from solid_node.math import floor, sin
-from solid_node.motion.joints import Prismatic, Revolute
-from solid_node.motion.ports import Time
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.simulation import Driver, State
+from machinome.math import floor, sin
+from machinome.motion.joints import Prismatic, Revolute
+from machinome.motion.ports import Time
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.simulation import Driver, State
 
 
 #: The pendulum's period, in seconds. Exactly representable, and chosen
@@ -122,7 +122,7 @@ class Bob(Solid2Node):
     """The swinging mass: ONE box on one revolute joint.
 
     A box and not a cylinder because the document-producer check of
-    design section 6 runs `solid build` and `solid export` over `Swing`,
+    design section 6 runs `machinome build` and `machinome export` over `Swing`,
     and a single box is the whole of the geometry that claim needs.
     """
 

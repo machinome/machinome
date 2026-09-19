@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -6,7 +6,7 @@ import re
 import os
 import shutil
 from unittest import TestCase
-from solid_node.node import StlRenderStart
+from machinome.node import StlRenderStart
 from .utils import format_codes
 
 
@@ -109,7 +109,7 @@ def graph_evaluations(sim, ticks):
     search is one per sub-interval plus the bisection behind each
     bracket.
     """
-    import solid_node.simulation.program as program_module
+    import machinome.simulation.program as program_module
 
     original = program_module._evaluated
     counted = [0]
@@ -147,8 +147,8 @@ def expression_evaluations(sim, ticks):
     what falls is the cost INSIDE one evaluation, which
     `graph_node_visits` below is the probe that can see.
     """
-    from solid_node.scad_expression import GraphValue
-    import solid_node.simulation.program as program_module
+    from machinome.scad_expression import GraphValue
+    import machinome.simulation.program as program_module
 
     original_evaluate = GraphValue.evaluate
     original_bind = program_module._PathValue.bind
@@ -195,8 +195,8 @@ def graph_node_visits(sim, ticks):
     `program_module._visited` because a fast walk never calls
     `postorder` at all.
     """
-    import solid_node.expression_graph as expression_graph_module
-    import solid_node.simulation.program as program_module
+    import machinome.expression_graph as expression_graph_module
+    import machinome.simulation.program as program_module
 
     original_postorder = expression_graph_module.postorder
     original_visited = program_module._visited

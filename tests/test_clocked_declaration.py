@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -16,12 +16,12 @@ requirement note is `workflow/docs/clocked-machine.md`.
 
 from unittest import TestCase
 
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, State
-from solid_node.simulation.enumeration import (bind_declared_defaults,
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver, State
+from machinome.simulation.enumeration import (bind_declared_defaults,
                                                declared_states,
                                                qualified_states)
-from solid_node.node.qualified import DriverIdError, declared_drivers_of
+from machinome.node.qualified import DriverIdError, declared_drivers_of
 
 from .base import BaseNodeTest
 from .clocked_project.counter import Counter, Stateless

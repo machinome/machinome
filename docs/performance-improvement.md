@@ -12,7 +12,7 @@ v8-engine `_build` artifacts (53 STLs, 113 MB).
 
 ## Where the time goes
 
-The assertion path in `solid_node/test.py` is:
+The assertion path in `machinome/test.py` is:
 
 ```
 node.mesh                                   # base.py mesh property
@@ -198,14 +198,14 @@ the framework's own test suites:
 
 - `1c92147` — fix 1: `_cached_base_mesh` (module-level cache keyed on
   `(stl_file, mtime)`) and `_compose_world_matrix` in
-  `solid_node/node/base.py`; `Rotation`/`Translation` gain a
-  `.matrix()` method (`solid_node/node/operations.py`) resolving
+  `machinome/node/base.py`; `Rotation`/`Translation` gain a
+  `.matrix()` method (`machinome/node/operations.py`) resolving
   through `as_number()` at access time. `AbstractBaseNode.mesh` now
   returns a copy of the cached base mesh with one composed matrix
   applied, instead of reloading from disk and applying each operation
   as a separate pass.
 - `e292625` — fix 2: `_intersection_stats`/`_fast_geometry`/
-  `_world_bounds`/`_boxes_disjoint` in `solid_node/test.py`. An AABB
+  `_world_bounds`/`_boxes_disjoint` in `machinome/test.py`. An AABB
   broad-phase culls disjoint pairs before any boolean runs, for
   `assertNotIntersecting`, `assertFreeWithin`,
   `assertNoPairwiseIntersections` (skip, pass) and `assertIntersecting`,
@@ -213,7 +213,7 @@ the framework's own test suites:
   messages).
 - `d725d23` — fix 3: `_cached_manifold` (module-level Manifold cache
   keyed the same way as fix 1's mesh cache, built from the same
-  loaded trimesh mesh) in `solid_node/test.py`. `_intersection_stats`
+  loaded trimesh mesh) in `machinome/test.py`. `_intersection_stats`
   places each cached Manifold with a lazy `.transform()` and
   intersects directly (`a ^ b`), reading `is_empty()`/`volume()`
   without a round trip back to trimesh.
@@ -249,7 +249,7 @@ re-ratified first.
 
 Adapted the spike's workload (8 size-diverse v8-engine parts including
 the 660k-face camshaft, 2 animation instants, 56 pair checks) against
-the actual landed code (`solid_node.test._intersection_stats` over
+the actual landed code (`machinome.test._intersection_stats` over
 real `AbstractBaseNode.mesh`-backed nodes, not the spike's standalone
 reimplementation), reading the `examples/v8-engine/_build/root` STLs
 read-only:
@@ -376,7 +376,7 @@ item and two costs the earlier survey had not looked for.
 
 | cost | measurement |
 |------|-------------|
-| `import solid_node.test` | 2.84 s, of which 1.52 s is cadquery — paid by EVERY `solid test`, faceted projects included |
+| `import machinome.test` | 2.84 s, of which 1.52 s is cadquery — paid by EVERY `machinome test`, faceted projects included |
 | the framework's own suite | 269.2 s, roughly 150 s of it that import |
 | v8-engine suite | 1687 s, 99% inside intersection assertions |
 | repeated intersection questions | 30 227 keyed evaluations, 21% of them a key already answered |
@@ -384,11 +384,11 @@ item and two costs the earlier survey had not looked for.
 
 ### What changed
 
-1. **`solid_node.test` no longer imports the exact stack at module level.**
-   The seven `solid_node.exact` names are module-scope deferred callables
+1. **`machinome.test` no longer imports the exact stack at module level.**
+   The seven `machinome.exact` names are module-scope deferred callables
    that import on first call, rebind the global unless something patched
    it, and call through. Call sites are unchanged and patching
-   `solid_node.test.<name>` still works. A faceted-only project now runs
+   `machinome.test.<name>` still works. A faceted-only project now runs
    its whole suite without cadquery ever being imported.
 2. **Intersection verdicts are memoized within a run**, keyed on both
    geometry identities, the evaluation path, and the exact bytes of
@@ -399,13 +399,13 @@ item and two costs the earlier survey had not looked for.
    a geometry identity changes, on the same discipline as the existing mesh
    and Manifold caches.
 3. **Exact placements and bounding boxes are cached** per `(shape identity,
-   matrix bytes)` beside `_shape_cache` in `solid_node/exact.py`.
+   matrix bytes)` beside `_shape_cache` in `machinome/exact.py`.
 
 ### What was measured after
 
 | | before | after |
 |---|---:|---:|
-| `import solid_node.test` | 2.84 s | **0.79 s** |
+| `import machinome.test` | 2.84 s | **0.79 s** |
 | framework suite | 269.2 s | **179.1 s** (1224 passing) |
 | v8-engine suite | 1687 s | **1622.8 s** |
 

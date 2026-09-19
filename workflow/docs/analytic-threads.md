@@ -60,7 +60,7 @@ Recorded here as the pilot settled it in discussion, in the order it moved.
 - **Not molejo.** A thread is not a swept profile and a nut is not
   flexible; putting it there stretches molejo's charter, and the pilot
   refused that.
-- **Not in solid-node either.** A **new sibling library** on the molejo
+- **Not in machinome either.** A **new sibling library** on the molejo
   pattern: a Python package and a JavaScript package implementing one
   serializable spec, pinned to each other by parity fixtures, consumable
   outside this workspace, depending on nothing here. The framework adapts
@@ -182,7 +182,7 @@ rule; it lands on the viewer release already pending.
 
 ## What the motion layer changes, and what it does not
 
-The motion layer (`solid_node.motion`: ports, joints, couplings; ADR-087
+The motion layer (`machinome.motion`: ports, joints, couplings; ADR-087
 to ADR-089; baseline specs `joints` and `couplings`) was designed and
 implemented in parallel with this discussion, on the same day. It is not
 the same work, and it removes no physical calculation: it answers where

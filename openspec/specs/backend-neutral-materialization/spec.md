@@ -159,7 +159,7 @@ assertions into normal build publication.
 Existing SCAD-facing calls, including public `assemble()` and `as_scad()`,
 SHALL remain usable. `assemble()` SHALL retain its SCAD-compatible result,
 placement order, colours and optimized artifact imports. The normal
-`solid build` SHALL retain its SCAD deliverables; a request for them SHALL use
+`machinome build` SHALL retain its SCAD deliverables; a request for them SHALL use
 the same prepared machine and canonical geometry as other consumers.
 
 The system SHALL preserve OpenSCAD and Solid2 modelling support and legacy
@@ -167,7 +167,7 @@ SCAD-only adapter overrides. The OpenSCAD snapshot renderer SHALL remain
 selectable with its existing default and missing-tool behavior. Flexible SCAD
 output SHALL retain its numeric-snapshot and symbolic-time limitations; it
 SHALL NOT be described as supporting live independent driver controls. The
-OpenSCAD GUI SHALL NOT be offered as a solid-node viewer or automatic
+OpenSCAD GUI SHALL NOT be offered as a machinome viewer or automatic
 development fallback.
 
 SCAD text is presentation, not the machine's identity. Equivalent output text
@@ -183,7 +183,7 @@ different geometry engine.
 
 #### Scenario: A normal build remains useful to OpenSCAD users
 
-- **WHEN** an ordinary `solid build` completes
+- **WHEN** an ordinary `machinome build` completes
 - **THEN** its SCAD deliverables remain available for OpenSCAD and
   repeated unchanged builds avoid rewriting identical presentation files
 
@@ -195,14 +195,14 @@ different geometry engine.
 
 #### Scenario: Viewer policy is independent of SCAD support
 
-- **WHEN** `solid develop` runs without the optional browser viewer package
+- **WHEN** `machinome develop` runs without the optional browser viewer package
   and OpenSCAD is available
 - **THEN** it fails naming the viewer extra rather than treating modelling or
   SCAD-output support as an interactive viewer
 
 #### Scenario: The OpenSCAD snapshot boundary remains
 
-- **WHEN** `solid snapshot --renderer openscad` renders a numerically bound
+- **WHEN** `machinome snapshot --renderer openscad` renders a numerically bound
   machine pose
 - **THEN** it uses the retained SCAD presentation and OpenSCAD renderer with
   the existing snapshot behavior

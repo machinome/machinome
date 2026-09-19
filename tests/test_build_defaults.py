@@ -1,18 +1,18 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 """Loading binds declared driver defaults.
 
 A driver-declaring assembly's render() reads its drivers, so it cannot
-be rendered at all until something binds them -- and `solid build`,
-`solid test` and `solid develop` all render long before any simulation
+be rendered at all until something binds them -- and `machinome build`,
+`machinome test` and `machinome develop` all render long before any simulation
 exists. Until this change the assembly had to state its own opening
 snapshot in `__init__`, which is the declarations repeated in a second
 place and drifting from them.
 
 The binding lives in the loader, which is the layer that may import the
-simulation package. `solid_node/node/` never does, and putting a hook
+simulation package. `machinome/node/` never does, and putting a hook
 there for the simulation layer to register into would only hide that
 dependency rather than place it (ADR-056 stage 3a, D9).
 
@@ -24,7 +24,7 @@ for every project that has no drivers at all.
 
 import os
 
-from solid_node.core.loader import load_node
+from machinome.core.loader import load_node
 
 from .base import BaseNodeTest
 

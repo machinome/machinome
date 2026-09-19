@@ -1,2 +1,2 @@
-[tool.solid-node]
+[tool.machinome]
 model = "axis_model:XAxis"

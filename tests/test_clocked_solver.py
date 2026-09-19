@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -25,11 +25,11 @@ Task 5 of the change `declare-the-state`. The originating project is
 
 import math
 
-from solid_node.simulation import Sim
-from solid_node.simulation.clocked import TooManyEvents
-from solid_node.math import floor, min as sym_min
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, State
+from machinome.simulation import Sim
+from machinome.simulation.clocked import TooManyEvents
+from machinome.math import floor, min as sym_min
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver, State
 
 from .base import BaseNodeTest
 from .clocked_project.counter import Counter, KinkedCounter, Reverse

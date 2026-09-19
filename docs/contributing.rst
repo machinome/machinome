@@ -6,4 +6,4 @@ Contributing
 ============
 
 
-Issues, PRs and discussions can be posted at the project's `Github page <https://github.com/LibreSolid/solid-node>`_
+Issues, PRs and discussions can be posted at the project's `Github page <https://github.com/machinome/machinome-framework>`_

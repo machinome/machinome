@@ -1,22 +1,22 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 """The test framework is imported by the paths that run tests.
 
-Deferring `solid_node.node`'s backend exports was not enough: a real
-`solid build` of a `Solid2Node`-only project still imported `cadquery`,
+Deferring `machinome.node`'s backend exports was not enough: a real
+`machinome build` of a `Solid2Node`-only project still imported `cadquery`,
 through two chains that never touch the node package's exports at all.
 
 - `core/loader.py` imported `TestCase` at module scope, and
-  `solid_node/test.py` imports `solid_node.exact`. Every node-scoped
+  `machinome/test.py` imports `machinome.exact`. Every node-scoped
   command goes through the loader, so this is the chain that matters
-  most: it is the shop floor's hot path, where `solid build` runs on
+  most: it is the shop floor's hot path, where `machinome build` runs on
   every project open.
-- `core/serializer.py` imports `solid_node.simulation.enumeration` on
+- `core/serializer.py` imports `machinome.simulation.enumeration` on
   every publication, and importing that submodule ran
   `simulation/__init__.py`, whose `.scenario` re-export imports
-  `solid_node.test` and lands in the same place.
+  `machinome.test` and lands in the same place.
 
 Neither deferral makes the test framework optional -- it is a required
 part of the framework and stays one. What is asserted here is WHEN it
@@ -27,8 +27,8 @@ catch a deferral that had quietly become a removal.
 
 Import cost is only observable in a process that has not already
 imported the framework, so these run through `tests/import_probe.py`.
-The headline case runs the real CLI: `solid build` of a `Solid2Node`-only
-fixture must import no `cadquery`, and `solid build` of a CadQuery
+The headline case runs the real CLI: `machinome build` of a `Solid2Node`-only
+fixture must import no `cadquery`, and `machinome build` of a CadQuery
 fixture must still import it -- the second half is what proves the first
 is discrimination rather than an accident.
 """
@@ -40,39 +40,39 @@ from unittest import TestCase
 
 from .import_probe import probe
 
-import solid_node.simulation
+import machinome.simulation
 
 
 BASEDIR = os.path.dirname(os.path.abspath(__file__))
 
-# The names `solid_node/simulation/__init__.py` exported eagerly before
+# The names `machinome/simulation/__init__.py` exported eagerly before
 # this change, each with the submodule that defines it. Written out here
 # rather than read from the package under test: a table that agreed with
 # itself would prove nothing about what consumers used to import.
 EXPECTED_EXPORTS = {
-    'Driver': 'solid_node.simulation.driver',
-    'RampProgram': 'solid_node.simulation.driver',
+    'Driver': 'machinome.simulation.driver',
+    'RampProgram': 'machinome.simulation.driver',
     # The state declaration and its two enumeration faces, added with
     # the clocked discipline (OpenSpec change ``declare-the-state``).
     # Lazy like the rest, and for the reason that makes "a stateless
     # model pays nothing" structural: a project that names no `State`
     # imports neither the declaration nor the clocked executor.
-    'State': 'solid_node.simulation.state',
-    'declared_states': 'solid_node.simulation.state',
-    'qualified_states': 'solid_node.simulation.enumeration',
-    'qualified_drivers': 'solid_node.simulation.enumeration',
-    'qualified_instructions': 'solid_node.simulation.enumeration',
-    'Instruction': 'solid_node.simulation.instruction',
+    'State': 'machinome.simulation.state',
+    'declared_states': 'machinome.simulation.state',
+    'qualified_states': 'machinome.simulation.enumeration',
+    'qualified_drivers': 'machinome.simulation.enumeration',
+    'qualified_instructions': 'machinome.simulation.enumeration',
+    'Instruction': 'machinome.simulation.instruction',
     # The control kinds, added with the `controls` declaration
     # (OpenSpec change ``declare-controls-on-parts``) and completed with
     # the sliding one (``direct-part-motion``). Lazy like the rest: a
     # model declaring no control never imports the module, and one that
     # does names them in its own class body.
-    'Button': 'solid_node.simulation.control',
-    'Slide': 'solid_node.simulation.control',
-    'Turn': 'solid_node.simulation.control',
-    'ScenarioTest': 'solid_node.simulation.scenario',
-    'Sim': 'solid_node.simulation.sim',
+    'Button': 'machinome.simulation.control',
+    'Slide': 'machinome.simulation.control',
+    'Turn': 'machinome.simulation.control',
+    'ScenarioTest': 'machinome.simulation.scenario',
+    'Sim': 'machinome.simulation.sim',
     # The running mode's error kinds, added with the running time base
     # (OpenSpec change ``run-owns-the-coordinates``), the entry its
     # crossing record is made of, added with ``integrate-jumps``, and the
@@ -80,11 +80,11 @@ EXPECTED_EXPORTS = {
     # Lazy like the rest, and for one more reason: naming any of them
     # imports the running engine, which a model declaring no running time
     # never pays for.
-    'RunConflict': 'solid_node.simulation.run',
-    'UnsupportedLaw': 'solid_node.simulation.program',
-    'TooManyCrossings': 'solid_node.simulation.program',
-    'Crossing': 'solid_node.simulation.program',
-    'Stop': 'solid_node.simulation.program',
+    'RunConflict': 'machinome.simulation.run',
+    'UnsupportedLaw': 'machinome.simulation.program',
+    'TooManyCrossings': 'machinome.simulation.program',
+    'Crossing': 'machinome.simulation.program',
+    'Stop': 'machinome.simulation.program',
 }
 
 # Refuse `cadquery` the way an interpreter without the wheel does: a
@@ -119,20 +119,20 @@ def ran(snippet, **kwargs):
 
 
 def build(reference):
-    """Run a real `solid build` of a fixture, in a throwaway build tree.
+    """Run a real `machinome build` of a fixture, in a throwaway build tree.
 
     `SOLID_BUILD_DIR` is absolute and outside the repository, so the
     fixture projects under `tests/` are never written into -- and the
     build lock, which is derived from that directory, goes with it.
     """
-    with tempfile.TemporaryDirectory(prefix='solid-lazy-build-') as build_dir:
-        return ran('from solid_node.cli import manage\nmanage()\n',
+    with tempfile.TemporaryDirectory(prefix='machinome-lazy-build-') as build_dir:
+        return ran('from machinome.cli import manage\nmanage()\n',
                    argv=['build', reference],
                    env={'SOLID_BUILD_DIR': build_dir},
                    cwd=BASEDIR)
 
 
-# `solid build` forks a `Builder` per generation, so the parent the probe
+# `machinome build` forks a `Builder` per generation, so the parent the probe
 # watches never runs the publication itself -- and a forked child inherits
 # `sys.modules` rather than reporting its own. Driving the same builder
 # loop in one process is what makes the imports of an actual serialization
@@ -140,7 +140,7 @@ def build(reference):
 PUBLISH = '''
 import os
 
-from solid_node.core.builder import Builder, BuildOutcome
+from machinome.core.builder import Builder, BuildOutcome
 
 while True:
     try:
@@ -160,7 +160,7 @@ print('PUBLISHED', os.path.isfile(document))
 
 def publish(reference):
     """Build and serialize a fixture's viewer document, in this process."""
-    with tempfile.TemporaryDirectory(prefix='solid-lazy-build-') as build_dir:
+    with tempfile.TemporaryDirectory(prefix='machinome-lazy-build-') as build_dir:
         return ran(PUBLISH,
                    env={'SOLID_BUILD_DIR': build_dir,
                         'SOLID_PROBE_NODE': reference},
@@ -171,31 +171,31 @@ class LoaderImportCost(TestCase):
     """Loading a node is not a reason to load the test framework."""
 
     def test_importing_the_loader_does_not_import_the_test_framework(self):
-        result = ran('import solid_node.core.loader\n')
+        result = ran('import machinome.core.loader\n')
         self.assertFalse(
-            result.imported('solid_node.test'),
-            'importing solid_node.core.loader imported solid_node.test')
+            result.imported('machinome.test'),
+            'importing machinome.core.loader imported machinome.test')
 
     def test_importing_the_loader_does_not_import_cadquery(self):
-        # The consequence that pays for the change: solid_node.test
-        # imports solid_node.exact, which is 1.84 s of cadquery on every
+        # The consequence that pays for the change: machinome.test
+        # imports machinome.exact, which is 1.84 s of cadquery on every
         # node-scoped command.
-        result = ran('import solid_node.core.loader\n')
+        result = ran('import machinome.core.loader\n')
         self.assertFalse(result.imported('cadquery'),
-                         'importing solid_node.core.loader imported cadquery')
+                         'importing machinome.core.loader imported cadquery')
         self.assertFalse(
-            result.imported('solid_node.exact'),
-            'importing solid_node.core.loader imported the exact stack')
+            result.imported('machinome.exact'),
+            'importing machinome.core.loader imported the exact stack')
 
     def test_loading_a_node_does_not_import_the_test_framework(self):
-        result = ran('from solid_node.core.loader import load_node\n'
+        result = ran('from machinome.core.loader import load_node\n'
                      "node = load_node('flat_project/simple_cylinder.py')\n"
                      'print(type(node).__name__)\n',
                      cwd=BASEDIR)
         self.assertEqual(result.stdout.strip(), 'SimpleCylinder',
                          result.stderr)
-        self.assertFalse(result.imported('solid_node.test'),
-                         'loading a node imported solid_node.test')
+        self.assertFalse(result.imported('machinome.test'),
+                         'loading a node imported machinome.test')
         self.assertFalse(result.imported('cadquery'),
                          'loading a Solid2Node imported cadquery')
 
@@ -211,9 +211,9 @@ class CompanionTestDiscovery(TestCase):
 
     def test_discovering_companion_tests_returns_the_same_test_cases(self):
         result = ran(
-            'from solid_node.core.loader import load_tests\n'
+            'from machinome.core.loader import load_tests\n'
             "cases = load_tests('meta_project/apart.py')\n"
-            'from solid_node.test import TestCase\n'
+            'from machinome.test import TestCase\n'
             "print('NAMES', ' '.join(k.__name__ for k in cases))\n"
             "print('MODULES', ' '.join(k.__module__ for k in cases))\n"
             "print('SUBCLASSES', all(issubclass(k, TestCase) "
@@ -235,16 +235,16 @@ class CompanionTestDiscovery(TestCase):
         # asks for it and present the moment discovery has run.
         result = ran(
             'import sys\n'
-            'from solid_node.core.loader import load_tests\n'
-            "print('BEFORE', 'solid_node.test' in sys.modules)\n"
+            'from machinome.core.loader import load_tests\n'
+            "print('BEFORE', 'machinome.test' in sys.modules)\n"
             "load_tests('meta_project/apart.py')\n"
-            "print('AFTER', 'solid_node.test' in sys.modules)\n",
+            "print('AFTER', 'machinome.test' in sys.modules)\n",
             cwd=BASEDIR)
         self.assertEqual(result.stdout.split(),
                          ['BEFORE', 'False', 'AFTER', 'True'], result.stderr)
 
     def test_a_node_without_companion_tests_still_reports_none(self):
-        result = ran('from solid_node.core.loader import load_tests\n'
+        result = ran('from machinome.core.loader import load_tests\n'
                      "print(load_tests('flat_project/simple_pipe.py'))\n",
                      cwd=BASEDIR)
         self.assertEqual(result.stdout.strip(), '[]', result.stderr)
@@ -254,31 +254,31 @@ class SerializerImportCost(TestCase):
     """Publishing needs the driver enumeration, not the scenario base."""
 
     def test_importing_the_serializer_does_not_import_the_scenario_module(self):
-        result = ran('import solid_node.core.serializer\n')
+        result = ran('import machinome.core.serializer\n')
         self.assertFalse(
-            result.imported('solid_node.simulation.scenario'),
+            result.imported('machinome.simulation.scenario'),
             'importing the serializer imported the scenario module')
-        self.assertFalse(result.imported('solid_node.test'),
-                         'importing the serializer imported solid_node.test')
+        self.assertFalse(result.imported('machinome.test'),
+                         'importing the serializer imported machinome.test')
         self.assertFalse(result.imported('cadquery'),
                          'importing the serializer imported cadquery')
 
     def test_the_serializer_still_reaches_the_driver_enumeration(self):
         # The absence above must come from deferral, not from the
         # serializer having stopped needing what it needs.
-        result = ran('import solid_node.core.serializer as serializer\n'
+        result = ran('import machinome.core.serializer as serializer\n'
                      'print(serializer.tree_declares_drivers.__module__)\n')
         self.assertEqual(result.stdout.strip(),
-                         'solid_node.simulation.enumeration', result.stderr)
+                         'machinome.simulation.enumeration', result.stderr)
 
     def test_a_build_serializes_without_importing_the_scenario_module(self):
         result = publish('flat_project/simple_cylinder.py')
         self.assertEqual(result.stdout.strip(), 'PUBLISHED True',
                          result.stderr)
         self.assertFalse(
-            result.imported('solid_node.simulation.scenario'),
+            result.imported('machinome.simulation.scenario'),
             'publishing a viewer document imported the scenario module')
-        self.assertFalse(result.imported('solid_node.test'),
+        self.assertFalse(result.imported('machinome.test'),
                          'publishing a viewer document imported the test '
                          'framework')
         self.assertFalse(result.imported('cadquery'),
@@ -291,69 +291,69 @@ class SerializerImportCost(TestCase):
         self.assertEqual(result.stdout.strip(), 'PUBLISHED True',
                          result.stderr)
         self.assertTrue(
-            result.imported('solid_node.simulation.enumeration'),
+            result.imported('machinome.simulation.enumeration'),
             'publishing never reached the driver enumeration')
         self.assertFalse(
-            result.imported('solid_node.simulation.scenario'),
+            result.imported('machinome.simulation.scenario'),
             'publishing a viewer document imported the scenario module')
 
 
 class SimulationPackageExports(TestCase):
     """Every name the package exported still resolves, unchanged.
 
-    `from solid_node.simulation import Driver` is a public surface. The
+    `from machinome.simulation import Driver` is a public surface. The
     accessor may change when these load; it may not change what they are.
     """
 
     def test_all_lists_exactly_the_names_exported_before(self):
-        self.assertEqual(sorted(solid_node.simulation.__all__),
+        self.assertEqual(sorted(machinome.simulation.__all__),
                          sorted(EXPECTED_EXPORTS))
 
     def test_every_export_is_the_object_its_submodule_defines(self):
         for name, module_name in EXPECTED_EXPORTS.items():
             with self.subTest(name=name):
                 module = importlib.import_module(module_name)
-                self.assertIs(getattr(solid_node.simulation, name),
+                self.assertIs(getattr(machinome.simulation, name),
                               getattr(module, name))
 
     def test_star_import_binds_every_exported_name(self):
         result = ran(
-            'from solid_node.simulation import *\n'
+            'from machinome.simulation import *\n'
             f'missing = [n for n in {sorted(EXPECTED_EXPORTS)!r} '
             'if n not in dir()]\n'
             'print(missing)\n')
         self.assertEqual(result.stdout.strip(), '[]', result.stderr)
 
     def test_dir_offers_the_exported_names(self):
-        listed = dir(solid_node.simulation)
+        listed = dir(machinome.simulation)
         for name in EXPECTED_EXPORTS:
             with self.subTest(name=name):
                 self.assertIn(name, listed)
 
     def test_importing_the_package_imports_no_submodule(self):
-        result = ran('import solid_node.simulation\n')
+        result = ran('import machinome.simulation\n')
         for name in ('control', 'driver', 'enumeration', 'instruction',
                      'scenario', 'sim'):
             with self.subTest(submodule=name):
                 self.assertFalse(
-                    result.imported(f'solid_node.simulation.{name}'),
+                    result.imported(f'machinome.simulation.{name}'),
                     f'importing the package imported .{name}')
 
     def test_reaching_the_enumeration_does_not_import_the_scenario(self):
         # The chain the serializer walks on every publication.
         result = ran(
-            'from solid_node.simulation.enumeration import '
+            'from machinome.simulation.enumeration import '
             'tree_declares_drivers\n')
         self.assertFalse(
-            result.imported('solid_node.simulation.scenario'),
+            result.imported('machinome.simulation.scenario'),
             'reaching .enumeration imported .scenario')
-        self.assertFalse(result.imported('solid_node.test'),
-                         'reaching .enumeration imported solid_node.test')
+        self.assertFalse(result.imported('machinome.test'),
+                         'reaching .enumeration imported machinome.test')
 
     def test_naming_the_scenario_export_imports_the_test_framework(self):
-        result = ran('from solid_node.simulation import ScenarioTest\n'
+        result = ran('from machinome.simulation import ScenarioTest\n'
                      'assert isinstance(ScenarioTest, type)\n')
-        self.assertTrue(result.imported('solid_node.test'),
+        self.assertTrue(result.imported('machinome.test'),
                         'resolving ScenarioTest did not import the framework')
 
     def test_resolving_a_name_caches_it_in_module_globals(self):
@@ -361,7 +361,7 @@ class SimulationPackageExports(TestCase):
         # a submodule that reads a lazy name during its own import from
         # re-entering the accessor forever.
         result = ran(
-            'import solid_node.simulation as simulation\n'
+            'import machinome.simulation as simulation\n'
             "print('BEFORE', 'Sim' in vars(simulation))\n"
             'first = simulation.Sim\n'
             "print('AFTER', vars(simulation).get('Sim') is first)\n"
@@ -372,7 +372,7 @@ class SimulationPackageExports(TestCase):
 
     def test_an_unknown_name_still_raises_attribute_error(self):
         with self.assertRaises(AttributeError):
-            solid_node.simulation.NoSuchSimulationName
+            machinome.simulation.NoSuchSimulationName
 
     def test_a_submodule_is_reachable_after_a_bare_package_import(self):
         # The eager re-exports used to bind every submodule as a side
@@ -380,14 +380,14 @@ class SimulationPackageExports(TestCase):
         for submodule in EXPECTED_EXPORTS.values():
             name = submodule.rsplit('.', 1)[1]
             with self.subTest(submodule=name):
-                result = ran('import solid_node.simulation\n'
-                             f'print(solid_node.simulation.{name}.__name__)\n')
+                result = ran('import machinome.simulation\n'
+                             f'print(machinome.simulation.{name}.__name__)\n')
                 self.assertEqual(result.stdout.strip(), submodule,
                                  result.stderr)
 
     def test_a_submodule_attribute_is_the_imported_module(self):
-        module = importlib.import_module('solid_node.simulation.driver')
-        self.assertIs(solid_node.simulation.driver, module)
+        module = importlib.import_module('machinome.simulation.driver')
+        self.assertIs(machinome.simulation.driver, module)
 
 
 class SimulationBrokenExport(TestCase):
@@ -397,12 +397,12 @@ class SimulationBrokenExport(TestCase):
     `__getattr__` looks, to anything that treats the accessor as a
     lookup, like the name simply not being there.
 
-    `ScenarioTest` used to reach `solid_node.test` -> `solid_node.exact`
+    `ScenarioTest` used to reach `machinome.test` -> `machinome.exact`
     -> `cadquery`, and these tests read a broken exact stack through it.
     Now that the test framework defers the exact stack too, that chain
     stops one step earlier: reading `ScenarioTest` no longer needs
     cadquery at all, so the guard follows the dependency to where it
-    actually lives -- the kernel names on `solid_node.test`, whose first
+    actually lives -- the kernel names on `machinome.test`, whose first
     USE is now the first thing that can fail. The trap is unchanged and
     so is what it must not do; only the name that springs it moved.
     """
@@ -410,7 +410,7 @@ class SimulationBrokenExport(TestCase):
     def _access(self, expression):
         return ran(
             CADQUERY_ABSENT +
-            'import solid_node.simulation\n'
+            'import machinome.simulation\n'
             'try:\n'
             f'    {expression}\n'
             'except AttributeError as wrong:\n'
@@ -423,14 +423,14 @@ class SimulationBrokenExport(TestCase):
             "    print('NO_ERROR')\n")
 
     def _use_kernel_name(self):
-        """Call a deferred kernel name on `solid_node.test`, exact stack
+        """Call a deferred kernel name on `machinome.test`, exact stack
         absent. Reading the name is not enough -- the deferred binding
         resolves on USE, which is the point the failure must surface."""
         return ran(
             CADQUERY_ABSENT +
-            'import solid_node.test\n'
+            'import machinome.test\n'
             'try:\n'
-            "    solid_node.test.intersect_shapes(None, None, 'a', 'b')\n"
+            "    machinome.test.intersect_shapes(None, None, 'a', 'b')\n"
             'except AttributeError as wrong:\n'
             "    print('ATTRIBUTE_ERROR', wrong)\n"
             'except ImportError as failure:\n'
@@ -445,7 +445,7 @@ class SimulationBrokenExport(TestCase):
         # dependency and stays one. It is a claim about WHEN the failure
         # is allowed to happen: at first use of a name that needs it.
         result = ran(CADQUERY_ABSENT +
-                     'import solid_node.simulation\n'
+                     'import machinome.simulation\n'
                      "print('IMPORTED')\n")
         self.assertEqual(result.stdout.strip(), 'IMPORTED', result.stderr)
 
@@ -453,7 +453,7 @@ class SimulationBrokenExport(TestCase):
         # The deferral went one step deeper than this class used to
         # assert: the scenario export reaches the test framework, and the
         # test framework no longer reaches cadquery.
-        result = self._access('solid_node.simulation.ScenarioTest')
+        result = self._access('machinome.simulation.ScenarioTest')
         self.assertEqual(result.stdout.strip(), 'NO_ERROR', result.stderr)
 
     def test_using_a_kernel_name_raises_the_underlying_import_error(self):
@@ -464,12 +464,12 @@ class SimulationBrokenExport(TestCase):
 
     def test_reading_a_kernel_name_is_not_a_missing_attribute(self):
         # The trap itself: whatever a broken install does, it must not
-        # look like `solid_node.test` never had the name.
+        # look like `machinome.test` never had the name.
         result = ran(
             CADQUERY_ABSENT +
-            'import solid_node.test\n'
+            'import machinome.test\n'
             'try:\n'
-            "    present = hasattr(solid_node.test, 'intersect_shapes')\n"
+            "    present = hasattr(machinome.test, 'intersect_shapes')\n"
             'except ImportError as failure:\n'
             "    print('IMPORT_ERROR', failure)\n"
             'else:\n'
@@ -481,7 +481,7 @@ class SimulationBrokenExport(TestCase):
 
 
 class BuildImportCost(TestCase):
-    """The headline: what a real `solid build` actually costs.
+    """The headline: what a real `machinome build` actually costs.
 
     Every assertion above is about one import site. This one is the
     claim the change is for, made against the CLI a maker and the shop
@@ -492,10 +492,10 @@ class BuildImportCost(TestCase):
         result = build('flat_project/simple_cylinder.py')
         self.assertFalse(result.imported('cadquery'),
                          'building a Solid2Node project imported cadquery')
-        self.assertFalse(result.imported('solid_node.exact'),
+        self.assertFalse(result.imported('machinome.exact'),
                          'building a Solid2Node project imported the '
                          'exact stack')
-        self.assertFalse(result.imported('solid_node.test'),
+        self.assertFalse(result.imported('machinome.test'),
                          'building a project imported the test framework')
 
     def test_a_solid2_only_assembly_build_imports_no_cadquery(self):
@@ -504,7 +504,7 @@ class BuildImportCost(TestCase):
         result = build('pieces_project/assembly.py')
         self.assertFalse(result.imported('cadquery'),
                          'building a Solid2Node assembly imported cadquery')
-        self.assertFalse(result.imported('solid_node.test'),
+        self.assertFalse(result.imported('machinome.test'),
                          'building an assembly imported the test framework')
 
     def test_a_cadquery_build_still_imports_cadquery(self):
@@ -517,9 +517,9 @@ class BuildImportCost(TestCase):
 
 
 def run_tests(reference):
-    """Run a real `solid test` of a fixture, in a throwaway build tree."""
-    with tempfile.TemporaryDirectory(prefix='solid-lazy-test-') as build_dir:
-        return ran('from solid_node.cli import manage\nmanage()\n',
+    """Run a real `machinome test` of a fixture, in a throwaway build tree."""
+    with tempfile.TemporaryDirectory(prefix='machinome-lazy-test-') as build_dir:
+        return ran('from machinome.cli import manage\nmanage()\n',
                    argv=['test', reference],
                    env={'SOLID_BUILD_DIR': build_dir},
                    cwd=BASEDIR)
@@ -530,8 +530,8 @@ class TestFrameworkImportCost(TestCase):
 
     `LoaderImportCost` above asserts this from the outside: loading a node
     imports neither the test framework nor cadquery. That left the inside
-    unasserted -- the moment a test IS discovered, `solid_node.test`
-    imports `solid_node.exact` at module scope and every test process pays
+    unasserted -- the moment a test IS discovered, `machinome.test`
+    imports `machinome.exact` at module scope and every test process pays
     2.84 s for cadquery, whether or not a single node in the project is
     exact.
 
@@ -541,11 +541,11 @@ class TestFrameworkImportCost(TestCase):
     """
 
     def test_importing_the_test_framework_does_not_import_cadquery(self):
-        result = ran('import solid_node.test\n')
+        result = ran('import machinome.test\n')
         self.assertFalse(result.imported('cadquery'),
-                         'importing solid_node.test imported cadquery')
-        self.assertFalse(result.imported('solid_node.exact'),
-                         'importing solid_node.test imported the exact stack')
+                         'importing machinome.test imported cadquery')
+        self.assertFalse(result.imported('machinome.exact'),
+                         'importing machinome.test imported the exact stack')
 
     def test_a_faceted_test_run_imports_no_cadquery(self):
         # The consequence that pays for the change, against the real CLI:
@@ -565,7 +565,7 @@ class TestFrameworkImportCost(TestCase):
 
 
 class ExactNamesStayPatchable(TestCase):
-    """The deferred exact names remain module globals of `solid_node.test`.
+    """The deferred exact names remain module globals of `machinome.test`.
 
     Deferring the import moves WHEN the kernel loads, not where its names
     live. A caller that patches one keeps working -- before the exact path
@@ -578,11 +578,11 @@ class ExactNamesStayPatchable(TestCase):
                    'solid_count', 'solid_volume')
 
     def test_every_deferred_name_is_readable(self):
-        import solid_node.test as test_module
+        import machinome.test as test_module
         for name in self.EXACT_NAMES:
             with self.subTest(name=name):
                 self.assertTrue(callable(getattr(test_module, name)),
-                                f'{name} is not readable on solid_node.test')
+                                f'{name} is not readable on machinome.test')
 
     def test_a_patch_applied_before_first_use_is_used(self):
         result = ran(PATCH_BEFORE_USE, cwd=BASEDIR)
@@ -634,7 +634,7 @@ def patched_verdict():
     return 'PATCHED' if (stats.exact and stats.is_empty) else 'NOT PATCHED'
 '''
 
-PATCH_BEFORE_USE = 'import solid_node.test as t\n' + _PATCH + '''
+PATCH_BEFORE_USE = 'import machinome.test as t\n' + _PATCH + '''
 print(patched_verdict())
 '''
 
@@ -642,14 +642,14 @@ print(patched_verdict())
 # resolution is genuine without building geometry -- which is what makes the
 # second half an assertion about a name that has ALREADY been replaced by the
 # resolved kernel function rather than one still holding its deferred binding.
-PATCH_AFTER_USE = 'import solid_node.test as t\n' + _PATCH + '''
+PATCH_AFTER_USE = 'import machinome.test as t\n' + _PATCH + '''
 resolved = 'RESOLVED' if t.solid_count(FakeShape()) == 0 else 'UNRESOLVED'
 print(resolved, patched_verdict())
 '''
 
 
 class NodeLayerImportsNothingOfTheSimulationTest(TestCase):
-    """`solid_node/node/` imports nothing from `solid_node/simulation/`.
+    """`machinome/node/` imports nothing from `machinome/simulation/`.
 
     The one-way rule the whole layering rests on, and the reason
     `DriverDeclaration` is a node-layer marker the simulation layer
@@ -662,7 +662,7 @@ class NodeLayerImportsNothingOfTheSimulationTest(TestCase):
 
     def test_the_declarative_module_names_no_simulation_import(self):
         import ast
-        import solid_node.node.declarative as module
+        import machinome.node.declarative as module
 
         with open(module.__file__) as handle:
             tree = ast.parse(handle.read())
@@ -673,14 +673,14 @@ class NodeLayerImportsNothingOfTheSimulationTest(TestCase):
             elif isinstance(node, ast.ImportFrom) and node.module:
                 imported.append(node.module)
         offending = [name for name in imported
-                     if name == 'solid_node.simulation'
-                     or name.startswith('solid_node.simulation.')]
+                     if name == 'machinome.simulation'
+                     or name.startswith('machinome.simulation.')]
         self.assertEqual(offending, [], f'imports: {sorted(set(imported))}')
 
     def test_importing_the_node_package_imports_no_simulation_module(self):
-        result = ran('import solid_node.node.declarative\n')
+        result = ran('import machinome.node.declarative\n')
         for name in ('control', 'driver', 'program', 'run', 'sim'):
             with self.subTest(submodule=name):
                 self.assertFalse(
-                    result.imported(f'solid_node.simulation.{name}'),
-                    f'the node layer imported solid_node.simulation.{name}')
+                    result.imported(f'machinome.simulation.{name}'),
+                    f'the node layer imported machinome.simulation.{name}')

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -22,22 +22,22 @@ from unittest import TestCase
 
 from solid2 import cube, get_animation_time
 
-from solid_node.core.serializer import (bind_document, drivers_table,
+from machinome.core.serializer import (bind_document, drivers_table,
                                         serialize_node, symbolic_document)
-from solid_node.motion.couplings import (Affine, CouplingError,
+from machinome.motion.couplings import (Affine, CouplingError,
                                          DerivedCoordinate, DoublyBound,
                                          ForwardOnly, NotInvertible, Relation,
                                          UnreachedCoordinate,
                                          declared_relations)
-from solid_node.motion.joints import (Free, JointRangeError, Orbit, Prismatic,
+from machinome.motion.joints import (Free, JointRangeError, Orbit, Prismatic,
                                       Revolute, declared_joints)
-from solid_node.motion.ports import (RotationalPort, SignalPort, Time,
+from machinome.motion.ports import (RotationalPort, SignalPort, Time,
                                      TranslationalPort, declared_ports)
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.node.declarative import SidewaysReadError
-from solid_node.node.qualified import DriverToken
-from solid_node.parameters import Count, Length, Ratio
-from solid_node.simulation import Driver
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.declarative import SidewaysReadError
+from machinome.node.qualified import DriverToken
+from machinome.parameters import Count, Length, Ratio
+from machinome.simulation import Driver
 
 from .base import BaseNodeTest
 from .import_probe import probe
@@ -46,7 +46,7 @@ from .coupling_project.parts import Belt, Link, Pulley, Rod, Wheel
 from .coupling_project.train import (Arbor, Arm, BackwardsTrain, PITCH_ARC,
                                      Train, Upper, Wrist, mesh)
 
-from solid_node.motion.couplings import PrematureRead
+from machinome.motion.couplings import PrematureRead
 
 
 # What the fixture train solves for, by hand, so a disagreement between
@@ -1407,7 +1407,7 @@ class LawShapeTest(BaseNodeTest):
         becoming a pose") stay three; `PrematureRead` is a pre-existing
         fourth `CouplingError`, from a different requirement
         (whole-tree-fixpoint), untouched by this cycle."""
-        from solid_node.motion import couplings as couplings_module
+        from machinome.motion import couplings as couplings_module
 
         error_names = {
             name for name in couplings_module.__all__
@@ -2729,7 +2729,7 @@ class CrossCycleTest(BaseNodeTest):
 MODULE_REPORT = (
     'import sys\n'
     "print(sorted(m for m in sys.modules\n"
-    "             if m == 'solid_node' or m.startswith('solid_node.')))\n")
+    "             if m == 'machinome' or m.startswith('machinome.')))\n")
 
 
 class CouplingImportCostTest(TestCase):
@@ -2739,11 +2739,11 @@ class CouplingImportCostTest(TestCase):
         return set(eval(result.stdout.strip())), result
 
     def test_couplings_costs_what_ports_costs_and_no_more(self):
-        ports, _ = self.modules('import solid_node.motion.ports\n')
+        ports, _ = self.modules('import machinome.motion.ports\n')
         couplings, result = self.modules(
-            'import solid_node.motion.couplings\n')
+            'import machinome.motion.couplings\n')
 
-        self.assertEqual(couplings, ports | {'solid_node.motion.couplings'})
+        self.assertEqual(couplings, ports | {'machinome.motion.couplings'})
         for absent in ('cadquery', 'OCP', 'trimesh'):
             with self.subTest(absent=absent):
                 self.assertFalse(result.imported(absent))
@@ -3598,7 +3598,7 @@ class SubclassReplacesRelationTest(BaseNodeTest):
 # The RUNNING SIMULATION as a binder kind
 # (OpenSpec change ``run-owns-the-coordinates``)
 
-from solid_node.motion.ports import RunBinder, binding_as, set_coordinate
+from machinome.motion.ports import RunBinder, binding_as, set_coordinate
 from .running_project.machine import BackDriven, TrainBody
 
 

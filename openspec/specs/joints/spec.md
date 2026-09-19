@@ -825,7 +825,7 @@ whose line runs through the body's own origin is exactly this case.
 ### Requirement: Joint declarations
 
 The system SHALL provide the one-coordinate lower pairs as declarations
-exported from `solid_node.motion.joints`: `Revolute(axis, at=(0, 0, 0),
+exported from `machinome.motion.joints`: `Revolute(axis, at=(0, 0, 0),
 range=None, unit='deg')`, which turns a body about a line;
 `Prismatic(axis, at=(0, 0, 0), range=None, unit='mm')`, which slides a
 body along one; and `Orbit(axis, at=(0, 0, 0), carries=(0, 0, 0),
@@ -987,7 +987,7 @@ joint.
 ### Requirement: A free joint owns six coordinates and floats a body
 
 The system SHALL provide `Free(at=(0, 0, 0), angle_unit='deg',
-length_unit='mm')`, exported from `solid_node.motion.joints` beside the
+length_unit='mm')`, exported from `machinome.motion.joints` beside the
 one-coordinate pairs, for a body with no parent to be jointed to: a
 walking robot's chassis, a floating platform, anything whose pose against
 the world is stated rather than constrained. It SHALL be declared as a

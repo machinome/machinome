@@ -34,7 +34,7 @@ as `3afcac97a808aebf9d7019d6e43a6dc3086fea62` in Curta, with its focused
 archive/handoff committed as `739c91a5144fba8bac3a904ddb7b2fb5338fc363`.
 None of the three running OpenSpec
 cycles is ratified. The pilot explicitly requires another go-ahead once the
-evidence is ready, before actual solid-node feature development begins.
+evidence is ready, before actual machinome feature development begins.
 
 This updates the scheduling and first-project recommendation in
 [design.md](design.md). The [Curta spike evidence](evidence/report.md) remains
@@ -49,12 +49,12 @@ project-owned migration cycle. Use `open-run-simulation` as the common branch
 and proposed change name; the records and commits belong to three independent
 repositories. This is standalone work, with no shop sprint membership.
 
-Paths below are relative to `/home/asa/devel/libresolid-studio`.
+Paths below are relative to `/home/asa/devel/machinome-studio`.
 
 | Owner | Worktree | Recorded main base | Responsibility |
 | --- | --- | --- | --- |
-| Framework | `solid-node/WTs/open-run-simulation/` | `6e41f2da132a8604f9b68895967247fb8876fc4d` | Authoring, compiled mechanical program, state and command semantics, Python execution, publication and producer conformance fixtures |
-| Viewer | `solid-node-viewer/WTs/open-run-simulation/` | `6fb082ba9823fb0839631bd4a3ecbf4a41b33b64` | Program validation and execution in a worker, physical controls, rendering, replay and viewer lifecycle |
+| Framework | `machinome/WTs/open-run-simulation/` | `6e41f2da132a8604f9b68895967247fb8876fc4d` | Authoring, compiled mechanical program, state and command semantics, Python execution, publication and producer conformance fixtures |
+| Viewer | `machinome-viewer/WTs/open-run-simulation/` | `6fb082ba9823fb0839631bd4a3ecbf4a41b33b64` | Program validation and execution in a worker, physical controls, rendering, replay and viewer lifecycle |
 | Curta | `projects/Calculators/Curta-Type-I-3x/WTs/open-run-simulation/` | `60979adbc795785fc51a28a386f85d1a49bfedf7` | Mechanical laws and geometry, migration from prescribed calculator motion, mechanism acceptance and inspected images |
 
 Each eventual integration target is that repository's `main`, subject to the
@@ -276,7 +276,7 @@ existing `simulate-the-curta` change. Framework and viewer production remain
 unchanged.
 
 Pilot boundary, 2026-09-13: "when we're clear to start developing the actual
-feature in solid-node, then you ask me". Continue the approved Curta correction
+feature in machinome, then you ask me". Continue the approved Curta correction
 and evidence work, then present readiness and request that go-ahead. Do not
 treat prerequisite approval as authorization for framework production code.
 
@@ -543,7 +543,7 @@ of this first increment.
   the old calculator operand, whose prescribed laws reconstruct that state.
   Initial-slice setup, continuous-neighbour and outgoing-boundary obligations
   remain separate from the frame-clearance certificates. Complete the three
-  coordinated proposals and ask the pilot before actual solid-node feature
+  coordinated proposals and ask the pilot before actual machinome feature
   development; the prerequisite's approval does not authorize it.
 - That selected-input pass is now committed in Curta as
   `dd981041ff41108727abc9ae02db0c291d0126cd`, with the complete record at
@@ -583,5 +583,5 @@ of this first increment.
   18 expected failures). Work paused during task 1.2 for an alignment/protected
   spring-seat decision; no operating fit or continuous path is accepted. Current
   evidence: Curta `simulation/docs/selector-fit-implementation-2026-09-13.md`.
-  This authorizes only the bounded project correction, not solid-node/viewer
+  This authorizes only the bounded project correction, not machinome/viewer
   feature development or a change to the release-neutral acceptance scope.

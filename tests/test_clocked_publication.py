@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -26,12 +26,12 @@ import os
 import shutil
 from unittest.mock import patch
 
-from solid_node.core.export import export_node
-from solid_node.core.serializer import (ClockedDocumentError, document_body,
+from machinome.core.export import export_node
+from machinome.core.serializer import (ClockedDocumentError, document_body,
                                         symbolic_document)
-from solid_node.simulation import Sim
-from solid_node.simulation import clocked as clocked_module
-from solid_node.viewers import bundle as viewer_bundle
+from machinome.simulation import Sim
+from machinome.simulation import clocked as clocked_module
+from machinome.viewers import bundle as viewer_bundle
 
 from .base import BaseNodeTest
 from .clocked_project.counter import Counter, Stateless
@@ -40,8 +40,8 @@ from .clocked_project.counter import Counter, Stateless
 def built(node):
     """`node` with its declared defaults bound and its artifacts on
     disk: what a producer is handed, and what the loader does for it."""
-    from solid_node.node import StlRenderStart
-    from solid_node.simulation.enumeration import bind_declared_defaults
+    from machinome.node import StlRenderStart
+    from machinome.simulation.enumeration import bind_declared_defaults
 
     bind_declared_defaults(node)
     node.assemble()
@@ -82,10 +82,10 @@ class ProducerPublicationTest(BaseNodeTest):
                               if 'document version 8' in one]), 1)
 
     def test_a_build_publication_writes_the_document_with_the_warning(self):
-        """`solid build` and `solid develop` both publish through the
+        """`machinome build` and `machinome develop` both publish through the
         builder, so one assertion covers them."""
-        from solid_node.core.builder import Builder
-        from solid_node.core.pieces import PieceInventory
+        from machinome.core.builder import Builder
+        from machinome.core.pieces import PieceInventory
 
         node = built(Counter())
         builder = Builder.__new__(Builder)
@@ -114,8 +114,8 @@ class BrowserRefusalTest(BaseNodeTest):
     cannot read is refused BEFORE the browser starts."""
 
     def test_the_web_renderer_refuses_naming_version_eight(self):
-        from solid_node.viewers import browser as browser_module
-        from solid_node.viewers.browser import (BrowserRenderer,
+        from machinome.viewers import browser as browser_module
+        from machinome.viewers.browser import (BrowserRenderer,
                                                 BrowserSnapshotError)
 
         node = built(Counter())
@@ -142,8 +142,8 @@ class BrowserRefusalTest(BaseNodeTest):
         self.assertEqual(set(os.listdir(beside)) - before, set())
 
     def test_a_viewer_reporting_eight_photographs_it(self):
-        from solid_node.viewers import browser as browser_module
-        from solid_node.viewers.browser import BrowserRenderer
+        from machinome.viewers import browser as browser_module
+        from machinome.viewers.browser import BrowserRenderer
 
         node = built(Counter())
         renderer = BrowserRenderer()
@@ -185,12 +185,12 @@ class ReaimedGateTest(BaseNodeTest):
         """Every producer compiles the machine before it publishes, so
         the refusal is reached by BLINDING each one's compile -- which is
         exactly the mistake the gate is there to catch."""
-        from solid_node.core import builder as builder_module
-        from solid_node.core import export as export_module
-        from solid_node.core.builder import Builder
-        from solid_node.core.pieces import PieceInventory
-        from solid_node.viewers import browser as browser_module
-        from solid_node.viewers.browser import BrowserRenderer
+        from machinome.core import builder as builder_module
+        from machinome.core import export as export_module
+        from machinome.core.builder import Builder
+        from machinome.core.pieces import PieceInventory
+        from machinome.viewers import browser as browser_module
+        from machinome.viewers.browser import BrowserRenderer
 
         blind = (None, None)
         node = built(Counter())
@@ -247,7 +247,7 @@ class UntouchedTest(BaseNodeTest):
         clocked model can still be photographed."""
         import inspect
 
-        from solid_node.manager import snapshot as snapshot_module
+        from machinome.manager import snapshot as snapshot_module
 
         source = inspect.getsource(snapshot_module)
         self.assertNotIn('document_body', source)
@@ -266,7 +266,7 @@ class ZeroBehaviourChangeTest(BaseNodeTest):
         sim.run(0.1)
         with symbolic_document(node) as (declarations, instructions):
             self.assertIn('crank', declarations)
-        from solid_node.core.serializer import (compiled_clocked,
+        from machinome.core.serializer import (compiled_clocked,
                                                 drivers_table, serialize_node)
 
         clocked, bank = compiled_clocked(node)
@@ -285,8 +285,8 @@ class ZeroBehaviourChangeTest(BaseNodeTest):
     def test_a_stateless_tree_costs_one_structural_walk(self):
         """(4.8) `document_body` asks the one structural question it has
         always asked and renders nothing for the answer."""
-        from solid_node.core.serializer import (drivers_table, serialize_node)
-        from solid_node.simulation import enumeration
+        from machinome.core.serializer import (drivers_table, serialize_node)
+        from machinome.simulation import enumeration
 
         node = Stateless()
         node.set_state(crank=0.0, time=0.0)
@@ -318,10 +318,10 @@ class ZeroBehaviourChangeTest(BaseNodeTest):
     RECORDED = (
         '{"drivers": {"crank": {"default": 0, "dtype": null, "range": '
         'null, "scale": null, "unit": "deg"}}, "format": '
-        '"solid-node-export", "instructions": {}, "version": 2}')
+        '"machinome-export", "instructions": {}, "version": 2}')
 
     def test_a_stateless_document_is_byte_identical(self):
-        from solid_node.core.serializer import drivers_table, serialize_node
+        from machinome.core.serializer import drivers_table, serialize_node
 
         node = Stateless()
         with symbolic_document(node) as (declarations, instructions):

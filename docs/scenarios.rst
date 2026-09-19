@@ -9,7 +9,7 @@ Simulating and testing scenarios
 pose look like". A **scenario** answers the questions after that: does
 the carriage clear the stop on the way home, when does it arrive, what
 did the whole run look like. For those, the machine is stepped
-deterministically in Python by `solid_node.simulation`.
+deterministically in Python by `machinome.simulation`.
 
 The stepped loop
 ================
@@ -18,7 +18,7 @@ A `Sim` steps one assembly with a fixed time step:
 
 .. code-block:: python
 
-    from solid_node.simulation import Sim
+    from machinome.simulation import Sim
 
     sim = Sim(machine, dt=0.02)
 
@@ -73,7 +73,7 @@ the step, and whether the scenario needs geometry:
 
 .. code-block:: python
 
-    from solid_node.simulation import ScenarioTest
+    from machinome.simulation import ScenarioTest
 
     from .axis import Axis
 
@@ -127,7 +127,7 @@ One class, both runners
 =======================
 
 A `ScenarioTest` is a `TestCase`. As a companion test of a node file
-it runs under ``solid test`` like any other; imported into a pytest
+it runs under ``machinome test`` like any other; imported into a pytest
 module it runs under plain ``pytest``. Neither runner is modified for
 it, and nothing in a scenario is written for one runner or the other —
 under the CLI, ``node`` is the built instance the runner hands over;
@@ -261,9 +261,9 @@ reaches a surface — ``floor(x)`` and ``ceil(x)`` over ``x`` at every
 integer, ``sign(x)`` over ``x`` at zero, ``a % b`` over ``a / b`` at
 every NONZERO integer (``%`` is ``fmod``, which takes the sign of the
 dividend and is continuous where ``a / b`` crosses zero), and a
-comparison over ``a - b`` at zero. :func:`~solid_node.math.wrap` is
+comparison over ``a - b`` at zero. :func:`~machinome.math.wrap` is
 built on ``ceil`` and integrates through the same door — a wrapped law
-reads as the unwrapped travel — and :func:`~solid_node.math.piecewise`
+reads as the unwrapped travel — and :func:`~machinome.math.piecewise`
 needs nothing of its own, being a sum of ``clamp01`` terms with no jump
 in it at all.
 
@@ -407,7 +407,7 @@ would have the read at both ends, freeze the branch and move the part by
 a different mechanism in silence.
 
 A selection decides which sources a law reads
---------------------------------------------
+---------------------------------------------
 
 A machine whose dependencies are SELECTED by where one of its own parts
 stands has a CYCLIC union: a Curta's fixed carry lever is tripped by the
@@ -597,10 +597,10 @@ omits the key and publishes the document it always did. See
 
 The bump is not additive, and a consumer that cannot read version 5
 refuses the document by name rather than rendering part of a machine it
-does not understand. ``solid build``, ``solid develop`` and ``solid
+does not understand. ``machinome build``, ``machinome develop`` and ``solid
 export`` publish it anyway and warn once, naming the version written,
 the versions the installed viewer renders and the viewer's package
-version; ``solid snapshot --renderer web`` refuses before it starts the
+version; ``machinome snapshot --renderer web`` refuses before it starts the
 browser, because a capture is a one-shot. A browser that RUNS the
 machine is the viewer package's own next release.
 
@@ -616,7 +616,7 @@ What this release refuses
 Each of these is refused by name, and each is a later cycle's to lift:
 
 * a law that cannot be applied to a symbol — one written over Python's
-  own ``math`` rather than :doc:`solid_node.math <api-reference>`;
+  own ``math`` rather than :doc:`machinome.math <api-reference>`;
 * a relation into a coordinate the run owns whose SOURCE is a plain port
   an author's ``simulate()`` binds: state that value as a relation, or
   give the part a joint;
@@ -656,7 +656,7 @@ Declare the retained value beside the drivers:
 
 .. code-block:: python
 
-    from solid_node.simulation import Driver, State
+    from machinome.simulation import Driver, State
 
     class Counter(AssemblyNode):
         crank = Driver(default=0, unit='deg')
@@ -776,7 +776,7 @@ base:
 
 .. code-block:: python
 
-    from solid_node.motion.ports import Time
+    from machinome.motion.ports import Time
 
     class Regulator(AssemblyNode):
         time = Time.elapsed()           # the third base
@@ -1067,12 +1067,12 @@ free names, which a lower consumer resolves to nothing — so a consumer
 that cannot read 8 must REFUSE the document rather than render it.
 
 **What that means for the browser today.** No released viewer reports
-version 8 yet. ``solid build``, ``solid develop`` and ``solid export``
+version 8 yet. ``machinome build``, ``machinome develop`` and ``machinome export``
 publish the document and WARN that the installed viewer cannot read it;
-``solid snapshot --renderer web`` is refused before the browser starts,
+``machinome snapshot --renderer web`` is refused before the browser starts,
 writing no image and leaving no staging directory behind, and never
 falling back to OpenSCAD. ``render()``, ``assemble()``,
-``build_stls()``, ``solid test`` and ``solid snapshot --renderer
+``build_stls()``, ``machinome test`` and ``machinome snapshot --renderer
 openscad`` are untouched, so a clocked model is built, tested and
 photographed exactly as any other — the OpenSCAD snapshot rendering the
 tree as posed, which is the INITIAL BANK.

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -33,30 +33,30 @@ import numpy as np
 
 from unittest.mock import patch
 
-from solid_node import currency
-from solid_node.core.pieces import PieceInventory
-from solid_node.core.export import ExportModelPathError, export_node
-from solid_node.core.serializer import (document_body, drivers_table,
+from machinome import currency
+from machinome.core.pieces import PieceInventory
+from machinome.core.export import ExportModelPathError, export_node
+from machinome.core.serializer import (document_body, drivers_table,
                                         instructions_table, serialize_node,
                                         symbolic_document)
-from solid_node.simulation.enumeration import bind_declared_defaults
-from solid_node.node.declarative import ChildDeclaration, identity_values
-from solid_node.test import TestCase as AssertingTestCase
-from solid_node.test import resolve_comparison_policy, set_comparison_policy
-from solid_node.viewers.openscad import OpenScadRenderer
+from machinome.simulation.enumeration import bind_declared_defaults
+from machinome.node.declarative import ChildDeclaration, identity_values
+from machinome.test import TestCase as AssertingTestCase
+from machinome.test import resolve_comparison_policy, set_comparison_policy
+from machinome.viewers.openscad import OpenScadRenderer
 
 from .base import BaseNodeTest
 from .import_probe import probe
 from solid2 import cube
 
-from solid_node.motion.joints import Revolute
-from solid_node.motion.ports import TranslationalPort
-from solid_node.node import (AssemblyNode, FlexibleNode, FusionNode,
+from machinome.motion.joints import Revolute
+from machinome.motion.ports import TranslationalPort
+from machinome.node import (AssemblyNode, FlexibleNode, FusionNode,
                              Solid2Node)
-from solid_node.node.declarative import NodeMeta
-from solid_node.node.sources import MissingSourceFile
-from solid_node.parameters import Length, declared_parameters
-from solid_node.node.markings import (DEFAULT_DEFLECTION, Flat, Marking,
+from machinome.node.declarative import NodeMeta
+from machinome.node.sources import MissingSourceFile
+from machinome.parameters import Length, declared_parameters
+from machinome.node.markings import (DEFAULT_DEFLECTION, Flat, Marking,
                                       Svg, Wrapped, declared_markings)
 
 from .markings_project.decals import badge as badge_module
@@ -470,8 +470,8 @@ class PublicModuleTest(BaseNodeTest):
     """(2.9) The four names resolve from the package, lazily."""
 
     def test_the_names_resolve_from_the_node_package(self):
-        import solid_node.node as package
-        import solid_node.node.markings as module
+        import machinome.node as package
+        import machinome.node.markings as module
 
         for name in ('Marking', 'Wrapped', 'Flat', 'Svg'):
             with self.subTest(name=name):
@@ -480,11 +480,11 @@ class PublicModuleTest(BaseNodeTest):
 
     def test_naming_a_marking_imports_no_geometry_library(self):
         # build123d costs about 1.6 s and trimesh 0.64 s, and
-        # `solid_node.node` is on every `solid` invocation's path: a
+        # `machinome.node` is on every `machinome` invocation's path: a
         # project that declares a marking pays for the reduction when
         # the decal is BUILT, never when the name is read.
         result = probe(
-            'from solid_node.node import Marking, Wrapped, Flat, Svg\n'
+            'from machinome.node import Marking, Wrapped, Flat, Svg\n'
             'assert isinstance(Marking, type)\n'
             "print('DONE')\n")
         self.assertEqual(result.stdout.strip(), 'DONE', result.stderr)
@@ -497,7 +497,7 @@ class PublicModuleTest(BaseNodeTest):
 
     def test_importing_the_module_imports_no_geometry_library(self):
         result = probe(
-            'import solid_node.node.markings\n'
+            'import machinome.node.markings\n'
             "print('DONE')\n")
         self.assertEqual(result.stdout.strip(), 'DONE', result.stderr)
         self.assertFalse(result.imported('build123d'),
@@ -1488,7 +1488,7 @@ class ByteIdentityTest(BaseNodeTest):
     def test_the_marking_free_tree_declares_the_version_it_needed(self):
         document = self.published(PlainBench())
 
-        self.assertEqual(document['format'], 'solid-node-export')
+        self.assertEqual(document['format'], 'machinome-export')
         self.assertEqual(document['version'], 2)
         self.assertNotIn('program', document)
         self.assertNotIn('bindings', document)
@@ -1567,7 +1567,7 @@ class SweepTest(BaseNodeTest):
     """(5.8) A marking is spared by reference, not by kind."""
 
     def builder_for(self, node):
-        from solid_node.core.builder import Builder
+        from machinome.core.builder import Builder
 
         bind_declared_defaults(node)
         node.assemble()

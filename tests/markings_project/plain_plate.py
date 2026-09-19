@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -10,7 +10,7 @@ derived from the mesh file it names, so the twin needs a file of its own
 to have an artifact path of its own.
 """
 
-from solid_node.node import StlNode
+from machinome.node import StlNode
 
 
 class Plate(StlNode):

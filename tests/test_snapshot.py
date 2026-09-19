@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -12,8 +12,8 @@ import tempfile
 from unittest import TestCase
 from unittest.mock import Mock, patch, MagicMock
 
-from solid_node.manager.snapshot import Snapshot, COLORSCHEMES, VIEW_OPTIONS
-from solid_node.viewers.openscad import OpenScadRenderer
+from machinome.manager.snapshot import Snapshot, COLORSCHEMES, VIEW_OPTIONS
+from machinome.viewers.openscad import OpenScadRenderer
 from tests.test_build_lock import lock_is_held
 
 
@@ -125,7 +125,7 @@ class SnapshotTimeValidationTest(TestCase):
             mock_node = Mock()
             mock_node.scad_file = '/tmp/test.scad'
             mock_load.return_value = mock_node
-            with patch('solid_node.manager.snapshot.run'):
+            with patch('machinome.manager.snapshot.run'):
                 self.snapshot.handle(args)
 
     def test_time_valid_one(self):
@@ -135,7 +135,7 @@ class SnapshotTimeValidationTest(TestCase):
             mock_node = Mock()
             mock_node.scad_file = '/tmp/test.scad'
             mock_load.return_value = mock_node
-            with patch('solid_node.manager.snapshot.run'):
+            with patch('machinome.manager.snapshot.run'):
                 self.snapshot.handle(args)
 
     def test_time_valid_half(self):
@@ -145,7 +145,7 @@ class SnapshotTimeValidationTest(TestCase):
             mock_node = Mock()
             mock_node.scad_file = '/tmp/test.scad'
             mock_load.return_value = mock_node
-            with patch('solid_node.manager.snapshot.run'):
+            with patch('machinome.manager.snapshot.run'):
                 self.snapshot.handle(args)
 
     def test_time_invalid_negative(self):
@@ -201,7 +201,7 @@ class SnapshotViewValidationTest(TestCase):
             mock_node = Mock()
             mock_node.scad_file = '/tmp/test.scad'
             mock_load.return_value = mock_node
-            with patch('solid_node.manager.snapshot.run'):
+            with patch('machinome.manager.snapshot.run'):
                 self.snapshot.handle(args)
 
     def test_view_valid_multiple(self):
@@ -211,7 +211,7 @@ class SnapshotViewValidationTest(TestCase):
             mock_node = Mock()
             mock_node.scad_file = '/tmp/test.scad'
             mock_load.return_value = mock_node
-            with patch('solid_node.manager.snapshot.run'):
+            with patch('machinome.manager.snapshot.run'):
                 self.snapshot.handle(args)
 
     def test_view_invalid_option(self):
@@ -355,7 +355,7 @@ class SnapshotNodePreparationTest(TestCase):
         self.snapshot.path = '/test/path/node.py'
         self.snapshot.time = 0.5
 
-        with patch('solid_node.manager.snapshot.load_node') as mock_load:
+        with patch('machinome.manager.snapshot.load_node') as mock_load:
             mock_node = Mock()
             mock_load.return_value = mock_node
 
@@ -369,7 +369,7 @@ class SnapshotNodePreparationTest(TestCase):
         self.snapshot.path = '/test/path/node.py'
         self.snapshot.time = 0.75
 
-        with patch('solid_node.manager.snapshot.load_node') as mock_load:
+        with patch('machinome.manager.snapshot.load_node') as mock_load:
             mock_node = Mock()
             mock_load.return_value = mock_node
 
@@ -382,7 +382,7 @@ class SnapshotNodePreparationTest(TestCase):
         self.snapshot.path = '/test/path/node.py'
         self.snapshot.time = 0.0
 
-        with patch('solid_node.manager.snapshot.load_node') as mock_load:
+        with patch('machinome.manager.snapshot.load_node') as mock_load:
             mock_node = Mock()
             mock_load.return_value = mock_node
 
@@ -425,7 +425,7 @@ class SnapshotErrorHandlingTest(TestCase):
         """Test handling of node load failure"""
         args = self._make_args()
 
-        with patch('solid_node.manager.snapshot.load_node') as mock_load:
+        with patch('machinome.manager.snapshot.load_node') as mock_load:
             mock_load.side_effect = Exception("Failed to load node")
 
             with self.assertRaises(SystemExit) as cm:
@@ -442,7 +442,7 @@ class SnapshotErrorHandlingTest(TestCase):
             mock_node.scad_file = '/tmp/test.scad'
             mock_load.return_value = mock_node
 
-            with patch('solid_node.manager.snapshot.run') as mock_run:
+            with patch('machinome.manager.snapshot.run') as mock_run:
                 mock_run.side_effect = FileNotFoundError()
 
                 with self.assertRaises(SystemExit) as cm:
@@ -461,7 +461,7 @@ class SnapshotErrorHandlingTest(TestCase):
             mock_node.scad_file = '/tmp/test.scad'
             mock_load.return_value = mock_node
 
-            with patch('solid_node.manager.snapshot.run') as mock_run:
+            with patch('machinome.manager.snapshot.run') as mock_run:
                 error = CalledProcessError(1, 'openscad')
                 error.stderr = "Render failed"
                 mock_run.side_effect = error
@@ -491,7 +491,7 @@ class SnapshotErrorHandlingTest(TestCase):
         `.scad`, and leaves no image behind -- even a stale one from an
         earlier, successful run (import-the-artifact-by-path)."""
         output_path = self._output_path(
-            'solid_node_test_missing_import.png')
+            'machinome_test_missing_import.png')
         with open(output_path, 'wb') as handle:
             handle.write(b'stale')
         args = self._make_args(output=output_path)
@@ -505,7 +505,7 @@ class SnapshotErrorHandlingTest(TestCase):
                       "'/tmp/does-not-exist.stl', import() at line 3\n"
                       "Compiling design (CSG Products normalization)...\n")
 
-            with patch('solid_node.manager.snapshot.run') as mock_run:
+            with patch('machinome.manager.snapshot.run') as mock_run:
                 mock_run.return_value = Mock(
                     returncode=0, stdout=stdout, stderr='')
 
@@ -521,7 +521,7 @@ class SnapshotErrorHandlingTest(TestCase):
     def test_clean_render_still_succeeds_and_writes_image(self):
         """A render with nothing to report still writes the image and
         reports success, exactly as before."""
-        output_path = self._output_path('solid_node_test_clean_render.png')
+        output_path = self._output_path('machinome_test_clean_render.png')
         args = self._make_args(output=output_path)
 
         with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
@@ -537,7 +537,7 @@ class SnapshotErrorHandlingTest(TestCase):
                     handle.write(b'\x89PNG\r\n\x1a\n')
                 return Mock(returncode=0, stdout=stdout, stderr='')
 
-            with patch('solid_node.manager.snapshot.run',
+            with patch('machinome.manager.snapshot.run',
                       side_effect=_fake_run):
                 self.snapshot.handle(args)
 
@@ -547,7 +547,7 @@ class SnapshotErrorHandlingTest(TestCase):
         """A warning OpenSCAD reports that is not an unopenable import
         reaches the operator's log; the render still succeeds."""
         output_path = self._output_path(
-            'solid_node_test_unrelated_warning.png')
+            'machinome_test_unrelated_warning.png')
         args = self._make_args(output=output_path)
 
         with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
@@ -562,7 +562,7 @@ class SnapshotErrorHandlingTest(TestCase):
                     handle.write(b'\x89PNG\r\n\x1a\n')
                 return Mock(returncode=0, stdout=stdout, stderr='')
 
-            with patch('solid_node.manager.snapshot.run',
+            with patch('machinome.manager.snapshot.run',
                       side_effect=_fake_run):
                 with self.assertLogs('viewers.openscad',
                                      level='WARNING') as logs:
@@ -574,7 +574,7 @@ class SnapshotErrorHandlingTest(TestCase):
 
 
 class OpenScadRendererDiagnosticsTest(TestCase):
-    """The renderer's own contract, beneath `solid snapshot`: promote
+    """The renderer's own contract, beneath `machinome snapshot`: promote
     what OpenSCAD reports on either stream to a level a normal run
     shows, and raise a named error when a line reports a file it could
     not open (import-the-artifact-by-path)."""
@@ -591,7 +591,7 @@ class OpenScadRendererDiagnosticsTest(TestCase):
             colorscheme='Cornfield', preview=False, view=None)
 
     def test_unopenable_import_raises_named_error(self):
-        from solid_node.viewers.openscad import OpenScadImportError
+        from machinome.viewers.openscad import OpenScadImportError
 
         def runner(command, **kwargs):
             return Mock(
@@ -610,7 +610,7 @@ class OpenScadRendererDiagnosticsTest(TestCase):
         """The renderer inspects BOTH captured streams -- a future
         OpenSCAD build that writes this warning to stderr must not go
         unnoticed."""
-        from solid_node.viewers.openscad import OpenScadImportError
+        from machinome.viewers.openscad import OpenScadImportError
 
         def runner(command, **kwargs):
             return Mock(
@@ -763,7 +763,7 @@ class SnapshotWebOptionValidationTest(TestCase):
             node = Mock()
             node.__class__.__name__ = 'Part'
             load.return_value = node
-            with patch('solid_node.viewers.browser.BrowserRenderer.render'):
+            with patch('machinome.viewers.browser.BrowserRenderer.render'):
                 self.snapshot.handle(self._args())
 
     def test_custom_colorscheme(self):
@@ -943,7 +943,7 @@ class SnapshotXvfbWrappingTest(TestCase):
 
 
 class SnapshotHeadlessRenderTest(TestCase):
-    """End-to-end: solid snapshot against a real fixture node, under a
+    """End-to-end: machinome snapshot against a real fixture node, under a
     simulated headless environment (no DISPLAY)."""
 
     def setUp(self):
@@ -979,7 +979,7 @@ class SnapshotHeadlessRenderTest(TestCase):
 
     def test_snapshot_renders_valid_png_without_display(self):
         """The bug this issue fixes: headless (no DISPLAY), xvfb-run present
-        on PATH (it is, on this machine) -- `solid snapshot` must transparently
+        on PATH (it is, on this machine) -- `machinome snapshot` must transparently
         render a real, non-empty PNG with zero extra flags from the caller."""
         args = self._make_args()
 
@@ -998,7 +998,7 @@ class SnapshotHeadlessRenderTest(TestCase):
 
         with patch.dict(os.environ, _env_without_display(), clear=True):
             with patch(
-                'solid_node.manager.snapshot.OPENSCAD_RENDERER.find_xvfb_run',
+                'machinome.manager.snapshot.OPENSCAD_RENDERER.find_xvfb_run',
                 return_value=None,
             ):
                 with self.assertRaises(SystemExit) as cm:
@@ -1036,7 +1036,7 @@ class SnapshotBuildLockTest(TestCase):
         self.snapshot.path = 'model.py'
         self.snapshot.time = 0.0
 
-        with patch('solid_node.manager.snapshot.load_node', return_value=node):
+        with patch('machinome.manager.snapshot.load_node', return_value=node):
             self.snapshot._load_and_prepare_node()
 
         self.assertTrue(
@@ -1079,7 +1079,7 @@ class SnapshotOutputDefaultTest(TestCase):
             view=None,
         )
 
-        with patch('solid_node.manager.snapshot.run'):
+        with patch('machinome.manager.snapshot.run'):
             self.snapshot.handle(args)
 
         self.assertEqual(self.snapshot.output, 'simplecylinder.png')
@@ -1121,9 +1121,9 @@ class SnapshotDriveTest(TestCase):
         snapshot.time = time
         snapshot.overrides = []
         snapshot.drives = list(drives)
-        with patch('solid_node.manager.snapshot.load_node',
+        with patch('machinome.manager.snapshot.load_node',
                    return_value=node), \
-             patch('solid_node.manager.snapshot.project_build_lock'), \
+             patch('machinome.manager.snapshot.project_build_lock'), \
              patch.object(node, 'assemble'):
             return snapshot._load_and_prepare_node()
 
@@ -1136,7 +1136,7 @@ class SnapshotDriveTest(TestCase):
         self.assertEqual(node.lever, 100.0)
 
     def test_a_running_root_is_posed_at_its_rest_pose(self):
-        from solid_node.motion.ports import get_coordinate
+        from machinome.motion.ports import get_coordinate
         from tests.running_project.machine import Train
 
         node = Train()
@@ -1145,7 +1145,7 @@ class SnapshotDriveTest(TestCase):
         self.assertEqual(get_coordinate(node.first, 'turn')._value, 60.0)
 
     def test_a_name_that_is_no_declared_driver_lists_the_drivers(self):
-        from solid_node.manager.snapshot import SnapshotOptionError
+        from machinome.manager.snapshot import SnapshotOptionError
         from tests.running_project.machine import TrainBody
 
         node = TrainBody()
@@ -1157,7 +1157,7 @@ class SnapshotDriveTest(TestCase):
         self.assertIn('lever', message)
 
     def test_a_joint_coordinate_is_refused_by_name(self):
-        from solid_node.manager.snapshot import SnapshotOptionError
+        from machinome.manager.snapshot import SnapshotOptionError
         from tests.running_project.machine import Train
 
         node = Train()
@@ -1169,21 +1169,21 @@ class SnapshotDriveTest(TestCase):
         self.assertIn('crank', message)
 
     def test_a_non_numeric_value_is_refused(self):
-        from solid_node.manager.snapshot import SnapshotOptionError
+        from machinome.manager.snapshot import SnapshotOptionError
         from tests.running_project.machine import TrainBody
 
         with self.assertRaises(SnapshotOptionError):
             self.prepared(TrainBody(), drives=['crank=sideways'])
 
     def test_a_missing_equals_sign_is_refused(self):
-        from solid_node.manager.snapshot import SnapshotOptionError
+        from machinome.manager.snapshot import SnapshotOptionError
         from tests.running_project.machine import TrainBody
 
         with self.assertRaises(SnapshotOptionError):
             self.prepared(TrainBody(), drives=['crank'])
 
     def test_a_non_zero_time_on_a_running_root_is_refused(self):
-        from solid_node.manager.snapshot import SnapshotOptionError
+        from machinome.manager.snapshot import SnapshotOptionError
         from tests.running_project.machine import Train
 
         with self.assertRaises(SnapshotOptionError) as raised:
@@ -1211,11 +1211,11 @@ class SnapshotDriveTest(TestCase):
             projection=None, colorscheme=None, render=False, preview=False,
             view=None, renderer='openscad', drive=None, set=None)
         snapshot = Snapshot()
-        with patch('solid_node.manager.snapshot.select_model') as selected, \
-             patch('solid_node.manager.snapshot.load_node',
+        with patch('machinome.manager.snapshot.select_model') as selected, \
+             patch('machinome.manager.snapshot.load_node',
                    return_value=node), \
-             patch('solid_node.manager.snapshot.project_build_lock'), \
-             patch('solid_node.manager.snapshot.OPENSCAD_RENDERER.render') as drawn, \
+             patch('machinome.manager.snapshot.project_build_lock'), \
+             patch('machinome.manager.snapshot.OPENSCAD_RENDERER.render') as drawn, \
              patch.object(node, 'assemble'), \
              patch.object(sys, 'stderr', errors):
             selected.return_value.reference = 'model.py'
@@ -1227,7 +1227,7 @@ class SnapshotDriveTest(TestCase):
 
 
 class ClockedSnapshotTest(TestCase):
-    """(7.4) `solid snapshot --renderer openscad` on a CLOCKED model
+    """(7.4) `machinome snapshot --renderer openscad` on a CLOCKED model
     renders the INITIAL BANK -- every state at its declared default --
     and is otherwise untouched by the document cycle: it never reaches a
     document body at all.
@@ -1248,14 +1248,14 @@ class ClockedSnapshotTest(TestCase):
         snapshot.time = 0.0
         snapshot.overrides = []
         snapshot.drives = list(drives)
-        with patch('solid_node.manager.snapshot.load_node',
+        with patch('machinome.manager.snapshot.load_node',
                    return_value=node), \
-             patch('solid_node.manager.snapshot.project_build_lock'), \
+             patch('machinome.manager.snapshot.project_build_lock'), \
              patch.object(node, 'assemble'):
             return snapshot._load_and_prepare_node()
 
     def test_the_initial_bank_is_what_is_photographed(self):
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.simulation.enumeration import bind_declared_defaults
         from tests.clocked_project.register import DIGIT, Register
 
         node = Register()
@@ -1278,7 +1278,7 @@ class ClockedSnapshotTest(TestCase):
         self.assertEqual(node.w0.digit, 0)
 
     def test_a_state_named_there_is_refused_by_name(self):
-        from solid_node.manager.snapshot import SnapshotOptionError
+        from machinome.manager.snapshot import SnapshotOptionError
         from tests.clocked_project.register import Register
 
         node = Register()

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -10,13 +10,13 @@
 import os
 import sys
 
-# Make solid_node importable for autodoc without installing it
+# Make machinome importable for autodoc without installing it
 sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'Solid Node'
+project = 'Machinome'
 copyright = '2023-2026, Luis Henrique Cassis Fagundes'
 author = 'Luis Henrique Cassis Fagundes'
 release = '0.6.0'
@@ -25,9 +25,9 @@ release = '0.6.0'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon',
-              'solid_node.sphinx']
+              'machinome.sphinx']
 
-# Heavy runtime dependencies are mocked so autodoc can import solid_node
+# Heavy runtime dependencies are mocked so autodoc can import machinome
 # on Read the Docs without installing the full CAD stack
 autodoc_mock_imports = [
     'trimesh',

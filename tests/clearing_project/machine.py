@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -31,12 +31,12 @@ here is STATED, and the migration substitutes the measured one.
 
 import math
 
-from solid_node.math import abs as sym_abs, clamp01, cos as sym_cos, floor
-from solid_node.math import max as sym_max, sin as sym_sin, sqrt as sym_sqrt
-from solid_node.motion.ports import Time
-from solid_node.node import AssemblyNode
-from solid_node.parameters import Angle
-from solid_node.simulation import Driver
+from machinome.math import abs as sym_abs, clamp01, cos as sym_cos, floor
+from machinome.math import max as sym_max, sin as sym_sin, sqrt as sym_sqrt
+from machinome.motion.ports import Time
+from machinome.node import AssemblyNode
+from machinome.parameters import Angle
+from machinome.simulation import Driver
 
 from ..running_project.parts import Arbor
 

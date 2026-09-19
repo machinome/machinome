@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -12,8 +12,8 @@ only so that the two parts have artifact paths of their own to compare.
 
 import cadquery as cq
 
-from solid_node.motion.joints import Revolute
-from solid_node.node import CadQueryNode
+from machinome.motion.joints import Revolute
+from machinome.node import CadQueryNode
 
 from .dial import DIAL_DEFLECTION, DIAL_HEIGHT, DIAL_RADIUS
 

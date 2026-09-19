@@ -73,7 +73,7 @@ The system SHALL let a caller choose between the OpenSCAD renderer and the web
 renderer, defaulting to OpenSCAD. When the web renderer is requested but cannot
 run, the system SHALL fail with an error identifying what is missing, and SHALL
 NOT render with the other renderer instead. A missing viewer package SHALL be
-reported as `pip install "solid-node[viewer]"`; a missing browser SHALL be
+reported as `pip install "machinome[viewer]"`; a missing browser SHALL be
 reported with the viewer package's own remedy, which names its `snapshot`
 extra and the browser download step.
 
@@ -97,7 +97,7 @@ change the appearance of snapshots taken of an existing project.
 #### Scenario: The viewer bundle is unavailable
 
 - **WHEN** the web renderer is requested in an installation without
-  `solid-node-viewer`
+  `machinome-viewer`
 - **THEN** the command fails naming the `viewer` extra, and writes no image
 
 #### Scenario: The browser is unavailable

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -21,8 +21,8 @@ to render to find children and a state-consuming assembly cannot be
 rendered under no snapshot at all.
 """
 
-from solid_node.node.qualified import DriverIdError
-from solid_node.simulation.enumeration import (
+from machinome.node.qualified import DriverIdError
+from machinome.simulation.enumeration import (
     bind_declared_defaults, qualified_drivers, qualified_instructions,
 )
 

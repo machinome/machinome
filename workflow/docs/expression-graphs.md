@@ -9,21 +9,21 @@ proof for the three changes.
 
 ## Accepted direction
 
-solid-node now owns its motion expressions through the construction-time graph
+machinome now owns its motion expressions through the construction-time graph
 accepted in ADR-101, which fixed Curta Type I-3x's export failure. The
 separately scoped geometry lifecycle change followed in ADR-102 and removed
 OpenSCAD as the framework's assembly and build broker.
 
 The pilot accepted and implemented removal of the OpenSCAD GUI as a
-`solid develop` viewer and of its installation-dependent fallback for v0.7. OpenSCAD
-was solid-node's first reliable viewer; as the browser viewer gained tree
+`machinome develop` viewer and of its installation-dependent fallback for v0.7. OpenSCAD
+was machinome's first reliable viewer; as the browser viewer gained tree
 navigation, independent driver controls, instructions and continuously
 evaluated flexible parts, the OpenSCAD GUI was used less and represented less
 of the machine. Maintaining that second, less faithful viewer now burdens the
 roadmap opened by the simulation capabilities introduced and further developed
 in v0.7.
 
-OpenSCAD remains a supported modelling technology. solid-node supports the
+OpenSCAD remains a supported modelling technology. machinome supports the
 underlying modelling technologies; this work does not remove `OpenScadNode`,
 `Solid2Node`, or the ability to use existing OpenSCAD and SolidPython designs.
 OpenSCAD-specific evaluation and output belong at the boundaries that need
@@ -102,7 +102,7 @@ references to its operands, not copies of all its descendants.
 The implemented scope was:
 
 1. Introduce a framework-owned expression representation for time, drivers,
-   arithmetic and the symbolic face of `solid_node.math`. Preserve ordinary
+   arithmetic and the symbolic face of `machinome.math`. Preserve ordinary
    project formulas, ports, couplings, numeric operation order and existing
    degree-based semantics. Do not combine this with a new motion API or
    algebraic simplification that changes rounding or branch behavior.
@@ -188,14 +188,14 @@ state, and treats flexible geometry as a fixed snapshot. Those limitations are
 acceptable for an explicitly fixed-pose renderer, not for the framework's
 interactive viewer.
 
-The v0.7 change therefore removes `solid develop --openscad`, its GUI/PID
-lifecycle, and the automatic fallback when `solid-node-viewer` is absent.
-Ordinary `solid develop` requires the separately packaged browser viewer;
-`solid develop --no-web` remains the viewerless watch loop. The viewer stays a
+The v0.7 change therefore removes `machinome develop --openscad`, its GUI/PID
+lifecycle, and the automatic fallback when `machinome-viewer` is absent.
+Ordinary `machinome develop` requires the separately packaged browser viewer;
+`machinome develop --no-web` remains the viewerless watch loop. The viewer stays a
 separate AGPL package behind its existing process boundary. The release must
 explain both the historical transition and the retained boundary: OpenSCAD and
 SolidPython modelling, SCAD output and OpenSCAD snapshots remain supported;
-OpenSCAD is no longer an interactive solid-node viewer.
+OpenSCAD is no longer an interactive machinome viewer.
 
 ## Completed implementation
 

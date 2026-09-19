@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,7 +11,7 @@ the imported mesh, so the new part is designed against the geometry of
 the old one.
 """
 
-from solid_node.node import AssemblyNode, FusionNode
+from machinome.node import AssemblyNode, FusionNode
 
 from .originals import BRACKET_HEIGHT, Post
 from .parts import Bracket

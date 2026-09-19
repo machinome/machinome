@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -20,8 +20,8 @@ from unittest import TestCase
 
 import trimesh
 
-from solid_node.core.builder import Builder
-from solid_node.core.export import export_node
+from machinome.core.builder import Builder
+from machinome.core.export import export_node
 
 from .base import BaseNodeTest
 from . import pieces_project
@@ -62,7 +62,7 @@ class PieceInventoryUnitTest(TestCase):
     ids stable regardless of artifact path or walk order."""
 
     def setUp(self):
-        self.root = tempfile.mkdtemp(prefix='solid-node-pieces-')
+        self.root = tempfile.mkdtemp(prefix='machinome-pieces-')
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         self.box_bytes = _box_stl_bytes((1, 2, 3))
         self.other_box_bytes = _box_stl_bytes((4, 5, 6))
@@ -71,7 +71,7 @@ class PieceInventoryUnitTest(TestCase):
         return os.path.join(self.root, *parts)
 
     def test_repeated_placements_of_one_artifact_count_and_merge(self):
-        from solid_node.core.pieces import PieceInventory
+        from machinome.core.pieces import PieceInventory
 
         inventory = PieceInventory()
         stl_file = self._path('bolt.stl')
@@ -90,7 +90,7 @@ class PieceInventoryUnitTest(TestCase):
         self.assertEqual(pieces[0]['models'], ['bolt.stl'])
 
     def test_identical_content_from_different_classes_is_one_piece(self):
-        from solid_node.core.pieces import PieceInventory
+        from machinome.core.pieces import PieceInventory
 
         inventory = PieceInventory()
         a_id = inventory.register(
@@ -107,7 +107,7 @@ class PieceInventoryUnitTest(TestCase):
         self.assertIn('test_pieces.py', piece['sources'][0])
 
     def test_differing_content_stays_distinct(self):
-        from solid_node.core.pieces import PieceInventory
+        from machinome.core.pieces import PieceInventory
 
         inventory = PieceInventory()
         a_id = inventory.register(
@@ -119,7 +119,7 @@ class PieceInventoryUnitTest(TestCase):
         self.assertEqual(len(inventory.pieces()), 2)
 
     def test_pieces_are_ordered_by_first_encounter(self):
-        from solid_node.core.pieces import PieceInventory
+        from machinome.core.pieces import PieceInventory
 
         inventory = PieceInventory()
         first_id = inventory.register(
@@ -131,7 +131,7 @@ class PieceInventoryUnitTest(TestCase):
         self.assertEqual(ids, [first_id, second_id])
 
     def test_geometry_facts_read_from_the_artifacts_own_frame(self):
-        from solid_node.core.pieces import PieceInventory
+        from machinome.core.pieces import PieceInventory
 
         inventory = PieceInventory()
         inventory.register(
@@ -145,7 +145,7 @@ class PieceInventoryUnitTest(TestCase):
         self.assertTrue(piece['watertight'])
 
     def test_ids_are_stable_regardless_of_artifact_path(self):
-        from solid_node.core.pieces import PieceInventory
+        from machinome.core.pieces import PieceInventory
 
         first = PieceInventory()
         second = PieceInventory()
@@ -168,7 +168,7 @@ class PieceInventoryUnitTest(TestCase):
         current, so this is an internal inconsistency and belongs to the
         caller that published a tree naming the missing file.
         """
-        from solid_node.core.pieces import PieceInventory
+        from machinome.core.pieces import PieceInventory
 
         inventory = PieceInventory()
         missing = Bolt(self._path('missing.stl'), self.box_bytes)

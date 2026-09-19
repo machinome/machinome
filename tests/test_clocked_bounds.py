@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -26,10 +26,10 @@ OpenSpec change ``a-bound-stops-the-request``.
 
 import math
 
-from solid_node.expression_graph import free_names
-from solid_node.scad_expression import as_node
-from solid_node.simulation import Sim
-from solid_node.simulation.clocked import TooManyEvents
+from machinome.expression_graph import free_names
+from machinome.scad_expression import as_node
+from machinome.simulation import Sim
+from machinome.simulation.clocked import TooManyEvents
 
 from .base import BaseNodeTest
 from .clocked_project.bounds_unsupported import (Chattering, Curved,
@@ -92,7 +92,7 @@ class RefusalTest(BaseNodeTest):
         message = self.refusal(OpaqueChain)
         self.assertIn("the coordinate 'plate.lift'", message)
         self.assertIn('cannot be applied to symbols', message)
-        self.assertIn('solid_node.math', message)
+        self.assertIn('machinome.math', message)
 
     def test_a_bound_reading_an_unreached_coordinate_is_refused(self):
         message = self.refusal(UnreachedRead)
@@ -445,7 +445,7 @@ class AgreementTest(BaseNodeTest):
     """
 
     def test_every_chain_agrees_with_the_tree_it_poses(self):
-        from solid_node.motion.ports import clocked_marking, get_coordinate
+        from machinome.motion.ports import clocked_marking, get_coordinate
 
         for model, state, input_id, travel in SAMPLED:
             with self.subTest(model=model.__name__):
@@ -476,8 +476,8 @@ class AuthorityTest(BaseNodeTest):
 
     def spy(self):
         """Both judgement sites' consultation of the MARK, recorded."""
-        from solid_node.motion import couplings as couplings_module
-        from solid_node.motion import joints as joints_module
+        from machinome.motion import couplings as couplings_module
+        from machinome.motion import joints as joints_module
 
         seen = []
         originals = {}
@@ -532,7 +532,7 @@ class AuthorityTest(BaseNodeTest):
         self.assertTrue(all(not answer for _site, _name, answer in seen))
 
     def test_a_commit_out_of_range_refuses_the_request_by_name(self):
-        from solid_node.motion.joints import JointRangeError
+        from machinome.motion.joints import JointRangeError
 
         sim = Sim(Shut(), record=8)
         before = sim.state
@@ -643,7 +643,7 @@ class ZeroBehaviourChangeTest(BaseNodeTest):
         self.assertEqual(sim.stops[0].bound, 'high')
 
     def test_an_untimed_binding_outside_a_bound_is_still_refused(self):
-        from solid_node.motion.joints import JointRangeError
+        from machinome.motion.joints import JointRangeError
 
         from .running_project.machine import GateBody, SweptBody
 

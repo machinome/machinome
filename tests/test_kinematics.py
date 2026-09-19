@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,11 +14,11 @@ ahead of it -- rather than one relation's own solve, which is
 
 from solid2 import cube
 
-from solid_node.motion.couplings import declared_relations
-from solid_node.motion.joints import Revolute
-from solid_node.motion.ports import RotationalPort
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.simulation import Driver
+from machinome.motion.couplings import declared_relations
+from machinome.motion.joints import Revolute
+from machinome.motion.ports import RotationalPort
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.simulation import Driver
 
 from .base import BaseNodeTest
 from .coupling_project.parts import Pulley
@@ -85,7 +85,7 @@ class CompatibilityTest(BaseNodeTest):
         """task 5.2: instrument the solver over the whole
         `coupling_project` fixture set and assert the deferred list is
         EMPTY."""
-        from solid_node.node import assembly as _assembly
+        from machinome.node import assembly as _assembly
 
         original = _assembly.solve_relations
         deferred_counts = []
@@ -161,7 +161,7 @@ class CompatibilityTest(BaseNodeTest):
         expressions through a DEFERRED relation (the movement sources
         from a coordinate its own child's relation solves) as through an
         immediate one."""
-        from solid_node.core.serializer import serialize_node, symbolic_document
+        from machinome.core.serializer import serialize_node, symbolic_document
 
         # The driver stays at the ROOT `Deferred` declares it on --
         # `drive_tree` (qualified.py) delivers a node's OWN drivers into

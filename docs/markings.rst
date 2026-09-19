@@ -13,8 +13,8 @@ A **marking** is how a part says what it carries on its surface:
 
 .. code-block:: python
 
-    from solid_node.node import CadQueryNode
-    from solid_node.node.markings import Marking, Svg, Wrapped
+    from machinome.node import CadQueryNode
+    from machinome.node.markings import Marking, Svg, Wrapped
 
     class ResultsDial(CadQueryNode):
 
@@ -234,7 +234,7 @@ published before markings existed. A marking entry carries **no
 placement** — the artifact is already in the part's frame, so a consumer
 applies the part's own operations to it — and **no piece**.
 
-``solid export`` copies each named marking under ``models/`` beside the
+``machinome export`` copies each named marking under ``models/`` beside the
 meshes, under the same portability rules, so an export stays
 self-contained.
 
@@ -244,8 +244,8 @@ Not yet, and on purpose
 * **The browser viewer does not draw markings yet.** It is a separate
   package with its own release; a model that declares a marking
   publishes it and, for now, looks exactly as it does today. The
-  OpenSCAD path — ``solid develop`` without the viewer extra, and
-  ``solid snapshot --renderer openscad`` — does not draw them at all.
+  OpenSCAD path — ``machinome develop`` without the viewer extra, and
+  ``machinome snapshot --renderer openscad`` — does not draw them at all.
 * **DXF artwork**, **text from a font** and **projection onto an
   arbitrary surface** are not supported. Each needs a rule of its own,
   and every marking in a real catalogue already exists as a drawing

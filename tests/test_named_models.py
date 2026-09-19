@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,9 +7,9 @@
 One repository, one shared library, one model per machine -- the shape of
 `3DPrintedClocks`, where every clock is a model under `design/` and all of
 them import the same `clocks` package above. A manifest names those models
-in `[tool.solid-node.models]`; each name is a reference; each model owns a
+in `[tool.machinome.models]`; each name is a reference; each model owns a
 build directory of its own under the build root, so publishing one never
-sweeps another; `solid models` lists them; `--all` walks them.
+sweeps another; `machinome models` lists them; `--all` walks them.
 
 The fixture is a real CadQuery project in a directory each test owns,
 because the proof that two models do not disturb each other is a
@@ -29,15 +29,15 @@ from contextlib import chdir, redirect_stderr, redirect_stdout
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from solid_node.core.builder import (
+from machinome.core.builder import (
     Builder, BuildOutcome, get_build_dir, get_build_lock_path,
     unanchor_build_dir,
 )
-from solid_node.core.loader import (
+from machinome.core.loader import (
     ProjectManifestError, discover_project, read_project, resolve_node,
     select_model,
 )
-from solid_node.manager.build import Build, MODEL_NOT_FOUND, build_once
+from machinome.manager.build import Build, MODEL_NOT_FOUND, build_once
 
 
 PROJECT_NAMES = itertools.count()
@@ -49,7 +49,7 @@ SIZE = 3.0
 CLOCK = '''\
 import cadquery as cq
 
-from solid_node.node import AssemblyNode, CadQueryNode
+from machinome.node import AssemblyNode, CadQueryNode
 
 from ..shared import SIZE
 
@@ -71,7 +71,7 @@ class {klass}(AssemblyNode):
 '''
 
 COMPANION = '''\
-from solid_node.test import TestCase
+from machinome.test import TestCase
 
 from .clock import {klass}
 
@@ -95,7 +95,7 @@ class NamedProjectTest(TestCase):
         self.addCleanup(unanchor_build_dir)
 
         self.root = os.path.realpath(
-            tempfile.mkdtemp(prefix='solid-node-named-'))
+            tempfile.mkdtemp(prefix='machinome-named-'))
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         self.package = f'named_fixture_{next(PROJECT_NAMES)}'
         self.addCleanup(self.forget_project)
@@ -121,8 +121,8 @@ class NamedProjectTest(TestCase):
     def write_manifest(self, default='model = "a_clock"\n', extra=''):
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as manifest:
             manifest.write(
-                '[tool.solid-node]\n' + default +
-                '\n[tool.solid-node.models]\n'
+                '[tool.machinome]\n' + default +
+                '\n[tool.machinome.models]\n'
                 f'a_clock = "{self.package}.a_clock.clock:AClock"\n'
                 f'b_clock = "{self.package}.b_clock.clock:BClock"\n' + extra)
 
@@ -203,7 +203,7 @@ class ManifestTest(NamedProjectTest):
 
     def test_an_empty_table_is_refused(self):
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as manifest:
-            manifest.write('[tool.solid-node]\n[tool.solid-node.models]\n')
+            manifest.write('[tool.machinome]\n[tool.machinome.models]\n')
         with chdir(self.root):
             with self.assertRaises(ProjectManifestError) as error:
                 read_project()
@@ -227,7 +227,7 @@ class ManifestTest(NamedProjectTest):
 
     def test_a_single_model_manifest_is_unchanged(self):
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as manifest:
-            manifest.write('[tool.solid-node]\n'
+            manifest.write('[tool.machinome]\n'
                            f'model = "{self.reference("a_clock")}"\n')
         with chdir(self.root):
             project = read_project()
@@ -347,13 +347,13 @@ class PerModelBuildDirectoryTest(NamedProjectTest):
 
 
 class BuildCommandTest(NamedProjectTest):
-    """Task 1.5: `solid build <name>`, the default, and `--all`."""
+    """Task 1.5: `machinome build <name>`, the default, and `--all`."""
 
     def build(self, path=None, all_models=False, outcomes=(BuildOutcome.CURRENT,)):
         processes = [MagicMock(exitcode=outcome.value) for outcome in outcomes]
         stderr = io.StringIO()
         with chdir(self.root), redirect_stderr(stderr), \
-                patch('solid_node.manager.build.Process',
+                patch('machinome.manager.build.Process',
                       side_effect=processes) as process:
             code = None
             try:
@@ -396,7 +396,7 @@ class BuildCommandTest(NamedProjectTest):
 
         stderr = io.StringIO()
         with chdir(self.root), redirect_stderr(stderr), \
-                patch('solid_node.manager.build.Process', side_effect=process):
+                patch('machinome.manager.build.Process', side_effect=process):
             with self.assertRaises(SystemExit) as exit:
                 Build().handle(Namespace(path=None, set=[], all=True))
         self.assertEqual(exit.exception.code, 0)
@@ -424,7 +424,7 @@ class BuildCommandTest(NamedProjectTest):
 
     def test_all_in_a_single_model_project_is_refused(self):
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as manifest:
-            manifest.write('[tool.solid-node]\n'
+            manifest.write('[tool.machinome]\n'
                            f'model = "{self.reference("a_clock")}"\n')
         code, process, stderr = self.build(all_models=True)
         self.assertEqual(code, 1)
@@ -433,7 +433,7 @@ class BuildCommandTest(NamedProjectTest):
 
 
 class TestCommandTest(NamedProjectTest):
-    """Task 1.6: `solid test --all` is one run over every model."""
+    """Task 1.6: `machinome test --all` is one run over every model."""
 
     def break_first_model(self, stage):
         failures = {
@@ -465,13 +465,13 @@ class TestCommandTest(NamedProjectTest):
         with open(path, 'w') as source:
             source.write(
                 'from solid2 import cube\n'
-                'from solid_node.node import Solid2Node\n\n'
+                'from machinome.node import Solid2Node\n\n'
                 'class AClock(Solid2Node):\n' + failures[stage]
                 + f'\n# cache discriminator: {stage * 3}\n')
         self.forget_project()
 
     def run_all_tests(self, failfast=False):
-        from solid_node.manager.test import Test
+        from machinome.manager.test import Test
         stdout, stderr = io.StringIO(), io.StringIO()
         code = None
         with chdir(self.root), redirect_stdout(stdout), redirect_stderr(stderr):
@@ -483,7 +483,7 @@ class TestCommandTest(NamedProjectTest):
         return code, stdout.getvalue(), stderr.getvalue()
 
     def test_all_runs_every_models_tests_as_one_run(self):
-        from solid_node.manager.test import Test
+        from machinome.manager.test import Test
         stdout = io.StringIO()
         self.forget_project()
         with chdir(self.root), redirect_stdout(stdout):
@@ -539,10 +539,10 @@ class TestCommandTest(NamedProjectTest):
 
 
 class ModelsCommandTest(NamedProjectTest):
-    """Task 1.7: `solid models` lists without importing the project."""
+    """Task 1.7: `machinome models` lists without importing the project."""
 
     def models(self, as_json=True):
-        from solid_node.manager.models import Models
+        from machinome.manager.models import Models
         stdout = io.StringIO()
         with chdir(self.root), redirect_stdout(stdout):
             Models().handle(Namespace(json=as_json))
@@ -585,7 +585,7 @@ class ModelsCommandTest(NamedProjectTest):
 
     def test_a_single_model_project_lists_one_entry(self):
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as manifest:
-            manifest.write('[tool.solid-node]\n'
+            manifest.write('[tool.machinome]\n'
                            f'model = "{self.reference("a_clock")}"\n')
         report = self.models()
         self.assertIsNone(report['default'])
@@ -596,7 +596,7 @@ class ModelsCommandTest(NamedProjectTest):
         ])
 
     def test_a_malformed_manifest_is_reported(self):
-        from solid_node.manager.models import Models
+        from machinome.manager.models import Models
         self.write_manifest(extra=f'docs = "{self.reference("a_clock")}"\n')
         stdout, stderr = io.StringIO(), io.StringIO()
         with chdir(self.root), redirect_stdout(stdout), redirect_stderr(stderr):
@@ -607,7 +607,7 @@ class ModelsCommandTest(NamedProjectTest):
         self.assertIn('docs', stderr.getvalue())
 
     def test_models_is_a_registered_command(self):
-        from solid_node.cli import COMMANDS
+        from machinome.cli import COMMANDS
         self.assertIn('models', COMMANDS)
 
 
@@ -618,14 +618,14 @@ class BrokenModelTest(NamedProjectTest):
         super().setUp()
         with open(os.path.join(self.root, self.package, 'a_clock', 'clock.py'),
                   'w') as source:
-            source.write('from solid_node.node import NoSuchThing\n')
+            source.write('from machinome.node import NoSuchThing\n')
 
     def test_build_all_reports_it_and_goes_on(self):
         current = MagicMock(exitcode=BuildOutcome.CURRENT.value)
         stderr = io.StringIO()
         self.forget_project()
         with chdir(self.root), redirect_stderr(stderr), \
-                patch('solid_node.manager.build.Process',
+                patch('machinome.manager.build.Process',
                       return_value=current) as process:
             with self.assertRaises(SystemExit) as exit:
                 Build().handle(Namespace(path=None, set=[], all=True))
@@ -638,7 +638,7 @@ class BrokenModelTest(NamedProjectTest):
             self.build_root, 'a_clock', 'errors.json')))
 
     def test_test_all_counts_it_and_goes_on(self):
-        from solid_node.manager.test import Test
+        from machinome.manager.test import Test
         stdout, stderr = io.StringIO(), io.StringIO()
         self.forget_project()
         with chdir(self.root), redirect_stdout(stdout), redirect_stderr(stderr):

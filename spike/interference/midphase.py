@@ -22,7 +22,7 @@ import numpy as np
 import trimesh
 from manifold3d import Manifold, Mesh
 
-BUILD = ('/home/asa/devel/libresolid-studio/solid-node/'
+BUILD = ('/home/asa/devel/machinome-studio/machinome-framework/'
          'docs/examples/v8-engine/_build')
 
 

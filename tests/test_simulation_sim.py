@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -23,8 +23,8 @@ produces is a snapshot, and the assertions here are about the
 snapshot. Geometry is the scenario tests' subject.
 """
 
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, Instruction, Sim
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver, Instruction, Sim
 
 from .base import BaseNodeTest
 from .meta_project.machine import Machine

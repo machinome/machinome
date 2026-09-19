@@ -1,5 +1,5 @@
 {
-  "format": "solid-node-export",
+  "format": "machinome-export",
   "version": 1,
   "animation": {
     "fps": 30,

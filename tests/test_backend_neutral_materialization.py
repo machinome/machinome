@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -10,12 +10,12 @@ from unittest.mock import patch
 import trimesh
 from solid2 import cube
 
-from solid_node import currency
-from solid_node.node import AssemblyNode, FusionNode
-from solid_node.node.base import _atomic_write_bytes
-from solid_node.node.adapters.cadquery import CadQueryNode
-from solid_node.node.exact_leaf import ExactLeafNode
-from solid_node.node.leaf import LeafNode
+from machinome import currency
+from machinome.node import AssemblyNode, FusionNode
+from machinome.node.base import _atomic_write_bytes
+from machinome.node.adapters.cadquery import CadQueryNode
+from machinome.node.exact_leaf import ExactLeafNode
+from machinome.node.leaf import LeafNode
 
 
 class NativeMeshLeaf(LeafNode):
@@ -85,7 +85,7 @@ class BackendNeutralMaterializationTest(TestCase):
         machine = NativeAssembly()
         with patch.object(NativeMeshLeaf, 'as_scad',
                           side_effect=AssertionError('SCAD boundary used')), \
-             patch('solid_node.node.base.require_openscad',
+             patch('machinome.node.base.require_openscad',
                    side_effect=AssertionError('OpenSCAD boundary used')):
             machine.build_stls()
 
@@ -94,7 +94,7 @@ class BackendNeutralMaterializationTest(TestCase):
         self.assertEqual(len(fused.split(only_watertight=False)), 1)
 
     def test_portable_export_does_not_construct_scad_assembly(self):
-        from solid_node.core.export import export_node
+        from machinome.core.export import export_node
 
         machine = NativeAssembly()
         output = os.path.join(self.directory.name, 'export')
@@ -165,9 +165,9 @@ class BackendNeutralMaterializationTest(TestCase):
     def test_missing_mesh_engine_fails_without_openscad_fallback(self):
         fusion = NativePair()
         fusion._prepare()
-        with patch('solid_node.node.fusion.require_mesh_engine',
+        with patch('machinome.node.fusion.require_mesh_engine',
                    side_effect=RuntimeError('manifold unavailable')), \
-             patch('solid_node.node.base.require_openscad') as openscad:
+             patch('machinome.node.base.require_openscad') as openscad:
             with self.assertRaisesRegex(RuntimeError, 'manifold unavailable'):
                 fusion.generate_stl()
         openscad.assert_not_called()
@@ -178,7 +178,7 @@ class BackendNeutralMaterializationTest(TestCase):
         invalid = trimesh.creation.box((2, 2, 2))
         invalid.update_faces(range(len(invalid.faces) - 1))
         invalid.export(fusion.right.stl_file)
-        with patch('solid_node.node.base.require_openscad') as openscad:
+        with patch('machinome.node.base.require_openscad') as openscad:
             with self.assertRaisesRegex(ValueError, r'right: manifold3d'):
                 fusion.generate_stl()
         openscad.assert_not_called()

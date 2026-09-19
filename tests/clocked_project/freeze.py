@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -24,10 +24,10 @@ This is the ACCEPTANCE fixture of the change
 the tests is computed BY HAND.
 """
 
-from solid_node.math import floor
-from solid_node.motion.joints import Bound, Prismatic
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, State
+from machinome.math import floor
+from machinome.motion.joints import Bound, Prismatic
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver, State
 
 from .lock import SPAN, STEP, counted, strokes
 from .parts import Dial, Slide
@@ -35,7 +35,7 @@ from .parts import Dial, Slide
 
 def rest(turn):
     """Whether the crank stands at rest: less than one degree into its
-    own revolution. Written over `solid_node.math`, so it reads a number
+    own revolution. Written over `machinome.math`, so it reads a number
     and a symbol alike."""
     return turn - 360 * floor(turn / 360) < 1
 

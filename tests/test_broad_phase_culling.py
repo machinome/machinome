@@ -1,12 +1,12 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 """Regression tests for docs/performance-improvement.md fix 2: an AABB
-broad-phase before any exact boolean in solid_node/test.py's
+broad-phase before any exact boolean in machinome/test.py's
 intersection-based assertions. A part's world AABB (the box of its 8
 local-bounds corners transformed by its composed world matrix -- see
-solid_node.node.base._compose_world_matrix, fix 1) is a conservative
+machinome.node.base._compose_world_matrix, fix 1) is a conservative
 superset of its real footprint; when two parts' world boxes are
 disjoint their intersection is exactly empty, and the boolean can be
 skipped. This is exact-negative only -- it must never change a verdict,
@@ -43,10 +43,10 @@ import trimesh
 from manifold3d import Manifold
 from trimesh.creation import box
 
-import solid_node.test as test_module
-from solid_node.node.base import AbstractBaseNode
-from solid_node.node.operations import Rotation, Translation
-from solid_node.test import TestCase as AssertingTestCase
+import machinome.test as test_module
+from machinome.node.base import AbstractBaseNode
+from machinome.node.operations import Rotation, Translation
+from machinome.test import TestCase as AssertingTestCase
 
 from .test_assembly_integrity import Assembly, RigidNode
 
@@ -147,7 +147,7 @@ class DisjointPairCulledTest(BroadPhaseTestCase):
         def _fail(*a, **kw):
             raise AssertionError('boolean must not run for a disjoint pair')
 
-        with patch('solid_node.test.trimesh.boolean.intersection',
+        with patch('machinome.test.trimesh.boolean.intersection',
                    side_effect=_fail):
             asserter.assertNotIntersecting(origin, far_away)
 
@@ -157,7 +157,7 @@ class DisjointPairCulledTest(BroadPhaseTestCase):
         def _fail(*a, **kw):
             raise AssertionError('boolean must not run for a disjoint pair')
 
-        with patch('solid_node.test.trimesh.boolean.intersection',
+        with patch('machinome.test.trimesh.boolean.intersection',
                    side_effect=_fail):
             asserter.assertFreeWithin(origin, 5, far_away)
 
@@ -173,7 +173,7 @@ class DisjointPairCulledTest(BroadPhaseTestCase):
         def _fail(*a, **kw):
             raise AssertionError('boolean must not run for a disjoint pair')
 
-        with patch('solid_node.test.trimesh.boolean.intersection',
+        with patch('machinome.test.trimesh.boolean.intersection',
                    side_effect=_fail):
             asserter.assertNoPairwiseIntersections(Assembly())
 
@@ -190,7 +190,7 @@ class DisjointPairFailsFastTest(BroadPhaseTestCase):
         def _fail(*a, **kw):
             raise AssertionError('boolean must not run for a disjoint pair')
 
-        with patch('solid_node.test.trimesh.boolean.intersection',
+        with patch('machinome.test.trimesh.boolean.intersection',
                    side_effect=_fail):
             with self.assertRaises(AssertionError) as ctx:
                 asserter.assertIntersecting(origin, far_away)
@@ -207,7 +207,7 @@ class DisjointPairFailsFastTest(BroadPhaseTestCase):
         def _fail(*a, **kw):
             raise AssertionError('boolean must not run for a disjoint pair')
 
-        with patch('solid_node.test.trimesh.boolean.intersection',
+        with patch('machinome.test.trimesh.boolean.intersection',
                    side_effect=_fail):
             with self.assertRaises(AssertionError) as ctx:
                 asserter.assertBlockedBeyond(origin, 10, far_away)

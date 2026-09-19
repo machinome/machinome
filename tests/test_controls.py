@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -20,14 +20,14 @@ program's identity are exactly what they were.
 import hashlib
 import math
 
-from solid_node.math import sin
-from solid_node.motion.joints import Free, Prismatic, Revolute
-from solid_node.motion.ports import RotationalPort, Time
-from solid_node.node import AssemblyNode
-from solid_node.node.qualified import instance_path
-from solid_node.simulation import (Button, Driver, Instruction, Sim,
+from machinome.math import sin
+from machinome.motion.joints import Free, Prismatic, Revolute
+from machinome.motion.ports import RotationalPort, Time
+from machinome.node import AssemblyNode
+from machinome.node.qualified import instance_path
+from machinome.simulation import (Button, Driver, Instruction, Sim,
                                    Slide, Turn)
-from solid_node.simulation.enumeration import (qualified_controls,
+from machinome.simulation.enumeration import (qualified_controls,
                                                qualified_declarations,
                                                qualified_instructions)
 
@@ -180,7 +180,7 @@ class NearestJointTest(BaseNodeTest):
         self.assertEqual(entry.coordinate, 'deep.turn')
         # The intermediate really is in the tree, and really declares
         # no joint of its own.
-        from solid_node.motion.joints import declared_joints
+        from machinome.motion.joints import declared_joints
         holder = node.deep.holder
         self.assertEqual(instance_path(holder, node), ('deep', 'holder'))
         self.assertEqual(declared_joints(type(holder)), {})
@@ -290,7 +290,7 @@ class RefusalTest(BaseNodeTest):
         self.assertIn('2 children', message)
 
     def test_a_misspelt_part_is_refused_where_it_is_written(self):
-        from solid_node.node.declarative import SidewaysReadError
+        from machinome.node.declarative import SidewaysReadError
 
         with self.assertRaises(SidewaysReadError) as raised:
             class Misspelt(AssemblyNode):
@@ -692,7 +692,7 @@ class RatioTest(BaseNodeTest):
         law that curves disagrees by far more than `1e-9`, and a law
         that curves is explicitly permitted -- the pointer leads or lags
         the part and nothing is ever wrong."""
-        from solid_node.simulation.program import (_CONTROL_AGREEMENT,
+        from machinome.simulation.program import (_CONTROL_AGREEMENT,
                                                    _agreement)
 
         sim = Sim(SmoothControl(), 0.1)
@@ -1106,7 +1106,7 @@ class PlacementSpanTest(BaseNodeTest):
             at_rest)
 
     def test_a_placement_that_is_not_there_is_refused(self):
-        from solid_node.simulation.program import (ControlError,
+        from machinome.simulation.program import (ControlError,
                                                    _published_span)
 
         sim = Sim(Crank(), 0.1)
@@ -1124,8 +1124,8 @@ class PlacementSpanTest(BaseNodeTest):
         self.assertIn('invented', message)
 
     def test_a_block_that_is_not_contiguous_is_refused(self):
-        from solid_node.node.operations import Translation
-        from solid_node.simulation.program import (ControlError,
+        from machinome.node.operations import Translation
+        from machinome.simulation.program import (ControlError,
                                                    _published_span)
 
         sim = Sim(Crank(), 0.1)

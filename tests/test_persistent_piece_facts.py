@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -18,12 +18,12 @@ from unittest.mock import patch
 import numpy as np
 import trimesh
 
-from solid_node._artifact import ArtifactChanged, ArtifactSnapshot
-from solid_node.core import pieces
-from solid_node.core.builder import Builder, write_error
-from solid_node.core.export import export_node
-from solid_node.node import base
-from solid_node import test as test_module
+from machinome._artifact import ArtifactChanged, ArtifactSnapshot
+from machinome.core import pieces
+from machinome.core.builder import Builder, write_error
+from machinome.core.export import export_node
+from machinome.node import base
+from machinome import test as test_module
 from tests.test_export import Cube
 
 
@@ -66,7 +66,7 @@ class GeometryAssembly:
 class PersistentPieceFactsTest(TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(
-            prefix='solid-piece-facts-')
+            prefix='machinome-piece-facts-')
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         self.artifact = self.root / 'part.stl'
@@ -123,7 +123,7 @@ class PersistentPieceFactsTest(TestCase):
         marker = self.root / 'decodes'
         script = """
 import os
-from solid_node.core import pieces
+from machinome.core import pieces
 class Node:
     stl_file = os.environ['ARTIFACT']
     src = os.environ['ARTIFACT']
@@ -193,7 +193,7 @@ with pieces.PieceInventory() as inventory:
         os.replace(replacement, self.artifact)
         script = """
 import json, os
-from solid_node.core import pieces
+from machinome.core import pieces
 class Node:
     stl_file = os.environ['ARTIFACT']
     src = os.environ['ARTIFACT']
@@ -312,7 +312,7 @@ with pieces.PieceInventory() as inventory:
 class LowerGeometryIdentityTest(TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(
-            prefix='solid-lower-identity-')
+            prefix='machinome-lower-identity-')
         self.addCleanup(self.temporary.cleanup)
         self.path = Path(self.temporary.name) / 'part.stl'
         self.path.write_bytes(box_bytes((1, 2, 3)))
@@ -433,7 +433,7 @@ class LowerGeometryIdentityTest(TestCase):
 
 class CoherentExportTest(TestCase):
     def test_concurrent_replacement_retries_one_whole_inventory(self):
-        temporary = tempfile.TemporaryDirectory(prefix='solid-export-race-')
+        temporary = tempfile.TemporaryDirectory(prefix='machinome-export-race-')
         self.addCleanup(temporary.cleanup)
         build = Path(temporary.name) / '_build'
         output = Path(temporary.name) / 'export'
@@ -467,7 +467,7 @@ class CoherentExportTest(TestCase):
 
 class PieceFactSweepTest(TestCase):
     def test_fact_record_is_removed_with_its_unreferenced_artifact(self):
-        temporary = tempfile.TemporaryDirectory(prefix='solid-fact-sweep-')
+        temporary = tempfile.TemporaryDirectory(prefix='machinome-fact-sweep-')
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
         current = root / 'current.stl'
@@ -481,7 +481,7 @@ class PieceFactSweepTest(TestCase):
         builder.node = CurrentNode(current)
         builder.node.name = 'current'
         builder.node.rigid = True
-        builder.node._type = 'SolidNode'
+        builder.node._type = 'Machinome'
         builder.node.color = None
         builder.node.mtime = 0
         builder.node.operations = ()
@@ -490,7 +490,7 @@ class PieceFactSweepTest(TestCase):
         self.assertFalse(Path(pieces.fact_sidecar(stale)).exists())
 
     def test_exhausted_builder_retries_do_not_clear_a_previous_error(self):
-        temporary = tempfile.TemporaryDirectory(prefix='solid-fact-retry-')
+        temporary = tempfile.TemporaryDirectory(prefix='machinome-fact-retry-')
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
         artifact = root / 'part.stl'
@@ -498,7 +498,7 @@ class PieceFactSweepTest(TestCase):
         node = CurrentNode(artifact)
         node.name = 'part'
         node.rigid = True
-        node._type = 'SolidNode'
+        node._type = 'Machinome'
         node.color = None
         node.mtime = 0
         node.operations = ()

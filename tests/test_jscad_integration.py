@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -24,7 +24,7 @@ class JScadIntegrationTest(BaseNodeTest):
 
     def test_native_jscad_producer_builds_without_openscad(self):
         node = JsBlock()
-        with patch('solid_node.node.base.require_openscad',
+        with patch('machinome.node.base.require_openscad',
                    side_effect=AssertionError('OpenSCAD boundary used')):
             node.build_stls()
 

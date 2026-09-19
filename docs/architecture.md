@@ -1,6 +1,6 @@
-# solid-node Architecture
+# machinome Architecture
 
-This is the synthesis document: the current architecture of solid-node
+This is the synthesis document: the current architecture of machinome
 in one place. It sits between two other records and is derived from
 them:
 
@@ -16,7 +16,16 @@ document is part of landing the change — same rule as the specs.
 
 ## The big picture
 
-A solid-node project is a **Python program that evaluates to a tree of
+Machinome 0.7 is the clean successor to solid-node 0.6 (ADR-130). The Python
+distribution/import package and command are `machinome`; project manifests use
+`[tool.machinome]`, runtime settings use `MACHINOME_*`, and the source
+repository is `machinome/machinome-framework`. No `solid_node` import or
+`solid` command alias is shipped. Former manifest/environment spellings are
+recognized only to produce migration errors. New serialized documents use the
+`machinome-export` family, while Machinome Viewer retains a reader for the
+legacy `solid-node-export` family.
+
+A machinome project is a **Python program that evaluates to a tree of
 nodes**. Leaves generate solid geometry; internal nodes compose and
 place it. From that single tree, the framework derives everything else:
 
@@ -34,7 +43,7 @@ place it. From that single tree, the framework derives everything else:
       → OpenSCAD       imported mesh /        │
       where selected   manifold3d)             ▼
            │                            viewer.json / manifest.json
-           ▼                            → solid-node-viewer (separate
+           ▼                            → machinome-viewer (separate
       dev loop, OpenSCAD snapshot,        AGPL package, own process)
       export models                     evaluates $t per frame
 ```
@@ -125,7 +134,7 @@ node's `check()`, called once its parameters are resolved and before any
 child is realized; an exception refuses the instance (ADR-065). A formula's dimension is a mapping from axis to
 exponent — products add, quotients subtract, sums require equality,
 `Angle` its own axis, `Count` and `Ratio` dimensionless — checked on
-`import`, with `solid_node.math`'s emitted primitives carrying their own
+`import`, with `machinome.math`'s emitted primitives carrying their own
 rules and its compositions inheriting theirs, and a project free to
 subclass `Quantity` with new exponents (ADR-062). By the time any `render()` runs every parameter is a plain
 value; backends, `uniq_id` and the serializer never see a token. Reading
@@ -163,10 +172,10 @@ nothing about time or a joint is involved.
 
 The public surface is split by concern above the node package, so an
 import line says what each name is for: build parameters come from
-`solid_node/parameters.py`, node classes from `solid_node/node/`, ports
-and the declared time base from `solid_node/motion/ports.py`, runtime
-inputs from `solid_node/simulation/`, the test case from
-`solid_node/test.py` (ADR-062, amended). One module answers one question,
+`machinome/parameters.py`, node classes from `machinome/node/`, ports
+and the declared time base from `machinome/motion/ports.py`, runtime
+inputs from `machinome/simulation/`, the test case from
+`machinome/test.py` (ADR-062, amended). One module answers one question,
 and a name is imported from the module that answers it (ADR-087) — the
 rule the parameter split establishes and the motion package (below) is
 built on. The parameter module holds the
@@ -174,9 +183,9 @@ declaration descriptor every other declaration follows, the exponent
 algebra, the kinds and the parameter enumerator, and imports nothing at
 all — not the framework, not a third party — because it is on the
 import path of every node module in every project.
-`solid_node/node/declarative.py` keeps the structural half, the child
+`machinome/node/declarative.py` keeps the structural half, the child
 declarations and `NodeMeta`, and imports the parameter module; the node
-package exports no parameter kind, and `solid_node/math.py` reaches the
+package exports no parameter kind, and `machinome/math.py` reaches the
 formula algebra sideways rather than down into the node package.
 
 Automatic child names come from one parent-attribute snapshot per traversal.
@@ -323,7 +332,7 @@ identity and the `part_index` selector relative to its name, and each
 reported occurrence carries the identity of the product it places and
 of the product it is placed in, alongside their names — so two
 same-named products, or two same-named sub-assemblies, are always told
-apart (ADR-115). The CLI command `solid import-step` turns this reader
+apart (ADR-115). The CLI command `machinome import-step` turns this reader
 into project-owned source in one shot: `parts.py` (one `StepNode`
 subclass per part PRODUCT) and `assembly.py` (one `AssemblyNode` per
 assembly PRODUCT, its children placed at the document's own
@@ -441,7 +450,7 @@ seconds on every path: unbound, the symbolic product `$t * loop`, so
 `$t` stays the 0..1 slider and published expressions carry the
 multiplication; bound, whatever the binder stated in seconds
 (`set_keyframe`, the testing decorators, `Sim`'s `k*dt`). One reader in
-`solid_node/node/assembly.py` (`read_time`) serves the base property and
+`machinome/node/assembly.py` (`read_time`) serves the base property and
 the descriptor: bound entry first, else walk `_parent` to the root of the
 linked tree and scale by its declaration — a descendant reads what its
 root reads with no state propagated, and a declaration on a node strictly
@@ -493,10 +502,10 @@ scad and serializer passes do, because a name is derived by the parent
 and an unlinked node has none. Qualification never falls back and never
 sanitizes: a driver reachable only through an unlinked node, or through
 a list-held child's `<attr>-<index>` name (a legal node name, an
-illegal expression identifier), raises. `solid_node/node/qualified.py`
+illegal expression identifier), raises. `machinome/node/qualified.py`
 owns the id, the linked walk, and `DriverToken` — an `OpenSCADConstant`
 subclass whose string *is* the qualified id, so ordinary solid2
-arithmetic and `solid_node.math`'s degree trig retain native shared graphs
+arithmetic and `machinome.math`'s degree trig retain native shared graphs
 behind a compatibility facade until publication (ADR-101).
 It also carries `DriverDeclaration`,
 which is both the marker the node layer needs to recognize a
@@ -521,7 +530,7 @@ tag renamed from "driver" so that word can mean a simulation input) and
 each run sweeps only its own tags before re-expressing pose absolutely.
 Rest placement (untagged) survives; independent animators of one node
 don't disturb each other. The phase stack lives in
-`solid_node/node/phase.py`; `DriverDeclaration.__get__`,
+`machinome/node/phase.py`; `DriverDeclaration.__get__`,
 `AssemblyNode.time` and `BoundPort.value` report a read to the innermost
 render phase, and a `render()` whose first run read one keeps the
 previous behaviour — re-run, tagged, swept — and warns once per class
@@ -531,8 +540,8 @@ walked.
 
 **Ports** (spec `ports`) are domain-typed connection points declared
 as class attributes (`RotationalPort`, `TranslationalPort`,
-`SignalPort`), exported from `solid_node/motion/ports.py` — the module
-that answers what moves and what drives what, not `solid_node.node`,
+`SignalPort`), exported from `machinome/motion/ports.py` — the module
+that answers what moves and what drives what, not `machinome.node`,
 which has no port or time-base export (ADR-087): stateless declarations
 carrying domain, unit, direction,
 and an optional design-units-per-native-unit scale, discoverable off
@@ -547,7 +556,7 @@ descriptor with a per-instance value.
 **Joints** (spec `joints`) are the three one-coordinate declarations,
 `Revolute`, `Prismatic` and `Orbit`, and the one that is not a lower
 pair, `Free`, exported from
-`solid_node/motion/joints.py` and declared as a class attribute of the
+`machinome/motion/joints.py` and declared as a class attribute of the
 node they move (ADR-088, ADR-094, ADR-095, ADR-097, ADR-098). **A joint is
 stated in the frame of whoever declares it** (ADR-097): a joint written
 in a CLASS BODY is the body's own statement about itself, so `axis` and
@@ -852,8 +861,8 @@ ADR-028).
 
 ### Simulation (NODE · spec `simulation`)
 
-`solid_node/simulation/` is the layer that *produces* driver
-snapshots (ADR-056 stage 2); `solid_node/node/` never imports it, so
+`machinome/simulation/` is the layer that *produces* driver
+snapshots (ADR-056 stage 2); `machinome/node/` never imports it, so
 a node without drivers pulls none of it in. `Driver` is a frozen
 class-attribute declaration on an assembly (default, range, unit,
 optional `dtype=int` for discrete devices, optional scale in design
@@ -1480,14 +1489,14 @@ DESUGARED to Python's floored remainder, because the executor CALLS the
 project's callable rather than evaluating the graph, while a chain, a
 bound and a constraint level keep the document's truncated `%`, which is
 what the framework evaluates them by. `serializer.document_body` — the
-one function `solid build`, `solid develop`, `solid export` and `solid
+one function `machinome build`, `machinome develop`, `machinome export` and `solid
 snapshot --renderer web` all reach — still refuses by name, but now
 refuses a clocked tree published WITHOUT its compiled machine, which is
 a PRODUCER error and is what stops a producer added later from reaching
 a lower version by an unchecked route. A build and an export warn and
 publish where the installed viewer cannot read 8; a web snapshot is
 refused before the browser starts, leaving no image and no staging
-directory; `render()`, `assemble()`, `build_stls()`, `solid test` and an
+directory; `render()`, `assemble()`, `build_stls()`, `machinome test` and an
 OpenSCAD snapshot are untouched. The two runtimes share a clocked
 conformance corpus that is EXACT, bit for bit, with a stated basis and
 an inventory the generator refuses to write below.
@@ -1513,7 +1522,7 @@ that has none nothing (one stroke request 0.107 ms and one stateless pose
 Nodes are addressed by **reference** — a declared model name, a qualifier
 (`package.module:Class`), a filesystem path, or a path plus class —
 dynamically imported and resolved against a project root discovered
-from the nearest ancestor `pyproject.toml` carrying `[tool.solid-node]`
+from the nearest ancestor `pyproject.toml` carrying `[tool.machinome]`
 (ADR-005, superseded by project-manifest-node-references). A bare path
 to a file defining several node classes must name the one meant in the
 reference; implicit discovery remains limited to classes defined in the
@@ -1522,7 +1531,7 @@ implementation source. The source set tracks that implementation/import
 closure, so an edit to it invalidates and reloads the active node.
 
 A project has one model, `model = "package.module:Class"`, or several
-declared by name in `[tool.solid-node.models]`, with `model` then naming
+declared by name in `[tool.machinome.models]`, with `model` then naming
 the default by its key (ADR-119). A name is one word, so it is never
 mistaken for a qualifier or a path, and it may not equal a directory at
 the project root. The **build root** is `$SOLID_BUILD_DIR` (default
@@ -1577,7 +1586,7 @@ without restating its declarations in `__init__`. A tree that declares
 no driver is left strictly alone — not bound, not even walked, since
 the walk renders — so a driverless project loads exactly as it always
 did. The binding lives in the loader, which may import
-`solid_node/simulation/`; the node layer never does, and a hook there
+`machinome/simulation/`; the node layer never does, and a hook there
 for the simulation layer to register into would hide that dependency
 rather than place it.
 
@@ -1640,7 +1649,7 @@ carries it per binding: mtime equality decides *source* currency within one
 binding exactly as elsewhere, and a different binding is a different file
 rather than a question mtime is asked and cannot answer (ADR-057).
 
-`solid build` and the watchdog-driven development loop start one builder per
+`machinome build` and the watchdog-driven development loop start one builder per
 sealed source generation (ADR-084, amending ADR-067). Every child still starts
 from a **fresh interpreter**, never a fork of the command process: parent model
 resolution may initialize OCCT's OpenMP team, whose bookkeeping a fork would
@@ -1653,7 +1662,7 @@ A failed development reload writes `errors.json`, releases the build lock and
 performs no more geometry while that same child remains solely as a recovery
 watch over known source locations and the broad Python area; repair ends it
 `SOURCE_CHANGED`. Candidate
-builds publish `viewer.json` with the versioned `solid-node-export` tree
+builds publish `viewer.json` with the versioned `machinome-export` tree
 schema, linked node names, per-node `mtime`, and build-root-relative model
 paths, so private NodeAPI consumers can serve a completed build without
 loading project Python (ADR-031/034). Sharing that schema marker with export
@@ -1742,7 +1751,7 @@ that loads a node takes `--set name=value`, registered once beside the
 shared reference positional: the loader parses each value by the root's
 declared kind and constructs the root with the overrides, the develop
 loop carries them into every builder it starts, and an unknown or derived
-name fails listing what is settable (ADR-062). `solid snapshot` alone also
+name fails listing what is settable (ADR-062). `machinome snapshot` alone also
 takes `--drive NAME=VALUE`, repeatable, which binds a declared DRIVER by
 its qualified id through `set_state` before the node is keyframed and
 assembled — a driver is not a parameter, and under a running root the
@@ -1755,12 +1764,12 @@ refused too: elapsed seconds never wrap, so there is no timeline to be a
 position on (ADR-110). Only the invoked
 command's module is imported, and the node and simulation packages resolve
 their exports on first access, so a command pays for the backends it uses and
-not for the rest (ADR-059) — `solid viewer` answers from the viewer's entry
+not for the rest (ADR-059) — `machinome viewer` answers from the viewer's entry
 point alone. Top-level `-h` is the exception: it renders every command's
 docstring, so it loads them all. The test framework defers the same way by a
 different mechanism (ADR-069): a module's own call sites are global reads,
-which PEP 562 never sees, so `solid_node.test` binds its seven
-`solid_node.exact` names to deferred callables that import on first call and
+which PEP 562 never sees, so `machinome.test` binds its seven
+`machinome.exact` names to deferred callables that import on first call and
 replace themselves unless patched. A faceted-only project runs its whole suite
 without importing cadquery. Snapshot has an explicit renderer choice
 (ADR-021/041/046/068): OpenSCAD remains the external-tool default with xvfb
@@ -1779,13 +1788,13 @@ it, exiting non-zero, and leaving no image behind — rather than reporting
 success over a picture with the part silently missing (ADR-116). `./.env`
 is read with
 `setdefault` semantics (real environment wins), carrying
-`SOLID_NODE_PORT` / `SOLID_NODE_FRONTEND_PORT` / `SOLID_BUILD_DIR`.
+`MACHINOME_PORT` / `MACHINOME_FRONTEND_PORT` / `SOLID_BUILD_DIR`.
 
 ### Test framework (TEST-FRAMEWORK · spec `test-framework`)
 
 Test-driven CAD is the framework's reason to exist: contracts about
 geometry, checked on the real meshes. Tests live in companion files or
-on the node via `TestCaseMixin` (ADR-010), run by `solid test` — which
+on the node via `TestCaseMixin` (ADR-010), run by `machinome test` — which
 builds first, then runs `test_` methods per declared animation instant
 (`@testing_instant` / `@testing_steps`, ADR-011) with operation
 checkpoints restored between instants. The restore is by CONTENT, so an
@@ -1810,7 +1819,7 @@ Collision assertions (ADR-009/044) select the strongest shared representation
 the run allows: intersection-volume and connectivity questions use placed
 OCCT shapes when both operands are exact and retain trimesh/Manifold for
 mixed or faceted pairs. Which kernel a run compares on is the run's property,
-not the model's (ADR-073): `solid test` resolves one comparison policy —
+not the model's (ADR-073): `machinome test` resolves one comparison policy —
 `--exact`/`--faceted`, else `SOLID_TEST_KERNEL` from the project's ignored
 `.env`, else exact — and a faceted run answers every one of those questions
 on meshes, reads no `shape()`, applies one run-wide volume epsilon to every
@@ -1888,7 +1897,7 @@ Bounding boxes, and the per-face bounding boxes the exact-only face-box
 tier above reads, share those stable geometry identities. Exact placements use a
 512-entry LRU keyed by stable shape identity and the exact placement-matrix
 bytes, with no rounding; eviction merely recomputes the same placement and a
-new managed `solid test` run starts empty. A stock `FlexibleNode` keeps a
+new managed `machinome test` run starts empty. A stock `FlexibleNode` keeps a
 separate 64-entry LRU of evaluated mesh, bounds and Manifold results keyed by
 its full source identity, canonical structural identity, exact binding and
 serialized shape specification. A subclass that overrides the stock flexible
@@ -1991,7 +2000,7 @@ adhesion, purely lateral wall reactions, single-solid floor toppling and
 dynamics remain outside it.
 
 All three integrity assertions run only when ordinary project test source
-calls them. `solid new` declares the connectivity and interference pair as two
+calls them. `machinome new` declares the connectivity and interference pair as two
 counted companion tests; non-test commands do not load that companion. `assertJoined(a, b,
 min_weld_volume=...)` checks the separate pairwise claim that two named
 features meet directly. It composes operations only below their enclosing
@@ -2002,24 +2011,24 @@ their own origins. Collision remains world-framed and time-dependent.
 
 ### Viewers (VIEWER-WEB · specs `viewer-distribution`, `cli`)
 
-The browser viewer is not in this repository. It is `solid-node-viewer`, an
+The browser viewer is not in this repository. It is `machinome-viewer`, an
 independent AGPL-3.0-only package installed through the `viewer` extra
 (ADR-068/103); the framework is Apache-2.0 and complete for non-interactive
 use without it. The OpenSCAD CLI remains the default fixed-pose snapshot
 renderer, not an interactive viewer.
-The framework touches the viewer in exactly two ways. `solid_node/viewers/
-bundle.py` loads the viewer's `solid_node.viewer` entry point — a
+The framework touches the viewer in exactly two ways. `machinome/viewers/
+bundle.py` loads the viewer's `machinome.viewer` entry point — a
 standard-library-only function returning the bundle path, the export page,
 the declared API version and the document schema versions the viewer
-renders — and nothing else of it; `solid viewer`,
-`solid export`, the Sphinx directive and the web snapshot all resolve the
+renders — and nothing else of it; `machinome viewer`,
+`machinome export`, the Sphinx directive and the web snapshot all resolve the
 bundle there and name one remedy when it is absent. A report carrying no
 `documentVersions` is read as `[1, 2, 3, 4]`, the versions every viewer
 released before the field existed renders, so an older viewer beside a
 newer framework keeps working and is described truthfully (ADR-110). Everything else runs the
-viewer as a separate process through `sys.executable -m solid_node_viewer`.
+viewer as a separate process through `sys.executable -m machinome_viewer`.
 
-`solid develop` opens only the browser viewer and fails before starting
+`machinome develop` opens only the browser viewer and fails before starting
 development processes with the `viewer`-extra remedy when its package is
 absent; `--web` remains an explicit spelling of the default, and `--no-web`
 runs the builder watch loop without viewer discovery. The browser viewer is
@@ -2052,8 +2061,8 @@ Chromium/SwiftShader; staging is removed after either success or failure
 
 ### Export and embedding (EXPORT · specs `export`, `sphinx-embedding`)
 
-`solid export` (ADR-020/034/035/042) emits a self-contained static artifact:
-`manifest.json` (`format: solid-node-export`, at the versioned tree-document
+`machinome export` (ADR-020/034/035/042) emits a self-contained static artifact:
+`manifest.json` (`format: machinome-export`, at the versioned tree-document
 schema shared with `viewer.json` — `version: 2`, `3` when the tree holds a
 flexible node, `4` when its expressions share a subexpression (ADR-080),
 or `5` when the ROOT declares `Time.running()` (ADR-110); not a
@@ -2112,7 +2121,7 @@ applies. The list is ADDITIVE and moves no version — a marking adds no
 solid and enters no operation, binding or program, so a document whose
 tree declares no marking is byte-identical to the one published before
 markings existed (ADR-120, the `piece` precedent of ADR-043).
-`solid export` copies each named marking under `models/` with an
+`machinome export` copies each named marking under `models/` with an
 ordinary atomic copy rather than through the piece inventory, which
 serves only registered pieces; the browser-snapshot capture stages them
 beside the models it links.
@@ -2226,7 +2235,7 @@ a time base, and omits it otherwise, so an undeclared root's document is
 byte-identical to before. The key needs no version: the tree shape and the
 operation serialization do not change, the expressions already carry
 `$t * loop`, and a consumer ignoring it plays `frames / fps` as it always
-did. `solid snapshot --time` keeps its 0..1 meaning and keyframes
+did. `machinome snapshot --time` keeps its 0..1 meaning and keyframes
 `fraction * loop` in Python when a base is declared; the renderers' `$t`
 is untouched.
 
@@ -2253,12 +2262,12 @@ old consumer refuses only what it genuinely cannot render. Consumers accept
 
 **Schema version 4 publishes each subexpression more than one operation or
 `params` entry uses, once, as a named `bindings` table** (ADR-080). Sharing
-begins during construction (ADR-101): `solid_node/expression_graph.py` owns
+begins during construction (ADR-101): `machinome/expression_graph.py` owns
 immutable native scalar nodes independent of any modelling backend;
-`solid_node/scad_expression.py` supplies the SolidPython compatibility facade.
+`machinome/scad_expression.py` supplies the SolidPython compatibility facade.
 Arithmetic retains references, not expanded strings. Values own their graphs,
 and compiler tables are publication-local, with no global strong graph arena.
-`solid_node/core/expressions.py` collects native `operations` and flexible
+`machinome/core/expressions.py` collects native `operations` and flexible
 `params` together with legacy scalar text. Iterative postorder interning and
 root/edge occurrence analysis preserve deep chains and repeated operands;
 discarded temporaries do not count as uses. The compiler rewrites
@@ -2302,7 +2311,7 @@ existing viewer language, not forwarding `let` to JSON. Numeric operation
 placement refuses unresolved inputs; normal poses still rerun project laws
 with numbers, and legacy Solid2 numeric evaluation remains available.
 Flexible time detection follows graph inputs and diagnostics are bounded
-before rendering. `solid snapshot --renderer web` keyframes and bakes constants
+before rendering. `machinome snapshot --renderer web` keyframes and bakes constants
 before serializing, so its staged document shares nothing, carries no
 table, and stays at version 2 or 3 — or at 5, under a running root, whose
 version follows the declaration rather than the content. The independent
@@ -2398,12 +2407,12 @@ declares no `State` never declares 8 and publishes what it always
 published, byte for byte.
 
 The framework asks the installed viewer what it can read, through the
-existing `solid_node.viewer` entry point: `bundle.document_versions()`
+existing `machinome.viewer` entry point: `bundle.document_versions()`
 returns the report's `documentVersions`, or `[1, 2, 3, 4]` when the field
-is absent. `solid build`, `solid develop` and `solid export` publish a
+is absent. `machinome build`, `machinome develop` and `machinome export` publish a
 version 5 document and WARN once; the Sphinx directive warns about a
 committed export it embeds, off the manifest it already opened and with
-no CAD runtime loaded; `solid snapshot --renderer web` REFUSES before the
+no CAD runtime loaded; `machinome snapshot --renderer web` REFUSES before the
 browser starts, because a capture is a one-shot. A CONFORMANCE CORPUS
 (ADR-111) pins the two runtimes to each other: a generator writes
 `tests/running-corpus.json` from the framework's own run over a set of
@@ -2428,7 +2437,7 @@ export relies on the pinned validation and retries without acquiring it. No
 pose or `$t` leaks into the facts. The section is additive; a consumer reading
 only the tree is unaffected.
 
-The Sphinx extension (`.. solid-node:: <export-dir>`) embeds exports
+The Sphinx extension (`.. machinome:: <export-dir>`) embeds exports
 as iframes, copies them at `html-collect-pages`, and completes missing
 widget files from the installed package — docs build without the CAD
 stack.
@@ -2436,7 +2445,7 @@ stack.
 ### Expression math (MATH · in spec `kinematics`)
 
 There is exactly one expression semantics: **OpenSCAD's degree
-conventions**, with `^` as power (ADR-022, revised). `solid_node/math.py`
+conventions**, with `^` as power (ADR-022, revised). `machinome/math.py`
 is the source of truth, and every function in it wears **three faces**:
 numeric on plain numbers (keyframes, tests), a deferred OpenSCAD
 expression when any argument is symbolic (the build and viewer path),
@@ -2499,7 +2508,7 @@ is one change here and one there.
 
 ### Mechanisms (MATH · in spec `mechanisms`)
 
-`solid_node/mechanisms/` carries the textbook mechanism laws that a
+`machinome/mechanisms/` carries the textbook mechanism laws that a
 project's own `kinematics.py` kept rewriting (ADR-076): the external
 spur-gear mesh and its inverse, the lead screw, the planar slider-crank,
 linear delta kinematics, and the circle geometry a linkage asks for. One
@@ -2508,7 +2517,7 @@ with the family's frame, zero and sign stated once at its top, and an
 eager flat re-export whose names are unique across families.
 
 Three properties make it a subsystem rather than a utility drawer. Every
-law is a **composition over `solid_node.math`** and arithmetic, so it has
+law is a **composition over `machinome.math`** and arithmetic, so it has
 that module's numeric and symbolic faces and emits **no OpenSCAD builtin
 the parity corpus above does not already pin** — the `mechanisms` spec
 requires that, so a law wanting a new builtin must go through `math.py`
@@ -2599,7 +2608,7 @@ The short list that changes must not silently break:
 - A non-empty, zero-volume **faceted** flush contact fouls at
   `volume_epsilon=0`; exact boundary contact contains no solid and is empty.
   Kinematic fit still needs the Blocked **and** Free pair (ADR-025/029/044).
-- The `solid-node-export` format/version identifies a shared tree-document
+- The `machinome-export` format/version identifies a shared tree-document
   schema; breaking its tree shape or operation serialization means bumping the
   version and updating every producer and consumer together. A producer emits
   the **lowest version its content needs**, so a consumer refuses exactly the
@@ -2631,11 +2640,11 @@ The short list that changes must not silently break:
   boundary is exercised by rendered spike snapshots rather than by a
   test. Closing it needs OpenSCAD in the loop, which nothing yet
   requires.
-- **Create React App is deprecated** (ADR-013, now in solid-node-viewer):
+- **Create React App is deprecated** (ADR-013, now in machinome-viewer):
   the development shell's toolchain carries migration debt (Vite or similar),
   owed by the viewer repository.
 - **The viewer is installed from Git in CI and on Read the Docs** until
-  solid-node-viewer is published on PyPI.
+  machinome-viewer is published on PyPI.
 - **Sequential STL rendering**: `build_stls` renders one STL at a
   time; cold builds could parallelize `openscad` jobs
   (`docs/performance-improvement.md` §4–5, unscheduled).
@@ -2671,7 +2680,7 @@ The short list that changes must not silently break:
   nothing caches it. Memoising it alone took the Curta's construction
   from 5.46 s to 1.98 s and its tick from 3.27 s to 2.82 s; with ADR-124
   together, tick 0.294 s and construction 2.08 s. It is now the biggest
-  remaining item (`solid_node/motion/ports.py`), and it needs its own
+  remaining item (`machinome/motion/ports.py`), and it needs its own
   answer to when a class's enumeration may be trusted to stand — a
   declarative class is built dynamically by `.repeat()`, so a memo keyed
   by class either holds classes alive or needs a weak key. Unscheduled.
@@ -2679,7 +2688,7 @@ The short list that changes must not silently break:
   `evaluate-only-what-moves`, not proposed there): its interpreter has
   the same shape ADR-124 amortises here, and would take the same win —
   no document, no flag and no answer changes for it either. A finding
-  for solid-node-viewer, not this repository.
+  for machinome-viewer, not this repository.
 - **A block's construction check is necessary and not sufficient**
   (ADR-122): which selector branch VECTORS are reachable is arithmetic
   about the selecting input rather than structure, so a particular
@@ -2794,15 +2803,15 @@ The short list that changes must not silently break:
 
 | Subsystem | Code | Spec capability | ADRs |
 |---|---|---|---|
-| Node model | `solid_node/node/`, `solid_node/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115 |
-| Build parameters | `solid_node/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
+| Node model | `machinome/node/`, `machinome/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115 |
+| Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104, 127 |
-| Motion | `solid_node/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122, 125, 126, 127 |
-| Simulation | `solid_node/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128, 129 |
-| Mechanisms | `solid_node/mechanisms/` | `mechanisms` | 022, 076 |
-| Build pipeline | `solid_node/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
-| CLI | `cli.py`, `solid_node/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |
-| Test framework | `solid_node/test.py`, `manager/test.py` | `test-framework` | 009–011, 025, 029, 040, 048, 052, 070, 073 |
-| Viewer lookup & snapshot staging | `solid_node/viewers/bundle.py`, `viewers/browser.py`, `viewers/openscad.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: solid-node-viewer) |
+| Motion | `machinome/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122, 125, 126, 127 |
+| Simulation | `machinome/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128, 129 |
+| Mechanisms | `machinome/mechanisms/` | `mechanisms` | 022, 076 |
+| Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
+| CLI | `cli.py`, `machinome/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |
+| Test framework | `machinome/test.py`, `manager/test.py` | `test-framework` | 009–011, 025, 029, 040, 048, 052, 070, 073 |
+| Viewer lookup & snapshot staging | `machinome/viewers/bundle.py`, `viewers/browser.py`, `viewers/openscad.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: machinome-viewer) |
 | Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128, 129 |
-| Sphinx embedding | `solid_node/sphinx.py` | `sphinx-embedding` | 020 |
+| Sphinx embedding | `machinome/sphinx.py` | `sphinx-embedding` | 020 |

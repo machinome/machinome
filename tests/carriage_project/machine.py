@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -30,11 +30,11 @@ carriage joint driven through a ratio, a lift that disengages every
 association, and an interlock that refuses a shift unless lifted.
 """
 
-from solid_node.math import floor, sign
-from solid_node.motion.joints import Bound, Prismatic, Revolute
-from solid_node.motion.ports import RotationalPort, Time
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver
+from machinome.math import floor, sign
+from machinome.motion.joints import Bound, Prismatic, Revolute
+from machinome.motion.ports import RotationalPort, Time
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver
 
 from ..running_project.parts import Arbor, Block, Carriage as Slide
 

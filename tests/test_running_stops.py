@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -26,9 +26,9 @@ or stops.
 
 from pytest import approx
 
-from solid_node.motion.joints import JointRangeError
-from solid_node.motion.ports import get_coordinate
-from solid_node.simulation import (RunConflict, Sim, Stop,
+from machinome.motion.joints import JointRangeError
+from machinome.motion.ports import get_coordinate
+from machinome.simulation import (RunConflict, Sim, Stop,
                                    UnsupportedLaw)
 
 from .base import BaseNodeTest, graph_evaluations
@@ -71,8 +71,8 @@ def sources_of(sim, name):
 
 def span_names(sim, identifier, side):
     """The free names a compiled bound reads, sorted."""
-    from solid_node.expression_graph import free_names
-    from solid_node.scad_expression import as_node
+    from machinome.expression_graph import free_names
+    from machinome.scad_expression import as_node
 
     for entry in sim.program.spans:
         if entry[0] == identifier:

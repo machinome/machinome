@@ -1,4 +1,4 @@
-from solid_node.test import TestCase
+from machinome.test import TestCase
 
 
 class SolidIntegrityGreenTest(TestCase):

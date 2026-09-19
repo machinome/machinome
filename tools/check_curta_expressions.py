@@ -9,10 +9,10 @@ import hashlib
 import json
 from pathlib import Path
 
-from solid_node.core.loader import load_node, select_model
-from solid_node.core.serializer import serialize_node, symbolic_document
-from solid_node.expression_graph import ExpressionNode, postorder
-from solid_node.core.expressions import _canonical
+from machinome.core.loader import load_node, select_model
+from machinome.core.serializer import serialize_node, symbolic_document
+from machinome.expression_graph import ExpressionNode, postorder
+from machinome.core.expressions import _canonical
 
 
 def slots(node, path=''):

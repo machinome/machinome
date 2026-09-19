@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -26,11 +26,11 @@ import trimesh
 from trimesh.creation import box
 from trimesh.util import concatenate
 
-from solid_node.test import TestCase as AssertingTestCase
-from solid_node.node import AssemblyNode, FusionNode
-from solid_node.node.base import AbstractBaseNode, _topmost_rigid_nodes
-from solid_node.node.internal import InternalNode
-from solid_node.node.operations import Translation
+from machinome.test import TestCase as AssertingTestCase
+from machinome.node import AssemblyNode, FusionNode
+from machinome.node.base import AbstractBaseNode, _topmost_rigid_nodes
+from machinome.node.internal import InternalNode
+from machinome.node.operations import Translation
 
 
 asserter = AssertingTestCase()
@@ -229,7 +229,7 @@ class FusionHierarchyTest(TestCase):
 class RemovedConnectivityApiTest(TestCase):
 
     def test_declared_body_api_is_absent(self):
-        import solid_node.node.base as base
+        import machinome.node.base as base
 
         self.assertFalse(hasattr(base.AbstractBaseNode, 'bodies'))
         self.assertFalse(hasattr(base.AbstractBaseNode, 'verify_bodies'))

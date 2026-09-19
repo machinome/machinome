@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,7 +14,7 @@ only here, so a resolution against the wearing module would not find a
 file at all.
 """
 
-from solid_node.node.markings import Flat, Marking, Svg
+from machinome.node.markings import Flat, Marking, Svg
 
 #: The top face of the plate the badge is stuck to.
 BADGE_PLANE_Z = 2.0

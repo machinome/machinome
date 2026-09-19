@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -17,9 +17,9 @@ raise.
 
 import time
 
-from solid_node.math import floor
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, State
+from machinome.math import floor
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver, State
 
 
 def release(sources, targets):

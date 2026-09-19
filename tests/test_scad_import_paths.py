@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -17,7 +17,7 @@ measurement (`evidence.md`) showed broken the other way.
 import os
 import re
 
-from solid_node.node import StlRenderStart
+from machinome.node import StlRenderStart
 
 from .base import BaseNodeTest
 from .cross_package_project.parts import OwnImportLeaf

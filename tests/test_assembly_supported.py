@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -29,9 +29,9 @@ import numpy as np
 import trimesh
 from trimesh.creation import box
 
-import solid_node.test as test_module
-from solid_node.node.operations import Translation
-from solid_node.test import TestCase as AssertingTestCase
+import machinome.test as test_module
+from machinome.node.operations import Translation
+from machinome.test import TestCase as AssertingTestCase
 
 from .test_assembly_integrity import Assembly, RigidNode
 
@@ -231,12 +231,12 @@ class TrivialSelectionTest(SupportFixture):
     def test_single_rigid_root_passes_without_loading_geometry(self):
         leaf = RigidNode('LeafWithoutBuiltGeometry')
 
-        with patch('solid_node.test._cached_manifold',
+        with patch('machinome.test._cached_manifold',
                    side_effect=AssertionError('geometry must not load')):
             asserter.assertAssemblySupported(leaf)
 
     def test_empty_assembly_passes_without_loading_geometry(self):
-        with patch('solid_node.test._cached_manifold',
+        with patch('machinome.test._cached_manifold',
                    side_effect=AssertionError('geometry must not load')):
             asserter.assertAssemblySupported(Assembly('empty', ()))
 
@@ -383,7 +383,7 @@ class GroundSeedTest(SupportFixture):
         # The top is NOT a seed: its own extent along gravity is a whole
         # block away from the assembly's furthest extent. It passes only
         # through its drop edge onto the base.
-        with patch('solid_node.test._placed_intersection',
+        with patch('machinome.test._placed_intersection',
                    return_value=test_module.IntersectionStats(
                        True, 0.0, False)):
             with self.assertRaises(AssertionError) as caught:
@@ -525,9 +525,9 @@ class ExactRoutingTest(SupportFixture):
         base = self.exact_block('base', (-1, 1), (-1, 1))
         top = self.exact_block('top', (-1, 1), (1, 3))
 
-        with patch('solid_node.test.intersect_shapes',
+        with patch('machinome.test.intersect_shapes',
                    wraps=test_module.intersect_shapes) as kernel:
-            with patch('solid_node.test._interface_contacts',
+            with patch('machinome.test._interface_contacts',
                        wraps=test_module._interface_contacts) as extract:
                 asserter.assertAssemblySupported(Assembly('root', (base, top)))
 
@@ -544,7 +544,7 @@ class ExactRoutingTest(SupportFixture):
         base = self.exact_block('base', (-1, 1), (-1, 1))
         top = self.block('top', (-1, 1), (1, 3))
 
-        with patch('solid_node.test.intersect_shapes',
+        with patch('machinome.test.intersect_shapes',
                    wraps=test_module.intersect_shapes) as kernel:
             asserter.assertAssemblySupported(Assembly('root', (base, top)))
 
@@ -583,7 +583,7 @@ class BroadPhaseTest(SupportFixture):
         root = Assembly('root',
                         (near_base, near_top, far_base, far_top))
 
-        with patch('solid_node.test._placed_intersection',
+        with patch('machinome.test._placed_intersection',
                    wraps=test_module._placed_intersection) as boolean:
             asserter.assertAssemblySupported(root)
 
@@ -603,7 +603,7 @@ class BroadPhaseTest(SupportFixture):
         far = self.block('far', (1000, 1002), (50, 52))
         root = Assembly('root', (base, top, far))
 
-        with patch('solid_node.test._placed_intersection',
+        with patch('machinome.test._placed_intersection',
                    wraps=test_module._placed_intersection) as boolean:
             with self.assertRaises(AssertionError) as caught:
                 asserter.assertAssemblySupported(root)
@@ -704,7 +704,7 @@ class StaticEquilibriumTest(SupportFixture):
         fails instead of passing silently."""
         _, _, root = self.stack()
 
-        with patch('solid_node.test._interface_contacts', return_value=[]):
+        with patch('machinome.test._interface_contacts', return_value=[]):
             with self.assertRaises(AssertionError) as caught:
                 asserter.assertAssemblySupported(root)
 
@@ -816,7 +816,7 @@ class LiftSweepTest(SupportFixture):
         far = self.block('far', (1000, 1002), (0, 2))
         root = Assembly('root', (support, far_support, bar, far))
 
-        with patch('solid_node.test._interface_contacts',
+        with patch('machinome.test._interface_contacts',
                    wraps=test_module._interface_contacts) as extract:
             asserter.assertAssemblySupported(root)
 

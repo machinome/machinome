@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,7 +7,7 @@ so nothing here has ever needed to travel through the anchoring rule --
 the guard against fixing the cross-package case by breaking the ordinary
 one."""
 
-from solid_node.node import AssemblyNode
+from machinome.node import AssemblyNode
 
 from .parts import ExactLeaf, FlexLeaf, RigidLeaf
 

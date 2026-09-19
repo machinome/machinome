@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -25,9 +25,9 @@ inspected directly. Only the scenario that is explicitly about pose
 builds STLs, because only a mesh can answer it.
 """
 
-from solid_node.node import AssemblyNode
-from solid_node.node.qualified import DriverIdError
-from solid_node.simulation import Driver
+from machinome.node import AssemblyNode
+from machinome.node.qualified import DriverIdError
+from machinome.simulation import Driver
 
 from .base import BaseNodeTest
 from .meta_project.machine import Axis, ListMachine

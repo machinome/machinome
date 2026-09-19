@@ -3,11 +3,11 @@ import tempfile
 from contextlib import chdir
 from unittest import TestCase
 
-from solid_node.core.loader import (AmbiguousNodeError, ProjectManifestError,
+from machinome.core.loader import (AmbiguousNodeError, ProjectManifestError,
                                     discover_project, load_node, resolve_node)
 
 
-SOURCE = '''from solid_node.node import Solid2Node
+SOURCE = '''from machinome.node import Solid2Node
 class Sail(Solid2Node):
     def render(self): return None
 class Hull(Solid2Node):
@@ -26,7 +26,7 @@ class ProjectManifestReferenceTest(TestCase):
         with open(os.path.join(self.root, 'boat', 'model.py'), 'w') as stream:
             stream.write(SOURCE)
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as stream:
-            stream.write('[tool.solid-node]\nmodel = "boat.model:Sail"\n')
+            stream.write('[tool.machinome]\nmodel = "boat.model:Sail"\n')
 
     def test_nearest_manifest_and_reference_spellings(self):
         subdir = os.path.join(self.root, 'boat')
@@ -69,7 +69,7 @@ class ProjectManifestReferenceTest(TestCase):
             with self.assertRaises(ProjectManifestError):
                 resolve_node('boat.model:missing')
             with self.assertRaises(ProjectManifestError):
-                resolve_node('solid_node.node.leaf:Leaf')
+                resolve_node('machinome.node.leaf:Leaf')
 
     def test_missing_manifest_names_search_origin(self):
         with tempfile.TemporaryDirectory() as empty, chdir(empty):
@@ -87,11 +87,11 @@ class ProjectManifestReferenceTest(TestCase):
             os.mkdir(os.path.join(elsewhere, 'shed'))
             open(os.path.join(elsewhere, 'shed', '__init__.py'), 'w').close()
             with open(os.path.join(elsewhere, 'shed', 'sail.py'), 'w') as stream:
-                stream.write('from solid_node.node import Solid2Node\n'
+                stream.write('from machinome.node import Solid2Node\n'
                              'class Sail(Solid2Node):\n'
                              '    def render(self): return None\n')
             with open(os.path.join(elsewhere, 'pyproject.toml'), 'w') as stream:
-                stream.write('[tool.solid-node]\nmodel = "shed.sail:Sail"\n')
+                stream.write('[tool.machinome]\nmodel = "shed.sail:Sail"\n')
 
             # Standing in one project, naming a file in another.
             with chdir(self.root):

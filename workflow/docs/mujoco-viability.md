@@ -1,16 +1,16 @@
-# Is MuJoCo viable inside solid-node?
+# Is MuJoCo viable inside machinome?
 
-An assessment, 2026-09-06. Measured against solid-node main at
-`solid-node/`, MuJoCo 3.12.0, and real parts from six projects in
+An assessment, 2026-09-06. Measured against machinome main at
+`machinome/`, MuJoCo 3.12.0, and real parts from six projects in
 `projects/`. Nothing was changed in any repository; the spike ran in a
 throwaway venv in the session scratchpad.
 
 ## Verdict
 
-**Viable, but not as a physics backend for what solid-node currently
-promises, and not yet.** MuJoCo cannot answer any question solid-node's
+**Viable, but not as a physics backend for what machinome currently
+promises, and not yet.** MuJoCo cannot answer any question machinome's
 assertions ask, because its collision geometry is convex and a real CAD
-part is not — measured below. It can answer a question solid-node does
+part is not — measured below. It can answer a question machinome does
 not ask at all today: *what does this machine do when nobody poses it*.
 
 The one integration shape that survives the evidence is narrow and
@@ -26,7 +26,7 @@ them is about MuJoCo.
 
 ## What MuJoCo would add
 
-solid-node today simulates *kinematically*. A driver holds a number, the
+machinome today simulates *kinematically*. A driver holds a number, the
 author writes `simulate()` as arithmetic over that number, and geometry
 follows. `mechanisms/` is a library of forward-kinematic laws for exactly
 this: `piston_height`, `delta_carriage`, `meshed_angle`. The machine goes
@@ -74,7 +74,7 @@ penetrated**.
 
 This is ADR-049's rejection restated with numbers, and it still holds.
 Every hole, pocket, tooth flank and printed clearance disappears. No
-assertion solid-node makes today could be re-decided by MuJoCo, and any
+assertion machinome makes today could be re-decided by MuJoCo, and any
 assembly whose parts nest inside one another — which is most of them —
 explodes on the first step.
 
@@ -89,7 +89,7 @@ was built to answer.
 This is the deeper obstacle, and it has nothing to do with meshes.
 
 A MuJoCo model is a tree of *bodies connected by joints* with declared
-degrees of freedom. A solid-node model is a tree of nodes each carrying
+degrees of freedom. A machinome model is a tree of nodes each carrying
 an ordered chain of `Rotation` and `Translation` operations, composed into
 one world matrix per node (ADR-028). The chain is written by hand inside
 `simulate()` as arithmetic over drivers. A revolute joint is not declared
@@ -97,7 +97,7 @@ anywhere — it is an emergent property of the author having written
 `self.rotate(self.angle, [0, 0, 1])` after a particular translation.
 
 There is no way to read a DOF, its axis, its anchor, its limits or its
-parent body off a solid-node tree, so there is nothing to compile into an
+parent body off a machinome tree, so there is nothing to compile into an
 MJCF kinematic tree. `Port` comes closest — a typed connection point —
 but its docstring is explicit that it is kinematic-only and carries no
 flow variable by design.
@@ -125,7 +125,7 @@ framework need only supply density; but it must supply density.
 
 ### 4. The verdict changes character
 
-Every solid-node assertion is exact, reproducible bit-for-bit, and names
+Every machinome assertion is exact, reproducible bit-for-bit, and names
 the offending part in the model's own vocabulary. ADR-050 and the
 integer-tick design of `Sim` exist so two runs of one scenario compare
 with `==`.
@@ -147,7 +147,7 @@ watch in the viewer, a driver trace to inspect — sidesteps it entirely.
 The mechanical parts of an integration are cheap, which is worth saying
 plainly:
 
-- MuJoCo 3.12.0 is **Apache-2.0**, the same licence as solid-node. No
+- MuJoCo 3.12.0 is **Apache-2.0**, the same licence as machinome. No
   repeat of the AGPL viewer split.
 - The Linux wheel is 19.8 MB and installs against Python 3.12 with only
   numpy, glfw, PyOpenGL, absl-py and etils. It is an optional-extra-sized
@@ -210,4 +210,4 @@ Not now, and not as a framework dependency. In this order:
 
 The honest short answer for a pilot deciding today: MuJoCo is the right
 engine and the wrong moment. The blocker is not MuJoCo, it is that
-solid-node has no joints.
+machinome has no joints.

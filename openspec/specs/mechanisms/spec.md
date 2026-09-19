@@ -6,33 +6,33 @@ The mechanism laws the framework carries once so a project's own
 `kinematics.py` stops rewriting them: the external spur-gear mesh, the
 lead screw, the planar slider-crank, linear delta kinematics, and the
 circle geometry a linkage asks for. Records their frames, zeros and sign
-conventions, the two faces they inherit from `solid_node.math` and the
+conventions, the two faces they inherit from `machinome.math` and the
 declared face they refuse, and the identities each law is held to.
 Encodes ADR-076 (mechanism laws as compositions over expression math),
 over ADR-022 (cross-runtime degree-trig parity) and ADR-062 (typed
 parameters and the exponent algebra).
 
-Code: `solid_node/mechanisms/`.
+Code: `machinome/mechanisms/`.
 
 ## Requirements
 
 ### Requirement: Mechanism laws as compositions over expression math
 
-The system SHALL provide the package `solid_node.mechanisms`, whose every
-function is a composition of `solid_node.math` functions and ordinary
+The system SHALL provide the package `machinome.mechanisms`, whose every
+function is a composition of `machinome.math` functions and ordinary
 arithmetic, so that one formula computes on plain numbers and builds the
 viewer's deferred expression when any argument is symbolic animation time or
 a driver. No function in the package SHALL emit an OpenSCAD builtin that
-`solid_node.math` does not already emit, so the cross-runtime parity corpus
+`machinome.math` does not already emit, so the cross-runtime parity corpus
 of the `kinematics` capability covers the package without extension.
 
 The package SHALL re-export every public function under a flat name unique
-across its families, so `from solid_node.mechanisms import meshed_angle`
+across its families, so `from machinome.mechanisms import meshed_angle`
 works, and SHALL keep each family in its own module with the family's
 conventions stated once in that module.
 
 Every angle SHALL be in degrees, positive by the right-hand rule about the
-stated axis, matching `solid_node.math` and the node transform API. Every
+stated axis, matching `machinome.math` and the node transform API. Every
 function's docstring SHALL state its frame, its zero and its sign, and SHALL
 map that convention onto the originating project it was lifted from.
 
@@ -236,7 +236,7 @@ rotation axis in this framework cannot carry a driver symbol.
   horizontally.
 
 None SHALL guard against an unreachable configuration numerically: a sqrt
-or acos of an out-of-range value raises as `solid_node.math` raises, and
+or acos of an out-of-range value raises as `machinome.math` raises, and
 symbolically evaluates to NaN as OpenSCAD and the viewer do. That is the
 originating projects' behaviour and the honest one.
 

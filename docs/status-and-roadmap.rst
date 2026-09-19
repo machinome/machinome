@@ -26,11 +26,11 @@ became a fifth modelling backend. See :doc:`Driving a machine
 <driving>`, :doc:`Simulating and testing scenarios <scenarios>` and
 :doc:`Modeling parts <leaf-nodes>`.
 
-The browser viewer has since become its own package, `solid-node-viewer
-<https://github.com/LibreSolid/solid-node-viewer>`_, licensed AGPL-3.0-only
-and installed through ``pip install "solid-node[viewer]"``; the framework
+The browser viewer has since become its own package, `machinome-viewer
+<https://github.com/machinome/machinome-viewer>`_, licensed AGPL-3.0-only
+and installed through ``pip install "machinome[viewer]"``; the framework
 stays Apache-2.0 and its non-interactive operations remain complete without
-it, while interactive ``solid develop`` requires it. See :doc:`the viewer
+it, while interactive ``machinome develop`` requires it. See :doc:`the viewer
 <viewer>`.
 
 **Upgrading to 0.6 requires reinstalling the environment** (the shared
@@ -46,9 +46,9 @@ so assertions stop being mediated by tessellation; makes a project declare
 itself in ``pyproject.toml`` and lets any command address any node; proves a
 part is one connected solid and an assembly does not interfere with itself;
 and replaces the three copies of the web viewer with a single package that
-static exports, the Sphinx directive and ``solid develop`` all share.
+static exports, the Sphinx directive and ``machinome develop`` all share.
 
-Version 0.4 added ``solid export`` and the embedding pipeline — models
+Version 0.4 added ``machinome export`` and the embedding pipeline — models
 render in any static web page or Sphinx documentation, animations
 included (see :doc:`embedding`) — along with a more robust builder
 that recovers from broken edits.

@@ -1,8 +1,8 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""`solid import-step`: the generator and the command.
+"""`machinome import-step`: the generator and the command.
 
 Two projects wrote the walk this scaffold now generates by hand
 (`Internal-Cycloidal-Actuator`, `openvmp`) -- this module proves the
@@ -30,14 +30,14 @@ from unittest.mock import patch
 import cadquery as cq
 import numpy as np
 
-from solid_node.manager import import_step
-from solid_node.manager.import_step import (
+from machinome.manager import import_step
+from machinome.manager.import_step import (
     ImportStep, _attribute_name_base, _class_name_base, generate_assembly,
     generate_parts,
 )
-from solid_node.node.adapters import step as step_module
-from solid_node.node.adapters.step import StepAssembly
-from solid_node.node.base import _compose_world_matrix
+from machinome.node.adapters import step as step_module
+from machinome.node.adapters.step import StepAssembly
+from machinome.node.base import _compose_world_matrix
 
 from .step_project import parts as _parts_module
 
@@ -442,12 +442,12 @@ class GeneratedModelFaithfulnessTest(ColdCacheTestCase):
         os.makedirs(self._package_dir)
         open(os.path.join(self._package_dir, '__init__.py'), 'w').close()
         # A node's __init__ resolves its project root by walking up for
-        # a pyproject.toml carrying [tool.solid-node] -- constructing
+        # a pyproject.toml carrying [tool.machinome] -- constructing
         # the generated root class needs one to exist, even though this
         # test never builds or reads a manifest model reference.
         with open(os.path.join(self._root_dir.name, 'pyproject.toml'),
                  'w') as handle:
-            handle.write('[tool.solid-node]\n'
+            handle.write('[tool.machinome]\n'
                         f'model = "{self._package_name}.assembly:X"\n')
         sys.path.insert(0, self._root_dir.name)
         self.addCleanup(sys.path.remove, self._root_dir.name)
@@ -481,8 +481,8 @@ class GeneratedModelFaithfulnessTest(ColdCacheTestCase):
         products, matching by name alone would silently pair a leaf with
         WHICHEVER of them the name-only lookup found first, the exact
         defect this change repairs."""
-        from solid_node.node.adapters.step import StepNode
-        from solid_node.node.declarative import declared_child_nodes
+        from machinome.node.adapters.step import StepNode
+        from machinome.node.declarative import declared_child_nodes
 
         root_node.set_state()
 
@@ -641,7 +641,7 @@ class ImportStepScaffoldTest(ImportStepCommandTestCase):
 
     def test_prints_manifest_lines_and_never_touches_pyproject(self):
         with open('pyproject.toml', 'w') as handle:
-            handle.write('[tool.solid-node]\nmodel = "x"\n')
+            handle.write('[tool.machinome]\nmodel = "x"\n')
         with open('pyproject.toml') as handle:
             before = handle.read()
 
@@ -657,7 +657,7 @@ class ImportStepScaffoldTest(ImportStepCommandTestCase):
             after = handle.read()
 
         self.assertEqual(before, after)
-        self.assertIn('[tool.solid-node.models]', printed)
+        self.assertIn('[tool.machinome.models]', printed)
         self.assertIn('actuator', printed)
         self.assertIn('assembly:Actuator', printed)
 
@@ -717,9 +717,9 @@ class ImportStepScaffoldTest(ImportStepCommandTestCase):
 class ImportStepCliHelpTest(TestCase):
 
     def test_import_step_appears_in_cli_help(self):
-        from solid_node.cli import COMMANDS
+        from machinome.cli import COMMANDS
 
         self.assertIn('import-step', COMMANDS)
         module, class_name = COMMANDS['import-step']
-        self.assertEqual(module, 'solid_node.manager.import_step')
+        self.assertEqual(module, 'machinome.manager.import_step')
         self.assertEqual(class_name, 'ImportStep')

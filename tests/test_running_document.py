@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -31,22 +31,22 @@ import shutil
 import tempfile
 from unittest.mock import patch
 
-from solid_node.core.builder import Builder
-from solid_node.core.export import export_node
-from solid_node.core.expressions import parse
-from solid_node.core.serializer import (
+from machinome.core.builder import Builder
+from machinome.core.export import export_node
+from machinome.core.expressions import parse
+from machinome.core.serializer import (
     DOCUMENT_FORMAT, drivers_table, instructions_table, serialize_node,
     symbolic_document,
 )
-from solid_node.expression_graph import postorder
-from solid_node.motion.ports import Time, get_coordinate
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, Instruction, Sim, Slide
-from solid_node.simulation.enumeration import bind_declared_defaults
-from solid_node.simulation.program import (_BISECTION_ROUNDS,
+from machinome.expression_graph import postorder
+from machinome.motion.ports import Time, get_coordinate
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver, Instruction, Sim, Slide
+from machinome.simulation.enumeration import bind_declared_defaults
+from machinome.simulation.program import (_BISECTION_ROUNDS,
                                            _CROSSING_TOLERANCE,
                                            _MAX_CROSSINGS, _SUBDIVISIONS)
-from solid_node.simulation.run import _TOLERANCE
+from machinome.simulation.run import _TOLERANCE
 
 from .base import BaseNodeTest
 from .running_project.machine import (Captured, ClassGate, Clearing, Clocked,
@@ -75,7 +75,7 @@ def document(node):
     The sequence is `export_node`'s and `_write_viewer_snapshot`'s, called
     here directly so the schema can be read without building an artifact.
     """
-    from solid_node.core.serializer import (compiled_controls,
+    from machinome.core.serializer import (compiled_controls,
                                             compiled_program, document_body)
 
     program, initial = compiled_program(node)
@@ -171,7 +171,7 @@ class VersionTest(BaseNodeTest):
 
     def setUp(self):
         super().setUp()
-        self.temporary = tempfile.mkdtemp(prefix='solid-running-document-')
+        self.temporary = tempfile.mkdtemp(prefix='machinome-running-document-')
         self.addCleanup(shutil.rmtree, self.temporary, ignore_errors=True)
 
     def exported(self, node):
@@ -384,7 +384,7 @@ class PoseTest(BaseNodeTest):
 
 
 def _coordinates(node):
-    from solid_node.simulation.program import qualified_coordinates
+    from machinome.simulation.program import qualified_coordinates
 
     return qualified_coordinates(node)
 
@@ -872,8 +872,8 @@ class RefusalTest(BaseNodeTest):
         -- unlike `Train`'s `wheel.turn`, which the reduction now drops
         before this refusal ever sees it.
         """
-        from solid_node.core.serializer import compiled_program
-        from solid_node.simulation import program as program_module
+        from machinome.core.serializer import compiled_program
+        from machinome.simulation import program as program_module
 
         node = PortDrivenSmooth()
         bind_declared_defaults(node)
@@ -897,7 +897,7 @@ class RefusalTest(BaseNodeTest):
         unqualified rather than absent. Publication must go on refusing
         this one -- the reduction removes only what no kept edge
         touches."""
-        from solid_node.simulation import program as program_module
+        from machinome.simulation import program as program_module
 
         self.assertEqual(
             document(bound(OptionalRead(fitted=True)))['version'], 5)
@@ -968,7 +968,7 @@ class ControlsTableTest(BaseNodeTest):
 
     def setUp(self):
         super().setUp()
-        self.temporary = tempfile.mkdtemp(prefix='solid-controls-document-')
+        self.temporary = tempfile.mkdtemp(prefix='machinome-controls-document-')
         self.addCleanup(shutil.rmtree, self.temporary, ignore_errors=True)
         self.published = document(bound(Columns()))
 
@@ -1482,7 +1482,7 @@ class SelfReadDocumentTest(BaseNodeTest):
         self.assertEqual(json.dumps(published, indent=2) + '\n', expected)
 
     def test_the_viewer_warning_names_the_version_written(self):
-        from solid_node.viewers import bundle
+        from machinome.viewers import bundle
 
         with patch.object(bundle, 'describe',
                           return_value={'documentVersions': [1, 2, 3, 4, 5],
@@ -1490,7 +1490,7 @@ class SelfReadDocumentTest(BaseNodeTest):
             message = bundle.unreadable_document(6)
         self.assertIn('version 6', message)
         self.assertIn('1, 2, 3, 4, 5', message)
-        self.assertIn('solid-node-viewer 0.1.0', message)
+        self.assertIn('machinome-viewer 0.1.0', message)
 
 
 class BlockDocumentTest(BaseNodeTest):

@@ -84,7 +84,7 @@ law still poses the pinion within one cycle.
 
 ### Cycles
 
-Framework cycles are stacked in this worktree, `solid-node/WTs/open-run-simulation`,
+Framework cycles are stacked in this worktree, `machinome/WTs/open-run-simulation`,
 by pilot direction, one OpenSpec change each under `skills/framework-change/SKILL.md`:
 
 1. **The run owns the coordinates.** `Time.running()`, joint coordinates by
@@ -97,7 +97,7 @@ by pilot direction, one OpenSpec change each under `skills/framework-change/SKIL
 3. **Stops.** Ranges as physical stops, expression-valued ranges at the
    committed state, blocked reporting and replanning.
 4. **Export.** The compiled program in the document, versioned.
-5. **Viewer**, in `solid-node-viewer/WTs/open-run-simulation`: the worker
+5. **Viewer**, in `machinome-viewer/WTs/open-run-simulation`: the worker
    integrator, the non-wrapping clock, nudge, jog, instruction buttons, run,
    pause, step, speed, reset, and the conformance corpus.
 
@@ -820,7 +820,7 @@ first validation. The project handoff is the current mechanical status.
 This is a pre-spec documentation checkpoint. No production cycle is complete
 or newly ratified by it. Close Pascaline's bounded evidence gate, reconcile
 its draft with the separate framework/viewer proposals, and obtain complete
-ratification and the pilot's previously requested feature-start go-ahead before actual solid-node
+ratification and the pilot's previously requested feature-start go-ahead before actual machinome
 feature implementation. The new readiness evidence is project-owned; no
 framework/runtime implementation or running-browser measurement accompanies
 this planning update.
@@ -864,7 +864,7 @@ after full proposal ratification, begin implementation with a tiny Python
 mechanism proving the contract before tackling the actual Curta geometry.
 This records planning decisions, not a complete cycle ratification or
 authorization to begin production implementation. The pilot explicitly asks
-to be consulted once ready, before actual solid-node feature development.
+to be consulted once ready, before actual machinome feature development.
 
 ### Subsequent selector-readiness finding, 2026-09-13
 
@@ -879,7 +879,7 @@ The completed two-station frame fit remains unchanged. That evidence led to
 the bounded Curta-only selector-fit cycle ratified below; it does not authorize
 package feature implementation. Retain the
 full 0–9 acceptance requirement, the current framework contract direction and
-the pilot's explicit solid-node feature-start gate.
+the pilot's explicit machinome feature-start gate.
 
 The pilot then approved preparation of that bounded correction. Curta's
 `openspec/changes/fit-selected-input-selector/` now contains the complete
@@ -906,7 +906,7 @@ ordering by the current planning direction above. Its Curta-subassembly scope
 and evidence requirements inform the preserved Curta roadmap, now third.
 
 Pilot direction recorded 2026-09-12: take up this work immediately after the
-solid-node 0.7 release. It is a post-release priority, not additional scope or
+machinome 0.7 release. It is a post-release priority, not additional scope or
 a release gate for 0.7. This update records the next step; it does not start
 implementation or ratify the illustrative interfaces above.
 
@@ -921,7 +921,7 @@ standalone spike's schematic meshes and normalized selector.
 
 The assessment is that the execution architecture is viable for the tested
 mechanical-law class, but the complete Curta is not yet proven. The largest
-remaining gap is authoring and exporting those laws through solid-node and
+remaining gap is authoring and exporting those laws through machinome and
 validating the resulting moving parts. Closing that gap is more informative
 than expanding the standalone interpreter or starting a whole-machine
 conversion immediately.

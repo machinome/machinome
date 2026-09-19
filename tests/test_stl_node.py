@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -31,10 +31,10 @@ from unittest.mock import patch
 import numpy as np
 import trimesh
 
-from solid_node.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
+from machinome.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
                              FusionNode, JScadNode, OpenScadNode, Solid2Node,
                              StlNode)
-from solid_node.openscad import openscad_binary
+from machinome.openscad import openscad_binary
 
 from .stl_project import originals, parts, rack
 from .utils import edit_source
@@ -293,9 +293,9 @@ class StlArtifactTest(BuildDirTestCase):
         node.assemble()
 
         second = parts.Bracket()
-        with patch('solid_node.node.adapters.stl._load_source_mesh',
+        with patch('machinome.node.adapters.stl._load_source_mesh',
                    side_effect=AssertionError('must not re-read source')), \
-             patch('solid_node.node.adapters.stl._write_binary_stl',
+             patch('machinome.node.adapters.stl._write_binary_stl',
                    side_effect=AssertionError('must not rewrite artifact')):
             assembled = second.as_scad(second.render())
 
@@ -321,10 +321,10 @@ class StlArtifactTest(BuildDirTestCase):
         node = parts.Bracket()
         node.assemble()
 
-        with patch('solid_node.node.base.require_openscad',
+        with patch('machinome.node.base.require_openscad',
                    side_effect=AssertionError(
                        'an imported mesh must not check OpenSCAD')), \
-             patch('solid_node.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'an imported mesh must not launch OpenSCAD')):
             node.generate_stl()
 
@@ -334,8 +334,8 @@ class StlArtifactTest(BuildDirTestCase):
         openscad_binary.cache_clear()
         self.addCleanup(openscad_binary.cache_clear)
 
-        with patch('solid_node.openscad.shutil.which', return_value=None), \
-             patch('solid_node.node.base.Popen', side_effect=AssertionError(
+        with patch('machinome.openscad.shutil.which', return_value=None), \
+             patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'no external renderer may be launched')):
             node = rack.Rack()
             node.build_stls()

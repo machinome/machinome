@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -26,9 +26,9 @@ cost and its identity, which the untouched suites pin.
 import hashlib
 import math
 
-from solid_node.motion.couplings import CouplingError, DoublyBound
-from solid_node.simulation import Sim, UnsupportedLaw
-from solid_node.simulation.program import (MembershipInvariantError,
+from machinome.motion.couplings import CouplingError, DoublyBound
+from machinome.simulation import Sim, UnsupportedLaw
+from machinome.simulation.program import (MembershipInvariantError,
                                            _FOLDABLE,
                                            _agree_on_membership,
                                            _block_members, _reads_under,

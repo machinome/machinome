@@ -1,12 +1,12 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""`solid_node/core/expressions.py`: the expression language reader.
+"""`machinome/core/expressions.py`: the expression language reader.
 
 The grammar is exactly what the two producers emit (design.md D2): solid2's
 `OpenSCADConstant.__operator_base__` / `__unary_operator_base__` / `__abs__`,
-and `solid_node.math._symbolic_call`. Every case here is built by calling the
+and `machinome.math._symbolic_call`. Every case here is built by calling the
 real producer where possible, rather than typed by hand, so the corpus is
 honest about what the parser has to read.
 """
@@ -16,12 +16,12 @@ from unittest import TestCase
 from solid2.core.object_base import OpenSCADConstant
 from solid2 import get_animation_time
 
-from solid_node.core.expressions import (
+from machinome.core.expressions import (
     BindingTableError, ExpressionError, Interner, bind_expressions, parse,
     render,
 )
-from solid_node.node.qualified import DriverToken
-import solid_node.math as m
+from machinome.node.qualified import DriverToken
+import machinome.math as m
 
 
 def _text(value):
@@ -288,7 +288,7 @@ class UnknownNameDoesNotRefuseTheBuildTest(TestCase):
         is still a defect -- unreachable from a real model, reachable only
         by patching internals, exactly as the other wrong-table tests in
         `tests/test_expression_bindings.py` are."""
-        from solid_node.core import expressions as expr
+        from machinome.core import expressions as expr
 
         bindings = [{'name': '_b0', 'expression': '_b7'}]
         with self.assertRaises(BindingTableError):

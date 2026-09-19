@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,7 +8,7 @@ fail loudly -- naming this file, both candidate classes, and the
 remedy (name a class in the reference) -- instead of silently
 instantiating whichever one happens to be defined first."""
 
-from solid_node.node import AssemblyNode
+from machinome.node import AssemblyNode
 from .parts import Cube
 
 

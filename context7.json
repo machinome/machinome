@@ -1,6 +1,6 @@
 {
   "$schema": "https://context7.com/schema/context7.json",
-  "projectTitle": "solid-node",
+  "projectTitle": "machinome",
   "description": "A framework to develop and manage mechanical CAD projects in Python",
   "folders": [],
   "excludeFolders": [
@@ -8,12 +8,12 @@
     "docs/_static",
     "openspec",
     "tests",
-    "solid_node/viewers/web/app",
-    "solid_node/viewers/widget"
+    "machinome/viewers/web/app",
+    "machinome/viewers/widget"
   ],
   "excludeFiles": [],
   "rules": [
-    "A project declares its model in a [tool.solid-node] table of its pyproject.toml; root/__init__.py and the NODE marker were removed in 0.5.0",
+    "A project declares its model in a [tool.machinome] table of its pyproject.toml; root/__init__.py and the NODE marker were removed in 0.5.0",
     "Node-scoped commands take an optional reference: a Python file path, a path plus class, or a package.module:Class qualifier, and fall back to the manifest's model when omitted",
     "Place assertNoSolidInterference and assertNoDisconnectedSolids on the root assembly node only. Each one already descends the entire subtree below the node it is given, so repeating them on child nodes tests the same solids again and wastes resources. assertNoPairwiseIntersections is deprecated in favour of assertNoSolidInterference",
     "Prefer CadQuery nodes over other leaf types. They are the only exact node type, so their geometry is answered from the CAD kernel's boundary representation rather than an approximating triangle mesh, which allows more precise production processes. An internal node is exact only when every node in its subtree is exact",

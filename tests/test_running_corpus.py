@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,7 +9,7 @@ written by `tools/generate_running_corpus.py` from the framework's OWN
 run, so every expected value in it is a value the producer PRODUCED and
 never one recomputed a second way -- which is what makes a disagreement
 mean the consumer drifted. The framework replays it here; the browser
-worker replays the same file in `solid-node-viewer` (cycle 5).
+worker replays the same file in `machinome-viewer` (cycle 5).
 
 Agreement is EXACT for discrete state -- tick numbers, statuses, every
 coordinate, relation, primitive, bound side and input name, every list
@@ -22,7 +22,7 @@ import json
 import os
 from unittest import TestCase
 
-from solid_node.simulation import Sim
+from machinome.simulation import Sim
 
 from .base import BaseNodeTest
 
@@ -171,7 +171,7 @@ class CorpusDocumentTest(BaseNodeTest):
 
     def test_each_machines_real_document_reproduces_the_fixtures(self):
         from .test_running_document import document
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.simulation.enumeration import bind_declared_defaults
 
         for entry in corpus()['machines']:
             with self.subTest(machine=entry['name'], dt=entry['dt']):
@@ -401,7 +401,7 @@ class BlockOrderTest(TestCase):
         return found
 
     def test_a_consumer_that_executes_the_listing_order_disagrees(self):
-        from solid_node.simulation import program as program_module
+        from machinome.simulation import program as program_module
 
         fixture = corpus()
         entry = next(one for one in fixture['machines']

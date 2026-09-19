@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -22,10 +22,10 @@ import build123d as b3d
 import cadquery as cq
 import ezdxf
 
-from solid_node.exact import solid_count
-from solid_node.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
+from machinome.exact import solid_count
+from machinome.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
                              FusionNode, SheetLeafNode)
-from solid_node.openscad import openscad_binary
+from machinome.openscad import openscad_binary
 
 from .sheet_project import frame_panel
 
@@ -391,7 +391,7 @@ class SheetDxfArtifactTest(BuildDirTestCase):
         node.assemble()
 
         second = PerforatedPlate()
-        with patch('solid_node.node.adapters.build123d_sheet._export_dxf',
+        with patch('machinome.node.adapters.build123d_sheet._export_dxf',
                    side_effect=AssertionError('must not re-export')):
             assembled = second.as_scad(second.render())
 
@@ -464,10 +464,10 @@ class SheetAdapterContractTest(BuildDirTestCase):
         node = Plate()
         node.assemble()
 
-        with patch('solid_node.node.base.require_openscad',
+        with patch('machinome.node.base.require_openscad',
                    side_effect=AssertionError(
                        'an exact backend must not check OpenSCAD')), \
-             patch('solid_node.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'an exact backend must not launch OpenSCAD')):
             node.generate_stl()
 
@@ -477,8 +477,8 @@ class SheetAdapterContractTest(BuildDirTestCase):
         openscad_binary.cache_clear()
         self.addCleanup(openscad_binary.cache_clear)
 
-        with patch('solid_node.openscad.shutil.which', return_value=None), \
-             patch('solid_node.node.base.Popen', side_effect=AssertionError(
+        with patch('machinome.openscad.shutil.which', return_value=None), \
+             patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'the subprocess must not be attempted')):
             node = PerforatedPlate()
             node.assemble()
@@ -503,7 +503,7 @@ class SheetAdapterContractTest(BuildDirTestCase):
 class SheetImportCostTest(TestCase):
 
     def test_importing_the_node_package_does_not_import_build123d(self):
-        """The sheet adapter is exported from `solid_node.node` like every
+        """The sheet adapter is exported from `machinome.node` like every
         other adapter, and must not make importing that package pay
         build123d's import cost."""
         import subprocess
@@ -511,8 +511,8 @@ class SheetImportCostTest(TestCase):
 
         result = subprocess.run(
             [sys.executable, '-c',
-             'import sys; import solid_node.node;'
-             ' from solid_node.node import Build123dSheetNode;'
+             'import sys; import machinome.node;'
+             ' from machinome.node import Build123dSheetNode;'
              ' print("build123d" in sys.modules)'],
             capture_output=True, text=True, check=True)
 

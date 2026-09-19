@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -27,7 +27,7 @@ evaluation, never the count of evaluations or their answers.
 
 import math
 
-from solid_node.simulation import Sim
+from machinome.simulation import Sim
 
 from .base import BaseNodeTest, expression_evaluations, graph_node_visits
 from .clearing_project.machine import DetentReader
@@ -124,7 +124,7 @@ class FixedEvaluationCountTest(BaseNodeTest):
         evaluations are now bound path points. This is the guard task
         5.5 asks for: an implementation that forgot to teach the probe
         about `_PathValue` would pass silently otherwise."""
-        from solid_node.scad_expression import GraphValue
+        from machinome.scad_expression import GraphValue
 
         sim = Sim(Clearing(), dt=.1)
         sim.move('ring', by=600.0, duration=1.0)
@@ -152,14 +152,14 @@ class MovingSetGuardTest(BaseNodeTest):
     set (the driven coordinate dropped from a level's moving names) and
     green otherwise.
 
-    This is a WHITE-BOX test of `solid_node.simulation.program._PathValue`
+    This is a WHITE-BOX test of `machinome.simulation.program._PathValue`
     directly: it is the one guard for the single mistake the mechanism
     admits (design.md section 11), and the mistake is a property of the
     CLASS, not of any one fixture's dynamics.
     """
 
     def _graph_and_moving(self):
-        from solid_node.expression_graph import ExpressionNode as N
+        from machinome.expression_graph import ExpressionNode as N
 
         # `sin(own) + sibling` -- `own` moves, `sibling` never does.
         own = N('name', text='own')
@@ -169,7 +169,7 @@ class MovingSetGuardTest(BaseNodeTest):
         return graph, {'own'}
 
     def test_correct_moving_set_matches_the_whole_walk(self):
-        import solid_node.simulation.program as program_module
+        import machinome.simulation.program as program_module
 
         graph, moving = self._graph_and_moving()
         path = program_module._PathValue(graph, moving)
@@ -190,7 +190,7 @@ class MovingSetGuardTest(BaseNodeTest):
         value -- so a later point's answer diverges from the whole-graph
         one, exactly the silent wrong answer design.md section 11
         warns of."""
-        import solid_node.simulation.program as program_module
+        import machinome.simulation.program as program_module
 
         graph, _correct_moving = self._graph_and_moving()
         wrong_moving = set()  # `own` dropped -- the single mistake.
@@ -214,9 +214,9 @@ class BranchDoesNotLeakAcrossPiecesTest(BaseNodeTest):
     """
 
     def test_rebinding_reads_the_new_piece_not_the_old_one(self):
-        import solid_node.simulation.program as program_module
+        import machinome.simulation.program as program_module
 
-        from solid_node.expression_graph import ExpressionNode as N
+        from machinome.expression_graph import ExpressionNode as N
 
         # `moving_name + placeholder` -- the placeholder stands for a
         # branch read fresh each piece, exactly as a jump's substituted

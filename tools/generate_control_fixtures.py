@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -72,8 +72,8 @@ def main(argv=None):
         help='directory to write one subdirectory per fixture into')
     arguments = parser.parse_args(argv)
 
-    from solid_node.core.export import export_node
-    from solid_node.simulation.enumeration import bind_declared_defaults
+    from machinome.core.export import export_node
+    from machinome.simulation.enumeration import bind_declared_defaults
     from tests.running_project import machine
 
     os.makedirs(arguments.output, exist_ok=True)

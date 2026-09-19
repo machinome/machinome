@@ -1,10 +1,10 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 """Test-only isolation seams for process-local exact geometry caches."""
 
-from solid_node import exact
+from machinome import exact
 
 
 def clear_exact_shape_caches():

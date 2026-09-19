@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,9 +14,9 @@ part's own declared value is a failure a test can see.
 
 import cadquery as cq
 
-from solid_node.motion.joints import Revolute
-from solid_node.node import CadQueryNode
-from solid_node.node.markings import Marking, Svg, Wrapped
+from machinome.motion.joints import Revolute
+from machinome.node import CadQueryNode
+from machinome.node.markings import Marking, Svg, Wrapped
 
 #: The Curta's own results-dial radius, and the height of the drum the
 #: artwork is wrapped on.

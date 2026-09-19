@@ -1,10 +1,10 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 """Regression tests for improvements.md #7: a file saved in a
 transiently broken state (module-level NameError, SyntaxError, ...)
-while `solid develop` is watching used to leave the builder subprocess
+while `machinome develop` is watching used to leave the builder subprocess
 hung forever -- no observer had been started yet to notice a later fix
 -- instead of being surfaced like any other build failure.
 
@@ -25,14 +25,14 @@ from unittest import TestCase
 
 from trimesh.creation import box
 
-from solid_node.core.builder import Builder, get_errors_file
+from machinome.core.builder import Builder, get_errors_file
 from .test_build_lock import lock_is_held
 
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FLAT_PROJECT = os.path.join(REPO_DIR, 'tests', 'flat_project')
 
 GOOD_SIMPLE_PIPE = '''\
-from solid_node.node import Solid2Node
+from machinome.node import Solid2Node
 from solid2 import cylinder
 
 
@@ -43,7 +43,7 @@ class SimplePipe(Solid2Node):
 '''
 
 NAME_ERROR_SIMPLE_PIPE = '''\
-from solid_node.node import Solid2Node
+from machinome.node import Solid2Node
 from solid2 import cylinder
 
 this_name_is_never_defined_anywhere
@@ -55,7 +55,7 @@ class SimplePipe(Solid2Node):
 '''
 
 SYNTAX_ERROR_SIMPLE_PIPE = '''\
-from solid_node.node import Solid2Node
+from machinome.node import Solid2Node
 from solid2 import cylinder
 
 
@@ -67,7 +67,7 @@ class SimplePipe(Solid2Node):
 
 VANISHING_JSCAD_PIPE = '''\
 import os
-from solid_node.node import JScadNode
+from machinome.node import JScadNode
 
 
 class SimplePipe(JScadNode):
@@ -83,7 +83,7 @@ class SimplePipe(JScadNode):
 # deleted from inside its own __init__ -- the construction-time refusal
 # (name-the-missing-file), not mtime_ns's currency check.
 ABSENT_JSCAD_PIPE = '''\
-from solid_node.node import JScadNode
+from machinome.node import JScadNode
 
 
 class SimplePipe(JScadNode):
@@ -92,7 +92,7 @@ class SimplePipe(JScadNode):
 
 VANISHING_SIBLING_JSCAD_MODEL = '''\
 import os
-from solid_node.node import JScadNode
+from machinome.node import JScadNode
 
 
 class SiblingAsset(JScadNode):
@@ -111,7 +111,7 @@ def _run_builder(project_root, build_dir, is_reload,
     root and run one Builder attempt, mirroring how Develop.handle()
     invokes Builder(self.path, is_reload=...).start() in production.
 
-    solid_node.core.loader appends os.getcwd() to sys.path, but only
+    machinome.core.loader appends os.getcwd() to sys.path, but only
     the first time it is imported -- which already happened in the
     parent (pytest) process with the *real* cwd. This is a forked
     child (multiprocessing default on Linux), so that already-appended
@@ -130,7 +130,7 @@ class BuilderReloadResilienceTest(TestCase):
     develop process down with them."""
 
     def setUp(self):
-        self.tmp_root = tempfile.mkdtemp(prefix='solid_node_builder_test_')
+        self.tmp_root = tempfile.mkdtemp(prefix='machinome_builder_test_')
         self.addCleanup(shutil.rmtree, self.tmp_root, ignore_errors=True)
 
         self.project_root = self.tmp_root
@@ -142,7 +142,7 @@ class BuilderReloadResilienceTest(TestCase):
         # and its model through the manifest, not through the working
         # directory.
         with open(os.path.join(self.project_root, 'pyproject.toml'), 'w') as stream:
-            stream.write('[tool.solid-node]\n'
+            stream.write('[tool.machinome]\n'
                          'model = "flat_project.simple_pipe:SimplePipe"\n')
 
 
@@ -396,7 +396,7 @@ class BuilderReloadResilienceTest(TestCase):
 class ImportedStlWatchTest(TestCase):
 
     def setUp(self):
-        self.root = tempfile.mkdtemp(prefix='solid_node_stl_watch_test_')
+        self.root = tempfile.mkdtemp(prefix='machinome_stl_watch_test_')
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         package = os.path.join(self.root, 'parts')
         os.makedirs(package)
@@ -404,13 +404,13 @@ class ImportedStlWatchTest(TestCase):
             stream.write('')
         with open(os.path.join(package, 'bracket.py'), 'w') as stream:
             stream.write(
-                'from solid_node.node import StlNode\n'
+                'from machinome.node import StlNode\n'
                 'class Bracket(StlNode):\n'
                 '    stl_source = "bracket.stl"\n')
         self.source = os.path.join(package, 'bracket.stl')
         box().export(self.source, file_type='stl')
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as stream:
-            stream.write('[tool.solid-node]\n'
+            stream.write('[tool.machinome]\n'
                          'model = "parts.bracket:Bracket"\n')
         self.build_dir = os.path.join(self.root, '_build')
         self.proc = None

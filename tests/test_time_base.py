@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -10,7 +10,7 @@ on ``self.time`` reads machine seconds on every path: the symbolic
 and the stepped simulation, seconds through the testing decorators.
 Descendants read the root's time base; a declaration below the root is
 refused when read. Producers publish the loop beside ``fps`` and
-``frames``; ``solid snapshot --time`` converts its fraction to seconds.
+``frames``; ``machinome snapshot --time`` converts its fraction to seconds.
 
 Originating project: 3DPrintedClocks ``wall_clock_01``, whose twelve
 hour turn played in twelve seconds.
@@ -24,12 +24,12 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
-from solid_node.core.builder import Builder
-from solid_node.core.export import export_node
-from solid_node.core.serializer import animation_block
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.motion.ports import Time, declared_time
-from solid_node.test import testing_steps as steps_of
+from machinome.core.builder import Builder
+from machinome.core.export import export_node
+from machinome.core.serializer import animation_block
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.motion.ports import Time, declared_time
+from machinome.test import testing_steps as steps_of
 from solid2 import cube
 
 from .base import BaseNodeTest
@@ -151,12 +151,12 @@ class DeclarationTest(TestCase):
             clock.time = 3.0
 
     def test_time_is_exported_from_the_motion_package_not_the_node_one(self):
-        from solid_node.motion import ports
+        from machinome.motion import ports
         self.assertIs(ports.Time, Time)
         moved_name = 'Time'
         with self.assertRaises(ImportError) as raised:
-            exec(f'from solid_node.node import {moved_name}\n', {})
-        self.assertIn('solid_node.motion.ports', str(raised.exception))
+            exec(f'from machinome.node import {moved_name}\n', {})
+        self.assertIn('machinome.motion.ports', str(raised.exception))
 
 
 class SymbolicTimeTest(BaseNodeTest):
@@ -291,13 +291,13 @@ class PublishedLoopTest(BaseNodeTest):
 class SnapshotTimeTest(TestCase):
 
     def prepare(self, node, time):
-        from solid_node.manager.snapshot import Snapshot
+        from machinome.manager.snapshot import Snapshot
         snapshot = Snapshot.__new__(Snapshot)
         snapshot.path = 'model.py'
         snapshot.time = time
-        with (patch('solid_node.manager.snapshot.load_node',
+        with (patch('machinome.manager.snapshot.load_node',
                     return_value=node),
-              patch('solid_node.manager.snapshot.project_build_lock'),
+              patch('machinome.manager.snapshot.project_build_lock'),
               patch.object(node, 'set_keyframe') as keyframe,
               patch.object(node, 'assemble')):
             snapshot._load_and_prepare_node()
@@ -436,15 +436,15 @@ class RunningBasePublicationTest(BaseNodeTest):
         4 refuses it by name and points at `--drive`, which poses the
         rest pose at given driver values (OpenSpec change
         ``publish-the-mechanical-program``, design section 8.2)."""
-        from solid_node.manager.snapshot import (Snapshot,
+        from machinome.manager.snapshot import (Snapshot,
                                                  SnapshotOptionError)
         snapshot = Snapshot.__new__(Snapshot)
         snapshot.path = 'model.py'
         snapshot.time = 0.5
         node = Running()
-        with (patch('solid_node.manager.snapshot.load_node',
+        with (patch('machinome.manager.snapshot.load_node',
                     return_value=node),
-              patch('solid_node.manager.snapshot.project_build_lock'),
+              patch('machinome.manager.snapshot.project_build_lock'),
               patch.object(node, 'set_keyframe') as keyframe,
               patch.object(node, 'assemble')):
             with self.assertRaises(SnapshotOptionError) as raised:
@@ -453,14 +453,14 @@ class RunningBasePublicationTest(BaseNodeTest):
         keyframe.assert_not_called()
 
     def test_a_running_root_is_keyframed_at_zero(self):
-        from solid_node.manager.snapshot import Snapshot
+        from machinome.manager.snapshot import Snapshot
         snapshot = Snapshot.__new__(Snapshot)
         snapshot.path = 'model.py'
         snapshot.time = 0.0
         node = Running()
-        with (patch('solid_node.manager.snapshot.load_node',
+        with (patch('machinome.manager.snapshot.load_node',
                     return_value=node),
-              patch('solid_node.manager.snapshot.project_build_lock'),
+              patch('machinome.manager.snapshot.project_build_lock'),
               patch.object(node, 'set_keyframe') as keyframe,
               patch.object(node, 'assemble')):
             snapshot._load_and_prepare_node()
@@ -585,14 +585,14 @@ class ElapsedBasePublicationTest(BaseNodeTest):
                          animation_block(Undeclared()))
 
     def test_an_elapsed_root_is_keyframed_at_the_fraction(self):
-        from solid_node.manager.snapshot import Snapshot
+        from machinome.manager.snapshot import Snapshot
         snapshot = Snapshot.__new__(Snapshot)
         snapshot.path = 'model.py'
         snapshot.time = 0.25
         node = Elapsed()
-        with (patch('solid_node.manager.snapshot.load_node',
+        with (patch('machinome.manager.snapshot.load_node',
                     return_value=node),
-              patch('solid_node.manager.snapshot.project_build_lock'),
+              patch('machinome.manager.snapshot.project_build_lock'),
               patch.object(node, 'set_keyframe') as keyframe,
               patch.object(node, 'assemble')):
             snapshot._load_and_prepare_node()

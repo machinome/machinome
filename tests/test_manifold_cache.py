@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,7 +13,7 @@ trimesh.
 
 FakeNode reuses the real AbstractBaseNode.mesh getter (same pattern as
 tests/test_node_mesh_cache.py and tests/test_broad_phase_culling.py),
-but the fast-path tests below monkeypatch solid_node.test's internals
+but the fast-path tests below monkeypatch machinome.test's internals
 directly rather than relying on real geometry, so the CRITICAL
 volume_epsilon-vs-emptiness semantics can be pinned deterministically
 rather than depending on real boolean noise.
@@ -28,11 +28,11 @@ import numpy as np
 import trimesh
 from trimesh.creation import box
 
-import solid_node.test as test_module
-from solid_node.mesh_engine import mesh_engine
-from solid_node.node.base import AbstractBaseNode
-from solid_node.node.operations import Translation
-from solid_node.test import TestCase as AssertingTestCase
+import machinome.test as test_module
+from machinome.mesh_engine import mesh_engine
+from machinome.node.base import AbstractBaseNode
+from machinome.node.operations import Translation
+from machinome.test import TestCase as AssertingTestCase
 
 
 asserter = AssertingTestCase()
@@ -103,7 +103,7 @@ class ManifoldCacheBuiltOnceTest(ManifoldCacheTestCase):
         # constructions is the resolver. The contract under test is
         # unchanged: ONE build per artifact observation, however many
         # assertions touch it.
-        with patch('solid_node.test.require_mesh_engine',
+        with patch('machinome.test.require_mesh_engine',
                    return_value=(counting, original_mesh)):
             asserter.assertNotIntersecting(origin, far)
             asserter.assertIntersecting(origin, near)
@@ -215,7 +215,7 @@ class VolumeEpsilonEmptinessSemanticsTest(ManifoldCacheTestCase):
         # operations) so the broad-phase never culls -- the stub
         # manifold's ^ / is_empty / volume are what get exercised.
         bounds = np.array([[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]])
-        return patch('solid_node.test._cached_manifold',
+        return patch('machinome.test._cached_manifold',
                      return_value=(manifold, bounds, None))
 
     def test_truly_empty_manifold_is_empty(self):
@@ -387,7 +387,7 @@ class ExactAssemblyBuildsNoManifoldTest(ManifoldCacheTestCase):
         first = self._exact('First', (2.0, 2.0, 2.0))
         second = self._exact('Second', (2.0, 2.0, 2.0), [10.0, 0, 0])
 
-        with patch('solid_node.test._cached_manifold',
+        with patch('machinome.test._cached_manifold',
                    side_effect=AssertionError(
                        'the mesh engine must not be reached for an assembly '
                        'whose every candidate pair is exact')):
@@ -399,7 +399,7 @@ class ExactAssemblyBuildsNoManifoldTest(ManifoldCacheTestCase):
         first = self._exact('First', (2.0, 2.0, 2.0))
         second = self._exact('Second', (2.0, 2.0, 2.0), [1.0, 0, 0])
 
-        with patch('solid_node.test._cached_manifold',
+        with patch('machinome.test._cached_manifold',
                    side_effect=AssertionError(
                        'an exact candidate pair must be decided by the '
                        'kernel, not the mesh engine')):
@@ -420,7 +420,7 @@ class ExactAssemblyBuildsNoManifoldTest(ManifoldCacheTestCase):
         exact_far = self._exact('ExactFar', (2.0, 2.0, 2.0), [1000.0, 0, 0])
 
         original = test_module._cached_manifold
-        with patch('solid_node.test._cached_manifold',
+        with patch('machinome.test._cached_manifold',
                    wraps=original) as cached:
             with self.assertRaises(AssertionError):
                 asserter.assertNoSolidInterference(Root(

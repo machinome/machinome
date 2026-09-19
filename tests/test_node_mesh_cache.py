@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -29,8 +29,8 @@ import numpy as np
 import trimesh
 from trimesh.creation import box
 
-from solid_node.node.base import AbstractBaseNode
-from solid_node.node.operations import Rotation, Translation
+from machinome.node.base import AbstractBaseNode
+from machinome.node.operations import Rotation, Translation
 
 
 def _old_style_mesh(node):
@@ -133,7 +133,7 @@ class BaseMeshCacheTest(MeshCacheTestCase):
             calls.append(path)
             return original_load(path, *args, **kwargs)
 
-        with patch('solid_node.node.base.trimesh.load',
+        with patch('machinome.node.base.trimesh.load',
                    side_effect=counting_load):
             node.mesh
             node.mesh
@@ -152,7 +152,7 @@ class BaseMeshCacheTest(MeshCacheTestCase):
             calls.append(path)
             return original_load(path, *args, **kwargs)
 
-        with patch('solid_node.node.base.trimesh.load',
+        with patch('machinome.node.base.trimesh.load',
                    side_effect=counting_load):
             node_a.mesh
             node_b.mesh
@@ -225,7 +225,7 @@ class ComposedMatrixMatchesOldPathTest(MeshCacheTestCase):
 
 class ReflectsLiveOperationsListTest(MeshCacheTestCase):
     """Every .mesh access must reflect the CURRENT operations list --
-    the perturbation assertions in solid_node/test.py insert an
+    the perturbation assertions in machinome/test.py insert an
     operation into node.operations and remove it in a finally, so a
     world matrix cached across accesses would silently ignore the
     perturbation (or leak it after removal)."""

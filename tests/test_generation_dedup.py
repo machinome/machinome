@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,12 +11,12 @@ from unittest import TestCase, mock
 
 from solid2 import cube, scad_render
 
-from solid_node import currency
-from solid_node.node import Solid2Node
-from solid_node.node.assembly import AssemblyNode
-from solid_node.node.base import AbstractBaseNode, _atomic_write_text
-from solid_node.node.flexible import FlexibleNode
-from solid_node.source_generation import (
+from machinome import currency
+from machinome.node import Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.base import AbstractBaseNode, _atomic_write_text
+from machinome.node.flexible import FlexibleNode
+from machinome.source_generation import (
     SourceCensus, SourceChanged, SourceGeneration,
 )
 
@@ -127,7 +127,7 @@ class GenerationScadDedupTest(TestCase):
         self.assertEqual(first.scad_file, second.scad_file)
         RepeatedBlock.renders = 0
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         real_scad_render = base.scad_render
         with SourceGeneration(self.root) as generation, generation.phase(
                 first.files | second.files, label='assembly'), mock.patch.object(
@@ -147,7 +147,7 @@ class GenerationScadDedupTest(TestCase):
         files = set().union(*(node.files for node in nodes))
         RepeatedBlock.renders = 0
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         real_scad_render = base.scad_render
         with SourceGeneration(self.root) as generation, generation.phase(
                 files, label='assembly'), mock.patch.object(
@@ -169,7 +169,7 @@ class GenerationScadDedupTest(TestCase):
             source_digest='digest-two', source_fingerprint='fingerprint-two',
             rigid=True)
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         with SourceGeneration(self.root), mock.patch.object(
                 base, '_atomic_write_text') as write:
             AbstractBaseNode.generate_scad(first)
@@ -191,7 +191,7 @@ class GenerationScadDedupTest(TestCase):
             )
         ]
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         with SourceGeneration(self.root), mock.patch.object(
                 base, '_atomic_write_text') as write:
             for node in nodes:
@@ -210,7 +210,7 @@ class GenerationScadDedupTest(TestCase):
                          digest='digest-a', fingerprint='fingerprint-a'),
         ]
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         with SourceGeneration(self.root), mock.patch.object(
                 base, '_atomic_write_text') as write:
             for node in nodes:
@@ -231,7 +231,7 @@ class GenerationScadDedupTest(TestCase):
         self.assertFalse(nodes[0].rigid)
         self.assertFalse(nodes[0].flexible)
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         with SourceGeneration(self.root) as generation, mock.patch.object(
                 base, '_atomic_write_text') as write:
             with generation.phase((), label='assembly'):
@@ -249,7 +249,7 @@ class GenerationScadDedupTest(TestCase):
         self.assertEqual(first.scad_file, second.scad_file)
         files = first.files | first.part.files | second.files | second.part.files
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         with SourceGeneration(self.root) as generation, mock.patch.object(
                 base, '_atomic_write_text', wraps=_atomic_write_text) as write:
             with generation.phase(files, label='assembly'):
@@ -273,7 +273,7 @@ class GenerationScadDedupTest(TestCase):
         first_final = self.desired(
             first_path, 'cube(3);', digest='first-final')
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         with SourceGeneration(self.root) as generation, mock.patch.object(
                 base, '_atomic_write_text') as write:
             with generation.phase((), label='assembly'):
@@ -326,7 +326,7 @@ class GenerationScadDedupTest(TestCase):
             self.desired(os.path.join(self.root, 'direct.scad'), 'cube(2);'),
         ]
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         with SourceGeneration(self.root) as generation, mock.patch.object(
                 base, '_atomic_write_text') as write:
             with generation.phase((), label='artifact_pass'):
@@ -342,7 +342,7 @@ class GenerationScadDedupTest(TestCase):
             for code in ('import("one.stl");', 'import("two.stl");')
         ]
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         with SourceGeneration(self.root) as generation, mock.patch.object(
                 base, '_atomic_write_text') as write:
             with generation.phase((), label='assembly'):
@@ -354,7 +354,7 @@ class GenerationScadDedupTest(TestCase):
         node = self.desired(
             os.path.join(self.root, 'assembly.scad'), 'cube(1);')
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         with SourceGeneration(self.root) as generation, mock.patch.object(
                 base, '_atomic_write_text') as write, mock.patch.object(
                     base.logger, 'info') as logged:
@@ -373,7 +373,7 @@ class GenerationScadDedupTest(TestCase):
         node = self.desired(
             os.path.join(self.root, 'assembly.scad'), 'cube(1);')
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         with SourceGeneration(self.root) as generation, mock.patch.object(
                 base, '_atomic_write_text') as write:
             with self.assertRaisesRegex(SourceChanged, 'pre-flush'):
@@ -390,7 +390,7 @@ class GenerationScadDedupTest(TestCase):
             self.desired(os.path.join(self.root, 'three.scad'), 'cube(3);'),
         ]
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         phase = None
         with SourceGeneration(self.root) as generation, mock.patch.object(
                 base, '_atomic_write_text',
@@ -446,7 +446,7 @@ class GenerationScadDedupTest(TestCase):
         node = self.desired(
             os.path.join(self.root, 'assembly.scad'), 'cube(1);')
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         real_publish = base._publish_scad
 
         def publish_then_change(*args):
@@ -490,7 +490,7 @@ class GenerationScadDedupTest(TestCase):
             node._test_scad_code = f'import("{binding}");'
             nodes.append(node)
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         with SourceGeneration(self.root), mock.patch.object(
                 base, '_atomic_write_text') as write:
             for node in nodes:
@@ -505,7 +505,7 @@ class GenerationScadDedupTest(TestCase):
             source_digest='digest', source_fingerprint='fingerprint',
             rigid=True)
 
-        import solid_node.node.base as base
+        import machinome.node.base as base
         with mock.patch.object(base, '_atomic_write_text') as write:
             with SourceGeneration(self.root):
                 AbstractBaseNode.generate_scad(node)
@@ -525,7 +525,7 @@ class GenerationScadDedupTest(TestCase):
         census = SourceCensus(self.root)
         census.include(paths)
 
-        import solid_node.source_generation as source_generation
+        import machinome.source_generation as source_generation
         original = source_generation._coherent_real_source_digest
         with mock.patch.object(
                 source_generation, '_coherent_real_source_digest',
@@ -547,7 +547,7 @@ class GenerationScadDedupTest(TestCase):
         census = SourceCensus(self.root)
         census.include(paths)
 
-        import solid_node.source_generation as source_generation
+        import machinome.source_generation as source_generation
         original = source_generation._coherent_real_source_digest
         with mock.patch.object(
                 source_generation, '_coherent_real_source_digest',

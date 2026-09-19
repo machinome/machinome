@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -31,9 +31,9 @@ from unittest.mock import patch
 import cadquery as cq
 import trimesh
 
-from solid_node.node import CadQueryNode, FusionNode
-from solid_node.exact import deflections, write_stl
-import solid_node.test as test_module
+from machinome.node import CadQueryNode, FusionNode
+from machinome.exact import deflections, write_stl
+import machinome.test as test_module
 
 from tests.exact_test_support import clear_exact_shape_caches
 from tests.test_content_verified_currency import (
@@ -300,7 +300,7 @@ class DeflectionValidationTest(TestCase):
 PARTS = '''\
 import cadquery as cq
 
-from solid_node.node import CadQueryNode
+from machinome.node import CadQueryNode
 
 from . import trace
 from .dimensions import SIZE
@@ -323,7 +323,7 @@ class Undeclared(CadQueryNode):
 '''
 
 MACHINE = '''\
-from solid_node.node import AssemblyNode
+from machinome.node import AssemblyNode
 
 from .parts import Declared, Undeclared
 
@@ -451,7 +451,7 @@ class FacetedDefaultLeaf(CadQueryNode):
 
 
 class FacetedPrecisionTest(TestCase):
-    """Task 3.1: under `solid test --faceted`, a comparison reads a
+    """Task 3.1: under `machinome test --faceted`, a comparison reads a
     node's mesh from its stl_file (AbstractBaseNode.base_mesh /
     .mesh), never from shape() -- so the comparison necessarily judges
     on whatever precision the node declared. It is enough to show the

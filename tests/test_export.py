@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,11 +14,11 @@ from unittest import TestCase
 from unittest.mock import patch
 from pathlib import Path
 
-from solid_node.cli import manage
-from solid_node.core.builder import Builder
-from solid_node.core.export import export_node, WidgetBundleMissing
-from solid_node.node import AssemblyNode
-from solid_node.node.base import AbstractBaseNode
+from machinome.cli import manage
+from machinome.core.builder import Builder
+from machinome.core.export import export_node, WidgetBundleMissing
+from machinome.node import AssemblyNode
+from machinome.node.base import AbstractBaseNode
 
 from .base import BaseNodeTest
 from . import flat_project
@@ -63,7 +63,7 @@ class Cube(AbstractBaseNode):
 class ExportPathContainmentTest(TestCase):
 
     project_source = (
-        'from solid_node.node import Solid2Node\n'
+        'from machinome.node import Solid2Node\n'
         'from solid2 import cube\n'
         'class Part(Solid2Node):\n'
         '    def render(self):\n'
@@ -72,7 +72,7 @@ class ExportPathContainmentTest(TestCase):
 
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(
-            prefix='solid-export-path-')
+            prefix='machinome-export-path-')
         self.addCleanup(self.temporary.cleanup)
         self.base = Path(self.temporary.name)
         self.project = self.base / 'project'
@@ -82,7 +82,7 @@ class ExportPathContainmentTest(TestCase):
 
     def _write_manifest(self, body):
         (self.project / 'pyproject.toml').write_text(
-            f'[tool.solid-node]\n{body}')
+            f'[tool.machinome]\n{body}')
 
     def _export(self, reference, output, extra_env=None):
         environment = dict(os.environ)
@@ -93,7 +93,7 @@ class ExportPathContainmentTest(TestCase):
         return subprocess.run(
             [
                 sys.executable, '-c',
-                'from solid_node.cli import manage; manage()',
+                'from machinome.cli import manage; manage()',
                 'export', reference, '--no-widget', '-o', str(output),
             ],
             cwd=self.project / 'design' / 'nested',
@@ -138,7 +138,7 @@ class ExportPathContainmentTest(TestCase):
     def test_selected_named_model_stays_inside_output(self):
         self._write_manifest(
             'model = "machine"\n\n'
-            '[tool.solid-node.models]\n'
+            '[tool.machinome.models]\n'
             'machine = "design.part:Part"\n'
         )
         output = self.base / 'named-export'
@@ -149,7 +149,7 @@ class ExportPathContainmentTest(TestCase):
         self.assertPortableModel(output)
 
     def test_external_artifact_is_rejected_before_output_changes(self):
-        from solid_node.core.export import ExportModelPathError
+        from machinome.core.export import ExportModelPathError
 
         build_dir = self.base / 'build'
         external_dir = self.base / 'external'
@@ -171,8 +171,8 @@ class ExportPathContainmentTest(TestCase):
         self.assertEqual(marker.read_text(), 'keep')
 
     def test_cli_reports_external_artifact_error(self):
-        from solid_node.core.export import ExportModelPathError
-        from solid_node.manager.export import Export
+        from machinome.core.export import ExportModelPathError
+        from machinome.manager.export import Export
 
         selection = SimpleNamespace(reference='design.part:Part')
         selection.anchor = lambda: None
@@ -183,11 +183,11 @@ class ExportPathContainmentTest(TestCase):
         error = ExportModelPathError('/outside/part.stl', '/project/_build')
         stderr = io.StringIO()
 
-        with patch('solid_node.manager.export.select_model',
+        with patch('machinome.manager.export.select_model',
                    return_value=selection):
-            with patch('solid_node.manager.export.load_node',
+            with patch('machinome.manager.export.load_node',
                        return_value=object()):
-                with patch('solid_node.manager.export.export_node',
+                with patch('machinome.manager.export.export_node',
                            side_effect=error):
                     with patch.object(sys, 'stderr', stderr):
                         with self.assertRaises(SystemExit) as raised:
@@ -324,8 +324,8 @@ class ExportBuildSnapshotParityTest(TestCase):
     def test_common_document_fields_and_distinct_model_roots(self):
         export, build, export_dir, build_dir = self._documents()
 
-        self.assertEqual(export['format'], 'solid-node-export')
-        self.assertEqual(build['format'], 'solid-node-export')
+        self.assertEqual(export['format'], 'machinome-export')
+        self.assertEqual(build['format'], 'machinome-export')
         self.assertEqual(export['version'], build['version'])
         self.assertEqual(export['animation'], build['animation'])
         # The driver and instruction tables are part of the shared
@@ -440,7 +440,7 @@ class ExportRigidLeafTest(ExportBaseTest):
     def test_manifest_has_format_and_animation_defaults(self):
         manifest = self.export(flat_project.SimpleCylinder())
 
-        self.assertEqual(manifest['format'], 'solid-node-export')
+        self.assertEqual(manifest['format'], 'machinome-export')
         # Schema v2 (instance-qualified drivers): a tree declaring no
         # driver publishes an empty table, which every existing consumer
         # renders exactly as it rendered version 1.
@@ -574,18 +574,18 @@ class ExportAnimationTest(ExportBaseTest):
 
 class ExportWidgetTest(ExportBaseTest):
     """The export embeds the standalone viewer: the prebuilt JS bundle
-    (viewers/widget/dist/solid-widget.js, produced by npm/CI) and the
+    (viewers/widget/dist/machinome-viewer.js, produced by npm/CI) and the
     static index.html next to the manifest."""
 
-    BUNDLE_CONTENT = '/* fake solid-widget bundle */'
+    BUNDLE_CONTENT = '/* fake machinome-viewer bundle */'
 
     def setUp(self):
         super().setUp()
         os.makedirs(self.build_dir, exist_ok=True)
-        self.fake_bundle = os.path.join(self.build_dir, 'solid-widget.js')
+        self.fake_bundle = os.path.join(self.build_dir, 'machinome-viewer.js')
         with open(self.fake_bundle, 'w') as fh:
             fh.write(self.BUNDLE_CONTENT)
-        bundle = patch('solid_node.core.export.viewer_bundle.bundle_path',
+        bundle = patch('machinome.core.export.viewer_bundle.bundle_path',
                        return_value=Path(self.fake_bundle))
         bundle.start()
         self.addCleanup(bundle.stop)
@@ -593,14 +593,14 @@ class ExportWidgetTest(ExportBaseTest):
     def test_widget_files_are_copied(self):
         self.export(flat_project.SimpleCylinder(), widget=True)
 
-        bundle = os.path.join(self.out_dir, 'solid-widget.js')
+        bundle = os.path.join(self.out_dir, 'machinome-viewer.js')
         with open(bundle) as fh:
             self.assertEqual(fh.read(), self.BUNDLE_CONTENT)
 
         index = os.path.join(self.out_dir, 'index.html')
         with open(index) as fh:
             html = fh.read()
-        self.assertIn('solid-widget.js', html)
+        self.assertIn('machinome-viewer.js', html)
         self.assertIn('manifest.json', html)
 
     def test_no_widget_skips_viewer_files(self):
@@ -609,25 +609,25 @@ class ExportWidgetTest(ExportBaseTest):
         self.assertFalse(
             os.path.exists(os.path.join(self.out_dir, 'index.html')))
         self.assertFalse(
-            os.path.exists(os.path.join(self.out_dir, 'solid-widget.js')))
+            os.path.exists(os.path.join(self.out_dir, 'machinome-viewer.js')))
 
     def test_missing_viewer_raises_with_install_instructions(self):
-        with patch('solid_node.core.export.viewer_bundle.has_bundle',
+        with patch('machinome.core.export.viewer_bundle.has_bundle',
                    return_value=False), \
-             patch('solid_node.core.export.viewer_bundle.missing_bundle_remedy',
-                   return_value='pip install "solid-node[viewer]"'), \
+             patch('machinome.core.export.viewer_bundle.missing_bundle_remedy',
+                   return_value='pip install "machinome[viewer]"'), \
              self.assertRaises(WidgetBundleMissing) as ctx:
             self.export(flat_project.SimpleCylinder(), widget=True)
 
-        self.assertIn('solid-node[viewer]', str(ctx.exception))
+        self.assertIn('machinome[viewer]', str(ctx.exception))
 
 
 class ExportCliTest(TestCase):
-    """`solid export <path>` is registered and dispatches with defaults."""
+    """`machinome export <path>` is registered and dispatches with defaults."""
 
     def test_export_dispatches_with_path_and_defaults(self):
-        with patch.object(sys, 'argv', ['solid', 'export', 'somefile.py']):
-            with patch('solid_node.manager.export.Export.handle') as handle:
+        with patch.object(sys, 'argv', ['machinome', 'export', 'somefile.py']):
+            with patch('machinome.manager.export.Export.handle') as handle:
                 manage()
 
         self.assertTrue(handle.called)
@@ -640,8 +640,8 @@ class ExportCliTest(TestCase):
 
     def test_no_widget_flag(self):
         with patch.object(sys, 'argv',
-                          ['solid', 'export', 'somefile.py', '--no-widget']):
-            with patch('solid_node.manager.export.Export.handle') as handle:
+                          ['machinome', 'export', 'somefile.py', '--no-widget']):
+            with patch('machinome.manager.export.Export.handle') as handle:
                 manage()
 
         args = handle.call_args[0][0]
@@ -656,10 +656,10 @@ class RunningPublicationWarningTest(BaseNodeTest):
 
     def setUp(self):
         super().setUp()
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.simulation.enumeration import bind_declared_defaults
         from tests.running_project.machine import Train, TrainBody
 
-        self.temporary = tempfile.TemporaryDirectory(prefix='solid-running-')
+        self.temporary = tempfile.TemporaryDirectory(prefix='machinome-running-')
         self.addCleanup(self.temporary.cleanup)
         self.running = Train()
         bind_declared_defaults(self.running)
@@ -667,7 +667,7 @@ class RunningPublicationWarningTest(BaseNodeTest):
         bind_declared_defaults(self.untimed)
 
     def export(self, node, message):
-        from solid_node.core import export as export_module
+        from machinome.core import export as export_module
 
         output = os.path.join(self.temporary.name, node.name)
         with patch.object(export_module.viewer_bundle, 'unreadable_document',
@@ -683,7 +683,7 @@ class RunningPublicationWarningTest(BaseNodeTest):
         manifest, records, asked = self.export(
             self.running,
             'document version 5; the installed viewer renders 1, 2, 3, 4 '
-            '(solid-node-viewer 0.1.0)')
+            '(machinome-viewer 0.1.0)')
         warnings = [line for line in records if 'document version 5' in line]
         self.assertEqual(len(warnings), 1, records)
         self.assertIn('1, 2, 3, 4', warnings[0])
@@ -692,7 +692,7 @@ class RunningPublicationWarningTest(BaseNodeTest):
         asked.assert_called_once_with(5)
 
     def test_a_viewer_that_can_read_it_is_not_warned_about(self):
-        from solid_node.core import export as export_module
+        from machinome.core import export as export_module
 
         output = os.path.join(self.temporary.name, 'quiet')
         with patch.object(export_module.viewer_bundle, 'unreadable_document',

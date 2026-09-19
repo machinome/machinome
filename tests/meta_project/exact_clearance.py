@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -10,7 +10,7 @@ and the faceted kernel reaches the exact kernel's verdict at epsilon 0.
 
 import cadquery as cq
 
-from solid_node.node import AssemblyNode, CadQueryNode
+from machinome.node import AssemblyNode, CadQueryNode
 
 
 class ClearedShaft(CadQueryNode):

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -63,15 +63,15 @@ FIXTURE = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
 
 sys.path.insert(0, ROOT)
 
-from solid_node.core.expressions import parse  # noqa: E402
-from solid_node.core.serializer import (  # noqa: E402
+from machinome.core.expressions import parse  # noqa: E402
+from machinome.core.serializer import (  # noqa: E402
     compiled_clocked, document_body, drivers_table, instructions_table,
     serialize_node, symbolic_document,
 )
-from solid_node.expression_graph import postorder  # noqa: E402
-from solid_node.scad_expression import GraphValue  # noqa: E402
-from solid_node.simulation import Sim  # noqa: E402
-from solid_node.simulation.enumeration import (  # noqa: E402
+from machinome.expression_graph import postorder  # noqa: E402
+from machinome.scad_expression import GraphValue  # noqa: E402
+from machinome.simulation import Sim  # noqa: E402
+from machinome.simulation.enumeration import (  # noqa: E402
     bind_declared_defaults,
 )
 
@@ -861,7 +861,7 @@ def _through_a_port(entry):
     the requirement, and the reason this asks the fixture's own class
     rather than the published bytes.
     """
-    from solid_node.motion.ports import declared_ports
+    from machinome.motion.ports import declared_ports
 
     klass = machine_class(entry['name'])
     return bool(declared_ports(klass))

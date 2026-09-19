@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -28,9 +28,9 @@ import tracemalloc
 
 from pytest import approx
 
-from solid_node.motion.ports import get_coordinate
-from solid_node.scad_expression import symbol
-from solid_node.simulation import Sim, TooManyCrossings, UnsupportedLaw
+from machinome.motion.ports import get_coordinate
+from machinome.scad_expression import symbol
+from machinome.simulation import Sim, TooManyCrossings, UnsupportedLaw
 
 from .base import BaseNodeTest
 from .running_project.machine import (Alternating, AlternatingBody,
@@ -812,13 +812,13 @@ class ShapeOfTest(BaseNodeTest):
     """
 
     def shape(self, build):
-        from solid_node.scad_expression import as_node
-        from solid_node.simulation.program import _shape_of
+        from machinome.scad_expression import as_node
+        from machinome.simulation.program import _shape_of
 
         return _shape_of(as_node(build(symbol('x'), symbol('y'))))
 
-    def test_the_compositions_of_solid_node_math(self):
-        import solid_node.math as m
+    def test_the_compositions_of_machinome_math(self):
+        import machinome.math as m
 
         table = {
             'clamp': (lambda x, y: m.clamp(x, 0.0, 1.0), 'kinked'),
@@ -837,8 +837,8 @@ class ShapeOfTest(BaseNodeTest):
                 self.assertEqual(self.shape(build), expected)
 
     def test_every_symbolic_builtin(self):
-        import solid_node.math as m
-        from solid_node.math import SYMBOLIC_BUILTINS
+        import machinome.math as m
+        from machinome.math import SYMBOLIC_BUILTINS
 
         kinks = ('abs', 'min', 'max')
         jumps = ('floor', 'ceil', 'sign')
@@ -862,9 +862,9 @@ class ShapeOfTest(BaseNodeTest):
                               else SYMBOLIC_BUILTINS)
 
     def test_the_arithmetic_rules(self):
-        import solid_node.math as m
-        from solid_node.expression_graph import ExpressionNode
-        from solid_node.simulation.program import _shape_of
+        import machinome.math as m
+        from machinome.expression_graph import ExpressionNode
+        from machinome.simulation.program import _shape_of
 
         table = {
             'a number': (lambda x, y: 2.0, 'constant'),

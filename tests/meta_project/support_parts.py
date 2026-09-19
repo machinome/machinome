@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,7 +13,7 @@ puts its centre of mass.
 
 from solid2 import cube
 
-from solid_node.node import Solid2Node
+from machinome.node import Solid2Node
 
 
 class Block(Solid2Node):

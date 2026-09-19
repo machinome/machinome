@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -18,14 +18,14 @@ implementation.
 
 import json
 
-from solid_node.simulation import Sim
+from machinome.simulation import Sim
 
 from .base import BaseNodeTest
 
 
 def text(graph):
     """One published expression graph as the document's own text."""
-    from solid_node.scad_expression import GraphValue, as_node
+    from machinome.scad_expression import GraphValue, as_node
 
     return str(GraphValue(as_node(graph)))
 
@@ -33,7 +33,7 @@ def text(graph):
 def compiled(node_class):
     """The compiled clocked machine of one fixture, through the
     simulation that compiles it."""
-    from solid_node.simulation.enumeration import bind_declared_defaults
+    from machinome.simulation.enumeration import bind_declared_defaults
 
     node = node_class()
     bind_declared_defaults(node)
@@ -103,7 +103,7 @@ class PublishedObjectTest(BaseNodeTest):
         """(2.8) A clocked path never searches, never bisects and never
         compares two increments, so the other three running limits would
         state a contract this discipline has not got."""
-        from solid_node.simulation.program import (_CROSSING_TOLERANCE,
+        from machinome.simulation.program import (_CROSSING_TOLERANCE,
                                                    _MAX_CROSSINGS)
 
         from .clocked_project.counter import Counter
@@ -326,8 +326,8 @@ def evaluated(expression, values):
     """`expression` -- one published law, as TEXT -- evaluated under the
     DOCUMENT's own expression semantics, whose `%` is the truncated
     remainder both runtimes already agree on."""
-    from solid_node.core.expressions import parse
-    from solid_node.scad_expression import GraphValue
+    from machinome.core.expressions import parse
+    from machinome.scad_expression import GraphValue
 
     return GraphValue(parse(expression)).evaluate(values)
 
@@ -344,7 +344,7 @@ class PublishedRemainderTest(BaseNodeTest):
 
     def test_a_law_over_a_negative_operand_publishes_what_is_banked(self):
         from .clocked_project.register import Register
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.simulation.enumeration import bind_declared_defaults
 
         node = Register()
         bind_declared_defaults(node)
@@ -374,9 +374,9 @@ class PublishedRemainderTest(BaseNodeTest):
         import random
         import struct
 
-        from solid_node.core.expressions import parse
-        from solid_node.scad_expression import GraphValue, symbol
-        from solid_node.simulation.clocked import _floored_remainder
+        from machinome.core.expressions import parse
+        from machinome.scad_expression import GraphValue, symbol
+        from machinome.simulation.clocked import _floored_remainder
 
         graph = _floored_remainder(symbol('a') % symbol('b'))
         rendered = parse(str(GraphValue(graph)))
@@ -424,8 +424,8 @@ class PublishedRemainderTest(BaseNodeTest):
         `%` is `fmod`, so a published graph already says what the clip
         computed; desugaring one would make the document disagree with
         the framework."""
-        from solid_node.simulation.clocked import _floored_remainder
-        from solid_node.scad_expression import GraphValue, symbol
+        from machinome.simulation.clocked import _floored_remainder
+        from machinome.scad_expression import GraphValue, symbol
         from .clocked_project.units import JumpsOnly
 
         published = _written(compiled(JumpsOnly).published({}))
@@ -440,10 +440,10 @@ class PublishedRemainderTest(BaseNodeTest):
     def test_an_event_level_cannot_carry_a_remainder_at_all(self):
         """`%` IS a jump, and an `at` admits exactly one jump node which
         must be a floor, ceil, sign or comparison."""
-        from solid_node.math import floor
-        from solid_node.node import AssemblyNode
-        from solid_node.simulation import Driver, State
-        from solid_node.simulation.clocked import ClockedError
+        from machinome.math import floor
+        from machinome.node import AssemblyNode
+        from machinome.simulation import Driver, State
+        from machinome.simulation.clocked import ClockedError
 
         from .clocked_project.parts import Dial
 
@@ -495,7 +495,7 @@ class PublishedRemainderTest(BaseNodeTest):
         """(2.4c) `State.committed` is Python's `round`: the nearest
         whole native unit, an exact half to the EVEN one, and `scale`
         applied nowhere."""
-        from solid_node.simulation.state import State
+        from machinome.simulation.state import State
 
         rounded = State(default=0, dtype=int)
         for value, expected in ((0.5, 0), (1.5, 2), (2.5, 2), (3.5, 4),
@@ -513,7 +513,7 @@ class OwnNameTest(BaseNodeTest):
         """(3.1) The document's grammar admits exactly ONE `$`-name,
         `$t`, so a bound published with `$own` would not tokenize. This
         test exists to pin WHY the minted name is there."""
-        from solid_node.core.expressions import (ExpressionError, _NAME_RE,
+        from machinome.core.expressions import (ExpressionError, _NAME_RE,
                                                   parse)
 
         self.assertIsNone(_NAME_RE.fullmatch('$own'))
@@ -531,11 +531,11 @@ class OwnNameTest(BaseNodeTest):
 
     def test_a_driver_named_own_lengthens_the_minted_name(self):
         """(3.2) A tree declaring a driver literally named `_own`."""
-        from solid_node.math import floor
-        from solid_node.motion.joints import Revolute
-        from solid_node.node import AssemblyNode
-        from solid_node.simulation import Driver, State
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.math import floor
+        from machinome.motion.joints import Revolute
+        from machinome.node import AssemblyNode
+        from machinome.simulation import Driver, State
+        from machinome.simulation.enumeration import bind_declared_defaults
 
         from .clocked_project.parts import Dial
         from .clocked_project.pawl import PITCH
@@ -571,7 +571,7 @@ class CompiledForPublicationTest(BaseNodeTest):
     exactly as it was found."""
 
     def snapshots(self, node):
-        from solid_node.simulation.program import _snapshots
+        from machinome.simulation.program import _snapshots
 
         return [(type(target).__name__, dict(states))
                 for target, states in _snapshots(node)]
@@ -581,8 +581,8 @@ class CompiledForPublicationTest(BaseNodeTest):
                 for operation in node.units_dial.operations]
 
     def test_the_compile_returns_the_machine_and_its_rest_bank(self):
-        from solid_node.simulation.clocked import Clocked, clocked_of
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.simulation.clocked import Clocked, clocked_of
+        from machinome.simulation.enumeration import bind_declared_defaults
 
         from .clocked_project.counter import Counter
 
@@ -593,8 +593,8 @@ class CompiledForPublicationTest(BaseNodeTest):
         self.assertEqual(initial, {'crank': 0, 'units': 0, 'tens': 0})
 
     def test_publication_leaves_a_posed_tree_as_it_found_it(self):
-        from solid_node.simulation.clocked import clocked_of
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.simulation.clocked import clocked_of
+        from machinome.simulation.enumeration import bind_declared_defaults
 
         from .clocked_project.counter import Counter
 
@@ -612,8 +612,8 @@ class CompiledForPublicationTest(BaseNodeTest):
         self.assertEqual(self.operations(node), before_operations)
 
     def test_a_stateless_root_compiles_nothing(self):
-        from solid_node.core.serializer import compiled_clocked
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.core.serializer import compiled_clocked
+        from machinome.simulation.enumeration import bind_declared_defaults
 
         from .clocked_project.counter import Stateless
 
@@ -629,7 +629,7 @@ def document(node):
     The builder's own sequence, called here directly so the schema can
     be read without building an artifact.
     """
-    from solid_node.core.serializer import (clocked_block, compiled_clocked,
+    from machinome.core.serializer import (clocked_block, compiled_clocked,
                                             compiled_controls,
                                             compiled_program, document_body,
                                             drivers_table, instructions_table,
@@ -654,7 +654,7 @@ def document(node):
 
 
 def published(node_class):
-    from solid_node.simulation.enumeration import bind_declared_defaults
+    from machinome.simulation.enumeration import bind_declared_defaults
 
     node = node_class()
     bind_declared_defaults(node)
@@ -666,7 +666,7 @@ class VersionLadderTest(BaseNodeTest):
     it DOMINATES every other rung."""
 
     def version(self, **named):
-        from solid_node.core.serializer import document_version
+        from machinome.core.serializer import document_version
 
         return document_version(**named)
 
@@ -747,8 +747,8 @@ class StatesTableTest(BaseNodeTest):
             self.assertEqual(named & set(body['states']), set())
 
     def test_every_free_name_of_every_pose_expression_resolves(self):
-        from solid_node.core.expressions import parse
-        from solid_node.expression_graph import postorder
+        from machinome.core.expressions import parse
+        from machinome.expression_graph import postorder
 
         from .clocked_project.calculator import Calculator
 
@@ -829,9 +829,9 @@ class ReaimedGateTest(BaseNodeTest):
     """(4.7) The gate is not deleted; it is re-aimed at the PRODUCER."""
 
     def test_a_clocked_tree_without_its_machine_is_refused(self):
-        from solid_node.core.serializer import (ClockedDocumentError,
+        from machinome.core.serializer import (ClockedDocumentError,
                                                 document_body)
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.simulation.enumeration import bind_declared_defaults
 
         from .clocked_project.counter import Counter
 
@@ -891,7 +891,7 @@ class ClockAndAnimationVariableTest(BaseNodeTest):
     def test_an_elapsed_clocked_root_with_no_driver_publishes(self):
         """(5.5) `tree_declares_drivers` answers True for a state-only
         tree, so `symbolic_document`'s early return does not skip one."""
-        from solid_node.simulation.enumeration import tree_declares_drivers
+        from machinome.simulation.enumeration import tree_declares_drivers
 
         from .clocked_project.pendulum import ClockAlone
 
@@ -907,8 +907,8 @@ class ClockAndAnimationVariableTest(BaseNodeTest):
         """(5.5) `drive_tree` binds a declared STATE through the same
         `resolve` callback, in the same pass, while the table it returns
         holds drivers only."""
-        from solid_node.core.serializer import symbolic_document
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.core.serializer import symbolic_document
+        from machinome.simulation.enumeration import bind_declared_defaults
 
         from .clocked_project.register import Register
 
@@ -925,10 +925,10 @@ class ClockAndAnimationVariableTest(BaseNodeTest):
         """(5.6) A control issues a movement request and only a running
         simulation takes one, so a clocked root carrying one is refused
         in the publication walk and again at `Sim` construction."""
-        from solid_node.core.serializer import symbolic_document
-        from solid_node.node import AssemblyNode
-        from solid_node.simulation import Driver, State, Turn
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.core.serializer import symbolic_document
+        from machinome.node import AssemblyNode
+        from machinome.simulation import Driver, State, Turn
+        from machinome.simulation.enumeration import bind_declared_defaults
 
         from .clocked_project.counter import advance, strokes
         from .clocked_project.parts import Dial
@@ -980,8 +980,8 @@ def _instructed(declare=True):
     differ in `clocked` for a reason that has nothing to do with
     instructions.
     """
-    from solid_node.node import AssemblyNode
-    from solid_node.simulation import Driver, Instruction, State
+    from machinome.node import AssemblyNode
+    from machinome.simulation import Driver, Instruction, State
 
     from .clocked_project.counter import DIGIT, advance, strokes
     from .clocked_project.parts import Dial
@@ -1049,8 +1049,8 @@ class InstructionsUnderAClockedRootTest(BaseNodeTest):
 
     def test_a_stateless_untimed_document_still_omits_the_relative_ones(self):
         """(6.3) Nothing about a document below version 5 moves."""
-        from solid_node.core.serializer import instructions_table
-        from solid_node.simulation import Instruction
+        from machinome.core.serializer import instructions_table
+        from machinome.simulation import Instruction
 
         declared = {
             'Park': ((), Instruction({'crank': 360.0}, duration=0.5)),
@@ -1067,9 +1067,9 @@ class InstructionsUnderAClockedRootTest(BaseNodeTest):
         compile refuses it at simulation construction, every producer
         compiles before it publishes, and the re-aimed gate refuses a
         clocked tree published without a machine."""
-        from solid_node.node import AssemblyNode
-        from solid_node.simulation import Driver, Instruction, State
-        from solid_node.simulation.clocked import ClockedError
+        from machinome.node import AssemblyNode
+        from machinome.simulation import Driver, Instruction, State
+        from machinome.simulation.clocked import ClockedError
 
         from .clocked_project.counter import advance, strokes
         from .clocked_project.parts import Dial
@@ -1132,7 +1132,7 @@ class InstructionsUnderAClockedRootTest(BaseNodeTest):
         input, and the machine's COMPILE refuses the others where it
         refuses a State -- so no producer can write a document carrying
         one."""
-        from solid_node.simulation.clocked import ClockedError
+        from machinome.simulation.clocked import ClockedError
 
         from .clocked_project import unsupported
 
@@ -1154,7 +1154,7 @@ class CalculatorFixtureTest(BaseNodeTest):
     """
 
     def machine(self):
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.simulation.enumeration import bind_declared_defaults
 
         from .clocked_project.calculator import Calculator
 
@@ -1302,31 +1302,31 @@ class DeferredClockedImportTest(BaseNodeTest):
     def test_importing_the_serializer_imports_no_clocked_module(self):
         from .import_probe import probe
 
-        result = probe('import solid_node.core.serializer\n')
+        result = probe('import machinome.core.serializer\n')
         self.assertEqual(result.status, 0, result.stderr)
-        self.assertNotIn('solid_node.simulation.clocked', result.modules)
-        self.assertNotIn('solid_node.simulation.program', result.modules)
+        self.assertNotIn('machinome.simulation.clocked', result.modules)
+        self.assertNotIn('machinome.simulation.program', result.modules)
 
     def test_publishing_a_stateless_model_imports_no_clocked_module(self):
         from .import_probe import probe
 
         result = probe(
-            'from solid_node.core.serializer import compiled_clocked\n'
-            'from solid_node.simulation.enumeration import '
+            'from machinome.core.serializer import compiled_clocked\n'
+            'from machinome.simulation.enumeration import '
             'bind_declared_defaults\n'
             'from tests.clocked_project.counter import Stateless\n'
             'node = Stateless()\n'
             'bind_declared_defaults(node)\n'
             'assert compiled_clocked(node) == (None, None)\n')
         self.assertEqual(result.status, 0, result.stderr)
-        self.assertNotIn('solid_node.simulation.clocked', result.modules)
+        self.assertNotIn('machinome.simulation.clocked', result.modules)
 
     def test_publishing_a_clocked_model_does_import_it(self):
         from .import_probe import probe
 
         result = probe(
-            'from solid_node.core.serializer import compiled_clocked\n'
-            'from solid_node.simulation.enumeration import '
+            'from machinome.core.serializer import compiled_clocked\n'
+            'from machinome.simulation.enumeration import '
             'bind_declared_defaults\n'
             'from tests.clocked_project.counter import Counter\n'
             'node = Counter()\n'
@@ -1334,4 +1334,4 @@ class DeferredClockedImportTest(BaseNodeTest):
             'machine, bank = compiled_clocked(node)\n'
             'assert machine is not None\n')
         self.assertEqual(result.status, 0, result.stderr)
-        self.assertIn('solid_node.simulation.clocked', result.modules)
+        self.assertIn('machinome.simulation.clocked', result.modules)

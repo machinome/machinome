@@ -23,7 +23,7 @@ as backend aggregation or `$t`-only animation) as the product's thesis.
 
 #### Scenario: The "why" page matches the release
 
-- **WHEN** a reader opens the "why solid-node" page
+- **WHEN** a reader opens the "why machinome" page
 - **THEN** every capability it claims exists in the released version, its
   backend list matches the released adapters, and no released leaf kind is
   absent from its story
@@ -34,7 +34,7 @@ The documentation SHALL document the released motion and simulation surface:
 driver declaration and attribute reads, `set_state` with instance-qualified
 ids, ports and `connect()`, instruction declarations, the fixed-`dt`
 simulation loop, and scenario tests that run under both plain pytest and
-`solid test`. Every name exported by `solid_node.simulation` SHALL appear in
+`machinome test`. Every name exported by `machinome.simulation` SHALL appear in
 at least one published page. Tutorial pages that embed a model SHALL use
 committed exports so the docs build stays free of the CAD stack.
 
@@ -57,7 +57,7 @@ committed exports so the docs build stays free of the CAD stack.
 - **WHEN** a reader needs to test a machine's behavior over time
 - **THEN** the documentation shows a `ScenarioTest` building a `Sim` with a
   fixed `dt`, scheduling actions and assertions by tick, and running under
-  pytest and `solid test` unmodified
+  pytest and `machinome test` unmodified
 
 ### Requirement: Viewer and embedding claims are accurate
 
@@ -165,7 +165,7 @@ pending.
 
 The documentation SHALL include a page on declaring a machine that covers
 the three layers of a value (parameter, constant, port), the parameter
-kinds and the dimension algebra including the `solid_node.math` functions,
+kinds and the dimension algebra including the `machinome.math` functions,
 derived formulas, class-body child declarations, literal lists and
 `repeat`, a class-body list comprehension over module-level values, an
 internal `render()` that positions and returns nothing, `omit()`, root
@@ -182,7 +182,7 @@ or list-held child and that ports are the drive path for identical units.
 
 Every example that declares a parameter SHALL import the kinds from the
 dedicated build-parameter module, and every example that declares a port
-or a time base SHALL import them from `solid_node.motion.ports`. The page
+or a time base SHALL import them from `machinome.motion.ports`. The page
 SHALL state that build
 parameters come from that module while node classes come from the node
 package, ports and the declared time base from the motion package, and
@@ -195,7 +195,7 @@ record the lifecycle with the deprecation.
 The API reference SHALL document the build-parameter module: the kinds, the
 `Quantity` base a project subclasses, and the enumerator over a class's
 declarations, in a section of its own beside the node, port, simulation and
-testing sections. Its port section SHALL state `solid_node.motion.ports`
+testing sections. Its port section SHALL state `machinome.motion.ports`
 as the import path for the port kinds and the time base.
 
 #### Scenario: A reader learns where a kind comes from
@@ -258,7 +258,7 @@ as the import path for the port kinds and the time base.
 #### Scenario: A reader learns where a port comes from
 
 - **WHEN** a reader looks up how to declare a port or a time base
-- **THEN** the import line in the example names `solid_node.motion.ports`,
+- **THEN** the import line in the example names `machinome.motion.ports`,
   and the page says which module answers for parameters, for node classes,
   for ports and the time base, and for drivers
 
@@ -266,16 +266,16 @@ as the import path for the port kinds and the time base.
 
 Every documentation page that installs, opens, embeds or photographs through
 the browser viewer SHALL state that the viewer is the separate
-`solid-node-viewer` package, licensed AGPL-3.0-only, installed with
-`pip install "solid-node[viewer]"`. It SHALL state that interactive
-`solid develop` requires that package, while a plain framework installation
-can build, test, export without the widget, run `solid develop --no-web`, and
+`machinome-viewer` package, licensed AGPL-3.0-only, installed with
+`pip install "machinome[viewer]"`. It SHALL state that interactive
+`machinome develop` requires that package, while a plain framework installation
+can build, test, export without the widget, run `machinome develop --no-web`, and
 snapshot through OpenSCAD. Web-viewer operations SHALL name the extra as their
 remedy. The README's installation section SHALL make the licence difference
 visible before a reader installs the extra. Text that tells a reader to build
 the viewer with npm inside the framework SHALL NOT remain.
 
-The v0.7 release material SHALL explain that OpenSCAD was solid-node's first
+The v0.7 release material SHALL explain that OpenSCAD was machinome's first
 reliable viewer, that the browser viewer progressively became the faithful
 machine surface as simulation gained drivers, instructions and flexible
 motion, and that maintaining the less capable OpenSCAD GUI now obstructs that
@@ -292,10 +292,10 @@ OpenSCAD snapshot-renderer capabilities.
 
 #### Scenario: A reader migrates from the OpenSCAD viewer
 
-- **WHEN** a v0.7 reader previously used `solid develop --openscad` or relied
+- **WHEN** a v0.7 reader previously used `machinome develop --openscad` or relied
   on its fallback
 - **THEN** the release material explains why it was removed and directs them
-  to `solid-node[viewer]` with ordinary `solid develop`, or to `--no-web` for
+  to `machinome[viewer]` with ordinary `machinome develop`, or to `--no-web` for
   a viewerless watch loop
 
 #### Scenario: A reader distinguishes modelling from viewing
@@ -304,13 +304,13 @@ OpenSCAD snapshot-renderer capabilities.
   removal
 - **THEN** the documentation says those node types and the fixed-pose OpenSCAD
   snapshot renderer remain supported, without calling OpenSCAD an interactive
-  solid-node viewer
+  machinome viewer
 
 #### Scenario: A contributor looks for the viewer source
 
 - **WHEN** a contributor reads the viewer or contributing pages
-- **THEN** they are pointed at the solid-node-viewer repository and find no
-  instruction to run npm inside solid-node
+- **THEN** they are pointed at the machinome-viewer repository and find no
+  instruction to run npm inside machinome
 
 ### Requirement: The comparison kernels are documented
 
@@ -335,7 +335,7 @@ statement about arithmetic noise and must stay far below the smallest
 clearance the suite judges. It SHALL state that a run at a non-default quantum
 says so on its summary line.
 
-The CLI page SHALL list the four options under `solid test` and the three
+The CLI page SHALL list the four options under `machinome test` and the three
 environment variables. The changelog SHALL record the capability.
 
 #### Scenario: A developer learns how to run fast
@@ -346,7 +346,7 @@ environment variables. The changelog SHALL record the capability.
 
 #### Scenario: A reader looks up the flags
 
-- **WHEN** a reader looks up `solid test` on the CLI page
+- **WHEN** a reader looks up `machinome test` on the CLI page
 - **THEN** they find `--exact`, `--faceted`, `--volume-epsilon`,
   `--placement-quantum`, and the three environment variables with their
   precedence
@@ -357,3 +357,25 @@ environment variables. The changelog SHALL record the capability.
   reads the testing page
 - **THEN** they find what the quantum merges, its default, that `0` restores
   the exact key, and that it is not a tolerance on any assertion
+
+### Requirement: Current documentation presents Machinome and its lineage
+
+Every current entry page, installation guide, tutorial, API reference, status
+page, contributor guide and source link SHALL use Machinome distribution,
+import, command, configuration and repository names. The 0.7 changelog and
+release note SHALL explain why solid-node was renamed, define *machinome*, and
+provide a tested migration from solid-node 0.6.0. Historical release notes and
+decision records SHALL retain their original terminology.
+
+#### Scenario: A new user follows the quickstart
+
+- **WHEN** the user follows current installation and first-project guidance
+- **THEN** every command and import uses `machinome` and every optional product
+  uses its Machinome name
+
+#### Scenario: An existing user migrates
+
+- **WHEN** a solid-node 0.6 user opens the 0.7 migration section
+- **THEN** it maps distributions, imports, executable, environment variables,
+  project configuration, viewer and mechanics names and states which aliases
+  are not provided

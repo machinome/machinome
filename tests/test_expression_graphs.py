@@ -12,14 +12,14 @@ from unittest.mock import patch
 
 from solid2.core.object_base import OpenSCADConstant, scad_inline
 
-from solid_node import math as m
-from solid_node.core.expressions import bind_expressions
-from solid_node.node.operations import Rotation, Translation, unserialize
-from solid_node.node.qualified import DriverToken
-from solid_node.scad_expression import GraphValue, restore_scalar
-from solid_node.expression_graph import postorder
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver
+from machinome import math as m
+from machinome.core.expressions import bind_expressions
+from machinome.node.operations import Rotation, Translation, unserialize
+from machinome.node.qualified import DriverToken
+from machinome.scad_expression import GraphValue, restore_scalar
+from machinome.expression_graph import postorder
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver
 from tests.test_expression_bindings import Leaf
 from tests.flexible_project.spring import Spring
 from tests.base import BaseNodeTest
@@ -46,8 +46,8 @@ class CarryProfileMachine(AssemblyNode):
 
 class GraphProducerTest(BaseNodeTest):
     def test_real_export_and_build_share_flexible_and_rigid_roots(self):
-        from solid_node.core.export import export_node
-        from solid_node.core.builder import Builder
+        from machinome.core.export import export_node
+        from machinome.core.builder import Builder
         node = CarryProfileMachine()
         node.set_state(drive=.25)
         with tempfile.TemporaryDirectory() as output:
@@ -64,7 +64,7 @@ class GraphProducerTest(BaseNodeTest):
             self.assertEqual(node.drive, .25)
 
     def test_dependency_and_diagnostics_do_not_render_the_graph(self):
-        from solid_node.scad_expression import depends_on_time, get_animation_time
+        from machinome.scad_expression import depends_on_time, get_animation_time
         x = DriverToken('drive')
         for _ in range(1000):
             x = x + x
@@ -96,7 +96,7 @@ class ExpressionGraphTest(TestCase):
         self.assertEqual(abs(x).evaluate({'drive': -3}), 3)
 
     def test_native_collection_never_stringifies_and_reclaims_the_graph(self):
-        from solid_node.core.serializer import bind_document
+        from machinome.core.serializer import bind_document
         retained = []
         for _ in range(3):
             x = DriverToken('drive')

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,7 +14,7 @@ point of a sheet part being one authored profile plus a declared thickness.
 
 from build123d import Circle, Pos, Rectangle
 
-from solid_node.node import Build123dSheetNode
+from machinome.node import Build123dSheetNode
 
 
 PANEL_WIDTH = 120

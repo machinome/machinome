@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,7 +8,7 @@ generated `.scad` and the root's above it must each hold a DIFFERENT
 spelling of the same import to both resolve (design.md, "What does not
 move")."""
 
-from solid_node.node import AssemblyNode
+from machinome.node import AssemblyNode
 
 from ...parts import RigidLeaf
 

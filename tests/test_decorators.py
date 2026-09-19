@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -6,7 +6,7 @@ from unittest import TestCase
 # Aliased on import: pytest's default python_functions prefix ("test")
 # would otherwise try to collect these factories themselves as tests,
 # since they're plain module-level callables whose names start with it.
-from solid_node.test import testing_steps as make_steps, testing_instant as make_instant
+from machinome.test import testing_steps as make_steps, testing_instant as make_instant
 
 
 class TestingStepsTest(TestCase):

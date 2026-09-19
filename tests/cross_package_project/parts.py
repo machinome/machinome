@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,7 +9,7 @@ rigid leaf that declines the STL-import optimization.
 
 Modelled on
 `openspec/changes/import-the-artifact-by-path/evidence/probe_cross_package.py`,
-which already builds this shape with the real `solid build` and measures
+which already builds this shape with the real `machinome build` and measures
 the bug (`evidence.md`).
 """
 
@@ -17,8 +17,8 @@ import cadquery
 from molejo import Circle, Helix, P, Shape
 from solid2 import cube, cylinder, import_stl
 
-from solid_node.node import CadQueryNode, MolejoNode, Solid2Node
-from solid_node.motion.ports import TranslationalPort
+from machinome.node import CadQueryNode, MolejoNode, Solid2Node
+from machinome.motion.ports import TranslationalPort
 
 
 class RigidLeaf(Solid2Node):

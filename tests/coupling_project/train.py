@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -21,11 +21,11 @@ arc. `Wrist` is Thor's differential, two formulas over the same pair.
 
 import math
 
-from solid_node.motion.couplings import Affine
-from solid_node.motion.joints import Revolute
-from solid_node.node import AssemblyNode
-from solid_node.parameters import Angle, Count
-from solid_node.simulation import Driver
+from machinome.motion.couplings import Affine
+from machinome.motion.joints import Revolute
+from machinome.node import AssemblyNode
+from machinome.parameters import Angle, Count
+from machinome.simulation import Driver
 
 from .parts import Belt, Link, Pulley, Rod, Wheel
 

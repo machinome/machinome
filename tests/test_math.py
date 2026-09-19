@@ -1,14 +1,14 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""solid_node.math: dual-mode degree trig (issue #19).
+"""machinome.math: dual-mode degree trig (issue #19).
 
 AssemblyNode.time is numeric under set_keyframe() (tests) but
 symbolic ($t, an OpenSCADConstant) in the viewer/build path. Plain
 math.asin(...) et al. raise TypeError on the symbolic value the
-instant a non-linear expression touches it, killing `solid develop`
-at the first non-linear mechanism. solid_node.math must (a) match
+instant a non-linear expression touches it, killing `machinome develop`
+at the first non-linear mechanism. machinome.math must (a) match
 OpenSCAD's own degree-in/degree-out trig semantics numerically, and
 (b) build the equivalent OpenSCAD expression string when any argument
 is symbolic, agreeing with the numeric computation at every sampled
@@ -22,8 +22,8 @@ from unittest import TestCase
 from solid2 import get_animation_time
 from solid2.core.object_base import OpenSCADConstant
 
-from solid_node import math as snmath
-from solid_node.parameters import (Angle, DimensionError, Length, Ratio,
+from machinome import math as snmath
+from machinome.parameters import (Angle, DimensionError, Length, Ratio,
                                    Scalar)
 
 
@@ -37,7 +37,7 @@ def _expanded(value):
     Production publishes bindings; these assertions retain their original
     expected formulas and numerical oracle rather than adopting a new oracle.
     """
-    from solid_node.core.expressions import parse, render
+    from machinome.core.expressions import parse, render
     return render(parse(str(value)))
 
 
@@ -128,7 +128,7 @@ class SymbolicModeTest(TestCase):
 
 def _eval_openscad_expr(expr, t):
     """Tiny degree-aware evaluator for the OpenSCAD expression strings
-    solid_node.math generates, substituting a numeric $t. Used only to
+    machinome.math generates, substituting a numeric $t. Used only to
     cross-check that the symbolic and numeric code paths agree -- it
     is NOT part of the framework."""
     py_expr = _expanded(expr).replace('$t', repr(t))
@@ -277,7 +277,7 @@ class CompositionSymbolicStringTest(TestCase):
             snmath.piecewise(t, [(0.0, 0.0), (1.0, 1.0)]),
         ]
         for expression in expressions:
-            from solid_node.core.expressions import bind_expressions
+            from machinome.core.expressions import bind_expressions
             roots, bindings, warnings = bind_expressions([str(expression)], [])
             self.assertFalse(warnings)
             text = ' '.join(roots + [b['expression'] for b in bindings])

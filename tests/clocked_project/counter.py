@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -22,9 +22,9 @@ TWO relations on one state and be refused -- which is a refusal of its
 own and not a way to write a variant.
 """
 
-from solid_node.math import floor, max as sym_max
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, State
+from machinome.math import floor, max as sym_max
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver, State
 
 from .parts import Dial
 

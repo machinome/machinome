@@ -6,7 +6,7 @@ class-level driver declarations, per-simulation state advanced by
 deterministic programs, design-unit instructions, a fixed-dt stepping
 loop binding qualified snapshots and the global `time` clock through
 `set_state`, tree-wide qualified driver enumeration, and scenario
-tests that run under both pytest and the `solid test` runner. State
+tests that run under both pytest and the `machinome test` runner. State
 lives in drivers; geometry stays a pure function of the bound
 snapshot.
 ## Requirements
@@ -396,7 +396,7 @@ CAD `TestCase`: a scenario method builds the node once (assembling and
 generating STLs where mesh assertions need them), obtains a fresh
 simulation per scenario, scripts events and assertions against it, and
 runs a bounded time slice. Scenario tests SHALL pass under the plain
-pytest suite and under the `solid test` runner without modification to
+pytest suite and under the `machinome test` runner without modification to
 either runner.
 
 #### Scenario: A homing scenario asserts along the way

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,8 +14,8 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import PropertyMock, patch
 
-import solid_node.test as test_module
-from solid_node.node import base as base_module
+import machinome.test as test_module
+from machinome.node import base as base_module
 from trimesh.creation import box
 
 from .flexible_project import spring as fixture
@@ -271,7 +271,7 @@ class FlexibleFacetedCacheTest(TestCase):
         self.assertEqual(len(test_module._flexible_manifold_cache), 0)
 
     def test_flexible_verdicts_are_not_memoized_after_geometry_reuse(self):
-        with TemporaryDirectory(prefix='solid-flex-verdict-') as build, \
+        with TemporaryDirectory(prefix='machinome-flex-verdict-') as build, \
                 patch.dict(os.environ, {'SOLID_BUILD_DIR': build}):
             machine = self.spring_at(4.0)
             for path in (machine.spring.stl_file, machine.retainer.stl_file):

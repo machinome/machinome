@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -25,7 +25,7 @@ from unittest import TestCase, mock
 
 from solid2 import scad_render
 
-from solid_node import currency
+from machinome import currency
 from .base import BaseNodeTest
 from .utils import edit_source
 from .source_set_project import dimensions
@@ -33,8 +33,8 @@ from .source_set_project.block import Block
 from .source_set_project.cyl import Cyl
 from .source_set_project.jsblock import JsBlock
 from .source_set_project.lonely import Lonely
-from solid_node.core.loader import import_module_from_path
-from solid_node.node.sources import source_closure
+from machinome.core.loader import import_module_from_path
+from machinome.node.sources import source_closure
 
 
 PROJECT = os.path.dirname(os.path.realpath(dimensions.__file__))
@@ -80,7 +80,7 @@ class SourceSetTest(BaseNodeTest):
 
     def test_library_modules_are_not_tracked(self):
         """Everything tracked lives inside the project. solid2, cadquery
-        and solid_node itself are libraries, not project sources -- even
+        and machinome itself are libraries, not project sources -- even
         when the framework's own checkout happens to sit under the
         working directory, as it does when this suite runs."""
         for path in realpaths(Cyl()):
@@ -180,7 +180,7 @@ class UpToDateLeafTest(BaseNodeTest):
 
         again = Block()
         with mock.patch(
-                'solid_node.node.exact_leaf.write_stl') as export:
+                'machinome.node.exact_leaf.write_stl') as export:
             scad = again.as_scad(again.render())
 
         export.assert_not_called()
@@ -197,7 +197,7 @@ class UpToDateLeafTest(BaseNodeTest):
                 fh.write('solid empty\nendsolid empty\n')
 
         node = Block()
-        with mock.patch('solid_node.node.exact_leaf.write_stl',
+        with mock.patch('machinome.node.exact_leaf.write_stl',
                         side_effect=export_stub) as export:
             node.as_scad(node.render())
         export.assert_called_once()
@@ -210,14 +210,14 @@ class UpToDateLeafTest(BaseNodeTest):
         currency.record(node.stl_file, node.source_digest,
                         node.source_fingerprint)
 
-        with mock.patch('solid_node.node.adapters.jscad.Popen') as popen:
+        with mock.patch('machinome.node.adapters.jscad.Popen') as popen:
             node.as_scad(None)
 
         popen.assert_not_called()
 
     def test_jscad_runs_when_the_artifact_is_missing(self):
         node = JsBlock()
-        with mock.patch('solid_node.node.adapters.jscad.Popen') as popen:
+        with mock.patch('machinome.node.adapters.jscad.Popen') as popen:
             popen.return_value.returncode = 0
             node.as_scad(None)
         popen.assert_called_once()
@@ -246,7 +246,7 @@ class SourceClosureRootAnchoringTest(TestCase):
             stream.write('BEAM = 3.5\n')
         with open(os.path.join(self.root, 'boat', 'hull.py'), 'w') as stream:
             stream.write(
-                'from solid_node.node import Solid2Node\n'
+                'from machinome.node import Solid2Node\n'
                 'from solid2 import cube\n'
                 'from .dims import BEAM\n'
                 '\n'
@@ -255,7 +255,7 @@ class SourceClosureRootAnchoringTest(TestCase):
                 '        return cube(BEAM, center=True)\n'
             )
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as stream:
-            stream.write('[tool.solid-node]\nmodel = "boat.hull:Hull"\n')
+            stream.write('[tool.machinome]\nmodel = "boat.hull:Hull"\n')
         self.hull_path = os.path.realpath(
             os.path.join(self.root, 'boat', 'hull.py'))
         self.dims_path = os.path.realpath(

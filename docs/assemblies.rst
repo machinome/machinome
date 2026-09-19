@@ -42,7 +42,7 @@ Create a new file `myproject/clock_base.py` and create a `CadQueryNode`:
 .. code-block:: python
 
     import cadquery as cq
-    from solid_node.node import CadQueryNode
+    from machinome.node import CadQueryNode
 
     class ClockBase(CadQueryNode):
 
@@ -55,14 +55,14 @@ Create a new file `myproject/clock_base.py` and create a `CadQueryNode`:
 
 Rendered — the clock base:
 
-.. solid-node:: _exports/clock_base
+.. machinome:: _exports/clock_base
    :height: 360px
 
 Now, a file `myproject/pointer.py` with a `Solid2Node`:
 
 .. code-block:: python
 
-    from solid_node.node import Solid2Node
+    from machinome.node import Solid2Node
     from solid2 import cube, cylinder, translate
 
     class Pointer(Solid2Node):
@@ -74,14 +74,14 @@ Now, a file `myproject/pointer.py` with a `Solid2Node`:
 
 Rendered — the pointer:
 
-.. solid-node:: _exports/pointer_plain
+.. machinome:: _exports/pointer_plain
    :height: 360px
 
 And at `myproject/myproject.py`, an `AssemblyNode`:
 
 .. code-block:: python
 
-    from solid_node.node import AssemblyNode
+    from machinome.node import AssemblyNode
     from .clock_base import ClockBase
     from .pointer import Pointer
 
@@ -97,7 +97,7 @@ And at `myproject/myproject.py`, an `AssemblyNode`:
 
 Rendered — base and pointer assembled (still, for now):
 
-.. solid-node:: _exports/simple_clock_static
+.. machinome:: _exports/simple_clock_static
    :height: 360px
 
 Now in the viewer you should see a round clock base with a pointer.
@@ -135,7 +135,7 @@ is a class attribute, read back as an ordinary attribute in
 
 .. code-block:: python
 
-    from solid_node.simulation import Driver
+    from machinome.simulation import Driver
 
     class Axis(AssemblyNode):
 

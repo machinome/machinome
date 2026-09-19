@@ -13,7 +13,7 @@ declaration), ADR-066 (render at rest, simulate per instant), ADR-088
 (a joint owns one coordinate) and ADR-076 (mechanism laws as
 compositions over expression math).
 
-Code: `solid_node/motion/couplings.py`.
+Code: `machinome/motion/couplings.py`.
 ## Requirements
 ### Requirement: A relation is stated by `drives` in a class body
 
@@ -148,7 +148,7 @@ independently of every other instance of that class.
 ### Requirement: The law of a relation is an affine pair, or project code passed in
 
 The system SHALL provide `Affine(ratio, offset=0)`, exported from
-`solid_node.motion.couplings`, as the law `driven = ratio * driver +
+`machinome.motion.couplings`, as the law `driven = ratio * driver +
 offset`, evaluated in the driven end's own unit. `Affine` SHALL compute
 by ordinary arithmetic, so a symbolic driver value produces a symbolic
 result and a number produces a number, and SHALL be invertible as

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-import solid_node.test as test_module
+import machinome.test as test_module
 
 
 def bounds(x0, x1, y0, y1, z0, z1):
@@ -67,7 +67,7 @@ class AdaptiveBroadPhaseTest(TestCase):
         all_bounds = [bounds(index * 3, index * 3 + 1, 0, 1, 0, 1)
                       for index in range(8)]
 
-        with patch('solid_node.test._axis_order_and_pressure',
+        with patch('machinome.test._axis_order_and_pressure',
                    wraps=test_module._axis_order_and_pressure) as pressure:
             self.assertEqual(list(test_module._bounds_candidates(all_bounds)), [])
 
@@ -87,7 +87,7 @@ class AdaptiveBroadPhaseTest(TestCase):
                         low[axis] = index * 3
                         high[axis] = index * 3 + 1
                         spans.append(bounds(*low, *high))
-                    with patch('solid_node.test._boxes_disjoint',
+                    with patch('machinome.test._boxes_disjoint',
                                wraps=test_module._boxes_disjoint) as disjoint:
                         candidates = list(test_module._bounds_candidates(spans))
 
@@ -97,7 +97,7 @@ class AdaptiveBroadPhaseTest(TestCase):
     def test_nonzero_equal_pressure_ties_select_x(self):
         all_bounds = [bounds(0, 1, 0, 1, 0, 1) for _ in range(3)]
 
-        with patch('solid_node.test._sweep_candidates',
+        with patch('machinome.test._sweep_candidates',
                    wraps=test_module._sweep_candidates) as sweep:
             self.assertEqual(list(test_module._bounds_candidates(all_bounds)),
                              list(legacy_x_candidates(all_bounds)))
@@ -179,7 +179,7 @@ class AdaptiveBroadPhaseTest(TestCase):
 
         with patch.object(test_module, '_ADAPTIVE_CANDIDATE_BUFFER_LIMIT', 2,
                           create=True), \
-                patch('solid_node.test._sweep_candidates',
+                patch('machinome.test._sweep_candidates',
                       wraps=test_module._sweep_candidates) as sweep:
             candidates = list(test_module._bounds_candidates(all_bounds))
 

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,13 +11,13 @@ import threading
 from subprocess import CalledProcessError
 from unittest import TestCase
 
-from solid_node.core.builder import atomic_write, prepare_build_dir
+from machinome.core.builder import atomic_write, prepare_build_dir
 
 
 class AtomicArtifactPublicationTest(TestCase):
 
     def setUp(self):
-        self.root = tempfile.mkdtemp(prefix='solid-node-publication-')
+        self.root = tempfile.mkdtemp(prefix='machinome-publication-')
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         self.artifact = os.path.join(self.root, '_build', 'part.stl')
         os.makedirs(os.path.dirname(self.artifact))
@@ -59,7 +59,7 @@ class AtomicArtifactPublicationTest(TestCase):
 class PreviousPublicationMigrationTest(TestCase):
 
     def setUp(self):
-        self.root = tempfile.mkdtemp(prefix='solid-node-migration-')
+        self.root = tempfile.mkdtemp(prefix='machinome-migration-')
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         self.build_dir = os.path.join(self.root, '_build')
         self.previous = os.path.join(self.root, '_build.previous')
@@ -94,7 +94,7 @@ class PreviousPublicationMigrationTest(TestCase):
 class BuildDirectoryPreparationOwnershipTest(TestCase):
 
     def setUp(self):
-        self.root = tempfile.mkdtemp(prefix='solid-node-preparation-')
+        self.root = tempfile.mkdtemp(prefix='machinome-preparation-')
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         self.build_dir = os.path.join(self.root, '_build')
         os.makedirs(self.build_dir)
@@ -130,12 +130,12 @@ class RenderVisibilityTest(TestCase):
     """
 
     def setUp(self):
-        self.root = tempfile.mkdtemp(prefix='solid-node-render-')
+        self.root = tempfile.mkdtemp(prefix='machinome-render-')
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
 
     def test_render_leaves_the_previous_artifact_in_place(self):
         from unittest.mock import Mock, patch
-        from solid_node.node.base import AbstractBaseNode, StlRenderStart
+        from machinome.node.base import AbstractBaseNode, StlRenderStart
 
         node = Mock(spec=AbstractBaseNode)
         node.stl_file = os.path.join(self.root, 'part.stl')
@@ -156,7 +156,7 @@ class RenderVisibilityTest(TestCase):
         with open(node.stl_file, 'w') as previous:
             previous.write('previous complete artifact')
 
-        with patch('solid_node.node.base.Popen',
+        with patch('machinome.node.base.Popen',
                    return_value=Mock(pid=4321)) as popen:
             with self.assertRaises(StlRenderStart) as raised:
                 AbstractBaseNode.generate_stl(node)
@@ -180,7 +180,7 @@ class RenderVisibilityTest(TestCase):
 
     def test_failed_render_discards_private_files_and_preserves_artifact(self):
         from unittest.mock import Mock
-        from solid_node.node.base import StlRenderStart
+        from machinome.node.base import StlRenderStart
 
         target = os.path.join(self.root, 'part.stl')
         temporary = os.path.join(self.root, '.part.stl.failed.tmp')
@@ -212,7 +212,7 @@ class RunningSnapshotWarningTest(TestCase):
 
     def setUp(self):
         from tests.base import BUILD_DIR
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.simulation.enumeration import bind_declared_defaults
         from tests.running_project.machine import Train
 
         if os.path.exists(BUILD_DIR):
@@ -228,8 +228,8 @@ class RunningSnapshotWarningTest(TestCase):
     def published(self, message):
         import json
         from unittest.mock import patch
-        from solid_node.core import builder as builder_module
-        from solid_node.core.builder import Builder
+        from machinome.core import builder as builder_module
+        from machinome.core.builder import Builder
 
         builder = Builder('model.py', build_dir=self.build_dir, watch=False)
         builder.node = self.node
@@ -248,7 +248,7 @@ class RunningSnapshotWarningTest(TestCase):
     def test_the_document_is_published_and_the_warning_is_one(self):
         document, records = self.published(
             'document version 5; the installed viewer renders 1, 2, 3, 4 '
-            '(solid-node-viewer 0.1.0)')
+            '(machinome-viewer 0.1.0)')
         self.assertEqual(document['version'], 5)
         self.assertIn('program', document)
         warnings = [line for line in records if 'document version 5' in line]

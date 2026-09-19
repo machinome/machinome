@@ -31,7 +31,7 @@ def main():
     framework = pathlib.Path(os.environ['PYTHONPATH'])
     def source_hash():
         digest = hashlib.sha256()
-        for source in sorted((framework / 'solid_node').rglob('*.py')):
+        for source in sorted((framework / 'machinome').rglob('*.py')):
             digest.update(str(source.relative_to(framework)).encode() + b'\0')
             digest.update(source.read_bytes())
         return digest.hexdigest()

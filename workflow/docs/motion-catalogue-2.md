@@ -27,7 +27,7 @@ All in `workflow/warts.md`, sections "3DPrintedClocks wall clock 01 and
 Thor (2026-09-09)", "Motion catalogue refactor (2026-09-09)", "Inmoov-sim
 stage B (2026-09-10)" and "hexapod_spiderbot_model stage B (2026-09-10)".
 Deferred projects and their stage-B proposals:
-`libresolid-studio/docs/motion-general-refactor.md`.
+`machinome-studio/docs/motion-general-refactor.md`.
 
 | Finding | Sightings | Cycle |
 |---|---|---|
@@ -73,7 +73,7 @@ things the walkthrough assumed turned out not to hold against the tree
 and the catalogue, and each is marked below with the evidence that
 forced it. Everything else stands as ratified.
 
-Today: `RepeatDeclaration.realize` (`solid_node/node/declarative.py`)
+Today: `RepeatDeclaration.realize` (`machinome/node/declarative.py`)
 returns identical copies with no index; children are named `attr-i`;
 `RepeatDeclaration.__getattr__` raises `SidewaysReadError`; the
 couplings solver refuses a path through a repeated declaration
@@ -318,13 +318,13 @@ see `openspec/changes/multi-source-multi-target-laws/evidence.md`.
 - **Bare number + dimensioned token.** Keep the refusal — a bare number
   has no unit and refusing it is the algebra's point — and sharpen the
   message to name the wrap (`Length(27.0)`). Rides in whichever cycle
-  first touches `solid_node/node/parameters.py`, else the last.
+  first touches `machinome/node/parameters.py`, else the last.
 - **Dotted reader** — cycle 1, §3.1.
 - **Data-built children** — cycle 3, §3.3.
 
 ## 5. Discipline for this campaign (pilot, 2026-09-10)
 
-One worktree, `solid-node/WTs/motion-catalogue-2` (branch of the same
+One worktree, `machinome/WTs/motion-catalogue-2` (branch of the same
 name, base main 5b28510, slot 4), cycles sequential and stacked, each
 fast-forwarded into main after review. An Opus subagent proposes each
 framework cycle and a Sonnet subagent implements it; for each project

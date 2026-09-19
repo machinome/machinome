@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -19,10 +19,10 @@ Neither class binds its own defaults in `__init__`: since this change
 the build/test loader binds them from the declarations.
 """
 
-import solid_node.math as sn_math
-from solid_node.node import AssemblyNode
-from solid_node.motion.ports import TranslationalPort
-from solid_node.simulation import Driver, Instruction
+import machinome.math as sn_math
+from machinome.node import AssemblyNode
+from machinome.motion.ports import TranslationalPort
+from machinome.simulation import Driver, Instruction
 
 from .parts import Cube
 

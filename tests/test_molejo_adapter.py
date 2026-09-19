@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -27,13 +27,13 @@ import numpy as np
 import trimesh
 from solid2 import cube
 
-from solid_node.core.builder import Builder
-from solid_node.exact import solid_count, solid_volume
-from solid_node.node import MolejoNode
-from solid_node.node.base import binding_hash
-from solid_node.node.flexible import FlexibleNode
-from solid_node.node.qualified import DriverToken
-from solid_node.test import TestCase as GeometryTestCase, _intersection_stats
+from machinome.core.builder import Builder
+from machinome.exact import solid_count, solid_volume
+from machinome.node import MolejoNode
+from machinome.node.base import binding_hash
+from machinome.node.flexible import FlexibleNode
+from machinome.node.qualified import DriverToken
+from machinome.test import TestCase as GeometryTestCase, _intersection_stats
 
 from .base import BaseNodeTest
 from .flexible_project import spring as fixture

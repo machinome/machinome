@@ -4,7 +4,7 @@
 Embedding models in pages and docs
 ===================================
 
-``solid export`` (see the :ref:`command line reference <cli>`) turns a
+``machinome export`` (see the :ref:`command line reference <cli>`) turns a
 node into a static directory that renders the model in any browser —
 animations and driver controls included, since operations are exported
 as raw symbolic expressions over ``$t`` and qualified driver ids and
@@ -21,13 +21,13 @@ What an export contains
     ├── models/           # one STL per distinct rigid part
     │   └── ...
     ├── index.html        # standalone viewer page
-    └── solid-widget.js   # the viewer bundle (three.js based)
+    └── machinome-viewer.js   # the viewer bundle (three.js based)
 
 ``manifest.json`` and ``models/`` are the data; ``index.html`` plus
-``solid-widget.js`` are the viewer (omitted with ``--no-widget``). The
-viewer files are copied from the installed `solid-node-viewer
-<https://github.com/LibreSolid/solid-node-viewer>`_ package — install it
-with ``pip install "solid-node[viewer]"`` — and an export that wants them
+``machinome-viewer.js`` are the viewer (omitted with ``--no-widget``). The
+viewer files are copied from the installed `machinome-viewer
+<https://github.com/machinome/machinome-viewer>`_ package — install it
+with ``pip install "machinome[viewer]"`` — and an export that wants them
 in an installation without it fails saying so. The bundle is AGPL-3.0-only
 and says so in its first lines, together with the address of its source;
 publishing an export publishes that notice with it.
@@ -35,7 +35,7 @@ Opening ``index.html`` over HTTP shows the model with orbit controls,
 play/pause and a timeline for animated nodes, and the
 :doc:`driver controls <driving>` for a machine that declares them.
 
-The manifest is a ``solid-node-export`` document carrying ``format``
+The manifest is a ``machinome-export`` document carrying ``format``
 and ``version``, the ``animation`` parameters, a ``drivers`` table
 (qualified id → default, range, unit, dtype, scale), an
 ``instructions`` table, an ordered ``bindings`` table when the model
@@ -75,7 +75,7 @@ ordinary export is unaffected.
    none: a 0.5.x bundle pointed at a version 2 or 3 document will
    **silently render only the part of the machine it can evaluate**
    rather than refusing. If your host pins its own copy of
-   ``solid-widget.js``, upgrade it together with the framework. This
+   ``machinome-viewer.js``, upgrade it together with the framework. This
    release's viewer refuses a document schema it cannot read, naming
    the version.
 
@@ -106,8 +106,8 @@ either drives the widget programmatically, below.
 The JavaScript API
 ==================
 
-Hosts that load ``solid-widget.js`` directly may call
-``SolidNodeWidget.mount(target, manifestUrl, options)``. The package's
+Hosts that load ``machinome-viewer.js`` directly may call
+``MachinomeViewer.mount(target, manifestUrl, options)``. The package's
 ``solidNodeViewerApi`` declaration, browser global, and each mount
 handle all report API version 5, and the viewer accepts document
 schema versions 1, 2 and 3 — 4 once a released viewer version adds
@@ -123,7 +123,7 @@ buttons and breadcrumb, for a host that builds its own control UI:
 
 .. code-block:: javascript
 
-    const viewer = await SolidNodeWidget.mount('#model', 'manifest.json', {
+    const viewer = await MachinomeViewer.mount('#model', 'manifest.json', {
       view: { camera: [80, -60, 40], target: [0, 0, 0] },
       up: [0, 0, 1],
       fov: 22.5,
@@ -165,21 +165,21 @@ navigation surface — assembly metadata, subtree focus and visibility,
 Embedding in Sphinx documentation
 =================================
 
-The ``solid_node.sphinx`` extension provides a directive that embeds an
+The ``machinome.sphinx`` extension provides a directive that embeds an
 export in the built HTML. In ``conf.py``:
 
 .. code-block:: python
 
     extensions = [
         # ...
-        'solid_node.sphinx',
+        'machinome.sphinx',
     ]
 
 Then, in any document:
 
 .. code-block:: rst
 
-    .. solid-node:: exports/my_model
+    .. machinome:: exports/my_model
        :height: 300px
        :t: 0.25
        :autoplay: no
@@ -205,7 +205,7 @@ Options:
 The exports are generated ahead of the documentation build and
 committed (or produced by a CI step) — the Sphinx build itself never
 runs the CAD stack. A missing or invalid export directory fails the
-build with a message saying which ``solid export`` invocation would
+build with a message saying which ``machinome export`` invocation would
 create it.
 
 An embedded export whose document version the installed viewer does not
@@ -223,7 +223,7 @@ controls showing at their defaults.
 
 Exports referenced by the directive may be made with ``--no-widget``:
 the extension completes them with the viewer files from the installed
-``solid-node-viewer`` package at build time, so the repository only needs
+``machinome-viewer`` package at build time, so the repository only needs
 to carry each model's ``manifest.json`` and STLs, and every embedded
 model shares one copy of the viewer source. A documentation build
 therefore needs the ``viewer`` extra installed; without it the build

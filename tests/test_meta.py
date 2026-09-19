@@ -1,8 +1,8 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""Meta-tests: run `solid test` end-to-end on the fixture projects in
+"""Meta-tests: run `machinome test` end-to-end on the fixture projects in
 tests/meta_project/ and assert the runner reports each deliberately
 green test as passing and each deliberately red test as failing, for
 the right reason.
@@ -33,7 +33,7 @@ SUMMARY = re.compile(
 
 
 class SolidTestRun:
-    """The parsed outcome of one `solid test` subprocess."""
+    """The parsed outcome of one `machinome test` subprocess."""
 
     def __init__(self, proc):
         self.returncode = proc.returncode
@@ -51,7 +51,7 @@ class SolidTestRun:
         summary = SUMMARY.search(self.stdout)
         if not summary:
             raise AssertionError(
-                f"solid test printed no summary line.\n"
+                f"machinome test printed no summary line.\n"
                 f"stdout:\n{self.stdout}\nstderr:\n{self.stderr}")
         self.total = int(summary.group('total'))
         self.passed = int(summary.group('passed'))
@@ -61,7 +61,7 @@ class SolidTestRun:
 _runs = {}
 
 def solid_test(fixture):
-    """Run `solid test` on tests/meta_project/<fixture>.py (cached:
+    """Run `machinome test` on tests/meta_project/<fixture>.py (cached:
     each fixture project runs at most once per meta-test session)."""
     if fixture not in _runs:
         _runs[fixture] = SolidTestRun(
@@ -70,7 +70,7 @@ def solid_test(fixture):
 
 
 def solid_test_at_path(path):
-    """Run `solid test <path>` on an arbitrary path (uncached, not
+    """Run `machinome test <path>` on an arbitrary path (uncached, not
     parsed): for asserting on a path string that isn't a `<fixture>.py`
     node file, e.g. the fixture's TEST path or a deliberately bogus
     one -- both may exit before printing a summary line, which
@@ -83,11 +83,11 @@ def run_solid_test_path(path):
 
 
 def run_solid(*arguments, env=None):
-    """Run any `solid` command against the meta fixtures."""
+    """Run any `machinome` command against the meta fixtures."""
     env = dict(os.environ, SOLID_BUILD_DIR=BUILD_DIR, **(env or {}))
     return subprocess.run(
         [sys.executable, '-c',
-         'from solid_node.cli import manage; manage()',
+         'from machinome.cli import manage; manage()',
          *arguments],
         cwd=REPO_DIR, env=env,
         capture_output=True, text=True, timeout=300,
@@ -101,7 +101,7 @@ def run_solid_in(project, *arguments):
     env['PYTHONPATH'] = REPO_DIR
     return subprocess.run(
         [sys.executable, '-c',
-         'from solid_node.cli import manage; manage()',
+         'from machinome.cli import manage; manage()',
          *arguments],
         cwd=project, env=env,
         capture_output=True, text=True, timeout=300,
@@ -321,8 +321,8 @@ class NonLinearSymbolicMathMetaTest(TestCase):
     through solid2's own operator overloads, but the first genuinely
     non-linear mechanism -- math.asin(...) of a time-derived value --
     raised `TypeError: must be real number, not OpenSCADConstant`
-    during assembly, killing `solid develop` (skill-repo
-    improvements.md #19). solid_node.math provides dual-mode,
+    during assembly, killing `machinome develop` (skill-repo
+    improvements.md #19). machinome.math provides dual-mode,
     degree-semantics trig: numeric under set_keyframe, symbolic
     (building the equivalent OpenSCAD expression) otherwise. This
     fixture is a slider-crank conrod -- swing = asin((r/l)*sin(theta))
@@ -674,7 +674,7 @@ class VolumeEpsilonMetaTest(TestCase):
 
 
 class TestPathMetaTest(TestCase):
-    """Bug: `solid test` habitually gets handed the TEST file rather
+    """Bug: `machinome test` habitually gets handed the TEST file rather
     than the node file it exercises (root/test_gear.py instead of
     root/gear.py) -- the loader finds no node class in the test
     module, load_instance returns None, and the runner called it,
@@ -734,7 +734,7 @@ class NodeReferenceMetaTest(TestCase):
         """The exact trap from the session that introduced the marker:
         a helper subclass defined BEFORE the main node class. With no
         marker to consult, the companion case declares its node, so
-        `solid test` must exercise Trap -- not Helper -- and the same
+        `machinome test` must exercise Trap -- not Helper -- and the same
         genuine contract as apart.py must hold. One summary line covers
         the whole file, however many nodes it defines."""
         run = solid_test('trap')
@@ -752,7 +752,7 @@ class DriverDefaultsMetaTest(TestCase):
     declarations' defaults across the tree before the first render.
 
     The end-to-end colour of this is what a unit test cannot give --
-    `solid build` renders through the loader, the builder and OpenSCAD,
+    `machinome build` renders through the loader, the builder and OpenSCAD,
     and an unbound driver would stop it dead on the first render."""
 
     def test_a_driver_declaring_project_builds(self):
@@ -775,7 +775,7 @@ class FailedOpenScadRenderMetaTest(TestCase):
     """A renderer error is a failed build and never a publication."""
 
     MODEL = (
-        'from solid_node.node import OpenScadNode\n'
+        'from machinome.node import OpenScadNode\n'
         'class Part(OpenScadNode):\n'
         '    scad_source = "part.scad"\n'
     )
@@ -789,13 +789,13 @@ class FailedOpenScadRenderMetaTest(TestCase):
 
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(
-            prefix='solid-node-failed-render-')
+            prefix='machinome-failed-render-')
         self.addCleanup(self.temporary.cleanup)
         self.project = self.temporary.name
         design = os.path.join(self.project, 'design')
         os.makedirs(design)
         with open(os.path.join(self.project, 'pyproject.toml'), 'w') as f:
-            f.write('[tool.solid-node]\nmodel = "design.part:Part"\n')
+            f.write('[tool.machinome]\nmodel = "design.part:Part"\n')
         with open(os.path.join(design, '__init__.py'), 'w') as f:
             f.write('')
         with open(os.path.join(design, 'part.py'), 'w') as f:

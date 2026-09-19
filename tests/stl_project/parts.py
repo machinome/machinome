@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,7 +13,7 @@ would.
 
 import numpy as np
 
-from solid_node.node import StlNode
+from machinome.node import StlNode
 
 from .dimensions import MILLIMETRES_PER_INCH
 

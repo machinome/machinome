@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,10 +13,10 @@ Kept out of `machine.py` on purpose: importing it pulls molejo and
 CadQuery in, and every other running fixture is answerable to neither.
 """
 
-from solid_node.motion.joints import Prismatic
-from solid_node.motion.ports import Time
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver
+from machinome.motion.joints import Prismatic
+from machinome.motion.ports import Time
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver
 
 from ..flexible_project.spring import FREE_HEIGHT, Spring
 

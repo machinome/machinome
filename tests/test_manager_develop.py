@@ -1,10 +1,10 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""`solid develop`: a builder loop beside the viewer it does not own.
+"""`machinome develop`: a builder loop beside the viewer it does not own.
 
-The browser viewer is solid-node-viewer's `serve` command, launched with
+The browser viewer is machinome-viewer's `serve` command, launched with
 Popen through this interpreter. The builder remains a spawned child handed a
 module-level target. Every test patches package discovery and process
 construction, so the suite says the same thing with or without the separately
@@ -19,10 +19,10 @@ from contextlib import redirect_stderr
 from unittest import TestCase
 from unittest.mock import patch, MagicMock, call
 
-from solid_node.core.builder import BuildOutcome
-from solid_node.manager.develop import Develop, run_builder
+from machinome.core.builder import BuildOutcome
+from machinome.manager.develop import Develop, run_builder
 
-VIEWER = [sys.executable, '-m', 'solid_node_viewer']
+VIEWER = [sys.executable, '-m', 'machinome_viewer']
 BUILD_DIR = '/work/project/_build'
 
 
@@ -46,10 +46,10 @@ class DevelopHarness(TestCase):
         self.develop = Develop()
         self.develop.parser = argparse.ArgumentParser()
         patches = [
-            patch('solid_node.manager.develop.has_bundle', return_value=True),
-            patch('solid_node.manager.develop.get_build_dir', return_value=BUILD_DIR),
-            patch('solid_node.manager.develop.Popen'),
-            patch('solid_node.manager.develop.Process'),
+            patch('machinome.manager.develop.has_bundle', return_value=True),
+            patch('machinome.manager.develop.get_build_dir', return_value=BUILD_DIR),
+            patch('machinome.manager.develop.Popen'),
+            patch('machinome.manager.develop.Process'),
         ]
         (self.has_bundle, self.get_build_dir,
          self.popen, self.process) = (p.start() for p in patches)
@@ -84,13 +84,13 @@ class DefaultViewerTest(DevelopHarness):
 
     def test_default_without_the_viewer_fails_even_with_openscad_available(self):
         self.has_bundle.return_value = False
-        with patch('solid_node.openscad.openscad_binary',
+        with patch('machinome.openscad.openscad_binary',
                    return_value='/usr/bin/openscad') as openscad, \
              redirect_stderr(io.StringIO()) as errors, \
              self.assertRaises(SystemExit):
             self.develop.handle(default_args())
         message = errors.getvalue()
-        self.assertIn('pip install "solid-node[viewer]"', message)
+        self.assertIn('pip install "machinome[viewer]"', message)
         openscad.assert_not_called()
         self.popen.assert_not_called()
         self.process.assert_not_called()
@@ -102,7 +102,7 @@ class ExplicitViewerTest(DevelopHarness):
         self.has_bundle.return_value = False
         with redirect_stderr(io.StringIO()) as errors, self.assertRaises(SystemExit):
             self.develop.handle(default_args(web=True))
-        self.assertIn('pip install "solid-node[viewer]"', errors.getvalue())
+        self.assertIn('pip install "machinome[viewer]"', errors.getvalue())
         self.popen.assert_not_called()
         self.process.assert_not_called()
 

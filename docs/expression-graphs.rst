@@ -1,7 +1,7 @@
 Shared motion expressions
 =========================
 
-Motion laws still use ordinary arithmetic and ``solid_node.math``, with the same
+Motion laws still use ordinary arithmetic and ``machinome.math``, with the same
 numeric poses, degree trigonometry, drivers and ports. Reusing a deferred value
 now keeps references to its operands instead of copying its entire formula.
 No special intermediate-value API is needed.
@@ -10,7 +10,7 @@ Build and export compile the reachable graph into the existing schema-4
 ``bindings`` table. The browser's document language and controls have not changed.
 OpenSCAD and SolidPython remain supported modelling technologies; this change
 removed no geometry backend. A subsequent v0.7 decision removed the OpenSCAD
-GUI from ``solid develop`` while retaining those modelling technologies and
+GUI from ``machinome develop`` while retaining those modelling technologies and
 the fixed-pose OpenSCAD snapshot renderer.
 
 Under a running root the COMPILED PROGRAM shares that same table. A

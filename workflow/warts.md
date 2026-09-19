@@ -4,7 +4,7 @@
 
 - **Generated-artifact freshness is not dependable for source-bound CAD
   leaves.** While changing Wall Clock 22's source-derived hanging-weight
-  datum, `solid test wall_clock_22 --faceted` continued to compare an older
+  datum, `machinome test wall_clock_22 --faceted` continued to compare an older
   generated assembly pose. Removing only that model's ignored
   `_build/wall_clock_22` cache was needed to force regeneration; the next
   run also tried to reuse a deleted `clock-Pillars...stl` artifact and raised
@@ -44,18 +44,18 @@
   other, so the scenario routes such moves through Rest. Look is limited to the quadrant clear of the hip's vision beams.
 - The base's "worm collar" is actually on the gear shaft, two stepper drivers are placed through the battery, and 379 within-link overlaps are the blueprint's own placements. All of it is in the design record.
 - Framework gaps, recorded in the design and in memory but not filed: the spatial assertions' watertight gate rejects 21 of 67 vendor pieces, so clearance is measured by a project engine; the exact export keeps degenerate triangles;
-  tessellation precision is not declarable per node; a bare file path in solid test builds every node class, so run it with robot.py:Don1.
+  tessellation precision is not declarable per node; a bare file path in machinome test builds every node class, so run it with robot.py:Don1.
 
 # Execution plan (2026-09-06)
 
 Triage of the findings above, pilot-ratified. Items 1-4 are framework fixes
 run as standalone framework-change cycles; 5 and 6 are deferred until a
-second project asks. Once each fix is on solid-node main, the projects that
+second project asks. Once each fix is on machinome main, the projects that
 carried a workaround for it drop the workaround.
 
 ## Fix now
 
-1. **The watertight gate.** `_cached_local_bounds` in `solid_node/test.py`
+1. **The watertight gate.** `_cached_local_bounds` in `machinome/test.py`
    demands trimesh's `is_volume` before any spatial assertion, even on
    exact-kernel runs and even for the broad phase, and the per-binding check
    below it demands `is_watertight`. Manifold accepts the meshes trimesh
@@ -71,7 +71,7 @@ carried a workaround for it drop the workaround.
    after it, in the parent frame, while the API skill promises directions
    are local. Insert before every operation so the code matches the skill.
    Evidence: kossel, abacus. Own cycle.
-4. **Bare-path `solid test file.py` builds every class.** A sub-assembly
+4. **Bare-path `machinome test file.py` builds every class.** A sub-assembly
    whose ports are bound by its parent crashes standalone. Default the bare
    path to the manifest's declared models, or the file's main class, instead
    of every class. Evidence: openvmp. Own cycle.
@@ -99,13 +99,13 @@ carried a workaround for it drop the workaround.
 - fender-bender: use assertNoSolidInterference and the faceted kernel;
   verify the support-under-gravity contract.
 - openvmp: drop the project clearance engine and the render()-time
-  tessellation where degenerate removal now suffices; run `solid test` on
+  tessellation where degenerate removal now suffices; run `machinome test` on
   the bare file.
 - kossel, abacus: state perturbation directions in the node's own frame.
 
 ## Status (2026-09-06, end of day)
 
-Items 1-4 are on solid-node main, each a two-commit standalone cycle,
+Items 1-4 are on machinome main, each a two-commit standalone cycle,
 nothing pushed:
 
 - 1+2 `trust-manifold-over-trimesh`: 5ed122e + 395769f, ADR-074.
@@ -126,17 +126,17 @@ Items 5 and 6 remain deferred.
 # Expression math and mechanisms (2026-09-06)
 
 Findings from lifting the project `kinematics.py` helpers into the
-framework: two standalone cycles, `expression-math` (`solid_node.math`
+framework: two standalone cycles, `expression-math` (`machinome.math`
 grows abs, floor, ceil, sign, min, max, clamp, clamp01, ramp, lerp, wrap,
 piecewise, bump, polar, turn, rotate_x/y/z) and `mechanisms`
-(`solid_node.mechanisms`: gears, screws, cranks, deltas, linkages). Both are on
-solid-node main as of 2026-09-06 (main at e28cd3a, nothing pushed):
+(`machinome.mechanisms`: gears, screws, cranks, deltas, linkages). Both are on
+machinome main as of 2026-09-06 (main at e28cd3a, nothing pushed):
 
 - `expression-math`: d0688b1 + 2369bd5, ADR-022 revised.
 - `mechanisms`: ebe874b + e28cd3a (rebased onto the first; four
   documentation files conflicted additively), ADR-076.
 
-Viewer fixture committed in solid-node-viewer at 616ed9b. Cycle worktrees
+Viewer fixture committed in machinome-viewer at 616ed9b. Cycle worktrees
 torn down; branches kept. Not triaged yet; the items below are candidates.
 
 ## Framework
@@ -147,7 +147,7 @@ torn down; branches kept. Not triaged yet; the items below are candidates.
    Python's `%` (sign of the divisor). A project writing `angle % 360` on a
    driver gets two answers for a negative operand, and neither the parity
    corpus nor anything else catches it. Candidate fix: export a remainder
-   from `solid_node.math` whose numeric face is `math.fmod` and whose
+   from `machinome.math` whose numeric face is `math.fmod` and whose
    symbolic face is the `%` operator, add it to `SYMBOLIC_BUILTINS` and the
    parity corpus, and document that bare `%` is not expression-safe.
    Evidence: found while refusing `mod` in `expression-math` (design D4).
@@ -159,11 +159,11 @@ torn down; branches kept. Not triaged yet; the items below are candidates.
    are `.value` (unchecked) and an inline anonymous declaration
    (`wrap(angle, Angle(360.0))`), which works but is a parameter, not a
    constant. Candidate fix: an Angle-typed (and Length-typed) literal in
-   `solid_node.parameters`. Evidence: `expression-math` (bump, wrap, turn),
+   `machinome.parameters`. Evidence: `expression-math` (bump, wrap, turn),
    `mechanisms` (design D3, ADR-076 open question).
 9. **`tools/generate_parity_fixture.py` cannot run from a worktree.** Its
-   default output path resolves to `ROOT/../solid-node-viewer/...`, which
-   from `solid-node/WTs/<name>/` is a directory that does not exist. Resolve
+   default output path resolves to `ROOT/../machinome-viewer/...`, which
+   from `machinome/WTs/<name>/` is a directory that does not exist. Resolve
    through the Git common directory, as the shop contract prescribes for
    workspace paths, or require the output argument. Evidence:
    `expression-math` task 5.4.
@@ -200,15 +200,15 @@ torn down; branches kept. Not triaged yet; the items below are candidates.
 
 ## Not framework fixes
 
-- Viewer: `npx vitest` at the `solid-node-viewer` root runs a stale copy
+- Viewer: `npx vitest` at the `machinome-viewer` root runs a stale copy
   under `build/lib/` that fails on a missing `jokenizer`; the widget's own
   runner is the entry point. Clean or ignore `build/`.
 - Viewer: the regenerated `parity-fixture.json` (266 to 421 cases) sits
-  uncommitted in `solid-node-viewer` and needs its own commit there.
+  uncommitted in `machinome-viewer` and needs its own commit there.
 - Shop: the dev-env manifest carries an `exact-geometry` row pointing at an
   old workspace path and a `release-0-5` row with no directory;
-  `solid-node/WTs/exact-geometry/` is an unregistered leftover checkout.
-- Shop: `shop-skills/solid-node` and `solid-node-api` still let the false
+  `machinome/WTs/exact-geometry/` is an unregistered leftover checkout.
+- Shop: `shop-skills/machinome` and `machinome-api` still let the false
   belief stand that the viewer's expression language has no `min`, `max`,
   `abs` or `floor`; four projects copied a `sqrt` clamp kit on that basis.
   Correct once the cycles are on main.
@@ -218,15 +218,15 @@ torn down; branches kept. Not triaged yet; the items below are candidates.
 
 ## Project follow-ups after integration
 
-Run every project suite with `solid test --faceted`.
+Run every project suite with `machinome test --faceted`.
 
 - abacus, fender-bender: commit the uncommitted migrations to the new
-  `solid_node.math` names (both ran green; abacus's four failures are the
+  `machinome.math` names (both ran green; abacus's four failures are the
   pilot's own `count` edit).
 - pascaline, snappy-reprap (`cable_chain.py`): drop the `sqrt` clamp kit and
   `smooth_min`/`smooth_max` for `clamp01`, `min`, `max`, `wrap`.
 - 3DPrintedClocks (four designs): drop the private `OpenSCADConstant`
-  `floor`/`min`/`max` wrappers for `solid_node.math`; replace the depthing
+  `floor`/`min`/`max` wrappers for `machinome.math`; replace the depthing
   functions with `meshed_angle`/`driving_angle` over MrBunsy's references;
   the grasshopper's `nib_position` with `circle_intersection`.
 - gearbox: `conjugate_angle` becomes `meshed_angle(theta, z1, z2, alpha,
@@ -236,7 +236,7 @@ Run every project suite with `solid test --faceted`.
 - kossel: the delta functions become `delta_carriage`/`delta_rod`.
 - openflexure, Inmoov: `column_travel`/`elbow_reach` over `screw_travel`,
   `stage_drop`/flexed reach over `link_rise`; `polar` and `rotate_x` from
-  `solid_node.math`.
+  `machinome.math`.
 - Delete the uncommitted `probe_mechanisms.py` left in gearbox, v8-engine,
   kossel, 3DPrintedClocks, openflexure-microscope and Inmoov-sim.
 
@@ -261,7 +261,7 @@ Run every project suite with `solid test --faceted`.
   now each refuse at construction, before anything is read, when their
   declared source file is absent or is a directory rather than a file,
   naming the class, the declaring attribute, its declared value, and the
-  resolved absolute path (`solid_node/node/sources.py`'s
+  resolved absolute path (`machinome/node/sources.py`'s
   `require_source_file`). The actuator's own `source.require()` preamble
   still adds the extract command the framework cannot know, so it is
   untouched and keeps earning its place. No ADR.
@@ -282,7 +282,7 @@ Probe files deleted. pascaline's `wrap` had a latent edge bug at
 New framework candidates from the pass:
 
 13. **The faceted kernel fails on noise at its default epsilon.** With
-    `solid test --faceted` and no `--volume-epsilon`, interference
+    `machinome test --faceted` and no `--volume-epsilon`, interference
     assertions fail on volumes of -2e-14, -4.7e-17, 1e-7 and similar in
     abacus (3 tests), openflexure (4 of 6), fender-bender (4 of 18),
     pascaline (3) and every 3DPrintedClocks design (2-3 each), all
@@ -291,7 +291,7 @@ New framework candidates from the pass:
     volume is not an interference. Candidate fix: treat |volume| below a
     tessellation-scaled floor as zero by default, or make the default
     epsilon nonzero and say so in the summary line.
-14. **`solid snapshot --preview` passes a bare `--preview` to OpenSCAD
+14. **`machinome snapshot --preview` passes a bare `--preview` to OpenSCAD
     2021.01**, which rejects it with a usage dump
     (`OpenScadRenderer.build_command` emits it unconditionally). Seen in
     3DPrintedClocks.
@@ -317,7 +317,7 @@ redid the comparison under a distinctive name).
   tessellation (0.01 mm / 0.1 rad) rather than through the framework's
   spatial contracts, and there is no way to measure an overlap volume
   without asserting on it.
-- **FIXED (cycle `honour-skip-and-xfail`, ADR-118). (c) `solid test`'s
+- **FIXED (cycle `honour-skip-and-xfail`, ADR-118). (c) `machinome test`'s
   runner has no skip and no expected-failure concept: it calls each
   method in a loop under a bare `except Exception`, so `self.skipTest()`
   and `@unittest.expectedFailure` both count as plain failures. The
@@ -326,7 +326,7 @@ redid the comparison under a distinctive name).
   the honest equivalent it has; a runner that honoured `SkipTest` and
   expected failures would let a project say these things plainly.**
 
-  **What shipped.** `solid_node/manager/test.py`'s runner now classifies
+  **What shipped.** `machinome/manager/test.py`'s runner now classifies
   each animation instant as passed, skipped (`unittest.SkipTest`, raised
   from the method or from `setUp`, or `unittest`'s skip decoration on the
   method or the whole class) or failed, before deciding the method's
@@ -372,7 +372,7 @@ trajectories the ESP32 replays.
   exports but not in the viewer, where a driver is symbolic. Workaround
   in `simulation/layout.py`.
 
-- **No absolute value, min or max in `solid_node.math`.** This project
+- **No absolute value, min or max in `machinome.math`.** This project
   needs all three symbolically: to clamp a commanded joint angle into
   its declared range (which the MJCF's own `ctrllimited` actuators do,
   and 30% of the published commands need), and to split a two-sided
@@ -392,7 +392,7 @@ trajectories the ESP32 replays.
   published size and viewer cost, which nothing tells you until you hit
   it. Workaround in `simulation/gaits.py:balanced_sum`.
 
-- **There is no `solid import-stl`.** `solid import-step` scaffolds a
+- **There is no `solid import-stl`.** `machinome import-step` scaffolds a
   whole document into declarative source; the equivalent for a
   multi-body mesh pack does not exist, and a pack's inventory is
   reachable only by provoking a build failure. For an eighteen-body
@@ -403,7 +403,7 @@ trajectories the ESP32 replays.
 
 ## Not framework fixes
 
-- `solid test` needs a node class, so a module that defines only
+- `machinome test` needs a node class, so a module that defines only
   constants (`layout.py`, `gaits.py`) cannot carry a companion test
   file. Its contracts live in the root's companion instead. Reasonable
   as it stands; noted because it shapes where a project puts its drift
@@ -451,7 +451,7 @@ things worth fixing. None is filed.
   `StepAssembly` exposes, measured unstable across a re-export that
   inserts an unrelated product ahead of the selected ones (ADR-115
   design D1). `StepAssembly.products` now also reports each product's
-  own document identity and its `part_index`, and `solid import-step`
+  own document identity and its `part_index`, and `machinome import-step`
   is keyed on that identity end to end, so two same-named products each
   get their own generated class and selector. Per-solid selection (the
   next paragraph) remains open, unchanged by this fix.
@@ -459,8 +459,8 @@ things worth fixing. None is filed.
   Worth noting the related shape: an upstream *product* is routinely not
   a printed piece. In this export 20 products hold 51 solids, and two
   toe blocks are filed under a *chassis* product rather than the leg
-  they sit on. Per-solid selection — a `solid` index beside `part`, or a
-  `solid import-step --per-solid` — would be the general answer, and
+  they sit on. Per-solid selection — a `machinome` index beside `part`, or a
+  `machinome import-step --per-solid` — would be the general answer, and
   would make the framework's own printed-solid unit reachable from a
   STEP document without a project-local splitter.
 
@@ -474,7 +474,7 @@ things worth fixing. None is filed.
 
       ModuleNotFoundError: No module named 'networkx'
       ... trimesh/repair.py:261 in fill_holes
-      ... solid_node/test.py:1505 in assertNoDisconnectedSolids
+      ... machinome/test.py:1505 in assertNoDisconnectedSolids
 
   Two things: the exact path looks not to be taken for exact nodes, and
   `networkx` is an undeclared transitive need of the mesh path. The
@@ -619,7 +619,7 @@ the project rather than fixed there.
 
       ValueError: ... the mesh engine refuses this mesh (NotManifold)
 
-  so `solid test --faceted` cannot run this machine at all — not "reports
+  so `machinome test --faceted` cannot run this machine at all — not "reports
   a worse verdict", cannot run. Six of twenty-eight contracts died on it,
   including both integrity contracts, before any of them compared
   anything. The faceted kernel is the loop kernel the craft skill asks for,
@@ -670,7 +670,7 @@ the project rather than fixed there.
 
   from `_build/simulation/tools/`, where the belt's STL does not exist —
   it is in `_build/simulation/`. OpenSCAD renders the discs and no belt,
-  with no error, and `solid snapshot` reports success. I lost a snapshot
+  with no error, and `machinome snapshot` reports success. I lost a snapshot
   cycle to a belt I thought was broken.
 
   Observed with a molejo leaf; nothing about it looks specific to
@@ -708,7 +708,7 @@ the project rather than fixed there.
   behaviour — state merges, and clearing clears — but the failure surfaces
   in a later test, in framework code, naming a driver the later test never
   touched. Every contract here names every driver instead.
-- `solid test <file.py>` on a companion test module maps to the node file
+- `machinome test <file.py>` on a companion test module maps to the node file
   of the same name, so a pure measurement suite with no node class
   (`test_layout.py` → `layout.py`) fails with `No node class found`. Those
   two suites run under pytest. This is the bare-path item already fixed for
@@ -722,15 +722,15 @@ the project rather than fixed there.
   `sonicator_tool_assembly.STEP`. Both leaves are valid exact shapes and
   publish as single watertight bodies, but the exact operation cannot produce
   the source assembly's required seat inventory. The project therefore
-  measures the exact pair set on solid-node's published meshes with the
-  manifold boolean engine in `simulation/seats.py`; `solid test --exact`
+  measures the exact pair set on machinome's published meshes with the
+  manifold boolean engine in `simulation/seats.py`; `machinome test --exact`
   still covers exact source evaluation and placement. Candidate wart, not
   filed: expose an explicit indeterminate pair verdict or a supported
   exact-to-faceted fallback for interference inventory contracts.
 
 # 3DPrintedClocks wall clock 01 and Thor (2026-09-09, motion layer refactors)
 
-Found while moving the two originating projects onto `solid_node.motion`
+Found while moving the two originating projects onto `machinome.motion`
 (cycles `motion-package`, `joints`, `couplings`, branch `motion`). Poses
 were bit-identical before and after in both projects.
 
@@ -799,11 +799,11 @@ were bit-identical before and after in both projects.
   code, so it predates the motion branch (an exact-boolean or seats change
   since Thor's last green run, not investigated here).
 
-# Motion catalogue refactor (2026-09-09, every project onto `solid_node.motion`)
+# Motion catalogue refactor (2026-09-09, every project onto `machinome.motion`)
 
 Found while moving the rest of the project catalogue onto joints and
 couplings after the ports move broke every unmigrated import. Tracker:
-`libresolid-studio/docs/motion-general-refactor.md`. Pilot's rule for this
+`machinome-studio/docs/motion-general-refactor.md`. Pilot's rule for this
 campaign: a missing primitive defers the project and is recorded here first,
 with the sentence the project wants to write, so the primitive is built
 before the project is refactored around its absence.
@@ -1067,7 +1067,7 @@ before the project is refactored around its absence.
   Internal Cycloidal Actuator's two disks each want `orbit` (about the
   drive axis, 1:1 with the eccentric shaft) and `spin` (about their own
   bore, `ratio=-1/8` with a mesh-phase offset) on ONE body: the tree is
-  `solid import-step` output mirroring the document one-for-one, so there
+  `machinome import-step` output mirroring the document one-for-one, so there
   is no carrier body to hang the orbit on and inventing one would break
   the one-to-one reading and sixteen tests. It is blocked on the
   composition-order contract alone — joints of one class compose in
@@ -1282,7 +1282,7 @@ before the project is refactored around its absence.
 
 # 3DPrintedClocks wall clock 02 (2026-09-09, exact sweep cost)
 
-Measured on `solid test wall_clock_02` under the exact kernel, at the
+Measured on `machinome test wall_clock_02` under the exact kernel, at the
 primary's 1822221: 1175 s for 16 tests, of which the two sweeps
 (`@testing_steps(48)` over the swing, `@testing_steps(32)` over the great
 wheel's turn, each calling `assertNoUnintendedSolidInterference`) are
@@ -1404,7 +1404,7 @@ of them empty. Placement, BREP copies and keyframe binding are under
   `broad-phase-indexing-frame`, `face-box-broad-phase` — have all landed
   and are measured above.
 - Not a framework fix: fusing the plates and pillars into one solid is
-  the project's choice, and `cProfile` over `solid test` reports garbage
+  the project's choice, and `cProfile` over `machinome test` reports garbage
   totals (instrument directly).
 
 # Inmoov-sim stage B (2026-09-10, first project on ADR-093)
@@ -1485,7 +1485,7 @@ leaves, 34/34 green, no test edited. One finding, not blocking.
   Nothing in the project needs it (`self.pose.roll.value` reads fine).
 
   **FIXED (cycle `repeat-fan-out`, ADR-096).** `get_coordinate(node,
-  name)` is exported from `solid_node.motion.ports` beside
+  name)` is exported from `machinome.motion.ports` beside
   `set_coordinate`, mirroring it segment for segment, returning the
   bound slot — `None` value for an unbound one — and refusing a name
   `declared_ports` does not report by name rather than answering `None`
@@ -1582,7 +1582,7 @@ rather than folded into the closure:
   inside the copy's own `__init__` (ADR-088) while
   `RepeatDeclaration.realize()` assigns `child.__dict__['index'] =
   index` on the line AFTER that construction returns
-  (`solid_node/node/declarative.py:391`, whose own comment already says
+  (`machinome/node/declarative.py:391`, whose own comment already says
   "no sighting needs `index` during construction" — true for a LAW
   resolved later, false for a joint argument resolved eagerly).
   `MotionWorksPart`'s existing `at=lambda node: ... node.index ...`
@@ -1713,7 +1713,7 @@ rather than folded into the closure:
   commit a25b074) needed nodes that bind their own coordinate when run
   standalone but defer to an ancestor's relation when assembled; the
   campaign's suggested idiom tests `value is None`. Measured with
-  `solid test`: the operations a binding produced are swept between
+  `machinome test`: the operations a binding produced are swept between
   passes but the value is not, so after the first standalone bind the
   guard is never true again and every later `set_keyframe` / pose
   re-capture of the same instance keeps the first value. The project's
@@ -1799,7 +1799,7 @@ rather than folded into the closure:
   written class's `__name__`, `__qualname__`, `__module__` and source
   file, deliberately (a joint is not identity), so `isinstance` holds
   but an identity check against the exact class does not.
-  `solid_node/node/internal.py:166` is the one place in the framework
+  `machinome/node/internal.py:166` is the one place in the framework
   that makes this check — a guard against a render returning its own
   type, `type(child) is type(self)` — and a site-jointed child of a
   parent's own class would slip past it. Pinned for the ordinary case
@@ -1849,8 +1849,8 @@ rather than folded into the closure:
   immediately from stale data instead of deferring — and once solved,
   the descendant's later fresh rebind is never revisited this
   enumeration. Fixed in `deferred-read-is-current`
-  (`solid_node/motion/couplings.py`, `solid_node/node/phase.py`,
-  `solid_node/motion/ports.py`): a non-fresh value now reads as unbound,
+  (`machinome/motion/couplings.py`, `machinome/node/phase.py`,
+  `machinome/motion/ports.py`): a non-fresh value now reads as unbound,
   and this attempt defers, exactly when the assembly that bound it
   (tracked as `BoundPort._bound_by`) is the one currently attempting or
   one of its own descendants — still due to run before this pass
@@ -1896,7 +1896,7 @@ rather than folded into the closure:
 
 # orcahand_hardware (2026-09-10, ORCA v1 STEP import)
 
-- **FIXED (cycle `select-a-step-product`, ADR-115). `solid import-step`
+- **FIXED (cycle `select-a-step-product`, ADR-115). `machinome import-step`
   can generate Python that does not parse.** Importing
   `orca_v1/ORCA_Assembly/ORCA_v1.step` generated 53 assembly adapters; an
   identity-only assembly received a `render()` body containing comments but
@@ -1913,7 +1913,7 @@ rather than folded into the closure:
   three of five existing `StepNode` documents generated an unparseable
   `assembly.py` before this fix, all compile after
   (`tests/test_import_step.py::GeneratedSourceCompilesTest`).
-- **FIXED (cycle `select-a-step-product`, ADR-115). `solid import-step`
+- **FIXED (cycle `select-a-step-product`, ADR-115). `machinome import-step`
   can scaffold a document that `StepNode` cannot
   select.** The same document contains 15 distinct products named `SHELL`.
   The importer generated adapters whose only selector is `part = 'SHELL'`;
@@ -1922,7 +1922,7 @@ rather than folded into the closure:
   no product label, occurrence path, or other stable disambiguator, so the
   command cannot build the complete assembly it just scaffolded. Candidate
   fix: give `StepNode` a stable document-product selector and have
-  `solid import-step` emit it whenever names are not unique. The project
+  `machinome import-step` emit it whenever names are not unique. The project
   workaround imports the v1 printed STLs and applies the occurrence
   transforms recovered from the generated STEP transcription; a seven-part
   palm/tower/articulated-index probe built and rendered, and all v1 finger
@@ -1931,7 +1931,7 @@ rather than folded into the closure:
   `simulate-orca-v1`. Filed here; not triaged.
   **What shipped:** a name-relative `part_index` on `StepNode` (not the
   document entry the candidate fix suggested — measured unstable across
-  a re-export, ADR-115 design D1), and `solid import-step` keyed on
+  a re-export, ADR-115 design D1), and `machinome import-step` keyed on
   each product's own identity end to end, emitting `part_index` on a
   generated class whenever its product name is shared. Proven on a
   duplicate-name fixture reproducing this document's own shape: the
@@ -1966,7 +1966,7 @@ in `docs/framework-findings.md` and `docs/validation.md`.
   belongs in the framework, viewer or host is undecided. Filed here;
   triage open.
 - **Faceted strict tangency can fail on a negative intersection volume.**
-  `solid test --faceted simulation/lock.py` reports dial/cam interference
+  `machinome test --faceted simulation/lock.py` reports dial/cam interference
   at −4.440892098500626e−16 mm³ and wheel 3/peg 3 at
   −4.440892098500626e−15 mm³. A reconfigured fitted peg also reports a
   positive 5.538349691151255e−7 mm³ intersection in the faceted representation;
@@ -2034,7 +2034,7 @@ verification. No external issue was opened.
   See `openspec/changes/archive/2026-09-13-voron-faceted-contact/validation.md`.
 - **FIXED (cycle `select-a-step-product`, ADR-115). Duplicate STEP
   names still defeat generated selectors.** This document
-  contains 118 products named `SOLID`; `solid import-step` emits distinct
+  contains 118 products named `SOLID`; `machinome import-step` emits distinct
   Python classes with identical `part = 'SOLID'` selectors, then a build is
   ambiguous. CadQuery's convenience `Assembly.load` also rejects duplicate
   assembly names. The project's `simulation/tools/probe.py` traverses OCP
@@ -2047,26 +2047,26 @@ verification. No external issue was opened.
   described under the YouCanBuildDog and orcahand entries above, the
   same fix for all three findings. Not applied back to this project's
   own `simulation/tools/probe.py` workaround here — that remains the
-  project's own choice on its own schedule (`libresolid-studio/CLAUDE.md`,
+  project's own choice on its own schedule (`machinome-studio/CLAUDE.md`,
   "Mechanical project work"); this entry records that the underlying
   framework gap identified across all three projects is closed.
 
-# solid-node-viewer bundle staleness (2026-09-14, shop floor, Pascaline-module)
+# machinome-viewer bundle staleness (2026-09-14, shop floor, Pascaline-module)
 
-Met opening the shop on port 9000 after fast-forwarding `solid-node-viewer`
+Met opening the shop on port 9000 after fast-forwarding `machinome-viewer`
 main to the `open-run-simulation` campaign branch (`f25c5a1`) and merging the
-same branch into `solid-node` main. Not a project finding; no mechanical
-project's simulation code was touched. This is a `solid-node-viewer`-owned
-contract, `solid_node_viewer/bundle.py`, recorded here because `workflow/`
-is the one place these findings are kept; see `libresolid-studio/CLAUDE.md`,
-"solid-node-viewer work".
+same branch into `machinome` main. Not a project finding; no mechanical
+project's simulation code was touched. This is a `machinome-viewer`-owned
+contract, `machinome_viewer/bundle.py`, recorded here because `workflow/`
+is the one place these findings are kept; see `machinome-studio/CLAUDE.md`,
+"machinome-viewer work".
 
 - **`document_versions()` can promise a document the served bundle refuses.**
   The Pascaline module's exported document declared version 5; the browser
   reported "this viewer does not render" it, even though the merge that adds
-  version-5 rendering was already on both mains and `solid viewer` reported
-  `documentVersions: [1, 2, 3, 4, 5]`. Cause: `solid_node_viewer/widget/dist/
-  solid-widget.js` is a gitignored build artifact (`.gitignore:14`), so
+  version-5 rendering was already on both mains and `machinome viewer` reported
+  `documentVersions: [1, 2, 3, 4, 5]`. Cause: `machinome_viewer/widget/dist/
+  machinome-viewer.js` is a gitignored build artifact (`.gitignore:14`), so
   `git merge --ff-only` moved the widget's TypeScript source and
   `package.json`'s `solidNodeDocumentVersions` field but left the primary
   checkout's built `dist/` at its last `npm run build` (546,459 bytes, built
@@ -2075,13 +2075,13 @@ is the one place these findings are kept; see `libresolid-studio/CLAUDE.md`,
   reported five renderable versions while the file it also names as `path`
   could read only four. The docstring's claim that the two "can never
   disagree" holds only when `dist/` is rebuilt in lockstep with
-  `package.json`; nothing enforces that, and no producer (`solid build`,
-  `solid export`, shop session preparation) rebuilds the widget or compares
+  `package.json`; nothing enforces that, and no producer (`machinome build`,
+  `machinome export`, shop session preparation) rebuilds the widget or compares
   bundle contents against the declaration before serving it. Worked around
   by hand: `npm run build` in the primary viewer checkout produced a
   659,294-byte bundle, md5 `baf972b885ce80ce03c532165ffffffa`, byte-identical
   to the campaign worktree's own build; re-fetching the same live session's
-  `/api/sessions/<id>/viewer/solid-widget.js` after the rebuild returned that
+  `/api/sessions/<id>/viewer/machinome-viewer.js` after the rebuild returned that
   bundle and the document rendered. Evidence: session
   `kpvQF8FXYy8wrX-5xZI4XfhcCgPSQJyC` on the shop hub at port 9000,
   2026-09-14; before/after bundle sizes and md5 above are the reproduction.
@@ -2117,7 +2117,7 @@ survives into a snapshot.
   handle reports `cancelled`, `admitted == 0.5`, and remains the one entry
   in `sim.commands`. A new move on the same input raises `ValueError`:
   `'feed' is already owned by <move feed cancelled: 0.5 admitted>`.
-  In `solid_node/simulation/run.py`, `Command.cancel()` only updates the
+  In `machinome/simulation/run.py`, `Command.cancel()` only updates the
   status; `Run.integrate()` still asks every held command for admissions,
   `Command.admits()` does not exclude cancelled commands, and
   `Run._claim()` rejects any held owner. The public baseline is
@@ -2125,7 +2125,7 @@ survives into a snapshot.
   and report their outcome"; `Command.cancel()` itself promises to stop
   the command where it stands.
 - **Skill text a fix would delete.** The shop's
-  `shop-skills/solid-node-api/SKILL.md`, added in shop commit `99611ce`:
+  `shop-skills/machinome-api/SKILL.md`, added in shop commit `99611ce`:
   "Do not rely on it to stop or replace a move until the framework fixes
   this; `rate(input, 0)` releases an active rate, and restore/reset replace
   the run state." Releasing a rate or restoring state is not equivalent
@@ -2139,15 +2139,15 @@ survives into a snapshot.
   continuing, and snapshot/restore behavior. No framework code changed.
 
 Minimal reproduction: save this as `probe.py` in a directory with a
-`pyproject.toml` containing `[tool.solid-node]` and `model = "probe:Feed"`,
+`pyproject.toml` containing `[tool.machinome]` and `model = "probe:Feed"`,
 then run it with Python using the affected framework installation. It
 needs no CAD build or viewer:
 
 ```python
-from solid_node.node import AssemblyNode
-from solid_node.motion.ports import Time
-from solid_node.motion.joints import Prismatic
-from solid_node.simulation import Driver, Sim
+from machinome.node import AssemblyNode
+from machinome.motion.ports import Time
+from machinome.motion.joints import Prismatic
+from machinome.simulation import Driver, Sim
 
 class Carriage(AssemblyNode):
     travel = Prismatic(axis=(1, 0, 0), range=(0, 12), unit="mm")
@@ -2195,14 +2195,14 @@ sim.move("feed", by=1, duration=0.02)  # observed: ValueError, already owned
 
   ```python
   # probe.py, beside a pyproject.toml with
-  # [tool.solid-node] / model = "probe:Machine"
+  # [tool.machinome] / model = "probe:Machine"
   from solid2 import cylinder
 
-  from solid_node.motion.joints import Revolute
-  from solid_node.motion.ports import Time
-  from solid_node.node import AssemblyNode, Solid2Node
-  from solid_node.parameters import Flag
-  from solid_node.simulation import Driver
+  from machinome.motion.joints import Revolute
+  from machinome.motion.ports import Time
+  from machinome.node import AssemblyNode, Solid2Node
+  from machinome.parameters import Flag
+  from machinome.simulation import Driver
 
 
   class Arbor(Solid2Node):
@@ -2260,7 +2260,7 @@ framework code changed for any of them in that cycle.
 
 - **The test runner's operation checkpoints double a leaf child's joint
   displacement under a running root.** **FIXED (cycle
-  `checkpoint-the-joint`, ADR-114).** `solid_node/manager/test.py:327`
+  `checkpoint-the-joint`, ADR-114).** `machinome/manager/test.py:327`
   snapshots each ROOT CHILD's `operations` before every test and `:368`/`:383`
   restored them after; from the SECOND test on, the `set_keyframe(instant)`
   at `:344` appended the joint displacement a second time. The lock's five
@@ -2325,7 +2325,7 @@ framework code changed for any of them in that cycle.
   an untagged operation. Full measurement in
   `openspec/changes/checkpoint-the-joint/evidence.md`.
 
-- **`solid build` refuses a coordinate bound by a CHILD-declared relation
+- **`machinome build` refuses a coordinate bound by a CHILD-declared relation
   and read by a ROOT-declared one as doubly bound.** **FIXED (cycle
   `a-read-is-not-a-binding`).** The producer's epilogue in
   `symbolic_document` now puts each assembly's record of what its own
@@ -2359,7 +2359,7 @@ framework code changed for any of them in that cycle.
   is NOT in the publication walk: that walk already records every
   relation as solved by the run, exactly as the candidate fix asks, and
   it is the RE-RENDER the producer runs in its `finally` that refuses.
-  And it needs a tree an ENUMERATION posed — `solid build` poses and
+  And it needs a tree an ENUMERATION posed — `machinome build` poses and
   renders before it writes the viewer snapshot — so a never-posed tree of
   the same class always published, which is why the suite never saw it.
 
@@ -2371,7 +2371,7 @@ framework code changed for any of them in that cycle.
       FALLBACK derived from a class name rather than an instance path ...
       Hold the node on its own attribute of its parent.
 
-  Root cause located in `solid_node/simulation/program.py`:
+  Root cause located in `machinome/simulation/program.py`:
   `compile_program` registers a program node for EVERY end of every candidate
   relation (`_relation_edge` → `_register`) before `_reaching_the_bank` drops
   the edges that reach no bank coordinate, and `Program.nodes` kept the
@@ -2471,7 +2471,7 @@ pushed by this plan.
 4. **A child-declared relation read by a root-declared one publishes as
    `DoublyBound`** (Pin tumbler lock). False refusal of a legal shape,
    located in the publication binder. Cycle `a-read-is-not-a-binding`.
-5. **`solid import-step` emits a `render()` that does not parse** when
+5. **`machinome import-step` emits a `render()` that does not parse** when
    every placement is the identity (orcahand). Trivial. Folded into 6.
 6. **`StepNode` cannot select between products sharing a name**, and
    `import-step` scaffolds selectors it cannot build (YouCanBuildDog,
@@ -2489,12 +2489,12 @@ pushed by this plan.
 10. **Interference failures name the leaf, not its path** (3DPrintedClocks
     mantel 34, Thor). Cycle `name-solids-by-path`.
 11. **`%` on a symbolic value disagrees across runtimes** (item 7). A
-    `remainder` in `solid_node.math` with a parity case. Cycle
+    `remainder` in `machinome.math` with a parity case. Cycle
     `expression-remainder`.
 12. **`self.children` reads empty during `simulate()`** and a loop over it
     silently applies nothing (AlbertPro). Cycle `children-refuse-early-reads`.
 13. **`tools/generate_parity_fixture.py` cannot run from a worktree**
-    (item 9) and **`solid snapshot --preview` sends a bare `--preview`**
+    (item 9) and **`machinome snapshot --preview` sends a bare `--preview`**
     (item 14). Tooling; one small cycle `tooling-paths-and-flags` if time.
 14. **A `.repeat()` copy's joint arguments resolve before `index` exists**
     (`joint-frame-follows-declarer`, three projects worked around). Cycle
@@ -2526,13 +2526,13 @@ pushed by this plan.
   relation; a descendant's hand-written read of a deferred relation; a
   subclass's inner joint slot; indexing a repeat in a class body.
 - `solid import-stl` (AlbertPro): a new command.
-- The viewer bundle staleness entry belongs to `solid-node-viewer`, not
+- The viewer bundle staleness entry belongs to `machinome-viewer`, not
   this branch.
 
 ## Already fixed, recorded here so nobody reopens them
 
 - `assertNoDisconnectedSolids` takes the exact path for an exact solid
-  (YouCanBuildDog, Thor): `_routes_exact` in `solid_node/test.py`.
+  (YouCanBuildDog, Thor): `_routes_exact` in `machinome/test.py`.
 - Stale author-bound joint values (v8-engine): `whole-tree-fixpoint`.
 - Negative faceted volume in the ASSEMBLY check: `voron-faceted-contact`.
 
@@ -2555,7 +2555,7 @@ code changed for either.
   harmlessly: its STL is produced natively (OCCT or manifold3d), never by
   OpenSCAD from that `.scad`.
 - **`self.mesh_scad_file` / `self.mesh_stl_file` are vestigial.** Nothing
-  in `solid_node/` writes or reads them beyond the assignment at
+  in `machinome/` writes or reads them beyond the assignment at
   `base.py:711-712`.
 
 # Calculators (2026-09-15, markings applied after the part is made)
@@ -2564,8 +2564,8 @@ Recorded at the pilot's explicit request, from
 `projects/Calculators/Curta-Type-I-3x` and
 `projects/Calculators/Pascaline-module`. These are empirical findings, not
 ratified requirements or permission to implement a framework change. No
-framework source was modified; `solid_node/node/base.py`,
-`solid_node/core/serializer.py` and the viewer's `widget/src/tree.ts` were
+framework source was modified; `machinome/node/base.py`,
+`machinome/core/serializer.py` and the viewer's `widget/src/tree.ts` were
 read to locate the limit. The proposed design is
 `workflow/docs/markings.md`; **status: cycle 1 of 3 implemented** — OpenSpec change
 `carry-markings-on-a-part` (archived 2026-09-15, ADR-120) gives a rigid node a
@@ -2580,8 +2580,8 @@ stencil), and `process` with the cut file and multi-material 3MF (0.8).
   node (`base.py:569`), validated to one `#RRGGBB` and applied whole-node
   (`_colorize`, `base.py:1002`), published as one scalar
   (`serializer.py:645`), and resolved by the viewer to exactly one
-  `MeshStandardMaterial` per mesh (`solid-node-viewer`,
-  `solid_node_viewer/widget/src/tree.ts:55,106`). Nothing in that chain names
+  `MeshStandardMaterial` per mesh (`machinome-viewer`,
+  `machinome_viewer/widget/src/tree.ts:55,106`). Nothing in that chain names
   a region of a part or a finishing step. A project wanting digits on a
   number roll must either declare each glyph as its own leaf — which adds
   parts no maker handles, volume, and (after 0.8) mass, and puts phantom
@@ -2676,7 +2676,7 @@ these.
   only `StopTestRun` — so the run stops with a bare traceback, no
   summary line, and no verdict for the tests that would have followed.
   `unittest` itself reports these as ERRORS, distinct from failures, and
-  keeps running the rest of the suite; `solid test` has no error
+  keeps running the rest of the suite; `machinome test` has no error
   classification at all, for a set-up exception or any other.
 
 # read-the-driven-coordinate (2026-09-15, found while fixing)
@@ -2815,7 +2815,7 @@ taken up here:**
   (21 % of the post-change tick against the port enumeration's 56 %).
   **Open.**
 
-A finding for solid-node-viewer, not proposed there: its TypeScript run
+A finding for machinome-viewer, not proposed there: its TypeScript run
 has the same whole-graph-walk shape and would take the same win, with no
 document or flag change owed to it.
 
@@ -3017,7 +3017,7 @@ the machinery it needs is already in place.
 - **A broadcast `commits` over a `.repeat()` child.** A repeated child's
   banked value has no legal qualified id — `drivers-0` is not a legal id
   segment — so the copies could not be addressed apart. It is THAT
-  problem, the one `solid_node.node.qualified` records against a repeated
+  problem, the one `machinome.node.qualified` records against a repeated
   `Driver`, and not this one; the Curta's seventeen clearing relations
   are seventeen written lines until it is fixed. **Open.**
 - **A multi-input request.** The exactness classification is stated
@@ -3334,7 +3334,7 @@ CALLABLE versus GRAPH, and the framework is on both sides:
 
 - **Executing a version 8 document** (the viewer's cycle) and **the
   browser's clock and clip** (the one after). Both are
-  `solid-node-viewer`'s own repository and its own OpenSpec records; the
+  `machinome-viewer`'s own repository and its own OpenSpec records; the
   contract between the packages is this cycle's design plus the corpus.
   A consumer owes a BIT WALK for the landing, not an epsilon walk: a
   walk by a small quantity lands on a different float at exactly the
@@ -3467,7 +3467,7 @@ watched turning it. Nothing here is a defect.
 - **`docs/api-reference.rst` documented NO clocked API at all** until
   this cycle. `Request`, `Commit`, `Clocked` and `ClockedError` were
   never added by ADR-125..128, and `Request` is still not exported from
-  `solid_node.simulation`. A short **Clocked simulation** section was
+  `machinome.simulation`. A short **Clocked simulation** section was
   added here because this is the first cycle to hand a `Request` to a
   consumer and the two new fields needed somewhere to live; it is more
   surface than the ratified task named, reported rather than assumed, and
@@ -3485,6 +3485,6 @@ watched turning it. Nothing here is a defect.
   `Clocked.move` already held both floats at its return; `Sim.trigger`'s
   existing `_instruction`/`_driver` resolvers gave the unknown-name and
   unknown-driver messages by construction; and the design's own
-  prediction that `solid_node/core/serializer.py` would not change held
+  prediction that `machinome/core/serializer.py` would not change held
   exactly. What the viewer's own cycle inherits is stated in ADR-129's
   consequences and is not framework work. **Closed.**

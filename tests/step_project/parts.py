@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -16,8 +16,8 @@ meshes are: no binary fixture is committed, so this module names files
 that exist only once the test suite has run.
 """
 
-from solid_node.node import StepNode
-from solid_node.node.adapters.step import solids_from_faces
+from machinome.node import StepNode
+from machinome.node.adapters.step import solids_from_faces
 
 from .dimensions import SCALE_FACTOR, SEWING_TOLERANCE
 

@@ -10,22 +10,22 @@ ADR-018 (file-based error propagation, superseding the broker of
 ADR-016/017), the loader rules of ADR-026, and ADR-067 (fresh-interpreter
 build subprocesses).
 
-Code: `solid_node/core/loader.py`, `solid_node/core/builder.py`,
-`solid_node/core/processes.py`, `solid_node/node/base.py` (artifact/caching
+Code: `machinome/core/loader.py`, `machinome/core/builder.py`,
+`machinome/core/processes.py`, `machinome/node/base.py` (artifact/caching
 layer).
 ## Requirements
 ### Requirement: Project root discovery and model reference
 
 The system SHALL determine a project's root by walking upward from a discovery
 origin to the nearest ancestor `pyproject.toml` containing a
-`[tool.solid-node]` table, and SHALL treat the directory holding that file as
+`[tool.machinome]` table, and SHALL treat the directory holding that file as
 the project root.
 
 When the table has no `models` sub-table, its `model` key SHALL hold an
 entry-point object reference naming the project's model node, in the form
 `package.module:ClassName`, and the project SHALL have that one model.
 
-When the table has a `models` sub-table (`[tool.solid-node.models]`), each of
+When the table has a `models` sub-table (`[tool.machinome.models]`), each of
 its keys SHALL be a model name and each value an entry-point object reference
 in the form `package.module:ClassName`. A model name SHALL be one word of
 letters, digits, underscores and hyphens, starting with a letter or underscore,
@@ -56,7 +56,7 @@ node SHALL fail with an actionable error naming the origin it searched from.
 #### Scenario: Command run from a subdirectory
 
 - **WHEN** a user runs a node-scoped command from a subdirectory of a project
-  whose `pyproject.toml` declares `[tool.solid-node] model`
+  whose `pyproject.toml` declares `[tool.machinome] model`
 - **THEN** the project root is discovered from that manifest
 - **AND** the node's tracked source closure is the same set it would be from
   the project root
@@ -71,12 +71,12 @@ node SHALL fail with an actionable error naming the origin it searched from.
 #### Scenario: No manifest above the origin
 
 - **WHEN** a node-scoped command runs with no argument and no ancestor
-  `pyproject.toml` carries a `[tool.solid-node]` table
+  `pyproject.toml` carries a `[tool.machinome]` table
 - **THEN** the command exits nonzero with an error naming the search origin
 
 #### Scenario: A manifest declares several models and a default
 
-- **WHEN** a manifest declares `[tool.solid-node.models]` with
+- **WHEN** a manifest declares `[tool.machinome.models]` with
   `wall_clock_01 = "design.wall_clock_01.clock:WallClock01"` and
   `wall_clock_02 = "design.wall_clock_02.clock:WallClock02"`, and
   `model = "wall_clock_01"`
@@ -181,7 +181,7 @@ Whichever directory a command was run from, a project therefore has one build
 directory per model and — because the build lock is derived from it — one
 build lock per model.
 
-The ordinary `solid build` and SCAD presentation path SHALL retain `.scad`
+The ordinary `machinome build` and SCAD presentation path SHALL retain `.scad`
 (base geometry, no transforms) deliverables. Geometry/document-only consumers
 under `backend-neutral-materialization` SHALL NOT require or generate assembly
 SCAD deliverables, but SHALL still produce SCAD source when a selected backend
@@ -703,7 +703,7 @@ the build.
 
 - **WHEN** a project declares a test method calling
   `assertNoDisconnectedSolids`
-- **THEN** `solid build`, `solid develop` and `solid snapshot` neither discover
+- **THEN** `machinome build`, `machinome develop` and `machinome snapshot` neither discover
   nor execute it
 
 ### Requirement: Asynchronous STL render protocol
@@ -802,7 +802,7 @@ in a fresh interpreter.
 
 #### Scenario: The parent has already run geometry
 
-- **WHEN** `solid build` resolves a model whose import runs geometry, leaving
+- **WHEN** `machinome build` resolves a model whose import runs geometry, leaving
   native worker threads live in the command's own process, and then starts its
   builder subprocess
 - **THEN** the subprocess renders and publishes the model and the command exits
@@ -810,14 +810,14 @@ in a fresh interpreter.
 
 #### Scenario: A cold build directory for a mesh-engine project
 
-- **WHEN** `solid build` runs against a project whose nodes render through the
+- **WHEN** `machinome build` runs against a project whose nodes render through the
   in-process mesh engine and whose build directory holds no current artifacts,
   so every artifact must be tessellated
 - **THEN** each artifact is rendered and published and the command exits 0
 
 #### Scenario: The watch loop respawns a builder
 
-- **WHEN** `solid develop` respawns its builder after a watched source file
+- **WHEN** `machinome develop` respawns its builder after a watched source file
   changes
 - **THEN** the new builder starts from a fresh interpreter, rebuilds from the
   edited source, and the loop continues
@@ -837,7 +837,7 @@ unclassified files SHALL remain filtered as recovery-watch noise.
 
 #### Scenario: Edit triggers rebuild cycle
 
-- **WHEN** a watched source file is saved during `solid develop`
+- **WHEN** a watched source file is saved during `machinome develop`
 - **THEN** the builder logs the change, exits, and is respawned to rebuild
   with the new source
 
@@ -872,11 +872,11 @@ cleanly on the next save so development continues.
 
 - **WHEN** a reload hits a SyntaxError in the edited file
 - **THEN** the traceback lands in `errors.json`, the web viewer can surface
-  it, and fixing the file resumes building without restarting `solid develop`
+  it, and fixing the file resumes building without restarting `machinome develop`
 
 #### Scenario: Broken project at launch
 
-- **WHEN** the first build after `solid develop` fails to load the node
+- **WHEN** the first build after `machinome develop` fails to load the node
 - **THEN** develop tears down its child processes and exits non-zero
 
 #### Scenario: Byte-identical build recovers prior failure state
@@ -1031,7 +1031,7 @@ when it cannot.
 
 #### Scenario: Scaffolded project
 
-- **WHEN** a user creates a project with `solid new` and builds it
+- **WHEN** a user creates a project with `machinome new` and builds it
 - **THEN** neither the build path nor the project build lock appears as an
   untracked file
 
@@ -1055,7 +1055,7 @@ whole linked tree by qualified id — before the node's first render, so
 a driver-declaring project builds, tests, and serves through the CLI
 without binding its own defaults in `__init__` and without a running
 simulation. A tree declaring no drivers SHALL load exactly as before.
-Default binding SHALL live outside `solid_node/node/`, preserving the
+Default binding SHALL live outside `machinome/node/`, preserving the
 rule that the node layer never imports the simulation layer.
 
 #### Scenario: A driver-declaring project builds without self-binding

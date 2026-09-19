@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -35,7 +35,7 @@ ROOT = os.path.abspath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 sys.path.insert(0, ROOT)
 
-from solid_node.simulation import Sim  # noqa: E402
+from machinome.simulation import Sim  # noqa: E402
 
 from tests.carriage_project.machine import (  # noqa: E402
     CurtaCarriage, FixedZero, RangedBlock, ShiftedCarry,

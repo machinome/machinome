@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -36,12 +36,12 @@ affine. Each has its own untimed twin for the same reason.
 
 import math
 
-from solid_node.math import abs, clamp01, floor, min, sign, sin, wrap
-from solid_node.motion.joints import Bound, Free, Prismatic, Revolute
-from solid_node.motion.ports import RotationalPort, Time
-from solid_node.node import AssemblyNode
-from solid_node.parameters import Angle, Flag
-from solid_node.simulation import Button, Driver, Instruction, Slide, Turn
+from machinome.math import abs, clamp01, floor, min, sign, sin, wrap
+from machinome.motion.joints import Bound, Free, Prismatic, Revolute
+from machinome.motion.ports import RotationalPort, Time
+from machinome.node import AssemblyNode
+from machinome.parameters import Angle, Flag
+from machinome.simulation import Button, Driver, Instruction, Slide, Turn
 
 from .parts import (Arbor, Block, Carriage, Dial, Floater, PenSpring, Pin,
                     Wheel)
@@ -2263,7 +2263,7 @@ def pin_lift(knot):
 
 def cleared(value, window=0.05):
     """Whether a pin's lift stands inside the shear-line window --
-    written over `solid_node.math`, so it reads a number and a symbol
+    written over `machinome.math`, so it reads a number and a symbol
     alike."""
     return abs(value) <= window
 
@@ -2713,7 +2713,7 @@ class StatedBelowBody(AssemblyNode):
 
 
 class StatedBelow(StatedBelowBody):
-    """The same machine, running: the tree a `solid build` poses with an
+    """The same machine, running: the tree a `machinome build` poses with an
     enumeration and then publishes."""
 
     time = Time.running()
@@ -2765,7 +2765,7 @@ def missing_tooth(sources, target):
     the ring go on sweeping past a dial that has finished while it still
     clears the dials beyond it.
 
-    The gate reads the dial's OWN retained angle. `solid_node.math` has
+    The gate reads the dial's OWN retained angle. `machinome.math` has
     no `modulo`, so the band is written with `floor`.
     """
     def law(setter, ring, wheel):

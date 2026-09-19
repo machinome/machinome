@@ -16,8 +16,8 @@ import time
 BENCH = os.environ['BENCH']
 sys.path.insert(0, BENCH)
 
-from solid_node.core.loader import load_node
-import solid_node.test as test_module
+from machinome.core.loader import load_node
+import machinome.test as test_module
 
 node = load_node(sys.argv[1])
 node.assemble()

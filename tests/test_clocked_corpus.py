@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,7 +11,7 @@ ADR-111's pattern, repeated for the clocked executor.
 executor, so every expected value in it is a value the producer PRODUCED
 and never one recomputed a second way -- which is what makes a
 disagreement mean the consumer drifted. The framework replays it here;
-the browser viewer replays the same file in `solid-node-viewer` (cycle
+the browser viewer replays the same file in `machinome-viewer` (cycle
 5).
 
 **Agreement is EXACT, bit for bit, floats included.** That is the one
@@ -30,8 +30,8 @@ import json
 import os
 from unittest import TestCase
 
-from solid_node.simulation import Sim
-from solid_node.simulation.enumeration import bind_declared_defaults
+from machinome.simulation import Sim
+from machinome.simulation.enumeration import bind_declared_defaults
 
 from .base import BaseNodeTest
 
@@ -446,7 +446,7 @@ class ExactnessGuardTest(TestCase):
         """Task 9.8 asks what ADR-022's parity fixture already pins for
         the document's own `%`. RECORDED, and it is not what this
         cycle's design assumed: the fixture pins the symbolic VOCABULARY
-        -- every name `solid_node.math` may emit, function for function
+        -- every name `machinome.math` may emit, function for function
         across the runtimes -- and `%` is an OPERATOR, not one of those
         names, so no case of it carries a remainder at all.
 
@@ -458,8 +458,8 @@ class ExactnessGuardTest(TestCase):
         spellings are pinned in two places and neither is pinned by the
         parity fixture (evidence.md, "What the parity fixture pins").
         """
-        from solid_node import math as sn_math
-        from solid_node.scad_expression import GraphValue, as_node
+        from machinome import math as sn_math
+        from machinome.scad_expression import GraphValue, as_node
         from tools.generate_parity_fixture import vocabulary_cases
         from tools.generate_running_corpus import REQUIRED as RUNNING
 

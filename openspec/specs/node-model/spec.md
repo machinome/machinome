@@ -8,7 +8,7 @@ and node identity/naming. Encodes ADR-001 (composite pattern), ADR-002
 (template-method lifecycle), ADR-003 (rigid vs non-rigid), ADR-004 (multi-CAD
 backend adapters), and ADR-026 (parameter-hashed artifact keys vs tree names).
 
-Code: `solid_node/node/` (`base.py`, `internal.py`, `leaf.py`, `fusion.py`,
+Code: `machinome/node/` (`base.py`, `internal.py`, `leaf.py`, `fusion.py`,
 `assembly.py`, `declarative.py`, `adapters/`).
 ## Requirements
 ### Requirement: Composite node tree

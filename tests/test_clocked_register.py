@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -23,8 +23,8 @@ one.
 
 from unittest import TestCase
 
-from solid_node.simulation import Sim
-from solid_node.simulation.clocked import ClockedError
+from machinome.simulation import Sim
+from machinome.simulation.clocked import ClockedError
 
 from .base import BaseNodeTest
 from .clocked_project import unsupported

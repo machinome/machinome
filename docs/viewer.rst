@@ -5,20 +5,20 @@
 The development viewer
 ======================
 
-``solid develop [reference]`` is where you spend your time: it builds
+``machinome develop [reference]`` is where you spend your time: it builds
 the node, opens a viewer, watches the source files, and rebuilds
 whenever you save — the CAD equivalent of a web framework's
 development server.
 
 The **browser viewer** is a separate package,
-`solid-node-viewer <https://github.com/LibreSolid/solid-node-viewer>`_,
-installed with ``pip install "solid-node[viewer]"``. It is the sole
-interactive viewer opened by ``solid develop``; without it the command fails
+`machinome-viewer <https://github.com/machinome/machinome-viewer>`_,
+installed with ``pip install "machinome[viewer]"``. It is the sole
+interactive viewer opened by ``machinome develop``; without it the command fails
 before starting the development processes and names the extra to install.
 ``--web`` remains an explicit spelling of the default, and ``--no-web`` runs
 only the watch-and-build loop for an external host.
 
-The two packages are licensed differently: solid-node under Apache-2.0
+The two packages are licensed differently: machinome under Apache-2.0
 and the viewer under AGPL-3.0-only. The framework is complete without the
 viewer — it builds, tests, exports (``--no-widget``), develops with
 ``--no-web``, and takes fixed-pose snapshots through OpenSCAD — and reaches
@@ -27,7 +27,7 @@ the browser viewer only as a separate process when it is installed.
 The web viewer
 ==============
 
-With the ``viewer`` extra installed, ``solid develop`` serves the browser
+With the ``viewer`` extra installed, ``machinome develop`` serves the browser
 viewer at http://localhost:8000. It shows the assembled model with orbit
 controls, a navigation tree of the nodes, and plays the animation of
 nodes that use `self.time`.
@@ -50,7 +50,7 @@ widgets (:doc:`Embedding models <embedding>`).
 
 When an edit doesn't compile or fails to render, the viewer shows the
 build error and keeps running: fix the code, save, and the model comes
-back. If the `solid develop` process itself is not running (or was
+back. If the `machinome develop` process itself is not running (or was
 restarted), the viewer shows a persistent offline banner until it
 reconnects.
 
@@ -59,7 +59,7 @@ Document versions, and a running root
 
 The document a build or an export publishes declares a schema
 **version**, and the installed viewer reports which versions it renders
-(``solid viewer``, the ``documentVersions`` field; a viewer that predates
+(``machinome viewer``, the ``documentVersions`` field; a viewer that predates
 the field renders 1 to 4). A root declaring ``time = Time.running()``
 publishes **version 5**, which carries the compiled program beside the
 geometry — see :doc:`Scenario tests <scenarios>`, "What a running root
@@ -67,11 +67,11 @@ publishes".
 
 That bump is not additive, so a viewer that cannot read version 5
 refuses the document by name rather than rendering part of a machine.
-``solid build``, ``solid develop`` and ``solid export`` publish it anyway
+``machinome build``, ``machinome develop`` and ``machinome export`` publish it anyway
 and warn once, naming the version written, the versions the installed
 viewer renders and its package version — the build, the STLs, the tests
 and ``--no-web`` are unaffected by a browser that cannot render.
-``solid snapshot --renderer web`` is the one channel that REFUSES
+``machinome snapshot --renderer web`` is the one channel that REFUSES
 instead: a capture is a one-shot, and a failure inside a headless page
 would reach you as an opaque non-zero exit.
 
@@ -82,7 +82,7 @@ Ports
 =====
 
 The backend port is 8000 by default, configurable with the
-``SOLID_NODE_PORT`` environment variable. The `solid` command loads a
+``MACHINOME_PORT`` environment variable. The `machinome` command loads a
 ``.env`` file from the working directory at startup, so a project can
 pin its ports there — and several projects can run side by side. The
 viewer's server inherits that environment.
@@ -95,9 +95,9 @@ one numerically bound pose through its renderer:
 
 .. code-block:: bash
 
-    $ solid snapshot --renderer openscad
+    $ machinome snapshot --renderer openscad
 
-That fixed-pose snapshot renderer remains the default for ``solid snapshot``.
+That fixed-pose snapshot renderer remains the default for ``machinome snapshot``.
 It is not an interactive viewer: OpenSCAD has no notion of the independent
 driver controls and instructions, and flexible geometry is evaluated only at
 the selected state. Use the browser viewer to drive a machine by hand.
@@ -106,13 +106,13 @@ Hacking on the viewer itself
 ============================
 
 The browser viewer's source — the three.js widget, its React
-development shell and the server ``solid develop`` launches — lives in
-the `solid-node-viewer repository
-<https://github.com/LibreSolid/solid-node-viewer>`_, not in solid-node.
-Clone it, install it editable in the same environment as solid-node, and
-run ``solid develop --web-dev``, which asks the viewer to start its own
-npm dev server (port 3000, or ``SOLID_NODE_FRONTEND_PORT``) and proxy the
+development shell and the server ``machinome develop`` launches — lives in
+the `machinome-viewer repository
+<https://github.com/machinome/machinome-viewer>`_, not in machinome.
+Clone it, install it editable in the same environment as machinome, and
+run ``machinome develop --web-dev``, which asks the viewer to start its own
+npm dev server (port 3000, or ``MACHINOME_FRONTEND_PORT``) and proxy the
 page to it, so viewer code changes hot-reload too. To step into the
 viewer's server under a debugger, run it directly:
-``solid-node-viewer serve --build-dir _build``. ``--debug-builder`` does
+``machinome-viewer serve --build-dir _build``. ``--debug-builder`` does
 the same for the builder — see the :doc:`command line reference <cli>`.

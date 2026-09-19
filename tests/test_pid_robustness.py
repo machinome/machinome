@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -29,5 +29,5 @@ class StlGenerationLockedTest(BaseNodeTest):
     def test_permission_error_from_kill_means_locked(self):
         open(self.node.lock_file, 'w').write('12345')
 
-        with patch('solid_node.node.base.os.kill', side_effect=PermissionError):
+        with patch('machinome.node.base.os.kill', side_effect=PermissionError):
             self.assertTrue(self.node._stl_generation_locked)

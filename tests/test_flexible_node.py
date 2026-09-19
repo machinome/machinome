@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -25,13 +25,13 @@ from unittest.mock import patch
 import trimesh
 from solid2 import cube
 
-from solid_node.node import AssemblyNode, FusionNode, Solid2Node
-from solid_node.motion.ports import TranslationalPort
-from solid_node.node.base import _topmost_rigid_nodes
-from solid_node.node.flexible import FlexibleNode
-from solid_node.node.leaf import LeafNode
-from solid_node.node.qualified import DriverToken
-from solid_node.simulation import Driver
+from machinome.node import AssemblyNode, FusionNode, Solid2Node
+from machinome.motion.ports import TranslationalPort
+from machinome.node.base import _topmost_rigid_nodes
+from machinome.node.flexible import FlexibleNode
+from machinome.node.leaf import LeafNode
+from machinome.node.qualified import DriverToken
+from machinome.simulation import Driver
 
 from .base import BaseNodeTest
 
@@ -193,10 +193,10 @@ class FlexibleRigidityTest(BaseNodeTest):
         rig = bound_rig()
         rig.assemble()
 
-        with patch('solid_node.node.base.require_openscad',
+        with patch('machinome.node.base.require_openscad',
                    side_effect=AssertionError(
                        'a flexible part must not check OpenSCAD')), \
-             patch('solid_node.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'a flexible part must not launch OpenSCAD')):
             rig.spring.generate_stl()
 

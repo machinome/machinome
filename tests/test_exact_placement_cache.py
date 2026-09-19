@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,9 +13,9 @@ from unittest.mock import patch
 import cadquery as cq
 import numpy as np
 
-import solid_node.exact as exact
-from solid_node.manager import test as manager_test
-import solid_node.test as test_module
+import machinome.exact as exact
+from machinome.manager import test as manager_test
+import machinome.test as test_module
 
 
 class ExactPlacementCacheTest(TestCase):
@@ -175,8 +175,8 @@ class ManagedPlacementCacheResetTest(TestCase):
                                     failfast=False, set=None, all=False,
                                     path=None)
 
-        with patch('solid_node.exact._reset_placement_cache') as reset, \
-                patch('solid_node.manager.test.select_model',
+        with patch('machinome.exact._reset_placement_cache') as reset, \
+                patch('machinome.manager.test.select_model',
                       side_effect=SystemExit):
             with self.assertRaises(SystemExit):
                 manager_test.Test().handle(arguments)

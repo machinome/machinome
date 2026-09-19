@@ -7,15 +7,15 @@ PYTHONPATH, e.g.:
 
 Prints one section per SCOPE sub-question and a machine-readable
 summary line per verdict. Since the stepped-simulation-layer change,
-the harness under test is the shipped solid_node.simulation package
+the harness under test is the shipped machinome.simulation package
 rather than the spike's own steplab.py: this runner is now caller
 validation, revalidating every recorded verdict against the real API.
 """
 
 import time
 
-from solid_node.simulation import Sim
-from solid_node.test import TestCase
+from machinome.simulation import Sim
+from machinome.test import TestCase
 
 from axis_model import HOME_USTEPS, MM_PER_USTEP, XAxis
 

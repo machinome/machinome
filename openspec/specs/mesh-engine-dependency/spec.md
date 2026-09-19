@@ -9,7 +9,7 @@ The system SHALL treat the `manifold3d` mesh engine as a conditional dependency
 of the paths that construct or read a `Manifold`, not as a blanket import-time
 requirement of the assertion module.
 
-Importing `solid_node.test`, declaring a `TestCase`, binding a node to it, and
+Importing `machinome.test`, declaring a `TestCase`, binding a node to it, and
 running the test runner SHALL NOT require the mesh engine.
 
 The paths that require it are exactly:
@@ -55,13 +55,13 @@ not describe them.
 
 - **WHEN** a project whose every selected solid is exact is tested on a machine
   where `manifold3d` cannot be imported
-- **THEN** `solid_node.test` imports, the runner starts, and
+- **THEN** `machinome.test` imports, the runner starts, and
   `assertNoSolidInterference` reaches the same verdict it reaches with the mesh
   engine installed
 
 #### Scenario: The assertion module imports without the mesh engine
 
-- **WHEN** `solid_node.test` is imported in an interpreter where `manifold3d`
+- **WHEN** `machinome.test` is imported in an interpreter where `manifold3d`
   cannot be imported
 - **THEN** the import succeeds and no error is raised until an operation that
   needs the mesh engine is reached

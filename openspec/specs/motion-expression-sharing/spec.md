@@ -10,7 +10,7 @@ while preserving numeric behavior, supported legacy operands and existing output
 ### Requirement: Reusing motion does not expand all its descendants
 
 The framework SHALL let a project compose and reuse deferred motion through
-ordinary arithmetic, supported `solid_node.math` functions, ports, couplings,
+ordinary arithmetic, supported `machinome.math` functions, ports, couplings,
 transformations and flexible parameters without copying the complete expression
 of an operand on each reuse. Memory used to construct these values SHALL scale
 with the operations the project constructs and their operand references, not

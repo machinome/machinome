@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -19,9 +19,9 @@ control reads as what it is rather than as one more block.
 
 from solid2 import cube, cylinder
 
-from solid_node.motion.joints import Free, Prismatic, Revolute
-from solid_node.motion.ports import RotationalPort, TranslationalPort
-from solid_node.node import Solid2Node
+from machinome.motion.joints import Free, Prismatic, Revolute
+from machinome.motion.ports import RotationalPort, TranslationalPort
+from machinome.node import Solid2Node
 
 
 class Arbor(Solid2Node):

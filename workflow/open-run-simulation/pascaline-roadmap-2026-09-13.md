@@ -46,7 +46,7 @@ part of the generic runtime's evidence and conformance corpus. The complete
 its original wording and an explicit historical-status notice.
 
 The pilot's separate request to be consulted when ready to start actual
-solid-node feature development still applies. This preparation introduces no
+machinome feature development still applies. This preparation introduces no
 compiler, runtime, viewer or mechanical-model implementation.
 
 ## Why the order changed
@@ -75,13 +75,13 @@ coordinates and local mechanical causes, while reusing the restored parts.
 
 ## Repository ownership and verified bases
 
-Paths are relative to `/home/asa/devel/libresolid-studio`. These are independent
+Paths are relative to `/home/asa/devel/machinome-studio`. These are independent
 repositories and standalone worktrees, not a shop sprint.
 
 | Owner | Worktree | Verified source/checkpoint | Role |
 | --- | --- | --- | --- |
-| Framework | `solid-node/WTs/open-run-simulation/` | `main` at `6e41f2da132a8604f9b68895967247fb8876fc4d` | Shared authoring, compiler/program contract, Python run, export and producer fixtures |
-| Viewer | `solid-node-viewer/WTs/open-run-simulation/` | `main` at `6fb082ba9823fb0839631bd4a3ecbf4a41b33b64` | Worker execution, controls, rendering, replay and publication lifecycle |
+| Framework | `machinome/WTs/open-run-simulation/` | `main` at `6e41f2da132a8604f9b68895967247fb8876fc4d` | Shared authoring, compiler/program contract, Python run, export and producer fixtures |
+| Viewer | `machinome-viewer/WTs/open-run-simulation/` | `main` at `6fb082ba9823fb0839631bd4a3ecbf4a41b33b64` | Worker execution, controls, rendering, replay and publication lifecycle |
 | Pascaline | `projects/Vibecoded-demos/pascaline/WTs/open-run-simulation/` | Restoration at `1b0bb5c7979451ce4bc6ffbea187408078229930` | First validation: project laws, geometry, operation and acceptance |
 | Curta | `projects/Calculators/Curta-Type-I-3x/WTs/open-run-simulation/` | Paused checkpoint `d7bf44b5ddd7ffb5b2521fdb5979c7fc1f6adff9` | Second validation, preserving its existing scoped and full-machine roadmap |
 

@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,7 +11,7 @@ useful assertions to fail -- a false green. With NODE naming the main
 class explicitly, the right class must load regardless of definition
 order, and the same contract as apart.py must genuinely hold."""
 
-from solid_node.node import AssemblyNode
+from machinome.node import AssemblyNode
 from .parts import Cube
 
 

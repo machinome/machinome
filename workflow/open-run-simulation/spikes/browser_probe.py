@@ -15,7 +15,7 @@ from playwright.sync_api import sync_playwright
 from programs import HERE, WORKSPACE
 from run import EVIDENCE, compare, write
 
-THREE = WORKSPACE / 'solid-node-viewer/solid_node_viewer/widget/node_modules/three'
+THREE = WORKSPACE / 'machinome-viewer/machinome_viewer/widget/node_modules/three'
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):

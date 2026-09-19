@@ -1,6 +1,6 @@
 # `workflow/` — the framework's pre-spec working record
 
-This directory holds the working material of solid-node development that is
+This directory holds the working material of machinome development that is
 real and worth keeping but is not yet, or is no longer, an OpenSpec record.
 
 The intended chain of a framework change is:
@@ -32,7 +32,7 @@ has ratified are recorded in place, so the file also reads as the queue.
 
 An entry is evidence, not a requirement. It becomes a requirement only when
 it is taken up as a framework change under
-`libresolid-studio/skills/framework-change/SKILL.md`.
+`machinome-studio/skills/framework-change/SKILL.md`.
 
 ### `docs/` — provisional plans and design notes
 
@@ -67,9 +67,9 @@ report that has been rebased says so rather than implying it was remeasured.
 
 ## Where this fits
 
-`workflow/` belongs to the solid-node repository and is committed with it.
+`workflow/` belongs to the machinome repository and is committed with it.
 It is framework material, not shop material: it records what the framework
 found and what it plans, while the shop keeps the process for doing the work.
 It is not agent instructions — the framework repository holds no agent
 prompts, and a document here is never read as authority over
-`libresolid-studio/AGENTS.md` or its skills.
+`machinome-studio/AGENTS.md` or its skills.

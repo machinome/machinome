@@ -1,10 +1,10 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 """The framework's one lookup of the viewer it does not carry.
 
-solid-node-viewer registers the `solid_node.viewer` entry point; the
+machinome-viewer registers the `machinome.viewer` entry point; the
 framework resolves it and nothing else. These tests drive the lookup with
 fake entry points so they hold whether or not the viewer is installed here.
 """
@@ -16,8 +16,8 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from solid_node.viewers import bundle
-from solid_node.viewers.bundle import ViewerUnavailable
+from machinome.viewers import bundle
+from machinome.viewers.bundle import ViewerUnavailable
 
 
 def fake_entry(result=None, error=None):
@@ -29,8 +29,8 @@ def fake_entry(result=None, error=None):
 
 
 REPORT = {
-    'path': '/site/solid_node_viewer/widget/dist/solid-widget.js',
-    'index': '/site/solid_node_viewer/widget/index.html',
+    'path': '/site/machinome_viewer/widget/dist/machinome-viewer.js',
+    'index': '/site/machinome_viewer/widget/index.html',
     'apiVersion': 5,
     'version': '0.1.0',
 }
@@ -53,7 +53,7 @@ class LookupTest(TestCase):
             with self.assertRaises(ViewerUnavailable) as raised:
                 bundle.describe()
             remedy = bundle.missing_bundle_remedy()
-        self.assertIn('pip install "solid-node[viewer]"', remedy)
+        self.assertIn('pip install "machinome[viewer]"', remedy)
         self.assertEqual(str(raised.exception), remedy)
         self.assertNotIn('npm', remedy)
 
@@ -79,12 +79,12 @@ class LookupTest(TestCase):
         ours.name = 'bundle'
         with patch.object(bundle, 'entry_points', return_value=[other, ours]) as points:
             bundle.describe()
-        points.assert_called_once_with(group='solid_node.viewer')
+        points.assert_called_once_with(group='machinome.viewer')
         other.load.assert_not_called()
 
     def test_the_viewer_runs_through_this_interpreter(self):
         self.assertEqual(bundle.viewer_command(),
-                         [sys.executable, '-m', 'solid_node_viewer'])
+                         [sys.executable, '-m', 'machinome_viewer'])
 
 
 class DocumentVersionsTest(TestCase):

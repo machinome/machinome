@@ -12,8 +12,8 @@ ADR-022 (cross-runtime degree-trig parity), ADR-028 (cached base meshes
 and single-matrix world composition), and ADR-056 stage 1 (multi-driver
 state binding).
 
-Code: `solid_node/node/operations.py`, `solid_node/node/assembly.py`,
-`solid_node/node/base.py`, `solid_node/math.py`.
+Code: `machinome/node/operations.py`, `machinome/node/assembly.py`,
+`machinome/node/base.py`, `machinome/math.py`.
 ## Requirements
 ### Requirement: Tri-consumer operation objects
 
@@ -125,9 +125,9 @@ base mesh itself is never mutated.
 ### Requirement: Declared time base
 
 A root assembly MAY declare its time base as a class attribute named `time`
-holding one of THREE declarations exported from `solid_node.motion.ports` —
+holding one of THREE declarations exported from `machinome.motion.ports` —
 the module that answers what moves, alongside the port kinds — and no
-longer from `solid_node.node`: `Time(loop=<seconds>)`, the LOOPING base,
+longer from `machinome.node`: `Time(loop=<seconds>)`, the LOOPING base,
 `Time.running()`, the RUNNING base, or `Time.elapsed()`, the ELAPSED base.
 Under the looping base `loop` SHALL
 be a positive finite number of seconds: the span of machine time one turn
@@ -259,11 +259,11 @@ of the "Normalized animation time" requirement unchanged.
 #### Scenario: The time base is imported from the motion package
 
 - **WHEN** a root's module writes
-  `from solid_node.motion.ports import Time` and declares
+  `from machinome.motion.ports import Time` and declares
   `time = Time(loop=43200)`
 - **THEN** the declaration behaves exactly as it did when `Time` came from
-  `solid_node.node`, and `from solid_node.node import Time` raises
-  `ImportError` naming `solid_node.motion.ports`
+  `machinome.node`, and `from machinome.node import Time` raises
+  `ImportError` naming `machinome.motion.ports`
 
 #### Scenario: The running base is declared and readable off the class
 
@@ -351,7 +351,7 @@ to symbolic time while leaving any other bound snapshot entries in place.
 Because an assembly's re-render sweeps only the operations it drove, the
 operations a cleared subtree carries SHALL be the same symbolic expressions a
 never-keyframed render produces — including expressions built through
-`solid_node.math` — while static placement applied outside any assembly
+`machinome.math` — while static placement applied outside any assembly
 render SHALL survive unchanged and operations SHALL NOT accumulate across
 repeated `set_keyframe`/`clear_keyframe` cycles. `clear_keyframe()` SHALL be
 a no-op on non-animated nodes, mirroring `set_keyframe`.
@@ -378,7 +378,7 @@ serializer already has.
 
 #### Scenario: Clearing restores a non-linear symbolic expression
 
-- **WHEN** an assembly whose rotation is built with `solid_node.math` (for
+- **WHEN** an assembly whose rotation is built with `machinome.math` (for
   example `asin((r/l) * sin(360 * $t))`) is keyframed and then cleared
 - **THEN** its operation serializes to the deferred OpenSCAD expression string,
   identical to the one a fresh render produces, not to the numeric value the
@@ -406,7 +406,7 @@ serializer already has.
 
 ### Requirement: Degree-convention dual-mode math
 
-The system SHALL provide `solid_node/math.py` as the single `$t` math
+The system SHALL provide `machinome/math.py` as the single `$t` math
 semantics — OpenSCAD's degree conventions (`sin(90) == 1.0`, `asin(0.5) ==
 30.0`). Each function SHALL compute numerically when given a real number and
 emit an equivalent deferred OpenSCAD expression when given a symbolic value.
@@ -549,7 +549,7 @@ the emitted expression string.
 
 ### Requirement: Expression-safe vector helpers
 
-The system SHALL export from `solid_node.math` a small set of vector helpers
+The system SHALL export from `machinome.math` a small set of vector helpers
 built only from that module's own scalar functions, so a symbolic value or a
 declared parameter formula in any component rides through unchanged. Each
 takes and returns plain tuples of scalars, and every angle is in degrees,
@@ -601,13 +601,13 @@ dimensions follow from the scalar functions they compose.
 
 ### Requirement: The parity corpus covers every symbolic function
 
-The system SHALL name, in one place in `solid_node/math.py`, every OpenSCAD
+The system SHALL name, in one place in `machinome/math.py`, every OpenSCAD
 builtin the module may emit as a call, and every function that emits one
 SHALL take its name from that inventory rather than spelling it a second
 time. That inventory is the source of truth for what the corpus must cover;
 no consumer SHALL keep a second, hand-maintained list of the same names.
 
-The system SHALL pin every function `solid_node.math` can emit symbolically
+The system SHALL pin every function `machinome.math` can emit symbolically
 in the cross-runtime parity corpus, so no exported symbolic name reaches a
 published document without a fixture case behind it. The corpus SHALL keep
 its existing discipline: an expected value is a producer value, obtained by

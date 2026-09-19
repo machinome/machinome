@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -31,8 +31,8 @@ pins.
 
 import math
 
-from solid_node.motion.ports import get_coordinate
-from solid_node.simulation import (Sim, TooManyCrossings, UnsupportedLaw,
+from machinome.motion.ports import get_coordinate
+from machinome.simulation import (Sim, TooManyCrossings, UnsupportedLaw,
                                    RunConflict)
 
 from .base import BaseNodeTest, expression_evaluations

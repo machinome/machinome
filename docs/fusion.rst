@@ -15,7 +15,7 @@ Let's build that knob. Create `myproject/knob_shaft.py`:
 
 .. code-block:: python
 
-    from solid_node.node import Solid2Node
+    from machinome.node import Solid2Node
     from solid2 import cylinder
 
     class KnobShaft(Solid2Node):
@@ -27,7 +27,7 @@ Let's build that knob. Create `myproject/knob_shaft.py`:
 
 Rendered — the shaft:
 
-.. solid-node:: _exports/knob_shaft
+.. machinome:: _exports/knob_shaft
    :height: 360px
 
 Then `myproject/knob_grip.py` — a tapered grip, with a small indicator mark
@@ -35,7 +35,7 @@ on top:
 
 .. code-block:: python
 
-    from solid_node.node import Solid2Node
+    from machinome.node import Solid2Node
     from solid2 import cube, cylinder, translate
 
     class KnobGrip(Solid2Node):
@@ -53,14 +53,14 @@ on top:
 
 Rendered — the grip:
 
-.. solid-node:: _exports/knob_grip
+.. machinome:: _exports/knob_grip
    :height: 360px
 
 And the fusion, at `myproject/knob.py`:
 
 .. code-block:: python
 
-    from solid_node.node import FusionNode
+    from machinome.node import FusionNode
     from .knob_shaft import KnobShaft
     from .knob_grip import KnobGrip
 
@@ -71,7 +71,7 @@ And the fusion, at `myproject/knob.py`:
 
 The shaft and grip are fused into one rigid solid:
 
-.. solid-node:: _exports/knob
+.. machinome:: _exports/knob
    :height: 360px
 
 Unlike an assembly, a fusion consumes its children into a single solid —
@@ -149,7 +149,7 @@ Let's mount the knob on a panel and turn it. At `myproject/myproject.py`:
 
 .. code-block:: python
 
-    from solid_node.node import AssemblyNode, Solid2Node
+    from machinome.node import AssemblyNode, Solid2Node
     from solid2 import cube, translate
     from .knob import Knob
 
@@ -173,12 +173,12 @@ Let's mount the knob on a panel and turn it. At `myproject/myproject.py`:
 
 Press play to turn the volume up:
 
-.. solid-node:: _exports/knob_assembly
+.. machinome:: _exports/knob_assembly
    :height: 360px
 
 This file defines two node classes, so a bare path to it is ambiguous
 — name the one you mean, either by qualifier
 (`myproject.myproject:VolumeControl`) or hybrid path
-(`myproject/myproject.py:VolumeControl`), e.g. `solid test
+(`myproject/myproject.py:VolumeControl`), e.g. `machinome test
 myproject/myproject.py:VolumeControl`. See :doc:`Names, the node tree
 and caching <node-tree>`.

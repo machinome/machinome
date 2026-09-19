@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,7 +13,7 @@ wraps its export is what the round trip proves.
 
 import cadquery as cq
 
-from solid_node.node import CadQueryNode
+from machinome.node import CadQueryNode
 
 
 BRACKET_LENGTH = 20

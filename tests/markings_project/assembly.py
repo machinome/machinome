@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,8 +11,8 @@ goes with it, with nothing about time or the joint in the decal itself.
 marking, which is what the document and geometry comparisons need.
 """
 
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver
 
 from .dial import Dial
 from .plain_dial import Dial as PlainDial

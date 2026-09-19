@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,7 +7,7 @@
 A declared quantity is a vector of dimension exponents. Multiplication
 adds them, division subtracts them, and addition or comparison needs
 them equal -- that rule is what catches `bore + pressure_angle` on
-import, before any geometry exists. The functions of `solid_node.math`
+import, before any geometry exists. The functions of `machinome.math`
 take part with rules of their own, because windmill's parameter layer
 derives gear dimensions through `atan`, `sqrt` and `cos`.
 
@@ -16,10 +16,10 @@ Everything here is symbolic: tokens and formulas, no node instances.
 
 from unittest import TestCase
 
-import solid_node.math as snmath
-from solid_node.math import acos, asin, atan, atan2, cos, sin, sqrt, tan
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.parameters import (Angle, Count, DimensionError, Flag, Length,
+import machinome.math as snmath
+from machinome.math import acos, asin, atan, atan2, cos, sin, sqrt, tan
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.parameters import (Angle, Count, DimensionError, Flag, Length,
                                    Quantity, Ratio, Scalar)
 
 
@@ -309,7 +309,7 @@ class CompositionDimensionTest(TestCase):
     def test_no_composition_reaches_the_rule_table(self):
         """`function_formula` raises on a name it does not know, so a
         composition that acquired a rule branch would be caught here."""
-        from solid_node.parameters import function_formula
+        from machinome.parameters import function_formula
         for name in ('clamp', 'clamp01', 'ramp', 'lerp', 'wrap',
                      'piecewise', 'bump', 'polar', 'turn',
                      'rotate_x', 'rotate_y', 'rotate_z'):

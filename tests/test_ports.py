@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -18,14 +18,14 @@ serialized operation is that fact without an openscad build.
 
 from solid2 import cube
 
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.motion.joints import Free, Revolute
-from solid_node.motion.ports import (BoundPort, Port, RotationalPort,
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.motion.joints import Free, Revolute
+from machinome.motion.ports import (BoundPort, Port, RotationalPort,
                                      SignalPort, TranslationalPort,
                                      declared_ports, get_coordinate,
                                      set_coordinate)
-from solid_node.parameters import Length
-from solid_node.simulation import Driver
+from machinome.parameters import Length
+from machinome.simulation import Driver
 
 from .base import BaseNodeTest
 

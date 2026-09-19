@@ -4,7 +4,7 @@
  *
  *   node spike/expressions/parity_harness.js <input.json> <output.json>
  *
- * This MIRRORS solid_node/viewers/widget/src/evaluator.ts: the context
+ * This MIRRORS machinome/viewers/widget/src/evaluator.ts: the context
  * map, the OpenSCAD degree-trig overrides, the `^`-as-pow rewrite and
  * the token cache below are a hand copy of that file (which the spike
  * is forbidden to edit and does not import -- it is TypeScript inside a
@@ -19,7 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const { tokenize, evaluate } = require(
-  path.join(__dirname, '..', '..', 'solid_node', 'viewers', 'widget',
+  path.join(__dirname, '..', '..', 'machinome', 'viewers', 'widget',
             'node_modules', 'jokenizer'));
 
 // ---- copied from viewers/widget/src/evaluator.ts ------------------

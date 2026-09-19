@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -38,8 +38,8 @@ import tempfile
 import uuid
 from unittest import TestCase
 
-from solid_node.node import AssemblyNode, StepNode, StlNode
-from solid_node.node.declarative import ChildDeclaration
+from machinome.node import AssemblyNode, StepNode, StlNode
+from machinome.node.declarative import ChildDeclaration
 
 from .stl_project import parts as stl_parts
 from .step_project import parts as step_parts
@@ -197,10 +197,10 @@ class ForeignScratchSourceTest(TestCase):
     package."""
 
     def setUp(self):
-        self.project = tempfile.mkdtemp(prefix='solid_node_missing_source_')
+        self.project = tempfile.mkdtemp(prefix='machinome_missing_source_')
         self.addCleanup(shutil.rmtree, self.project, ignore_errors=True)
         with open(os.path.join(self.project, 'pyproject.toml'), 'w') as manifest:
-            manifest.write('[tool.solid-node]\n')
+            manifest.write('[tool.machinome]\n')
 
     def _load_leaf(self, source):
         path = os.path.join(self.project, 'leaf.py')
@@ -217,7 +217,7 @@ class ForeignScratchSourceTest(TestCase):
 
     def test_an_absent_jscad_source_fails_at_construction(self):
         module = self._load_leaf(
-            'from solid_node.node import JScadNode\n\n\n'
+            'from machinome.node import JScadNode\n\n\n'
             'class AbsentJscad(JScadNode):\n'
             '    jscad_source = "no-such-shape.js"\n')
         path = os.path.join(self.project, 'no-such-shape.js')
@@ -234,7 +234,7 @@ class ForeignScratchSourceTest(TestCase):
 
     def test_an_absent_openscad_source_names_the_class(self):
         module = self._load_leaf(
-            'from solid_node.node import OpenScadNode\n\n\n'
+            'from machinome.node import OpenScadNode\n\n\n'
             'class AbsentScad(OpenScadNode):\n'
             '    scad_source = "no-such-shape.scad"\n')
         path = os.path.join(self.project, 'no-such-shape.scad')

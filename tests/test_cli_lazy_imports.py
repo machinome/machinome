@@ -1,8 +1,8 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""What a `solid` invocation may import, and what it must still print.
+"""What a `machinome` invocation may import, and what it must still print.
 
 Two things are under test here and they need opposite environments.
 
@@ -33,8 +33,8 @@ from importlib import import_module
 from unittest import TestCase, skipUnless
 from unittest.mock import patch
 
-from solid_node.cli import COMMANDS, manage
-from solid_node.viewers.bundle import describe, has_bundle
+from machinome.cli import COMMANDS, manage
+from machinome.viewers.bundle import describe, has_bundle
 
 from .import_probe import probe
 
@@ -43,26 +43,26 @@ from .import_probe import probe
 #: registry: a test that read the registry to decide what may not be
 #: imported would pass even if the registry lost an entry.
 COMMAND_MODULES = {
-    'solid_node.manager.build',
-    'solid_node.manager.develop',
-    'solid_node.manager.test',
-    'solid_node.manager.snapshot',
-    'solid_node.manager.new',
-    'solid_node.manager.export',
-    'solid_node.manager.viewer',
-    'solid_node.manager.models',
-    'solid_node.manager.import_step',
+    'machinome.manager.build',
+    'machinome.manager.develop',
+    'machinome.manager.test',
+    'machinome.manager.snapshot',
+    'machinome.manager.new',
+    'machinome.manager.export',
+    'machinome.manager.viewer',
+    'machinome.manager.models',
+    'machinome.manager.import_step',
 }
 
-#: The order `solid -h` lists commands in, and has listed them in since
+#: The order `machinome -h` lists commands in, and has listed them in since
 #: the command-first flip (ADR-024).
 COMMAND_ORDER = ['build', 'develop', 'test', 'snapshot', 'new', 'export',
                  'viewer', 'models', 'import-step']
 
 MIGRATION_HINT = ('The CLI grammar changed in 0.4: commands come first. '
-                  'Try: solid {command} {path} [options]\n')
+                  'Try: machinome {command} {path} [options]\n')
 
-DISPATCH = 'from solid_node.cli import manage; manage()\n'
+DISPATCH = 'from machinome.cli import manage; manage()\n'
 
 
 def reference_parser():
@@ -73,15 +73,15 @@ def reference_parser():
     not consult anything the implementation could get wrong. Returns the
     top-level parser and the per-command subparsers.
     """
-    from solid_node.manager.build import Build
-    from solid_node.manager.develop import Develop
-    from solid_node.manager.export import Export
-    from solid_node.manager.import_step import ImportStep
-    from solid_node.manager.models import Models
-    from solid_node.manager.new import New
-    from solid_node.manager.snapshot import Snapshot
-    from solid_node.manager.test import Test
-    from solid_node.manager.viewer import Viewer
+    from machinome.manager.build import Build
+    from machinome.manager.develop import Develop
+    from machinome.manager.export import Export
+    from machinome.manager.import_step import ImportStep
+    from machinome.manager.models import Models
+    from machinome.manager.new import New
+    from machinome.manager.snapshot import Snapshot
+    from machinome.manager.test import Test
+    from machinome.manager.viewer import Viewer
 
     # Paired with a name explicitly, rather than derived from the class
     # (`Build` -> `build`): `ImportStep` -> `import-step` is not that
@@ -95,8 +95,8 @@ def reference_parser():
     # argparse derives `prog` from argv[0], and `manage()` lets it: the
     # reference has to be built under the same argv the comparison runs
     # under, or the usage lines differ for a reason that is not the change.
-    with patch.object(sys, 'argv', ['solid']):
-        parser = argparse.ArgumentParser(description='Solid Node')
+    with patch.object(sys, 'argv', ['machinome']):
+        parser = argparse.ArgumentParser(description='Machinome')
         subparsers = parser.add_subparsers(
             dest='command',
 
@@ -131,7 +131,7 @@ def reference_parser():
 def run_help(*argv):
     """Capture what `manage()` prints for a help invocation."""
     stdout = io.StringIO()
-    with patch.object(sys, 'argv', ['solid', *argv]):
+    with patch.object(sys, 'argv', ['machinome', *argv]):
         with redirect_stdout(stdout):
             try:
                 manage()
@@ -150,24 +150,24 @@ class CommandImportIsolationTest(TestCase):
     """A command's process imports that command's module and no other's."""
 
     def test_importing_the_cli_loads_no_command_module(self):
-        result = probe('import solid_node.cli\n')
+        result = probe('import machinome.cli\n')
 
         self.assertEqual(result.status, 0, result.stderr)
         self.assertEqual(
-            sorted(result.imported_under('solid_node.manager')
+            sorted(result.imported_under('machinome.manager')
                    & COMMAND_MODULES),
             [])
 
     def test_dispatching_viewer_loads_only_the_viewer_command(self):
         result = probe(DISPATCH, argv=['viewer'])
 
-        self.assertTrue(result.imported('solid_node.manager.viewer'),
+        self.assertTrue(result.imported('machinome.manager.viewer'),
                         result.stderr)
         self.assertEqual(
             sorted(COMMAND_MODULES & result.modules),
-            ['solid_node.manager.viewer'])
+            ['machinome.manager.viewer'])
 
-    @skipUnless(has_bundle(), 'solid-node-viewer not installed')
+    @skipUnless(has_bundle(), 'machinome-viewer not installed')
     def test_dispatching_viewer_still_reports_the_bundle(self):
         """Loading less must not mean answering differently."""
         result = probe(DISPATCH, argv=['viewer'])
@@ -185,8 +185,8 @@ class CommandImportIsolationTest(TestCase):
         self.assertIsInstance(report['apiVersion'], int)
         # The lookup is an entry point that imports only the standard
         # library; the viewer's own server and capture never load here.
-        self.assertFalse(result.imported('solid_node_viewer.server'))
-        self.assertFalse(result.imported('solid_node_viewer.capture'))
+        self.assertFalse(result.imported('machinome_viewer.server'))
+        self.assertFalse(result.imported('machinome_viewer.capture'))
 
     def test_dispatching_new_loads_only_the_new_command(self):
         """`new` is the non-node command, and takes the other branch of the
@@ -195,7 +195,7 @@ class CommandImportIsolationTest(TestCase):
 
         self.assertEqual(result.status, 0, result.stderr)
         self.assertEqual(sorted(COMMAND_MODULES & result.modules),
-                         ['solid_node.manager.new'])
+                         ['machinome.manager.new'])
 
 
 class NamesAloneTest(TestCase):
@@ -237,7 +237,7 @@ class HelpFidelityTest(TestCase):
         the implementation were both wrong. Name the seven explicitly.
 
         Whitespace is discarded on both sides because argparse wraps help
-        text, and wrapping may break a word on its hyphen (`solid-node`
+        text, and wrapping may break a word on its hyphen (`machinome`
         becomes `solid-\\nnode`). What is asserted is that each name is
         followed by its own docstring.
         """

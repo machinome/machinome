@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -15,20 +15,20 @@ from subprocess import CompletedProcess
 from unittest import TestCase
 from unittest.mock import Mock, PropertyMock, patch
 
-from solid_node.viewers import browser as browser_module
-from solid_node.viewers.browser import BrowserRenderer, BrowserSnapshotError
-from solid_node.viewers.bundle import has_bundle
-from solid_node.core.builder import prepare_build_dir
-from solid_node.core.pieces import PieceInventory, fact_sidecar
-from solid_node import currency
-from solid_node.manager.snapshot import Snapshot
+from machinome.viewers import browser as browser_module
+from machinome.viewers.browser import BrowserRenderer, BrowserSnapshotError
+from machinome.viewers.bundle import has_bundle
+from machinome.core.builder import prepare_build_dir
+from machinome.core.pieces import PieceInventory, fact_sidecar
+from machinome import currency
+from machinome.manager.snapshot import Snapshot
 from tests.test_build_lock import lock_is_held
 from tests.test_export import Cube
 
-VIEWER = [sys.executable, '-m', 'solid_node_viewer']
+VIEWER = [sys.executable, '-m', 'machinome_viewer']
 
 needs_viewer = unittest.skipUnless(
-    has_bundle(), 'solid-node-viewer not installed (pip install "solid-node[viewer]")'
+    has_bundle(), 'machinome-viewer not installed (pip install "machinome[viewer]")'
 )
 
 
@@ -169,7 +169,7 @@ class PublishedBuildIsNotDisturbedTest(TestCase):
         self.document = os.path.join(self.build_dir, "viewer.json")
         with open(self.document, "w") as output:
             json.dump({
-                "format": "solid-node-document", "version": 1,
+                "format": "machinome-document", "version": 1,
                 "animation": {"fps": 30, "frames": 360},
                 "root": {"name": "other", "type": "rigid",
                          "model": "parts/other.stl", "children": []},
@@ -263,19 +263,19 @@ class CaptureDelegationTest(TestCase):
     def test_the_viewers_failure_is_reported_verbatim(self):
         failed = CompletedProcess(args=[], returncode=1, stdout='',
                                   stderr="Error: Install the browser renderer with "
-                                         "`pip install 'solid-node-viewer[snapshot]'`\n")
+                                         "`pip install 'machinome-viewer[snapshot]'`\n")
         with patch.object(browser_module, 'run', return_value=failed):
             with self.assertRaises(BrowserSnapshotError) as raised:
                 self.renderer.capture('/tmp/staged', snapshot_args(), 'shot.png')
-        self.assertIn("solid-node-viewer[snapshot]", str(raised.exception))
+        self.assertIn("machinome-viewer[snapshot]", str(raised.exception))
 
     def test_a_missing_viewer_is_refused_before_staging(self):
         with patch.object(browser_module.viewer_bundle, 'has_bundle', return_value=False), \
              patch.object(browser_module.viewer_bundle, 'missing_bundle_remedy',
-                          return_value='pip install "solid-node[viewer]"'):
+                          return_value='pip install "machinome[viewer]"'):
             with self.assertRaises(BrowserSnapshotError) as raised:
                 self.renderer.stage(Mock(), "/unused")
-        self.assertIn('solid-node[viewer]', str(raised.exception))
+        self.assertIn('machinome[viewer]', str(raised.exception))
 
     def test_browser_failure_never_falls_back_to_openscad(self):
         args = argparse.Namespace(
@@ -288,9 +288,9 @@ class CaptureDelegationTest(TestCase):
         node.__class__.__name__ = "Part"
         with (
             patch.object(snapshot, "_load_and_prepare_node", return_value=node),
-            patch("solid_node.viewers.browser.BrowserRenderer.render",
+            patch("machinome.viewers.browser.BrowserRenderer.render",
                   side_effect=BrowserSnapshotError("browser missing")),
-            patch("solid_node.manager.snapshot.OPENSCAD_RENDERER.render") as openscad,
+            patch("machinome.manager.snapshot.OPENSCAD_RENDERER.render") as openscad,
         ):
             with self.assertRaises(SystemExit):
                 snapshot.handle(args)
@@ -299,8 +299,8 @@ class CaptureDelegationTest(TestCase):
 
 @needs_viewer
 @unittest.skipUnless(
-    os.environ.get('SOLID_NODE_WEB_SNAPSHOT_E2E'),
-    'set SOLID_NODE_WEB_SNAPSHOT_E2E=1 to photograph through the installed viewer',
+    os.environ.get('MACHINOME_WEB_SNAPSHOT_E2E'),
+    'set MACHINOME_WEB_SNAPSHOT_E2E=1 to photograph through the installed viewer',
 )
 class BrowserSnapshotEndToEndTest(TestCase):
     """The whole path, through the real viewer: opt-in, because it needs
@@ -328,7 +328,7 @@ class UnreadableDocumentRefusalTest(TestCase):
 
     def setUp(self):
         from tests.base import BUILD_DIR
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.simulation.enumeration import bind_declared_defaults
         from tests.running_project.machine import Columns, Train, TrainBody
 
         if os.path.exists(BUILD_DIR):
@@ -391,7 +391,7 @@ class UnreadableDocumentRefusalTest(TestCase):
         `controls` key, and is otherwise the document it always was
         (OpenSpec change `declare-controls-on-parts`, design section 9).
         """
-        from solid_node.simulation.enumeration import bind_declared_defaults
+        from machinome.simulation.enumeration import bind_declared_defaults
         from tests.running_project.machine import Columns
 
         controlled = Columns()

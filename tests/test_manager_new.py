@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,11 +11,11 @@ from contextlib import redirect_stderr, redirect_stdout
 from unittest import TestCase
 from unittest.mock import patch
 
-from solid_node.manager import new as new_manager
-from solid_node.manager.new import New
+from machinome.manager import new as new_manager
+from machinome.manager.new import New
 
 
-EXPECTED_INIT = '''from solid_node.node import Solid2Node
+EXPECTED_INIT = '''from machinome.node import Solid2Node
 from solid2 import cube, cylinder, translate
 
 class DemoProject(Solid2Node):
@@ -26,7 +26,7 @@ class DemoProject(Solid2Node):
         ) - cylinder(r=10, h=100)
 '''
 
-EXPECTED_TEST = '''from solid_node.test import TestCase
+EXPECTED_TEST = '''from machinome.test import TestCase
 
 
 class DemoProjectTest(TestCase):
@@ -86,14 +86,14 @@ class NewCommandTest(TestCase):
         target = os.path.join(self.tmpdir.name, 'myproj')
         stdout = io.StringIO()
 
-        with patch.dict(os.environ, {'SOLID_NODE_PORT': '8123'}), \
+        with patch.dict(os.environ, {'MACHINOME_PORT': '8123'}), \
                 redirect_stdout(stdout):
             New().handle(Namespace(name=target))
 
         message = stdout.getvalue()
-        self.assertIn(f'Created new solid-node project at {target}/', message)
+        self.assertIn(f'Created new machinome project at {target}/', message)
         self.assertIn(f'  cd {target}', message)
-        self.assertIn('  solid develop', message)
+        self.assertIn('  machinome develop', message)
         self.assertNotIn('http://', message)
         self.assertNotIn('8000', message)
         self.assertNotIn('8123', message)
@@ -186,7 +186,7 @@ class ScaffoldAcceptanceTest(TestCase):
     name (`snowman_3`) but left the OUTER directory as the raw argument
     (`snowman-3`), so the manifest's own `snowman_3.snowman_3:Snowman3`
     reference named a project one directory away from the one that was
-    actually created, and `solid build`/`solid test` run from inside it
+    actually created, and `machinome build`/`machinome test` run from inside it
     could not discover their own manifest.
     """
 
@@ -223,14 +223,14 @@ class ScaffoldAcceptanceTest(TestCase):
         sys.path.insert(0, project_dir)
 
         # Imported here, after the manifest exists and cwd/sys.path point
-        # at the scaffold, exactly as a maker's first `solid build` /
-        # `solid test` would run. Neither call is expected to raise or
+        # at the scaffold, exactly as a maker's first `machinome build` /
+        # `machinome test` would run. Neither call is expected to raise or
         # exit nonzero; a SystemExit escaping either is this test's real
         # failure mode (build.py's own logging writes to the real stderr
         # fd through a handler bound before this test runs, so it is not
         # captured here and is not a meaningful thing to assert on).
-        from solid_node.manager.build import Build
-        from solid_node.manager.test import Test
+        from machinome.manager.build import Build
+        from machinome.manager.test import Test
 
         test_output = io.StringIO()
         with redirect_stdout(io.StringIO()):
@@ -239,7 +239,7 @@ class ScaffoldAcceptanceTest(TestCase):
             Test().handle(Namespace(path=None, failfast=False))
 
         self.assertTrue(os.path.isdir(os.path.join(project_dir, '_build')),
-                        'solid build did not publish a build directory')
+                        'machinome build did not publish a build directory')
         self.assertIn('Ran 2 tests', test_output.getvalue())
         self.assertIn('2 passed, 0 failed', test_output.getvalue())
 

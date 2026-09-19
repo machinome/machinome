@@ -19,7 +19,7 @@ Already on `main`:
   class statements;
 - node-scoped currency (ADR-071), the declared time base (ADR-072), finite
   tick-aligned simulation time (ADR-083);
-- the motion layer: `solid_node.motion.ports`, `.joints`, `.couplings` —
+- the motion layer: `machinome.motion.ports`, `.joints`, `.couplings` —
   one module one question (ADR-087), a joint owning one coordinate
   (ADR-088), `drives` relating two coordinates with a `law=` (ADR-089);
 - composed joints: composition in declaration order (ADR-093), the orbit

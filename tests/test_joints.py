@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -31,20 +31,20 @@ import numpy as np
 from numpy.testing import assert_allclose
 from solid2 import cube
 
-from solid_node.math import floor
-from solid_node.motion.joints import (Bound, Free, Joint, JointRangeError,
+from machinome.math import floor
+from machinome.motion.joints import (Bound, Free, Joint, JointRangeError,
                                       Orbit, Prismatic, Revolute,
                                       declared_joints)
-from solid_node.motion.ports import (BoundPort, Port, RotationalPort,
+from machinome.motion.ports import (BoundPort, Port, RotationalPort,
                                      TranslationalPort, declared_ports,
                                      get_coordinate)
-from solid_node.node import AssemblyNode, Solid2Node
-from solid_node.node import phase as _phase
-from solid_node.node.base import _compose_world_matrix
-from solid_node.node.assembly import _rest_children, _sweep
-from solid_node.core.serializer import serialize_node
-from solid_node.parameters import Count, Length, ParameterError
-from solid_node.simulation import Driver
+from machinome.node import AssemblyNode, Solid2Node
+from machinome.node import phase as _phase
+from machinome.node.base import _compose_world_matrix
+from machinome.node.assembly import _rest_children, _sweep
+from machinome.core.serializer import serialize_node
+from machinome.parameters import Count, Length, ParameterError
+from machinome.simulation import Driver
 
 from .base import BaseNodeTest
 from .import_probe import probe
@@ -116,7 +116,7 @@ class Mixed(Solid2Node):
 class JointDeclarationTest(BaseNodeTest):
 
     def test_the_kinds_are_exported_from_the_joints_module(self):
-        from solid_node.motion import joints
+        from machinome.motion import joints
 
         for name in ('Joint', 'Revolute', 'Prismatic', 'Orbit', 'Free',
                      'JointRangeError', 'declared_joints'):
@@ -153,9 +153,9 @@ class JointDeclarationTest(BaseNodeTest):
                          (-180, 180))
 
     def test_a_joint_is_not_a_parameter_a_driver_or_a_child(self):
-        from solid_node.node.declarative import declared_children
-        from solid_node.node.qualified import declared_drivers_of
-        from solid_node.parameters import declared_parameters
+        from machinome.node.declarative import declared_children
+        from machinome.node.qualified import declared_drivers_of
+        from machinome.parameters import declared_parameters
 
         self.assertEqual(declared_parameters(Hinge), {})
         self.assertEqual(declared_drivers_of(Hinge), {})
@@ -2517,7 +2517,7 @@ def _derived_radius_and_phase(axis, at, carried, reference):
     the caller passes it. The positive sense is the joint's own: `b`,
     the axis crossed with the radius vector.
     """
-    from solid_node.motion.joints import _orbit_frame
+    from machinome.motion.joints import _orbit_frame
 
     axis = np.array(axis, dtype=float)
     axis = axis / np.linalg.norm(axis)
@@ -2686,7 +2686,7 @@ def _to_chassis(point, roll, pitch, yaw, height):
     reach the chassis's frame, so it is the project's own statement of
     what the composition IS, written before the framework had one.
     """
-    from solid_node.math import cos, sin
+    from machinome.math import cos, sin
 
     px, py, pz = point[0], point[1], point[2] - height
 
@@ -3231,7 +3231,7 @@ class SymbolicJointTest(BaseNodeTest):
         self.assertIn('$t', spinner.hinge.operations[1].serialized[1])
 
     def test_a_driver_read_publishes_the_driver_token(self):
-        from solid_node.core.serializer import symbolic_drivers
+        from machinome.core.serializer import symbolic_drivers
 
         class Driven(AssemblyNode):
             angle = Driver(default=0.0, unit='deg')
@@ -3753,7 +3753,7 @@ class JointDocumentTest(BaseNodeTest):
 
     def test_the_pose_differs_between_two_instants(self):
         import numpy as np
-        from solid_node.node.base import _compose_world_matrix
+        from machinome.node.base import _compose_world_matrix
 
         arm = Arm()
 
@@ -3773,7 +3773,7 @@ class JointDocumentTest(BaseNodeTest):
 MODULE_REPORT = (
     'import sys\n'
     "print(sorted(m for m in sys.modules\n"
-    "             if m == 'solid_node' or m.startswith('solid_node.')))\n")
+    "             if m == 'machinome' or m.startswith('machinome.')))\n")
 
 
 class JointImportCostTest(TestCase):
@@ -3783,10 +3783,10 @@ class JointImportCostTest(TestCase):
         return set(eval(result.stdout.strip())), result
 
     def test_joints_costs_what_ports_costs_and_no_more(self):
-        ports, _ = self.modules('import solid_node.motion.ports\n')
-        joints, result = self.modules('import solid_node.motion.joints\n')
+        ports, _ = self.modules('import machinome.motion.ports\n')
+        joints, result = self.modules('import machinome.motion.joints\n')
 
-        self.assertEqual(joints, ports | {'solid_node.motion.joints'})
+        self.assertEqual(joints, ports | {'machinome.motion.joints'})
         for absent in ('cadquery', 'OCP', 'trimesh'):
             with self.subTest(absent=absent):
                 self.assertFalse(result.imported(absent))
@@ -3795,10 +3795,10 @@ class JointImportCostTest(TestCase):
         """Cycle 3 filled `couplings`, and a relation relates two ports,
         so it costs exactly what `joints` costs (tests/test_couplings.py
         pins it from that side as well)."""
-        ports, _ = self.modules('import solid_node.motion.ports\n')
-        couplings, _ = self.modules('import solid_node.motion.couplings\n')
+        ports, _ = self.modules('import machinome.motion.ports\n')
+        couplings, _ = self.modules('import machinome.motion.couplings\n')
 
-        self.assertEqual(couplings, ports | {'solid_node.motion.couplings'})
+        self.assertEqual(couplings, ports | {'machinome.motion.couplings'})
 
 
 ##############################################
@@ -4365,7 +4365,7 @@ class CapturePosesSeesSiteJointTest(TestCase):
         import sys
 
         script_path = (
-            '/home/asa/devel/libresolid-studio/docs/'
+            '/home/asa/devel/machinome-studio/docs/'
             'motion-general-refactor/capture_poses.py')
         spec = importlib.util.spec_from_file_location(
             '_capture_poses_probe', script_path)
@@ -4443,8 +4443,8 @@ class SiteCarryImportCostTest(TestCase):
     `JointImportCostTest` already pins."""
 
     SNIPPET = (
-        'from solid_node.motion.joints import Revolute\n'
-        'from solid_node.node.operations import Rotation\n'
+        'from machinome.motion.joints import Revolute\n'
+        'from machinome.node.operations import Rotation\n'
         '\n'
         'class FakeNode:\n'
         "    name = 'fake'\n"
@@ -4458,7 +4458,7 @@ class SiteCarryImportCostTest(TestCase):
 
     def test_plain_import_still_costs_nothing_extra(self):
         result = probe(
-            'import solid_node.motion.joints\n' + MODULE_REPORT).check()
+            'import machinome.motion.joints\n' + MODULE_REPORT).check()
         modules = set(eval(result.stdout.strip()))
         self.assertNotIn('numpy', modules)
 

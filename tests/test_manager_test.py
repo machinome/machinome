@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,19 +11,19 @@ from contextlib import redirect_stdout, redirect_stderr
 from unittest import TestCase
 from unittest.mock import patch
 from trimesh.creation import box
-from solid_node.manager.test import Test as Runner, StopTestRun
-from solid_node import test as framework
-from solid_node.motion.ports import get_coordinate
-from solid_node.node.base import AbstractBaseNode
-from solid_node.node.operations import Translation
-from solid_node.simulation import Sim
-from solid_node.simulation.enumeration import bind_declared_defaults
+from machinome.manager.test import Test as Runner, StopTestRun
+from machinome import test as framework
+from machinome.motion.ports import get_coordinate
+from machinome.node.base import AbstractBaseNode
+from machinome.node.operations import Translation
+from machinome.simulation import Sim
+from machinome.simulation.enumeration import bind_declared_defaults
 
 from .running_project.machine import Conditional, Floating, Train, TrainBody
 
 
 def with_instants(*values):
-    """Stand-in for solid_node.test.testing_steps/testing_instant: tags
+    """Stand-in for machinome.test.testing_steps/testing_instant: tags
     a plain function with the instants Test.run_test iterates over."""
     def decorator(method):
         method.testing_instants = list(values)
@@ -891,7 +891,7 @@ class RestoreChildrenCheckpointsControlTest(TestCase):
 
 
 class ResolvePathMappingTest(TestCase):
-    """`solid test` is routinely handed the TEST file instead of the
+    """`machinome test` is routinely handed the TEST file instead of the
     node file it exercises: `root/test_gear.py` instead of `root/gear.py`,
     or `root/test.py` instead of `root/__init__.py`. resolve_path() maps
     it back to the node file (the mirror image of loader.load_test's
@@ -968,7 +968,7 @@ class ResolvePathMappingTest(TestCase):
 class NoNodeClassInModuleTest(TestCase):
     """A module with no AbstractBaseNode subclass defined in it -- the
     case when a stray file, or (before this fix) a TEST file, is handed
-    to `solid test` -- must fail with a clear one-line error instead of
+    to `machinome test` -- must fail with a clear one-line error instead of
     the opaque `TypeError: 'NoneType' object is not callable` that
     calling the loader's None straight away used to produce."""
 
@@ -1014,7 +1014,7 @@ class MultiTestCaseFixture(TestCase):
         open(os.path.join(self.root, 'boat', '__init__.py'), 'w').close()
         with open(os.path.join(self.root, 'pyproject.toml'), 'w') as stream:
             stream.write(
-                '[tool.solid-node]\nmodel = "boat.windmill:Windmill"\n')
+                '[tool.machinome]\nmodel = "boat.windmill:Windmill"\n')
         # Other test modules in this suite set SOLID_BUILD_DIR at import
         # time (some to an absolute path elsewhere in the repo); a build
         # driven from this scratch project must publish into ITS OWN
@@ -1046,7 +1046,7 @@ class MultiTestCaseFixture(TestCase):
         return code, stdout.getvalue(), stderr.getvalue()
 
 
-SKIP_ONLY_SOURCE = '''from solid_node.node import Solid2Node
+SKIP_ONLY_SOURCE = '''from machinome.node import Solid2Node
 from solid2 import cube
 
 
@@ -1055,7 +1055,7 @@ class Widget(Solid2Node):
         return cube(1, center=True)
 '''
 
-SKIP_ONLY_TEST_SOURCE = '''from solid_node.test import TestCase
+SKIP_ONLY_TEST_SOURCE = '''from machinome.test import TestCase
 from .widget import Widget
 
 
@@ -1069,7 +1069,7 @@ class WidgetTest(TestCase):
         self.skipTest('the exact kernel is not available here')
 '''
 
-UNEXPECTED_SUCCESS_SOURCE = '''from solid_node.node import Solid2Node
+UNEXPECTED_SUCCESS_SOURCE = '''from machinome.node import Solid2Node
 from solid2 import cube
 
 
@@ -1079,7 +1079,7 @@ class Gadget(Solid2Node):
 '''
 
 UNEXPECTED_SUCCESS_TEST_SOURCE = '''import unittest
-from solid_node.test import TestCase
+from machinome.test import TestCase
 from .gadget import Gadget
 
 
@@ -1116,7 +1116,7 @@ class UnusualResultExitCodeTest(MultiTestCaseFixture):
         self.assertIn('1 unexpected success', stdout)
 
 
-WINDMILL_SOURCE = '''from solid_node.node import Solid2Node
+WINDMILL_SOURCE = '''from machinome.node import Solid2Node
 from solid2 import cube
 
 
@@ -1130,7 +1130,7 @@ class Sail(Solid2Node):
         return cube(1, center=True)
 '''
 
-WINDMILL_TEST_SOURCE = '''from solid_node.test import TestCase
+WINDMILL_TEST_SOURCE = '''from machinome.test import TestCase
 from .windmill import Windmill, Sail
 
 
@@ -1173,7 +1173,7 @@ class CompanionMultipleTestCasesRunTest(MultiTestCaseFixture):
         self.assertIn('2 passed, 0 failed', stdout)
 
 
-HULL_SOURCE = '''from solid_node.node import Solid2Node
+HULL_SOURCE = '''from machinome.node import Solid2Node
 from solid2 import cube
 
 
@@ -1187,7 +1187,7 @@ class Deck(Solid2Node):
         return cube(1, center=True)
 '''
 
-HULL_TEST_UNDECLARED_SOURCE = '''from solid_node.test import TestCase
+HULL_TEST_UNDECLARED_SOURCE = '''from machinome.test import TestCase
 
 
 class HullTest(TestCase):
@@ -1219,7 +1219,7 @@ class UndeclaredTestCaseInMultiNodeModuleTest(MultiTestCaseFixture):
         self.assertNotIn('passed', stdout)
 
 
-MAST_SOURCE = '''from solid_node.node import Solid2Node
+MAST_SOURCE = '''from machinome.node import Solid2Node
 from solid2 import cube
 
 
@@ -1228,7 +1228,7 @@ class Mast(Solid2Node):
         return cube(1, center=True)
 '''
 
-MAST_TEST_SOURCE = '''from solid_node.test import TestCase
+MAST_TEST_SOURCE = '''from machinome.test import TestCase
 
 
 class MastTest(TestCase):
@@ -1342,7 +1342,7 @@ class ComparisonKernelSelectionTest(TestCase):
 
     def test_a_two_argument_construction_means_the_default_quantum(self):
         # The seven positional two-argument ComparisonPolicy(...) sites in
-        # solid_node/test.py, solid_node/manager/test.py and this repo's
+        # machinome/test.py, machinome/manager/test.py and this repo's
         # own tests are none of them edited to pass a quantum (design.md
         # §6); this is what makes that mean "at the default quantum".
         self.assertEqual(
@@ -1482,7 +1482,7 @@ class ComparisonKernelSelectionTest(TestCase):
 
         # The reference is resolved before any build; stopping there is
         # enough to see the policy already in force and announced.
-        with patch('solid_node.manager.test.resolve_node', record):
+        with patch('machinome.manager.test.resolve_node', record):
             with redirect_stdout(stdout), redirect_stderr(stderr):
                 with self.assertRaises(SystemExit):
                     Runner().handle(args)
@@ -1495,7 +1495,7 @@ class ComparisonKernelSelectionTest(TestCase):
         stdout, stderr = io.StringIO(), io.StringIO()
         args = Namespace(path='whatever.py', failfast=False,
                          kernel=None, volume_epsilon=None)
-        with patch('solid_node.manager.test.resolve_node',
+        with patch('machinome.manager.test.resolve_node',
                    side_effect=SystemExit(0)):
             with redirect_stdout(stdout), redirect_stderr(stderr):
                 with self.assertRaises(SystemExit):
@@ -1556,7 +1556,7 @@ class ComparisonKernelSelectionTest(TestCase):
             r'placement quantum 1e-06 mm\)')
 
 
-ROBOT_SOURCE = '''from solid_node.node import Solid2Node
+ROBOT_SOURCE = '''from machinome.node import Solid2Node
 from solid2 import cube
 
 
@@ -1572,7 +1572,7 @@ class Boat(Solid2Node):
         return cube(1, center=True)
 '''
 
-ROBOT_TEST_SOURCE = '''from solid_node.test import TestCase
+ROBOT_TEST_SOURCE = '''from machinome.test import TestCase
 from boat.robot import Boat
 
 

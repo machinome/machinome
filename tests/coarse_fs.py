@@ -1,14 +1,14 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 """A filesystem that stores timestamps at millisecond resolution.
 
-Emscripten's MEMFS does, and under it solid-node's mtime-equality
+Emscripten's MEMFS does, and under it machinome's mtime-equality
 freshness contract failed 13 of 25 generations -- a project whose sources
 carry sub-second mtimes got no artifact caching at all. Reproduction:
-browser-engine, change `prove-solid-node-runs-in-browser`, upstream
-finding 1, `evidence/groundwork.md` task 1.4 (solid-node 0.5.1 at commit
+browser-engine, change `prove-machinome-runs-in-browser`, upstream
+finding 1, `evidence/groundwork.md` task 1.4 (machinome 0.5.1 at commit
 1c03e337 vendored unmodified, Pyodide 314.0.5 / Emscripten 5.0.3,
 headless Chromium 149).
 

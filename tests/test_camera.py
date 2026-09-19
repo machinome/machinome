@@ -1,10 +1,10 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
 from unittest import TestCase
 
-from solid_node.core.camera import OPENSCAD_FOV, parse_camera
+from machinome.core.camera import OPENSCAD_FOV, parse_camera
 
 
 class CameraConversionTest(TestCase):

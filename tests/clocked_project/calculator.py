@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -31,11 +31,11 @@ are added HERE rather than by editing a fixture whose own cycle's tests
 say what it means.
 """
 
-from solid_node.math import ceil, floor, sign
-from solid_node.motion.joints import Bound, Prismatic, Revolute
-from solid_node.motion.ports import TranslationalPort
-from solid_node.node import AssemblyNode
-from solid_node.simulation import Driver, Instruction, State
+from machinome.math import ceil, floor, sign
+from machinome.motion.joints import Bound, Prismatic, Revolute
+from machinome.motion.ports import TranslationalPort
+from machinome.node import AssemblyNode
+from machinome.simulation import Driver, Instruction, State
 
 from .freeze import rest
 from .parts import Dial, Plate, Slide

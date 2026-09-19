@@ -5,7 +5,7 @@ It demonstrates why absolute posing/endpoint-only polling cannot implement it.
 Run separately from the green suite; the three assertion failures are evidence.
 """
 import unittest
-from solid_node.motion.couplings import Affine
+from machinome.motion.couplings import Affine
 
 
 class DesiredRunningBehaviour(unittest.TestCase):

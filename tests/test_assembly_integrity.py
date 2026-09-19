@@ -1,4 +1,4 @@
-# Solid Node - A framework for mechanical CAD projects
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,10 +13,10 @@ from unittest.mock import patch
 import numpy as np
 from trimesh.creation import box
 
-import solid_node.test as test_module
-from solid_node.mesh_engine import mesh_engine
-from solid_node.node.operations import Rotation, Translation
-from solid_node.test import TestCase as AssertingTestCase
+import machinome.test as test_module
+from machinome.mesh_engine import mesh_engine
+from machinome.node.operations import Rotation, Translation
+from machinome.test import TestCase as AssertingTestCase
 
 
 asserter = AssertingTestCase()
@@ -70,7 +70,7 @@ class AssemblyIntegrityTestCase(TestCase):
     def test_rigid_root_passes_without_loading_geometry(self):
         leaf = RigidNode('LeafWithoutBuiltGeometry')
 
-        with patch('solid_node.test._cached_manifold',
+        with patch('machinome.test._cached_manifold',
                    side_effect=AssertionError('geometry must not load')):
             asserter.assertNoSolidInterference(leaf)
 
@@ -94,7 +94,7 @@ class AssemblyIntegrityTestCase(TestCase):
         # is unchanged: an ingredient inside a fusion is not an
         # assembly part and its geometry is never read.
         original = test_module._cached_local_bounds
-        with patch('solid_node.test._cached_local_bounds',
+        with patch('machinome.test._cached_local_bounds',
                    wraps=original) as loaded_bounds:
             asserter.assertNoSolidInterference(assembly)
 
@@ -217,7 +217,7 @@ class AssemblyIntegrityTestCase(TestCase):
         with patch.object(
                 mesh_engine()[0], 'batch_boolean',
                 side_effect=AssertionError('no whole-assembly union')), \
-             patch('solid_node.test.trimesh.boolean.union',
+             patch('machinome.test.trimesh.boolean.union',
                    side_effect=AssertionError('no whole-assembly union')):
             asserter.assertNoSolidInterference(Assembly(
                 'Root', (first, second)))
@@ -226,7 +226,7 @@ class AssemblyIntegrityTestCase(TestCase):
         first = self.part('First')
         second = self.part('Second', [0.5, 0, 0])
 
-        with patch('solid_node.test._candidate_intersection',
+        with patch('machinome.test._candidate_intersection',
                    return_value=(True, 0.0)) as candidate:
             asserter.assertNoSolidInterference(
                 Assembly('Root', (first, second)))
@@ -237,7 +237,7 @@ class AssemblyIntegrityTestCase(TestCase):
         first = self.part('First')
         second = self.part('Second', [0.5, 0, 0])
 
-        with patch('solid_node.test._candidate_intersection',
+        with patch('machinome.test._candidate_intersection',
                    return_value=(False, 0.0)):
             asserter.assertNoSolidInterference(
                 Assembly('Root', (first, second)))
@@ -247,7 +247,7 @@ class AssemblyIntegrityTestCase(TestCase):
         second = self.part('Second', [0.5, 0, 0])
         smallest_positive = np.nextafter(0.0, 1.0)
 
-        with patch('solid_node.test._candidate_intersection',
+        with patch('machinome.test._candidate_intersection',
                    return_value=(False, smallest_positive)):
             with self.assertRaisesRegex(AssertionError,
                                         'intersection volume'):
@@ -339,7 +339,7 @@ class AssemblyIntegrityTestCase(TestCase):
             for index in range(100)
         ]
 
-        with patch('solid_node.test._boxes_disjoint',
+        with patch('machinome.test._boxes_disjoint',
                    wraps=test_module._boxes_disjoint) as disjoint:
             candidates = list(test_module._bounds_candidates(bounds))
 

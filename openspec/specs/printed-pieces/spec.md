@@ -14,9 +14,9 @@ The published inventory belongs to the shared tree document (ADR-034), so the
 `build-viewer-artifacts` and `export` capabilities each state how their own
 producer carries it.
 
-Code: `solid_node/core/pieces.py`, `solid_node/core/serializer.py`,
-`solid_node/core/builder.py`, `solid_node/core/export.py`,
-`solid_node/viewers/browser.py`.
+Code: `machinome/core/pieces.py`, `machinome/core/serializer.py`,
+`machinome/core/builder.py`, `machinome/core/export.py`,
+`machinome/viewers/browser.py`.
 ## Requirements
 ### Requirement: Printed piece identity is content-derived
 

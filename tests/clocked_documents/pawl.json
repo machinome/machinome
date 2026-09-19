@@ -108,7 +108,7 @@
       "unit": "deg"
     }
   },
-  "format": "solid-node-export",
+  "format": "machinome-export",
   "instructions": {},
   "root": {
     "children": [

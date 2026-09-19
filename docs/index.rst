@@ -1,7 +1,7 @@
-Solid Node documentation
+Machinome documentation
 ========================
 
-Solid Node is an Open Source Python framework for designing and
+Machinome is an Open Source Python framework for designing and
 simulating machines. You describe a machine as a tree of nodes in
 Python — leaf parts modelled with the CAD backend that suits them
 (OpenSCAD, SolidPython, CadQuery, build123d or JSCAD), plus laser-cut
@@ -21,7 +21,7 @@ and license your own designs however you choose.
    :maxdepth: 2
    :caption: Getting started
 
-   why-solid-node
+   why-machinome
    quickstart
 
 .. toctree::
