@@ -1,0 +1,7 @@
+{
+  "name": "machinome-videomaker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Draft authoring contract for scripted Machinome videos; renderer not implemented"
+}
