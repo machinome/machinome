@@ -38,8 +38,8 @@ new design choices exposed by validation are reported, not silently substituted.
 | 5 | `belt_path_metrics` | Prusa3-vanilla; Kossel; Metamaquina2; Hangprinter; Thor | integrated |
 | 6 | `belt_pulley_angle` | Metamaquina2; Prusa3-vanilla; Kossel | integrated |
 | 7 | `two_link_angles` | ZeroBug; Spiderbot; AlbertPro (BiPed singular-origin exclusion) | integrated |
-| 8 | `four_bar_pose` | Dragon R1; Strandbeest | active |
-| 9 | `cycloidal_ratio` | CycloidalDrive; OpenCycloid | queued |
+| 8 | `four_bar_pose` | Dragon R1; Strandbeest | integrated |
+| 9 | `cycloidal_ratio` | CycloidalDrive; OpenCycloid | active |
 | 10 | `harmonic_cam_lift` | Leonardo cam hammer; Deepseek sawmill | queued |
 | 11 | `internal_mesh_angle` | Thor; OpenTorque | queued |
 | 12 | `differential_angles` | Thor; Dragon R1 | queued |
@@ -134,6 +134,17 @@ branches. Static metadata checks and merged-package imports passed under a
 additional CAD-backed import could not map OCP under that cap and is not
 claimed as a pass. No formula or CAD changed, and no heavy gate was rerun.
 Both consumer records explain the founded-but-unpublished source dependency.
+
+Cycle 8 integration: mechanics `25180b0efadc35cd22def3e2f073c7834538c43e`
+is on main. Dragon R1 `107102444b2614f65e6beb9229657c5a160e3d9f` and
+Strandbeest `4ccaa591de164322a6e62318d1ddd0d6b6111987` are on their original
+main branches and import the merged package. Post-merge 143 tests, 24 subtests
+and three strict baseline specs passed. Clean helper worktree removed, branch
+retained; user screenshots preserved. Final Strand affected exact/faceted CAD,
+full build and fresh capture passed under the new 768 MiB physical-memory
+process-tree cap. Parent also verified the cap on a live capture unit and
+terminated the obsolete broad-sweep orphan. Dependency heads remained clean
+at 8d2bd71/4355da1. No push or publication.
 
 ## Project findings outside helper scope
 
