@@ -3526,3 +3526,30 @@ and viewer corpus bytes agree. The original callable prototype remains a red
 control; the measured direct-dial Play caller is green. This resolution does
 not certify the Vault's source orientation, password or complete assembly.
 The GitHub issue draft is still unposted because authentication is absent.
+
+# Astrarium running time source (2026-09-20)
+
+**Status: pilot-classified framework wart; `running-time-drive` ratified
+2026-09-20, not yet implemented.** Originating project `projects/astrarium`,
+checkpoint `67090d2`; framework base `9fb5127`. The historical reconstruction
+is explicitly parked, not completed.
+
+- `self.time` is readable and can pose a plain part. It cannot currently be
+  named as a retained-motion source with `time.drives(...)`; direct joint
+  assignment conflicts with run ownership, and an imperatively time-fed port
+  is not an admitted run input. The captured-time diagnostic remains inert;
+  a declared-driver/`Sim.rate` comparison works. This is a narrow authoring
+  gap, not proof that every autonomous machine is impossible.
+- Proposal: admit an explicit running-clock source through existing relation
+  syntax, preserve the joint bank, and give each time-source relation a
+  stop identity so a mechanical limit cannot stop global elapsed time or an
+  unrelated train. No missed motion is recovered on resumption.
+- Publication and producer fixtures belong to this framework cycle; a
+  compatible viewer requires its own separately authorized repository cycle.
+  No historical CAD, force solver, external issue or viewer mutation is
+  included.
+
+Evidence and cycle identity:
+[investigation](docs/astrarium-running-time-drive.md).
+Draft [proposal](../openspec/changes/running-time-drive/proposal.md) and
+[design](../openspec/changes/running-time-drive/design.md).
