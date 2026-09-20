@@ -2,7 +2,7 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""The external spur-gear mesh.
+"""External spur-gear registration and fixed-ring cycloidal ratios.
 
 A pair is meshed when a tooth of the driven gear points into a gap of
 the driver along the line joining their centres. Turn the driver away
@@ -51,6 +51,11 @@ Two recipes, from the projects this law was lifted from:
 Getting a reference half a tooth wrong is the one error that looks like
 nothing: a wheel's teeth are as wide as its gaps, so the leaves land on
 the teeth instead of between them and every number still reads plausibly.
+
+The cycloidal ratio is a separate speed law: a fixed ring constrains a
+disk carried by an eccentric input. Disk/output and input increments use
+the same positive axis; their ratio is negative when fixed pins outnumber
+disk lobes. Eccentric orbit and rest phases stay with the caller.
 """
 
 
@@ -87,3 +92,20 @@ def driving_angle(driven_angle, driver_teeth, driven_teeth,
     return (line_of_centres - driver_gap
             + (driven_teeth / driver_teeth)
             * (line_of_centres + 180 - driven_tooth - driven_angle))
+
+
+def cycloidal_ratio(lobes, pins):
+    """Signed disk/output increment per eccentric-input increment.
+
+    The ring is fixed; ``lobes`` counts disk lobes and ``pins`` counts
+    fixed ring pins, not output-transfer pins. Both angle increments use
+    the same positive axis and unit, so the returned ratio is dimensionless.
+    Reference phases and eccentric-center orbit are not part of this law.
+
+    Physical use assumes positive integer lobes and pins > lobes. Counts
+    are not rounded or validated; numeric zero lobes divide by zero.
+    Numeric and supported deferred operands share the same arithmetic.
+    CycloidalDrive and OpenCycloid use (20, 21) to reduce disk/output spin
+    to -1/20 while their eccentric centers still orbit one-to-one.
+    """
+    return -(pins - lobes) / lobes

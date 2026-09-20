@@ -23,6 +23,9 @@ source/environment overlays. This caps the whole process tree, including CAD
 children, without mistaking virtual mappings for resident consumption. Do not
 raise the physical cap when a check fails; record the limitation or skip the
 helper. A no-op transient-unit smoke succeeded before adopting this mechanism.
+Treat CAD-backed project imports and model set_state probes as heavy too:
+their short duration does not imply a small working set. They require the
+same sole-process slot and cgroup bounds as CAD tests, builds and captures.
 
 Each cycle records its exact consumer commits, validation commands, results,
 limits and any issues in its own `validation.md`. Existing project evidence and

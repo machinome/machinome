@@ -85,7 +85,7 @@ motion coordinates and relation evaluation.
 
 | Module | Helpers |
 | --- | --- |
-| `gears` | `meshed_angle`, `driving_angle` |
+| `gears` | `meshed_angle`, `driving_angle`, `cycloidal_ratio` |
 | `screws` | `screw_travel`, `screw_angle` |
 | `cranks` | `crank_pin`, `crank_rod_angle`, `piston_height` |
 | `deltas` | `delta_carriage`, `delta_rod` |

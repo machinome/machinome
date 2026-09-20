@@ -19,6 +19,8 @@ for numeric, symbolic and invalid-input behaviour.
      - Driven angle for an external spur-gear pair.
    * - :py:func:`driving_angle`
      - Driver angle for the same mesh, solved backwards.
+   * - :py:func:`cycloidal_ratio`
+     - Signed disk/output increment per eccentric input with a fixed ring.
    * - :py:func:`screw_travel`
      - Axial advance for a screw rotation.
    * - :py:func:`screw_angle`

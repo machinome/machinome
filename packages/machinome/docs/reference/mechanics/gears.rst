@@ -3,8 +3,9 @@ Gears
 
 Calculate the angular registration of an **external spur-gear pair**.
 The driven gear counter-rotates at the tooth-count ratio, with its teeth
-registered to the driver's gaps. These functions position existing gear
-geometry; they do not generate profiles or choose a centre distance.
+registered to the driver's gaps. A separate cycloidal helper gives the
+signed disk/output ratio for a fixed ring. These functions describe existing
+gear geometry; they do not generate profiles or choose a centre distance.
 
 Import from ``machinome_mechanics`` or ``machinome_mechanics.gears``.
 
@@ -114,3 +115,51 @@ profile convention used by your project and verify the assembled mesh.
 Use positive nonzero tooth counts. Neither function validates counts;
 a zero denominator raises numerically. These formulas describe external
 meshing only, with no backlash, slip or tooth deformation model.
+
+cycloidal_ratio
+---------------
+
+.. py:function:: cycloidal_ratio(lobes, pins)
+
+   Return the signed disk/output angle increment per eccentric-input increment
+   for a cycloidal reducer with its ring held stationary.
+
+   :param lobes: Number of lobes on the cycloidal disk.
+   :param pins: Number of fixed ring pins, not the pins transferring motion
+                from the disk to the output.
+   :returns: Dimensionless ``-(pins-lobes)/lobes``, numeric or deferred.
+
+Measure both input and output increments about the same positive axis, using
+the same angular unit. Multiplying an input in degrees gives output degrees.
+With a fixed ring, the relative mesh identity is
+``lobes * (output-input) = pins * (0-input)``. The ratio is negative for the
+physical domain ``pins > lobes > 0``: output counter-rotates. It is **not**
+the positive reduction magnitude often written as "20:1". The negative sign
+alone does not promise an output speed smaller than the input speed.
+
+.. doctest::
+
+   >>> from machinome_mechanics import cycloidal_ratio
+   >>> ratio = cycloidal_ratio(20, 21)
+   >>> ratio
+   -0.05
+   >>> 360 * ratio  # One input turn gives a reverse 18-degree increment
+   -18.0
+   >>> 7200 * ratio  # Multi-turn input is not wrapped
+   -360.0
+   >>> -7200 * ratio
+   360.0
+
+The zero input increment gives zero output increment; any reference pose is
+added by the project. CycloidalDrive and OpenCycloid use 20 disk lobes and
+21 fixed ring pins, keeping their eccentric-center orbit at input speed and
+applying this coefficient only to disk attitude and output spin. Output
+transfer pins, source mounting phases and positive instruction ranges remain
+project data.
+
+Physical counts are positive integers, but the helper does not coerce or
+validate them. Fractional, negative and equal counts retain ordinary
+arithmetic; equal nonzero counts return zero without certifying a realizable
+reducer. Zero numeric lobes raise ``ZeroDivisionError``. Supported deferred
+counts use the same subtraction/division. No moving-ring train, profile
+compatibility, backlash, tooth contact or torque model is supplied.
