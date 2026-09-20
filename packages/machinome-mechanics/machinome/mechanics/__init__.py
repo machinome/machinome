@@ -49,8 +49,8 @@ from; read that module before calling into it. The names are unique
 across families -- `crank_rod_angle`, not `rod_angle`; `delta_rod`, not
 `rod_tilt` -- so the flat import says which family it came from.
 
-The re-exports are eager: each family module imports only
-`machinome.math`, so there is nothing heavy to defer.
+The re-exports are eager: the formulas use `machinome.math` and lightweight
+standard-library constants, so there is nothing heavy to defer.
 """
 
 from machinome_mechanics.cranks import (crank_pin, crank_rod_angle,
@@ -60,6 +60,7 @@ from machinome_mechanics.gears import driving_angle, meshed_angle
 from machinome_mechanics.linkages import (circle_intersection, link_rise,
                                            triangle_angle)
 from machinome_mechanics.screws import screw_angle, screw_travel
+from machinome_mechanics.rolling import rolling_travel
 
 __all__ = [
     'meshed_angle', 'driving_angle',
@@ -67,4 +68,5 @@ __all__ = [
     'crank_pin', 'crank_rod_angle', 'piston_height',
     'delta_carriage', 'delta_rod',
     'circle_intersection', 'triangle_angle', 'link_rise',
+    'rolling_travel',
 ]

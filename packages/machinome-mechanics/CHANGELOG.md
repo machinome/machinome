@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0
 
+- Add `rolling_travel` for rack, belt and constant-radius drum displacement.
+
 - Add the Sphinx user manual for all twelve helpers, with installation,
   coordinate conventions, numeric/symbolic examples and Machinome motion laws.
   Match the framework's Read the Docs theme and include hosting configuration.

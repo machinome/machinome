@@ -17,7 +17,7 @@ first release SHALL NOT expose a `solid_node_mechanics` compatibility package.
 
 - **WHEN** a wheel or source distribution is installed with Machinome 0.7 or
   newer available
-- **THEN** the twelve public helpers are importable from
+- **THEN** every declared public helper is importable from
   `machinome_mechanics`
 - **AND** they preserve numeric and symbolic computation
 

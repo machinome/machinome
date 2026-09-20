@@ -39,6 +39,8 @@ for numeric, symbolic and invalid-input behaviour.
      - Triangle angle from three side lengths.
    * - :py:func:`link_rise`
      - Vertical separation from link length and horizontal offset.
+   * - :py:func:`rolling_travel`
+     - Tangent travel at a constant pitch/contact radius.
 
 .. toctree::
    :maxdepth: 1
@@ -48,3 +50,4 @@ for numeric, symbolic and invalid-input behaviour.
    cranks
    deltas
    linkages
+   rolling

@@ -20,6 +20,8 @@ None.
 ### Modified Capabilities
 
 - `mechanisms`: rotary-to-linear rolling travel.
+- `distribution`: installation exposes the full declared public API as it grows,
+  rather than fixing the foundation's count of twelve.
 
 ## Impact
 

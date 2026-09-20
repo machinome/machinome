@@ -20,6 +20,11 @@ the caller maps this direction to its axis. Radius is the pitch/contact radius.
 Document physical positive radii but preserve arithmetic for zero/negative
 values, consistent with screw_travel. No dimensional class-body promise.
 
+Distribution review found the initial installation contract and smoke checker
+fixed the export count at twelve. Preserve every original export and check the
+installed API against the source's declared export list so this helper and
+subsequent additions are included. This changes no package dependency.
+
 ## Risks / Trade-offs
 
 - Direction conventions differ: retain each existing project sign and datum.

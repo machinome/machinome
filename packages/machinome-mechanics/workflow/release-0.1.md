@@ -3,11 +3,15 @@
 Publication pending. This is the first release of the independent formula
 package, paired with Machinome 0.7.0 and Viewer 0.2.0.
 
-The twelve gear, screw, crank, delta and linkage helpers are imported from
+The twelve foundational gear, screw, crank, delta and linkage helpers are imported from
 `machinome_mechanics`, replacing the unreleased framework-owned
 `machinome.mechanisms` package. Their equations and signatures are preserved.
 The dependency is `machinome>=0.7.0`; solid-node 0.6 is historical formula
 provenance, not an installable substitute for this dependency.
+
+The subsequent [helper expansion](helper-expansion.md) adds APIs before release;
+its archived per-helper records carry the current empirical validation. Counts
+and results below describe the foundation, not the expanded API's latest suite.
 
 Validation on Linux / Python 3.12: 30 tests and 24 subtests pass, including
 numeric/symbolic agreement and declarative/motion integration. Distribution

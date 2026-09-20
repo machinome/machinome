@@ -14,7 +14,7 @@ new design choices exposed by validation are reported, not silently substituted.
 
 | Order | Public helper | Empirical consumers to verify | State |
 | --- | --- | --- | --- |
-| 1 | `rolling_travel` | Dragon R1; Thor | active |
+| 1 | `rolling_travel` | Dragon R1; Thor; six additional repositories | validated, archived for local integration |
 | 2 | `rolling_angle` | Prusa3-vanilla; Kossel | queued |
 | 3 | `pulley_pitch_radius` | Thor; Open Robot Actuator | queued |
 | 4 | `belt_tangent_points` | Thor; Prusa3-vanilla | queued |
