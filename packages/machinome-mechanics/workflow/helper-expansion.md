@@ -20,8 +20,8 @@ new design choices exposed by validation are reported, not silently substituted.
 | 4 | `belt_tangent_points` | Thor; Prusa3-vanilla; three additional repositories | integrated |
 | 5 | `belt_path_metrics` | Prusa3-vanilla; Kossel; Metamaquina2; Hangprinter; Thor | integrated |
 | 6 | `belt_pulley_angle` | Metamaquina2; Prusa3-vanilla; Kossel | integrated |
-| 7 | `two_link_angles` | ZeroBug; Spiderbot; AlbertPro (BiPed singular-origin exclusion) | validated, archived for local integration |
-| 8 | `four_bar_pose` | Dragon R1; Strandbeest | queued |
+| 7 | `two_link_angles` | ZeroBug; Spiderbot; AlbertPro (BiPed singular-origin exclusion) | integrated |
+| 8 | `four_bar_pose` | Dragon R1; Strandbeest | active |
 | 9 | `cycloidal_ratio` | CycloidalDrive; OpenCycloid | queued |
 | 10 | `harmonic_cam_lift` | Leonardo cam hammer; Deepseek sawmill | queued |
 | 11 | `internal_mesh_angle` | Thor; OpenTorque | queued |
@@ -85,6 +85,15 @@ are on their original branches and import the merged package. Post-merge
 109 tests, 24 subtests and three strict baseline specs passed. Clean helper
 worktree removed, branch retained. Dependency heads remained clean/stable at
 framework 8d2bd71 and viewer 4355da1. No push or publication.
+
+Cycle 7 integration: mechanics `8bbad8af6042d0aeb55de28202e3eeb9e73213cf`
+is on main. All three exact consumer commits in archived validation are on
+their original main branches and import the merged package. Post-merge
+128 tests, 24 subtests and three strict baseline specs passed. Clean helper
+worktree removed, branch retained. BiPed stays unchanged because its finite
+deferred origin convention is not the helper's singular geometry. Parent
+review strengthened Spiderbot's probe to exercise the real solver. Dependency
+heads stayed clean/stable at 8d2bd71/4355da1. No push or publication.
 
 ## Project findings outside helper scope
 
