@@ -177,3 +177,72 @@ Spiderbot supplies its horizontal span and vertical drop, then subtracts its
 measured tibia bend from the returned elbow. AlbertPro supplies
 ``(height, 0, THIGH, SHIN)`` after its own height guard. Neither project passes
 servo offsets or body yaw to this helper: those remain in the project adapter.
+
+four_bar_pose
+-------------
+
+.. py:function:: four_bar_pose(angle, crank_pivot, rocker_pivot, crank_length, coupler_length, rocker_length, side=1)
+
+   Pose a driven planar four-bar with fixed pivots A and D and moving ends B
+   and C. The loop is A → B → C → D → A.
+
+   :param angle: Absolute crank A→B bearing, degrees from +X toward +Y about +Z.
+   :param crank_pivot: Fixed A as an ``(x, y)`` tuple.
+   :param rocker_pivot: Fixed D in the same plane and length unit.
+   :param crank_length: Positive A→B length.
+   :param coupler_length: Positive B→C length.
+   :param rocker_length: Positive D→C length.
+   :param side: Literal +1 puts C left of D→B; -1 puts it right. As with
+                :py:func:`circle_intersection`, side is not validated.
+   :returns: A dict with the four fields below, numeric or deferred.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Field
+     - Meaning
+   * - ``crank_end``
+     - B, an XY tuple: A + crank_length * (cos(angle), sin(angle)).
+   * - ``rocker_end``
+     - C, the selected closure point, as an XY tuple.
+   * - ``rocker_angle``
+     - Absolute D→C bearing, retaining the constructed sum described below.
+   * - ``coupler_angle``
+     - Absolute B→C bearing, in atan2's principal representation.
+
+Let ``v = B-D`` and ``d = sqrt(v.x*v.x + v.y*v.y)``. The rocker bearing is
+``atan2(v.y, v.x) + side*triangle_angle(coupler_length, rocker_length, d)``.
+The helper constructs C from that bearing and the rocker length. It does not
+normalize the sum: Dragon R1 subtracts this exact representation from its
+source-part bearing. Coupler bearing is ``atan2(C.y-B.y, C.x-B.x)``.
+Neither output promises continuous unwrapping across an atan2 branch cut.
+
+.. doctest::
+
+   >>> from machinome_mechanics import four_bar_pose
+   >>> pose = four_bar_pose(90, (0, 0), (4, 0), 3, 4, 3, side=-1)
+   >>> tuple(round(v, 6) for v in pose['crank_end'])
+   (0.0, 3.0)
+   >>> tuple(round(v, 6) for v in pose['rocker_end'])
+   (4.0, 3.0)
+   >>> abs(pose['rocker_angle'] - 90) < 1e-10 and abs(pose['coupler_angle']) < 1e-10
+   True
+   >>> other = four_bar_pose(90, (0, 0), (4, 0), 3, 4, 3)
+   >>> tuple(round(v, 6) for v in other['rocker_end'])
+   (1.12, -0.84)
+   >>> round(other['rocker_angle'], 4)  # Deliberately not normalized
+   196.2602
+
+For positive lengths, closure requires ``d > 0`` and
+``abs(rocker_length-coupler_length) <= d <= rocker_length+coupler_length``.
+Coincident B/D divides by zero; unreachable circles cause an inverse-cosine
+domain error. Tangency is mathematically reachable, but floating roundoff can
+still cause a domain error. No tolerance clamp or made-up pose is supplied.
+Supported deferred angles, pivots and lengths use the same arithmetic.
+
+Dragon R1 passes its measured lower/upper inner pivots as A/D in its XZ plane.
+It keeps ride-to-lower-angle inversion and passes ``source_lower_heading -
+lower_angle`` because positive +Y rotation is clockwise in that projection.
+It retains source-part offsets and the separate Y coordinates when lifting
+the returned points into 3D. Strandbeest closes O-C-W-H and O-C-U-H with
+opposite sides, then uses its remaining rigid-triangle construction unchanged.

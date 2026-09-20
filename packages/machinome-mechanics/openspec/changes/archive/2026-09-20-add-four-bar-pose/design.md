@@ -66,6 +66,11 @@ and fresh inspected images. Use explicit worktree PYTHONPATH, not shared
 install changes. Review before sync/archive and local fast-forward integration;
 retain branches. No push or publication.
 
+Consumers with package metadata declare machinome-mechanics when introducing
+their first import. Strand's isolated mutation subprocess retains the caller's
+explicit source overlay, ensuring its failing branch contract exercises this
+cycle's implementation rather than the previously installed helper set.
+
 ## Open Questions
 
 No interface question remains; both independent preflights confirmed the seam.

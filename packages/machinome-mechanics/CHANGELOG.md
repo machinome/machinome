@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0
 
+- Add `four_bar_pose` for selected planar closure points and output bearings.
+
 - Add `two_link_angles` for planar shoulder and relative elbow rotations.
 
 - Add `belt_pulley_angle` for contact-referenced CW/CCW pulley orientation.

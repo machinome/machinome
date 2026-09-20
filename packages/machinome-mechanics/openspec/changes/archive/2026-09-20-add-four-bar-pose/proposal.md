@@ -26,6 +26,8 @@ None.
 ## Impact
 
 Independent mechanics linkages module, exports, tests, manual and distribution
-smoke. Separate Dragon R1 and Strandbeest consumer commits. No framework change,
-new dependency, general constraint solver, collision claim or publication.
+smoke. Separate Dragon R1 and Strandbeest consumer commits, including a
+mechanics dependency declaration where a consumer first imports it. The
+mechanics package itself gains no new runtime dependency. No framework change,
+general constraint solver, collision claim or publication.
 Pilot waived per-cycle ratification; empirical evidence gates integration.

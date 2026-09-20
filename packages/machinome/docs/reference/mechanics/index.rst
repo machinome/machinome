@@ -41,6 +41,8 @@ for numeric, symbolic and invalid-input behaviour.
      - Vertical separation from link length and horizontal offset.
    * - :py:func:`two_link_angles`
      - Absolute shoulder and relative elbow for a planar reach.
+   * - :py:func:`four_bar_pose`
+     - Moving pivots and output bearings for a driven planar four-bar.
    * - :py:func:`rolling_travel`
      - Tangent travel at a constant pitch/contact radius.
    * - :py:func:`rolling_angle`

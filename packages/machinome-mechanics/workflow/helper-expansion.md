@@ -7,6 +7,23 @@ distinct project repositories, sync baseline specs, archive and merge locally
 before starting the next helper. No per-cycle ratification is required. Skip a
 blocked helper with evidence; do not archive unfinished work. No push or release.
 
+Resource discipline added at pilot request during cycle 8: do not run unbounded
+nested symbolic-expression expansion or parallel heavy CAD checks. Evaluate
+only the changed expression boundary when full expansion duplicates shared
+graphs, retaining full-model numeric and CAD evidence. Run lightweight probes
+with explicit memory/CPU/wall limits and measure peak RSS; sequence heavy checks
+with thread counts limited and a bounded memory budget. Report a necessary
+check that cannot fit instead of silently raising its limit.
+
+For CAD, address-space caps rejected shared-library mappings even around
+560 MiB RSS. The available systemd user manager/cgroup v2 supports a stronger
+actual-memory limit: run one isolated transient unit with `MemoryMax=768M`,
+`MemorySwapMax=0` and bounded `RuntimeMaxSec`, explicit working directory and
+source/environment overlays. This caps the whole process tree, including CAD
+children, without mistaking virtual mappings for resident consumption. Do not
+raise the physical cap when a check fails; record the limitation or skip the
+helper. A no-op transient-unit smoke succeeded before adopting this mechanism.
+
 Each cycle records its exact consumer commits, validation commands, results,
 limits and any issues in its own `validation.md`. Existing project evidence and
 user changes are preserved. Refactors preserve mechanics and public controls;
@@ -94,6 +111,29 @@ worktree removed, branch retained. BiPed stays unchanged because its finite
 deferred origin convention is not the helper's singular geometry. Parent
 review strengthened Spiderbot's probe to exercise the real solver. Dependency
 heads stayed clean/stable at 8d2bd71/4355da1. No push or publication.
+
+Cycle 7 packaging follow-up: integration review found missing dependency
+declarations in ZeroBug and AlbertPro, whose first mechanics imports were added
+by that cycle. Metadata-only consumer commits
+`07cf32fecd1d28d59338533248fd916e3deb544a` (ZeroBug) and
+`d0e35ee0312a5b011c959c786862a0959a3324a7` (AlbertPro) are now on main.
+Both declare machinome-mechanics>=0.1.0; Albert's Python minimum now matches
+>=3.11. Parent verified TOML and merged-package imports. ZeroBug wheel metadata
+was checked; Albert's pre-existing flat-layout discovery gap prevents wheel
+building and remains documented, not repaired. No formula or CAD changed.
+Consumer records state the dependency is founded but unpublished and requires
+source installation. Future migrations check metadata alongside imports.
+
+Earlier-cycle metadata follow-up: Thor commit
+`c229b25322e3b899aa70349355dccd262fb8748b` aligns its Python minimum to
+>=3.11; Fender Bender commit `5f23cd14c307bee2e58d4d3423a334442562fc5d`
+adds machinome-mechanics>=0.1.0 to its existing requirements.txt. Parent
+reviewed the focused diffs and fast-forwarded both unchanged original main
+branches. Static metadata checks and merged-package imports passed under a
+768 MiB address-space cap; Fender's consumer import also passed. Thor's
+additional CAD-backed import could not map OCP under that cap and is not
+claimed as a pass. No formula or CAD changed, and no heavy gate was rerun.
+Both consumer records explain the founded-but-unpublished source dependency.
 
 ## Project findings outside helper scope
 

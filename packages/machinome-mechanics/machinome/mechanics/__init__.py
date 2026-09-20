@@ -59,7 +59,7 @@ from machinome_mechanics.cranks import (crank_pin, crank_rod_angle,
                                          piston_height)
 from machinome_mechanics.deltas import delta_carriage, delta_rod
 from machinome_mechanics.gears import driving_angle, meshed_angle
-from machinome_mechanics.linkages import (circle_intersection, link_rise,
+from machinome_mechanics.linkages import (circle_intersection, four_bar_pose, link_rise,
                                            triangle_angle, two_link_angles)
 from machinome_mechanics.screws import screw_angle, screw_travel
 from machinome_mechanics.rolling import rolling_angle, rolling_travel
@@ -76,4 +76,5 @@ __all__ = [
     'belt_path_metrics',
     'belt_pulley_angle',
     'two_link_angles',
+    'four_bar_pose',
 ]

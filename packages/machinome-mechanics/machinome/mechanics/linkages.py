@@ -29,7 +29,7 @@ That is what the originating projects do and it is the honest answer: a
 guard would have to invent a pose that does not exist.
 """
 
-from machinome.math import acos, atan2, sqrt
+from machinome.math import acos, atan2, cos, sin, sqrt
 
 
 def circle_intersection(centre_a, radius_a, centre_b, radius_b, side=1):
@@ -88,3 +88,34 @@ def two_link_angles(x, y, first_length, second_length, side=1):
         second_length, first_length, distance)
     elbow = side * (triangle_angle(distance, first_length, second_length) - 180)
     return shoulder, elbow
+
+
+def four_bar_pose(angle, crank_pivot, rocker_pivot, crank_length,
+                  coupler_length, rocker_length, side=1):
+    """Return the moving ends and absolute output bearings of a four-bar.
+
+    Fixed pivots A=crank_pivot and D=rocker_pivot share the length unit of
+    the positive crank, coupler and rocker lengths. Angle is the absolute
+    crank bearing in degrees from +X toward +Y. Moving ends are B (crank)
+    and C (rocker); literal side +1 selects C left of D-to-B, -1 right.
+
+    The dict contains crank_end B, rocker_end C, rocker_angle D-to-C and
+    coupler_angle B-to-C. The rocker bearing retains the constructed
+    center bearing plus signed closure; the coupler uses principal atan2.
+    Neither promises continuous unwrapping. Domain/division errors propagate;
+    numeric and supported deferred geometry share the same formula.
+
+    Dragon R1 keeps ride inversion and source-frame offsets; Strandbeest
+    uses the two selected closures before its remaining rigid triangles.
+    """
+    bx = crank_pivot[0] + crank_length * cos(angle)
+    by = crank_pivot[1] + crank_length * sin(angle)
+    dx, dy = rocker_pivot
+    vx, vy = bx - dx, by - dy
+    distance = sqrt(vx * vx + vy * vy)
+    rocker_angle = atan2(vy, vx) + side * triangle_angle(
+        coupler_length, rocker_length, distance)
+    cx = dx + rocker_length * cos(rocker_angle)
+    cy = dy + rocker_length * sin(rocker_angle)
+    return dict(crank_end=(bx, by), rocker_end=(cx, cy),
+                rocker_angle=rocker_angle, coupler_angle=atan2(cy - by, cx - bx))
