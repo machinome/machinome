@@ -1,6 +1,6 @@
 # machinome-viewer
 
-The browser viewer for [machinome](https://github.com/machinome/machinome-framework)
+The browser viewer for [machinome](https://github.com/machinome/machinome)
 models, packaged for pip.
 
 This repository was founded as `solid-node-viewer` but adopts its final
