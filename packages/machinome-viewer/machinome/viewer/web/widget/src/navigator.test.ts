@@ -142,6 +142,14 @@ function press(key: string): KeyboardEvent {
 }
 
 describe('mounting', () => {
+  it('exposes the complete part name as a hover tooltip', () => {
+    const stub = new StubHandle();
+    const name = 'A very long part name that cannot fit in the model sidebar';
+    stub.assemblyTree.children[0].name = name;
+    mount(stub);
+    expect(rowFor(name).querySelector('.machinome-nav-name')!.getAttribute('title')).toBe(name);
+  });
+
   it('draws the tree before returning, with no change notified', () => {
     const stub = new StubHandle();
     mount(stub);
@@ -405,9 +413,9 @@ describe('synchronous redraw inside a gesture (design D10)', () => {
     const after = rowFor('A').querySelector<HTMLInputElement>('.machinome-nav-visibility')!;
     expect(after).not.toBe(before);
     expect(after.checked).toBe(false);
-    // The active row (Root, unmoved by clicking A's checkbox) got focus
-    // back, not wherever the click happened.
-    expect(document.activeElement).toBe(rowFor('Root'));
+    // Operating A's checkbox makes A active; returning to the previously
+    // active Root was the cause of Studio's hide/show scroll jump.
+    expect(document.activeElement).toBe(rowFor('A'));
   });
 });
 

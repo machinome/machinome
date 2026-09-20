@@ -5,6 +5,12 @@ it carries release together and share one version.
 
 ## 0.2.0 — unreleased
 
+- The assembly navigator shows complete part names on hover. Expanding,
+  collapsing, hiding or showing a part preserves the sidebar's scroll
+  position and keeps keyboard focus on the row being operated; keyboard
+  traversal still reveals rows beyond the viewport. Fixes the model-tree
+  tooltip and scroll-jump bugs reported in Studio. No API change.
+
 - Viewer API 22 reads document version 9 and executes machinome's explicit
   `play` edge for retained unilateral contact. Linear driver-rooted chains
   collect at either flank, release through clearance, clip against follower

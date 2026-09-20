@@ -272,11 +272,13 @@ export function mountNavigator(
     return active !== null && treeEl.contains(active);
   }
 
-  function focusActiveRow(): void {
+  function focusActiveRow(preventScroll = true): void {
     if (!local || local.active === null) {
       return;
     }
-    rowElements.get(local.active)?.focus();
+    // Restoring focus after a redraw must not move the maker's viewport.
+    // Only explicit keyboard traversal should reveal an off-screen row.
+    rowElements.get(local.active)?.focus({ preventScroll });
   }
 
   function buildToolbar(): void {
@@ -353,6 +355,7 @@ export function mountNavigator(
     const name = doc.createElement('span');
     name.className = 'machinome-nav-name';
     name.textContent = row.node.name;
+    name.title = row.node.name;
     el.append(name);
 
     if (row.root) {
@@ -455,14 +458,16 @@ export function mountNavigator(
     }
     switch (action.type) {
       case 'move':
-        local.active = action.key;
-        rerenderLocal(true);
+        activate(action.key);
+        focusActiveRow(false);
         break;
       case 'expand':
+        activate(action.key);
         local.expanded.add(action.key);
         rerenderLocal(true);
         break;
       case 'collapse':
+        activate(action.key);
         local.expanded.delete(action.key);
         rerenderLocal(true);
         break;
@@ -479,7 +484,9 @@ export function mountNavigator(
   }
 
   treeEl.addEventListener('focusin', (event) => {
-    const key = event.target instanceof HTMLElement ? rowKeys.get(event.target) : undefined;
+    const row = event.target instanceof HTMLElement
+      ? event.target.closest<HTMLElement>('.machinome-nav-row') : null;
+    const key = row ? rowKeys.get(row) : undefined;
     if (key !== undefined) {
       activate(key);
     }

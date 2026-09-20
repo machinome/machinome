@@ -491,6 +491,88 @@ class ViewerMountApiTest(TestCase):
         self.assertEqual([item['role'] for item in result['info']], ['treeitem'] * 5)
         self.assertEqual(result['info'][0]['label'], 'Spinner')
 
+    def test_expanding_a_scrolled_tree_keeps_the_clicked_row_in_place(self):
+        result = self.in_page("""async () => {
+          document.getElementById('host').style.display = 'none';
+          const host = document.getElementById('navHost');
+          host.style.cssText = 'width:260px;height:240px;overflow:auto';
+          const assembly = {
+            name: 'Root', path: [], color: null, model: false,
+            children: Array.from({length: 24}, (_, i) => ({
+              name: `Branch ${i}`, path: [`Branch ${i}`], color: null, model: false,
+              children: Array.from({length: 8}, (_, j) => ({
+                name: `Part ${i}.${j}`, path: [`Branch ${i}`, `Part ${i}.${j}`],
+                color: null, model: true, children: [],
+              })),
+            })),
+          };
+          let listener;
+          const hidden = new Set();
+          const navigation = () => ({root: null, hidden: [...hidden].map(key => JSON.parse(key))});
+          const nav = MachinomeViewer.mountNavigator(host, {
+            assembly: () => assembly,
+            navigation,
+            onAssemblyChange: callback => { listener = callback; return () => {}; },
+            setVisible: (path, visible) => {
+              if (visible) hidden.delete(JSON.stringify(path));
+              else hidden.add(JSON.stringify(path));
+              listener({assembly, navigation: navigation()});
+            },
+          });
+          const row = (name) => [...host.querySelectorAll('.machinome-nav-row')]
+            .find(el => el.querySelector('.machinome-nav-name').textContent === name);
+          const click = (name) => {
+            const button = row(name).querySelector('.machinome-nav-twisty');
+            button.focus();
+            button.click();
+          };
+          const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+          for (const i of [12, 13, 14]) click(`Branch ${i}`);
+          host.scrollTop = row('Branch 10').offsetTop - 90;
+          await frame();
+          const position = () => ({
+            scroll: host.scrollTop,
+            top: row('Branch 10').getBoundingClientRect().top,
+            page: window.scrollY,
+          });
+          const before = position();
+          click('Branch 10');
+          await frame();
+          const expanded = position();
+          const active = document.activeElement.querySelector('.machinome-nav-name')?.textContent;
+          const childVisible = row('Part 10.0').getBoundingClientRect().top < host.clientHeight;
+          click('Branch 10');
+          await frame();
+          const collapsed = position();
+          const visibility = [];
+          for (let i = 0; i < 2; i++) {
+            const checkbox = row('Branch 11').querySelector('.machinome-nav-visibility');
+            checkbox.focus();
+            checkbox.click();
+            await frame();
+            visibility.push({...position(), checked:
+              row('Branch 11').querySelector('.machinome-nav-visibility').checked});
+          }
+          // Keyboard traversal must still reveal a row reached beyond the viewport.
+          row('Branch 10').focus();
+          for (let i = 0; i < 15; i++) document.activeElement.dispatchEvent(
+            new KeyboardEvent('keydown', {key: 'ArrowDown', bubbles: true}));
+          await frame();
+          const rect = document.activeElement.getBoundingClientRect();
+          const viewport = host.getBoundingClientRect();
+          const keyboardVisible = rect.top >= viewport.top && rect.bottom <= viewport.bottom;
+          nav.dispose();
+          return {before, expanded, collapsed, visibility, active, childVisible, keyboardVisible};
+        }""")
+        self.assertGreater(result['before']['scroll'], 0)
+        self.assertEqual(result['expanded'], result['before'])
+        self.assertEqual(result['collapsed'], result['before'])
+        for state, checked in zip(result['visibility'], [False, True]):
+            self.assertEqual(state, {**result['before'], 'checked': checked})
+        self.assertEqual(result['active'], 'Branch 10')
+        self.assertTrue(result['childVisible'])
+        self.assertTrue(result['keyboardVisible'])
+
     def test_the_navigator_keyboard_drives_the_viewer(self):
         result = self.in_page("""async () => {
           const host = document.getElementById('host');
