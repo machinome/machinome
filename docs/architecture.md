@@ -2512,8 +2512,9 @@ the independent viewer must reproduce it before parity is claimed.
 publishes `tests/time-drive-corpus.json`: seven version-10 scenarios with 54
 ticks covering no-command motion, gates, winding/exhaustion, independent and
 connected stops, mixed commands, curved stop paths and replay/reset. The
-current independent viewer reports versions 1–9 and refuses version 10;
-consuming this new corpus is outstanding viewer work, not producer parity.
+independent viewer at API 23 reads version 10 and executes these
+scenarios in its own repository; that is the viewer's evidence, not
+producer parity claimed here.
 
 Every producer — export, build snapshot, browser snapshot — also publishes a
 **printed-piece inventory** (ADR-043): a top-level `pieces` list beside `root`,

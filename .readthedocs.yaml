@@ -13,16 +13,19 @@ build:
     # Install the browser viewer the exports ship -- the separate
     # machinome-viewer package, from its repository until it is on PyPI;
     # its source distribution builds the widget with the node above --
-    # then export all three external example machines for this documentation build.
+    # then export the three example machines for this documentation build.
     # The exports are intentionally ignored by Git: they are served by RTD,
     # not kept in the source repositories.
     pre_build:
       - pip install "machinome-viewer @ git+https://github.com/machinome/machinome-viewer.git"
       - pip install "machinome-mechanics @ git+https://github.com/machinome/machinome-mechanics.git"
-      - cd docs/examples/v8-engine && PYTHONPATH="$READTHEDOCS_REPOSITORY_PATH" python -c "from machinome.cli import manage; manage()" export -o docs/_exports/v8-engine --fps 30 --frames 360
       - cd docs/examples/metamaquina2 && PYTHONPATH="$READTHEDOCS_REPOSITORY_PATH" python -c "from machinome.cli import manage; manage()" export -o docs/_exports/metamaquina2 --fps 30 --frames 360
-
-      - cd docs/examples/3dprintedclocks && PYTHONPATH="$READTHEDOCS_REPOSITORY_PATH" python -c "from machinome.cli import manage; manage()" export -o docs/_exports/clock01 wall_clock_01
+      # The Pascaline reads José Campos's meshes, which its repository does
+      # not commit: its own scripts download the pinned Printables files
+      # (no login) and extract the 3MF objects before the export.
+      - cd docs/examples/pascaline && python scripts/download_sources.py && python scripts/prepare_sources.py
+      - cd docs/examples/pascaline && PYTHONPATH="$READTHEDOCS_REPOSITORY_PATH" python -c "from machinome.cli import manage; manage()" export -o docs/_exports/pascaline
+      - cd docs/examples/curta && PYTHONPATH="$READTHEDOCS_REPOSITORY_PATH" python -c "from machinome.cli import manage; manage()" export -o docs/_exports/curta clocked_curta
 
 submodules:
   include: all

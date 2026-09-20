@@ -1,0 +1,413 @@
+{
+  "format": "machinome-export",
+  "version": 5,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "crank": {
+      "default": 0.0,
+      "range": [
+        0.0,
+        3600.0
+      ],
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {
+    "Back a bit": {
+      "by": {
+        "crank": -30.0
+      },
+      "duration": 0.5
+    },
+    "Turn once": {
+      "by": {
+        "crank": 360.0
+      },
+      "duration": 2.0
+    }
+  },
+  "controls": {
+    "one turn": {
+      "kind": "button",
+      "part": [
+        "handle"
+      ],
+      "instruction": "Turn once",
+      "joint": [
+        "handle"
+      ],
+      "coordinate": "handle.turn",
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "turn the crank": {
+      "kind": "turn",
+      "part": [
+        "handle"
+      ],
+      "input": "crank",
+      "per_unit": 1.0,
+      "joint": [
+        "handle"
+      ],
+      "coordinate": "handle.turn",
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "bindings": [
+    {
+      "name": "_b0",
+      "expression": "(handle.turn / 360)"
+    },
+    {
+      "name": "_b1",
+      "expression": "floor(_b0)"
+    },
+    {
+      "name": "_b2",
+      "expression": "(units_drum.turn / 360)"
+    },
+    {
+      "name": "_b3",
+      "expression": "floor(_b2)"
+    }
+  ],
+  "program": {
+    "identity": "b7139815ca4e63a37edc944eca5b8f7127765a0d4cac93a04523d0982321df05",
+    "clock": "time",
+    "coordinates": {
+      "crank": {
+        "kind": "input",
+        "initial": 0.0,
+        "domain": null
+      },
+      "handle.turn": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "tens_drum.turn": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      },
+      "units_drum.turn": {
+        "kind": "coordinate",
+        "initial": 0.0,
+        "unit": "deg",
+        "domain": "rotational"
+      }
+    },
+    "intermediates": [],
+    "edges": [
+      {
+        "kind": "law",
+        "needs": [
+          "crank"
+        ],
+        "gives": [
+          "handle.turn"
+        ],
+        "description": "crank drives handle.turn",
+        "stated_by": "Counter",
+        "expressions": [
+          "crank"
+        ],
+        "affine": [
+          true
+        ],
+        "plans": [
+          null
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "handle.turn"
+        ],
+        "gives": [
+          "units_drum.turn"
+        ],
+        "description": "handle.turn drives units_drum.turn",
+        "stated_by": "Counter",
+        "expressions": [
+          "((36 * _b1) + (36 * min(max((((handle.turn - (360 * _b1)) - 300) / 60), 0.0), 1.0)))"
+        ],
+        "affine": [
+          false
+        ],
+        "plans": [
+          {
+            "skeleton": "((36 * _j0) + (36 * min(max((((handle.turn - (360 * _j1)) - 300) / 60), 0.0), 1.0)))",
+            "jumps": [
+              {
+                "name": "_j0",
+                "primitive": "floor",
+                "level": "_b0",
+                "affine": true
+              },
+              {
+                "name": "_j1",
+                "primitive": "floor",
+                "level": "_b0",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "law",
+        "needs": [
+          "units_drum.turn"
+        ],
+        "gives": [
+          "tens_drum.turn"
+        ],
+        "description": "units_drum.turn drives tens_drum.turn",
+        "stated_by": "Counter",
+        "expressions": [
+          "((36 * _b3) + (36 * min(max((((units_drum.turn - (360 * _b3)) - 324) / 36), 0.0), 1.0)))"
+        ],
+        "affine": [
+          false
+        ],
+        "plans": [
+          {
+            "skeleton": "((36 * _j2) + (36 * min(max((((units_drum.turn - (360 * _j3)) - 324) / 36), 0.0), 1.0)))",
+            "jumps": [
+              {
+                "name": "_j2",
+                "primitive": "floor",
+                "level": "_b2",
+                "affine": true
+              },
+              {
+                "name": "_j3",
+                "primitive": "floor",
+                "level": "_b2",
+                "affine": true
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "spans": {
+      "handle.turn": {
+        "low": {
+          "expression": "(36.0 * floor((handle.turn / 36.0)))"
+        },
+        "high": null
+      }
+    },
+    "sources": {
+      "crank": [
+        "crank"
+      ],
+      "handle.turn": [
+        "crank"
+      ],
+      "tens_drum.turn": [
+        "crank"
+      ],
+      "units_drum.turn": [
+        "crank"
+      ]
+    },
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "subdivisions": 64,
+      "bisection_rounds": 64,
+      "max_crossings": 1000,
+      "agreement": 1e-09
+    }
+  },
+  "root": {
+    "name": "Counter",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1789911231.195386,
+    "operations": [],
+    "children": [
+      {
+        "name": "base",
+        "type": "LeafNode",
+        "color": "#5b6770",
+        "mtime": 1789911231.1823854,
+        "operations": [],
+        "model": "models/counter/c03_dimensions-Base,bore=8.2,post_height=36.0,post_offset=28.0-8ba03b76c773.stl",
+        "piece": "de92ce1ca97d"
+      },
+      {
+        "name": "handle",
+        "type": "LeafNode",
+        "color": "#c8553d",
+        "mtime": 1789911231.195386,
+        "operations": [
+          [
+            "r",
+            "handle.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "model": "models/counter/c08_running-Crank,arm_height=40.0,arm_length=40.0,diameter=8.0-3f5fc2f38c14.stl",
+        "piece": "fa2986f196c2"
+      },
+      {
+        "name": "units_drum",
+        "type": "LeafNode",
+        "color": "#2b2d42",
+        "mtime": 1789911231.1843855,
+        "operations": [
+          [
+            "r",
+            "units_drum.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "0",
+              "0",
+              "12.0"
+            ]
+          ]
+        ],
+        "model": "models/counter/c04_relations-Drum,bore=8.2-ed1a79eec5ec.stl",
+        "piece": "be75e61ae78d",
+        "markings": [
+          {
+            "name": "digits",
+            "model": "models/counter/c04_relations-Drum,bore=8.2-ed1a79eec5ec.marking-digits.stl",
+            "color": "#ffffff",
+            "mtime": 1789911231.1843855
+          }
+        ]
+      },
+      {
+        "name": "tens_drum",
+        "type": "LeafNode",
+        "color": "#2b2d42",
+        "mtime": 1789911231.1843855,
+        "operations": [
+          [
+            "r",
+            "tens_drum.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          [
+            "t",
+            [
+              "0",
+              "0",
+              "24.0"
+            ]
+          ]
+        ],
+        "model": "models/counter/c04_relations-Drum,bore=8.2-ed1a79eec5ec.stl",
+        "piece": "be75e61ae78d",
+        "markings": [
+          {
+            "name": "digits",
+            "model": "models/counter/c04_relations-Drum,bore=8.2-ed1a79eec5ec.marking-digits.stl",
+            "color": "#ffffff",
+            "mtime": 1789911231.1843855
+          }
+        ]
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "de92ce1ca97d",
+      "name": "Base",
+      "sources": [
+        "counter/c03_dimensions.py"
+      ],
+      "models": [
+        "models/counter/c03_dimensions-Base,bore=8.2,post_height=36.0,post_offset=28.0-8ba03b76c773.stl"
+      ],
+      "count": 1,
+      "size": [
+        100.0,
+        61.0,
+        44.0
+      ],
+      "volume": 49305.69368887224,
+      "watertight": true
+    },
+    {
+      "id": "fa2986f196c2",
+      "name": "Crank",
+      "sources": [
+        "counter/c08_running.py"
+      ],
+      "models": [
+        "models/counter/c08_running-Crank,arm_height=40.0,arm_length=40.0,diameter=8.0-3f5fc2f38c14.stl"
+      ],
+      "count": 1,
+      "size": [
+        45.0,
+        10.0,
+        74.0
+      ],
+      "volume": 6094.187384615245,
+      "watertight": true
+    },
+    {
+      "id": "be75e61ae78d",
+      "name": "Drum",
+      "sources": [
+        "counter/c04_relations.py"
+      ],
+      "models": [
+        "models/counter/c04_relations-Drum,bore=8.2-ed1a79eec5ec.stl"
+      ],
+      "count": 2,
+      "size": [
+        40.0,
+        39.98756790161133,
+        10.0
+      ],
+      "volume": 12033.280262180933,
+      "watertight": true
+    }
+  ]
+}

@@ -20,7 +20,27 @@ project = 'Machinome'
 copyright = '2023-2026, Luis Henrique Cassis Fagundes'
 author = 'Luis Henrique Cassis Fagundes'
 release = '0.7.0'
+version = '0.7'
 html_title = 'Machinome — Source code for machines'
+
+# -- Release facts -----------------------------------------------------------
+# The one place the manual states versions and dates. Pages use the
+# substitutions below (|release| and |version| are Sphinx's own) so a
+# release edits this block and the status page and nothing else.
+
+release_date = '20 September 2026'
+viewer_version = '0.2.0'        # the matching machinome-viewer package
+viewer_api = '23'               # the browser API it declares
+document_versions = '1 to 10'    # the document schemas it reads
+mechanics_version = '0.1.0'     # the matching machinome-mechanics package
+
+rst_prolog = f'''
+.. |release_date| replace:: {release_date}
+.. |viewer_version| replace:: {viewer_version}
+.. |viewer_api| replace:: {viewer_api}
+.. |document_versions| replace:: {document_versions}
+.. |mechanics_version| replace:: {mechanics_version}
+'''
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -44,7 +64,8 @@ autodoc_mock_imports = [
 ]
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'examples/**', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'examples/**', 'tutorial/counter/**',
+                    'Thumbs.db', '.DS_Store']
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

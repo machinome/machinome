@@ -1,7 +1,7 @@
 Machinome 0.7: Source code for machines
 =======================================
 
-Release preparation — publication pending.
+Released on 20 September 2026.
 
 Machinome gives a machine source code: its parts, their shared dimensions,
 the relationships that connect them, and the rules by which the whole
@@ -63,19 +63,20 @@ Explore and share
 The independent Machinome Viewer executes the published model in the
 browser: direct input controls, running transport, or clocked requests
 and state readouts as the machine requires. A static export carries that
-experience to a web page. Its matching 0.2.0 source reports API 22 and
-reads schemas 1–9, including explicit running clearance pickup through
-``Play``. The package is still awaiting publication.
+experience to a web page. The matching viewer 0.2.0 reports API 23 and
+reads schemas 1–10, including explicit running clearance pickup through
+``Play`` and motion the running clock drives.
 
-The manual keeps a gradual tutorial from a part to an assembly, motion
-and fit tests, then parameters, joints and operation. Three external
-examples — the V8 engine, Metamaquina 2 and Clock 01 — offer complete
-machines to inspect alongside their own source.
+The manual teaches one machine from a part to a machine with memory, a
+hand-cranked tally counter, then keeps how-to guides and concept pages
+for the rules. Three examples, Metamaquina 2, the Pascaline module and
+the Curta Type I, offer a posed, a running and a clocked machine to
+inspect alongside their own source.
 
 Adopting 0.7
 -------------
 
-Read :doc:`../upgrading` for the complete migration map. Update imports,
+Read :doc:`/project/upgrading` for the complete migration map. Update imports,
 commands, project tables, environment settings and browser integration
 together. No old import or command alias is installed. Constructor-based
 models remain supported, so declarations can be adopted incrementally.
@@ -85,5 +86,5 @@ package selected by ``machinome[viewer]``; non-interactive builds and
 tests work without it. The independent mechanics helpers have their own
 extra. Machinome Studio remains experimental and unpublished.
 
-See :doc:`../quickstart` for installation and :doc:`../changelog` for
-the capability summary and historical release notes.
+See :doc:`/start/install` for installation and :doc:`/project/changelog`
+for the capability summary and historical release notes.

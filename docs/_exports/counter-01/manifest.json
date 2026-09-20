@@ -1,0 +1,39 @@
+{
+  "format": "machinome-export",
+  "version": 2,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {},
+  "instructions": {},
+  "root": {
+    "name": "Base",
+    "type": "LeafNode",
+    "color": "#5b6770",
+    "mtime": 1789911231.1783853,
+    "operations": [],
+    "model": "models/counter/c01_part-Base-7b47361aad19.stl",
+    "piece": "de92ce1ca97d"
+  },
+  "pieces": [
+    {
+      "id": "de92ce1ca97d",
+      "name": "Base",
+      "sources": [
+        "counter/c01_part.py"
+      ],
+      "models": [
+        "models/counter/c01_part-Base-7b47361aad19.stl"
+      ],
+      "count": 1,
+      "size": [
+        100.0,
+        61.0,
+        44.0
+      ],
+      "volume": 49305.69368887224,
+      "watertight": true
+    }
+  ]
+}

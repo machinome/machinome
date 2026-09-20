@@ -159,13 +159,6 @@ jobs:
           pip install "machinome-viewer @ git+https://github.com/machinome/machinome-viewer.git"
           pip install "machinome-mechanics @ git+https://github.com/machinome/machinome-mechanics.git"
 
-      - name: Generate V8 example export
-        working-directory: docs/examples/v8-engine
-        run: >-
-          PYTHONPATH="$GITHUB_WORKSPACE" python -c
-          "from machinome.cli import manage; manage()"
-          export -o docs/_exports/v8-engine --fps 30 --frames 360
-
       - name: Generate Metamaquina 2 example export
         working-directory: docs/examples/metamaquina2
         run: >-
@@ -173,12 +166,28 @@ jobs:
           "from machinome.cli import manage; manage()"
           export -o docs/_exports/metamaquina2 --fps 30 --frames 360
 
-      - name: Generate Clock 01 example export
-        working-directory: docs/examples/3dprintedclocks
+      # The Pascaline reads José Campos's meshes, which its repository does
+      # not commit: its own scripts download the pinned Printables files
+      # (no login) and extract the 3MF objects before the export.
+      - name: Fetch the Pascaline's source meshes
+        working-directory: docs/examples/pascaline
+        run: |
+          python scripts/download_sources.py
+          python scripts/prepare_sources.py
+
+      - name: Generate Pascaline example export
+        working-directory: docs/examples/pascaline
         run: >-
           PYTHONPATH="$GITHUB_WORKSPACE" python -c
           "from machinome.cli import manage; manage()"
-          export -o docs/_exports/clock01 wall_clock_01
+          export -o docs/_exports/pascaline
+
+      - name: Generate Curta example export
+        working-directory: docs/examples/curta
+        run: >-
+          PYTHONPATH="$GITHUB_WORKSPACE" python -c
+          "from machinome.cli import manage; manage()"
+          export -o docs/_exports/curta clocked_curta
 
       - name: Build docs (fail on warnings)
         run: python -m sphinx -b html -W docs docs/_build

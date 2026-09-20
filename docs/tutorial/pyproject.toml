@@ -1,0 +1,19 @@
+# The tutorial's machine: one named model per chapter of the manual.
+# `machinome build --all` builds every chapter; `machinome test --all`
+# runs every companion test. The framework suite does both.
+
+[tool.machinome]
+model = "c09"
+
+[tool.machinome.models]
+first = "counter.first_machine:Lifter"
+c01 = "counter.c01_part:Base"
+c02 = "counter.c02_input:Counter"
+c03 = "counter.c03_dimensions:Counter"
+c04-ratio = "counter.c04_relations:RatioCounter"
+c04 = "counter.c04_relations:Counter"
+c05 = "counter.c05_buttons:Counter"
+c06 = "counter.c06_fit:Counter"
+c07 = "counter.c07_scenario:Counter"
+c08 = "counter.c08_running:Counter"
+c09 = "counter.c09_clocked:Counter"

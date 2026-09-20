@@ -34,8 +34,10 @@ the machine, including from an exported static web page.
 
 Machinome is developed empirically from mechanical projects, with
 AI-assisted design and implementation. The
-`Machinome organisation <https://github.com/machinome>`_ holds examples
-and simulations of open-source machines. Simulation and geometric tests
+`Machinome Foundry <https://github.com/machinome-foundry>`_ organisation
+holds simulations of open-source machines built with it, each beside the
+design it simulates; the framework, viewer and mechanics packages live
+under `machinome <https://github.com/machinome>`_. Simulation and geometric tests
 provide evidence about those models; they do not establish that every
 design has been manufactured or physically validated.
 
@@ -48,39 +50,38 @@ with Tim Berners-Lee's Solid project: `solid-node` sounded like a Solid
 node, and `LibreSolid` like a libre edition of Solid. Machinome has no
 affiliation with that project.
 
-**0.7 is in release preparation.** This checkout documents its current
-source. The framework and matching independent viewer still need to be
-published. See the
-`quickstart <https://machinome.readthedocs.io/en/latest/quickstart.html>`_
-for installation from matching source checkouts; after publication, the
-normal entry is:
+Install it with the browser viewer and start a project:
 
 .. code-block:: bash
 
-   pip install "machinome[viewer]>=0.7,<0.8"
+   pip install "machinome[viewer]"
    machinome new myproject
    cd myproject
    machinome develop
 
-The default template uses SolidPython and needs the OpenSCAD executable.
-The
-`migration guide <https://machinome.readthedocs.io/en/latest/upgrading.html>`_
+The default template uses SolidPython and needs the OpenSCAD executable;
+the manual's first page replaces it with an exact part that needs
+nothing else. The
+`migration guide <https://machinome.readthedocs.io/en/latest/project/upgrading.html>`_
 maps imports, commands, configuration and viewer integration from 0.6.
 There is no ``solid_node`` import shim or ``solid`` command alias.
 
-Learn it one step at a time
-===========================
+Learn it one machine at a time
+==============================
 
-The `tutorial <https://machinome.readthedocs.io/en/latest/quickstart.html>`_
-starts with a part, combines a base and pointer into an assembly,
-animates it, and tests a pin's fit. Continue with shared parameters,
-joints, drivers, instructions and simulation.
+The `tutorial <https://machinome.readthedocs.io/en/latest/tutorial/01-part.html>`_
+builds a hand-cranked tally counter from a part to a machine with memory:
+an input moving a body through a joint, shared dimensions, relations and
+laws, buttons, fit tests proved red first, a stepped scenario, a running
+machine with a ratchet, and retained digits written at events.
 
-Explore the complete
-`V8 engine <https://machinome.readthedocs.io/en/latest/example-v8-engine.html>`_,
-`Metamaquina 2 <https://machinome.readthedocs.io/en/latest/example-metamaquina2.html>`_,
-and `Clock 01 <https://machinome.readthedocs.io/en/latest/example-clock-01.html>`_.
-Each keeps its design source and licence in its own repository.
+Explore the three examples, one per execution model:
+`Metamaquina 2 <https://machinome.readthedocs.io/en/latest/example-metamaquina2.html>`_
+(posed), the
+`Pascaline module <https://machinome.readthedocs.io/en/latest/example-pascaline.html>`_
+(running) and the
+`Curta Type I <https://machinome.readthedocs.io/en/latest/example-curta.html>`_
+(clocked). Each keeps its design source and licence in its own repository.
 
 * `User manual <https://machinome.readthedocs.io/en/latest/>`_
 * `0.7 release notes <https://machinome.readthedocs.io/en/latest/releases/release-0.7.html>`_
@@ -128,7 +129,8 @@ platform with no compiled wheel, such as WebAssembly. A path that needs it
 and cannot import it says so by name.
 
 Clone with submodules (the docs embed three separately maintained
-example machines):
+example machines, and the tutorial's machine under ``docs/tutorial/`` is
+built and tested by the suite):
 
 .. code-block:: bash
 

@@ -184,43 +184,39 @@ class DocumentationExportsTest(unittest.TestCase):
             'produce the same directories.',
         )
 
-    def test_three_external_examples_are_siblings(self):
+    def test_the_examples_are_one_per_execution_model(self):
+        """The examples index lists one machine per execution model, each
+        on its own page embedding the one export built for it."""
         index = (DOCS / 'examples.rst').read_text()
         expected = {
-            'example-v8-engine.rst':
-                'docs/examples/v8-engine/docs/_exports/v8-engine',
             'example-metamaquina2.rst':
                 'docs/examples/metamaquina2/docs/_exports/metamaquina2',
-            'example-clock-01.rst':
-                'docs/examples/3dprintedclocks/docs/_exports/clock01',
+            'example-pascaline.rst':
+                'docs/examples/pascaline/docs/_exports/pascaline',
+            'example-curta.rst':
+                'docs/examples/curta/docs/_exports/curta',
         }
         for page, export in expected.items():
             with self.subTest(page=page):
                 self.assertIn('   ' + page.removesuffix('.rst'), index)
                 self.assertIn((page, export), self.embedded)
-        self.assertNotIn('Earlier examples', index)
+        self.assertEqual(
+            [export for document, export in self.embedded
+             if document == 'examples.rst'], [],
+            'the examples index embeds no model of its own')
+        for retired in ('example-v8-engine.rst', 'example-clock-01.rst'):
+            with self.subTest(retired=retired):
+                self.assertFalse((DOCS / retired).exists(), retired)
 
-    def test_tutorial_uses_framework_owned_steps_not_external_clock_code(self):
-        for chapter in ('quickstart', 'assemblies', 'declaring', 'animation',
-                        'motion', 'driving', 'testing', 'scenarios'):
-            source = (DOCS / (chapter + '.rst')).read_text()
-            with self.subTest(chapter=chapter):
-                self.assertNotIn('tutorial/clock01.py', source)
-                self.assertNotIn('tutorial/test_clock01.py', source)
-                self.assertNotIn('literalinclude:: examples/3dprintedclocks',
-                                 source)
-        self.assertFalse((DOCS / 'tutorial' / 'clock01.py').exists())
-        self.assertFalse((DOCS / 'tutorial' / 'geometry.py').exists())
-        self.assertFalse((DOCS / 'tutorial' / 'LICENSE').exists())
-        # The original teaching sequence retains its separate visual steps.
-        self.assertIn(('assemblies.rst', 'docs/_exports/clock_base'),
-                      self.embedded)
-        self.assertIn(('assemblies.rst', 'docs/_exports/simple_clock_static'),
-                      self.embedded)
-        self.assertIn(('animation.rst', 'docs/_exports/simple_clock'),
-                      self.embedded)
-        self.assertIn(('testing.rst', 'docs/_exports/pin_thin'), self.embedded)
-
+    def test_the_tutorial_embeds_only_committed_exports(self):
+        """The tutorial's models are committed exports of its own chapter
+        modules, so the documentation build needs no CAD stack."""
+        tutorial = [(document, export) for document, export in self.embedded
+                    if document.startswith('tutorial/')]
+        self.assertTrue(tutorial, 'the tutorial embeds no model')
+        for document, export in tutorial:
+            with self.subTest(document=document):
+                self.assertTrue(export.startswith(COMMITTED), export)
 
     def test_generated_exports_get_a_page_each(self):
         """A machine built for the docs is the whole point of its page.
