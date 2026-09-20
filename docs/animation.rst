@@ -180,7 +180,8 @@ about=...)`` turns a 2D point about a centre, and ``rotate_x``,
 ``rotate_y`` and ``rotate_z`` turn a 3D point about an axis. All
 degrees, all right-handed, all returning plain tuples.
 Before writing a mechanism out longhand over those functions, look in
-`machinome.mechanisms`: it carries the laws projects kept rewriting —
+the independent ``machinome_mechanics`` package, installed through
+``machinome[mechanics]``: it carries the laws projects kept rewriting —
 the external spur-gear mesh, the lead screw, the slider-crank, linear
 delta kinematics, and the circle geometry a linkage keeps asking for.
 Each is a composition over `machinome.math`, so it has that module's

@@ -85,9 +85,9 @@ and ``--no-web`` are unaffected by a browser that cannot render.
 instead: a capture is a one-shot, and a failure inside a headless page
 would reach you as an opaque non-zero exit.
 
-The matching viewer source, 0.2.0, reports API 20 and reads document
-schemas 1–8. It is not yet published. It executes running documents
-(5, 6 or 7, depending on the laws) and clocked documents (8).
+The matching viewer source, 0.2.0, reports API 22 and reads document
+schemas 1–9. It is not yet published. It executes running documents
+(5, 6, 7 or 9, depending on the laws) and clocked documents (8).
 
 For a running machine the panel offers nudges, hold-to-jog controls,
 instruction buttons, and run/pause/step transport. Coordinates retain

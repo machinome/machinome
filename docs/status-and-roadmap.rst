@@ -33,8 +33,8 @@ Package boundaries
 --------------------
 
 Machinome is Apache-2.0. Machinome Viewer is an optional, independent
-AGPL-3.0-only package. Its current matching source is 0.2.0, API 20,
-supporting document schemas 1–8; it is still unpublished. The framework
+AGPL-3.0-only package. Its current matching source is 0.2.0, API 22,
+supporting document schemas 1–9; it is still unpublished. The framework
 builds and tests without it, while interactive browser development
 requires it.
 

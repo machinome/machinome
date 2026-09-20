@@ -32,6 +32,9 @@ dependencies = [
     # a second distribution installing the same OCP package.
     "cadquery==2.7.*",
     "build123d==0.10.*",
+    # build123d 0.10 leaves this transitive dependency unbounded; 0.3
+    # imports OCP 8 collections absent from our shared OCP 7.8 runtime.
+    "ocp-gordon>=0.2.2,<0.3",
     # The flexible leaf evaluates molejo shapes, and MolejoNode reaches for
     # molejo's OCCT evaluator at import, so `brep` is required rather than
     # optional. Pinned to the minor: a molejo minor carries the shape-spec

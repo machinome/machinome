@@ -18,6 +18,7 @@ build:
     # not kept in the source repositories.
     pre_build:
       - pip install "machinome-viewer @ git+https://github.com/machinome/machinome-viewer.git"
+      - pip install "machinome-mechanics @ git+https://github.com/machinome/machinome-mechanics.git"
       - cd docs/examples/v8-engine && PYTHONPATH="$READTHEDOCS_REPOSITORY_PATH" python -c "from machinome.cli import manage; manage()" export -o docs/_exports/v8-engine --fps 30 --frames 360
       - cd docs/examples/metamaquina2 && PYTHONPATH="$READTHEDOCS_REPOSITORY_PATH" python -c "from machinome.cli import manage; manage()" export -o docs/_exports/metamaquina2 --fps 30 --frames 360
 
@@ -31,6 +32,9 @@ python:
   install:
     - requirements: docs/requirements.txt
     - requirements: requirements.txt
+    # Register this framework version before mechanics resolves its dependency.
+    - method: pip
+      path: .
 
 sphinx:
   configuration: docs/conf.py

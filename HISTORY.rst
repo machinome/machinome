@@ -18,6 +18,13 @@ map are in ``docs/changelog.rst``, ``docs/releases/release-0.7.rst`` and
 ``docs/upgrading.rst``. The complete engineering record is preserved in
 ``docs/releases/development-0.7.rst``. Publication is still pending.
 
+Release preparation completes the independent mechanics extraction:
+``machinome[mechanics]`` installs ``machinome-mechanics`` 0.1.0 and
+projects import its twelve helpers from ``machinome_mechanics``.
+Viewer 0.2.0 reports API 22 and reads schemas 1–9, including running
+``Play`` clearance pickup. Fresh installations bound ``ocp-gordon``
+below 0.3 to preserve the shared OCP 7.8 CAD runtime.
+
 * **A clocked stroke can be WATCHED: an instruction is one request.** A
   clocked machine could compute a whole stroke exactly and could not show
   it happening. The originating project is

@@ -131,8 +131,9 @@ that way.
 
 ### MATH — expression evaluation parity
 - [ADR-022](MATH/ADR-022-cross-runtime-degree-trig-parity-for-t-expressions.md) — Cross-runtime degree-trig parity for `$t` and driver expressions — **Accepted**, revised 2026-09-06 (defect fixed and parity enforced 2026-08-26; vocabulary widened beyond trigonometry, and the corpus must cover every emitted name)
-- [ADR-076](MATH/ADR-076-mechanism-laws-as-compositions-over-expression-math.md) — Mechanism laws as compositions over expression math — **Accepted**, depends on 022
+- [ADR-076](MATH/ADR-076-mechanism-laws-as-compositions-over-expression-math.md) — Mechanism laws as compositions over expression math — **Accepted**, depends on 022; ownership and import path superseded by 132
 - [ADR-101](MATH/ADR-101-motion-sharing-begins-at-construction.md) — Motion sharing begins at construction — **Accepted**, supersedes 080's eager construction and flat SCAD decisions in part, depends on 022/076
+- [ADR-132](MATH/ADR-132-mechanics-helpers-release-independently.md) — Mechanics helpers release independently — **Accepted**, completes the earlier extraction and preserves the opt-in mechanics extra
 
 ### TEST-FRAMEWORK — CAD testing
 - [ADR-009](TEST-FRAMEWORK/ADR-009-trimesh-based-mesh-assertions-for-cad-testing.md) — Trimesh mesh assertions — **Accepted**, extended by 025

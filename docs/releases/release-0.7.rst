@@ -63,8 +63,9 @@ Explore and share
 The independent Machinome Viewer executes the published model in the
 browser: direct input controls, running transport, or clocked requests
 and state readouts as the machine requires. A static export carries that
-experience to a web page. Its matching 0.2.0 source reports API 20 and
-reads schemas 1–8; the package is still awaiting publication.
+experience to a web page. Its matching 0.2.0 source reports API 22 and
+reads schemas 1–9, including explicit running clearance pickup through
+``Play``. The package is still awaiting publication.
 
 The manual keeps a gradual tutorial from a part to an assembly, motion
 and fit tests, then parameters, joints and operation. Three external

@@ -1,6 +1,7 @@
 # ADR-076: Mechanism Laws as Compositions Over Expression Math
 
-**Status:** Accepted
+**Status:** Accepted; framework ownership and import path superseded by
+[ADR-132](ADR-132-mechanics-helpers-release-independently.md).
 **Date:** 2026-09-06
 **Depends on:**
 - [ADR-022: Cross-Runtime Degree-Trig Parity for `$t` Expression Evaluation](ADR-022-cross-runtime-degree-trig-parity-for-t-expressions.md)

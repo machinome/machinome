@@ -60,14 +60,16 @@ schema version describes what the consumer must understand:
      - Selected relation blocks in a running program.
    * - 8
      - A clocked machine: stored states, committing relations and bounds.
+   * - 9
+     - Explicit running ``Play`` relations for retained clearance pickup.
 
 The current producer starts ordinary documents at 2, advances them for
-content that needs 3 or 4, and publishes running machines at 5, 6 or 7
+content that needs 3 or 4, and publishes running machines at 5, 6, 7 or 9
 according to their laws. A tree declaring ``State`` publishes 8
 regardless of its other content. See :doc:`scenarios`.
 
-The matching viewer source is **0.2.0**, with **API 20**, accepting
-**document schemas 1–8** and both the new and legacy
+The matching viewer source is **0.2.0**, with **API 22**, accepting
+**document schemas 1–9** and both the new and legacy
 ``solid-node-export`` families. It is still unpublished.
 ``machinome viewer`` reports the installed package's ``version``,
 ``apiVersion`` and ``documentVersions``; these are three separate

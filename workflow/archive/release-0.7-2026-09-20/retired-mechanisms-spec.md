@@ -1,5 +1,9 @@
 # Mechanisms Specification
 
+Retired from the framework baseline during the maintainer-authorized 0.7
+release preparation. The independent machinome-mechanics repository owns the
+formula contract. This preserves the last framework-owned wording; see ADR-132.
+
 ## Purpose
 
 The mechanism laws the framework carries once so a project's own

@@ -2525,34 +2525,19 @@ round-half-to-even included, for the same reason. The fixture itself is
 committed in the viewer repository (ADR-068), so widening the vocabulary
 is one change here and one there.
 
-### Mechanisms (MATH · in spec `mechanisms`)
+### Mechanics helpers (independent package · spec `mechanics-distribution`)
 
-`machinome/mechanisms/` carries the textbook mechanism laws that a
-project's own `kinematics.py` kept rewriting (ADR-076): the external
-spur-gear mesh and its inverse, the lead screw, the planar slider-crank,
-linear delta kinematics, and the circle geometry a linkage asks for. One
-module per family — `gears`, `screws`, `cranks`, `deltas`, `linkages` —
-with the family's frame, zero and sign stated once at its top, and an
-eager flat re-export whose names are unique across families.
+The twelve gear, screw, crank, delta and linkage formulas introduced by
+ADR-076 live in the independent Apache-2.0 `machinome-mechanics` package
+(ADR-132). Their numeric and symbolic faces compose over `machinome.math`;
+the package owns their conventions, tests and formula specification.
 
-Three properties make it a subsystem rather than a utility drawer. Every
-law is a **composition over `machinome.math`** and arithmetic, so it has
-that module's numeric and symbolic faces and emits **no OpenSCAD builtin
-the parity corpus above does not already pin** — the `mechanisms` spec
-requires that, so a law wanting a new builtin must go through `math.py`
-first. A gear library's convention enters as **reference angles**
-(`driver_gap`, `driven_tooth`), not as a fork of the law or a read of a
-gear object. And there is **no declared face**: the laws carry degree
-literals the ADR-062 algebra cannot type as angles, so a declared token
-reaching one raises `DimensionError` at class definition, with `.value`
-as the documented way through.
-
-These laws are the arithmetic a project's `law=` callable COMPOSES when
-it states a relation (ADR-089) — `meshed_angle` and `driving_angle` are
-one affine pair, which is why a project that adopts `drives` writes only
-the forward reading and lets the framework invert it. That does not make
-them vocabulary: the framework still looks nothing up here, and a law is
-a value the project passes in.
+The dependency runs from mechanics to machinome. The default framework
+installation does not require it, while `machinome[mechanics]` selects it
+as an extra. Framework code neither imports nor re-exports its helpers and
+ships no `machinome.mechanisms` package. A project's `law=` callable may
+compose `machinome_mechanics` formulas exactly as it may compose its own
+arithmetic; motion evaluation remains independent of their implementation.
 
 ## Load-bearing invariants
 
@@ -2827,7 +2812,7 @@ The short list that changes must not silently break:
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104, 127 |
 | Motion | `machinome/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122, 125, 126, 127 |
 | Simulation | `machinome/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128, 129 |
-| Mechanisms | `machinome/mechanisms/` | `mechanisms` | 022, 076 |
+| Mechanics boundary | independent `machinome-mechanics` package | `mechanics-distribution` | 022, 076, 132 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `machinome/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |
 | Test framework | `machinome/test.py`, `manager/test.py` | `test-framework` | 009–011, 025, 029, 040, 048, 052, 070, 073 |

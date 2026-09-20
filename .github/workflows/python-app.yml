@@ -155,7 +155,9 @@ jobs:
       - name: Install runtime, viewer and docs requirements
         run: |
           pip install -r requirements.txt -r docs/requirements.txt
+          pip install -e .
           pip install "machinome-viewer @ git+https://github.com/machinome/machinome-viewer.git"
+          pip install "machinome-mechanics @ git+https://github.com/machinome/machinome-mechanics.git"
 
       - name: Generate V8 example export
         working-directory: docs/examples/v8-engine

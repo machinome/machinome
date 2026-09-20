@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath('..'))
 project = 'Machinome'
 copyright = '2023-2026, Luis Henrique Cassis Fagundes'
 author = 'Luis Henrique Cassis Fagundes'
-release = '0.7 (in preparation)'
+release = '0.7.0'
 html_title = 'Machinome — Source code for machines'
 
 # -- General configuration ---------------------------------------------------

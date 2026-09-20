@@ -45,8 +45,16 @@ one description that can be built, operated and tested.
 * **Independent viewer:** ``machinome[viewer]`` selects the separate
   AGPL-3.0-only package. Interactive ``develop`` requires it;
   ``--no-web`` remains available. Matching viewer source 0.2.0
-  implements API 20 and schemas 1–8, including running and clocked
+  implements API 22 and schemas 1–9, including running and clocked
   machines; it is not yet published.
+* **Retained clearance pickup:** explicit running ``Play`` relations
+  collect and release a follower through clearance; document schema 9
+  carries that contact law to the viewer.
+* **Independent mechanics:** the twelve formula helpers move from
+  ``machinome.mechanisms`` to ``machinome_mechanics`` in the independent
+  0.1.0 package, installed through ``machinome[mechanics]``.
+* **Installation:** bound ``ocp-gordon`` below 0.3 so build123d 0.10
+  remains compatible with the shared OCP 7.8 runtime in a fresh install.
 * **Documentation:** the original part → assembly → animation → fit-test
   progression continues into declarations, joints and simulation.
   Clock 01 joins V8 and Metamaquina 2 as an external example.

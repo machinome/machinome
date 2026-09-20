@@ -124,15 +124,18 @@ extra. It is required by ordinary ``machinome develop``.
 modelling backend and snapshot renderer; ``develop --openscad`` is no
 longer an interactive-viewer option.
 
-The matching viewer source is 0.2.0, API 20, reading document schemas
-1–8; publication is still pending. Check ``machinome viewer`` for the
+The matching viewer source is 0.2.0, API 22, reading document schemas
+1–9; publication is still pending. Check ``machinome viewer`` for the
 installed package, API and ``documentVersions``. A clocked machine
-requires schema 8; running models require 5, 6 or 7 according to the
-laws they carry. Hosts must update their bundle and the renamed
+requires schema 8; running models require 5, 6, 7 or 9 according to the
+laws they carry (explicit ``Play`` requires 9). Hosts must update their bundle and the renamed
 JavaScript/DOM surface together. See :doc:`embedding`.
 
 The ``mechanics`` extra selects the independent
-``machinome-mechanics`` package. The ``studio`` extra names
+``machinome-mechanics`` 0.1.0 package. Projects using the unreleased
+``machinome.mechanisms`` helpers must change those imports to
+``machinome_mechanics``; names, signatures and formulas are preserved.
+The framework does not re-export the helpers. The ``studio`` extra names
 Machinome Studio, which remains experimental and unpublished and cannot
 yet be installed from an index.
 
