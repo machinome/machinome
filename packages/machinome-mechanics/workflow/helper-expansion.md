@@ -7,6 +7,46 @@ distinct project repositories, sync baseline specs, archive and merge locally
 before starting the next helper. No per-cycle ratification is required. Skip a
 blocked helper with evidence; do not archive unfinished work. No push or release.
 
+## Final outcome — 2026-09-20
+
+Campaign complete under the pilot's skip authority: twelve new public helpers
+implemented, empirically validated in at least two real projects each, synced,
+archived and merged locally. The package now exports 24 helpers. Candidate
+`differential_angles` was struck before proposal because no useful second
+consumer was found; see [candidate evidence](helper-candidate-review.md).
+There is no unfinished helper cycle hidden in the archive.
+
+Sol agents made 47 helper-adoption commits across 21 distinct project
+repositories, plus four dependency-metadata follow-ups. Independent audit
+verified the first 45 adoption commits and eleven package commits in their
+recorded original-branch ancestry; parent guarded and verified the final two
+adoptions and package integration below. Earlier consumer heads may advance
+through later helpers: ancestry, not equality with old tips, is the criterion.
+
+Final merged product commit: `335b936e7fe3ee926aa796ddc31460cf573dee79`.
+Post-merge package checks: 198 tests and 24 subtests, three strict baseline
+specifications. Final-cycle strict documentation checks passed all 160 runnable
+examples and HTML; wheel/source distributions passed metadata and isolated
+installed numeric/deferred smoke checks. Those are package guarantees, not a
+claim that every project's full legacy CAD suite passed.
+
+Affected production-law, numeric/deferred, pose and applicable CAD/pixel
+evidence is recorded cycle by cycle. Pre-existing project failures, tool gaps,
+renderer limitations and capped incomplete broad suites remain explicit in
+those records. In particular Kossel's projection defect is preserved, not
+fixed by this campaign; Thor/Dragon inherited failures and Leonardo/
+CycloidalDrive broad memory limits are not represented as green full suites.
+
+Heavy validation is now serialized and physically capped per process tree at
+768 MiB, with zero swap and bounded runtime, after the pilot's memory warning.
+No cap was raised. All clean helper worktrees were removed after integration,
+branches retained. Existing user screenshots, unrelated worktrees and shop
+files were preserved. No framework/viewer source was changed for these helper
+cycles; nothing was pushed, published or released. This focused closure record
+adds no helper or behavioral change and follows the twelve two-commit cycles.
+
+## Discipline
+
 Resource discipline added at pilot request during cycle 8: do not run unbounded
 nested symbolic-expression expansion or parallel heavy CAD checks. Evaluate
 only the changed expression boundary when full expansion duplicates shared
@@ -46,7 +86,7 @@ new design choices exposed by validation are reported, not silently substituted.
 | 10 | `harmonic_cam_lift` | Leonardo cam hammer; Deepseek sawmill | integrated |
 | 11 | `internal_mesh_angle` | Thor; OpenTorque | integrated |
 | 12 | `differential_angles` | Thor only; Dragon R1 is not a useful second consumer | skipped before proposal |
-| 13 | `indexed_advance` | Pascaline-module; Deepseek sawmill | active |
+| 13 | `indexed_advance` | Pascaline-module; Deepseek sawmill | integrated |
 
 Names and consumer selection remain working assumptions until each cycle's
 source inspection confirms its contract. Do not manufacture a second consumer
@@ -188,6 +228,19 @@ review in `helper-candidate-review.md` found no useful second consumer for
 differential_angles. Dragon's mirrored child-local coordinates do not duplicate
 Thor's common-frame sum/difference law. No speculative API or empty archived
 cycle is created. Candidate 13 qualified on repeated real turn accounting.
+
+Cycle 13 integration: mechanics `335b936e7fe3ee926aa796ddc31460cf573dee79`
+is on main. Pascaline-module `84012b7bd09a7fb41b5ace5b59547bff0a7cb1f3`
+and Deepseek sawmill `52160e1510f1295709023f36a5c5010d3247b3e2` were
+fast-forwarded from their unchanged original main bases. Both production-law
+imports resolve to the merged primary package. Post-merge 198 tests,
+24 subtests and three strict baseline specs passed. Clean helper worktree
+removed, branch retained. Both independent actual bound-motion probes passed;
+Pascaline root faceted/exact 37/37 each, sawmill feed exact 5/5 and root exact
+10/10, both builds and all fresh reviewed images passed. Pascaline's custom
+web camera/projection wrapper failures are recorded with successful default
+camera captures; no framework/viewer fix was folded into this cycle. Final
+dependency heads remain clean 8d2bd711/4355da1. No push or publication.
 
 ## Project findings outside helper scope
 
