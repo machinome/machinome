@@ -5,6 +5,12 @@ it carries release together and share one version.
 
 ## 0.2.0 — unreleased
 
+- A complete Sphinx user manual covers installation, inspection, posed/running/
+  clocked controls, embedding, every public browser handle and the CLI, with a
+  working interactive example and Read the Docs configuration. User pages live
+  in `docs/`; release preparation and unchanged decision records now live in
+  `workflow/`. No runtime or API-version change.
+
 - The assembly navigator shows complete part names on hover. Expanding,
   collapsing, hiding or showing a part preserves the sidebar's scroll
   position and keeps keyboard focus on the row being operated; keyboard

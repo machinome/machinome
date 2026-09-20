@@ -1,4 +1,4 @@
-# `workflow/` — the viewer's pre-spec working record
+# `workflow/` — viewer development records
 
 This directory holds working material of machinome-viewer development that
 is real and worth keeping but is not, or is not yet, an OpenSpec record. It
@@ -6,10 +6,19 @@ follows the convention the framework established in
 `machinome/workflow/README.md`; read that file for the reasoning. What is
 here is the viewer's own, and never the framework's.
 
-Nothing in this directory is ratified, and nothing in it is a public API
-promise. When a document here and an OpenSpec spec or an accepted ADR
-disagree, the spec or the ADR is right and the document is stale. Say so in
-the document rather than quietly editing the record.
+Working notes here are not ratified public API promises. When a working note
+and an OpenSpec spec or an accepted ADR disagree, the spec or ADR is right and
+the note is stale. Say so in the note rather than quietly editing the record.
+
+`adrs/` is the decision log, relocated from `docs/adrs/` without changing the
+status or authority of any decision. Accepted decisions remain accepted.
+`release-0.2.md` is release preparation, not evidence of a published release.
+`documentation.md` explains how maintainers build and publish the manual;
+`documentation-review.md` records local review evidence.
+
+The public manual lives in `docs/`. Development plans, audits, decisions and
+release checklists do not belong in that user-facing tree. OpenSpec changes
+and behavioral specifications remain in `openspec/`.
 
 ## `warts.md` — findings, in the order they were met
 

@@ -6,6 +6,8 @@ dist/
 .venv/
 .pytest_cache/
 .coverage
+_build/
+.venv-docs/
 .env
 
 # The widget's installed dependencies and built output. Anchored (not

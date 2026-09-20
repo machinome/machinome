@@ -34,6 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+docs = ["sphinx==9.1.0", "sphinx-rtd-theme==3.1.0"]
 # The headless capture behind `machinome snapshot --renderer web`. Chromium is a
 # second, separate step: `playwright install chromium`.
 snapshot = [
@@ -53,6 +54,9 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/machinome/machinome-viewer"
+Documentation = "https://machinome-viewer.readthedocs.io/"
+Source = "https://github.com/machinome/machinome-viewer"
+Issues = "https://github.com/machinome/machinome-viewer/issues"
 
 [project.scripts]
 machinome-viewer = "machinome_viewer.cli:main"

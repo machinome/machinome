@@ -1,7 +1,11 @@
 include LICENSE
 include README.md
 include CHANGELOG.md
-include docs/release-0.2.md
+include .readthedocs.yaml
+include scripts/check-docs-browser.py
+recursive-include docs *.rst *.py *.txt *.css *.js *.html Makefile
+prune docs/_build
+recursive-include workflow *.md
 
 # The frontend travels with its sources so a source distribution can
 # rebuild it, and with its built output so installing needs no npm.
@@ -10,5 +14,6 @@ recursive-include machinome_viewer/widget *
 prune machinome_viewer/widget/node_modules
 
 recursive-include tests *
+prune tests/_shots
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
