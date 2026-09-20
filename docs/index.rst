@@ -69,6 +69,7 @@ own repositories.
    :caption: Guides
 
    flexible-parts
+   Mechanics helpers <https://machinome-mechanics.readthedocs.io/en/latest/>
    markings
    node-tree
    expression-graphs

@@ -754,6 +754,16 @@ mechanism shapes, and no vocabulary of gears. A returned object needs a
 ``forward(x)``, and an ``inverse(y)`` if the relation may ever be read
 backwards; a plain function is taken as forward-only.
 
+For common gear, screw, slider-crank, delta and linkage calculations,
+reuse the optional `Machinome Mechanics helpers
+<https://machinome-mechanics.readthedocs.io/en/latest/reference/index.html>`_
+inside your law. Import them from ``machinome_mechanics``. Their
+`worked motion-law example
+<https://machinome-mechanics.readthedocs.io/en/latest/using-with-machinome.html>`_
+shows a driver moving a piston using resolved dimensions and the same
+formula for numeric and symbolic inputs. The mechanics manual owns the
+helpers' units, reference frames, signs and valid domains.
+
 What a law costs under a running root
 -------------------------------------
 

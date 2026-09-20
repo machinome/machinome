@@ -512,17 +512,24 @@ Mechanics helpers
 ==================
 
 The twelve gear, screw, crank, delta and linkage formulas belong to the
-independent `machinome-mechanics package
-<https://github.com/machinome/machinome-mechanics>`_. Install
-``machinome[mechanics]`` and import them from ``machinome_mechanics``;
+independent `Machinome Mechanics package
+<https://machinome-mechanics.readthedocs.io/en/latest/>`_, the mechanics
+helpers for this framework. Select it with ``machinome[mechanics]`` and
+import from ``machinome_mechanics``. While publication is pending, follow
+the manual's `source installation instructions
+<https://machinome-mechanics.readthedocs.io/en/latest/getting-started.html>`_.
 ``machinome.mechanisms`` is no longer a framework API.
 
-The package's README, module docstrings and formula specification describe
-frames, signs and domain behavior. Its functions compose over
-``machinome.math``, accept numeric or symbolic inputs, and preserve the
-original formulas. They do not provide a general dimensional class-body
-formula contract. Prefer relation law factories over resolved parameters,
-as in :doc:`driving`.
+The `complete helper reference
+<https://machinome-mechanics.readthedocs.io/en/latest/reference/index.html>`_
+documents every signature, parameter, return value, coordinate convention
+and domain limit, with examples. The functions compose over
+``machinome.math`` and accept numeric or symbolic inputs. Use resolved
+parameters in relation law factories; the mechanics manual includes a
+`worked piston law
+<https://machinome-mechanics.readthedocs.io/en/latest/using-with-machinome.html>`_
+and explains the limit on dimensional class-body formulas. See
+:doc:`driving` for the framework's relation semantics.
 
 Testing
 ===========

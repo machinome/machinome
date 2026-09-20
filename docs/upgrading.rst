@@ -135,7 +135,10 @@ The ``mechanics`` extra selects the independent
 ``machinome-mechanics`` 0.1.0 package. Projects using the unreleased
 ``machinome.mechanisms`` helpers must change those imports to
 ``machinome_mechanics``; names, signatures and formulas are preserved.
-The framework does not re-export the helpers. The ``studio`` extra names
+The framework does not re-export the helpers. The `Machinome Mechanics
+manual <https://machinome-mechanics.readthedocs.io/en/latest/>`_ covers
+installation, migration, coordinate conventions and all twelve helpers.
+The ``studio`` extra names
 Machinome Studio, which remains experimental and unpublished and cannot
 yet be installed from an index.
 
