@@ -722,12 +722,11 @@ class Time:
     # The clock as a source
 
     def drives(self, other, ratio=None, offset=None, law=None):
-        """Refused: a clock drives nothing.
+        """Drive a coordinate from elapsed seconds under Time.running().
 
-        The face exists so the refusal is the framework's and names the
-        clock, rather than Python's `AttributeError` on a declaration
-        that happens to carry no `drives` (OpenSpec change
-        ``time-without-running``).
+        The running reading retains the coordinate and integrates the
+        law's changes; it does not overwrite it with an absolute pose.
+        Other time bases and every clock target remain refused.
         """
         from machinome.motion.couplings import relate
 

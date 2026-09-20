@@ -1,0 +1,2084 @@
+{
+  "generated_by": "tools/generate_time_drive_corpus.py",
+  "tolerance": {
+    "float": 1e-09
+  },
+  "machines": [
+    {
+      "name": "TimeAffine",
+      "dt": 0.1,
+      "steps": 12,
+      "script": [],
+      "document": {
+        "format": "machinome-export",
+        "version": 10,
+        "drivers": {},
+        "instructions": {},
+        "program": {
+          "identity": "94a3a04bd1e5805d01e7a343f4289ddce3a5fe9ed9379059821436bfc22d5c4b",
+          "clock": "time",
+          "coordinates": {
+            "shaft.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "time"
+              ],
+              "gives": [
+                "shaft.turn"
+              ],
+              "description": "time drives shaft.turn",
+              "stated_by": "AffineClock",
+              "expressions": [
+                "(6 * time)"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            }
+          ],
+          "spans": {},
+          "sources": {
+            "shaft.turn": [
+              "@time:0"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          },
+          "time_drives": [
+            {
+              "id": "@time:0",
+              "edge": 0
+            }
+          ]
+        }
+      },
+      "ticks": [
+        {
+          "tick": 1,
+          "time": 0.1,
+          "bank": {
+            "shaft.turn": 0.6000000000000001
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 2,
+          "time": 0.2,
+          "bank": {
+            "shaft.turn": 1.2000000000000002
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 3,
+          "time": 0.30000000000000004,
+          "bank": {
+            "shaft.turn": 1.8000000000000003
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 4,
+          "time": 0.4,
+          "bank": {
+            "shaft.turn": 2.4000000000000004
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 5,
+          "time": 0.5,
+          "bank": {
+            "shaft.turn": 3.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 6,
+          "time": 0.6000000000000001,
+          "bank": {
+            "shaft.turn": 3.5999999999999996
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 7,
+          "time": 0.7000000000000001,
+          "bank": {
+            "shaft.turn": 4.199999999999999
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 8,
+          "time": 0.8,
+          "bank": {
+            "shaft.turn": 4.8
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 9,
+          "time": 0.9,
+          "bank": {
+            "shaft.turn": 5.3999999999999995
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 10,
+          "time": 1.0,
+          "bank": {
+            "shaft.turn": 5.999999999999999
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 11,
+          "time": 1.1,
+          "bank": {
+            "shaft.turn": 6.6
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 12,
+          "time": 1.2000000000000002,
+          "bank": {
+            "shaft.turn": 7.2
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        }
+      ]
+    },
+    {
+      "name": "TimeEnabled",
+      "dt": 1,
+      "steps": 5,
+      "script": [
+        {
+          "tick": 3,
+          "move": {
+            "input": "enabled",
+            "to": 0
+          },
+          "handle": "off"
+        },
+        {
+          "tick": 5,
+          "move": {
+            "input": "enabled",
+            "to": 1
+          },
+          "handle": "on"
+        }
+      ],
+      "document": {
+        "format": "machinome-export",
+        "version": 10,
+        "drivers": {
+          "enabled": {
+            "default": 1,
+            "range": [
+              0,
+              1
+            ],
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(6 * time)"
+          }
+        ],
+        "program": {
+          "identity": "5fdaf3dc9f05700cbb46d032309bed684a2541600fe339b5588b161705a26aac",
+          "clock": "time",
+          "coordinates": {
+            "enabled": {
+              "kind": "input",
+              "initial": 1,
+              "domain": null
+            },
+            "shaft.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "time",
+                "enabled"
+              ],
+              "gives": [
+                "shaft.turn"
+              ],
+              "description": "(time, enabled) drives shaft.turn",
+              "stated_by": "GatedClock",
+              "expressions": [
+                "(_b0 * (enabled > 0.5))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(_b0 * _j0)",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": ">",
+                      "level": "(enabled - 0.5)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {},
+          "sources": {
+            "enabled": [
+              "enabled"
+            ],
+            "shaft.turn": [
+              "@time:0",
+              "enabled"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          },
+          "time_drives": [
+            {
+              "id": "@time:0",
+              "edge": 0
+            }
+          ]
+        }
+      },
+      "ticks": [
+        {
+          "tick": 1,
+          "time": 1,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 6.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 2,
+          "time": 2,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 12.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 3,
+          "time": 3,
+          "bank": {
+            "enabled": 0.0,
+            "shaft.turn": 12.0
+          },
+          "crossings": [
+            {
+              "relation": "(time, enabled) drives shaft.turn",
+              "coordinate": "shaft.turn",
+              "primitive": ">",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            }
+          ]
+        },
+        {
+          "tick": 4,
+          "time": 4,
+          "bank": {
+            "enabled": 0.0,
+            "shaft.turn": 12.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            }
+          ]
+        },
+        {
+          "tick": 5,
+          "time": 5,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 18.0
+          },
+          "crossings": [
+            {
+              "relation": "(time, enabled) drives shaft.turn",
+              "coordinate": "shaft.turn",
+              "primitive": ">",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "AstrariumClock",
+      "dt": 1,
+      "steps": 20,
+      "script": [
+        {
+          "tick": 3,
+          "move": {
+            "input": "enabled",
+            "to": 0
+          },
+          "handle": "off"
+        },
+        {
+          "tick": 4,
+          "move": {
+            "input": "wind",
+            "by": 2
+          },
+          "handle": "wind"
+        },
+        {
+          "tick": 5,
+          "move": {
+            "input": "enabled",
+            "to": 1
+          },
+          "handle": "on"
+        },
+        {
+          "tick": 6,
+          "snapshot": "running"
+        },
+        {
+          "tick": 17,
+          "move": {
+            "input": "enabled",
+            "to": 0
+          },
+          "handle": "off2"
+        },
+        {
+          "tick": 17,
+          "move": {
+            "input": "wind",
+            "by": 5
+          },
+          "handle": "rewind"
+        },
+        {
+          "tick": 17,
+          "move": {
+            "input": "enabled",
+            "to": 1
+          },
+          "handle": "on2"
+        },
+        {
+          "tick": 18,
+          "restore": "running"
+        },
+        {
+          "tick": 19,
+          "reset": true
+        }
+      ],
+      "document": {
+        "format": "machinome-export",
+        "version": 10,
+        "drivers": {
+          "enabled": {
+            "default": 1,
+            "range": [
+              0,
+              1
+            ],
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          },
+          "wind": {
+            "default": 0,
+            "range": null,
+            "unit": "mm",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(shaft.turn - wind)"
+          }
+        ],
+        "program": {
+          "identity": "e192bc3112a80f89b3e6187d32ff100157f62a1123583c7355ee32c274837e47",
+          "clock": "time",
+          "coordinates": {
+            "enabled": {
+              "kind": "input",
+              "initial": 1,
+              "domain": null
+            },
+            "wind": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "shaft.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "weight.drop": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "mm",
+              "domain": "translational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "time",
+                "enabled",
+                "wind",
+                "shaft.turn"
+              ],
+              "gives": [
+                "shaft.turn"
+              ],
+              "description": "(time, enabled, wind, shaft.turn) drives shaft.turn",
+              "stated_by": "AstrariumClock",
+              "expressions": [
+                "((time * (enabled > 0.5)) * (_b0 < 10))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "((time * _j0) * _j1)",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": ">",
+                      "level": "(enabled - 0.5)",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j1",
+                      "primitive": "<",
+                      "level": "(_b0 - 10)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "shaft.turn",
+                "wind"
+              ],
+              "gives": [
+                "weight.drop"
+              ],
+              "description": "(shaft.turn, wind) drives weight.drop",
+              "stated_by": "AstrariumClock",
+              "expressions": [
+                "_b0"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            }
+          ],
+          "spans": {
+            "weight.drop": {
+              "low": 0.0,
+              "high": 10.0
+            }
+          },
+          "sources": {
+            "enabled": [
+              "enabled"
+            ],
+            "shaft.turn": [
+              "@time:0",
+              "enabled",
+              "wind"
+            ],
+            "weight.drop": [
+              "@time:0",
+              "enabled",
+              "wind"
+            ],
+            "wind": [
+              "wind"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          },
+          "time_drives": [
+            {
+              "id": "@time:0",
+              "edge": 0
+            }
+          ]
+        }
+      },
+      "ticks": [
+        {
+          "tick": 1,
+          "time": 1,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 1.0,
+            "weight.drop": 1.0,
+            "wind": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 2,
+          "time": 2,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 2.0,
+            "weight.drop": 2.0,
+            "wind": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 3,
+          "time": 3,
+          "bank": {
+            "enabled": 0.0,
+            "shaft.turn": 2.0,
+            "weight.drop": 2.0,
+            "wind": 0.0
+          },
+          "crossings": [
+            {
+              "relation": "(time, enabled, wind, shaft.turn) drives shaft.turn",
+              "coordinate": "shaft.turn",
+              "primitive": ">",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            }
+          ]
+        },
+        {
+          "tick": 4,
+          "time": 4,
+          "bank": {
+            "enabled": 0.0,
+            "shaft.turn": 2.0,
+            "weight.drop": 0.0,
+            "wind": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            }
+          ]
+        },
+        {
+          "tick": 5,
+          "time": 5,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 3.0,
+            "weight.drop": 1.0,
+            "wind": 2.0
+          },
+          "crossings": [
+            {
+              "relation": "(time, enabled, wind, shaft.turn) drives shaft.turn",
+              "coordinate": "shaft.turn",
+              "primitive": ">",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 6,
+          "time": 6,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 4.0,
+            "weight.drop": 2.0,
+            "wind": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 7,
+          "time": 7,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 5.0,
+            "weight.drop": 3.0,
+            "wind": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 8,
+          "time": 8,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 6.0,
+            "weight.drop": 4.0,
+            "wind": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 9,
+          "time": 9,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 7.0,
+            "weight.drop": 5.0,
+            "wind": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 10,
+          "time": 10,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 8.0,
+            "weight.drop": 6.0,
+            "wind": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 11,
+          "time": 11,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 9.0,
+            "weight.drop": 7.0,
+            "wind": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 12,
+          "time": 12,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 10.0,
+            "weight.drop": 8.0,
+            "wind": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 13,
+          "time": 13,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 11.0,
+            "weight.drop": 9.0,
+            "wind": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 14,
+          "time": 14,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 12.0,
+            "weight.drop": 10.0,
+            "wind": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 15,
+          "time": 15,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 12.0,
+            "weight.drop": 10.0,
+            "wind": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 16,
+          "time": 16,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 12.0,
+            "weight.drop": 10.0,
+            "wind": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 17,
+          "time": 17,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 13.0,
+            "weight.drop": 6.0,
+            "wind": 7.0
+          },
+          "crossings": [
+            {
+              "relation": "(time, enabled, wind, shaft.turn) drives shaft.turn",
+              "coordinate": "shaft.turn",
+              "primitive": ">",
+              "level": 0.0,
+              "t": 0.5
+            },
+            {
+              "relation": "(time, enabled, wind, shaft.turn) drives shaft.turn",
+              "coordinate": "shaft.turn",
+              "primitive": ">",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "off2",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "rewind",
+              "status": "completed",
+              "admitted": 5
+            },
+            {
+              "handle": "on2",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 6,
+          "time": 6,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 4.0,
+            "weight.drop": 2.0,
+            "wind": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "off2",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "rewind",
+              "status": "completed",
+              "admitted": 5
+            },
+            {
+              "handle": "on2",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 1,
+          "time": 1,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 1.0,
+            "weight.drop": 1.0,
+            "wind": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "off2",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "rewind",
+              "status": "completed",
+              "admitted": 5
+            },
+            {
+              "handle": "on2",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "time": 2,
+          "bank": {
+            "enabled": 1.0,
+            "shaft.turn": 2.0,
+            "weight.drop": 2.0,
+            "wind": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "off",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "wind",
+              "status": "completed",
+              "admitted": 2
+            },
+            {
+              "handle": "on",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "off2",
+              "status": "completed",
+              "admitted": -1.0
+            },
+            {
+              "handle": "rewind",
+              "status": "completed",
+              "admitted": 5
+            },
+            {
+              "handle": "on2",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "IndependentTimeDrives",
+      "dt": 1,
+      "steps": 5,
+      "script": [
+        {
+          "tick": 4,
+          "snapshot": "stopped"
+        },
+        {
+          "tick": 5,
+          "restore": "stopped"
+        }
+      ],
+      "document": {
+        "format": "machinome-export",
+        "version": 10,
+        "drivers": {},
+        "instructions": {},
+        "program": {
+          "identity": "47005196b66f030f64f847f74c7326d7aaff99bb26fa16aa5de54d791019ad0c",
+          "clock": "time",
+          "coordinates": {
+            "other.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "shaft.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "weight.drop": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "mm",
+              "domain": "translational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "time"
+              ],
+              "gives": [
+                "shaft.turn"
+              ],
+              "description": "time drives shaft.turn",
+              "stated_by": "IndependentClocks",
+              "expressions": [
+                "time"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "time"
+              ],
+              "gives": [
+                "other.turn"
+              ],
+              "description": "time drives other.turn",
+              "stated_by": "IndependentClocks",
+              "expressions": [
+                "(2 * time)"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "shaft.turn"
+              ],
+              "gives": [
+                "weight.drop"
+              ],
+              "description": "shaft.turn drives weight.drop",
+              "stated_by": "IndependentClocks",
+              "expressions": [
+                "shaft.turn"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            }
+          ],
+          "spans": {
+            "weight.drop": {
+              "low": 0.0,
+              "high": 2.5
+            }
+          },
+          "sources": {
+            "other.turn": [
+              "@time:1"
+            ],
+            "shaft.turn": [
+              "@time:0"
+            ],
+            "weight.drop": [
+              "@time:0"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          },
+          "time_drives": [
+            {
+              "id": "@time:0",
+              "edge": 0
+            },
+            {
+              "id": "@time:1",
+              "edge": 1
+            }
+          ]
+        }
+      },
+      "ticks": [
+        {
+          "tick": 1,
+          "time": 1,
+          "bank": {
+            "other.turn": 2.0,
+            "shaft.turn": 1.0,
+            "weight.drop": 1.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 2,
+          "time": 2,
+          "bank": {
+            "other.turn": 4.0,
+            "shaft.turn": 2.0,
+            "weight.drop": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 3,
+          "time": 3,
+          "bank": {
+            "other.turn": 6.0,
+            "shaft.turn": 2.5,
+            "weight.drop": 2.5
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "weight.drop",
+              "bound": "high",
+              "value": 2.5,
+              "t": 0.5,
+              "inputs": [],
+              "time_drives": [
+                "@time:0"
+              ]
+            }
+          ],
+          "commands": []
+        },
+        {
+          "tick": 4,
+          "time": 4,
+          "bank": {
+            "other.turn": 8.0,
+            "shaft.turn": 2.5,
+            "weight.drop": 2.5
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "weight.drop",
+              "bound": "high",
+              "value": 2.5,
+              "t": 0.0,
+              "inputs": [],
+              "time_drives": [
+                "@time:0"
+              ]
+            }
+          ],
+          "commands": []
+        },
+        {
+          "tick": 4,
+          "time": 4,
+          "bank": {
+            "other.turn": 8.0,
+            "shaft.turn": 2.5,
+            "weight.drop": 2.5
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "weight.drop",
+              "bound": "high",
+              "value": 2.5,
+              "t": 0.0,
+              "inputs": [],
+              "time_drives": [
+                "@time:0"
+              ]
+            }
+          ],
+          "commands": []
+        }
+      ]
+    },
+    {
+      "name": "TimeRelease",
+      "dt": 1,
+      "steps": 6,
+      "script": [
+        {
+          "tick": 5,
+          "move": {
+            "input": "release",
+            "to": 10
+          },
+          "handle": "release"
+        }
+      ],
+      "document": {
+        "format": "machinome-export",
+        "version": 10,
+        "drivers": {
+          "release": {
+            "default": 2.5,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "program": {
+          "identity": "9680bbbf84e2b30852bd3ad53705413f72998496a07f1aa89ee746226dd81bc8",
+          "clock": "time",
+          "coordinates": {
+            "release": {
+              "kind": "input",
+              "initial": 2.5,
+              "domain": null
+            },
+            "shaft.limit": {
+              "kind": "coordinate",
+              "initial": 2.5,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "shaft.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "release"
+              ],
+              "gives": [
+                "shaft.limit"
+              ],
+              "description": "release drives shaft.limit",
+              "stated_by": "ReleasableClock",
+              "expressions": [
+                "release"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "time"
+              ],
+              "gives": [
+                "shaft.turn"
+              ],
+              "description": "time drives shaft.turn",
+              "stated_by": "ReleasableClock",
+              "expressions": [
+                "time"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            }
+          ],
+          "spans": {
+            "shaft.turn": {
+              "low": 0.0,
+              "high": {
+                "expression": "shaft.limit"
+              }
+            }
+          },
+          "sources": {
+            "release": [
+              "release"
+            ],
+            "shaft.limit": [
+              "release"
+            ],
+            "shaft.turn": [
+              "@time:1"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          },
+          "time_drives": [
+            {
+              "id": "@time:1",
+              "edge": 1
+            }
+          ]
+        }
+      },
+      "ticks": [
+        {
+          "tick": 1,
+          "time": 1,
+          "bank": {
+            "release": 2.5,
+            "shaft.limit": 2.5,
+            "shaft.turn": 1.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 2,
+          "time": 2,
+          "bank": {
+            "release": 2.5,
+            "shaft.limit": 2.5,
+            "shaft.turn": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": []
+        },
+        {
+          "tick": 3,
+          "time": 3,
+          "bank": {
+            "release": 2.5,
+            "shaft.limit": 2.5,
+            "shaft.turn": 2.5
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "shaft.turn",
+              "bound": "high",
+              "value": 2.5,
+              "t": 0.5,
+              "inputs": [],
+              "time_drives": [
+                "@time:1"
+              ]
+            }
+          ],
+          "commands": []
+        },
+        {
+          "tick": 4,
+          "time": 4,
+          "bank": {
+            "release": 2.5,
+            "shaft.limit": 2.5,
+            "shaft.turn": 2.5
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "shaft.turn",
+              "bound": "high",
+              "value": 2.5,
+              "t": 0.0,
+              "inputs": [],
+              "time_drives": [
+                "@time:1"
+              ]
+            }
+          ],
+          "commands": []
+        },
+        {
+          "tick": 5,
+          "time": 5,
+          "bank": {
+            "release": 10.0,
+            "shaft.limit": 10.0,
+            "shaft.turn": 3.5
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "release",
+              "status": "completed",
+              "admitted": 7.5
+            }
+          ]
+        },
+        {
+          "tick": 6,
+          "time": 6,
+          "bank": {
+            "release": 10.0,
+            "shaft.limit": 10.0,
+            "shaft.turn": 4.5
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "release",
+              "status": "completed",
+              "admitted": 7.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MixedTimeDrive",
+      "dt": 1,
+      "steps": 4,
+      "script": [
+        {
+          "tick": 1,
+          "rate": {
+            "input": "assist",
+            "rate": 1
+          },
+          "handle": "assist"
+        }
+      ],
+      "document": {
+        "format": "machinome-export",
+        "version": 10,
+        "drivers": {
+          "assist": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "program": {
+          "identity": "fb888afc37e12f030c4d2a00578c8388181c7ce81982235ebc071000dde8f412",
+          "clock": "time",
+          "coordinates": {
+            "assist": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "shaft.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "time",
+                "assist"
+              ],
+              "gives": [
+                "shaft.turn"
+              ],
+              "description": "(time, assist) drives shaft.turn",
+              "stated_by": "MixedClock",
+              "expressions": [
+                "(time + assist)"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            }
+          ],
+          "spans": {
+            "shaft.turn": {
+              "low": 0.0,
+              "high": 2.5
+            }
+          },
+          "sources": {
+            "assist": [
+              "assist"
+            ],
+            "shaft.turn": [
+              "@time:0",
+              "assist"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          },
+          "time_drives": [
+            {
+              "id": "@time:0",
+              "edge": 0
+            }
+          ]
+        }
+      },
+      "ticks": [
+        {
+          "tick": 1,
+          "time": 1,
+          "bank": {
+            "assist": 1,
+            "shaft.turn": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "assist",
+              "status": "active",
+              "admitted": 1
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "time": 2,
+          "bank": {
+            "assist": 1.25,
+            "shaft.turn": 2.5
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "shaft.turn",
+              "bound": "high",
+              "value": 2.5,
+              "t": 0.25,
+              "inputs": [
+                "assist"
+              ],
+              "time_drives": [
+                "@time:0"
+              ]
+            }
+          ],
+          "commands": [
+            {
+              "handle": "assist",
+              "status": "blocked",
+              "admitted": 1.25
+            }
+          ]
+        },
+        {
+          "tick": 3,
+          "time": 3,
+          "bank": {
+            "assist": 1.25,
+            "shaft.turn": 2.5
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "shaft.turn",
+              "bound": "high",
+              "value": 2.5,
+              "t": 0.0,
+              "inputs": [],
+              "time_drives": [
+                "@time:0"
+              ]
+            }
+          ],
+          "commands": [
+            {
+              "handle": "assist",
+              "status": "blocked",
+              "admitted": 1.25
+            }
+          ]
+        },
+        {
+          "tick": 4,
+          "time": 4,
+          "bank": {
+            "assist": 1.25,
+            "shaft.turn": 2.5
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "shaft.turn",
+              "bound": "high",
+              "value": 2.5,
+              "t": 0.0,
+              "inputs": [],
+              "time_drives": [
+                "@time:0"
+              ]
+            }
+          ],
+          "commands": [
+            {
+              "handle": "assist",
+              "status": "blocked",
+              "admitted": 1.25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CurvedTimeStop",
+      "dt": 2,
+      "steps": 2,
+      "script": [],
+      "document": {
+        "format": "machinome-export",
+        "version": 10,
+        "drivers": {},
+        "instructions": {},
+        "program": {
+          "identity": "13f4900261d3c5b687bbd2e5f96edd88c11887a261b6a13de475ccf4550847a7",
+          "clock": "time",
+          "coordinates": {
+            "follower.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "shaft.turn": {
+              "kind": "coordinate",
+              "initial": 0.0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "time"
+              ],
+              "gives": [
+                "shaft.turn"
+              ],
+              "description": "time drives shaft.turn",
+              "stated_by": "CurvedClock",
+              "expressions": [
+                "(time * time)"
+              ],
+              "affine": [
+                false
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "shaft.turn"
+              ],
+              "gives": [
+                "follower.turn"
+              ],
+              "description": "shaft.turn drives follower.turn",
+              "stated_by": "CurvedClock",
+              "expressions": [
+                "shaft.turn"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            }
+          ],
+          "spans": {
+            "follower.turn": {
+              "low": 0.0,
+              "high": 2.0
+            }
+          },
+          "sources": {
+            "follower.turn": [
+              "@time:0"
+            ],
+            "shaft.turn": [
+              "@time:0"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          },
+          "time_drives": [
+            {
+              "id": "@time:0",
+              "edge": 0
+            }
+          ]
+        }
+      },
+      "ticks": [
+        {
+          "tick": 1,
+          "time": 2,
+          "bank": {
+            "follower.turn": 2.0,
+            "shaft.turn": 1.999999999998103
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "follower.turn",
+              "bound": "high",
+              "value": 2.0,
+              "t": 0.7071067811862122,
+              "inputs": [],
+              "time_drives": [
+                "@time:0"
+              ]
+            }
+          ],
+          "commands": []
+        },
+        {
+          "tick": 2,
+          "time": 4,
+          "bank": {
+            "follower.turn": 2.0,
+            "shaft.turn": 1.999999999998103
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "follower.turn",
+              "bound": "high",
+              "value": 2.0,
+              "t": 0.0,
+              "inputs": [],
+              "time_drives": [
+                "@time:0"
+              ]
+            }
+          ],
+          "commands": []
+        }
+      ]
+    }
+  ]
+}

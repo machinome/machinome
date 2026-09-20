@@ -21,7 +21,9 @@ The system SHALL provide `drives(other, ratio=None, offset=None,
 law=None)` on every declaration that can name a coordinate — a child
 declaration, a port declaration, a joint declaration, a `Driver`
 declaration, a `State` declaration, a path reference and a derived
-coordinate — and SHALL require no import to use it. `drives` SHALL be
+coordinate, and the root's running `Time` declaration as a source under
+"A running clock is a read-only source of drives" — and SHALL require no
+import to use it. `drives` SHALL be
 framework vocabulary and the ONLY vocabulary for relating two coordinates:
 the framework SHALL look up no method, attribute or hook of any name on a
 project's node class to discover what a relation means.
@@ -1408,8 +1410,11 @@ banked seconds — and SHALL be addressed by the bare qualified id `time`. It
 SHALL be refused at class definition, by name and naming `Time.elapsed()`,
 when the declaration it names is `Time(loop=...)` or `Time.running()`,
 because an event is located on a clock that never wraps. The clock SHALL be
-refused as a TARGET of `commits` and as either end of `drives`, at class
-definition, by name: the clock is moved by a request and written by nothing.
+refused as a TARGET of `commits` and as the driven end of `drives`, at class
+definition, by name: no relation writes the clock. An ELAPSED or LOOPING
+clock SHALL also be refused as a source of `drives`; only the RUNNING
+clock is admitted there, under "A running clock is a read-only source of
+drives". The elapsed clock remains moved by requests and written by nothing.
 
 A class body that declares NO time base has no `time` name of the system's
 to refuse — a class body does not read a base class's attributes — so the
@@ -1570,10 +1575,12 @@ state.
 
 #### Scenario: The clock is not a target and not a driven end
 
-- **WHEN** a class body states `.commits(time, at=..., law=...)`, or
-  `time.drives(x)`, or `x.drives(time)`
-- **THEN** each fails at class definition by name, saying the clock is moved
-  by a request and written by nothing
+- **WHEN** a class body states `.commits(time, at=..., law=...)` or
+  `x.drives(time)` under any time base, or `time.drives(x)` under an elapsed
+  or looping time base
+- **THEN** each fails at class definition naming the relation and clock;
+  the target refusals say no relation writes the clock and the source
+  refusal names `Time.running()` as the base supporting a time drive
 
 ### Requirement: A play law states retained clearance contact
 
@@ -1601,3 +1608,56 @@ unchanged for every other law.
 - **WHEN** a relation uses a callable law containing ADR-121 comparison gates and does not name `Play`
 - **THEN** it is declared and integrated under the existing self-read rules without play behavior
 
+### Requirement: A running clock is a read-only source of drives
+
+The system SHALL admit the root's declared `time = Time.running()` as a
+SOURCE of `drives`, alone or among a grouped source's declarations. The
+existing affine and law-factory forms SHALL apply without a new declaration
+type or callback. Factories SHALL receive the realized owner of the time
+declaration in its written position, exactly once per realization, and their
+returned laws SHALL receive elapsed seconds in that position.
+
+The declaration SHALL refer to the running root's own clock. A foreign or
+mismatched declaration SHALL be refused by relation identity where the owner
+is known; a child clock SHALL NOT create another clock or control under a
+running parent. Time SHALL never be a driven end or a commandable driver.
+A running-clock relation SHALL NOT solve backward into its time source.
+
+Ordinary numeric and untimed inspection SHALL retain the existing reading
+of time and relation posing. Under a running simulation the run SHALL seed
+the ordinary rest at zero seconds and own the retained joints thereafter,
+under the simulation capability. Merely reading, rendering or publishing
+the tree SHALL NOT advance any retained coordinate.
+
+#### Scenario: An affine time drive needs no dummy input
+
+- **WHEN** a running root states `time.drives(shaft.turn, ratio=6)`
+- **THEN** the relation is admitted without declaring an operator driver,
+  and its source is the root's elapsed seconds
+
+#### Scenario: A time source keeps its written group position
+
+- **WHEN** a running root states
+  `(enabled & time & shaft.turn).drives(shaft.turn, law=gate)`
+- **THEN** the factory receives owners and the returned law receives values
+  in the order enabled, elapsed seconds, retained shaft angle
+
+#### Scenario: A foreign time declaration cannot drive this run
+
+- **WHEN** a relation names a different root's Time declaration as its source
+- **THEN** realization refuses it naming the relation and the owning-root
+  mismatch, without creating a second clock or drive
+
+#### Scenario: Reading time does not grant a second joint writer
+
+- **WHEN** a running simulation's `simulate()` assigns `self.time` directly
+  to a run-owned joint
+- **THEN** the existing double-binding refusal remains, while rotating a
+  plain part by `self.time` remains an admitted absolute pose expression
+
+#### Scenario: Time is not an operating input
+
+- **WHEN** a maker attempts a running `move("time", ...)` or
+  `rate("time", ...)`
+- **THEN** the existing non-driver refusal applies; the time source appears
+  in no driver controls and creates no command handle

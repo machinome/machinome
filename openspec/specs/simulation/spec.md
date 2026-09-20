@@ -769,7 +769,11 @@ subtracted"; every other rule of this requirement applies to it
 unchanged.
 
 The tick SHALL be: every input's increment is the movement its active
-command admits for the tick, zero with no command; increments SHALL then
+command admits for the tick, zero with no command. In addition, explicit
+time-source relations SHALL admit the elapsed interval under "Declared time
+drives retain motion across operating history"; no command is required for
+those sources. The same incremental reading SHALL apply to their laws, and
+time SHALL remain read-only. Increments SHALL then
 propagate over the relation graph in the direction each relation was
 solved by the rest render — forward through a law, backward through an
 invertible one, identity through a wiring into a bank coordinate,
@@ -902,9 +906,17 @@ naming the relation as written and the class that stated it:
   evaluate or a call outside the symbolic vocabulary — saying that a
   running law is an expression over its sources;
 - a relation or wiring INTO a bank coordinate whose source is a
-  coordinate the run does not own and no compiled edge computes — a
+  coordinate the run does not own and no compiled edge computes, EXCEPT
+  the root's explicitly declared running time source — a
   plain port the author's `simulate()` binds — saying to state that
   value as a relation or a joint;
+- a compiled law with a free clock name not declared among its sources,
+  including a symbolic `owner.time` captured by a factory — naming the
+  relation and showing the explicit `time` source in `drives` as the repair;
+  no implicit time dependency SHALL be inferred. Any other unsupported free
+  name SHALL likewise be refused as outside the declared sources. This
+  does not claim to detect a Python read already reduced to a numeric
+  constant before graph compilation;
 - a relation naming several driven ends of which some are bank
   coordinates and some are not;
 - a set of relations whose dependencies form a CYCLE that no selection
@@ -1000,6 +1012,21 @@ law that can only jump is refused as arithmetic".
 - **THEN** construction is refused naming that wiring or derived
   coordinate and saying it carries no jump node and therefore no
   selection
+
+#### Scenario: Captured symbolic time is not a hidden motor
+
+- **WHEN** a compiled running law closes over symbolic `owner.time` but
+  its relation names only ordinary coordinates as sources
+- **THEN** construction refuses it by relation identity and explains how
+  to name the root's `time` in the source group, rather than accepting a
+  law whose free clock is never advanced
+
+#### Scenario: An explicit time source is owned by the run clock
+
+- **WHEN** a running law names the root's `time` as a source
+- **THEN** compilation recognizes a read-only clock path rather than
+  refusing it as an unowned port, and preserves all existing law-class
+  checks, including refusal of unsupported self-read arithmetic
 
 ### Requirement: A jump is located inside the tick and subtracted
 
@@ -1586,6 +1613,15 @@ at `t*` by the same arithmetic satisfies it, and the system SHALL assert
 that the level at the committed state is at most zero, refusing the
 whole tick as a broken invariant otherwise.
 
+For a program with explicit time drives, the source/group procedure below
+SHALL additionally consider one independent time-drive admission per resolved
+time-source relation, under "Declared time drives retain motion across
+operating history". These admissions participate in the same outward-motion
+tests and segmented integration as inputs but are NOT commandable inputs;
+a stopped time admission holds for the remainder of that tick and is retried
+from global elapsed time on the next tick. Time itself is never stopped.
+All the following command-retirement rules apply only to actual commands.
+
 The GROUP a stop stops SHALL be every INPUT that reaches the stopped
 coordinate through the compiled program AND whose own movement over the
 stretch changes it — tested with that input's admission alone and every
@@ -1613,8 +1649,9 @@ process repeated, always taking the EARLIEST `t*` first. Two stops
 whose fractions are within the crossing tolerance of each other SHALL
 be ONE event, stopping the union of their groups at one boundary,
 whether they are on one group or on two. A tick SHALL admit at most as
-many stop events as it has inputs admitting travel, because each event
-stops at least one moving input for the rest of that tick.
+many stop events as it has inputs PLUS time-drive admissions admitting
+travel, because each event stops at least one moving admission for the rest
+of that tick.
 
 A tick SHALL remain ATOMIC across its segments: the bank, the commands'
 admitted travel and the records SHALL be staged and applied only when
@@ -4030,3 +4067,153 @@ A stop on a coordinate produced by a play chain SHALL be located by replaying th
 #### Scenario: Reset and restore retain no hidden play state
 - **WHEN** a play simulation is snapshotted, advanced, restored, and reset
 - **THEN** subsequent answers derive only from the restored ordinary bank and program identity and match a fresh simulation at that state
+
+### Requirement: Declared time drives retain motion across operating history
+
+A running simulation SHALL advance a relation explicitly sourced by its
+root's time without a command, according to the existing continuous-law
+increment, jump-subtraction and supported self-read rules. At tick `k`,
+elapsed seconds SHALL traverse `[k*dt, (k+1)*dt]`; an instantaneous input
+operation SHALL traverse no time. The first tick starts from the numeric
+rest at time zero. Ordinary driver inputs SHALL still move only through
+their admitted commands. A relation's value SHALL NOT be reinterpreted as
+a velocity: the existing multivariate incremental law semantics SHALL apply.
+
+A disabled relation SHALL contribute no motion when its declared law
+contributes none. Its banked coordinates SHALL hold and resume from those
+held values, without accumulating or recovering motion for elapsed intervals
+in which the drive was disengaged. Enable discontinuities SHALL be handled
+by the existing jump-subtraction rules, not by resetting the joint to an
+absolute time-derived value. A nonlinear time law SHALL use current global
+seconds, not a mechanism-local clock, when re-enabled.
+
+Each resolved relation naming time SHALL have one independent time-drive
+admission identity. Its multiple targets SHALL share that identity, and its
+downstream relations SHALL follow the retained motion of their declared
+source coordinates. Two separate time drives SHALL NOT be treated as one
+physical input just because they read the same clock. Stops SHALL suppress
+only the admissions the existing source-sensitive stop test identifies as
+pushing the affected mechanism. Disengaged and unrelated drives SHALL
+continue. Existing incompatible-writer conflicts SHALL remain atomic
+refusals, not be resolved by giving one drive priority.
+
+A stopped time admission SHALL remain suppressed through that tick's
+remainder. Its time path SHALL hold at the stopping instant for that
+remainder; other sources SHALL follow their remaining admitted paths.
+On the next tick it SHALL attempt only that tick's elapsed interval, without
+an increment for the gap since it last moved. A still-active bound SHALL
+admit zero; a subsequently released constraint SHALL permit new motion
+without a new command. There SHALL be no deferred travel and no hidden
+restart latch. An operator command stopped by the same mechanism SHALL
+still retire `blocked`; it SHALL NOT acquire automatic retry.
+
+The global clock SHALL advance for every successful advancing tick even
+when all mechanical motion stops. Failure SHALL commit neither time nor
+mechanical state nor partial records. Snapshot, restore and reset SHALL
+reproduce the clock, bank and subsequent time-driven behavior without extra
+author-managed phase state. A non-ticking pose, render, publication or state
+read SHALL leave the retained state untouched.
+
+When recording is enabled, a running stop SHALL keep `inputs` as actual
+driver IDs and SHALL additionally expose `time_drives` as a sorted tuple of
+the blocked time-drive IDs, empty when none are blocked. Existing fields and
+command-only serialized records SHALL retain their representation; serialized
+records SHALL add `time_drives` only when nonempty. The IDs SHALL map to the
+relations in the published program. Repeated attempts against a standing bound
+may record a new zero-travel stop on each advancing tick, within the existing
+bounded ring policy.
+
+#### Scenario: Construction and inspection do not run a shaft
+
+- **WHEN** an affine time-driven shaft with zero rest is constructed,
+  inspected, rendered and published before any tick
+- **THEN** its retained angle remains zero and no command or tick is created
+
+#### Scenario: Seconds drive a retained shaft without a rate command
+
+- **WHEN** `time.drives(shaft.turn, ratio=6)` starts at zero and advances
+  two simulated seconds at `dt=0.02` with no commands
+- **THEN** `shaft.turn` is 12 native angular units, `sim.time` is 2,
+  and the command registry and declared input set remain empty
+
+#### Scenario: Enable changes preserve accumulated angle
+
+- **WHEN** the law is `6*t*(enabled > 0.5)`, it runs enabled for two
+  seconds, is disabled instantaneously for two more, is enabled
+  instantaneously again and runs for one more second
+- **THEN** the shaft reads 12 before disabling, 12 throughout the disabled
+  interval and both input changes, and 18 at time 5
+
+#### Scenario: Winding changes reserve without rewinding the train
+
+- **WHEN** the Astrarium-equivalent fixture uses
+  `(time & enabled & wind & shaft.turn)` with the law
+  `t*(enabled > 0.5)*(angle-wind < 10)`, and
+  `(shaft.turn & wind)` drives a weight by `angle-wind` in range 0 to 10;
+  it runs two seconds, is disabled for two, winds by 2 instantaneously,
+  then is enabled and runs another second
+- **THEN** the shaft reads 2 throughout stopping and winding, the weight
+  moves from 2 to 0 when wound, and they end at shaft 3 and weight 1
+  at time 5 without a dummy input or rate command
+
+#### Scenario: Exhaustion and rewind resume only new motion
+
+- **WHEN** the same fixture runs for twelve seconds, is disabled, winds
+  by 5 instantaneously, is enabled and runs another second
+- **THEN** exhaustion leaves shaft and weight at 10 at time 12, winding
+  leaves shaft at 10 and weight at 5, and resumption ends at shaft 11 and
+  weight 6, without catching up the two exhausted seconds
+
+#### Scenario: A hard stop holds the connected train but not another time drive
+
+- **WHEN** one time relation drives a shaft at 1 unit per second, that shaft
+  drives a weight at ratio 1 bounded at 2.5, and an independent time
+  relation drives another shaft at 2 units per second; four one-second
+  ticks run from zero
+- **THEN** the first shaft and weight end at 2.5, the independent shaft
+  ends at 8 and time at 4; the first stop lies halfway through tick 3,
+  and its record names the first time drive, no unrelated drive and no
+  fabricated operator input
+
+#### Scenario: Grouped targets share one physical drive
+
+- **WHEN** one time-source relation gives two shaft coordinates and a
+  downstream bound stops motion supplied by that relation
+- **THEN** both targets receive only their coherent admitted prefix,
+  while a separately declared unrelated time drive continues
+
+#### Scenario: Release takes effect without restarting a rate
+
+- **WHEN** a time-driven coordinate has stopped at a bound, a zero-duration
+  operator action relieves that constraint, and one more tick runs
+- **THEN** the coordinate gains only the new tick's permitted motion, no
+  command is created, and elapsed time includes the stopped interval
+
+#### Scenario: Retained phase and global time are not conflated
+
+- **WHEN** a shaft follows the law `t*t*(enabled > 0.5)`, runs for one
+  second, is disabled until time 3 and then runs enabled until time 4
+- **THEN** its retained value is 1 while disabled and 8 at time 4,
+  because the last interval contributes `4*4-3*3`, not a restarted age
+
+#### Scenario: Snapshot replay and reset include autonomous motion
+
+- **WHEN** a snapshot is taken before a sequence of running, disabling,
+  winding and restarting, then restored and the same operations repeated
+- **THEN** every tick's bank, time, stops and crossings agree within the
+  existing numerical contract; reset returns the original bank and tick,
+  after which the first tick behaves exactly like a fresh run
+
+#### Scenario: A late failure cannot leave a partially advanced clock
+
+- **WHEN** a segmented tick first reaches a stop and then encounters an
+  existing-law conflict on an independent branch
+- **THEN** neither elapsed time, any bank value nor any ring entry commits;
+  actual moved commands retire as refused under the existing rule
+
+#### Scenario: Commanded and pose-only running models remain unchanged
+
+- **WHEN** existing commanded-driver fixtures and a root using time only
+  for a plain part's absolute pose are run without declared time drives
+- **THEN** their state, command outcomes, ownership checks and clock
+  behavior match the pre-change fixtures

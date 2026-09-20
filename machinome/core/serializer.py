@@ -157,6 +157,9 @@ CLOCKED_DOCUMENT_VERSION = 8
 #: A running document carrying an explicit backlash/clearance edge.
 PLAY_DOCUMENT_VERSION = 9
 
+#: Explicit time-drive admissions require independent stop identities.
+TIME_DRIVE_DOCUMENT_VERSION = 10
+
 
 _MISSING = object()
 
@@ -537,8 +540,9 @@ def document_version(root, bindings=(), program=None, clocked=None):
     ladder that is NOT read off the content: a compiled program is a
     property of the ROOT'S DECLARATION, and a running root with nothing
     shared and no flexible leaf is still a machine a version 4 consumer
-    would animate wrongly. Within it the CONTENT decides once more: a
-    program carrying a BLOCK is a version 7 document, one carrying none
+    would animate wrongly. Within it the CONTENT decides once more:
+    explicit time-drive admissions select version 10, Play selects 9,
+    and otherwise a program carrying a BLOCK is a version 7 document, one carrying none
     but a law edge that reads the coordinate it drives is a version 6
     document, and one with neither is the byte-identical version 5 it
     always was. Seven dominates six, because a block says nothing about
@@ -555,6 +559,8 @@ def document_version(root, bindings=(), program=None, clocked=None):
     if clocked is not None:
         return CLOCKED_DOCUMENT_VERSION
     if program is not None:
+        if program.get('time_drives'):
+            return TIME_DRIVE_DOCUMENT_VERSION
         if any(edge.get('kind') == 'play'
                for edge in program.get('edges', ())):
             return PLAY_DOCUMENT_VERSION

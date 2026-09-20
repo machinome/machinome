@@ -50,6 +50,12 @@ one description that can be built, operated and tested.
 * **Retained clearance pickup:** explicit running ``Play`` relations
   collect and release a follower through clearance; document schema 9
   carries that contact law to the viewer.
+* **Retained time-driven motion:** the running root's ``time`` can be
+  an explicit ``drives`` source, with no synthetic driver or startup rate.
+  Stops clip individual drive relations while elapsed time continues;
+  gates resume without catch-up. Schema 10 and a separate producer corpus
+  describe this contract. Viewer support is outstanding and independent;
+  this adds no force solver or historical escapement model.
 * **Independent mechanics:** the twelve formula helpers move from
   ``machinome.mechanisms`` to ``machinome_mechanics`` in the independent
   0.1.0 package, installed through ``machinome[mechanics]``.

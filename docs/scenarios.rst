@@ -184,6 +184,75 @@ relations put the machine at a crank of thirty. A joint coordinate the
 rest render leaves unbound is refused at construction, naming it: the run
 needs a rest value for every coordinate it keeps the history of.
 
+Driving retained motion from time
+--------------------------------
+
+The root's declared running clock can be an explicit, read-only source
+of a relation. Given a joint-bearing ``Shaft``, this model advances six
+degrees per second with no driver or startup command:
+
+.. code-block:: python
+
+    class Machine(AssemblyNode):
+        time = Time.running()
+        shaft = Shaft()
+        time.drives(shaft.turn, ratio=6)
+
+    sim = Sim(Machine(), dt=0.02)
+    sim.run(2)
+    assert abs(sim.state['shaft.turn'] - 12) < 1e-9
+    assert sim.commands == ()
+
+For an operating enable, name both sources in their written order:
+
+.. code-block:: python
+
+    def enabled_rotation(owners, target):
+        return lambda seconds, enabled: 6 * seconds * (enabled > 0.5)
+
+    class Switchable(AssemblyNode):
+        time = Time.running()
+        enabled = Driver(default=1, range=(0, 1))
+        shaft = Shaft()
+        (time & enabled).drives(shaft.turn, law=enabled_rotation)
+
+The law factory receives the owners once, exactly as any other relation.
+The returned law receives seconds and the enabled value. Turning the
+enable off holds the shaft; turning it on later resumes from that held
+position. The change of gate branch is subtracted, so it does not teleport
+the shaft to six times the elapsed time. An instantaneous input operation
+advances no time. A supported self-read gate can also use the retained
+shaft coordinate to express exhaustion, as in the Astrarium diagnostic.
+
+This remains an incremental **position law**, not a velocity callback:
+continuous pieces contribute ``f(end) - f(start)``. Smooth changes of
+other sources contribute too. A law ``seconds**2`` stopped from time 1 to
+3 resumes with an increment of ``4**2 - 3**2 = 7`` during the next second;
+it neither catches up on missed travel nor restarts a private clock.
+Declare mechanical phase as a joint coordinate when phase must be retained.
+
+A physical stop clips the affected time-drive relation for the rest of
+that tick. All targets of that relation and its downstream train share
+the stop; an independent time-drive relation keeps going, and ``sim.time``
+continues. The stopped relation retries the next tick's global interval,
+without a backlog or a new command. A source stopped earlier in a tick
+does not reopen during that tick, even if another input releases the stop.
+An operator command, in contrast, still retires when blocked.
+
+Time appears in neither the mechanical bank nor the command/control table.
+It cannot be moved, rated or targeted by a relation. Construction,
+inspection and publication advance nothing. ``self.time`` remains valid
+for an ordinary absolute transform, but assigning it to a run-owned joint
+in ``simulate()`` is still a second binding and is refused. Name ``time``
+explicitly in the relation; a free symbolic clock captured inside a law
+without being declared as a source is refused with that repair.
+
+Time supplies seconds, not gravity, torque, inertia, energy conservation
+or an escapement frequency. Those relationships remain the model author's
+work. Time-driven programs publish **document version 10** and require a
+viewer that independently reports support for that version. The current
+version-9 viewer refuses them; Python producer tests are not browser parity.
+
 Commands, not bindings
 ----------------------
 

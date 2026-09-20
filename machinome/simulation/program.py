@@ -61,7 +61,7 @@ from machinome import math as motion_math
 from machinome.expression_graph import ExpressionNode, free_names, postorder
 from machinome.math import SYMBOLIC_BUILTINS
 from machinome.motion.couplings import (_solved_formulas, _wirings,
-                                         CouplingError)
+                                         ClockRef, CouplingError)
 from machinome.motion.joints import coordinates_of, declared_joints
 from machinome.motion.ports import CLOCK_NAME
 from machinome.node.qualified import (driver_id, instance_path,
@@ -246,7 +246,9 @@ class Stop:
     that READS OTHER COORDINATES it is not, because there is nothing to
     snap to and the coordinate that stopped may not have moved at all.
     `t` is the fraction of the tick at which it was reached and
-    `inputs` names the inputs the stop blocked, sorted.
+    `inputs` names the actual inputs the stop blocked, sorted.
+    `time_drives` separately names blocked autonomous relation identities;
+    it is empty for command-only stops.
 
     A stop is a BOUND OF A COORDINATE, which stops motion; a `Crossing`
     is a JUMP SURFACE of a law, which moves nothing. They answer
@@ -259,6 +261,7 @@ class Stop:
     value: float
     t: float
     inputs: tuple
+    time_drives: tuple = ()
 
 
 def qualified_coordinates(root):
@@ -2425,19 +2428,35 @@ class Program:
         # see it.
         self.nodes = nodes
         self.edges = tuple(edges)
+        # Each time-source relation has an independent admission, not a
+        # banked input. Its stable ID is the published edge's position;
+        # the private key distinguishes equal clock reads in Python.
+        self.time_drives = {}
+        self.time_edges = {}
+        for index, edge in enumerate(self.listed()):
+            for key in edge.needs:
+                if nodes[key].kind == 'clock':
+                    identifier = f'@time:{index}'
+                    self.time_drives[identifier] = key
+                    self.time_edges[identifier] = index
         self.determiner = {key: edge for edge in self.edges
                            for key in edge.gives}
         # Every banked coordinate whose joint declares a range, each
         # bound a number, `None`, or a compiled graph over the
         # coordinate's own id.
         self.spans = tuple(spans)
-        self.sources = _reaching_inputs(self.nodes, self.edges)
+        self.sources = _reaching_inputs(self.nodes, self.edges,
+                                       self.time_drives)
         # The bank's own ids, both ways. `Run` kept these; they moved
         # here with `values_of`/`deltas_of`, so the tick and the control
         # measurement address the program through one mapping.
         self.keys = {node.name: key for key, node in self.nodes.items()
                      if node.kind in ('input', 'bank')}
         self.bank_keys = frozenset(self.keys.values())
+        self.source_keys = self.keys | self.time_drives
+        self.time_prefixes = {
+            key: self._sub_program((key,)) for key in self.bank_keys
+            if self.time_drives.keys() & self.sources.get(key, frozenset())}
         # The compiled controls, in qualified-name order. Assigned by
         # `compile_program` after this constructor, because a control's
         # admission is checked against `sources`, which is computed
@@ -2552,12 +2571,16 @@ class Program:
                     how = (f'{list(one.factors)!r} + {one.constant!r} '
                            f'on {self.nodes[one.slot_key].name}')
                 lines.append(f'{one.kind} {ends} {how} [{one.description}]')
+        if self.time_drives:
+            lines.append('time-drives version=10')
+            for identifier, index in self.time_edges.items():
+                lines.append(f'time-drive {identifier} edge={index}')
         return '\n'.join(lines)
 
     ##############################################
     # The arithmetic the tick and the measurement share
 
-    def values_of(self, bank):
+    def values_of(self, bank, clock_values=None):
         """The bank, plus every INTERMEDIATE this program computes from
         it: a plain port or a derived coordinate a compiled edge
         determines, recomputed here rather than stored.
@@ -2569,6 +2592,10 @@ class Program:
         """
         values = {self.keys[identifier]: value
                   for identifier, value in bank.items()}
+        if self.time_drives:
+            clock_values = clock_values or {}
+            values.update((key, clock_values.get(identifier, 0.0))
+                          for identifier, key in self.time_drives.items())
         for edge in self.edges:
             if all(key in self.bank_keys for key in edge.gives):
                 # Nothing this edge computes is an intermediate, so its
@@ -2588,7 +2615,7 @@ class Program:
         deltas = {key: 0.0 for key in self.nodes}
         for input_id, delta in admissions.items():
             if delta:
-                deltas[self.keys[input_id]] = delta
+                deltas[self.source_keys[input_id]] = delta
         return deltas
 
     def response(self, bank, input_id, epsilon):
@@ -2742,7 +2769,7 @@ class Program:
         self._refuse_unqualified()
         names = self.published_names()
         placeholders = self._placeholders(names)
-        return {
+        document = {
             'identity': self.identity,
             'clock': CLOCK_NAME,
             'coordinates': self._published_coordinates(initial),
@@ -2757,7 +2784,8 @@ class Program:
             'sources': {self.nodes[key].name: sorted(names)
                         for key, names in sorted(
                             self.sources.items(),
-                            key=lambda item: self.nodes[item[0]].name)},
+                            key=lambda item: self.nodes[item[0]].name)
+                        if self.nodes[key].kind != 'clock'},
             'limits': {
                 'crossing_tolerance': _CROSSING_TOLERANCE,
                 'subdivisions': _SUBDIVISIONS,
@@ -2766,6 +2794,11 @@ class Program:
                 'agreement': _agreement(),
             },
         }
+        if self.time_drives:
+            document['time_drives'] = [
+                {'id': identifier, 'edge': index}
+                for identifier, index in self.time_edges.items()]
+        return document
 
     def published_names(self):
         """Every id the published program's expressions may read: the
@@ -2873,8 +2906,8 @@ def _written(bound):
     return repr(bound)
 
 
-def _reaching_inputs(nodes, edges):
-    """Every INPUT that reaches each node key through the program: the
+def _reaching_inputs(nodes, edges, time_drives=None):
+    """Every admission source that reaches each node key: the
     CANDIDATE table a stop's group is filtered out of.
 
     One pass over the already topologically ordered edges, so it costs
@@ -2887,6 +2920,8 @@ def _reaching_inputs(nodes, edges):
     found = {key: (frozenset({key[1]}) if node.kind == 'input'
                    else frozenset())
              for key, node in nodes.items()}
+    for identifier, key in (time_drives or {}).items():
+        found[key] = frozenset({identifier})
     for edge in edges:
         if edge.kind == 'check':
             continue
@@ -3638,9 +3673,20 @@ def _units(root):
     return found
 
 
-def _register(nodes, root, end):
+def _register(nodes, root, end, clock_key=None):
     """`end`'s program node, created on first sight."""
     name, qualified = _qualified(root, end)
+    if isinstance(end.ref, ClockRef):
+        if end.node is not root:
+            raise UnsupportedLaw(
+                f'{end.described()}: a time drive must name the running '
+                f"root's own clock, not a child or foreign clock.")
+        if clock_key is None:
+            raise UnsupportedLaw('A running clock is only a relation source.')
+        found = nodes.get(clock_key)
+        if found is None:
+            found = nodes[clock_key] = _Node(clock_key, CLOCK_NAME, 'clock')
+        return found
     if end.is_driver:
         key = ('input', name)
     else:
@@ -3675,7 +3721,8 @@ def _relation_edge(root, assembly, record, nodes, bank_keys):
         sources, targets = record.driver_ends, record.driven_ends
     else:
         sources, targets = record.driven_ends, record.driver_ends
-    source_nodes = [_register(nodes, root, end) for end in sources]
+    source_nodes = [_register(nodes, root, end, ('clock', id(record)))
+                    for end in sources]
     target_nodes = [_register(nodes, root, end) for end in targets]
 
     if getattr(record.law, '_machinome_play', False):
@@ -3837,6 +3884,18 @@ def _law_graphs(assembly, record, source_nodes, count):
             refuse(f'the law {record.law!r} returned {returned!r} for '
                    f'{count} driven ends, which is not a sequence of '
                    f'exactly {count} values.')
+    allowed = {node.name for node in source_nodes}
+    for value in returned:
+        if isinstance(value, OpenSCADConstant):
+            unknown = free_names(as_node(value)) - allowed
+            if unknown:
+                repair = (
+                    ' Name the root\'s time declaration explicitly: '
+                    '(time & other_sources).drives(target, law=...).'
+                    if unknown & {'$t', CLOCK_NAME} else '')
+                refuse(f'its expression reads undeclared sources '
+                       f'{", ".join(sorted(unknown))}; a running law is '
+                       f'an expression over its declared sources.{repair}')
     return [_graph_of(value, refuse) for value in returned]
 
 
@@ -4198,7 +4257,7 @@ def _refuse_opaque(kept, bank_keys, nodes):
     computed = {key for edge in kept for key in edge.gives}
     for edge in kept:
         for key in edge.needs:
-            if key in bank_keys or key in computed:
+            if key in bank_keys or key in computed or nodes[key].kind == 'clock':
                 continue
             raise UnsupportedLaw(
                 f'{edge.description}, stated by {edge.stated_by}: it is '

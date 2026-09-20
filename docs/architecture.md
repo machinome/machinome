@@ -1003,6 +1003,33 @@ whose driven ends the run owns, and a CYCLE NO SELECTION BREAKS. A
 relation reaching no bank coordinate is not compiled at all and stays the
 ordinary solver's.
 
+The root's running time declaration may also be an explicit read-only source
+of `drives` (ADR-133), alone or in a group. Compilation recognizes it as a
+clock source, not an unowned port, and refuses an undeclared free symbolic
+clock captured inside a law. The existing owner/value factory protocol and
+exclusive run binder remain unchanged. `self.time` still reads absolute time
+for ordinary transforms; it does not grant a second writer to a joint.
+
+Each resolved time-source relation gets an independent admission identity.
+Every tick admits `dt` seconds from the global `tick * dt` start, even with
+no command; an instantaneous input operation admits zero seconds. These
+sources join the ordinary incremental path evaluation, including jump
+subtraction and self-read gates, without turning laws into velocity callbacks.
+They are not drivers, controls, bank coordinates or command handles.
+
+A stop suppresses its pushing time admissions for the tick's remainder while
+unrelated time relations and elapsed time continue. Grouped targets share one
+admission, and downstream trains share the retained movement. Subsequent ticks
+retry their current global interval, with no backlog or local-age state; a
+source stopped earlier in a tick never reopens during that tick. Real blocked
+commands still retire. Stop records keep actual `inputs` and separately carry
+default-empty `time_drives`. Clock values and admitted prefixes are local
+staging, so existing tick/bank snapshots suffice and refusal stays atomic.
+Stop localization through time-driven trains evaluates their determining
+prefix from the original sources; a curved upstream law must not be replaced
+by a line between its endpoint values. Non-affine upstream prefixes use the
+existing bounded search and its limitations. No force solver is introduced.
+
 A graph carrying a DISCONTINUOUS primitive (`floor`, `ceil`, `sign`, `%`,
 a comparison) is compiled a second time, into a JUMP PLAN (ADR-107): the
 jump nodes in the graph's postorder, each with the LEVEL QUANTITY whose
@@ -2080,7 +2107,7 @@ Chromium/SwiftShader; staging is removed after either success or failure
 `manifest.json` (`format: machinome-export`, at the versioned tree-document
 schema shared with `viewer.json` — `version: 2`, `3` when the tree holds a
 flexible node, `4` when its expressions share a subexpression (ADR-080),
-or `5`, `6` or `7` for a `Time.running()` root according to its laws,
+or `5`, `6`, `7`, `9` or `10` for a `Time.running()` root according to its laws,
 and `8` for a tree declaring `State` (ADR-110/121/122/128); not a
 portability claim),
 deduplicated `models/*.stl`, and — copied from the installed viewer
@@ -2409,7 +2436,14 @@ fact: a program carrying a BLOCK is version 7 (ADR-122), one carrying
 none but a law edge that reads the coordinate it drives is version 6
 (ADR-121), and one with neither is the byte-identical version 5 it
 always was — seven dominating six, since a block says nothing about
-self-reads and a self-read nothing about blocks.
+self-reads and a self-read nothing about blocks. Explicit Play takes version 9.
+Explicit time drives take version 10 (ADR-133), ahead of those running rungs:
+`program.time_drives` maps each `@time:<edge-index>` ID to its flattened
+published edge index in ascending order. The edge reads `time` in `needs`,
+never `gives`; source candidates carry its admission ID beside driver IDs.
+The mapping and semantics version participate in identity. No time entry is
+added to coordinates, intermediates, drivers or controls. Without explicit
+time drives the field is absent and the previous bytes and versions remain.
 
 **Version 8 is the CLOCKED rung** (ADR-128), read off the declaration by
 the same rule and DOMINATING every other: a tree in which anything
@@ -2437,7 +2471,12 @@ browser starts, because a capture is a one-shot. A CONFORMANCE CORPUS
 `tests/running-corpus.json` from the framework's own run over a set of
 small running roots, exact for discrete state and at the run's own
 `1e-9` agreement window for floats, and refuses to write a corpus
-missing any stated feature.
+missing any stated feature. `tools/generate_time_drive_corpus.py` separately
+publishes `tests/time-drive-corpus.json`: seven version-10 scenarios with 54
+ticks covering no-command motion, gates, winding/exhaustion, independent and
+connected stops, mixed commands, curved stop paths and replay/reset. The
+current independent viewer reports versions 1–9 and refuses version 10;
+consuming this new corpus is outstanding viewer work, not producer parity.
 
 Every producer — export, build snapshot, browser snapshot — also publishes a
 **printed-piece inventory** (ADR-043): a top-level `pieces` list beside `root`,

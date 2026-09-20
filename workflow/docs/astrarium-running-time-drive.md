@@ -1,9 +1,11 @@
 # Astrarium: elapsed time as a retained-motion source
 
-Status: **empirical finding and ratified framework plan**, 2026-09-20. The
-pilot approved implementation with “ratify, go on”. No implemented fix,
-browser support or completed historical reconstruction is claimed. No external
-issue was requested or opened.
+Status: **framework implementation validated and archived**, 2026-09-20.
+The pilot approved archive/commit and separately authorized main integration.
+The pilot approved implementation with
+“ratify, go on”. The Python producer fix is proven; matching browser support
+and the historical reconstruction remain outstanding. No external issue was
+requested or opened.
 
 ## Originating evidence
 
@@ -49,9 +51,10 @@ expression behavior, not inspected browser output.
 - Opened through the shop's `scripts/dev-env running-time-drive setup`.
 - Branch: `running-time-drive`.
 - Worktree: `/home/asa/devel/machinome-studio/machinome/WTs/running-time-drive`.
-- Intended integration target: framework `main`, only with explicit authority
-  and reverified base. No integration, push or publication is authorized now.
-- Change: [running-time-drive](../../openspec/changes/running-time-drive/proposal.md).
+- Integration target: framework `main`, separately authorized with
+  “integrate to main too”, fast-forward-only from the reverified clean base.
+  No push or publication is authorized.
+- Change: [running-time-drive](../../openspec/changes/archive/2026-09-20-running-time-drive/proposal.md).
 - Current state at the planning commit: ratified planning files only;
   implementation follows the clean planning/ancestry gate.
 
@@ -116,10 +119,10 @@ interval. Distinguish independent time-source relations for physical stops;
 never halt the global clock. Leave absolute `self.time` posing and exclusive
 joint binding unchanged.
 
-The [design](../../openspec/changes/running-time-drive/design.md) records
-alternatives, compatibility changes, proposed publication fields and risks;
-the delta specs and tasks hold the testable proposal. No ADR is accepted
-before implementation confirms the ratified choice.
+The [design](../../openspec/changes/archive/2026-09-20-running-time-drive/design.md) records
+the ratified alternatives, compatibility changes, publication fields and
+risks. The implementation confirms these choices; ADR-133 now records them
+as accepted, and coupling, simulation and export baseline specs are synced.
 
 The independent viewer's current README/CHANGELOG advertise unreleased source
 API 22 reading document versions 1–9. This proposal requires version 10 for
@@ -136,3 +139,25 @@ artifacts present. `openspec validate running-time-drive --strict` passes.
 This is proposal-shape validation, not implementation completion or simulation
 proof. The pilot separately ratified the plan with “ratify, go on”. Every
 implementation task remains unchecked at the planning commit.
+
+## Implementation result
+
+The explicit source now runs the framework-owned Astrarium-equivalent fixture
+without a startup rate. Enable, winding, exhaustion, coherent train stops,
+independent time relations, replay/reset and atomic rollback are tested.
+The implementation preserves ordinary absolute posing and the refusal of a
+second joint writer. It adds no gravity, inertia or escapement law.
+
+The full framework suite passed: **3,439 tests and 1,991 subtests**, with four
+skips and 53 warnings, no failures. Existing no-time-drive cost pins and
+document/corpus replay checks passed. The new producer corpus has seven
+scenarios and 54 ticks. An older viewer's refusal test passed; no matching
+consumer execution has been claimed. Detailed red/green commands, the
+curved-stop correction and the exact consumer handoff are in the
+[implementation evidence](../../openspec/changes/archive/2026-09-20-running-time-drive/evidence.md).
+
+The project remains at its clean parked checkpoint, with its prior three-fail,
+three-pass diagnostic baseline recorded above. Neither it nor the viewer was
+edited. Framework primary is the authorized fast-forward integration target;
+Git ancestry records whether the completed cycle has reached it. A viewer
+implementation and later project resumption still require separate decisions.

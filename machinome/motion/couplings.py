@@ -485,17 +485,12 @@ class StateRef(DriverRef):
 
 
 class ClockRef(CoordinateRef):
-    """The root's own `Time` declaration, named as the SOURCE of a
-    committing relation (OpenSpec change ``time-without-running``,
-    design section 5).
+    """The root's read-only clock: a running drives source or an elapsed
+    committing source. Neither kind is a writable relation target.
 
-    A source only, and only under the ELAPSED base: an event is located
-    on a clock that never wraps, and the clock is moved by a request and
-    written by nothing. Addressed by the bare qualified id `time`, which
-    is the one global snapshot entry the state delivery already
-    reserves, so no collision with a driver or a state is possible --
-    a root-declared `Driver` or `State` of that name is already refused
-    at class definition for shadowing the assembly member.
+    The bare name `time` is reserved. The elapsed executor banks it;
+    the running executor derives it from the tick and gives each driving
+    relation a private admission identity, never a mechanical bank entry.
     """
 
     def __init__(self, declared):
@@ -514,11 +509,14 @@ class ClockRef(CoordinateRef):
         return CLOCK_NAME
 
     def check(self, role):
+        if role == 'driver' and self.declared.mode == 'running':
+            return
         raise TypeError(
             f"the clock '{self.described()}' cannot be the {role} end of "
-            f"a relation: a machine's clock is moved by a REQUEST -- "
-            f"sim.move('time', by=<seconds>) -- and written by nothing, "
-            f"so it drives no coordinate and no coordinate drives it. "
+            f"a relation under Time.{self.declared.mode}: no relation "
+            f"writes a clock. Only Time.running() is a drives source. "
+            f"An elapsed clock is moved by a REQUEST -- "
+            f"sim.move('time', by=<seconds>) -- and written by nothing. "
             f"Name the clock among the SOURCES of a committing relation, "
             f"(time & ...).commits(<state>, at=..., law=...), or pose "
             f"the part from self.time in simulate().")
@@ -529,10 +527,15 @@ class ClockRef(CoordinateRef):
         raise TypeError(
             f"{owner.__name__}: the clock named by {relation.described()} "
             f"is not {owner.__name__}'s own time base. A machine's clock "
-            f"is the ROOT's own declaration, time = Time.elapsed(), and "
-            f"an event on it is stated in the body that declares it.")
+            f"is the ROOT's own declaration: Time.running() for drives "
+            f"or Time.elapsed() for commits; name that declaration.")
 
     def resolve(self, instance):
+        if declared_time(type(instance)) is not self.declared:
+            raise TypeError(
+                f"{type(instance).__name__}: the inherited clock relation "
+                f"does not name this machine's own time base. Redeclare "
+                f"the relation using its replacement time declaration.")
         return ResolvedEnd(instance, self.declared, self)
 
     def __repr__(self):

@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-17
+**Amended:** 2026-09-20 by [ADR-133](./ADR-133-running-time-drives-retained-motion-with-independent-admissions.md) — the blanket refusal of a clock as a `drives` source is lifted for the running root's own declaration only; elapsed-clock requests and commitments remain unchanged.
 **Amended:** 2026-09-17 by [ADR-128](./ADR-128-a-clocked-root-publishes-its-compiled-machine.md) — the banked clock is PUBLISHED as the free name `time` under an elapsed clocked root, and the "no tolerance reaches a clocked path" claim is CORRECTED to "introduces no NEW use": a clocked path does REACH the crossing tolerance, when a kinked event level's crossings are merged and when a jumped constraint level's cuts are folded, which is why the document publishes it under `limits`.
 **Depends on:**
 - [ADR-104: A third time base, elapsed seconds that never wrap](./ADR-104-a-third-time-base-elapsed-seconds-that-never-wrap.md) — the one-field `Time` declaration, its constructor-per-base shape and its `mode` property, which the third spelling takes exactly; this decision EXTENDS it and does not amend it

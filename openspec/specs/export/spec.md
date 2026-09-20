@@ -598,7 +598,10 @@ no producer-local sharing syntax appears anywhere in the document. The
 object SHALL be ordered deterministically for a given tree, so republishing
 an unchanged model produces a byte-identical document.
 
-The producer SHALL declare `version: 7` for a program carrying a BLOCK —
+A program carrying an explicit time-drive admission SHALL declare
+`version: 10` under "A time-driven program publishes its independent drives".
+For programs with no such admission, the existing version-selection rules
+remain unchanged: the producer SHALL declare `version: 7` for a program carrying a BLOCK —
 a set of two or more edges whose dependencies are cyclic, ordered per
 piece under the simulation requirement "A selection decides which sources
 a law reads" — `version: 6` for a program with no block at least one of
@@ -635,7 +638,8 @@ the agreement window, which is where that rule is pinned.
 
 - `identity`: the compiled program's identity — a digest over the root
   class, the bank's ids, the inputs' declarations, the spans and every
-  edge's ends, direction and expression — so a state taken against one
+  edge's ends, direction and expression, including the time-drive mapping
+  and its semantics version when present — so a state taken against one
   program is refused against another.
 - `clock`: the free name elapsed simulation seconds bind to, under the
   requirement "A running document's clock is a published name".
@@ -677,8 +681,12 @@ the agreement window, which is where that rule is pinned.
   other coordinates, the qualified ids it reads — the same ids the
   `coordinates` table publishes.
 - `sources`: for each bank id and each intermediate, the sorted list of
-  INPUT ids that reach it through the program — the candidate table a
-  stop's blocked group is filtered out of.
+  INPUT ids and, for a time-driven program, the independent time-drive IDs
+  that reach it through the program — the candidate table a stop's blocked
+  group is filtered out of. A drive ID is not an input or bank coordinate.
+- `time_drives`: present ONLY for a program using explicit time drives,
+  mapping their identities to their edges under "A time-driven program
+  publishes its independent drives"; absent in every pre-existing program.
 - `limits`: the constants the algorithm is defined by, as numbers, so a
   consumer cannot silently differ from the producer: `crossing_tolerance`,
   `subdivisions`, `bisection_rounds`, `max_crossings` and `agreement` (the
@@ -2127,3 +2135,120 @@ The cross-runtime running conformance corpus SHALL contain play cases sufficient
 #### Scenario: Corpus coverage is complete
 - **WHEN** the running corpus is generated and validated
 - **THEN** its inventory proves every required play behavior and every expected state, status, and stop agrees within the corpus's stated numeric contract
+
+### Requirement: A time-driven program publishes its independent drives
+
+A running program that compiles an explicit time source SHALL publish
+document `version: 10` and SHALL carry `program.time_drives`: an ordered
+list of objects with `id` and `edge`, identifying each resolved time-source
+relation and its zero-based index in `program.edges`. Each `id` SHALL be
+`@time:<edge-index>`, separate from the qualified coordinate/input ID
+namespace, and entries SHALL be ordered by ascending edge index.
+All targets of one resolved relation SHALL share its ID; two separate
+resolved relations SHALL have different IDs.
+
+Each listed edge SHALL name the existing clock name `time` in `needs`,
+never in `gives`. Expressions SHALL use the existing expression language,
+bindings table and published jump plans; the elapsed source SHALL NOT be
+hidden inside a pose binding. `program.sources` SHALL propagate drive IDs
+alongside input IDs for stop grouping. A listed drive's read of time SHALL
+follow the independent admission behavior of the simulation requirement
+"Declared time drives retain motion across operating history", even though
+all of them begin an advancing tick at the same elapsed seconds.
+
+The published bank, drivers and intermediates SHALL NOT gain clock-drive
+coordinates or operator inputs. `program.clock` SHALL remain `time`.
+The time-drive mapping and its semantics version SHALL participate in
+program identity. Republishing an unchanged model SHALL produce identical
+bytes. Publishing a live run SHALL preserve its bank, tick, ownership and
+next-tick behavior.
+
+A program with no compiled time drive SHALL omit `time_drives` and retain
+its existing minimum document version and byte representation, including a
+model that reads `self.time` solely in ordinary pose expressions. A consumer
+supporting only earlier document versions SHALL refuse version 10 before
+executing it; silently dropping the new semantics is not compatibility.
+Browser execution requires a separately implemented matching consumer and
+SHALL NOT be claimed on producer-only evidence.
+
+#### Scenario: A time drive is explicit and not a fabricated driver
+
+- **WHEN** a root with one `time.drives(shaft.turn, ratio=6)` is published
+- **THEN** the document is version 10, the corresponding edge reads
+  `time`, `time_drives` maps its `@time:<edge-index>` ID to that edge,
+  and the ID appears in the shaft's source candidates but not in
+  `drivers` or `coordinates`
+
+#### Scenario: Independent autonomous trains publish independent stop identities
+
+- **WHEN** two unrelated time-driven shafts are published
+- **THEN** they carry distinct time-drive IDs, and each shaft's source
+  candidates contain only its own drive ID unless the declared mechanical
+  graph connects them
+
+#### Scenario: A retained gate keeps its published plan
+
+- **WHEN** an explicit time-drive law also reads its retained shaft angle
+  to gate travel at exhaustion
+- **THEN** the version-10 document carries the existing self-read law
+  expression and jump plan together with the time-drive mapping;
+  no Python-only callback is needed to reproduce the mechanism
+
+#### Scenario: Publishing is deterministic and does not tick a live machine
+
+- **WHEN** an unchanged time-driven model is published twice while its
+  live run holds a nonzero retained angle
+- **THEN** both documents are byte-identical, the live run has not moved,
+  and its next tick agrees with a run that was not published
+
+#### Scenario: A pose clock alone does not require the new version
+
+- **WHEN** a pre-existing running model uses `self.time` only to rotate
+  a plain part and is exported before and after the change
+- **THEN** its documents are byte-identical and declare the same version,
+  with no `time_drives` field
+
+#### Scenario: An older consumer cannot silently display an inert mechanism
+
+- **WHEN** a version-10 time-driven document is passed to a consumer
+  advertising support only through version 9
+- **THEN** its unsupported-document-version refusal is reached before
+  execution, rather than opening a motionless or wrongly stopped machine
+
+### Requirement: The producer corpus pins retained time-drive behavior
+
+The framework SHALL generate committed conformance fixtures through its
+real publication and simulation paths for explicit time-driven motion.
+Fixtures SHALL include the model document, step size, operation sequence
+and expected per-tick clock, bank, crossings, stops including time-drive
+provenance, and command outcomes. Snapshot, restore and reset sequences
+SHALL be included. Expected results SHALL come from the producer run, not
+from a second handwritten algorithm.
+
+Coverage SHALL include no-command motion, enable at nonzero time,
+Astrarium-equivalent winding and exhaustion, hard-stop isolation between
+time drives, connected downstream motion, mixed commanded and time-driven
+sources, and replay. Existing commanded and pose-only corpus documents
+SHALL remain unchanged. The independent viewer SHALL consume these same
+artifacts in its own repository before cross-runtime parity is claimed;
+the framework SHALL record that consumer validation as outstanding when
+only the producer has been tested.
+
+#### Scenario: The Astrarium acceptance sequence travels with the document
+
+- **WHEN** the time-drive corpus is generated
+- **THEN** it includes the two-cube shaft/weight acceptance operations
+  with enabled, wind and retained angle, no artificial drive command,
+  expected exhaustion and restart results, and a snapshot replay
+
+#### Scenario: A shared clock does not hide stop coupling
+
+- **WHEN** the independent-trains corpus scenario reaches one train's bound
+- **THEN** its expected records identify only that train's time drive as
+  stopped while the other train and global elapsed seconds continue
+
+#### Scenario: Producer-only validation is reported honestly
+
+- **WHEN** the framework fixtures pass but no matching viewer replay has run
+- **THEN** the implementation report identifies the separate viewer
+  dependency and does not report browser or whole-project completion

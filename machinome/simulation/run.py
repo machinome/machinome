@@ -546,6 +546,12 @@ class Run:
             admissions[input_id] = command.admits(tick, self.dt)
         moved = [self.active[input_id] for input_id, delta
                  in admissions.items() if delta]
+        # Time is not banked or commandable. Each explicit time-source
+        # relation admits this tick independently, so a mechanical stop
+        # cannot stop the clock or an unrelated autonomous train.
+        clocks = dict.fromkeys(self.program.time_drives, self.sim.time)
+        admissions.update((identifier, self.dt if advance else 0.0)
+                          for identifier in clocks)
 
         # Each bound as a number for THIS tick, from the committed bank,
         # before any segment: every segment of one tick is measured
@@ -569,7 +575,7 @@ class Run:
             while True:
                 stretch = 1.0 - start
                 scaled = self._scaled(admissions, stopped, stretch)
-                values = self._values(staged)
+                values = self._values(staged, clocks)
                 deltas = self._deltas(scaled)
                 found = None if crossings is None else []
                 landings = {}
@@ -630,8 +636,12 @@ class Run:
                         group = self._group(identifier, scaled, values)
                     blocked.update(group)
                     if stops is not None:
+                        inputs = tuple(sorted(source for source in group
+                                              if source not in clocks))
+                        time_drives = tuple(sorted(source for source in group
+                                                   if source in clocks))
                         stops.append(Stop(tick, identifier, side, value,
-                                          boundary, tuple(sorted(group))))
+                                          boundary, inputs, time_drives))
                 for _where, identifier, side, bound in event:
                     if isinstance(bound, Constraint):
                         self._assert_inside(bound, committed, staged)
@@ -642,6 +652,8 @@ class Run:
                 staged = committed
                 for input_id, delta in segment.items():
                     admitted[input_id] += delta
+                    if input_id in clocks:
+                        clocks[input_id] += delta
                 stopped |= blocked
                 start = boundary
         except (RunConflict, TooManyCrossings, UnsupportedLaw,
@@ -656,7 +668,8 @@ class Run:
         if advance:
             self.sim.tick = tick
         for input_id, delta in admitted.items():
-            self.active[input_id].admitted_native += delta
+            if input_id not in clocks:
+                self.active[input_id].admitted_native += delta
         self._block(stopped)
         for input_id, command in list(self.active.items()):
             if only is not None and command is not only:
@@ -1048,6 +1061,15 @@ class Run:
             # stop may have been released into its clearance; recollection
             # reaches the same bound only after genuine source travel.
             return 0.0
+        prefix = self.program.time_prefixes.get(key, ())
+        if any(member is not edge and
+               (member.plans or any(shape not in ('constant', 'affine')
+                                    for shape in member.shapes))
+               for member in prefix):
+            # A downstream affine edge can have a NONLINEAR time path.
+            # Locate against the same complete prefix the commit runs,
+            # not a line between its immediate source's endpoints.
+            return self._searched(edge, key, bound, value, values, deltas)
         if self._has_play_ancestor(key):
             # An ordinary observer downstream of play inherits the play
             # prefix's flats and contacts even when its own edge is affine.
@@ -1145,14 +1167,17 @@ class Run:
         """The increment `key` receives over the stretch truncated at
         `t`: one edge evaluation for a continuous law, one jump-plan
         partition-and-sum for a law that jumps."""
-        if self._has_play_ancestor(key):
-            # A downstream play follower is not linear in its immediate
-            # source's net tick displacement. Replay the complete program
+        prefix = self.program.time_prefixes.get(key)
+        if prefix is not None or self._has_play_ancestor(key):
+            # A downstream time or play follower need not be linear in its
+            # immediate source's net displacement. Replay the complete
             # prefix from the original input(s) at this request fraction.
-            truncated = {other: (delta * t if other[0] == 'input' else 0.0)
+            truncated = {other: (delta * t if other[0] in ('input', 'clock')
+                                else 0.0)
                          for other, delta in deltas.items()}
             landings = {}
-            for candidate in self.program.edges:
+            for candidate in (prefix if prefix is not None
+                              else self.program.edges):
                 if candidate.kind == 'check':
                     continue
                 for gives, increment in candidate.increments(values,
@@ -1248,7 +1273,7 @@ class Run:
             f'the run rather than a coarse dt. The tick committed '
             f'nothing.')
 
-    def _values(self, bank):
+    def _values(self, bank, clocks=None):
         """The bank plus every intermediate: the PROGRAM's, delegated.
 
         The body moved to `Program.values_of` so the tick and the
@@ -1256,7 +1281,7 @@ class Run:
         rather than twice; the corpus replay is the guard that the move
         changed nothing.
         """
-        return self.program.values_of(bank)
+        return self.program.values_of(bank, clocks)
 
     def _refuse(self, moved):
         """A tick that fails commits nothing, and every command that

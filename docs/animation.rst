@@ -276,6 +276,14 @@ the spellings, and the declaration obeys the same rules a looping one
 does: only on the name ``time``, only on an `AssemblyNode`, only on the
 root.
 
+For retained motion driven by the clock itself, name that declaration as
+a relation source: ``time.drives(shaft.turn, ratio=6)``. Each advancing
+tick contributes the law's change without a startup rate command; gates
+and stops retain the shaft's position. Reading ``self.time`` in an
+ordinary transform still describes an absolute pose. See
+:doc:`scenarios`, "Driving retained motion from time", for the distinction
+and the version-10 viewer requirement.
+
 There is a third spelling, `Time.elapsed()`: the same unwrapping seconds
 WITHOUT the running mechanics. It says what ``time`` means and nothing
 about what a simulation owns, so a root declaring it and no `State` is

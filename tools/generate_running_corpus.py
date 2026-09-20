@@ -329,9 +329,9 @@ CORPUS = (
 )
 
 
-def document_of(name):
+def document_of(name, factory=None):
     """The program-bearing keys of the document `name` publishes."""
-    node = machine_class(name)()
+    node = (factory or machine_class(name))()
     bind_declared_defaults(node)
     program, initial = compiled_program(node)
     with symbolic_document(node) as (declarations, instructions):
