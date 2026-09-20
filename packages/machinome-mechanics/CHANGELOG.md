@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0
 
+- Add `two_link_angles` for planar shoulder and relative elbow rotations.
+
 - Add `belt_pulley_angle` for contact-referenced CW/CCW pulley orientation.
 
 - Add `belt_path_metrics` for closed directed pitch paths and belt stations.

@@ -89,7 +89,7 @@ motion coordinates and relation evaluation.
 | `screws` | `screw_travel`, `screw_angle` |
 | `cranks` | `crank_pin`, `crank_rod_angle`, `piston_height` |
 | `deltas` | `delta_carriage`, `delta_rod` |
-| `linkages` | `circle_intersection`, `triangle_angle`, `link_rise` |
+| `linkages` | `circle_intersection`, `triangle_angle`, `link_rise`, `two_link_angles` |
 | `rolling` | `rolling_travel`, `rolling_angle` |
 | `belts` | `pulley_pitch_radius`, `belt_tangent_points`, `belt_path_metrics`, `belt_pulley_angle` |
 

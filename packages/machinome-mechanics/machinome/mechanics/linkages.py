@@ -2,7 +2,7 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""The three pieces of circle geometry a linkage keeps asking for.
+"""Circle geometry and planar joint angles a linkage keeps asking for.
 
 Where two arcs cross, what angle a triangle of three known sides makes,
 and how high a rigid link stands when its ends are pulled apart. Each of
@@ -29,7 +29,7 @@ That is what the originating projects do and it is the honest answer: a
 guard would have to invent a pose that does not exist.
 """
 
-from machinome.math import acos, sqrt
+from machinome.math import acos, atan2, sqrt
 
 
 def circle_intersection(centre_a, radius_a, centre_b, radius_b, side=1):
@@ -67,3 +67,24 @@ def link_rise(link, offset):
     ``offset`` apart horizontally: ``sqrt(link^2 - offset^2)``.
     """
     return sqrt(link * link - offset * offset)
+
+
+def two_link_angles(x, y, first_length, second_length, side=1):
+    """Return absolute shoulder and relative elbow angles for target (x, y).
+
+    The pivot is (0, 0), lengths are positive in the target's unit, and
+    angles are degrees from +X toward +Y. The second absolute bearing is
+    shoulder + elbow. Literal side +1 places the knee left of the
+    pivot-to-target direction; -1 places it right. No branch tracking,
+    reach guard, servo offset or tolerance clamp is inferred.
+
+    Require nonzero target distance between the difference and sum of
+    the lengths. Division/domain errors propagate numerically. Supported
+    deferred operands use exactly the same arithmetic. Spiderbot retains
+    its tibia offset; AlbertPro supplies (height, 0) after its own guard.
+    """
+    distance = sqrt(x * x + y * y)
+    shoulder = atan2(y, x) + side * triangle_angle(
+        second_length, first_length, distance)
+    elbow = side * (triangle_angle(distance, first_length, second_length) - 180)
+    return shoulder, elbow

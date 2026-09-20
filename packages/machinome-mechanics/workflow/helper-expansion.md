@@ -20,7 +20,7 @@ new design choices exposed by validation are reported, not silently substituted.
 | 4 | `belt_tangent_points` | Thor; Prusa3-vanilla; three additional repositories | integrated |
 | 5 | `belt_path_metrics` | Prusa3-vanilla; Kossel; Metamaquina2; Hangprinter; Thor | integrated |
 | 6 | `belt_pulley_angle` | Metamaquina2; Prusa3-vanilla; Kossel | integrated |
-| 7 | `two_link_angles` | YouCanBuildBiPed; ZeroBug; Spiderbot; AlbertPro | active |
+| 7 | `two_link_angles` | ZeroBug; Spiderbot; AlbertPro (BiPed singular-origin exclusion) | validated, archived for local integration |
 | 8 | `four_bar_pose` | Dragon R1; Strandbeest | queued |
 | 9 | `cycloidal_ratio` | CycloidalDrive; OpenCycloid | queued |
 | 10 | `harmonic_cam_lift` | Leonardo cam hammer; Deepseek sawmill | queued |

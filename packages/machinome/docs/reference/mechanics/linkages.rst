@@ -125,3 +125,55 @@ not affect the rise.
 Require ``abs(offset) <= link``. Equality lays the link horizontally;
 a greater offset is unreachable. As with the other linkage helpers,
 invalid numeric domains raise rather than returning an invented pose.
+
+two_link_angles
+---------------
+
+.. py:function:: two_link_angles(x, y, first_length, second_length, side=1)
+
+   Solve a planar two-link reach from a pivot at ``(0, 0)``.
+
+   :param x: Target coordinate along the plane's +X reference direction.
+   :param y: Target coordinate along +Y, in the same length unit.
+   :param first_length: Positive pivot-to-knee length.
+   :param second_length: Positive knee-to-target length.
+   :param side: Literal ``1`` for the knee left of pivot-to-target, ``-1``
+                for the knee right of it, as with :py:func:`circle_intersection`.
+   :returns: ``(shoulder, elbow)`` in degrees, numeric or deferred. Shoulder
+             is absolute from +X toward +Y; elbow is relative to the first
+             link. The second link's absolute bearing is their sum.
+
+For distance ``d = sqrt(x*x + y*y)``, shoulder is ``atan2(y, x)`` plus
+``side * triangle_angle(second_length, first_length, d)``; elbow is
+``side * (triangle_angle(d, first_length, second_length) - 180)``.
+Positive angles are counterclockwise about +Z in this plane. Side is not
+validated or normalized: supply exactly +1 or -1.
+
+.. doctest::
+
+   >>> from machinome_mechanics import two_link_angles
+   >>> tuple(round(a, 4) for a in two_link_angles(3, 4, 5, 5))
+   (113.1301, -120.0)
+   >>> tuple(round(a, 4) for a in two_link_angles(3, 4, 5, 5, side=-1))
+   (-6.8699, 120.0)
+   >>> two_link_angles(8, 0, 5, 3)
+   (0.0, 0.0)
+   >>> from math import cos, sin, radians
+   >>> shoulder, elbow = map(radians, two_link_angles(3, 4, 5, 5))
+   >>> tuple(round(v, 6) for v in (
+   ...     5*cos(shoulder) + 5*cos(shoulder + elbow),
+   ...     5*sin(shoulder) + 5*sin(shoulder + elbow)))
+   (3.0, 4.0)
+
+Require positive lengths, ``d > 0`` and
+``abs(first_length-second_length) <= d <= first_length+second_length``.
+The straight and folded boundaries are mathematically reachable, but floating
+roundoff can put an inverse-cosine argument outside its domain. No tolerance
+clamp or singular-pose bearing is invented. Numeric division and domain errors
+propagate; deferred operands keep the same arithmetic for evaluation later.
+This is a selected pose, not continuous branch tracking across motion.
+
+Spiderbot supplies its horizontal span and vertical drop, then subtracts its
+measured tibia bend from the returned elbow. AlbertPro supplies
+``(height, 0, THIGH, SHIN)`` after its own height guard. Neither project passes
+servo offsets or body yaw to this helper: those remain in the project adapter.

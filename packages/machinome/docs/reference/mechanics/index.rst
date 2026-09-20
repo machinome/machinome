@@ -39,6 +39,8 @@ for numeric, symbolic and invalid-input behaviour.
      - Triangle angle from three side lengths.
    * - :py:func:`link_rise`
      - Vertical separation from link length and horizontal offset.
+   * - :py:func:`two_link_angles`
+     - Absolute shoulder and relative elbow for a planar reach.
    * - :py:func:`rolling_travel`
      - Tangent travel at a constant pitch/contact radius.
    * - :py:func:`rolling_angle`
