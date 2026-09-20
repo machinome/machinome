@@ -81,7 +81,7 @@ export interface ManifestNode {
 // LOWEST version its content needs -- a document holding no flexible
 // node is byte-identical to the version 2 it always was -- so accepting
 // the whole union is accepting exactly what the producer can emit.
-export type ManifestVersion = 1 | 2 | 3 | 4 | 5;
+export type ManifestVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 // One entry of a version-4 document's shared-subexpression table
 // (OpenSpec `read-expression-bindings`, ADR-044). `expression` names

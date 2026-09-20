@@ -5,6 +5,16 @@ it carries release together and share one version.
 
 ## 0.2.0 — unreleased
 
+- Viewer API 23 reads document version 10 and executes explicit running time
+  drives. Astrarium's diagnostic mechanism advances without a startup rate
+  command, stops and winds while retaining its position, exhausts its declared
+  travel, and replays through snapshot/restore/reset. Independent time drives
+  stop independently and retry from the next tick's global time without a
+  backlog. Nonlinear stop searches replay the original source paths; legacy
+  commanded runs and the existing narrow Play topology are unchanged.
+  Zero-duration input moves also publish their committed frame before reporting
+  completion, keeping paused readouts and geometry current after winding.
+
 - A complete Sphinx user manual covers installation, inspection, posed/running/
   clocked controls, embedding, every public browser handle and the CLI, with a
   working interactive example and Read the Docs configuration. User pages live

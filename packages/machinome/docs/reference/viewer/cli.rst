@@ -21,8 +21,8 @@ Print one JSON object to standard output and exit 0:
    {
      "path": "/installation/machinome_viewer/widget/dist/machinome-viewer.js",
      "index": "/installation/machinome_viewer/widget/index.html",
-     "apiVersion": 22,
-     "documentVersions": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+     "apiVersion": 23,
+     "documentVersions": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
      "version": "0.2.0"
    }
 

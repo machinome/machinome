@@ -56,6 +56,9 @@ stop record SHALL retain real operator IDs in `inputs` and report independently
 blocked time relations in `time_drives` only when nonempty. Legacy records SHALL
 retain their previous shape.
 
+This extends "One loader reads either published document" to version 10, a
+running program with explicit time-drive mappings rather than a clocked machine.
+
 #### Scenario: An invalid time-drive mapping is refused
 
 - **WHEN** a document maps an invalid edge, duplicates a drive, or omits a

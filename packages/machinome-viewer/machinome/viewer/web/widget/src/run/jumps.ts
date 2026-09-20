@@ -1503,7 +1503,7 @@ export function kinkedEndCuts(
 
 /** Each member's sources at the stretch's start, and their travel over
  * it. */
-function sourcesOfBlock(block: ProgramBlock, values: Record<string, number>,
+function sourcesOfBlock(program: LoadedProgram, block: ProgramBlock, values: Record<string, number>,
                         deltas: Record<string, number>):
 { starts: Record<string, number>[]; steps: Record<string, number>[] } {
   const starts: Record<string, number>[] = [];
@@ -1512,8 +1512,9 @@ function sourcesOfBlock(block: ProgramBlock, values: Record<string, number>,
     const start: Record<string, number> = {};
     const step: Record<string, number> = {};
     for (const key of member.edge.needs) {
-      start[key] = values[key];
-      step[key] = deltas[key];
+      const source = key === program.clock ? member.edge.timeDrive ?? key : key;
+      start[key] = values[source];
+      step[key] = deltas[source];
     }
     starts.push(start);
     steps.push(step);
@@ -1669,7 +1670,7 @@ export function blockIncrements(
   crossings: CrossingRecord[] | null, tick: number,
   landings: Record<string, number> | null,
 ): [string, number][] {
-  const { starts, steps } = sourcesOfBlock(block, values, deltas);
+  const { starts, steps } = sourcesOfBlock(program, block, values, deltas);
   const located: CrossingRecord[] | null = crossings === null ? null : [];
   const cuts = blockPartition(program, block, starts, steps, located, tick);
   const advanced: Record<string, number> = {};
@@ -1714,8 +1715,8 @@ export function blockIncrements(
           delta[key] = Object.prototype.hasOwnProperty.call(piece, key)
             ? piece[key] : 0;
         } else {
-          start[key] = values[key] + deltas[key] * left;
-          delta[key] = deltas[key] * (right - left);
+          start[key] = starts[index][key] + steps[index][key] * left;
+          delta[key] = steps[index][key] * (right - left);
         }
       }
       const found: CrossingRecord[] | null = located === null ? null : [];
@@ -1768,6 +1769,6 @@ export function blockIncrements(
 export function blockCuts(program: LoadedProgram, block: ProgramBlock,
                           values: Record<string, number>,
                           deltas: Record<string, number>): number[] {
-  const { starts, steps } = sourcesOfBlock(block, values, deltas);
+  const { starts, steps } = sourcesOfBlock(program, block, values, deltas);
   return blockPartition(program, block, starts, steps, null, 0);
 }

@@ -187,6 +187,8 @@ export interface ProgramSpan {
 }
 
 export interface ProgramEdge {
+  /** Independent, tick-local admission for a published time source. */
+  timeDrive?: string;
   kind: EdgeKind;
   needs: string[];
   gives: string[];
@@ -324,6 +326,7 @@ export interface PathHost {
 export interface LoadedProgram extends PathHost {
   identity: string;
   clock: string;
+  timeDrives: readonly string[];
   /** The bank's id order, fixed at load: the published coordinate order,
    * inputs first. */
   order: readonly string[];
@@ -847,6 +850,11 @@ export function loadProgram(
   }
   const intermediates = raw.intermediates as string[];
   const known = new Set([...bank, ...intermediates]);
+  for (const id of known) {
+    if (id.startsWith('@time:')) {
+      return refuse(`its coordinate or intermediate "${id}" uses the reserved time-drive namespace.`);
+    }
+  }
 
   // 4. An id set that cannot be nested.
   try {
@@ -869,6 +877,29 @@ export function loadProgram(
     return refuse(`its program's "edges" is ${quoted(raw.edges)}, not an ` +
                   'array.');
   }
+  const timeByEdge = new Map<number, string>();
+  if (document.version === 10 || raw.time_drives !== undefined) {
+    if (document.version !== 10) {
+      return refuse('its time_drives require document version 10.');
+    }
+    if (clock !== 'time') return refuse('its version-10 clock must be named "time".');
+    if (!Array.isArray(raw.time_drives) || raw.time_drives.length === 0) {
+      return refuse('its time_drives must be a nonempty ordered array.');
+    }
+    let previous = -1;
+    for (const entry of raw.time_drives) {
+      if (!isObject(entry) || !Number.isInteger(entry.edge)
+          || (entry.edge as number) <= previous
+          || (entry.edge as number) >= raw.edges.length
+          || entry.id !== `@time:${entry.edge}`) {
+        return refuse(`its time_drives entry ${quoted(entry)} must name a unique ` +
+                      'valid edge in ascending order with id @time:<edge-index>.');
+      }
+      previous = entry.edge as number;
+      timeByEdge.set(previous, entry.id as string);
+    }
+  }
+  const timeDrives = [...timeByEdge.values()];
   const placeholders = new Map<string, ProgramPlan>();
   const edges: ProgramEdge[] = [];
   raw.edges.forEach((entry, position) => {
@@ -895,8 +926,15 @@ export function loadProgram(
     const statedBy = typeof entry.stated_by === 'string'
       ? entry.stated_by : 'the program';
 
+    const timeDrive = timeByEdge.get(position);
+    if (gives.includes(clock)) return refuse(`${where} writes the read-only clock "${clock}".`);
+    if ((needs.includes(clock) !== (timeDrive !== undefined))
+        || (timeDrive !== undefined && kind !== 'law')) {
+      return refuse(`${where} (${description}) must read time exactly when ` +
+                    'listed as a law in time_drives.');
+    }
     for (const id of [...needs, ...gives]) {
-      if (!known.has(id)) {
+      if (!known.has(id) && !(id === clock && timeDrive !== undefined)) {
         return refuse(
           `${where} (${description}) names "${id}", which is neither a bank ` +
           'coordinate nor a published computed value.');
@@ -904,6 +942,7 @@ export function loadProgram(
     }
 
     const edge: ProgramEdge = {
+      ...(timeDrive === undefined ? {} : { timeDrive }),
       kind: kind as EdgeKind,
       needs: needs as string[],
       gives: gives as string[],
@@ -1130,9 +1169,10 @@ export function loadProgram(
                     `${quoted(members)}, not an array.`);
     }
     for (const member of members) {
-      if (typeof member !== 'string' || !inputs.includes(member)) {
+      if (typeof member !== 'string'
+          || (!inputs.includes(member) && !timeDrives.includes(member))) {
         return refuse(`its program's "sources" entry for "${id}" names ` +
-                      `${quoted(member)}, which is not one of its inputs.`);
+                      `${quoted(member)}, which is not one of its inputs or time_drives.`);
       }
     }
     sources[id] = members as string[];
@@ -1201,7 +1241,8 @@ export function loadProgram(
   }
   for (const edge of edges) {
     for (const id of edge.needs) {
-      if (!bank.has(id) && !determiner.has(id)) {
+      if (!bank.has(id) && !determiner.has(id)
+          && !(id === clock && edge.timeDrive !== undefined)) {
         return refuse(
           `${edge.description} reads the computed value "${id}", which no ` +
           'edge determines. A computed value is not stored anywhere: one ' +
@@ -1739,6 +1780,7 @@ export function loadProgram(
   return {
     identity,
     clock,
+    timeDrives,
     order,
     inputs,
     coordinates,

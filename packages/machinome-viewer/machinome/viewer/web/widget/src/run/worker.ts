@@ -181,7 +181,13 @@ export function createSession(post: (reply: Reply) => void): Session {
       // handles it is waiting for before the first of them reports.
       post({ t: 'issued', id: request.id, handles: created });
       // A zero-duration move settles at the current tick, so a command
-      // may already be retired before any advance.
+      // may already be retired before any advance. Publish that commit
+      // BEFORE its outcome: a paused host awaiting winding must see the
+      // wound bank and pose without needing to advance time to refresh it.
+      if (tracked.some(entry => entry.request === request.id
+          && entry.command.kind === 'move' && entry.command.ticks === 0)) {
+        frame(request.id, run);
+      }
       retire();
       return;
     }

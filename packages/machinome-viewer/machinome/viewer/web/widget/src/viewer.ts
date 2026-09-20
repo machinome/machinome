@@ -2515,15 +2515,15 @@ function visibleBounds(root: THREE.Object3D): THREE.Box3 {
 // edges rather than run in the published listing); and
 // `execute-the-commit` adds version 8 (a root that declares a `State`,
 // whose document carries a `states` table and a compiled `clocked`
-// machine instead of a `program`). A version 9 document is refused by
-// name and by list -- the same sentence a version 5 document got from
-// every viewer released so far.
+// machine instead of a `program`). Version 9 adds running PLAY; version
+// 10 adds independently admitted retained time drives. Later versions
+// are still refused by name and by list.
 //
 // Exported so `version.test.ts` can pin it against the ONE declaration
 // the bundle and `bundle.py` both read (`machinomeDocumentVersions` in
 // package.json): the number this viewer reports and the versions it
 // refuses by must not be able to drift apart.
-export const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+export const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const DOCUMENT_FORMAT = 'machinome-export';
 const LEGACY_DOCUMENT_FORMAT = 'solid-node-export';
 

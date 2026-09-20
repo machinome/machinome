@@ -33,6 +33,14 @@ function inputsOf(edge: ProgramEdge, values: Record<string, number>,
   return found;
 }
 
+/** A relation's clock read follows its own admitted path. These values are
+ * transient evaluation scope, never extra mechanical state. */
+function timed(program: LoadedProgram, edge: ProgramEdge,
+               values: Record<string, number>): Record<string, number> {
+  return edge.timeDrive === undefined ? values
+    : { ...values, [program.clock]: values[edge.timeDrive] ?? 0 };
+}
+
 function evaluated(program: LoadedProgram, expression: string | null,
                    inputs: Record<string, number>): number {
   // A law whose expression has no free coordinate -- a constant -- has
@@ -87,6 +95,7 @@ export function predictsOf(edge: ProgramEdge, held: Record<string, number>,
 export function edgeValues(program: LoadedProgram, edge: ProgramEdge,
                            values: Record<string, number>):
 [string, number][] {
+  values = timed(program, edge, values);
   if (edge.kind === 'law') {
     const inputs = inputsOf(edge, values);
     return edge.gives.map((key, index) =>
@@ -126,6 +135,8 @@ export function edgeIncrements(
   deltas: Record<string, number>, crossings: CrossingRecord[] | null,
   tick: number, landings: Record<string, number> | null = null,
 ): [string, number][] {
+  values = timed(program, edge, values);
+  deltas = timed(program, edge, deltas);
   if (edge.kind === 'play') {
     const source = edge.needs[0];
     const retained = edge.needs[1];
@@ -195,6 +206,8 @@ export function edgeCuts(program: LoadedProgram, edge: ProgramEdge,
                          values: Record<string, number>,
                          deltas: Record<string, number>,
                          index: number): number[] {
+  values = timed(program, edge, values);
+  deltas = timed(program, edge, deltas);
   if (edge.kind === 'block') {
     return blockCuts(program, edge.block!, values, deltas);
   }

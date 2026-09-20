@@ -340,7 +340,7 @@ class CalculatorInABrowserTest(TestCase):
                          self.document['clocked']['identity'])
         self.assertIsNone(mounted['clock'])
         self.assertIsNone(mounted['run'])
-        self.assertEqual(result['apiVersion'], 22)
+        self.assertEqual(result['apiVersion'], 23)
         # The bank's id order is DERIVED: drivers, then states.
         self.assertEqual(mounted['order'],
                          ['crank', 'feed', 'operand', 'ring', 'setting',
@@ -883,7 +883,7 @@ class InstructionDrawnInABrowserTest(TestCase):
               f'{result["wall"]:.2f} s ({fps:.1f} fps), per-frame pose '
               f'median {median:.2f} ms, worst {costs[-1]:.2f} ms')
         self.assertTrue(result['moved'], 'the model did not move on screen')
-        self.assertEqual(result['apiVersion'], 22)
+        self.assertEqual(result['apiVersion'], 23)
 
         self.assertTrue(
             (SHOTS / 'clocked-instruction-mid-stroke.png').is_file())
@@ -1292,4 +1292,4 @@ class GestureDrawnInABrowserTest(TestCase):
         self.assertEqual(landed['crank'], 360)
         self.assertTrue((SHOTS / 'clocked-gesture-mid-nudge.png').is_file())
         self.assertTrue((SHOTS / 'clocked-gesture-landed.png').is_file())
-        self.assertEqual(result['apiVersion'], 22)
+        self.assertEqual(result['apiVersion'], 23)

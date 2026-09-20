@@ -45,6 +45,8 @@ export interface StopRecord {
   value: number;
   t: number;
   inputs: string[];
+  /** Absent for legacy/command-only stops; never mixed into inputs. */
+  time_drives?: string[];
 }
 
 export interface TrajectoryEntry {
@@ -350,6 +352,7 @@ export class Run {
     for (const inputId of Object.keys(admissions)) {
       if (admissions[inputId]) moved.push(this.active.get(inputId)!);
     }
+    for (const id of this.program.timeDrives) admissions[id] = advance ? this.dt : 0;
 
     // Each bound as a number for THIS tick, from the committed bank,
     // before any segment: every segment of one tick is measured against
@@ -364,10 +367,10 @@ export class Run {
     const crossings: CrossingRecord[] | null =
       this.crossingRing === null ? null : [];
     const stops: StopRecord[] | null = this.stopRing === null ? null : [];
-    // Every stop event stops at least one input that was moving, and a
-    // stopped input stays stopped, so a tick has at most as many events
-    // as it has inputs admitting travel.
-    const limit = moved.length;
+    // Every stop event stops at least one moving admission, and a stopped
+    // admission stays stopped for this tick. Count both operator inputs and
+    // independent time drives in the finite event limit.
+    const limit = moved.length + (advance ? this.program.timeDrives.length : 0);
     let start = 0;
     let events = 0;
 
@@ -375,7 +378,7 @@ export class Run {
       for (;;) {
         const stretch = 1 - start;
         const scaled = this.scaled(admissions, stopped, stretch);
-        const values = this.valuesOf(staged);
+        const values = this.valuesOf(staged, admitted);
         let deltas = this.deltasOf(scaled);
         let found: CrossingRecord[] | null = crossings === null ? null : [];
         let landings: Record<string, number> = {};
@@ -440,9 +443,11 @@ export class Run {
           }
           for (const inputId of group) blocked.add(inputId);
           if (stops !== null) {
+            const timeDrives = group.filter(id => this.program.timeDrives.includes(id)).sort();
             stops.push({
               tick, coordinate: identifier, bound: side, value,
-              t: boundary, inputs: [...group].sort(),
+              t: boundary, inputs: group.filter(id => this.program.inputs.includes(id)).sort(),
+              ...(timeDrives.length ? { time_drives: timeDrives } : {}),
             });
           }
         }
@@ -575,6 +580,7 @@ export class Run {
     const deltas: Record<string, number> = {};
     for (const id of this.program.order) deltas[id] = 0;
     for (const id of this.program.intermediates) deltas[id] = 0;
+    for (const id of this.program.timeDrives) deltas[id] = 0;
     for (const inputId of Object.keys(admissions)) {
       if (admissions[inputId]) deltas[inputId] = admissions[inputId];
     }
@@ -583,8 +589,10 @@ export class Run {
 
   /** The bank, plus every computed value the program derives from it:
    * recomputed here rather than stored. */
-  private valuesOf(bank: Record<string, number>): Record<string, number> {
+  private valuesOf(bank: Record<string, number>,
+                   admitted: Record<string, number> = {}): Record<string, number> {
     const values: Record<string, number> = { ...bank };
+    for (const id of this.program.timeDrives) values[id] = this.clock() + (admitted[id] ?? 0);
     for (const edge of this.program.edges) {
       if (edge.gives.every((key) => this.bankKeys.has(key))) {
         // Nothing this edge computes is a computed value, so its values
@@ -845,6 +853,12 @@ export class Run {
     }
     const { edge, index } = determination;
     const value = held[identifier];
+    if (this.program.timeDrives.length
+        && (this.program.sources[identifier] ?? []).some(id => this.program.timeDrives.includes(id))) {
+      // A downstream affine edge does not make its upstream time path affine.
+      // Locate against the same original admissions the truncated commit uses.
+      return this.searchFromSources(identifier, side, bound, held, values, deltas);
+    }
     // A PLAY follower may still stand at its bound while its upstream
     // clearance is being recollected. Its contact path, not the retained
     // coordinate's standing value, locates the first outward push.
@@ -852,7 +866,7 @@ export class Run {
                                                deltas);
     if (throughPlay !== null) return throughPlay;
     if (this.hasPlayAncestor(edge)) {
-      return this.searchThroughPlay(identifier, side, bound, held, values,
+      return this.searchFromSources(identifier, side, bound, held, values,
                                     deltas);
     }
     if ((bound - value) * (side === 'high' ? 1 : -1) <= 0) {
@@ -946,16 +960,16 @@ export class Run {
     return false;
   }
 
-  /** Replay the complete original-input prefix while searching a nonlinear
-   * observer. A departure from an exact-bound plateau toward the inside is
-   * free; only the later outward departure is a stop. */
-  private searchThroughPlay(identifier: string, side: 'low' | 'high',
+  /** Replay the original operator and time admissions while searching a
+   * nonlinear path or play observer. A departure from an exact-bound plateau
+   * toward the inside is free; only the later outward departure is a stop. */
+  private searchFromSources(identifier: string, side: 'low' | 'high',
                             bound: number, held: Record<string, number>,
                             values: Record<string, number>,
                             deltas: Record<string, number>): number {
     const level = (where: number): number => {
       const scaled: Record<string, number> = {};
-      for (const input of this.program.inputs) {
+      for (const input of [...this.program.inputs, ...this.program.timeDrives]) {
         scaled[input] = (deltas[input] ?? 0) * where;
       }
       const replay = this.deltasOf(scaled);
@@ -1088,7 +1102,10 @@ export class Run {
       && this.hasPlayAncestor(determination) ? {} : null;
     for (const edge of this.program.edges) {
       if (edge.kind === 'check') continue;
-      if (edge.needs.some((need) => deltas[need])) {
+      if (edge.needs.some((need) => deltas[need])
+          || (edge.timeDrive !== undefined && deltas[edge.timeDrive])
+          || edge.block?.members.some(member => member.edge.timeDrive !== undefined
+            && deltas[member.edge.timeDrive])) {
         for (const [gives, increment] of edgeIncrements(
           this.program, edge, values, deltas, null, 0, landings)) {
           deltas[gives] = increment;

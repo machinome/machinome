@@ -3,9 +3,30 @@ Running machines
 ================
 
 ``viewer.run()`` returns a ``RunHandle`` when the document carries a running
-program (versions 5, 6, 7 or 9). It returns null for posed and clocked models.
+program (versions 5, 6, 7, 9 or 10). It returns null for posed and clocked models.
 The run retains a coordinate bank and advances in fixed ticks, normally in
 a worker. Use the handle as an interface; do not import its internal engine.
+
+Autonomous retained motion
+==========================
+
+A version 10 document can declare running time drives. Advancing the run gives
+each such relation its own share of elapsed time without a host ``rate()``
+command. Mounting still starts paused; call ``start()`` or ``step()`` to advance.
+Time is read-only simulation time, not an operator driver or a bank coordinate.
+Only the model's declared operator inputs appear in ``viewer.drivers()``.
+
+A model's stop/enable input and the transport's ``pause()`` are different:
+disabling a relation can hold its position while elapsed time continues;
+pausing the transport stops ticks altogether. Each time drive admits motion
+independently. A bound that stops one does not stop an unrelated drive, and the
+stopped relation retries at the next tick's current global time without catching
+up the skipped interval. For nonlinear laws this is not a resumable local phase.
+
+Zero-duration operator moves, such as winding Astrarium while stopped, do not
+advance time. The ordinary bank, tick and commands suffice for save/restore/reset;
+there is no extra hidden time-drive state. These are declared kinematic
+relationships, not inferred dynamics, torque or energy conservation.
 
 Read the run
 ============
@@ -83,7 +104,9 @@ rates are in **design units**, unlike posed ``setDriver()`` values.
    Supply finite travel/target and a nonnegative duration representable as a
    whole number of ``dt`` ticks. Duration defaults to 0, which settles at the
    current tick without advancing time. Returns ``Promise<Outcome[]>`` when
-   the command retires, **not when it is queued**.
+   the command retires, **not when it is queued**. A zero-duration move publishes
+   its committed frame before completion, so paused readouts and geometry update
+   without requiring a subsequent tick.
 
 .. js:method:: RunHandle.rate(input, rate)
 
@@ -148,6 +171,11 @@ Observe and save
    contains ``tick``, ``clock`` (elapsed seconds), ``bank``, ``moved`` IDs,
    ``crossings``, ``stops`` and current ``commands``. Readouts should follow
    these committed values, not extrapolate from the input request.
+
+   A stop record's ``inputs`` lists real operator input IDs. Version 10 stops
+   also carry ``time_drives`` when time admissions were blocked: a nonempty,
+   sorted list of published time-drive IDs. That field is absent otherwise;
+   older documents keep their existing stop-record shape.
 
 .. js:method:: RunHandle.onOutcome(listener)
 

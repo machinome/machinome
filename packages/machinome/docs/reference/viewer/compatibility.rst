@@ -50,6 +50,8 @@ Document capabilities
      - A clocked machine with drivers, stored states, events and bounds.
    * - 9
      - Running ``Play`` relations retaining clearance/contact history.
+   * - 10
+     - Explicit running time drives with independently admitted motion.
 
 These are producer-selected schemas, not modes you change by editing a JSON
 version field. The viewer accepts current ``machinome-export`` and legacy
@@ -81,8 +83,9 @@ API 20 established the Machinome browser names:
 
 Old SolidNode browser globals, mount attributes and CSS aliases are not
 provided. Reading a legacy model document does not restore old host names.
-API 21 added :js:meth:`ViewerHandle.setView`; API 22 adds running ``Play``
-execution. A host that needs a feature can check the declared API before
+API 21 added :js:meth:`ViewerHandle.setView`; API 22 added running ``Play``
+execution; API 23 adds explicit running time drives. A host that needs a
+feature can check the declared API before
 using it. Do not assume an old pinned bundle implements the current manual.
 
 Dependency boundary

@@ -10,8 +10,8 @@ exports, custom embeds and headless snapshots.
 [Embedding](https://machinome-viewer.readthedocs.io/en/latest/embedding.html) ·
 [API and CLI reference](https://machinome-viewer.readthedocs.io/en/latest/reference/index.html)
 
-Version **0.2.0 is unreleased**. This source declares viewer API **22** and reads
-document versions **1–9**. It has not yet been published on PyPI or npm. The
+Version **0.2.0 is unreleased**. This source declares viewer API **23** and reads
+document versions **1–10**. It has not yet been published on PyPI or npm. The
 documentation URL is the intended Read the Docs home; its one-time project
 import and repository push are separate maintainer actions.
 
