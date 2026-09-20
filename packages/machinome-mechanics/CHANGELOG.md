@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0
 
+- Add `belt_tangent_points` for directed outer and inner belt contacts.
+
 - Add `pulley_pitch_radius` for GT2, AT3 and fitted linear belt pitches.
 
 - Add `rolling_angle` for unwrapped pulley, idler and drum rotation from travel.

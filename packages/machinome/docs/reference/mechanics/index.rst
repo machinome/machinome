@@ -45,6 +45,8 @@ for numeric, symbolic and invalid-input behaviour.
      - Unwrapped rotation from tangent travel at a constant radius.
    * - :py:func:`pulley_pitch_radius`
      - Pulley pitch radius from tooth count and linear pitch.
+   * - :py:func:`belt_tangent_points`
+     - Directed contact points for an outer or inner belt tangent.
 
 .. toctree::
    :maxdepth: 1

@@ -91,7 +91,7 @@ motion coordinates and relation evaluation.
 | `deltas` | `delta_carriage`, `delta_rod` |
 | `linkages` | `circle_intersection`, `triangle_angle`, `link_rise` |
 | `rolling` | `rolling_travel`, `rolling_angle` |
-| `belts` | `pulley_pitch_radius` |
+| `belts` | `pulley_pitch_radius`, `belt_tangent_points` |
 
 All listed names are exported from `machinome_mechanics`, with family imports
 such as `machinome_mechanics.gears` also available.

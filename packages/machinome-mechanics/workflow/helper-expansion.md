@@ -17,7 +17,7 @@ new design choices exposed by validation are reported, not silently substituted.
 | 1 | `rolling_travel` | Dragon R1; Thor; six additional repositories | integrated |
 | 2 | `rolling_angle` | Prusa3-vanilla; Kossel; four additional repositories | integrated |
 | 3 | `pulley_pitch_radius` | Thor; Open Robot Actuator; five additional repositories | integrated |
-| 4 | `belt_tangent_points` | Thor; Prusa3-vanilla | active |
+| 4 | `belt_tangent_points` | Thor; Prusa3-vanilla; three additional repositories | validated, archived for local integration |
 | 5 | `belt_path_metrics` | Thor; Prusa3-vanilla | queued |
 | 6 | `belt_pulley_angle` | Metamaquina2; Prusa3-vanilla; Kossel | queued |
 | 7 | `two_link_angles` | YouCanBuildBiPed; ZeroBug; Spiderbot | queued |
@@ -56,14 +56,14 @@ Every project imports the merged primary package. Post-merge checks passed:
 46 package tests, 24 subtests and three strict baseline specs. The clean helper
 worktree was removed, branch retained; nothing pushed or published.
 
-## Project findings outside helper scope
-
 Cycle 3 integration: mechanics `59f63bbbf225fa142c79cc72a73c6d1269a5918e`
 is on main. All seven consumer commits in the archived validation were
 fast-forwarded to their original branches and their imports resolve to the
 merged package. Post-merge 57 tests, 24 subtests and three strict baseline
 specs passed. Clean helper worktree removed, branch retained; user screenshots
 preserved in mechanics and Dutch Windmill 2. No push or publication.
+
+## Project findings outside helper scope
 
 - Kossel: inverse-rolling review found the vertical belt anchor using the
   copied X-axis span projection. Existing wheel/mesh checks miss the resulting
