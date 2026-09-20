@@ -12,7 +12,7 @@ system.
 Machinome means the source code of one machine and, collectively, the body of
 source code for machines. Machinome Studio is the experimental local harness;
 the independently versioned framework, viewer, and mechanics repositories are
-`machinome-framework`, `machinome-viewer`, and `machinome-mechanics` under the
+`machinome`, `machinome-viewer`, and `machinome-mechanics` under the
 Machinome organization (ADR 0031). Their Python distributions are `machinome`,
 `machinome-viewer`, and `machinome-mechanics`. The studio invokes the
 `machinome` command from its own Python environment and finds project runtime
@@ -549,8 +549,8 @@ recovery log.
 Each `<projects-dir>/<name>/` directory is an independent Git repository. The
 required catalogue directory is an external runtime input and may be unrelated
 to the shop installation. In this repository's development workspace, the
-framework checkout belongs under `machinome-framework/`; framework worktrees belong
-under `machinome-framework/WTs/`; the browser viewer's independent repository belongs
+framework checkout belongs under `machinome/`; framework worktrees belong
+under `machinome/WTs/`; the browser viewer's independent repository belongs
 under `machinome-viewer/` (the framework's `viewer` extra, AGPL-3.0-only,
 with its own OpenSpec and decision records); shop worktrees belong under
 `WTs/`. Runtime agents use

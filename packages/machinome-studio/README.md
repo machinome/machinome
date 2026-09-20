@@ -119,7 +119,7 @@ No backend loads global shop role cards or `.codex/agents` runtime adapters.
 
 `<projects-dir>/<name>/` is an independent Git repository. The catalogue path
 comes only from the required launcher option and need not be inside a shop
-source tree or installation. In this development workspace, `machinome-framework/` and
+source tree or installation. In this development workspace, `machinome/` and
 its `WTs/` are framework checkouts, `machinome-viewer/` is the independent
 AGPL browser-viewer repository the framework installs as its `viewer` extra,
 and top-level `WTs/` holds shop worktrees. `scripts/setup` installs
@@ -152,12 +152,12 @@ untracked text files without adding them to Git.
 A sprint always integrates shop work on branch and worktree `sprint-NNN` and
 `WTs/sprint-NNN`. If its ratified scope includes framework work, the framework
 repository has its own same-named integration branch and worktree at
-`machinome-framework/WTs/sprint-NNN`. Framework commits remain in
-machinome-framework; shop
+`machinome/WTs/sprint-NNN`. Framework commits remain in
+machinome; shop
 commits remain in machinome-studio.
 
 The framework sprint worktree is linked into the shop sprint worktree at
-`WTs/sprint-NNN/machinome-framework`. Run combined validation from the shop sprint
+`WTs/sprint-NNN/machinome`. Run combined validation from the shop sprint
 worktree so it uses the exact paired integration content. Framework child cycles
 are created from the registered framework sprint head with:
 

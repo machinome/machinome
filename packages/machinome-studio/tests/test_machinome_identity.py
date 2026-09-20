@@ -22,7 +22,7 @@ class MachinomeStudioIdentityTest(TestCase):
         sources = '\n'.join(path.read_text(errors='ignore')
                             for path in (ROOT / 'scripts').iterdir()
                             if path.is_file())
-        for name in ('machinome-framework', 'machinome-viewer',
+        for name in ('machinome', 'machinome-viewer',
                      'machinome-mechanics'):
             self.assertIn(name, sources)
         self.assertIn('machinome', sources)
