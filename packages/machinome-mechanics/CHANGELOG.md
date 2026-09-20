@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0
 
+- Add `indexed_advance` for completed-turn accumulation of a mechanical stroke.
+
 - Add `internal_mesh_angle` for common-frame ring/pinion angular increments.
 
 - Add `harmonic_cam_lift` for periodic half-cosine follower rise and return.

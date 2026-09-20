@@ -25,6 +25,8 @@ for numeric, symbolic and invalid-input behaviour.
      - Common-frame pinion increment for an internal ring mesh and carrier.
    * - :py:func:`harmonic_cam_lift`
      - Periodic half-cosine rise, return and base dwell from full peak lift.
+   * - :py:func:`indexed_advance`
+     - Completed-turn increments plus a caller's within-turn stroke.
    * - :py:func:`screw_travel`
      - Axial advance for a screw rotation.
    * - :py:func:`screw_angle`
@@ -69,6 +71,7 @@ for numeric, symbolic and invalid-input behaviour.
    screws
    cranks
    cams
+   indexing
    deltas
    linkages
    rolling
