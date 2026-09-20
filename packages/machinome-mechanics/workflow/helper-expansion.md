@@ -43,8 +43,8 @@ new design choices exposed by validation are reported, not silently substituted.
 | 7 | `two_link_angles` | ZeroBug; Spiderbot; AlbertPro (BiPed singular-origin exclusion) | integrated |
 | 8 | `four_bar_pose` | Dragon R1; Strandbeest | integrated |
 | 9 | `cycloidal_ratio` | CycloidalDrive; OpenCycloid | integrated |
-| 10 | `harmonic_cam_lift` | Leonardo cam hammer; Deepseek sawmill | active |
-| 11 | `internal_mesh_angle` | Thor; OpenTorque | queued |
+| 10 | `harmonic_cam_lift` | Leonardo cam hammer; Deepseek sawmill | integrated |
+| 11 | `internal_mesh_angle` | Thor; OpenTorque | active |
 | 12 | `differential_angles` | Thor; Dragon R1 | queued |
 | 13 | `indexed_advance` | Pascaline-module; Deepseek sawmill | queued |
 
@@ -149,8 +149,6 @@ process-tree cap. Parent also verified the cap on a live capture unit and
 terminated the obsolete broad-sweep orphan. Dependency heads remained clean
 at 8d2bd71/4355da1. No push or publication.
 
-## Project findings outside helper scope
-
 Cycle 9 integration: mechanics `b1b0b1d81bd8399525f0fe1f6f13a26117d4eedb`
 is on main. OpenCycloid `156b845c40c7c973ca4f37a7cc4c44e78e708b97` and
 CycloidalDrive `c8fec93c34e82c0baaa7bce70b9cf19a025646da` are on their
@@ -162,6 +160,19 @@ suite reaches the 768 MiB cap: faceted behavior reproduced on untouched base;
 no exact baseline rerun is claimed. Actual production-law probes, home
 integrity, build and fresh image review passed. Full limitations live in the
 archive and project record. User screenshots preserved. No push or publication.
+
+Cycle 10 integration: mechanics `3e08e4e8e0d22f3c6461c74c58a90d71799fa3b7`
+is on main. Leonardo `5349757c3b358d20c147f0dc764ab1ed998dccca` and Deepseek
+sawmill `15fdf591411c20a7f88138d4b9c5bb5d1d1b2800` are on their original
+main branches. Post-merge 171 tests, 24 subtests and three baseline specs
+passed; both ordinary model imports resolved to the merged primary package
+in sequential capped units. Clean worktree removed, branch retained. Leonardo
+full CAD suites remain incomplete at the 768 MiB cap; actual bound-law and
+2,160-point profile comparisons, partial CAD, build and two fresh images passed.
+Sawmill exact feed 5/5 and root 10/10, build/image passed. All limits and parent
+review are retained in the archive. No push/publication or user-file changes.
+
+## Project findings outside helper scope
 
 - Kossel: inverse-rolling review found the vertical belt anchor using the
   copied X-axis span projection. Existing wheel/mesh checks miss the resulting
