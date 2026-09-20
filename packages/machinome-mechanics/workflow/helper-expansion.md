@@ -242,6 +242,25 @@ web camera/projection wrapper failures are recorded with successful default
 camera captures; no framework/viewer fix was folded into this cycle. Final
 dependency heads remain clean 8d2bd711/4355da1. No push or publication.
 
+## Main-branch follow-up — 2026-09-20
+
+At the pilot's request to merge missing main-branch work, a fresh read-only
+audit verified all 47 helper-adoption commits and four metadata follow-ups on
+their recorded integration branches. InMoov was the only consumer with an
+existing main missing the campaign: main at 1cbd26def515c1330a1c2be7a37b35b316ce94a5
+was an ancestor of its tested declarative-api head
+`d2ad79a934eae91fd2f841016c8b4498f2d34eac`. Its exact hand suite was rerun
+against the merged primary mechanics package: 22/22 passed, 7.83 s wall,
+619564 KiB process RSS, in a serialized 768 MiB/swap0/300-second cgroup with
+BLAS/OMP threads1. Main was then fast-forwarded to that exact tested content,
+including the prerequisite declarative migration. No source was altered.
+
+Open Robot Actuator, Prusa3-vanilla, Kossel and OpenTorque have master rather
+than a local main; Hangprinter uses version_4. Those upstream integration
+branches already contain all campaign commits and were not renamed or copied.
+All other consumer mains and mechanics main already contain the work. No
+remote push or publication was performed; unrelated worktrees remain untouched.
+
 ## Project findings outside helper scope
 
 - Kossel: inverse-rolling review found the vertical belt anchor using the
