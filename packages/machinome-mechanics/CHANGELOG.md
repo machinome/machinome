@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0
 
+- Add `harmonic_cam_lift` for periodic half-cosine follower rise and return.
+
 - Add `cycloidal_ratio` for signed fixed-ring disk/output angular reduction.
 
 - Add `four_bar_pose` for selected planar closure points and output bearings.

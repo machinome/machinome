@@ -64,6 +64,8 @@ def _eval_openscad_expr(expr, t):
         'DEGATAN': lambda x: pymath.degrees(pymath.atan(x)),
         'DEGSQRT': pymath.sqrt,
         'floor': pymath.floor,
+        'min': min,
+        'max': max,
     }
     return eval(py_expr, {'__builtins__': {}}, env)
 

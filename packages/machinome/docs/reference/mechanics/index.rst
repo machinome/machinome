@@ -21,6 +21,8 @@ for numeric, symbolic and invalid-input behaviour.
      - Driver angle for the same mesh, solved backwards.
    * - :py:func:`cycloidal_ratio`
      - Signed disk/output increment per eccentric input with a fixed ring.
+   * - :py:func:`harmonic_cam_lift`
+     - Periodic half-cosine rise, return and base dwell from full peak lift.
    * - :py:func:`screw_travel`
      - Axial advance for a screw rotation.
    * - :py:func:`screw_angle`
@@ -64,6 +66,7 @@ for numeric, symbolic and invalid-input behaviour.
    gears
    screws
    cranks
+   cams
    deltas
    linkages
    rolling

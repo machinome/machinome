@@ -88,6 +88,7 @@ motion coordinates and relation evaluation.
 | `gears` | `meshed_angle`, `driving_angle`, `cycloidal_ratio` |
 | `screws` | `screw_travel`, `screw_angle` |
 | `cranks` | `crank_pin`, `crank_rod_angle`, `piston_height` |
+| `cams` | `harmonic_cam_lift` |
 | `deltas` | `delta_carriage`, `delta_rod` |
 | `linkages` | `circle_intersection`, `triangle_angle`, `link_rise`, `two_link_angles`, `four_bar_pose` |
 | `rolling` | `rolling_travel`, `rolling_angle` |

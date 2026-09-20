@@ -57,6 +57,7 @@ from machinome_mechanics.belts import (belt_path_metrics, belt_pulley_angle,
                                        belt_tangent_points, pulley_pitch_radius)
 from machinome_mechanics.cranks import (crank_pin, crank_rod_angle,
                                          piston_height)
+from machinome_mechanics.cams import harmonic_cam_lift
 from machinome_mechanics.deltas import delta_carriage, delta_rod
 from machinome_mechanics.gears import cycloidal_ratio, driving_angle, meshed_angle
 from machinome_mechanics.linkages import (circle_intersection, four_bar_pose, link_rise,
@@ -78,4 +79,5 @@ __all__ = [
     'two_link_angles',
     'four_bar_pose',
     'cycloidal_ratio',
+    'harmonic_cam_lift',
 ]
