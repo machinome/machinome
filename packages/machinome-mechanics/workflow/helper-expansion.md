@@ -16,7 +16,7 @@ new design choices exposed by validation are reported, not silently substituted.
 | --- | --- | --- | --- |
 | 1 | `rolling_travel` | Dragon R1; Thor; six additional repositories | integrated |
 | 2 | `rolling_angle` | Prusa3-vanilla; Kossel; four additional repositories | integrated |
-| 3 | `pulley_pitch_radius` | Thor; Open Robot Actuator | active |
+| 3 | `pulley_pitch_radius` | Thor; Open Robot Actuator; five additional repositories | validated, archived for local integration |
 | 4 | `belt_tangent_points` | Thor; Prusa3-vanilla | queued |
 | 5 | `belt_path_metrics` | Thor; Prusa3-vanilla | queued |
 | 6 | `belt_pulley_angle` | Metamaquina2; Prusa3-vanilla; Kossel | queued |
@@ -49,14 +49,14 @@ initial observed dependency, not a frozen framework checkout for every later
 consumer run. The mechanics content and all consumer commits are exact; future
 cycles record dependency heads around their checks to expose such drift.
 
-## Project findings outside helper scope
-
 Cycle 2 integration: mechanics `3ac3767e73efd810ffbc25b5f48cefd6cc745d93`
 is on main. All six exact consumer commits in its archived validation were
 fast-forwarded to their unchanged original master/main/declarative-api branches.
 Every project imports the merged primary package. Post-merge checks passed:
 46 package tests, 24 subtests and three strict baseline specs. The clean helper
 worktree was removed, branch retained; nothing pushed or published.
+
+## Project findings outside helper scope
 
 - Kossel: inverse-rolling review found the vertical belt anchor using the
   copied X-axis span projection. Existing wheel/mesh checks miss the resulting

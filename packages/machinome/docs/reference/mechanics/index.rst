@@ -43,6 +43,8 @@ for numeric, symbolic and invalid-input behaviour.
      - Tangent travel at a constant pitch/contact radius.
    * - :py:func:`rolling_angle`
      - Unwrapped rotation from tangent travel at a constant radius.
+   * - :py:func:`pulley_pitch_radius`
+     - Pulley pitch radius from tooth count and linear pitch.
 
 .. toctree::
    :maxdepth: 1
@@ -53,3 +55,4 @@ for numeric, symbolic and invalid-input behaviour.
    deltas
    linkages
    rolling
+   belts

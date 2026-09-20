@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0
 
+- Add `pulley_pitch_radius` for GT2, AT3 and fitted linear belt pitches.
+
 - Add `rolling_angle` for unwrapped pulley, idler and drum rotation from travel.
 
 - Add `rolling_travel` for rack, belt and constant-radius drum displacement.

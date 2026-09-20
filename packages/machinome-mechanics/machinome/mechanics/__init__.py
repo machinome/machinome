@@ -53,6 +53,7 @@ The re-exports are eager: the formulas use `machinome.math` and lightweight
 standard-library constants, so there is nothing heavy to defer.
 """
 
+from machinome_mechanics.belts import pulley_pitch_radius
 from machinome_mechanics.cranks import (crank_pin, crank_rod_angle,
                                          piston_height)
 from machinome_mechanics.deltas import delta_carriage, delta_rod
@@ -69,4 +70,5 @@ __all__ = [
     'delta_carriage', 'delta_rod',
     'circle_intersection', 'triangle_angle', 'link_rise',
     'rolling_travel', 'rolling_angle',
+    'pulley_pitch_radius',
 ]
