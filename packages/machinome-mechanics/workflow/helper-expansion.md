@@ -44,9 +44,9 @@ new design choices exposed by validation are reported, not silently substituted.
 | 8 | `four_bar_pose` | Dragon R1; Strandbeest | integrated |
 | 9 | `cycloidal_ratio` | CycloidalDrive; OpenCycloid | integrated |
 | 10 | `harmonic_cam_lift` | Leonardo cam hammer; Deepseek sawmill | integrated |
-| 11 | `internal_mesh_angle` | Thor; OpenTorque | active |
-| 12 | `differential_angles` | Thor; Dragon R1 | queued |
-| 13 | `indexed_advance` | Pascaline-module; Deepseek sawmill | queued |
+| 11 | `internal_mesh_angle` | Thor; OpenTorque | integrated |
+| 12 | `differential_angles` | Thor only; Dragon R1 is not a useful second consumer | skipped before proposal |
+| 13 | `indexed_advance` | Pascaline-module; Deepseek sawmill | active |
 
 Names and consumer selection remain working assumptions until each cycle's
 source inspection confirms its contract. Do not manufacture a second consumer
@@ -171,6 +171,23 @@ full CAD suites remain incomplete at the 768 MiB cap; actual bound-law and
 2,160-point profile comparisons, partial CAD, build and two fresh images passed.
 Sawmill exact feed 5/5 and root 10/10, build/image passed. All limits and parent
 review are retained in the archive. No push/publication or user-file changes.
+
+Cycle 11 integration: mechanics `44f9e6493b7826fd4a57bbe1adaf66626e206143`
+is on main. Thor `097ffd94e6f42f1a30528b2137f46a336e855650` and OpenTorque
+`98208070b4c623d647e75b18dfd4fd2e6fb763f8` are on their original main/master
+branches. Post-merge 184 tests, 24 subtests and three strict baseline specs
+passed. Both ordinary consumer imports resolve to the merged primary package
+in sequential capped units. Clean helper worktree removed, branch retained.
+Parent independently verified actual numeric/deferred laws, Thor's retained
+focused runner and both consumers' images. Thor's broad CAD suite is not
+recertified; limits and corrected runner evidence are explicit in the archive.
+No pushes/publication; user files preserved.
+
+Candidate 12 is skipped before proposal: the broader source audit and parent
+review in `helper-candidate-review.md` found no useful second consumer for
+differential_angles. Dragon's mirrored child-local coordinates do not duplicate
+Thor's common-frame sum/difference law. No speculative API or empty archived
+cycle is created. Candidate 13 qualified on repeated real turn accounting.
 
 ## Project findings outside helper scope
 
