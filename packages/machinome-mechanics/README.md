@@ -36,7 +36,7 @@ For now, supply both local repositories, using a framework checkout that
 contains the new extra:
 
 ```sh
-python -m pip install -e '/path/to/machinome-framework[mechanics]' -e /path/to/machinome-mechanics
+python -m pip install -e '/path/to/machinome[mechanics]' -e /path/to/machinome-mechanics
 ```
 
 The extra selects a package to install; helpers still use the
