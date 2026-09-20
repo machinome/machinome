@@ -85,7 +85,7 @@ motion coordinates and relation evaluation.
 
 | Module | Helpers |
 | --- | --- |
-| `gears` | `meshed_angle`, `driving_angle`, `cycloidal_ratio` |
+| `gears` | `meshed_angle`, `driving_angle`, `cycloidal_ratio`, `internal_mesh_angle` |
 | `screws` | `screw_travel`, `screw_angle` |
 | `cranks` | `crank_pin`, `crank_rod_angle`, `piston_height` |
 | `cams` | `harmonic_cam_lift` |

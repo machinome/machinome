@@ -4,7 +4,8 @@ Gears
 Calculate the angular registration of an **external spur-gear pair**.
 The driven gear counter-rotates at the tooth-count ratio, with its teeth
 registered to the driver's gaps. A separate cycloidal helper gives the
-signed disk/output ratio for a fixed ring. These functions describe existing
+signed disk/output ratio for a fixed ring; an internal-mesh helper relates
+ring, carrier and pinion increments. These functions describe existing
 gear geometry; they do not generate profiles or choose a centre distance.
 
 Import from ``machinome_mechanics`` or ``machinome_mechanics.gears``.
@@ -163,3 +164,53 @@ arithmetic; equal nonzero counts return zero without certifying a realizable
 reducer. Zero numeric lobes raise ``ZeroDivisionError``. Supported deferred
 counts use the same subtraction/division. No moving-ring train, profile
 compatibility, backlash, tooth contact or torque model is supplied.
+
+Internal ring and pinion increments
+----------------------------------------
+
+.. py:function:: internal_mesh_angle(ring_angle, ring_teeth, pinion_teeth, carrier_angle=0.0)
+
+   Return the pinion's common-frame angular increment for an internal mesh.
+
+   :param ring_angle: Ring increment in signed unwrapped degrees.
+   :param ring_teeth: Number of internal ring teeth.
+   :param pinion_teeth: Number of external pinion teeth inside that ring.
+   :param carrier_angle: Increment of the line joining their centers, in degrees.
+   :returns: ``carrier_angle + (ring_teeth/pinion_teeth)*(ring_angle-carrier_angle)``.
+
+All angles are increments from an already registered pose, measured about the
+same positive axis in a common nonrotating frame. Ring and pinion turn in the
+same sense **relative to the carrier**. Subtract the carrier increment for a
+pinion authored as a child of the moving carrier. Reference tooth phases and
+local-axis mounting signs remain with the project. Unlike :py:func:`meshed_angle`,
+this helper does not register teeth against gaps.
+
+.. doctest::
+
+   >>> from machinome_mechanics import internal_mesh_angle
+   >>> internal_mesh_angle(30, 60, 10)
+   180.0
+   >>> internal_mesh_angle(-720, 60, 10)
+   -4320.0
+   >>> round(internal_mesh_angle(0, 126, 54, 45), 6)
+   -60.0
+   >>> round(internal_mesh_angle(0, 126, 54, 45) - 45, 6)
+   -105.0
+   >>> internal_mesh_angle(20, 60, 10, 20)
+   20.0
+   >>> internal_mesh_angle(0, 60, 0)
+   Traceback (most recent call last):
+       ...
+   ZeroDivisionError: division by zero
+
+Thor uses a moving 60-tooth ring and fixed centers for its 10-tooth pinions,
+applying four measured local mounting signs separately. OpenTorque has a fixed
+126-tooth ring and 54-tooth planets: one sun turn advances its carrier 45 degrees,
+so the planet turns -60 in the common frame, or -105 relative to that carrier.
+The three orbit laws and source mounting phases remain project-owned.
+
+Physical counts are positive integers with ring greater than pinion. Counts
+are not coerced, rounded or validated; zero numeric pinion count raises and
+other nonphysical inputs retain algebraic behavior without a geometry claim.
+Both angles and counts support deferred arithmetic. There is no angle wrapping,
+profile generation, automatic registration, backlash or contact certification.

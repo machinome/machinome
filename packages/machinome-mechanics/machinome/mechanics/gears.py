@@ -2,7 +2,7 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""External spur-gear registration and fixed-ring cycloidal ratios.
+"""External registration, internal mesh increments and cycloidal ratios.
 
 A pair is meshed when a tooth of the driven gear points into a gap of
 the driver along the line joining their centres. Turn the driver away
@@ -109,3 +109,25 @@ def cycloidal_ratio(lobes, pins):
     to -1/20 while their eccentric centers still orbit one-to-one.
     """
     return -(pins - lobes) / lobes
+
+
+def internal_mesh_angle(ring_angle, ring_teeth, pinion_teeth, carrier_angle=0.0):
+    """Return the common-frame pinion increment for an internal ring mesh.
+
+    Angles are signed, unwrapped degrees from a caller-registered pose,
+    about the same positive axis in a common nonrotating frame. The
+    pinion and ring turn in the same sense relative to the carrier.
+    Subtract ``carrier_angle`` from the result for child-local spin.
+    Tooth phases, source placements and mounting signs remain caller-owned;
+    this is not the registration law supplied by ``meshed_angle``.
+
+    Physical tooth counts are positive integers with ring > pinion.
+    Arithmetic is neither coerced nor validated; numeric zero pinion teeth
+    raise ZeroDivisionError. Numeric and supported deferred values share
+    the same formula, with no wrapping or geometry certification.
+
+    Thor uses (60,10) with fixed centers and local mounting signs.
+    OpenTorque uses (126,54), a fixed ring and moving carrier; its local
+    planet spin is this common-frame increment minus the carrier increment.
+    """
+    return carrier_angle + (ring_teeth / pinion_teeth) * (ring_angle - carrier_angle)

@@ -59,7 +59,8 @@ from machinome_mechanics.cranks import (crank_pin, crank_rod_angle,
                                          piston_height)
 from machinome_mechanics.cams import harmonic_cam_lift
 from machinome_mechanics.deltas import delta_carriage, delta_rod
-from machinome_mechanics.gears import cycloidal_ratio, driving_angle, meshed_angle
+from machinome_mechanics.gears import (cycloidal_ratio, driving_angle,
+                                      internal_mesh_angle, meshed_angle)
 from machinome_mechanics.linkages import (circle_intersection, four_bar_pose, link_rise,
                                            triangle_angle, two_link_angles)
 from machinome_mechanics.screws import screw_angle, screw_travel
@@ -80,4 +81,5 @@ __all__ = [
     'four_bar_pose',
     'cycloidal_ratio',
     'harmonic_cam_lift',
+    'internal_mesh_angle',
 ]
