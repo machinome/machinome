@@ -31,6 +31,10 @@ test-results/
 # Independent machinome-viewer repository: the AGPL browser viewer the
 # framework installs as its [viewer] extra; its own Git history.
 /machinome-viewer
+# Independent machinome.org repository: the public website for the whole
+# ecosystem, founded from the editorial spine and design proposal that
+# used to live in docs/site; its own Git history.
+/machinome.org
 WTs/
 .env
 /projects
