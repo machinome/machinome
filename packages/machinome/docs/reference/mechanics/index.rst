@@ -47,6 +47,8 @@ for numeric, symbolic and invalid-input behaviour.
      - Pulley pitch radius from tooth count and linear pitch.
    * - :py:func:`belt_tangent_points`
      - Directed contact points for an outer or inner belt tangent.
+   * - :py:func:`belt_path_metrics`
+     - Closed pitch path spans, wraps, arc lengths and stations.
 
 .. toctree::
    :maxdepth: 1

@@ -8,7 +8,7 @@ are not pulley tooth-tip or flank surfaces: those offsets belong to callers.
 
 from math import pi
 
-from machinome.math import sqrt
+from machinome.math import atan2, floor, sqrt
 
 
 def pulley_pitch_radius(teeth, pitch):
@@ -45,6 +45,13 @@ def belt_tangent_points(centre_a, radius_a, centre_b, radius_b, sense_a=1, sense
     Thor and Prusa3-vanilla map their own belt-back turn markers to these
     explicit senses; this helper neither reads circles nor generates a belt.
     """
+    points, _, _ = _tangent_geometry(centre_a, radius_a, centre_b, radius_b,
+                                     sense_a, sense_b)
+    return points
+
+
+def _tangent_geometry(centre_a, radius_a, centre_b, radius_b, sense_a, sense_b):
+    """Contacts, unit normal and span length, including limiting tangency."""
     dx, dy = centre_b[0] - centre_a[0], centre_b[1] - centre_a[1]
     separation_squared = dx * dx + dy * dy
     reach_a, reach_b = sense_a * radius_a, sense_b * radius_b
@@ -52,7 +59,63 @@ def belt_tangent_points(centre_a, radius_a, centre_b, radius_b, sense_a=1, sense
     height = sqrt(separation_squared - difference * difference)
     normal_x = (dx * difference - dy * height) / separation_squared
     normal_y = (dy * difference + dx * height) / separation_squared
-    return ((centre_a[0] + reach_a * normal_x,
-             centre_a[1] + reach_a * normal_y),
-            (centre_b[0] + reach_b * normal_x,
-             centre_b[1] + reach_b * normal_y))
+    points = ((centre_a[0] + reach_a * normal_x,
+               centre_a[1] + reach_a * normal_y),
+              (centre_b[0] + reach_b * normal_x,
+               centre_b[1] + reach_b * normal_y))
+    return points, (normal_x, normal_y), height
+
+
+def belt_path_metrics(centres, radii, senses=None):
+    """Measure an ordered closed pitch path in the caller's XY plane.
+
+    Centers/radii share one length unit; senses are literal +1 clockwise,
+    -1 counterclockwise, default all +1, as in belt_tangent_points. Return
+    a dict with tuple fields: spans[i] is (start_xy, unit_direction_xy,
+    length) leaving circle i; wrap_angles (degrees in [0,360)) and
+    arc_lengths are circle-indexed; stations are starts of span0, arc1,
+    span1, ..., arc0. Scalar length is their total. Distance zero is the
+    departure from circle 0; coincident directions mean zero wrap.
+
+    At least two circles and matching sequence lengths are required.
+    Tangent domain errors propagate unchanged. Zero radii and limiting
+    zero-length spans retain a defined direction. Supported raw deferred
+    coordinates/radii use the same formula; topology and senses are static.
+
+    Prusa and Hangprinter rotate arc_lengths by one entry for their
+    after-span arc indexing. Their turn strings, pitch fits and mounting
+    frames are not interpreted here; neither is Thor's legacy full-turn
+    policy at coincident contacts. No route discovery or belt mesh is done.
+    """
+    count = len(centres)
+    if count < 2:
+        raise ValueError('a closed belt path requires at least two circles')
+    if senses is None:
+        senses = (1,) * count
+    if len(radii) != count or len(senses) != count:
+        raise ValueError('centres, radii and senses must have the same length')
+    spans, normals = [], []
+    for i in range(count):
+        j = (i + 1) % count
+        points, normal, length = _tangent_geometry(
+            centres[i], radii[i], centres[j], radii[j], senses[i], senses[j])
+        spans.append((points[0], (normal[1], -normal[0]), length))
+        normals.append(normal)
+    wraps, arcs = [], []
+    for i, sense in enumerate(senses):
+        arrival = atan2(sense * normals[i-1][1], sense * normals[i-1][0])
+        departure = atan2(sense * normals[i][1], sense * normals[i][0])
+        angle = sense * (arrival - departure)
+        angle = angle - 360 * floor(angle / 360)
+        # Tiny negative roundoff can make the first reduction round to 360.
+        # Reduce once more to keep the half-open interval, without an epsilon
+        # deadband or a numeric-only branch that would diverge under a driver.
+        angle = angle - 360 * floor(angle / 360)
+        wraps.append(angle)
+        arcs.append(radii[i] * angle * (pi / 180))
+    stations, at = [], 0
+    for i, span in enumerate(spans):
+        stations.extend((at, at + span[2]))
+        at = at + span[2] + arcs[(i+1) % count]
+    return dict(spans=tuple(spans), wrap_angles=tuple(wraps),
+                arc_lengths=tuple(arcs), stations=tuple(stations), length=at)

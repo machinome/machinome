@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0
 
+- Add `belt_path_metrics` for closed directed pitch paths and belt stations.
+
 - Add `belt_tangent_points` for directed outer and inner belt contacts.
 
 - Add `pulley_pitch_radius` for GT2, AT3 and fitted linear belt pitches.

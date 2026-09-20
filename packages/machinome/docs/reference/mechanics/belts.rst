@@ -84,3 +84,53 @@ surface of a plain idler. Use one length unit consistently.
    (8.5, -2.598076)
    >>> belt_tangent_points((10, 0), 2, (0, 0), 2, -1, -1)
    ((10.0, 2.0), (0.0, 2.0))
+
+.. py:function:: belt_path_metrics(centres, radii, senses=None)
+
+   Measure a closed pitch path through ordered circles in the caller's XY
+   plane. Pass parallel sequences of centers, nonnegative radii and literal
+   senses (+1 clockwise, -1 counterclockwise); omitted senses are all +1.
+   Centers and radii use one length unit. There must be at least two circles
+   and all sequence lengths must match, otherwise ``ValueError`` is raised.
+   Consecutive circles, including last to first, use the same tangent branch
+   and geometric domain as :py:func:`belt_tangent_points`.
+
+   The result is an ordinary dictionary. All sequence fields are tuples:
+
+   * ``spans[i]`` is ``(start_xy, unit_direction_xy, length)`` leaving circle i.
+   * ``wrap_angles[i]`` is the arrival-to-departure wrap about circle i in
+     degrees, following its chosen sense, reduced to [0,360).
+   * ``arc_lengths[i]`` is ``radii[i] * wrap_angles[i] * pi/180``.
+   * ``stations`` gives the starts of the 2N traversal elements, ordered
+     span 0, arc about circle 1, span 1, ..., arc about circle 0.
+   * ``length`` is the total of all straight spans and circular arcs.
+
+   Distance zero is departure from circle 0, not its arrival. In particular,
+   the first arc in traversal is ``arc_lengths[1]``. Prusa and Hangprinter
+   rotate the circle-indexed arc tuple when adapting their after-span lists.
+
+   Coincident tangent directions give zero wrap, not a full turn. A zero
+   radius gives zero arc length; zero-radius circles and limiting zero-length
+   spans still have defined directions. Invalid geometry propagates its
+   square-root or division error. Supported raw deferred coordinates/radii
+   retain the same formula; topology and senses are static. No declared
+   dimension-token or arbitrary symbolic-engine contract is added.
+
+   This measures the route supplied; it does not choose routing, check
+   self-intersections, generate a mesh, fit tooth count or add mounting phase.
+   Project turn markers and Thor's legacy full-turn-at-zero policy remain
+   adapter responsibilities.
+
+.. doctest::
+
+   >>> from machinome_mechanics import belt_path_metrics
+   >>> path = belt_path_metrics(((0, 0), (10, 0)), (2, 2))
+   >>> path['wrap_angles']
+   (180.0, 180.0)
+   >>> tuple(round(s, 6) for s in path['stations'])
+   (0, 10.0, 16.283185, 26.283185)
+   >>> round(path['length'], 6)
+   32.566371
+   >>> straight_idler = belt_path_metrics(((0, 0), (10, 0), (20, 0)), (2, 2, 2))
+   >>> straight_idler['wrap_angles']
+   (180.0, 0.0, 180.0)
