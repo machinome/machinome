@@ -687,6 +687,7 @@ _RELATIONS_KEY = '__machinome_relations__'
 #: The committing relations one class body states, kept the same way and
 #: for the same reason (OpenSpec change ``declare-the-state``).
 _COMMITMENTS_KEY = '__machinome_commitments__'
+_CONSTRAINTS_KEY = '__machinome_constraints__'
 
 
 class _DeclaringNamespace(dict):
@@ -703,6 +704,7 @@ class _DeclaringNamespace(dict):
         super().__setitem__(_BODY_KEY, _BODY)
         super().__setitem__(_RELATIONS_KEY, [])
         super().__setitem__(_COMMITMENTS_KEY, [])
+        super().__setitem__(_CONSTRAINTS_KEY, [])
 
     def __setitem__(self, key, value):
         shadowed = self.get(key)
@@ -796,6 +798,16 @@ def record_relation(relation):
     return relation
 
 
+def record_constraint(constraint):
+    """Record an additive installed limit in the executing class body."""
+    namespace = executing_body()
+    if namespace is None:
+        raise TypeError(f'{constraint.described()}: constrain is declared '
+                        'in an assembly class body, not on an instance')
+    namespace[_CONSTRAINTS_KEY].append(constraint)
+    return constraint
+
+
 def record_commitment(commitment):
     """Record `commitment` on the class body that is executing.
 
@@ -855,7 +867,22 @@ class NodeMeta(type):
         namespace.pop(_BODY_KEY, None)
         relations = namespace.pop(_RELATIONS_KEY, None)
         commitments = namespace.pop(_COMMITMENTS_KEY, None)
+        constraints = namespace.pop(_CONSTRAINTS_KEY, ())
         cls = super().__new__(mcs, name, bases, namespace, **kwargs)
+        inherited = []
+        for base in reversed(cls.__mro__[1:]):
+            inherited.extend(base.__dict__.get('_own_constraints', ()))
+        if constraints or inherited:
+            from machinome.node.assembly import AssemblyNode
+
+            if not issubclass(cls, AssemblyNode):
+                raise TypeError(f'{name}: constraints require an assembly')
+            for constraint in inherited:
+                constraint.check_declared_on(cls, inherited=True)
+            for constraint in constraints:
+                constraint.check_declared_on(cls)
+            cls._own_constraints = tuple(constraints)
+            cls._declared_constraints = tuple(inherited) + tuple(constraints)
         if relations:
             # A local import, taken only by a class that carries
             # relations, exactly as `Time.__set_name__` reaches

@@ -97,6 +97,7 @@ def _run_phase(assembly, render, enumeration):
     _sweep(assembly)
     children = _rest(assembly, render)
     assembly._link_children(_linked(children))
+    enumeration.constraints.extend(assembly.__dict__.get('_ancestor_constraints', ()))
     phase = _phase.push(assembly, _phase.SIMULATE)
     try:
         clear_solved(assembly)
@@ -132,6 +133,8 @@ def _finish_enumeration(enumeration):
     run_deferred(enumeration)
     refuse_reads(enumeration)
     refuse_bounds(enumeration)
+    for constraint in enumeration.constraints:
+        constraint.check()
 
 
 def _lifecycle_render(render):

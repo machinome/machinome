@@ -3477,6 +3477,14 @@ def _compiled_spans(root, inputs, coordinates, authority=_THE_RUN):
             if name not in joint.coordinates:
                 continue
             span = joint.arguments(node)[2]
+            installed = node.__dict__.get('_range_constraints', {}).get(name, ())
+            if installed:
+                sides, contributed_reads = _contributed_span(
+                    root, bank, identifier, node, joint, span, installed,
+                    authority)
+                found.append((identifier, sides[0], sides[1], joint.unit))
+                reads.update(contributed_reads)
+                break
             if span is not None:
                 sides = []
                 for index, side in ((0, 'lower'), (1, 'upper')):
@@ -3496,6 +3504,52 @@ def _compiled_spans(root, inputs, coordinates, authority=_THE_RUN):
                 found.append((identifier, sides[0], sides[1], joint.unit))
             break
     return tuple(found), reads
+
+
+def _contributed_span(root, bank, identifier, node, joint, original, installed,
+                      authority):
+    """Intersect independently checked scopes into the existing wire shape.
+
+    This path is entered only for a joint with installed constraints. The
+    original declaration and every contribution retain their own bound reader;
+    a tighter valid bound must not hide an invalid contribution.
+    """
+    from machinome.math import min as lesser, max as greater
+    from machinome.motion.joints import Bound, JointRangeError
+
+    contributions = ([(joint, original)] if original is not None else [])
+    contributions.extend((record, record.span) for record in installed)
+    sides, all_reads = [], {}
+    for index, side in ((0, 'lower'), (1, 'upper')):
+        combined, read_ids = None, []
+        has_reads = False
+        for reader, span in contributions:
+            bound = span[index]
+            if isinstance(bound, Bound):
+                qualified = _qualified_reads(
+                    root, bank, bound, node, reader, side, identifier, authority)
+                has_reads = True
+                for read_id in qualified:
+                    if read_id == identifier:
+                        raise UnsupportedLaw(f'{identifier}: constraint reads '
+                                             'its OWN coordinate')
+                    if read_id not in read_ids:
+                        read_ids.append(read_id)
+                compiled = _compiled_bound(
+                    bound, identifier, node, reader, side, qualified)
+            else:
+                compiled = _compiled_bound(bound, identifier, node, reader, side)
+            if compiled is not None:
+                combined = (compiled if combined is None else
+                            (greater if index == 0 else lesser)(combined, compiled))
+        sides.append(combined)
+        if has_reads:
+            all_reads[(identifier, 'low' if index == 0 else 'high')] = tuple(read_ids)
+    low, high = sides
+    if isinstance(low, (int, float)) and isinstance(high, (int, float)) and low > high:
+        raise JointRangeError(f'{identifier}: constraint intersection '
+                              f'({low}, {high}) is empty')
+    return tuple(sides), all_reads
 
 
 def _qualified_reads(root, bank, bound, node, joint, side, identifier,

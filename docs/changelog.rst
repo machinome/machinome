@@ -59,6 +59,10 @@ one description that can be built, operated and tested.
 * **Independent mechanics:** the twelve formula helpers move from
   ``machinome.mechanisms`` to ``machinome_mechanics`` in the independent
   0.1.0 package, installed through ``machinome[mechanics]``.
+* **Installed joint constraints:** an assembly can state
+  ``joint_path.constrain(range=(lo, hi))`` on an existing scalar descendant.
+  Scoped contributions intersect with its original stops without changing
+  the tree, joint placement, retained state or viewer document format.
 * **Installation:** bound ``ocp-gordon`` below 0.3 so build123d 0.10
   remains compatible with the shared OCP 7.8 runtime in a fresh install.
 * **Documentation:** the original part → assembly → animation → fit-test

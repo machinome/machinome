@@ -114,7 +114,7 @@ class Enumeration:
     the pass.
     """
 
-    __slots__ = ('deferred', 'reads', 'bounds')
+    __slots__ = ('deferred', 'reads', 'bounds', 'constraints')
 
     def __init__(self):
         self.deferred = []
@@ -123,6 +123,7 @@ class Enumeration:
         # judged at the close of this pass rather than at the moment of
         # binding (`couplings.refuse_bounds`).
         self.bounds = []
+        self.constraints = []
 
 
 _enumerations = []

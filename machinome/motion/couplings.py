@@ -266,6 +266,13 @@ class CoordinateRef:
     def drives(self, other, ratio=None, offset=None, law=None):
         return relate(self, other, ratio, offset, law)
 
+    def constrain(self, *, range):
+        """Add an installed limit without redeclaring a descendant joint."""
+        from .constraints import Constraint
+        from machinome.node.declarative import record_constraint
+
+        return record_constraint(Constraint(self, range))
+
     def commits(self, targets, at=None, law=None, **rejected):
         """This end, as the source of a committing relation.
 

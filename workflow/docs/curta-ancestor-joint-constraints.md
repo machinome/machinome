@@ -1,6 +1,7 @@
 # Curta: a constraint between existing nested joints
 
-Status: investigated; resulting OpenSpec plan ratified. 2026-09-20.
+Status: implemented and validated; archived in the completion commit. Not
+integrated into framework main. 2026-09-20.
 
 ## Origin and outcome needed
 
@@ -111,3 +112,24 @@ The pilot subsequently approved the complete presented plan: “Ratify—impleme
 validate and archive the cycle” (2026-09-20). Primary remained clean at
 `0ce71cd` on reinspection. This authorizes implementation after the validated
 planning-only commit; no integration or publication is inferred.
+
+## Completed outcome
+
+The ancestor declaration composes with the existing joint range using the
+existing expression/span publication; no executor or viewer format changes.
+Accepted ADR-134 amends ADR-113. Baseline `joints` and `simulation` specs are
+synchronized. The completed cycle and detailed results are in
+`openspec/changes/archive/2026-09-20-ancestor-joint-constraints/`, including
+`evidence.md`.
+
+Curta acceptance is committed at `331081436ed3d4e79890e07843f93f82e2d71f2a`.
+Complete-bell native and published-mesh measurements establish a local 125.32°
+free-side diagnostic stop; retained execution and actual browser pointer motion
+stop there while preserving all 608 descendant paths and 25 controls. Existing
+arithmetic, partial-input replay and reverser-limit regressions pass. This does
+not certify other contact windows or finish the project's operating roadmap.
+
+The cycle is standalone, based on `0ce71cd`, with planning commit `644f5b2`
+and one completion commit. Framework `main` is still the intended integration
+target; archival is not integration authority. The isolated worktree remains
+available until integration is separately authorized and verified.

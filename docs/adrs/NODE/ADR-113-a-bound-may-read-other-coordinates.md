@@ -1,6 +1,6 @@
 # ADR-113: A Bound May Read Other Coordinates — A Constraint Stops What Carries It Outward
 
-**Status:** Accepted
+**Status:** Accepted, amended by ADR-134
 **Date:** 2026-09-14
 **Depends on:**
 - [ADR-108: A range is a physical stop that stops the connected group](./ADR-108-a-range-is-a-physical-stop-that-stops-the-connected-group.md)
@@ -13,6 +13,14 @@
 - [ADR-110: The compiled program is published in the document](../EXPORT/ADR-110-the-compiled-program-is-published-in-the-document.md)
 - [ADR-111: A conformance corpus is the contract between the two runtimes](../EXPORT/ADR-111-a-conformance-corpus-is-the-contract-between-the-two-runtimes.md)
 **OpenSpec change:** `bounds-read-other-coordinates`
+
+## Amendment — 2026-09-20
+
+[ADR-134](ADR-134-ancestors-add-constraints-without-replacing-joints.md)
+admits an ancestor's separately stated constraint on an existing descendant
+joint. Its contributions intersect with the original range rather than
+competing to replace it. The original `Bound` scope and execution meanings
+below remain unchanged; the separately stated form owns its own ancestor scope.
 
 ## Context and Problem Statement
 

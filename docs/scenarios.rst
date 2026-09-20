@@ -669,6 +669,21 @@ clamps or stops.
 Snapshot, restore, reset, record
 --------------------------------
 
+An :ref:`ancestor constraint <ancestor-joint-constraints>` on an existing
+nested joint participates in these same stops. Its own-coordinate argument
+stays frozen at the committed tick start, while ``Bound`` reads follow the
+attempted motion. A moving read cannot overrun a standing target. Relief
+does not resume a blocked request: the old remainder has been discarded and
+another request is needed. For running-time drives, only the pushing
+admission stops; elapsed time and unrelated drives continue.
+
+The effective limits are ordinary published spans on the actual joint paths.
+Adding a different effective limit changes program identity, so a snapshot
+from the old limits is not interchangeable. Under a clocked root the same
+declaration uses the existing affine/piecewise-affine solver and still refuses
+curved constraint levels. No extra proxy input or retained coordinate is
+introduced in either mode.
+
 ``sim.snapshot()`` is a value: the bank, the tick, ``dt``, the active
 commands and the program's identity. ``sim.restore(snapshot)`` puts the
 run back, refusing a snapshot taken over a different machine or a

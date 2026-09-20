@@ -318,6 +318,47 @@ binding says so by name. A callable given as the WHOLE `range`, called
 with the realized declarer and returning two numbers, keeps its own
 meaning: the two forms are told apart by position, not by arity.
 
+.. _ancestor-joint-constraints:
+
+**An installation can constrain an existing descendant joint.** When two
+parts live in separate nested assemblies, their common ancestor can state
+the additional restraint without moving either part or replacing its joint:
+
+.. code-block:: python
+
+    from machinome.motion.joints import Bound
+
+    class Machine(AssemblyNode):
+        drive = DriveAssembly()
+        shafts = ShaftBank()
+
+        drive.crank.turn.constrain(range=(None, Bound(
+            lambda own, phase: 120 + phase, reads=(shafts.ones.turn,))))
+
+The numbers illustrate scope, not a Curta contact law. ``constrain`` needs no
+import and is written in an assembly class body. It targets one explicitly
+named scalar descendant joint, not a whole node, port, input, state, repeated
+broadcast or component of a ``Free`` joint. The joint keeps its owner,
+axis, anchor, placement order, geometry, coordinate path and original range.
+
+Each side accepts ``None``, a finite number, a parameter expression owned by
+this ancestor, an own-coordinate callable, or ``Bound``. A whole-range factory
+and ``(None, None)`` are not accepted here. Reads are checked and resolved in
+the declaring ancestor's subtree; do not repeat the target in ``reads`` since
+it is already the first argument. Duplicate and unused reads are errors.
+
+Every added range **intersects** the original range and other contributions:
+the largest lower limit and smallest upper limit win. Adding ``(-10, 120)``
+to a joint whose own range is ``(0, 90)`` still permits only ``(0, 90)``.
+An empty numeric intersection fails. Inheritance adds contributions; it has
+no remove/replace spelling. An incompatible child override fails rather than
+silently losing a constraint, and separate instances keep separate reads.
+
+Untimed poses are checked when all relations have finished. An unknown read
+defers only its own contribution, not another known stop. Running and clocked
+requests use their existing stop and refusal rules; the declaration adds no
+new solver, coordinate or viewer format. See :doc:`scenarios`.
+
 **A body may have more than one freedom, and the class says how they
 stack.** The joints declared on one class compose in **declaration
 order**, innermost first: the first declared is applied closest to the

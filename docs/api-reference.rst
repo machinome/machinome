@@ -288,6 +288,11 @@ occupies one position in that order like any other. See
 
 .. autofunction:: machinome.motion.joints.declared_joints
 
+An assembly may add a range to an existing scalar descendant with
+``joint_path.constrain(range=(lo, hi))``. Contributions intersect, never
+replace, the joint's original limits. The method needs no import; see
+:ref:`ancestor-joint-constraints` for scope, accepted bounds and refusals.
+
 Couplings
 =============
 

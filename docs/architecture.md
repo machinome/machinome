@@ -586,6 +586,21 @@ defaults to `(0, 0, 0)` for the same reason. All of them resolve
 per instance at realization, from numbers, tokens, derived formulas, or
 a callable of the realized node, and are outside identity.
 
+**An ancestor may add a constraint without replacing the joint** (ADR-134).
+`path.to.joint.constrain(range=(lo, hi))` records additive metadata in an
+assembly class body, targeting an explicit scalar descendant joint. Structural
+values and typed reads belong to the declaring ancestor; the joint's frame,
+owner, order and original range do not change. Inherited declarations stay
+additive and resolve independently per instance, with missing/incompatible
+paths refused. At untimed enumeration close, every known contribution is
+checked independently. The shared running/clocked span compiler validates each
+scoped bound before intersecting lower sides with `max` and upper sides with
+`min`, preserving original and added read scopes. Empty numeric intersections
+fail. The result is an existing-format span and qualified read union; no new
+coordinate, solver branch or viewer field exists. The uncontributed path is
+unchanged. This amends ADR-113's separate-bound rejection by giving multiple
+limits an explicit intersection meaning, not competing replacement authority.
+
 **A joint may also be declared at a DECLARATION SITE** (ADR-098): passed
 as a keyword where a parent declares a child, it is the PARENT's own
 statement about a child it is placing, read in the DECLARING PARENT's

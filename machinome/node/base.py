@@ -767,6 +767,9 @@ class AbstractBaseNode(metaclass=NodeMeta):
         # same reason (OpenSpec change ``declare-the-state``): a target
         # may be a state declared on a child.
         resolve_declared_commitments(self)
+        if getattr(type(self), '_declared_constraints', ()):
+            from machinome.motion.constraints import resolve_constraints
+            resolve_constraints(self)
 
     def check(self):
         """Refuse this instance by raising.
