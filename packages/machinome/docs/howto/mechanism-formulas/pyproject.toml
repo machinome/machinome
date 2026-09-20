@@ -1,0 +1,2 @@
+[tool.machinome]
+model = "slider_crank:Engine"

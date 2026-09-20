@@ -2,6 +2,12 @@
 
 ## Unreleased — 0.1.0
 
+- Add the Sphinx user manual for all twelve helpers, with installation,
+  coordinate conventions, numeric/symbolic examples and Machinome motion laws.
+  Match the framework's Read the Docs theme and include hosting configuration.
+- Move internal extraction, validation and release preparation records to
+  `workflow/`; reserve `docs/` for user documentation.
+
 - Rename the distribution from `solid-node-mechanics` to
   `machinome-mechanics` and the import package from `solid_node_mechanics` to
   `machinome_mechanics` for the Machinome 0.7 transition.

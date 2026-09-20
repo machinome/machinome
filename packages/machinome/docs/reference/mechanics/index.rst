@@ -1,0 +1,50 @@
+Helper reference
+================
+
+Every helper is exported from ``machinome_mechanics``. You can also import
+it from the family module listed on its page. All angles are degrees;
+lengths use one consistent unit per calculation. See :doc:`../conventions`
+for numeric, symbolic and invalid-input behaviour.
+
+.. py:module:: machinome_mechanics
+   :synopsis: Mechanics helpers for Machinome models.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 34 66
+
+   * - Helper
+     - Result
+   * - :py:func:`meshed_angle`
+     - Driven angle for an external spur-gear pair.
+   * - :py:func:`driving_angle`
+     - Driver angle for the same mesh, solved backwards.
+   * - :py:func:`screw_travel`
+     - Axial advance for a screw rotation.
+   * - :py:func:`screw_angle`
+     - Screw rotation for an axial advance.
+   * - :py:func:`crank_pin`
+     - Crank pin's ``(across, along)`` position.
+   * - :py:func:`crank_rod_angle`
+     - Connecting rod's tilt from the cylinder axis.
+   * - :py:func:`piston_height`
+     - Piston small end's coordinate along the cylinder axis.
+   * - :py:func:`delta_carriage`
+     - Carriage joint height for one delta tower.
+   * - :py:func:`delta_rod`
+     - Rod ``(tilt, azimuth)`` for one delta tower.
+   * - :py:func:`circle_intersection`
+     - A chosen intersection of two circles.
+   * - :py:func:`triangle_angle`
+     - Triangle angle from three side lengths.
+   * - :py:func:`link_rise`
+     - Vertical separation from link length and horizontal offset.
+
+.. toctree::
+   :maxdepth: 1
+
+   gears
+   screws
+   cranks
+   deltas
+   linkages

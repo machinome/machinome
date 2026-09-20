@@ -1,5 +1,8 @@
 include CHANGELOG.md
-recursive-include docs *.md
+include .readthedocs.yaml
+recursive-include docs *.rst *.py *.toml *.txt *.css *.svg Makefile
+prune docs/_build
+recursive-include workflow *.md
 recursive-include openspec *.md *.yaml
 recursive-include tests *.py *.toml
 include scripts/check-dist

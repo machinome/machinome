@@ -12,7 +12,7 @@ Preserves the formula contract originally introduced by machinome ADR-076
 (mechanism laws as compositions over expression math), over its ADR-022
 (cross-runtime degree-trig parity) and ADR-062 (typed parameters and the
 exponent algebra). Package ownership follows the accepted extraction recorded
-in `docs/extraction.md`; these ADR numbers refer to the framework's history.
+in `workflow/extraction.md`; these ADR numbers refer to the framework's history.
 
 Code: `machinome_mechanics/`.
 
