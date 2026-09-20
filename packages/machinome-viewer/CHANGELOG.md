@@ -5,6 +5,12 @@ it carries release together and share one version.
 
 ## 0.2.0 — unreleased
 
+- Periodic moving-read stops now identify pushing inputs at the first contact,
+  even when a long request ends in a later free window. Curta's exported
+  lockout reproduction stops the same short and two-revolution requests;
+  unrelated and relieving motion, time admissions and atomic refusals retain
+  their existing behavior. No public API or document-version change.
+
 - Viewer API 23 reads document version 10 and executes explicit running time
   drives. Astrarium's diagnostic mechanism advances without a startup rate
   command, stops and winds while retaining its position, exhausts its declared

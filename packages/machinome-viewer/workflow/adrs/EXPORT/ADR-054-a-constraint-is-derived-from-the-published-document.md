@@ -2,6 +2,10 @@
 
 **Status:** Accepted
 
+**Amended by:** [ADR-069](ADR-069-moving-stops-attribute-push-at-first-contact.md):
+the located contact bracket, not complete-request endpoints, identifies pushing
+admissions. The derived document contract and static-read path are unchanged.
+
 **Date:** 2026-09-14
 
 **Change:** `execute-bounds-reading-other-coordinates`

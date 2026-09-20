@@ -223,10 +223,10 @@ describe('the running corpus', () => {
   it('is the framework\'s own fixture, unedited', () => {
     expect(fixture.generated_by).toBe('tools/generate_running_corpus.py');
     expect(fixture.corpus).toBe('tests/running_project/machine.py');
-    expect(fixture.machines).toHaveLength(22);
-    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(19);
+    expect(fixture.machines).toHaveLength(23);
+    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(20);
     expect(fixture.machines.reduce((total, one) => total + one.ticks.length, 0))
-      .toBe(378);
+      .toBe(381);
   });
 
   fixture.machines.forEach((entry, index) => {
@@ -276,6 +276,7 @@ const REQUIRED = [
   'non-integer play contact',
   'split play requests',
   'play snapshot replay',
+  'a periodic contact before a free endpoint',
 ];
 
 /** Every free name `expression` reads, through the fixture's OWN
@@ -506,9 +507,36 @@ function inBlockNames(edge: GuardEdge, primitive: string,
   return { gates, selectors };
 }
 
+// Mirror the producer's named regression guard. A machine name or floor
+// expression alone is not evidence of an interior obstruction and its replay.
+function periodicContactCovered(entry: CorpusMachine): boolean {
+  if (entry.name !== 'PeriodicStop' || entry.ticks.length !== 3) return false;
+  const moves = entry.script.filter(action => action.move);
+  if (moves.length !== 2 || moves.some(action => {
+    const move = action.move!;
+    return move.input !== 'crank' || move.to !== 840
+      || Object.keys(move).length !== 2;
+  })) return false;
+  if (!entry.script.some(a => a.snapshot === 'before-contact')
+      || !entry.script.some(a => a.restore === 'before-contact')) return false;
+  const [first, restored, second] = entry.ticks;
+  if (restored.bank.crank !== 120 || restored.stops.length) return false;
+  if (JSON.stringify(first.bank) !== JSON.stringify(second.bank)
+      || JSON.stringify(first.stops) !== JSON.stringify(second.stops)) return false;
+  return [first, second].every((tick, index) => {
+    const command = tick.commands.find(c => c.handle === moves[index].handle);
+    return command?.status === 'blocked'
+      && Math.abs(command.admitted - 5.22) <= FLOAT * 5.22
+      && tick.stops.some(stop => stop.coordinate === 'bell.turn'
+        && stop.inputs.length === 1 && stop.inputs[0] === 'crank'
+        && stop.t > 0 && stop.t < 1);
+  });
+}
+
 export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
   const seen = new Set<string>();
   for (const entry of machines) {
+    if (periodicContactCovered(entry)) seen.add('a periodic contact before a free endpoint');
     const document = entry.document as {
       program?: {
         coordinates?: Record<string, { initial?: number }>;
@@ -711,6 +739,20 @@ export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
 }
 
 describe('the corpus\'s width', () => {
+  it('requires the periodic contact, its blocked outcome and actual replay', () => {
+    for (const damage of ['missing', 'restore', 'stops', 'status', 'target']) {
+      let entries = structuredClone(fixture.machines);
+      const entry = entries.find(one => one.name === 'PeriodicStop')!;
+      if (damage === 'missing') entries = entries.filter(one => one !== entry);
+      else if (damage === 'restore') entry.script = entry.script.filter(a => !a.restore);
+      else if (damage === 'stops') entry.ticks[0].stops = [];
+      else if (damage === 'status') entry.ticks[0].commands[0].status = 'completed';
+      else entry.script.find(a => a.move)!.move!.to = 150;
+      expect(uncoveredFeatures(entries), damage)
+        .toContain('a periodic contact before a free endpoint');
+    }
+  });
+
   it('exercises every feature the producer\'s generator requires', () => {
     expect(uncoveredFeatures(fixture.machines)).toEqual([]);
   });

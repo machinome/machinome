@@ -1792,7 +1792,10 @@ otherwise.
 
 The GROUP such a stop stops SHALL be every candidate of that bound with
 a nonzero admission whose admission ALONE, over the sub-program, raises
-the constraint level from the start of the stretch to its end. An input
+the constraint level from the inside to the outside end of the located
+contact bracket. Both sightings SHALL replay from the original stretch origin,
+with the own-coordinate argument frozen at tick start. A later free endpoint
+SHALL NOT erase the push at the first contact. An input
 moving the bounded coordinate against the bound SHALL therefore be
 stopped; an input moving a read so as to make a STANDING position
 invalid SHALL be stopped where the bound becomes active, and the
@@ -1936,6 +1939,15 @@ the inputs blocked for a stop.
   bank as every other value of that step, a conflict between two routes
   is judged by the same agreement window, and a step that fails commits
   none of them
+
+#### Scenario: A later free revolution does not erase first contact
+
+- **WHEN** a requested crank movement meets a periodic moving-read stop before
+  returning to equal or lower constraint level at its final endpoint
+- **THEN** it stops at the first located contact and reports blocked with only
+  admitted travel, leaving independent, relieving and disengaged inputs free
+- **AND** retry, relief and snapshot replay preserve that stopped state without
+  remembering the rejected remainder
 
 ### Requirement: A program the viewer cannot execute is refused by name
 
@@ -2294,6 +2306,13 @@ directly, rather than inferring it from the width above.
   determining law carries no jump plan and whose expression calls a
   continuous selection
 - **THEN** the suite fails naming the feature no longer covered
+
+#### Scenario: Periodic first-contact coverage cannot disappear
+
+- **WHEN** the corpus lacks a long periodic request with an actual blocked stop
+  before a free endpoint, or lacks its snapshot/restore replay
+- **THEN** the coverage assertion fails naming periodic first contact
+- **AND** the old endpoint-only attribution fails the intact corpus scenario
 
 ### Requirement: A maker presses and turns the part itself
 

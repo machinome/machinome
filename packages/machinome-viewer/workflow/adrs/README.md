@@ -60,7 +60,7 @@ both repositories. Consequences:
 - [ADR-050](EXPORT/ADR-050-the-navigator-is-a-component-of-the-viewer.md) — The assembly navigator is a component of the viewer package — **Accepted**, amends 042
 - [ADR-051](EXPORT/ADR-051-the-bundle-ships-an-inspector-layout.md) — The bundle ships an inspector layout, and the page selects it — **Accepted**, extends 050
 - [ADR-053](EXPORT/ADR-053-a-pick-is-bound-to-a-declared-control.md) — A pick is bound to a declared control, and the part follows commits — **Accepted**, extends 048, consumes solid-node ADR-112
-- [ADR-054](EXPORT/ADR-054-a-constraint-is-derived-from-the-published-document.md) — A constraint is derived from the published document, never published — **Accepted**, extends 045 and 047, consumes solid-node ADR-113
+- [ADR-054](EXPORT/ADR-054-a-constraint-is-derived-from-the-published-document.md) — A constraint is derived from the published document, never published — **Accepted**, amended by 069, extends 045 and 047, consumes solid-node ADR-113
 - [ADR-056](EXPORT/ADR-056-a-marking-is-a-decal-in-the-parts-own-group.md) — A marking is a decal mesh in the part's own group, and the bias over the surface is the viewer's — **Accepted**, extends 035, consumes solid-node ADR-120
 - [ADR-057](EXPORT/ADR-057-a-self-read-edge-is-executed-from-the-retained-value.md) — A self-read edge is executed from the retained value, piece by piece — **Accepted**, extends 045 and 047, builds on 054, consumes solid-node ADR-121
 - [ADR-058](EXPORT/ADR-058-a-block-is-ordered-per-piece-from-the-published-edges.md) — A block is ordered per piece from the published edges — **Accepted**, extends 045 and 047, builds on 057, consumes solid-node ADR-122
@@ -74,3 +74,4 @@ both repositories. Consequences:
 - [ADR-066](EXPORT/ADR-066-the-viewer-host-contract-adopts-machinome.md) — The viewer host contract adopts Machinome — **Accepted**
 - [ADR-067](EXPORT/ADR-067-a-play-edge-retains-contact-history-in-the-running-bank.md) — A play edge retains contact history in the running bank — **Accepted**, extends 045 and 047, builds on 054, consumes machinome ADR-130
 - [ADR-068](EXPORT/ADR-068-time-drives-admit-independent-motion-without-bank-state.md) — Time drives admit independent motion without bank state — **Accepted**, extends 045 and 047, preserves 067, consumes machinome ADR-133
+- [ADR-069](EXPORT/ADR-069-moving-stops-attribute-push-at-first-contact.md) — Moving stops attribute push at first contact — **Accepted**, amends 054, preserves 047 and 068, consumes machinome ADR-135

@@ -74,10 +74,14 @@ export interface MoveRequest {
 
 /** One bound this stretch reaches: the coordinate, the side, the bound
  * itself -- a NUMBER, or the `Constraint` for a bound that reads other
- * coordinates -- and, for a constraint, the fraction the search already
+ * coordinates -- and, for a constraint, the bracket the search already
  * located, which `eventOf` uses instead of calling `locate`. */
-type Reached = [string, 'low' | 'high', number | Constraint, number | null];
-type Located = [number, string, 'low' | 'high', number | Constraint];
+interface ConstraintContact {
+  readonly inside: number;
+  readonly outside: number;
+}
+type Reached = [string, 'low' | 'high', number | Constraint, ConstraintContact | null];
+type Located = [number, string, 'low' | 'high', number | Constraint, ConstraintContact | null];
 
 type Bounds = [string, number | Constraint | null,
                number | Constraint | null][];
@@ -422,7 +426,7 @@ export class Run {
         this.landed(committed, landings);
 
         const blocked = new Set<string>();
-        for (const [, identifier, side, bound] of event) {
+        for (const [, identifier, side, bound, contact] of event) {
           let value: number;
           let group: string[];
           if (isConstraint(bound)) {
@@ -433,7 +437,7 @@ export class Run {
             // committed state satisfies the bound by construction.
             // Asserted below rather than trusted.
             value = this.constraintBound(bound, committed);
-            group = this.constraintGroup(bound, scaled, values, staged);
+            group = this.constraintGroup(bound, scaled, values, staged, contact!);
           } else {
             // AT the bound, exactly. The localization's own error is
             // absorbed here rather than left to raise later.
@@ -676,7 +680,7 @@ export class Run {
                             held: Record<string, number>,
                             committed: Record<string, number>,
                             values: Record<string, number>,
-                            admissions: Record<string, number>): number | null {
+                            admissions: Record<string, number>): ConstraintContact | null {
     const keys = [constraint.identifier, ...constraint.reads];
     if (keys.every((key) => committed[key] === held[key])) return null;
     return this.searchedConstraint(constraint, held, values, admissions);
@@ -689,12 +693,13 @@ export class Run {
    * `t*` is the INSIDE end of the final bracket -- the last fraction at
    * which the bound is satisfied -- not its midpoint: a bound that reads
    * other coordinates carries a comparison in every sighting, and a
-   * level with a jump in it is what the search is for. */
+   * level with a jump in it is what the search is for. Retain the outside
+   * end too: attribution uses this contact, not a later free endpoint. */
   private searchedConstraint(constraint: Constraint,
                              held: Record<string, number>,
                              values: Record<string, number>,
                              admissions: Record<string, number>):
-  number | null {
+  ConstraintContact | null {
     const own = this.bank[constraint.identifier];
     const level = (t: number): number => this.constraintLevel(
       constraint, held, values, admissions, t, own);
@@ -713,7 +718,7 @@ export class Run {
         if (outward(level(middle))) high = middle;
         else low = middle;
       }
-      return low;
+      return { inside: low, outside: high };
     }
     return null;
   }
@@ -790,7 +795,9 @@ export class Run {
 
   /** The inputs a constraint stops: its own candidates -- the inputs
    * reaching the bounded coordinate OR anything it reads -- filtered by
-   * whether their own admission ALONE carries the LEVEL outward.
+   * whether their own admission ALONE carries the LEVEL outward across
+   * the located contact bracket. Replay both sightings from the original
+   * stretch origin, keeping the own argument frozen at tick start.
    *
    * One rule covers both directions: an input moving the bounded
    * coordinate against the constraint is stopped, an input moving a read
@@ -800,7 +807,8 @@ export class Run {
   private constraintGroup(constraint: Constraint,
                           admissions: Record<string, number>,
                           values: Record<string, number>,
-                          held: Record<string, number>): string[] {
+                          held: Record<string, number>,
+                          contact: ConstraintContact): string[] {
     const own = this.bank[constraint.identifier];
     const found: string[] = [];
     for (const candidate of constraint.candidates) {
@@ -808,9 +816,9 @@ export class Run {
       if (!delta) continue;
       const alone = { [candidate]: delta };
       const before = this.constraintLevel(
-        constraint, held, values, alone, 0, own);
+        constraint, held, values, alone, contact.inside, own);
       const after = this.constraintLevel(
-        constraint, held, values, alone, 1, own);
+        constraint, held, values, alone, contact.outside, own);
       if (after - before > 0) found.push(candidate);
     }
     return found;
@@ -828,8 +836,8 @@ export class Run {
         where === null
           ? this.locate(identifier, side, bound as number, held, values,
                         deltas)
-          : where,
-        identifier, side, bound,
+          : where.inside,
+        identifier, side, bound, where,
       ]);
     located.sort((a, b) => (a[0] - b[0])
       || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0)

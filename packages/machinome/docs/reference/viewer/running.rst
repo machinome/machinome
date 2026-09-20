@@ -7,6 +7,11 @@ program (versions 5, 6, 7, 9 or 10). It returns null for posed and clocked model
 The run retains a coordinate bank and advances in fixed ticks, normally in
 a worker. Use the handle as an interface; do not import its internal engine.
 
+A moving-read stop acts at its first located contact, even if a long request
+would end in a later free window. Only admissions pushing at that contact are
+stopped; unrelated or relieving motion continues. Stop search still uses the
+document's finite sampling limits, not a continuous collision solver.
+
 Autonomous retained motion
 ==========================
 
