@@ -42,8 +42,8 @@ new design choices exposed by validation are reported, not silently substituted.
 | 6 | `belt_pulley_angle` | Metamaquina2; Prusa3-vanilla; Kossel | integrated |
 | 7 | `two_link_angles` | ZeroBug; Spiderbot; AlbertPro (BiPed singular-origin exclusion) | integrated |
 | 8 | `four_bar_pose` | Dragon R1; Strandbeest | integrated |
-| 9 | `cycloidal_ratio` | CycloidalDrive; OpenCycloid | active |
-| 10 | `harmonic_cam_lift` | Leonardo cam hammer; Deepseek sawmill | queued |
+| 9 | `cycloidal_ratio` | CycloidalDrive; OpenCycloid | integrated |
+| 10 | `harmonic_cam_lift` | Leonardo cam hammer; Deepseek sawmill | active |
 | 11 | `internal_mesh_angle` | Thor; OpenTorque | queued |
 | 12 | `differential_angles` | Thor; Dragon R1 | queued |
 | 13 | `indexed_advance` | Pascaline-module; Deepseek sawmill | queued |
@@ -150,6 +150,18 @@ terminated the obsolete broad-sweep orphan. Dependency heads remained clean
 at 8d2bd71/4355da1. No push or publication.
 
 ## Project findings outside helper scope
+
+Cycle 9 integration: mechanics `b1b0b1d81bd8399525f0fe1f6f13a26117d4eedb`
+is on main. OpenCycloid `156b845c40c7c973ca4f37a7cc4c44e78e708b97` and
+CycloidalDrive `c8fec93c34e82c0baaa7bce70b9cf19a025646da` are on their
+unchanged original main branches. Post-merge 156 tests, 24 subtests and three
+strict baseline specs passed. Both ordinary consumer imports resolve to the
+merged primary package, checked sequentially in capped process-tree units.
+Clean helper worktree removed, branch retained. CycloidalDrive's full CAD
+suite reaches the 768 MiB cap: faceted behavior reproduced on untouched base;
+no exact baseline rerun is claimed. Actual production-law probes, home
+integrity, build and fresh image review passed. Full limitations live in the
+archive and project record. User screenshots preserved. No push or publication.
 
 - Kossel: inverse-rolling review found the vertical belt anchor using the
   copied X-axis span projection. Existing wheel/mesh checks miss the resulting
