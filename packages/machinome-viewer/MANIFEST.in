@@ -1,6 +1,7 @@
 include LICENSE
 include README.md
 include CHANGELOG.md
+include docs/release-0.2.md
 
 # The frontend travels with its sources so a source distribution can
 # rebuild it, and with its built output so installing needs no npm.

@@ -614,7 +614,7 @@ build reads rather than infer it.
 | machinome-viewer | viewer API | reads document versions |
 | --- | --- | --- |
 | 0.1.0 | 7 | 1, 2, 3, 4 |
-| 0.2.0 | 19 | 1, 2, 3, 4, 5, 6, 7, 8 |
+| 0.2.0 | 22 | 1, 2, 3, 4, 5, 6, 7, 8, 9 |
 
 (13 is skipped: the `slide-and-turn-parts` work claimed it while it was in
 flight, and merged still in progress without taking the number. Nothing
@@ -669,10 +669,11 @@ explicit decision.
 
 ## Status and process
 
-Version 0.1.0 is the viewer exactly as it shipped inside machinome 0.6.0,
+Version 0.1.0 began with the viewer extracted from solid-node 0.6.0,
 relicensed and repackaged; see `CHANGELOG.md`. Neither version is on an
-index yet: 0.1.0 is founded and unpublished, and 0.2.0 is in progress
-here. Behavioural specs live under
+index yet: 0.1.0 is founded and unpublished, and 0.2.0 is prepared for the
+Machinome 0.7 release. See [release preparation](docs/release-0.2.md).
+Behavioural specs live under
 `openspec/specs/`, changes go through `openspec/changes/`, and the decisions
 that shaped the viewer — most of them made while it still lived in the
 framework — are in `docs/adrs/`.
