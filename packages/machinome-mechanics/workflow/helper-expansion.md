@@ -14,8 +14,8 @@ new design choices exposed by validation are reported, not silently substituted.
 
 | Order | Public helper | Empirical consumers to verify | State |
 | --- | --- | --- | --- |
-| 1 | `rolling_travel` | Dragon R1; Thor; six additional repositories | validated, archived for local integration |
-| 2 | `rolling_angle` | Prusa3-vanilla; Kossel | queued |
+| 1 | `rolling_travel` | Dragon R1; Thor; six additional repositories | integrated |
+| 2 | `rolling_angle` | Prusa3-vanilla; Kossel | active |
 | 3 | `pulley_pitch_radius` | Thor; Open Robot Actuator | queued |
 | 4 | `belt_tangent_points` | Thor; Prusa3-vanilla | queued |
 | 5 | `belt_path_metrics` | Thor; Prusa3-vanilla | queued |
@@ -31,3 +31,14 @@ new design choices exposed by validation are reported, not silently substituted.
 Names and consumer selection remain working assumptions until each cycle's
 source inspection confirms its contract. Do not manufacture a second consumer
 or change a project's behavior merely to meet the threshold.
+
+## Integration evidence
+
+`rolling_travel`: mechanics `264d4839db143dc0f4c863c5e75700de8e5c8902`
+is on main. All eight exact consumer commits named in its archived validation
+are verified at the tips of their original branches (main, master, version_4
+or declarative-api as recorded). Each project imports the merged primary
+mechanics package. Post-integration package checks: 38 tests and 24 subtests;
+all three baseline specs validate strictly. The clean helper worktree was
+removed, retaining the branch. Existing screenshots and the unrelated
+user-documentation worktree were preserved. Nothing pushed or published.
