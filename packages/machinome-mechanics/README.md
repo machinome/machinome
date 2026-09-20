@@ -18,9 +18,10 @@ With Python 3.11 or newer, in this checkout:
 python -m pip install .
 ```
 
-This installs machinome if necessary. The required math operations exist in
-machinome 0.6.0. Declarative parameters and the newer motion API are features
-of machinome's unreleased development line, not promises about 0.6.0.
+This requires machinome 0.7.0 or newer. The formulas also passed a historical
+check against solid-node 0.6.0 math, but that differently named package does
+not satisfy this distribution's dependency. Publication of the Machinome
+release set is still pending; see [release preparation](docs/release-0.1.md).
 
 The framework's unreleased `mechanics` extra follows its viewer installation
 pattern. Once both versions are published:
