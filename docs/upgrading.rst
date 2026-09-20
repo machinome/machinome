@@ -32,7 +32,7 @@ There is no ``solid_node`` import shim or ``solid`` command alias.
    * - Environment ``SOLID_NODE_*``
      - ``MACHINOME_*``, including settings in ``.env``
    * - Repository ``LibreSolid/solid-node``
-     - ``machinome/machinome-framework``
+     - ``machinome/machinome``
    * - Documentation ``solid-node.readthedocs.io``
      - ``machinome.readthedocs.io``
    * - Viewer ``solid-node-viewer`` / ``solid_node_viewer``

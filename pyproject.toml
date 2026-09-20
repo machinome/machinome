@@ -97,7 +97,7 @@ studio = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/machinome/machinome-framework"
+Homepage = "https://github.com/machinome/machinome"
 
 [project.scripts]
 machinome = "machinome.cli:manage"

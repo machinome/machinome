@@ -25,7 +25,7 @@ not the requested outcome.
 - Framework base: `main`, clean HEAD
   `b9b64ddaf0bc1d51d715d3d971b77b6ee58880bf`.
 - Isolated branch/worktree: `vault-running-pickup-investigation`,
-  `machinome-framework/WTs/vault-running-pickup-investigation`.
+  `machinome/WTs/vault-running-pickup-investigation`.
 - Prospective integration target: framework `main`; no integration authorized.
 - Scope is standalone, not a sprint. These are pre-spec working records,
   not an implementation cycle or accepted design.
@@ -160,7 +160,7 @@ proposed or authorized by this investigation.
 
 The proposed body is [vault-running-pickup-wart.md](vault-running-pickup-wart.md).
 Target confirmed from the framework remote and public issue page:
-`machinome/machinome-framework`. The public open-issue page shows no matching
+`machinome/machinome`. The public open-issue page shows no matching
 pickup issue; authenticated/all-state duplicate and label checks remain open.
 
 `gh repo view` failed before any write because GitHub CLI is unauthenticated.

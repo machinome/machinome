@@ -58,16 +58,16 @@ browser dependencies.
 
 .. code-block:: bash
 
-    $ python -m pip install /path/to/machinome-framework /path/to/machinome-viewer
+    $ python -m pip install /path/to/machinome /path/to/machinome-viewer
 
 Once the renamed source revisions are available on the public branches,
 obtain those checkouts with:
 
 .. code-block:: bash
 
-    $ git clone https://github.com/machinome/machinome-framework.git
+    $ git clone https://github.com/machinome/machinome.git
     $ git clone https://github.com/machinome/machinome-viewer.git
-    $ python -m pip install ./machinome-framework ./machinome-viewer
+    $ python -m pip install ./machinome ./machinome-viewer
 
 Use the matching source revisions supplied with the release preparation;
 ``main`` can advance after this manual was validated. Record those revisions

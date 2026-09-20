@@ -11,7 +11,7 @@ together.
 This is the continuation of solid-node 0.6.0. The framework and its GitHub
 organisation have been renamed to avoid confusion with Tim Berners-Lee's
 Solid project. Source now lives at
-`machinome/machinome-framework <https://github.com/machinome/machinome-framework>`_,
+`machinome/machinome <https://github.com/machinome/machinome>`_,
 and the distribution, import package and command are all ``machinome``.
 The full history is retained.
 

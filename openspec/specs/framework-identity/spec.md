@@ -7,7 +7,7 @@ TBD - created by archiving change rename-framework-to-machinome. Update Purpose 
 
 The framework distribution SHALL be named `machinome`, its import package
 SHALL be `machinome`, its executable SHALL be `machinome`, and its source
-repository SHALL be `machinome/machinome-framework`. Current product metadata,
+repository SHALL be `machinome/machinome`. Current product metadata,
 documentation, diagnostics, templates and integration contracts SHALL use
 those names.
 
@@ -21,7 +21,7 @@ those names.
 
 - **WHEN** current package metadata or documentation names the source
   repository
-- **THEN** it points to `github.com/machinome/machinome-framework`
+- **THEN** it points to `github.com/machinome/machinome`
 
 ### Requirement: Version 0.7 records the rename lineage
 

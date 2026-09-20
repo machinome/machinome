@@ -9,9 +9,9 @@ the model and the framework's behaviour. A small example and a failing
 test make a useful starting point.
 
 Report issues and discuss changes on the
-`Machinome repository <https://github.com/machinome/machinome-framework>`_.
+`Machinome repository <https://github.com/machinome/machinome>`_.
 See its
-`contribution guide <https://github.com/machinome/machinome-framework/blob/main/CONTRIBUTING.rst>`_
+`contribution guide <https://github.com/machinome/machinome/blob/main/CONTRIBUTING.rst>`_
 before proposing an implementation. The community workflow is an intended
 direction still being exercised by the maintainer, not a claim of an
 established contributor community.

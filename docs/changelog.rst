@@ -13,7 +13,7 @@ one description that can be built, operated and tested.
 
 * **Rename and migration:** distribution/import/command ``machinome``,
   ``[tool.machinome]``, ``MACHINOME_*``, and repository
-  ``machinome/machinome-framework``. There are no old import or command
+  ``machinome/machinome``. There are no old import or command
   aliases. New documents use ``machinome-export``; the matching viewer
   still reads historical ``solid-node-export`` documents.
 * **Declarative machines:** typed parameters, derived dimensions,

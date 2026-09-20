@@ -24,7 +24,7 @@ declared relationships.
 Machinome 0.7 is the clean successor to solid-node 0.6 (ADR-130). The Python
 distribution/import package and command are `machinome`; project manifests use
 `[tool.machinome]`, runtime settings use `MACHINOME_*`, and the source
-repository is `machinome/machinome-framework`. No `solid_node` import or
+repository is `machinome/machinome`. No `solid_node` import or
 `solid` command alias is shipped. Former manifest/environment spellings are
 recognized only to produce migration errors. New serialized documents use the
 `machinome-export` family, while Machinome Viewer retains a reader for the

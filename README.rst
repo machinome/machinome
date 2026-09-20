@@ -84,7 +84,7 @@ Each keeps its design source and licence in its own repository.
 
 * `User manual <https://machinome.readthedocs.io/en/latest/>`_
 * `0.7 release notes <https://machinome.readthedocs.io/en/latest/releases/release-0.7.html>`_
-* `Source repository <https://github.com/machinome/machinome-framework>`_
+* `Source repository <https://github.com/machinome/machinome>`_
 
 The framework is **Apache-2.0**. The optional
 `Machinome Viewer <https://github.com/machinome/machinome-viewer>`_
@@ -132,8 +132,8 @@ example machines):
 
 .. code-block:: bash
 
-    $ git clone --recurse-submodules https://github.com/machinome/machinome-framework.git
-    $ cd machinome-framework
+    $ git clone --recurse-submodules https://github.com/machinome/machinome.git
+    $ cd machinome
 
 Create a virtualenv and install the package in editable mode with the dev
 dependencies:
@@ -270,5 +270,5 @@ Contributing
 ============
 
 Bug reports and pull requests are welcome at
-https://github.com/machinome/machinome-framework — see
+https://github.com/machinome/machinome — see
 `CONTRIBUTING.rst <CONTRIBUTING.rst>`_ and the development discipline above.

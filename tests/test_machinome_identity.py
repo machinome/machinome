@@ -22,7 +22,7 @@ class MachinomeIdentityTest(TestCase):
         self.assertEqual(project['version'], '0.7.0')
         self.assertEqual(project['scripts'], {'machinome': 'machinome.cli:manage'})
         self.assertEqual(project['urls']['Homepage'],
-                         'https://github.com/machinome/machinome-framework')
+                         'https://github.com/machinome/machinome')
         self.assertEqual(project['optional-dependencies']['viewer'],
                          ['machinome-viewer'])
         self.assertEqual(project['optional-dependencies']['mechanics'],
