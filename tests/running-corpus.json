@@ -6,6 +6,277 @@
   },
   "machines": [
     {
+      "name": "PeriodicStop",
+      "dt": 0.1,
+      "steps": 3,
+      "document": {
+        "format": "machinome-export",
+        "version": 5,
+        "drivers": {
+          "crank": {
+            "default": 120,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          },
+          "motor": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(-1 * crank)"
+          }
+        ],
+        "program": {
+          "identity": "9d31fc8c66c2c974c7c047cb4c62dc1c9c290ec6c14279b7819f939b9e75e10f",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 120,
+              "domain": null
+            },
+            "motor": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "bell.turn": {
+              "kind": "coordinate",
+              "initial": -120,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "drum.turn": {
+              "kind": "coordinate",
+              "initial": -120,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "free.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank"
+              ],
+              "gives": [
+                "drum.turn"
+              ],
+              "description": "crank drives drum.turn",
+              "stated_by": "PeriodicStop",
+              "expressions": [
+                "_b0"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "crank"
+              ],
+              "gives": [
+                "bell.turn"
+              ],
+              "description": "crank drives bell.turn",
+              "stated_by": "PeriodicStop",
+              "expressions": [
+                "_b0"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "motor"
+              ],
+              "gives": [
+                "free.turn"
+              ],
+              "description": "motor drives free.turn",
+              "stated_by": "PeriodicStop",
+              "expressions": [
+                "motor"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            }
+          ],
+          "spans": {
+            "bell.turn": {
+              "low": {
+                "expression": "((-360 * floor((((-drum.turn) - 10.8) / 360))) - 125.22)"
+              },
+              "high": null
+            }
+          },
+          "sources": {
+            "bell.turn": [
+              "crank"
+            ],
+            "crank": [
+              "crank"
+            ],
+            "drum.turn": [
+              "crank"
+            ],
+            "free.turn": [
+              "motor"
+            ],
+            "motor": [
+              "motor"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          }
+        }
+      },
+      "script": [
+        {
+          "tick": 1,
+          "snapshot": "before-contact"
+        },
+        {
+          "tick": 1,
+          "move": {
+            "input": "crank",
+            "to": 840.0
+          },
+          "handle": "periodic0"
+        },
+        {
+          "tick": 2,
+          "restore": "before-contact"
+        },
+        {
+          "tick": 3,
+          "move": {
+            "input": "crank",
+            "to": 840.0
+          },
+          "handle": "periodic1"
+        }
+      ],
+      "ticks": [
+        {
+          "tick": 1,
+          "bank": {
+            "bell.turn": -125.21999999975378,
+            "crank": 125.21999999975378,
+            "drum.turn": -125.21999999975378,
+            "free.turn": 0.0,
+            "motor": 0.0
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "bell.turn",
+              "bound": "low",
+              "value": -125.22,
+              "t": 0.00724999999965803,
+              "inputs": [
+                "crank"
+              ]
+            }
+          ],
+          "commands": [
+            {
+              "handle": "periodic0",
+              "status": "blocked",
+              "admitted": 5.219999999753782
+            }
+          ]
+        },
+        {
+          "tick": 1,
+          "bank": {
+            "bell.turn": -120.0,
+            "crank": 120.0,
+            "drum.turn": -120.0,
+            "free.turn": 0.0,
+            "motor": 0.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "periodic0",
+              "status": "blocked",
+              "admitted": 5.219999999753782
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "bank": {
+            "bell.turn": -125.21999999975378,
+            "crank": 125.21999999975378,
+            "drum.turn": -125.21999999975378,
+            "free.turn": 0.0,
+            "motor": 0.0
+          },
+          "crossings": [],
+          "stops": [
+            {
+              "coordinate": "bell.turn",
+              "bound": "low",
+              "value": -125.22,
+              "t": 0.00724999999965803,
+              "inputs": [
+                "crank"
+              ]
+            }
+          ],
+          "commands": [
+            {
+              "handle": "periodic0",
+              "status": "blocked",
+              "admitted": 5.219999999753782
+            },
+            {
+              "handle": "periodic1",
+              "status": "blocked",
+              "admitted": 5.219999999753782
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "PlayCorpus",
       "dt": 1.0,
       "steps": 8,

@@ -38,10 +38,13 @@ def corpus():
 def machine_class(name):
     from .carriage_project import machine as carriage
     from .running_project import machine as module
+    from . import periodic_constraint_project as periodic
 
     found = getattr(module, name, None)
     if found is None:
-        found = getattr(carriage, name)
+        found = getattr(carriage, name, None)
+    if found is None:
+        found = getattr(periodic, name)
     return found
 
 
@@ -227,7 +230,7 @@ class CoverageGuardTest(TestCase):
         from tools.generate_running_corpus import uncovered_features
 
         machines = [entry for entry in corpus()['machines']
-                    if entry['name'] != 'Captured']
+                    if entry['name'] not in ('Captured', 'PeriodicStop')]
         missing = uncovered_features(machines)
         self.assertIn('a bound reading another coordinate', missing)
 

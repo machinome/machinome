@@ -1245,11 +1245,17 @@ sampled at `_SUBDIVISIONS` fractions, the first sample carried outward
 (`g > 0` and `g > g(0)`) brackets the stop, and `t*` is the inside end
 of the bisected bracket; when only the bounded coordinate moves the
 bound is the number its standing reads give and the self-only path
-applies, solved and snapped; a quiet stretch evaluates nothing. The group is every input whose own admission carries
-the level outward, tested alone over the sub-program — the reads'
+applies, solved and snapped; a quiet stretch evaluates nothing. The locator
+keeps both ends of its final bracket. The group is every input whose own
+admission raises the level across that contact bracket (ADR-135), tested
+alone over the sub-program from the original stretch origin — the reads'
 inputs included, so a dependency's motion that would invalidate a
 standing coordinate is stopped where the constraint becomes active and
-the standing coordinate does not move. No snap onto the bound; the run
+the standing coordinate does not move. A later free endpoint of a periodic
+request cannot cancel the pushing motion at an earlier contact. Time-drive
+admissions use the same test; simultaneous constraints retain their own
+brackets. This evidence is private and ephemeral, with no new tolerance,
+persisted state or document field. No snap onto the bound; the run
 asserts the level at the committed state is at most zero. Untimed, such
 a bound is recorded on the enumeration at binding and judged when the
 enumeration closes, over the values then bound, refusing by name with
@@ -2486,7 +2492,11 @@ browser starts, because a capture is a one-shot. A CONFORMANCE CORPUS
 `tests/running-corpus.json` from the framework's own run over a set of
 small running roots, exact for discrete state and at the run's own
 `1e-9` agreement window for floats, and refuses to write a corpus
-missing any stated feature. `tools/generate_time_drive_corpus.py` separately
+missing any stated feature. The running corpus additionally carries
+the Curta-derived periodic first-contact stop and snapshot replay (ADR-135),
+with coverage and old-attribution mutation checks. This is producer evidence;
+the independent viewer must reproduce it before parity is claimed.
+`tools/generate_time_drive_corpus.py` separately
 publishes `tests/time-drive-corpus.json`: seven version-10 scenarios with 54
 ticks covering no-command motion, gates, winding/exhaustion, independent and
 connected stops, mixed commands, curved stop paths and replay/reset. The

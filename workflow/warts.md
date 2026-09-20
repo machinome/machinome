@@ -3556,3 +3556,34 @@ Ratified [proposal](../openspec/changes/archive/2026-09-20-running-time-drive/pr
 The [implementation evidence](../openspec/changes/archive/2026-09-20-running-time-drive/evidence.md)
 records 3,439 passing framework tests, the seven-scenario producer corpus and
 the separate viewer dependency. ADR-133 records the accepted decision.
+
+# Curta periodic first contact (2026-09-20)
+
+**Status: `periodic-lockout-first-contact` implemented, validated and archived;
+not integrated.** Originating Curta checkpoint `c76f230`, framework
+base `8d2bd71`. With the selector withdrawn at crank 120°, a request to 840°
+finds the first lockout contact but selects no pushing input: the old group
+test compares only the request's endpoints, whose periodic clearance is equal.
+The run refuses atomically with `StopInvariantError`. Short and timed requests
+work. This is not evidence of a new defect in printed Curta geometry.
+
+The cycle retains the located contact's two-sided bracket and tests individual
+admissions there. The original four-case Curta reproduction and its broader
+six-test measured-profile suite pass. Producer corpus evidence is included;
+independent viewer conformance and production Curta adoption are not claimed.
+See [investigation](docs/curta-periodic-lockout-first-contact.md).
+
+# Corpus record cursor across restore (2026-09-20)
+
+**Status: observed while validating Curta; deferred, no external issue filed.**
+`tools/generate_running_corpus.py::run_machine` and the matching test replay
+helper retain their record-list cursors across a scripted `restore`, while
+the real run clears its record rings. If the same script step immediately
+creates a new stop, the old cursor can omit it from that step's corpus record.
+Direct runtime snapshot tests still compare the actual stop correctly.
+
+The periodic-contact corpus restores on its own recorded step before the
+next request, so both stops are present. No general corpus cursor repair is
+included in that cycle. A future repair should be red-first for restore plus
+an immediate same-step stop, and check crossings as well as stops; it should
+not change machine state or command semantics to repair evidence collection.

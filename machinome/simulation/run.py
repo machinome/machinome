@@ -89,6 +89,18 @@ def _design(declaration, native):
     return native * declaration.scale
 
 
+@dataclass(frozen=True)
+class _ConstraintContact:
+    """Two sides of a located contact, in the original stretch's fractions.
+
+    The inside side is committed; the outside side is evidence for which
+    admissions push at that contact. Neither is persistent run state.
+    """
+
+    inside: float
+    outside: float
+
+
 ##############################################
 # Commands
 
@@ -612,7 +624,7 @@ class Run:
                 self._landed(committed, landings)
 
                 blocked = set()
-                for _where, identifier, side, bound in event:
+                for _where, identifier, side, bound, contact in event:
                     if isinstance(bound, Constraint):
                         # NOTHING to snap to -- the bound at `t*` is on
                         # one side of a step or the other, and the
@@ -624,7 +636,7 @@ class Run:
                         # trusted.
                         value = self._constraint_bound(bound, committed)
                         group = self._constraint_group(bound, scaled, values,
-                                                       staged)
+                                                       staged, contact)
                     else:
                         # AT the bound, exactly. The localization's own
                         # error is absorbed here rather than left for
@@ -642,7 +654,7 @@ class Run:
                                                    if source in clocks))
                         stops.append(Stop(tick, identifier, side, value,
                                           boundary, inputs, time_drives))
-                for _where, identifier, side, bound in event:
+                for _where, identifier, side, bound, _contact in event:
                     if isinstance(bound, Constraint):
                         self._assert_inside(bound, committed, staged)
                 if not blocked:
@@ -812,7 +824,7 @@ class Run:
 
     def _constraint_reached(self, constraint, held, committed, values,
                             admissions):
-        """The fraction of the stretch at which `constraint` is first
+        """The bracket of the stretch at which `constraint` is first
         carried outward, or `None`.
 
         DETECTION AND LOCALIZATION ARE ONE PROCEDURE, and it looks
@@ -844,7 +856,9 @@ class Run:
         at which the bound is satisfied -- not its midpoint: a bound
         that reads other coordinates carries a comparison in every
         sighting, and a level with a jump in it is what the search is
-        for. No case is solved and no fourth tolerance is introduced.
+        for. Keep the outside end too: group attribution uses this same
+        contact bracket, not the possibly free endpoint of a later turn.
+        No case is solved and no fourth tolerance is introduced.
         """
         own = self.bank[constraint.identifier]
 
@@ -870,7 +884,7 @@ class Run:
                     high = middle
                 else:
                     low = middle
-            return low
+            return _ConstraintContact(low, high)
         return None
 
     def _constraint_level(self, constraint, held, values, admissions, t,
@@ -936,11 +950,14 @@ class Run:
                 f'edges, so this is a broken invariant of the run. The '
                 f'tick committed nothing.')
 
-    def _constraint_group(self, constraint, admissions, values, held):
+    def _constraint_group(self, constraint, admissions, values, held, contact):
         """The inputs a constraint stops: its own candidates -- the
         inputs reaching the bounded coordinate OR anything it reads --
         filtered by whether their own admission alone carries the LEVEL
-        outward.
+        outward across the located contact's bracket. Comparing the whole
+        stretch instead loses periodic obstructions whose endpoint is free
+        again. Both sightings replay from the original stretch origin, with
+        the own-coordinate argument still frozen at the tick's start.
 
         `_pushes` with the coordinate's increment replaced by the
         constraint's, which is what makes one rule cover both
@@ -958,9 +975,9 @@ class Run:
                 continue
             alone = {candidate: delta}
             before = self._constraint_level(constraint, held, values, alone,
-                                            0.0, own)
+                                            contact.inside, own)
             after = self._constraint_level(constraint, held, values, alone,
-                                           1.0, own)
+                                           contact.outside, own)
             if after - before > 0.0:
                 found.append(candidate)
         return found
@@ -975,8 +992,8 @@ class Run:
         """
         located = sorted(
             ((self._locate(identifier, side, bound, held, values, deltas)
-              if where is None else where),
-             identifier, side, bound)
+              if where is None else where.inside),
+             identifier, side, bound, where)
             for identifier, side, bound, where in reached)
         first = located[0][0]
         return [entry for entry in located

@@ -1169,7 +1169,11 @@ STRICTLY INSIDE a tick — a crossing recorded under a block member that
 only a jump reading a coordinate ANOTHER member of that block determines
 can account for, the member's own driven end excluded. The framework's
 suite SHALL test that refusal directly, so the corpus's width is visible
-without running the generator.
+without running the generator. Required coverage SHALL also include a
+periodic moving-read constraint that stops a request at an interior contact
+even though its untruncated endpoint would have returned to an open window.
+That case SHALL expose the admitted travel, stopped admission, stop fraction
+and retained coordinates, and SHALL include replay from a snapshot.
 
 The corpus SHALL DISCRIMINATE the order in which a block's members are
 run, because a document publishes a block's members as a listing and not
@@ -1245,6 +1249,20 @@ cannot drift from the producer it claims to come from.
 - **THEN** the replay disagrees with the corpus by more than the stated
   tolerance on the bank of at least one tick, while the same replay with
   the members ordered per piece reproduces the corpus
+
+#### Scenario: A corpus missing the periodic first-contact regression is refused
+
+- **WHEN** corpus generation omits the periodic moving-read contact case
+  whose requested endpoint is free again, or its replay evidence
+- **THEN** generation refuses naming the missing coverage rather than
+  publishing a corpus that cannot distinguish the endpoint-only pushing bug
+
+#### Scenario: The corpus discriminates endpoint-only pushing
+
+- **WHEN** the periodic contact scenario is replayed using the old
+  whole-request endpoint comparison to select pushing admissions
+- **THEN** replay fails or disagrees with the committed expected result;
+  the corrected producer reproduces the full case and its snapshot replay
 
 ### Requirement: A running document publishes the controls its parts carry
 

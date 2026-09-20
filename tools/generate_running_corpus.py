@@ -62,13 +62,16 @@ from machinome.simulation.run import _TOLERANCE  # noqa: E402
 
 from tests.carriage_project import machine as carriage  # noqa: E402
 from tests.running_project import machine as machines  # noqa: E402
+from tests import periodic_constraint_project as periodic  # noqa: E402
 
 
 def machine_class(name):
     """One corpus machine by name, from either fixture package."""
     found = getattr(machines, name, None)
     if found is None:
-        found = getattr(carriage, name)
+        found = getattr(carriage, name, None)
+    if found is None:
+        found = getattr(periodic, name)
     return found
 
 
@@ -82,6 +85,7 @@ DOCUMENT_KEYS = ('format', 'version', 'drivers', 'instructions',
 #: Every feature the corpus must exercise, as the export capability lists
 #: them. A corpus missing one is refused rather than written.
 REQUIRED = (
+    'a periodic contact before a free endpoint',
     'floor', 'ceil', 'sign', '%', 'a comparison',
     'a multi-source law',
     'a stop located inside a tick',
@@ -126,6 +130,12 @@ COMPARISONS = ('<', '<=', '>', '>=', '==', '!=')
 #: One entry per machine: its class name, its step size, how many ticks
 #: to run, and the script applied BEFORE the tick each entry names.
 CORPUS = (
+    {'name': 'PeriodicStop', 'dt': .1, 'steps': 3, 'script': [
+        {'tick': 1, 'snapshot': 'before-contact'},
+        {'tick': 1, 'move': {'input': 'crank', 'to': 840.0}, 'handle': 'periodic0'},
+        {'tick': 2, 'restore': 'before-contact'},
+        {'tick': 3, 'move': {'input': 'crank', 'to': 840.0}, 'handle': 'periodic1'},
+    ]},
     {'name': 'PlayCorpus', 'dt': 1.0, 'steps': 8, 'script': [
         {'tick': 1, 'move': {'input': 'dial', 'to': 100.0,
                              'duration': 1.0}, 'handle': 'play0'},
@@ -401,6 +411,41 @@ def apply_action(sim, action, handles, snapshots):
         raise SystemExit(f'unknown script action {action!r}')
 
 
+def _periodic_contact_covered(entry):
+    """Evidence for the named Curta regression, including its actual replay.
+
+    This fixture starts at 120 and requests 840: two periods, hence the
+    same free endpoint. Presence of a floor or a machine name alone is
+    not evidence that a consumer would catch the interior obstruction.
+    """
+    if entry['name'] != 'PeriodicStop' or len(entry['ticks']) != 3:
+        return False
+    script = entry['script']
+    moves = [action for action in script if 'move' in action]
+    if len(moves) != 2 or any(action['move'] != {'input': 'crank', 'to': 840.0}
+                              for action in moves):
+        return False
+    if not any(action.get('snapshot') == 'before-contact' for action in script) \
+            or not any(action.get('restore') == 'before-contact' for action in script):
+        return False
+    first, restored, second = entry['ticks']
+    if restored['bank'].get('crank') != 120 or restored['stops']:
+        return False
+    if first['bank'] != second['bank'] or first['stops'] != second['stops']:
+        return False
+    for tick, action in zip((first, second), moves):
+        command = next((one for one in tick['commands']
+                        if one['handle'] == action['handle']), None)
+        if command is None or command['status'] != 'blocked' \
+                or abs(command['admitted'] - 5.22) > _TOLERANCE * 5.22:
+            return False
+        if not any(stop['coordinate'] == 'bell.turn'
+                   and stop['inputs'] == ['crank'] and 0 < stop['t'] < 1
+                   for stop in tick['stops']):
+            return False
+    return True
+
+
 def uncovered_features(machines):
     """Every feature of `REQUIRED` no machine in `machines` exercises.
 
@@ -411,6 +456,8 @@ def uncovered_features(machines):
     """
     seen = set()
     for entry in machines:
+        if _periodic_contact_covered(entry):
+            seen.add('a periodic contact before a free endpoint')
         program = entry['document'].get('program') or {}
         play_edges = [edge for edge in program.get('edges', ())
                       if edge.get('kind') == 'play']

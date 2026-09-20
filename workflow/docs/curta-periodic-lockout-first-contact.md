@@ -1,6 +1,6 @@
 # Curta periodic lockout: first contact loses its pushing input
 
-Status: investigated finding; linked OpenSpec plan ratified on 2026-09-20.
+Status: implemented, validated and archived on 2026-09-20; not integrated.
 Date: 2026-09-20.
 
 Origin: `Calculators/Curta-Type-I-3x`, branch `direct-operation`, checkpoint
@@ -57,3 +57,25 @@ The proposal is `periodic-lockout-first-contact`. This note is evidence and
 intent, not authority to implement, integrate, or modify the independent
 viewer. Compound effects requiring several inputs together, arbitrary narrow
 unsampled contacts, and broader running-performance work remain outside scope.
+
+## Resolution
+
+The pilot ratified the complete plan before planning commit `c2023b1`.
+The implemented private contact bracket preserves the inside commit fraction
+and compares each admission alone across the inside/outside sides. No model
+API, geometry, document version or tolerance changed. ADR-135 amends ADR-113's
+old endpoint-only attribution choice.
+
+Validation: 3,488 framework tests and 2,011 subtests pass (4 skips); an expanded
+233-test focused matrix also passes. The actual Curta reproduction passes all
+four cases, and its broader measured-lockout suite passes all six tests,
+including five flats, later revolutions, withdrawal phases, replay, relief,
+retry and legal 1080° travel. Seven actual long-request stop poses have zero
+complete-part overlap in both kernels, and .2° posed overtravel produces
+positive overlap in every case. Snapshots were rendered and inspected.
+
+The [archived evidence](../../openspec/changes/archive/2026-09-20-periodic-lockout-first-contact/evidence.md)
+records commands, content identities, red-first and mutation checks, complete
+geometry results, and the separate viewer handoff. Main remains at the cycle
+base pending explicit integration authority. The production Curta restraint
+and upstream CAD are unchanged; operating Curta is not declared complete.

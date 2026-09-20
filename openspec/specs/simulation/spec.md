@@ -1630,7 +1630,15 @@ determine. For a bound that reads other coordinates the candidates
 SHALL be the inputs reaching the bounded coordinate OR any coordinate
 the bound reads, and a candidate SHALL be in the group when its
 admission alone, over the bound's sub-program, carries the constraint
-level OUTWARD — raises it — so an input moving a read coordinate so as
+level OUTWARD AT THE LOCATED CONTACT — raises it between the inside and
+outside sides of that contact's search bracket. A later return to the same
+or a lower level SHALL NOT cancel this pushing motion. Each candidate's
+path SHALL be evaluated from the same stretch origin at those fractions,
+with other admissions set to zero and the bound's own-coordinate argument
+still frozen at the tick's committed value. This rule applies equally to
+independent time-drive admissions. It SHALL NOT introduce a new tolerance,
+a request-length cap, or additional synthetic input requests. Thus an input
+moving a read coordinate so as
 to make a standing position invalid is stopped where the constraint
 becomes active and the standing coordinate does not move, while an
 input moving a read coordinate so as to relieve the constraint runs
@@ -1844,6 +1852,46 @@ the joints requirement "A declared range refuses a binding outside it".
 - **WHEN** the `Train` fixture is stepped after this change
 - **THEN** one tick costs what ADR-108 recorded within measurement noise
   and the deterministic count of graph evaluations per tick is unchanged
+
+#### Scenario: A periodic lockout stops a long request at its first contact
+
+- **WHEN** a crank at 120° drives a bell and a co-rotating drum, the bell's
+  lower bound reads the drum as `-360*floor((-drum-10.8)/360)-125.22`, and
+  an immediate request asks for crank 840°, crossing a sampled forbidden
+  interval before ending in a later revolution's open window
+- **THEN** the request reports `blocked` at crank 125.22° within the
+  existing search tolerance, admitting approximately 5.22°, instead of
+  raising an invariant error or passing through the first obstruction
+
+#### Scenario: Short and long requests meet the same periodic contact
+
+- **WHEN** the same prepared lockout receives a short immediate request to
+  150°, a long immediate request to 840°, or a timed request to 840° whose
+  ticks resolve that contact under the existing sampling guarantee
+- **THEN** all requests stop at the same first contact within the existing
+  agreement tolerance and the retained follower does not move
+
+#### Scenario: Retrying a periodic contact does not resume hidden travel
+
+- **WHEN** the blocked crank is requested forward again, then relieved a
+  small distance backward and requested forward again
+- **THEN** it blocks at the same contact, backward relief is admitted, and
+  no portion of the earlier request is resumed or remembered
+
+#### Scenario: A free periodic mechanism keeps unrestricted legal travel
+
+- **WHEN** the actual retained follower tracks its legal indexed positions
+  so the periodic bound remains satisfied over a three-turn request
+- **THEN** the request completes all three turns with the expected retained
+  displacement; the fix introduces no one-turn cap or artificial stop
+
+#### Scenario: Periodic contact preserves unrelated motion and replay
+
+- **WHEN** a periodic contact stops one admission while an independent
+  admission moves, and the same operation is replayed from a snapshot
+- **THEN** the independent admission completes, the pushing admission
+  reports only its admitted travel, and replay reproduces the committed
+  bank, stop identities, statuses and travel under the existing tolerances
 
 ### Requirement: A range bound may read other coordinates
 

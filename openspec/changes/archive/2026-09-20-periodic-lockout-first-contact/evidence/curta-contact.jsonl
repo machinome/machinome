@@ -1,0 +1,14 @@
+{"kernel": "exact", "turns": 0, "withdrawal": 120, "crank": 125.22323837227304, "shaft": 189.60000000000002, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.002001697680706762}
+{"kernel": "exact", "turns": 1, "withdrawal": 120, "crank": 485.2280105590762, "shaft": 405.6, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.0020207723465903047}
+{"kernel": "exact", "turns": 2, "withdrawal": 120, "crank": 845.2050994865567, "shaft": 621.6, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.0018358283105488322}
+{"kernel": "exact", "turns": 3, "withdrawal": 120, "crank": 1205.2280067446554, "shaft": 837.6, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.0020210743139000386}
+{"kernel": "exact", "turns": 4, "withdrawal": 120, "crank": 1565.2280067446554, "shaft": 1053.6, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.002020605674716524}
+{"kernel": "exact", "turns": 0, "withdrawal": 115, "crank": 120.38810729947272, "shaft": 157.6, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.00022411417963673239}
+{"kernel": "exact", "turns": 0, "withdrawal": 123, "crank": 129.82507171577254, "shaft": 208.8, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.0003570563937007707}
+{"kernel": "faceted", "turns": 0, "withdrawal": 120, "crank": 125.22323837227304, "shaft": 189.60000000000002, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.002513164584110824}
+{"kernel": "faceted", "turns": 1, "withdrawal": 120, "crank": 485.2280105590762, "shaft": 405.6, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.0025176086204842796}
+{"kernel": "faceted", "turns": 2, "withdrawal": 120, "crank": 845.2050994865567, "shaft": 621.6, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.0024076953727817617}
+{"kernel": "faceted", "turns": 3, "withdrawal": 120, "crank": 1205.2280067446554, "shaft": 837.6, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.0025182148135070546}
+{"kernel": "faceted", "turns": 4, "withdrawal": 120, "crank": 1565.2280067446554, "shaft": 1053.6, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.00251791570077824}
+{"kernel": "faceted", "turns": 0, "withdrawal": 115, "crank": 120.38810729947272, "shaft": 157.6, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.0002441812913855112}
+{"kernel": "faceted", "turns": 0, "withdrawal": 123, "crank": 129.82507171577254, "shaft": 208.8, "status": "blocked", "overlap_mm3": 0.0, "beyond_contact_mm3": 0.00044053718494198145}

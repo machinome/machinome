@@ -1,6 +1,6 @@
 # ADR-113: A Bound May Read Other Coordinates — A Constraint Stops What Carries It Outward
 
-**Status:** Accepted, amended by ADR-134
+**Status:** Accepted, amended by ADR-134 and ADR-135
 **Date:** 2026-09-14
 **Depends on:**
 - [ADR-108: A range is a physical stop that stops the connected group](./ADR-108-a-range-is-a-physical-stop-that-stops-the-connected-group.md)
@@ -23,6 +23,14 @@ competing to replace it. The original `Bound` scope and execution meanings
 below remain unchanged; the separately stated form owns its own ancestor scope.
 
 ## Context and Problem Statement
+
+The later [ADR-135](ADR-135-moving-constraints-attribute-push-at-contact.md)
+replaces the net-over-the-stretch pushing test below with attribution across
+the located contact bracket. A periodic request can return to a free endpoint
+after an obstruction already found by the locator; its endpoint cannot decide
+which admission pushed there. The historical decision below retains its
+original reasoning; own-coordinate freezing, path evaluation and the bounded
+search guarantee remain unchanged.
 
 ADR-109 let a range bound be a callable of the joint's OWN coordinate
 and deferred, by name, a bound over a second one: "the obstacle is

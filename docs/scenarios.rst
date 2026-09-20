@@ -677,6 +677,15 @@ does not resume a blocked request: the old remainder has been discarded and
 another request is needed. For running-time drives, only the pushing
 admission stops; elapsed time and unrelated drives continue.
 
+For a bound with moving reads, which admissions push is judged across the
+located contact, not by comparing the whole request's endpoints. A periodic
+lockout can therefore stop a long crank request at its first detected
+obstruction even when the requested endpoint is in a later open window. No
+one-turn cap or hidden request splitting is involved. The existing search
+limit remains: a forbidden interval entirely between its 64 samples can be
+missed. Effects requiring several inputs together while none pushes alone
+still refuse the tick transactionally; they are not solved by this rule.
+
 The effective limits are ordinary published spans on the actual joint paths.
 Adding a different effective limit changes program identity, so a snapshot
 from the old limits is not interchangeable. Under a clocked root the same
