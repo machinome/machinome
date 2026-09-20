@@ -18,8 +18,8 @@ new design choices exposed by validation are reported, not silently substituted.
 | 2 | `rolling_angle` | Prusa3-vanilla; Kossel; four additional repositories | integrated |
 | 3 | `pulley_pitch_radius` | Thor; Open Robot Actuator; five additional repositories | integrated |
 | 4 | `belt_tangent_points` | Thor; Prusa3-vanilla; three additional repositories | integrated |
-| 5 | `belt_path_metrics` | Prusa3-vanilla; Kossel; Metamaquina2; Hangprinter; Thor | validated, archived for local integration |
-| 6 | `belt_pulley_angle` | Metamaquina2; Prusa3-vanilla; Kossel | queued |
+| 5 | `belt_path_metrics` | Prusa3-vanilla; Kossel; Metamaquina2; Hangprinter; Thor | integrated |
+| 6 | `belt_pulley_angle` | Metamaquina2; Prusa3-vanilla; Kossel | active |
 | 7 | `two_link_angles` | YouCanBuildBiPed; ZeroBug; Spiderbot | queued |
 | 8 | `four_bar_pose` | Dragon R1; Strandbeest | queued |
 | 9 | `cycloidal_ratio` | CycloidalDrive; OpenCycloid | queued |
@@ -68,6 +68,16 @@ is on main. All five exact consumer commits in its archived validation are on
 their original branches; their ordinary imports resolve to the merged package.
 Post-merge 78 tests, 24 subtests and three strict baseline specs passed. Clean
 helper worktree removed, branch retained. No push or publication.
+
+Cycle 5 integration: mechanics `ec4f0c334bfbb62fe17b47ddaa2fef3c84159c8c`
+is on main. All five consumer commits recorded in archived validation are on
+their original branches and import the merged package. Post-merge 97 tests,
+24 subtests and three strict baseline specs passed. Clean helper worktree
+removed, branch retained; user screenshots preserved. Independent review caught
+and fixed a floating wrap seam red-first; Thor's legacy degenerate policies
+were preserved in its adapter. Framework advanced independently from 0ce71cd
+to 8d2bd71 during validation; records distinguish those observations. No push
+or publication.
 
 ## Project findings outside helper scope
 
