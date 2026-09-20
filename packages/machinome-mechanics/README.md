@@ -90,7 +90,7 @@ motion coordinates and relation evaluation.
 | `cranks` | `crank_pin`, `crank_rod_angle`, `piston_height` |
 | `deltas` | `delta_carriage`, `delta_rod` |
 | `linkages` | `circle_intersection`, `triangle_angle`, `link_rise` |
-| `rolling` | `rolling_travel` |
+| `rolling` | `rolling_travel`, `rolling_angle` |
 
 All listed names are exported from `machinome_mechanics`, with family imports
 such as `machinome_mechanics.gears` also available.

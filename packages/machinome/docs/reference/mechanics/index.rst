@@ -41,6 +41,8 @@ for numeric, symbolic and invalid-input behaviour.
      - Vertical separation from link length and horizontal offset.
    * - :py:func:`rolling_travel`
      - Tangent travel at a constant pitch/contact radius.
+   * - :py:func:`rolling_angle`
+     - Unwrapped rotation from tangent travel at a constant radius.
 
 .. toctree::
    :maxdepth: 1

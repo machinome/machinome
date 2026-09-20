@@ -7,7 +7,9 @@ axis. Positive travel follows its surface tangent in that rotational sense.
 Projects supply the sign that maps this tangent onto their rack, belt or rope
 axis, and add their own rest position. No slip or changing winding radius is
 modelled. Dragon R1 negates this travel for its rack; Thor uses it for belt
-travel at each pulley's pitch circle.
+travel at each pulley's pitch circle. The inverse gives Prusa3-vanilla and
+Kossel their belt-driven pulley/idler rotation; their phases and mounting
+signs remain outside the conversion.
 """
 
 from math import pi
@@ -23,3 +25,18 @@ def rolling_travel(angle, radius):
     arguments share this formula; dimensional class-body tokens are unsupported.
     """
     return angle * radius * (pi / 180)
+
+
+def rolling_angle(travel, radius):
+    """Return unwrapped degrees for signed tangent ``travel`` at ``radius``.
+
+    Travel and pitch/contact radius use the same length unit. Zero travel gives
+    zero angle at nonzero radius, with the surface-tangent sign defined above.
+    Add phase and mounting signs in the caller, as the printer belt laws do.
+    A physical radius is positive; negative values retain arithmetic sign.
+    Zero radius is undefined: plain Python numeric division raises, while a
+    deferred expression retains its runtime's division behavior. Numeric and
+    symbolic arguments share this formula; declared quantity tokens are not
+    a supported face.
+    """
+    return travel / radius * (180 / pi)

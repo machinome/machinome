@@ -60,7 +60,7 @@ from machinome_mechanics.gears import driving_angle, meshed_angle
 from machinome_mechanics.linkages import (circle_intersection, link_rise,
                                            triangle_angle)
 from machinome_mechanics.screws import screw_angle, screw_travel
-from machinome_mechanics.rolling import rolling_travel
+from machinome_mechanics.rolling import rolling_angle, rolling_travel
 
 __all__ = [
     'meshed_angle', 'driving_angle',
@@ -68,5 +68,5 @@ __all__ = [
     'crank_pin', 'crank_rod_angle', 'piston_height',
     'delta_carriage', 'delta_rod',
     'circle_intersection', 'triangle_angle', 'link_rise',
-    'rolling_travel',
+    'rolling_travel', 'rolling_angle',
 ]

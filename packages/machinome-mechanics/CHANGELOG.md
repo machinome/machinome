@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0
 
+- Add `rolling_angle` for unwrapped pulley, idler and drum rotation from travel.
+
 - Add `rolling_travel` for rack, belt and constant-radius drum displacement.
 
 - Add the Sphinx user manual for all twelve helpers, with installation,
