@@ -27,6 +27,14 @@ the browser viewer only as a separate process when it is installed.
 For the 0.7 preview, use matching source installations as described in
 :doc:`quickstart`; the independent viewer is not yet published.
 
+The viewer has its own `user manual
+<https://machinome-viewer.readthedocs.io/en/latest/index.html>`_. See
+`Using the viewer
+<https://machinome-viewer.readthedocs.io/en/latest/using-the-viewer.html>`_
+for assembly navigation, posed/running/clocked controls and troubleshooting.
+This page covers the framework's development workflow; the independent manual
+is the reference for operating and embedding the viewer itself.
+
 The web viewer
 ==============
 

@@ -9,6 +9,13 @@ Its geometry, expressions, controls and any compiled simulation travel
 together, so a reader can inspect and operate it in the browser.
 No server-side CAD runtime is required.
 
+The independent viewer's `embedding guide
+<https://machinome-viewer.readthedocs.io/en/latest/embedding.html>`_ includes
+a complete runnable host page. Its `public API reference
+<https://machinome-viewer.readthedocs.io/en/latest/reference/index.html>`_
+documents every mount, option and handle method, including navigator styling,
+camera updates, running/clocked requests and the viewer's own CLI.
+
 What an export contains
 =======================
 
@@ -167,7 +174,9 @@ machine handle:
 ``run()`` is null on a clocked document; ``machine()`` is null
 on a running document; both are null on a posed document. Direct
 ``setDriver`` is not a substitute for a running or clocked request.
-Clocked host requests land immediately; the built-in panel draws their
+Direct clocked ``move()`` requests land immediately. A clocked
+``trigger()`` commits its request immediately and draws the transition over
+the instruction's declared duration; built-in input gestures also draw their
 transitions. ``controls()`` lists declared part controls and their
 current screen locations even when gestures are suppressed.
 
@@ -184,7 +193,9 @@ Paths are arrays of sibling names relative to the document root.
 ``speed()`` and ``setSpeed(value)`` control playback speed where
 the document supplies timed playback. They do not rewrite machine state.
 
-``view()`` reads the camera. ``reload()`` reloads the model;
+``view()`` reads the camera; ``setView({camera, target})`` adopts and renders
+a new view without changing machine state (API 21 onward).
+``reload()`` reloads the model;
 ``manifestChanged()`` and ``artifactChanged(path)`` apply
 targeted updates. Call ``dispose()`` when removing the viewer.
 

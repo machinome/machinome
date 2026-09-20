@@ -82,6 +82,7 @@ own repositories.
 
    cli
    api-reference
+   Machinome Viewer manual <https://machinome-viewer.readthedocs.io/en/latest/index.html>
    status-and-roadmap
    contributing
    changelog
