@@ -19,7 +19,7 @@ new design choices exposed by validation are reported, not silently substituted.
 | 3 | `pulley_pitch_radius` | Thor; Open Robot Actuator; five additional repositories | integrated |
 | 4 | `belt_tangent_points` | Thor; Prusa3-vanilla; three additional repositories | integrated |
 | 5 | `belt_path_metrics` | Prusa3-vanilla; Kossel; Metamaquina2; Hangprinter; Thor | integrated |
-| 6 | `belt_pulley_angle` | Metamaquina2; Prusa3-vanilla; Kossel | active |
+| 6 | `belt_pulley_angle` | Metamaquina2; Prusa3-vanilla; Kossel | validated, archived for local integration |
 | 7 | `two_link_angles` | YouCanBuildBiPed; ZeroBug; Spiderbot | queued |
 | 8 | `four_bar_pose` | Dragon R1; Strandbeest | queued |
 | 9 | `cycloidal_ratio` | CycloidalDrive; OpenCycloid | queued |

@@ -49,6 +49,8 @@ for numeric, symbolic and invalid-input behaviour.
      - Directed contact points for an outer or inner belt tangent.
    * - :py:func:`belt_path_metrics`
      - Closed pitch path spans, wraps, arc lengths and stations.
+   * - :py:func:`belt_pulley_angle`
+     - Pulley orientation from belt position and a contact reference.
 
 .. toctree::
    :maxdepth: 1

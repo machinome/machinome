@@ -10,6 +10,8 @@ from math import pi
 
 from machinome.math import atan2, floor, sqrt
 
+from machinome_mechanics.rolling import rolling_angle
+
 
 def pulley_pitch_radius(teeth, pitch):
     """Return the pitch radius for a tooth count and linear tooth pitch.
@@ -119,3 +121,25 @@ def belt_path_metrics(centres, radii, senses=None):
         at = at + span[2] + arcs[(i+1) % count]
     return dict(spans=tuple(spans), wrap_angles=tuple(wraps),
                 arc_lengths=tuple(arcs), stations=tuple(stations), length=at)
+
+
+def belt_pulley_angle(belt_position, pitch_radius, contact_angle,
+                      contact_station=0.0, sense=1):
+    """Return unwrapped pulley angle from a contact-referenced belt position.
+
+    Position and station are lengths along the same oriented belt path;
+    pitch_radius uses that unit. Contact/output angles are degrees from +X,
+    counterclockwise about +Z in the caller's belt plane. Sense +1 means
+    clockwise belt traversal, -1 counterclockwise, as in belt_path_metrics.
+    At position == station the pulley's reference tooth points at contact_angle.
+    Increasing belt position decreases angle for clockwise traversal.
+
+    Prusa subtracts travel from a measured tangent angle; Metamaquina2 Y's
+    reverse bend adds it. Their tooth references, fitted radius, clamp-to-path
+    conversion and machine mounting signs remain outside this law. Nothing
+    wraps or clamps: multiple revolutions and signed radii retain arithmetic,
+    zero numeric radius divides by zero, and supported deferred operands
+    retain the same definition. Physical pitch radius is positive.
+    """
+    return contact_angle - sense * rolling_angle(
+        belt_position - contact_station, pitch_radius)

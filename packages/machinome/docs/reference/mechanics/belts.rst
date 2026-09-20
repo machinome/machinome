@@ -134,3 +134,48 @@ surface of a plain idler. Use one length unit consistently.
    >>> straight_idler = belt_path_metrics(((0, 0), (10, 0), (20, 0)), (2, 2, 2))
    >>> straight_idler['wrap_angles']
    (180.0, 0.0, 180.0)
+
+.. py:function:: belt_pulley_angle(belt_position, pitch_radius, contact_angle, contact_station=0.0, sense=1)
+
+   Return ``contact_angle - sense * rolling_angle(belt_position -
+   contact_station, pitch_radius)``: a pulley angle referenced to a belt
+   contact, not just rotation from an arbitrary zero.
+
+   ``belt_position`` and ``contact_station`` are lengths measured from the
+   same origin along the oriented belt path. ``pitch_radius`` uses the same
+   length unit. ``contact_angle`` and the result are degrees from +X,
+   counterclockwise about +Z in the caller's belt plane. When position equals
+   station, the pulley's reference tooth points at ``contact_angle``.
+
+   ``sense`` has the same meaning as in :py:func:`belt_path_metrics`: +1 for
+   clockwise traversal, -1 counterclockwise. Advancing clockwise belt material
+   decreases the returned angle; the reverse bend increases it. This is not
+   the handedness of the machine's mounting axis. The caller applies any tooth
+   reference and mounting offset after choosing a consistent contact reference.
+
+   Prusa3-vanilla uses its measured tangent phase and pulley station; Kossel's
+   first-circle contact has station zero. Metamaquina2's Y pulley bends the
+   belt backwards and uses -1, with its clamp and pulley stations expressed in
+   the same path coordinate. Clamp-axis projections, fitted radii, phase
+   normalization and tooth profiles stay in those projects.
+
+   The result is signed and unwrapped, including multiple revolutions.
+   Physical pitch radius is positive. Negative radii preserve arithmetic;
+   zero numeric radius raises ``ZeroDivisionError``. No domain clamp, tooth
+   fit, slip or route inference is performed. Supported deferred operands use
+   the same arithmetic; there is no new dimensional declaration-token face.
+
+.. doctest::
+
+   >>> from math import pi
+   >>> from machinome_mechanics import belt_pulley_angle
+   >>> belt_pulley_angle(10, 2, 90, contact_station=10)
+   90.0
+   >>> round(belt_pulley_angle(10 + pi, 2, 90, 10), 6)
+   0.0
+   >>> round(belt_pulley_angle(10 + pi, 2, 90, 10, sense=-1), 6)
+   180.0
+   >>> round(belt_pulley_angle(10 + 4*pi, 2, 90, 10), 6)
+   -270.0
+   >>> round(belt_pulley_angle(10 + 4*pi, 2, 90, 10, sense=-1), 6)
+   450.0
