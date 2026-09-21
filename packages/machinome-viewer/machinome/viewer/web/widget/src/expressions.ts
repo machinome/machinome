@@ -1244,7 +1244,7 @@ function joined(...parts: PathShape[]): PathShape {
 /** A call's callee NAME, or `null` where the callee is not a plain name
  * (`structureOf` deliberately reports a call's arguments only, because
  * a callee is never a free variable). */
-function calleeName(id: NodeId): string | null {
+export function calleeName(id: NodeId): string | null {
   const node = nodes[id];
   if (node.kind !== 'call') return null;
   const callee = nodes[node.callee];

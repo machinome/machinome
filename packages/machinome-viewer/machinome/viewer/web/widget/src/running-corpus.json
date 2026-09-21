@@ -6,6 +6,1189 @@
   },
   "machines": [
     {
+      "name": "OvertakenFollower",
+      "dt": 0.1,
+      "steps": 4,
+      "document": {
+        "format": "machinome-export",
+        "version": 6,
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(2 * crank)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(_b0 + 1)"
+          }
+        ],
+        "program": {
+          "identity": "fa5db5f8d241ef62f10df88ff3187bbde813fb961b2b7e93f4ca6366bee01a22",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "follower.turn": {
+              "kind": "coordinate",
+              "initial": 2,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "follower.turn"
+              ],
+              "gives": [
+                "follower.turn"
+              ],
+              "description": "(crank, follower.turn) drives follower.turn",
+              "stated_by": "OvertakenFollower",
+              "expressions": [
+                "(crank * (0.5 + (0.5 * (follower.turn > _b1))))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(crank * (0.5 + (0.5 * _j0)))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": ">",
+                      "level": "(follower.turn - _b1)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {},
+          "sources": {
+            "crank": [
+              "crank"
+            ],
+            "follower.turn": [
+              "crank"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          }
+        }
+      },
+      "script": [
+        {
+          "tick": 1,
+          "snapshot": "before-contact"
+        },
+        {
+          "tick": 1,
+          "move": {
+            "input": "crank",
+            "to": 2.0
+          },
+          "handle": "first"
+        },
+        {
+          "tick": 2,
+          "restore": "before-contact"
+        },
+        {
+          "tick": 3,
+          "move": {
+            "input": "crank",
+            "to": 2.0
+          },
+          "handle": "replay"
+        },
+        {
+          "tick": 4,
+          "move": {
+            "input": "crank",
+            "to": 3.0
+          },
+          "handle": "later"
+        }
+      ],
+      "ticks": [
+        {
+          "tick": 1,
+          "bank": {
+            "crank": 2.0,
+            "follower.turn": 3.5
+          },
+          "crossings": [
+            {
+              "relation": "(crank, follower.turn) drives follower.turn",
+              "coordinate": "follower.turn",
+              "primitive": ">",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        },
+        {
+          "tick": 1,
+          "bank": {
+            "crank": 0.0,
+            "follower.turn": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "bank": {
+            "crank": 2.0,
+            "follower.turn": 3.5
+          },
+          "crossings": [
+            {
+              "relation": "(crank, follower.turn) drives follower.turn",
+              "coordinate": "follower.turn",
+              "primitive": ">",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "replay",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        },
+        {
+          "tick": 3,
+          "bank": {
+            "crank": 3.0,
+            "follower.turn": 4.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "replay",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "later",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "NegativeFollower",
+      "dt": 0.1,
+      "steps": 4,
+      "document": {
+        "format": "machinome-export",
+        "version": 6,
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(2 * crank)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(_b0 - 1)"
+          }
+        ],
+        "program": {
+          "identity": "4eaad816ca63b7e7a1fb408d267626250d4b74f6cd5fa39d44453a4607087a54",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "follower.turn": {
+              "kind": "coordinate",
+              "initial": -2,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "follower.turn"
+              ],
+              "gives": [
+                "follower.turn"
+              ],
+              "description": "(crank, follower.turn) drives follower.turn",
+              "stated_by": "NegativeFollower",
+              "expressions": [
+                "(crank * (0.5 + (0.5 * (follower.turn < _b1))))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(crank * (0.5 + (0.5 * _j0)))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": "<",
+                      "level": "(follower.turn - _b1)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {},
+          "sources": {
+            "crank": [
+              "crank"
+            ],
+            "follower.turn": [
+              "crank"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          }
+        }
+      },
+      "script": [
+        {
+          "tick": 1,
+          "snapshot": "before-contact"
+        },
+        {
+          "tick": 1,
+          "move": {
+            "input": "crank",
+            "to": -2.0
+          },
+          "handle": "first"
+        },
+        {
+          "tick": 2,
+          "restore": "before-contact"
+        },
+        {
+          "tick": 3,
+          "move": {
+            "input": "crank",
+            "to": -2.0
+          },
+          "handle": "replay"
+        },
+        {
+          "tick": 4,
+          "move": {
+            "input": "crank",
+            "to": -3.0
+          },
+          "handle": "later"
+        }
+      ],
+      "ticks": [
+        {
+          "tick": 1,
+          "bank": {
+            "crank": -2.0,
+            "follower.turn": -3.5
+          },
+          "crossings": [
+            {
+              "relation": "(crank, follower.turn) drives follower.turn",
+              "coordinate": "follower.turn",
+              "primitive": "<",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": -2.0
+            }
+          ]
+        },
+        {
+          "tick": 1,
+          "bank": {
+            "crank": 0.0,
+            "follower.turn": -2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": -2.0
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "bank": {
+            "crank": -2.0,
+            "follower.turn": -3.5
+          },
+          "crossings": [
+            {
+              "relation": "(crank, follower.turn) drives follower.turn",
+              "coordinate": "follower.turn",
+              "primitive": "<",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": -2.0
+            },
+            {
+              "handle": "replay",
+              "status": "completed",
+              "admitted": -2.0
+            }
+          ]
+        },
+        {
+          "tick": 3,
+          "bank": {
+            "crank": -3.0,
+            "follower.turn": -4.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": -2.0
+            },
+            {
+              "handle": "replay",
+              "status": "completed",
+              "admitted": -2.0
+            },
+            {
+              "handle": "later",
+              "status": "completed",
+              "admitted": -1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ObservedFollower",
+      "dt": 0.1,
+      "steps": 4,
+      "document": {
+        "format": "machinome-export",
+        "version": 6,
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(2 * crank)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(_b0 + 1)"
+          }
+        ],
+        "program": {
+          "identity": "cc8d7b11ad174f2a4e1e80ea61d308bcfef312e29b7250c9c2828e660452a3d1",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "bell.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "follower.turn": {
+              "kind": "coordinate",
+              "initial": 2,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "follower.turn"
+              ],
+              "gives": [
+                "follower.turn"
+              ],
+              "description": "(crank, follower.turn) drives follower.turn",
+              "stated_by": "ObservedFollower",
+              "expressions": [
+                "(crank * (0.5 + (0.5 * (follower.turn > _b1))))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(crank * (0.5 + (0.5 * _j0)))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": ">",
+                      "level": "(follower.turn - _b1)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "crank"
+              ],
+              "gives": [
+                "bell.turn"
+              ],
+              "description": "crank drives bell.turn",
+              "stated_by": "ObservedFollower",
+              "expressions": [
+                "crank"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            }
+          ],
+          "spans": {
+            "bell.turn": {
+              "low": null,
+              "high": {
+                "expression": "(follower.turn + 10)"
+              }
+            }
+          },
+          "sources": {
+            "bell.turn": [
+              "crank"
+            ],
+            "crank": [
+              "crank"
+            ],
+            "follower.turn": [
+              "crank"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          }
+        }
+      },
+      "script": [
+        {
+          "tick": 1,
+          "snapshot": "before-contact"
+        },
+        {
+          "tick": 1,
+          "move": {
+            "input": "crank",
+            "to": 2.0
+          },
+          "handle": "first"
+        },
+        {
+          "tick": 2,
+          "restore": "before-contact"
+        },
+        {
+          "tick": 3,
+          "move": {
+            "input": "crank",
+            "to": 2.0
+          },
+          "handle": "replay"
+        },
+        {
+          "tick": 4,
+          "move": {
+            "input": "crank",
+            "to": 3.0
+          },
+          "handle": "later"
+        }
+      ],
+      "ticks": [
+        {
+          "tick": 1,
+          "bank": {
+            "bell.turn": 2.0,
+            "crank": 2.0,
+            "follower.turn": 3.5
+          },
+          "crossings": [
+            {
+              "relation": "(crank, follower.turn) drives follower.turn",
+              "coordinate": "follower.turn",
+              "primitive": ">",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        },
+        {
+          "tick": 1,
+          "bank": {
+            "bell.turn": 0.0,
+            "crank": 0.0,
+            "follower.turn": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "bank": {
+            "bell.turn": 2.0,
+            "crank": 2.0,
+            "follower.turn": 3.5
+          },
+          "crossings": [
+            {
+              "relation": "(crank, follower.turn) drives follower.turn",
+              "coordinate": "follower.turn",
+              "primitive": ">",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "replay",
+              "status": "completed",
+              "admitted": 2.0
+            }
+          ]
+        },
+        {
+          "tick": 3,
+          "bank": {
+            "bell.turn": 3.0,
+            "crank": 3.0,
+            "follower.turn": 4.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "replay",
+              "status": "completed",
+              "admitted": 2.0
+            },
+            {
+              "handle": "later",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "FollowingContact",
+      "dt": 0.1,
+      "steps": 4,
+      "document": {
+        "format": "machinome-export",
+        "version": 6,
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(crank / 7)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(1 + _b0)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(32 + _b1)"
+          },
+          {
+            "name": "_b3",
+            "expression": "(0.1 * crank)"
+          },
+          {
+            "name": "_b4",
+            "expression": "(follower.turn + 4.2)"
+          },
+          {
+            "name": "_b5",
+            "expression": "(_b4 - _b1)"
+          }
+        ],
+        "program": {
+          "identity": "378e8cc966782e2f321b4b72094cae29b56301f35a63be61c11c974e34a11753",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "follower.turn": {
+              "kind": "coordinate",
+              "initial": -3.2,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "follower.turn"
+              ],
+              "gives": [
+                "follower.turn"
+              ],
+              "description": "(crank, follower.turn) drives follower.turn",
+              "stated_by": "FollowingContact",
+              "expressions": [
+                "(_b2 - (_b3 * (_b5 > 0)))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(_b2 - (_b3 * _j0))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": ">",
+                      "level": "(_b5 - 0)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {},
+          "sources": {
+            "crank": [
+              "crank"
+            ],
+            "follower.turn": [
+              "crank"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          }
+        }
+      },
+      "script": [
+        {
+          "tick": 1,
+          "snapshot": "before-contact"
+        },
+        {
+          "tick": 1,
+          "move": {
+            "input": "crank",
+            "to": 1.0
+          },
+          "handle": "first"
+        },
+        {
+          "tick": 2,
+          "restore": "before-contact"
+        },
+        {
+          "tick": 3,
+          "move": {
+            "input": "crank",
+            "to": 1.0
+          },
+          "handle": "replay"
+        },
+        {
+          "tick": 4,
+          "move": {
+            "input": "crank",
+            "to": 1.5
+          },
+          "handle": "later"
+        }
+      ],
+      "ticks": [
+        {
+          "tick": 1,
+          "bank": {
+            "crank": 1.0,
+            "follower.turn": -3.0571428571428543
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 1,
+          "bank": {
+            "crank": 0.0,
+            "follower.turn": -3.2
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "bank": {
+            "crank": 1.0,
+            "follower.turn": -3.0571428571428543
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "replay",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 3,
+          "bank": {
+            "crank": 1.5,
+            "follower.turn": -2.985714285714285
+          },
+          "crossings": [
+            {
+              "relation": "(crank, follower.turn) drives follower.turn",
+              "coordinate": "follower.turn",
+              "primitive": ">",
+              "level": 0.0,
+              "t": 6.217248937900981e-14
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "replay",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "later",
+              "status": "completed",
+              "admitted": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "StationaryFollower",
+      "dt": 0.1,
+      "steps": 4,
+      "document": {
+        "format": "machinome-export",
+        "version": 6,
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(2 * crank)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(_b0 + 1)"
+          }
+        ],
+        "program": {
+          "identity": "f47a83daee0579c0ea21c162ed7a9a439b733fa280420066c528d011a7eacb22",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "follower.turn": {
+              "kind": "coordinate",
+              "initial": 2,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "follower.turn"
+              ],
+              "gives": [
+                "follower.turn"
+              ],
+              "description": "(crank, follower.turn) drives follower.turn",
+              "stated_by": "StationaryFollower",
+              "expressions": [
+                "(crank * (follower.turn < _b1))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(crank * _j0)",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": "<",
+                      "level": "(follower.turn - _b1)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {},
+          "sources": {
+            "crank": [
+              "crank"
+            ],
+            "follower.turn": [
+              "crank"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-09
+          }
+        }
+      },
+      "script": [
+        {
+          "tick": 1,
+          "snapshot": "before-contact"
+        },
+        {
+          "tick": 1,
+          "move": {
+            "input": "crank",
+            "to": 1.0
+          },
+          "handle": "first"
+        },
+        {
+          "tick": 2,
+          "restore": "before-contact"
+        },
+        {
+          "tick": 3,
+          "move": {
+            "input": "crank",
+            "to": 1.0
+          },
+          "handle": "replay"
+        },
+        {
+          "tick": 4,
+          "move": {
+            "input": "crank",
+            "to": 1.5
+          },
+          "handle": "later"
+        }
+      ],
+      "ticks": [
+        {
+          "tick": 1,
+          "bank": {
+            "crank": 1.0,
+            "follower.turn": 2.5
+          },
+          "crossings": [
+            {
+              "relation": "(crank, follower.turn) drives follower.turn",
+              "coordinate": "follower.turn",
+              "primitive": "<",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 1,
+          "bank": {
+            "crank": 0.0,
+            "follower.turn": 2.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "bank": {
+            "crank": 1.0,
+            "follower.turn": 2.5
+          },
+          "crossings": [
+            {
+              "relation": "(crank, follower.turn) drives follower.turn",
+              "coordinate": "follower.turn",
+              "primitive": "<",
+              "level": 0.0,
+              "t": 0.5
+            }
+          ],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "replay",
+              "status": "completed",
+              "admitted": 1.0
+            }
+          ]
+        },
+        {
+          "tick": 3,
+          "bank": {
+            "crank": 1.5,
+            "follower.turn": 3.0
+          },
+          "crossings": [],
+          "stops": [],
+          "commands": [
+            {
+              "handle": "first",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "replay",
+              "status": "completed",
+              "admitted": 1.0
+            },
+            {
+              "handle": "later",
+              "status": "completed",
+              "admitted": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "PeriodicStop",
       "dt": 0.1,
       "steps": 3,

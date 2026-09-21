@@ -223,10 +223,10 @@ describe('the running corpus', () => {
   it('is the framework\'s own fixture, unedited', () => {
     expect(fixture.generated_by).toBe('tools/generate_running_corpus.py');
     expect(fixture.corpus).toBe('tests/running_project/machine.py');
-    expect(fixture.machines).toHaveLength(23);
-    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(20);
+    expect(fixture.machines).toHaveLength(28);
+    expect(new Set(fixture.machines.map((one) => one.name)).size).toBe(25);
     expect(fixture.machines.reduce((total, one) => total + one.ticks.length, 0))
-      .toBe(381);
+      .toBe(401);
   });
 
   fixture.machines.forEach((entry, index) => {
@@ -247,6 +247,7 @@ describe('the running corpus', () => {
 const COMPARISONS = ['<', '<=', '>', '>=', '==', '!='];
 
 const REQUIRED = [
+  'mixed moving contacts with exact replay and subsequent motion',
   'floor', 'ceil', 'sign', '%', 'a comparison',
   'a multi-source law',
   'a stop located inside a tick',
@@ -533,8 +534,38 @@ function periodicContactCovered(entry: CorpusMachine): boolean {
   });
 }
 
+function mixedContactsCovered(machines: CorpusMachine[]): boolean {
+  const expected: Record<string, [number, number, number]> = {
+    OvertakenFollower: [2, 3.5, 4], NegativeFollower: [-2, -3.5, -4],
+    ObservedFollower: [2, 3.5, 4], FollowingContact: [1, -3.2+1/7, -3.2+1.5/7],
+    StationaryFollower: [1, 2.5, 3],
+  };
+  for (const [name, [target, firstValue, laterValue]] of Object.entries(expected)) {
+    const entry = machines.find(e => e.name === name);
+    if (!entry || entry.ticks.length !== 4) return false;
+    const [first, restored, replay, later] = entry.ticks;
+    if (JSON.stringify(first.bank) !== JSON.stringify(replay.bank)
+        || JSON.stringify(first.crossings) !== JSON.stringify(replay.crossings)
+        || restored.bank.crank !== 0
+        || !entry.script.some(a => a.restore === 'before-contact')) return false;
+    for (const [tick, x, q, handle] of [
+      [first, target, firstValue, 'first'], [replay, target, firstValue, 'replay'],
+      [later, target*1.5, laterValue, 'later'],
+    ] as const) {
+      if (tick.bank.crank !== x || Math.abs(tick.bank['follower.turn']-q) > 1e-12
+          || !tick.commands.some(c => c.handle === handle && c.status === 'completed')) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
   const seen = new Set<string>();
+  if (mixedContactsCovered(machines)) {
+    seen.add('mixed moving contacts with exact replay and subsequent motion');
+  }
   for (const entry of machines) {
     if (periodicContactCovered(entry)) seen.add('a periodic contact before a free endpoint');
     const document = entry.document as {
@@ -739,6 +770,17 @@ export function uncoveredFeatures(machines: CorpusMachine[]): string[] {
 }
 
 describe('the corpus\'s width', () => {
+  it('requires each mixed contact and its exact replay', () => {
+    for (const name of ['OvertakenFollower', 'NegativeFollower', 'ObservedFollower',
+                        'FollowingContact', 'StationaryFollower']) {
+      const feature = 'mixed moving contacts with exact replay and subsequent motion';
+      expect(uncoveredFeatures(fixture.machines.filter(e => e.name !== name)))
+        .toContain(feature);
+      const entries = structuredClone(fixture.machines);
+      entries.find(e => e.name === name)!.ticks[2].bank['follower.turn'] += .01;
+      expect(uncoveredFeatures(entries)).toContain(feature);
+    }
+  });
   it('requires the periodic contact, its blocked outcome and actual replay', () => {
     for (const damage of ['missing', 'restore', 'stops', 'status', 'target']) {
       let entries = structuredClone(fixture.machines);

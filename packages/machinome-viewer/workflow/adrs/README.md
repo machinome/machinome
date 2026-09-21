@@ -75,3 +75,4 @@ both repositories. Consequences:
 - [ADR-067](EXPORT/ADR-067-a-play-edge-retains-contact-history-in-the-running-bank.md) — A play edge retains contact history in the running bank — **Accepted**, extends 045 and 047, builds on 054, consumes machinome ADR-130
 - [ADR-068](EXPORT/ADR-068-time-drives-admit-independent-motion-without-bank-state.md) — Time drives admit independent motion without bank state — **Accepted**, extends 045 and 047, preserves 067, consumes machinome ADR-133
 - [ADR-069](EXPORT/ADR-069-moving-stops-attribute-push-at-first-contact.md) — Moving stops attribute push at first contact — **Accepted**, amends 054, preserves 047 and 068, consumes machinome ADR-135
+- [ADR-070](EXPORT/ADR-070-moving-contacts-use-relative-crossings.md) — Moving contacts use relative crossings with exact following-contact certificates — **Accepted**, amends 057, preserves 047/060/069, consumes machinome ADR-136

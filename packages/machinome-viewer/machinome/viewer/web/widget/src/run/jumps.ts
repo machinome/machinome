@@ -30,6 +30,7 @@ import type {
 import { movingNames, PathValue, UnsupportedPathNode } from '../expressions';
 import type { KinkLevel } from '../expressions';
 import { kinkLevel } from './program';
+import { constantContact, hasMovingSource } from './contact-proof';
 
 /** A SELECTOR's placeholder bound to the branch the block read at its
  * piece's midpoint (design D3). A forced node is a CONSTANT on the
@@ -1047,6 +1048,7 @@ class Walk {
   private probe(jump: ProgramJump, surface: number, t: number, right: number,
                 ownLeft: number,
                 branches: Record<string, number>): number | null {
+    if (this.constantContact(jump, t, right, ownLeft, branches)) return null;
     const base = this.skeletonAt(t, branches);
     const subdivisions = this.program.limits.subdivisions;
     for (let step = 1; step <= subdivisions; step += 1) {
@@ -1054,9 +1056,22 @@ class Walk {
       // The skeleton's change taken FIRST, as `ownAt` takes it.
       const own = ownLeft + (this.skeletonAt(s, branches) - base);
       const level = this.levelOfJump(jump, s, own, branches);
-      if (level !== surface) return level;
+      if (level !== surface
+          && !this.constantContact(jump, t, s, ownLeft, branches)) return level;
     }
     return null;
+  }
+
+  private constantContact(jump: ProgramJump, left: number, right: number,
+                          ownLeft: number,
+                          branches: Record<string, number>): boolean {
+    const roots = this.program.bindings.roots();
+    const level = this.program.nodeOf(jump.level);
+    if (!hasMovingSource(level, this.delta, roots)) return false;
+    const values = { ...along(this.start, this.delta, left), ...branches };
+    return constantContact(this.program.nodeOf(this.reading.outer.skeleton),
+                           level, values, this.delta, this.reading.own,
+                           ownLeft, right - left, roots);
   }
 
   // ------------------------------------------------------------------
@@ -1104,6 +1119,7 @@ class Walk {
       const low = this.levelOfJump(jump, left, ownLow, branches);
       const high = this.levelOfJump(jump, stop, ownHigh, branches);
       if (high === low) return null;
+      if (this.constantContact(jump, left, stop, ownLow, branches)) return null;
       const found = surfacesOf(jump, low, high, closed, limits, refuse)
         .filter((level) => !(closed && level === low));
       if (found.length === 0) return null;
@@ -1314,6 +1330,29 @@ class Walk {
     const branchAt = (value: number): number =>
       branchOf(jump.primitive,
                this.levelOfJump(jump, where, value, branches));
+    // At fixed crossing sources the threshold may have overtaken the part.
+    // Establish the LOCAL near-to-far orientation before the ordinal walk;
+    // stationary thresholds keep their original point-evaluation path.
+    if (hasMovingSource(this.program.nodeOf(jump.level), this.delta,
+                        this.program.bindings.roots())) {
+      const onNear = branchAt(ownStar) === near;
+      const step = ulpOf(ownStar);
+      let oriented: number | null = null;
+      for (let power = 0; power < WALK_STRIDES; power += 1) {
+        for (const side of [direction, -direction]) {
+          const candidate = ownStar + side * step * (2 ** power);
+          if ((branchAt(candidate) === near) !== onNear) {
+            oriented = onNear ? side : -side;
+            break;
+          }
+        }
+        if (oriented !== null) break;
+      }
+      if (oriented === null) {
+        throw unlanded(this.described, this.coordinate, jump.primitive, WALK_STRIDES);
+      }
+      direction = oriented;
+    }
     // NO `scale`: a running landing is walked from the landed value's
     // own ulp, exactly as it was before the extraction (design §5). The
     // ulp-of-zero reading is closed on the CLOCKED side alone, so no

@@ -5,6 +5,12 @@ it carries release together and share one version.
 
 ## 0.2.0 — unreleased
 
+- Moving engagement thresholds now use the relative crossing direction for
+  running self-read landings. Exact constant-contact certificates prevent
+  rounding noise from refusing a valid following movement, as exposed by
+  Curta's carry lever. Bank arithmetic, contact tolerances, genuine refusals,
+  clocked execution and API/document versions are unchanged.
+
 - Periodic moving-read stops now identify pushing inputs at the first contact,
   even when a long request ends in a later free window. Curta's exported
   lockout reproduction stops the same short and two-revolution requests;

@@ -1857,9 +1857,9 @@ describe('the classification agrees with the published flag (D6)', () => {
     }
     expect(disagreements).toEqual([]);
     // The measurement plus play and periodic records: 43 driven ends + 34
-    // jump levels over the corpus's 23 documents, zero
+    // jump levels over the corpus's 28 documents, zero
     // disagreements.
-    expect([ends, levels]).toEqual([43, 34]);
+    expect([ends, levels]).toEqual([49, 39]);
   });
 
   it('finds constant or affine EXACTLY where a committed fixture '
