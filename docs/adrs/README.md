@@ -107,6 +107,8 @@ that way.
 
 - [ADR-135](NODE/ADR-135-moving-constraints-attribute-push-at-contact.md) — Moving constraints attribute push at contact: retain the located bracket and test each admission there, so a later free periodic endpoint cannot erase an earlier obstruction; no API, document or tolerance change — **Accepted**, amends 113; depends on 108/109/111/113/133, cites 134
 
+- [ADR-136](NODE/ADR-136-moving-contacts-use-relative-crossings.md) — Moving contacts use relative crossings: branch-verified local landing and exact constant-contact certificates prevent false overtaking/rounding refusals without changing bank arithmetic or tolerances — **Accepted**, amends 121; preserves 108/113/124/135
+
 ### BUILD — loading, watching, CLI
 - [ADR-130](BUILD/ADR-130-machinome-is-a-clean-package-and-command-boundary.md) — Machinome is a clean package and command boundary — **Accepted**
 - [ADR-005](BUILD/ADR-005-path-based-dynamic-module-loading.md) — Path-based dynamic module loading — **Accepted**, amended by 119

@@ -3586,4 +3586,25 @@ The periodic-contact corpus restores on its own recorded step before the
 next request, so both stops are present. No general corpus cursor repair is
 included in that cycle. A future repair should be red-first for restore plus
 an immediate same-step stop, and check crossings as well as stops; it should
-not change machine state or command semantics to repair evidence collection.
+  not change machine state or command semantics to repair evidence collection.
+
+# Curta moving-contact landing and precision (2026-09-21)
+
+**Status: `mixed-threshold-landing` validated; authorized local integration
+follows archival.** Originating project `Calculators/Curta-Type-I-3x`,
+`HigherOperatingTrial`, framework base `e63700e`. A measured tens restraint
+observing the real carry lever exposes a landing search facing the wrong
+way when a moving threshold overtakes the part. Correcting that direction
+then exposes false chatter from +2.22e−16 round-off in following contact.
+The latter also reproduces independently on unchanged main.
+
+The pilot approved both corrections without changed tolerances, clearance,
+carry laws or genuine-error suppression. Branch-verified local orientation
+and exact constant-relative-level certificates correct the two decisions;
+bank arithmetic stays unchanged. Framework and independent viewer suites,
+actual Curta source laws, native/mesh contact checks, full-tree worker
+requests and exact 213-coordinate Python/browser parity all pass.
+See [ADR-136](../docs/adrs/NODE/ADR-136-moving-contacts-use-relative-crossings.md)
+and [cycle evidence](../openspec/changes/archive/2026-09-21-mixed-threshold-landing/evidence.md).
+This is not a physical-print defect, adoption of provisional T07 geometry,
+or completion of the operating-Curta roadmap. No external issue was opened.

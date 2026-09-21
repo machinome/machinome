@@ -39,12 +39,15 @@ def machine_class(name):
     from .carriage_project import machine as carriage
     from .running_project import machine as module
     from . import periodic_constraint_project as periodic
+    from . import mixed_threshold_project as mixed
 
     found = getattr(module, name, None)
     if found is None:
         found = getattr(carriage, name, None)
     if found is None:
-        found = getattr(periodic, name)
+        found = getattr(periodic, name, None)
+    if found is None:
+        found = getattr(mixed, name)
     return found
 
 
@@ -188,6 +191,21 @@ class CorpusDocumentTest(BaseNodeTest):
 
 
 class CoverageGuardTest(TestCase):
+    def test_mixed_contacts_require_each_case_and_real_replay(self):
+        from copy import deepcopy
+        from tools.generate_running_corpus import uncovered_features
+
+        feature = 'mixed moving contacts with exact replay and subsequent motion'
+        for name in ('OvertakenFollower', 'NegativeFollower', 'ObservedFollower',
+                     'FollowingContact', 'StationaryFollower'):
+            machines = corpus()['machines']
+            self.assertIn(feature, uncovered_features(
+                [entry for entry in machines if entry['name'] != name]))
+            changed = deepcopy(machines)
+            entry = next(e for e in changed if e['name'] == name)
+            entry['ticks'][2]['bank']['follower.turn'] += .01
+            self.assertIn(feature, uncovered_features(changed))
+
     """(5.3) The corpus's width is visible without running the
     generator: the guard is under direct test."""
 
@@ -230,7 +248,8 @@ class CoverageGuardTest(TestCase):
         from tools.generate_running_corpus import uncovered_features
 
         machines = [entry for entry in corpus()['machines']
-                    if entry['name'] not in ('Captured', 'PeriodicStop')]
+                    if entry['name'] not in ('Captured', 'PeriodicStop',
+                                             'ObservedFollower')]
         missing = uncovered_features(machines)
         self.assertIn('a bound reading another coordinate', missing)
 
@@ -251,7 +270,9 @@ class CoverageGuardTest(TestCase):
 
         machines = [entry for entry in corpus()['machines']
                     if entry['name'] not in ('Clearing', 'StoppedClearing',
-                                             'ShiftedCarry')]
+                                             'ShiftedCarry', 'OvertakenFollower',
+                                             'NegativeFollower', 'ObservedFollower',
+                                             'FollowingContact', 'StationaryFollower')]
         missing = uncovered_features(machines)
         self.assertIn('a law that reads the coordinate it drives', missing)
         self.assertIn('a self-read coordinate holding at its gate while '

@@ -1318,14 +1318,30 @@ class _Walk:
         """The level's value at the FIRST point of the piece at which it
         differs from the surface it sits on -- an inequality between two
         evaluated floats, with no tolerance in it."""
+        if self._constant_contact(jump, t, right, own_left, branches):
+            return None
         base = self._skeleton(t, branches)
         for step in range(1, _SUBDIVISIONS + 1):
             s = t + (right - t) * step / _SUBDIVISIONS
             own = own_left + (self._skeleton(s, branches) - base)
             level = self._level(jump, s, own, branches)
             if level != surface:
+                if self._constant_contact(jump, t, s, own_left, branches):
+                    continue
                 return level
         return None
+
+    def _constant_contact(self, jump, left, right, own_left, branches):
+        # A stationary threshold keeps its existing point-evaluation path.
+        if not any(self.delta.get(name, 0.0)
+                   for name in free_names(as_node(jump.argument))):
+            return False
+        from .contact_proof import constant_contact
+        values = _along(self.start, self.delta, left)
+        values.update(branches)
+        return constant_contact(as_node(self.plan.skeleton),
+                                as_node(jump.argument), values, self.delta,
+                                self.own, own_left, right-left)
 
     ##############################################
     # The FIRST surface strictly inside the piece
@@ -1390,6 +1406,8 @@ class _Walk:
         high = self._level(jump, right, own_high, branches)
         if high == low:
             # A level that does not MOVE crosses nothing.
+            return None
+        if self._constant_contact(jump, left, right, own_low, branches):
             return None
         found = [level for level
                  in _surfaces(jump, low, high, self.described,
@@ -1539,6 +1557,29 @@ class _Walk:
         def branch_at(value):
             return _branch_of(jump, self._level(jump, where, value, branches))
 
+        # The sources are now fixed at the crossing. Their moving threshold
+        # may have OVERTAKEN the driven coordinate, so the coordinate's travel
+        # is not necessarily the local near-to-far direction. Bracket the
+        # branch change locally in either direction before the ordinal walk.
+        # Never accept a candidate on faith: one end must read the incoming
+        # branch and the other must not. Probe the old direction first so
+        # stationary-threshold landings retain their exact existing floats.
+        if any(self.delta.get(name, 0.0)
+               for name in free_names(as_node(jump.argument))):
+            on_near = branch_at(own_star) == near
+            step = math.ulp(own_star)
+            oriented = None
+            for power in range(_WALK_STRIDES):
+                for side in (direction, -direction):
+                    candidate = own_star + side * step * (2 ** power)
+                    if (branch_at(candidate) == near) != on_near:
+                        oriented = side if on_near else -side
+                        break
+                if oriented is not None:
+                    break
+            if oriented is None:
+                raise _unlanded(self.described, self.coordinate, jump)
+            direction = oriented
         return far_side_of(
             branch_at, near, own_star, direction,
             lambda: _unlanded(self.described, self.coordinate, jump))
@@ -1583,7 +1624,7 @@ def far_side_of(branch_at, near, own_star, direction, unlanded, scale=0.0):
 
     `branch_at(value)` reads the jump node's branch at one value of the
     quantity being landed; `near` is the branch on the side the value
-    came from; `direction` is the sign of its travel; `unlanded` builds
+    came from; `direction` points locally from near to far; `unlanded` builds
     the invariant error for a bracket that cannot be found.
 
     Membership of a value in the far side is decided by EVALUATING the

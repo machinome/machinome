@@ -63,6 +63,7 @@ from machinome.simulation.run import _TOLERANCE  # noqa: E402
 from tests.carriage_project import machine as carriage  # noqa: E402
 from tests.running_project import machine as machines  # noqa: E402
 from tests import periodic_constraint_project as periodic  # noqa: E402
+from tests import mixed_threshold_project as mixed  # noqa: E402
 
 
 def machine_class(name):
@@ -71,7 +72,9 @@ def machine_class(name):
     if found is None:
         found = getattr(carriage, name, None)
     if found is None:
-        found = getattr(periodic, name)
+        found = getattr(periodic, name, None)
+    if found is None:
+        found = getattr(mixed, name)
     return found
 
 
@@ -85,6 +88,7 @@ DOCUMENT_KEYS = ('format', 'version', 'drivers', 'instructions',
 #: Every feature the corpus must exercise, as the export capability lists
 #: them. A corpus missing one is refused rather than written.
 REQUIRED = (
+    'mixed moving contacts with exact replay and subsequent motion',
     'a periodic contact before a free endpoint',
     'floor', 'ceil', 'sign', '%', 'a comparison',
     'a multi-source law',
@@ -130,6 +134,15 @@ COMPARISONS = ('<', '<=', '>', '>=', '==', '!=')
 #: One entry per machine: its class name, its step size, how many ticks
 #: to run, and the script applied BEFORE the tick each entry names.
 CORPUS = (
+    *({'name': name, 'dt': .1, 'steps': 4, 'script': [
+        {'tick': 1, 'snapshot': 'before-contact'},
+        {'tick': 1, 'move': {'input': 'crank', 'to': target}, 'handle': 'first'},
+        {'tick': 2, 'restore': 'before-contact'},
+        {'tick': 3, 'move': {'input': 'crank', 'to': target}, 'handle': 'replay'},
+        {'tick': 4, 'move': {'input': 'crank', 'to': target*1.5}, 'handle': 'later'},
+    ]} for name, target in (('OvertakenFollower', 2.), ('NegativeFollower', -2.),
+                           ('ObservedFollower', 2.), ('FollowingContact', 1.),
+                           ('StationaryFollower', 1.))),
     {'name': 'PeriodicStop', 'dt': .1, 'steps': 3, 'script': [
         {'tick': 1, 'snapshot': 'before-contact'},
         {'tick': 1, 'move': {'input': 'crank', 'to': 840.0}, 'handle': 'periodic0'},
@@ -446,6 +459,34 @@ def _periodic_contact_covered(entry):
     return True
 
 
+def _mixed_contacts_covered(machines):
+    expected = {'OvertakenFollower': (2, 3.5, 4),
+                'NegativeFollower': (-2, -3.5, -4),
+                'ObservedFollower': (2, 3.5, 4),
+                'FollowingContact': (1, -3.2+1/7, -3.2+1.5/7),
+                'StationaryFollower': (1, 2.5, 3)}
+    for name, (target, first_value, later_value) in expected.items():
+        entry = next((e for e in machines if e['name'] == name), None)
+        if entry is None or len(entry['ticks']) != 4:
+            return False
+        first, restored, replay, later = entry['ticks']
+        if first['bank'] != replay['bank'] or first['crossings'] != replay['crossings']:
+            return False
+        if restored['bank']['crank'] != 0:
+            return False
+        if not any(a.get('restore') == 'before-contact' for a in entry['script']):
+            return False
+        for tick, x, q, handle in ((first, target, first_value, 'first'),
+                                   (replay, target, first_value, 'replay'),
+                                   (later, target*1.5, later_value, 'later')):
+            if tick['bank']['crank'] != x or abs(tick['bank']['follower.turn']-q) > 1e-12:
+                return False
+            if not any(c['handle'] == handle and c['status'] == 'completed'
+                       for c in tick['commands']):
+                return False
+    return True
+
+
 def uncovered_features(machines):
     """Every feature of `REQUIRED` no machine in `machines` exercises.
 
@@ -455,6 +496,8 @@ def uncovered_features(machines):
     all -- this refuses to write instead.
     """
     seen = set()
+    if _mixed_contacts_covered(machines):
+        seen.add('mixed moving contacts with exact replay and subsequent motion')
     for entry in machines:
         if _periodic_contact_covered(entry):
             seen.add('a periodic contact before a free endpoint')

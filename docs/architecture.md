@@ -1107,6 +1107,18 @@ small for this to help. No cache outlives the tick that built it, and
 a machine whose followed quantities move entirely, or whose graphs are
 small, pays only that one classification walk per graph per tick.
 
+Mixed moving contacts also admit a conservative zero-motion certificate
+(ADR-136). Exact rational affine composition of the skeleton increment into
+the contact level can prove that relative position is constant, so rounded
+point samples cannot invent a branch departure. Continuous selection knots
+are split exactly and certified piece by piece; unsupported expressions,
+nonzero slopes and exhausted proof work retain ordinary execution. The
+certificate does not replace point evaluation or bank arithmetic. At a real
+mixed crossing, a branch-verified local near-to-far bracket orients the
+existing ordinal landing walk, because a moving threshold can overtake a
+part travelling the other way relative to that threshold. Stationary
+thresholds and clocked execution keep their existing paths.
+
 Its tick is integrated in TWO LAYERS (`_Retained`, decided once at
 compile, and `_Walk`, which runs it). Layer one is ADR-107's own
 `_partition`, unchanged, over the jump nodes that do NOT depend on the
