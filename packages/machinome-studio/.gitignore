@@ -40,3 +40,7 @@ WTs/
 /projects
 *.pyc
 __pycache__
+
+# machinome.org's intake artifact store: viewer exports and previews
+# produced from the projects, carried into the site build, never committed.
+/.machinome-site
