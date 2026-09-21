@@ -7,32 +7,6 @@ program (versions 5, 6, 7, 9 or 10). It returns null for posed and clocked model
 The run retains a coordinate bank and advances in fixed ticks, normally in
 a worker. Use the handle as an interface; do not import its internal engine.
 
-A moving-read stop acts at its first located contact, even if a long request
-would end in a later free window. Only admissions pushing at that contact are
-stopped; unrelated or relieving motion continues. Stop search still uses the
-document's finite sampling limits, not a continuous collision solver.
-
-Autonomous retained motion
-==========================
-
-A version 10 document can declare running time drives. Advancing the run gives
-each such relation its own share of elapsed time without a host ``rate()``
-command. Mounting still starts paused; call ``start()`` or ``step()`` to advance.
-Time is read-only simulation time, not an operator driver or a bank coordinate.
-Only the model's declared operator inputs appear in ``viewer.drivers()``.
-
-A model's stop/enable input and the transport's ``pause()`` are different:
-disabling a relation can hold its position while elapsed time continues;
-pausing the transport stops ticks altogether. Each time drive admits motion
-independently. A bound that stops one does not stop an unrelated drive, and the
-stopped relation retries at the next tick's current global time without catching
-up the skipped interval. For nonlinear laws this is not a resumable local phase.
-
-Zero-duration operator moves, such as winding Astrarium while stopped, do not
-advance time. The ordinary bank, tick and commands suffice for save/restore/reset;
-there is no extra hidden time-drive state. These are declared kinematic
-relationships, not inferred dynamics, torque or energy conservation.
-
 Read the run
 ============
 
@@ -150,7 +124,7 @@ motion. Inspect the outcome instead of equating promise resolution with success.
 Scripted example
 ----------------
 
-For the committed Pascaline test export (whose input is ``units_entry``),
+For the committed calculator-module test export, whose input is ``units_entry``,
 mounted with the default ``dt = 1 / 240``:
 
 .. code-block:: javascript
@@ -166,6 +140,35 @@ mounted with the default ``dt = 1 / 240``:
 Do not await ``completion`` before calling ``step()`` on a paused run: no
 ticks would execute. An interactive host can call ``run.start()`` instead.
 Use your own model's declared IDs, units and suitable tick size.
+
+Stops and time drives
+=====================
+
+A declared range is a mechanical stop. When a tick would carry a coordinate
+past its bound, the run commits the coordinate at the bound and retires the
+pushing command ``blocked`` with the travel it admitted. A bound that reads
+another moving coordinate is judged **at its first located contact**: the
+inputs whose motion pushes the level outward there are stopped, even when
+the whole request would have ended in a later free window, and unrelated or
+relieving motion continues. The search samples the tick at a finite number
+of points and bisects; it is not a continuous collision solver, and a
+forbidden interval narrower than its sampling can be missed.
+
+A version 10 document can declare **time drives**: relations the running
+clock advances on its own, with no ``rate()`` command from the host.
+Mounting still starts paused; ``start()`` or ``step()`` advances them. Time
+is read-only simulation time, not an operator input, so it never appears in
+``viewer.drivers()``. A model's own enable input and the transport's
+``pause()`` differ: disabling a relation holds its position while elapsed
+time continues, pausing stops ticks altogether. Each time drive admits
+motion independently: a stop on one does not stop another, and a stopped
+relation retries from the next tick's global time without catching up the
+skipped interval, which for a nonlinear law is not a resumable local phase.
+A zero-duration operator move, such as winding a spring while the run is
+stopped, does not advance time. The ordinary bank, tick and commands
+suffice for snapshot, restore and reset; there is no hidden time-drive
+state. These are declared kinematic relationships, not inferred dynamics,
+torque or energy.
 
 Observe and save
 ================

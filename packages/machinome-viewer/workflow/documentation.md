@@ -49,4 +49,5 @@ A Git push can trigger subsequent builds only after that account/project setup.
 This change creates no hosted project, pushes nothing, and cannot verify an
 unconfigured hosting account. If the slug changes, update package URLs and
 cross-manual links; `READTHEDOCS_CANONICAL_URL` supplies the canonical build URL.
-Keep the current unreleased notice until publication is actually confirmed.
+The manual states the version it documents and the framework release it
+matches; change both together at a release.

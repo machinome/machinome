@@ -12,7 +12,9 @@ the note is stale. Say so in the note rather than quietly editing the record.
 
 `adrs/` is the decision log, relocated from `docs/adrs/` without changing the
 status or authority of any decision. Accepted decisions remain accepted.
-`release-0.2.md` is release preparation, not evidence of a published release.
+`release-0.7.md` is release preparation, not evidence of a published release;
+`archive/` keeps finished records such as the development changelog that
+preceded 0.7.0.
 `documentation.md` explains how maintainers build and publish the manual;
 `documentation-review.md` records local review evidence.
 

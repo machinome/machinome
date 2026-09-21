@@ -22,8 +22,29 @@ def test_manual_and_hosting_configuration_exist():
 def test_docs_contains_no_development_records():
     assert not (ROOT / 'docs/adrs').exists()
     assert not (ROOT / 'docs/release-0.2.md').exists()
+    assert not (ROOT / 'docs/release-0.7.md').exists()
     assert (ROOT / 'workflow/adrs/README.md').is_file()
-    assert (ROOT / 'workflow/release-0.2.md').is_file()
+    assert not (ROOT / 'workflow/release-0.2.md').exists()
+    assert (ROOT / 'workflow/release-0.7.md').is_file()
+
+
+def test_the_manual_states_the_release():
+    """0.7.0 released with Machinome 0.7.0: nothing reader-facing says otherwise."""
+    pages = sorted((ROOT / 'docs').rglob('*.rst'))
+    assert pages
+    for page in pages + [ROOT / 'README.md']:
+        text = page.read_text()
+        assert 'unreleased' not in text.lower(), page
+        assert 'not yet published' not in text.lower(), page
+    changelog = (ROOT / 'CHANGELOG.md').read_text()
+    sections = re.split(r'^## ', changelog, flags=re.M)
+    current = ' '.join(sections[1].split())
+    assert current.startswith('0.7.0 — 21 September 2026'), current[:40]
+    assert 'unreleased' not in current.lower()
+    assert 'Machinome 0.7.0' in current
+    project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']
+    assert project['version'] == '0.7.0'
+    assert (ROOT / 'README.md').read_text().count('0.7.0') >= 1
 
 
 def test_package_points_readers_to_manual():

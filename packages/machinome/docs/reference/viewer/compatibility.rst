@@ -7,8 +7,9 @@ Three version numbers
 
 The current source declares:
 
-* **Package |package-version|** — the Python distribution and its bundled widget.
-  This version is **unreleased**, not a claim of a PyPI or npm publication.
+* **Package |package-version|** — the Python distribution and its bundled
+  widget, released with Machinome 0.7.0 and numbered with it. The widget is
+  not published on npm; it ships inside the Python distribution.
 * **Viewer API |viewer-api|** — the browser-host interface/capabilities.
 * **Document versions |document-versions|** — model schemas this bundle reads.
 
@@ -98,5 +99,5 @@ Python code. Flexible parts are evaluated with the bundled molejo runtime;
 they do not require a server-side CAD rebuild for each browser frame.
 
 See the `framework upgrade guide
-<https://machinome.readthedocs.io/en/latest/upgrading.html>`_ for changes to
+<https://machinome.readthedocs.io/en/latest/project/upgrading.html>`_ for changes to
 model authoring rather than viewer hosting.

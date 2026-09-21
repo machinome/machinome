@@ -10,10 +10,9 @@ exports, custom embeds and headless snapshots.
 [Embedding](https://machinome-viewer.readthedocs.io/en/latest/embedding.html) ·
 [API and CLI reference](https://machinome-viewer.readthedocs.io/en/latest/reference/index.html)
 
-Version **0.2.0 is unreleased**. This source declares viewer API **23** and reads
-document versions **1–10**. It has not yet been published on PyPI or npm. The
-documentation URL is the intended Read the Docs home; its one-time project
-import and repository push are separate maintainer actions.
+Version **0.7.0** releases with Machinome 0.7.0 and is numbered with it. It
+declares viewer API **23** and reads document versions **1–10**. The widget is
+not published on npm; it ships inside the Python distribution.
 
 ## For makers
 
@@ -22,9 +21,11 @@ document in a WebGL-capable browser, with camera, assembly navigation and the
 controls appropriate to a posed, running or clocked model. A reader of a
 static export needs no Python, Node.js or CAD installation.
 
-The intended installation after publication is `pip install "machinome[viewer]"`.
-For this unreleased source, use a matching framework checkout and install the
-viewer into the same environment:
+Install it with the framework: `pip install "machinome[viewer]"`. Built
+distributions carry the bundle and install without npm; the Python package
+needs Python 3.11+. To work on the viewer source, build the bundle first
+(Node.js 22+) and install the checkout into the same environment as the
+framework:
 
 ```sh
 npm ci --prefix machinome_viewer/widget
@@ -33,9 +34,8 @@ python -m pip install -e .
 machinome-viewer describe
 ```
 
-Source frontend builds need Node.js 22+; the Python package needs Python 3.11+.
-Built distributions carry the bundle and install without npm. See the manual's
-installation guide before configuring snapshots or opening a project.
+See the manual's installation guide before configuring snapshots or opening a
+project.
 
 ## For embedding hosts
 
@@ -58,7 +58,7 @@ See [LICENSE](LICENSE) and [CHANGELOG.md](CHANGELOG.md).
 User documentation lives in [docs/](docs/). Build/hosting instructions and
 review evidence belong in [workflow/](workflow/README.md); accepted decisions
 remain in [workflow/adrs/](workflow/adrs/README.md), and the release-preparation
-record is [workflow/release-0.2.md](workflow/release-0.2.md).
+record is [workflow/release-0.7.md](workflow/release-0.7.md).
 OpenSpec requirements and changes remain in `openspec/`.
 
 For a local manual preview, follow

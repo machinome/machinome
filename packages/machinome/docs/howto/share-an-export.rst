@@ -6,7 +6,7 @@ Share a static export
 =====================
 
 The framework creates exports; the viewer reads them. Follow the framework's
-`export guide <https://machinome.readthedocs.io/en/latest/embedding.html>`_
+`sharing chapter <https://machinome.readthedocs.io/en/latest/tutorial/10-share.html>`_
 to publish your model with ``machinome export``. Keep the complete directory:
 
 .. code-block:: text
@@ -67,7 +67,7 @@ Capture a still
 For a Machinome project, use the framework's ``machinome snapshot --renderer web``
 command. The framework prepares the build and launches this package's capture
 process. Consult its `CLI reference
-<https://machinome.readthedocs.io/en/latest/cli.html>`_ for model and
+<https://machinome.readthedocs.io/en/latest/reference/cli.html>`_ for model and
 output arguments.
 
 For an already staged directory containing ``viewer.json`` and its models:
