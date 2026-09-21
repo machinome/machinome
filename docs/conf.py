@@ -29,7 +29,7 @@ html_title = 'Machinome — Source code for machines'
 # release edits this block and the status page and nothing else.
 
 release_date = '20 September 2026'
-viewer_version = '0.2.0'        # the matching machinome-viewer package
+viewer_version = '0.7.0'        # the matching machinome-viewer package
 viewer_api = '23'               # the browser API it declares
 document_versions = '1 to 10'    # the document schemas it reads
 mechanics_version = '0.1.0'     # the matching machinome-mechanics package

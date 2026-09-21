@@ -46,8 +46,8 @@ one description that can be built, operated and tested.
   expected-failure accounting, including failure on unexpected success.
 * **Independent viewer:** ``machinome[viewer]`` selects the separate
   AGPL-3.0-only package. Interactive ``develop`` requires it;
-  ``--no-web`` remains available. The matching viewer release 0.2.0
-  implements API 23 and schemas 1–10, including running, clocked and
+  ``--no-web`` remains available. The matching viewer release 0.7.0,
+  numbered with the framework, implements API 23 and schemas 1–10, including running, clocked and
   time-driven machines.
 * **Retained clearance pickup:** explicit running ``Play`` relations
   collect and release a follower through clearance; document schema 9

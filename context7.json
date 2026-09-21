@@ -26,7 +26,7 @@
     "Build freshness tracks each node's contributing source, including project-local imports. Several node classes may share a file without automatically invalidating unrelated sibling geometry.",
     "Place whole-assembly integrity assertions at the root when that is the contract: assertNoSolidInterference and assertNoDisconnectedSolids already descend their subtrees. assertNoPairwiseIntersections is deprecated.",
     "The optional machinome-viewer package owns browser rendering. machinome develop requires it; --no-web builds and watches without it. Check machinome viewer for the installed API and supported documentVersions.",
-    "The matching viewer is 0.2.0, API 23, reading document schemas 1-10; running documents are 5-7, 9 or 10 and clocked documents are 8. Check the installed package with machinome viewer.",
+    "The matching viewer is 0.7.0, API 23, reading document schemas 1-10; running documents are 5-7, 9 or 10 and clocked documents are 8. Check the installed package with machinome viewer.",
     "Keep geometry and operating claims tied to runnable examples and tests. Simulated motion is not a claim of physical manufacturing validation.",
     "The manual is organised by reader intent: start pages, a ten-chapter tutorial building a tally counter under docs/tutorial/, how-to guides under docs/howto/, concept pages under docs/concepts/, examples, reference and project pages."
   ],
