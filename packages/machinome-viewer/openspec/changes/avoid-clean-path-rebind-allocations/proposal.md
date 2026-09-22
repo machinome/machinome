@@ -1,5 +1,7 @@
 ## Why
 
+**Experiment outcome, 22 September 2026:** Rejected after paired performance checks. See `workflow/evidence/operating-curta-clean-rebind-rejected-2026-09-22.md`. No implementation was integrated; the proposed capability is not accepted.
+
 The higher-counter OperatingCurta export takes 20.94 CPU seconds for the first 48 of 480 normal crank ticks without WebGL. A same-export probe found 542,535 of 618,561 `PathValue.bind` calls in the first 12 ticks resolve no expression nodes, yet each allocates a dirty set and one snapshot per input. This measured waste contributes to an unusably slow ordinary crank.
 
 ## What Changes
