@@ -165,3 +165,8 @@ The framework SHALL evaluate an expression path at each new piece using that pie
 
 - **WHEN** a path has been bound and its owner discards it
 - **THEN** path bookkeeping does not retain the expression graph
+
+#### Scenario: Numeric extrema select the same operand
+
+- **WHEN** a bound path evaluates numeric `min` or `max` values, including equal signed zeros or a NaN operand
+- **THEN** it selects the same operand and follows the same error behavior as the full graph evaluator in the original argument order

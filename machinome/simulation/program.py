@@ -838,6 +838,13 @@ def _path_node_value(node, values, computed, standing=None):
     if node.kind == 'unary':
         return -args[0] if node.op == '-' else +args[0]
     if node.kind == 'call' and node.op in SYMBOLIC_BUILTINS:
+        # Every path argument is already numeric. The numeric faces of
+        # motion_math.min/max call these very built-ins after classifying
+        # the operands; repeat neither classification for every sample.
+        if node.op == 'min':
+            return min(*args)
+        if node.op == 'max':
+            return max(*args)
         return getattr(motion_math, node.op)(*args)
     raise ValueError(f'Cannot numerically resolve {node!r}')
 
