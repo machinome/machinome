@@ -147,6 +147,21 @@ The framework SHALL evaluate a shared expression against each supplied input map
 - **WHEN** an expression is evaluated, then all its owners release it
 - **THEN** evaluation bookkeeping does not keep the expression alive
 
+#### Scenario: Full-graph extrema keep numeric operand identity
+
+- **WHEN** a shared expression containing numeric `min` or `max` is evaluated repeatedly with signed-zero, NaN, or changing operands
+- **THEN** every result selects the same operand in the same argument order as its first numerical evaluation
+
+#### Scenario: Malformed full-graph extremum keeps its arity error
+
+- **WHEN** a full-graph `min` or `max` call has other than two operands
+- **THEN** it reports the same error as the public two-argument numeric function at that call's place in evaluation order
+
+#### Scenario: An earlier error keeps precedence over a later unsupported operation
+
+- **WHEN** an expression has a failing input or arithmetic node before an unsupported operation in its evaluation order
+- **THEN** evaluation reports the earlier failure first, including on repeated calls
+
 ### Requirement: Rebinding an expression path uses current piece values
 
 The framework SHALL evaluate an expression path at each new piece using that piece's current inputs and branch values, preserving the graph's arithmetic order and error behavior. Repeated binding SHALL NOT reuse numeric results from earlier pieces or retain a discarded machine graph through process-wide bookkeeping.
@@ -170,3 +185,8 @@ The framework SHALL evaluate an expression path at each new piece using that pie
 
 - **WHEN** a bound path evaluates numeric `min` or `max` values, including equal signed zeros or a NaN operand
 - **THEN** it selects the same operand and follows the same error behavior as the full graph evaluator in the original argument order
+
+#### Scenario: Malformed path extremum keeps its arity error
+
+- **WHEN** a bound path `min` or `max` call has other than two operands
+- **THEN** it reports the same error as the public two-argument numeric function at that call's place in evaluation order

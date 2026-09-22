@@ -61,14 +61,19 @@ class GraphValue(OpenSCADConstant):
                      '<': operator.lt, '<=': operator.le, '>': operator.gt,
                      '>=': operator.ge, '==': operator.eq, '!=': operator.ne}
         # The DAG is immutable: only the input values change between calls.
-        # Keep its order on this value, not in a process-wide registry that
-        # would retain discarded machines. Every call still computes fresh
-        # node values in the same order, including on an error path.
+        # Keep its order and child positions on this value, not in a
+        # process-wide registry that would retain discarded machines.
+        # Compile structure without evaluating an operation: an earlier
+        # input/arithmetic error must still precede a later invalid node.
         if self._evaluation_order is None:
-            self._evaluation_order = tuple(postorder([self._expression_node]))
-        values = {}
-        for node in self._evaluation_order:
-            args = [values[child] for child in node.children]
+            ordered = tuple(postorder([self._expression_node]))
+            positions = {node: index for index, node in enumerate(ordered)}
+            self._evaluation_order = tuple(
+                (node, tuple(positions[child] for child in node.children))
+                for node in ordered)
+        values = [None] * len(self._evaluation_order)
+        for index, (node, children) in enumerate(self._evaluation_order):
+            args = [values[child] for child in children]
             if node.kind == 'num':
                 value = float(node.text)
             elif node.kind == 'name':
@@ -80,11 +85,20 @@ class GraphValue(OpenSCADConstant):
             elif node.kind == 'unary':
                 value = -args[0] if node.op == '-' else +args[0]
             elif node.kind == 'call' and node.op in degree_math.SYMBOLIC_BUILTINS:
-                value = getattr(degree_math, node.op)(*args)
+                # Every child is numeric. These are precisely the built-ins
+                # used by the numeric faces of degree_math.min/max.
+                if node.op == 'min':
+                    value = (min(*args) if len(args) == 2
+                             else degree_math.min(*args))
+                elif node.op == 'max':
+                    value = (max(*args) if len(args) == 2
+                             else degree_math.max(*args))
+                else:
+                    value = getattr(degree_math, node.op)(*args)
             else:
                 raise ValueError(f'Cannot numerically resolve {node!r}')
-            values[node] = value
-        return values[self._expression_node]
+            values[index] = value
+        return values[-1]
 
     def _render(self):
         return str(self)

@@ -842,9 +842,9 @@ def _path_node_value(node, values, computed, standing=None):
         # motion_math.min/max call these very built-ins after classifying
         # the operands; repeat neither classification for every sample.
         if node.op == 'min':
-            return min(*args)
+            return min(*args) if len(args) == 2 else motion_math.min(*args)
         if node.op == 'max':
-            return max(*args)
+            return max(*args) if len(args) == 2 else motion_math.max(*args)
         return getattr(motion_math, node.op)(*args)
     raise ValueError(f'Cannot numerically resolve {node!r}')
 
