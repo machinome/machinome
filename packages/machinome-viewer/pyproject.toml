@@ -31,6 +31,10 @@ keywords = ["machinome", "cad", "viewer", "three.js"]
 dependencies = [
     "fastapi>=0.111,<1",
     "uvicorn>=0.30,<1",
+    # uvicorn serves WebSockets only through an optional library, and the
+    # development page's live reload is one (/ws/reload). Without it a fresh
+    # install's page never learns that the model was republished.
+    "websockets>=10.4",
 ]
 
 [project.optional-dependencies]
