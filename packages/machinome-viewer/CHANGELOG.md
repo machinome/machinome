@@ -5,6 +5,10 @@ it carries release together and share one version.
 
 ## Unreleased
 
+- Retain only the names a followed expression reads for generation-reset
+  reconstruction, avoiding a full-bank copy on every path piece. On the
+  pinned OperatingCurta export this saves 9.6% of the first 48 crank ticks
+  versus the preceding cache build; a full turn remains unverified and slow.
 - Reuse unchanged expression nodes across adjacent running path pieces. The
   OperatingCurta's first 48 crank ticks improve by 14.6% without WebGL, but a
   complete browser revolution remains much slower than its two-second

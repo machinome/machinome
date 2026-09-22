@@ -27,7 +27,7 @@ import { Manifest } from './types';
 // "Risks / Trade-offs").
 import { evalExpr } from './evaluator';
 import {
-  PathValue, UnsupportedPathNode, kinkLevels, movingNames, shapeOf,
+  ExpressionPath, PathValue, UnsupportedPathNode, kinkLevels, movingNames, shapeOf,
 } from './expressions';
 import { evaluateExpression, loadProgram } from './run/program';
 import type { LoadedProgram, RunDocument } from './run/program';
@@ -733,6 +733,33 @@ describe('expressionGeneration and the reset guard (D4)', () => {
 // ---------------------------------------------------------------------
 
 describe('PathValue (D1-D9)', () => {
+  it('retains no unrelated bank input for a later generation reset', () => {
+    let unrelatedReads = 0;
+    const values: Record<string, number> = { a: 2, b: 3 };
+    for (let index = 0; index < 213; index += 1) {
+      Object.defineProperty(values, `unrelated_${index}`, {
+        enumerable: true, configurable: true,
+        get: () => { unrelatedReads += 1; return 100 + index; },
+      });
+    }
+    const path = new ExpressionPath('(a + b)', new Set(['a']), () => undefined);
+    expect(path.bind(values)).toBe(5);
+    expect(unrelatedReads).toBe(0);
+  });
+
+  it('reconstructs present, bound and absent inputs after a generation reset', () => {
+    const bound = new ExpressionPath('(_bound + moving)', new Set(['moving']),
+      () => new Map([['_bound', prepare('(fixed * 2)')]]));
+    const absent = new ExpressionPath('ghost', new Set(['ghost']), () => undefined);
+    expect(bound.bind({ fixed: 3, moving: 1, unrelated: 99 })).toBe(7);
+    expect(absent.bind({ unrelated: 99 })).toBeUndefined();
+    const before = bound.at({ fixed: 3, moving: 5 });
+    retainExpressions();
+    releaseExpressions();
+    expect(bound.at({ fixed: 3, moving: 5 })).toBe(before);
+    expect(absent.at({ unrelated: 0 })).toBeUndefined();
+  });
+
   it('rebinding equal values resolves no node, including after a sampled point', () => {
     const id = prepare('((a + b) * (c + d))');
     const path = new PathValue(id, new Set(['a']));

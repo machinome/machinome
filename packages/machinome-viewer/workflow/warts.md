@@ -124,6 +124,14 @@ document interactive.
   the admitted path or changing dt; this cache alone does not make the
   declared two-second turn interactive.
 
+- **Minimal retained inputs (2026-09-22).** The next viewer cycle removed
+  `ExpressionPath.bind`'s full-bank generation-reset copy: the same pinned
+  48-tick window fell from 24.420 s to 22.075 s (9.6%) in a paired CPU run,
+  with the exact 213-entry digest unchanged. See
+  `workflow/evidence/operating-curta-minimal-path-inputs-2026-09-22.md`.
+  Remaining `nest` and whole-expression evaluation are not covered by this
+  cycle. **Triage: still open; no full-turn browser acceptance.**
+
 # The clocked machine (2026-09-17, `execute-the-commit`, ADR-062)
 
 Four findings met while mirroring machinome's clocked executor (ADR-125,

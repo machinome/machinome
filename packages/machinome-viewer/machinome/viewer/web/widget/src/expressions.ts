@@ -1023,8 +1023,9 @@ export class ExpressionPath {
     return withExpressions(() => {
       // Binding a new piece does not need to reconstruct the old one.
       this.standing = undefined;
-      const result = this.current().bind(values);
-      this.standing = { ...values };
+      const path = this.current();
+      const result = path.bind(values);
+      this.standing = path.boundInputs();
       return result;
     });
   }
@@ -1116,6 +1117,20 @@ export class PathValue {
     const name = (nodes[id] as NameNode).name;
     const present = Object.prototype.hasOwnProperty.call(values, name);
     return { present, value: present ? values[name] : undefined };
+  }
+
+  /** The original piece's relevant inputs for `ExpressionPath` to
+   * reconstruct this bound path after an expression-table reset. The
+   * snapshot was already taken by `bind`; no caller bank is walked here.
+   * A null prototype keeps a bank key named `__proto__` ordinary. */
+  boundInputs(): Record<string, number> {
+    if (this.order === null) throw new Error('PathValue.boundInputs() before bind()');
+    const values = Object.create(null) as Record<string, number>;
+    for (const id of this.inputs) {
+      const input = this.inputValues.get(id)!;
+      if (input.present) values[(nodes[id] as NameNode).name] = input.value as number;
+    }
+    return values;
   }
 
   /** One node's value at one point (D1, D4). Resolution order for a
