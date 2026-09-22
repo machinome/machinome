@@ -10,6 +10,8 @@
 
 **OpenSpec change:** [cache-standing-bound-bind](../../../openspec/changes/archive/2026-09-22-cache-standing-bound-bind/)
 
+**Extended 2026-09-22:** [ADR-140](ADR-140-a-path-reuses-only-its-own-identical-successful-bind.md) separately permits an identical successful rebind on one existing path object. Its path-local lifetime is not this ADR's Run-owned Bound snapshot.
+
 ## Context
 
 ADR-124 made a path value local to one path. At that time cross-tick structure reuse saved only 5% and introduced stale-cache questions. `OperatingCurta` now has a different measured burden: at the viewer's default `dt=1/240`, its crank's lower Bound eagerly binds 126,032 expression nodes each tick, yet just 1,479 depend on the moving bell. On the frozen production program `be125f4048c8be00ce4e73d646311d4a50ac75a59aa739f93bf2f38c992fa195`, the first 47 tick transitions changed only bell turn and the bound's held own argument; the latter is not even referenced by the graph. The 124,553 standing nodes consequently reevaluate the same finite operands at every first sample.

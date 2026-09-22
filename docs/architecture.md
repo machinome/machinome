@@ -1095,8 +1095,13 @@ made anyway for the piece's own first point, which of a graph's nodes
 MOVE — a source whose increment is non-zero, plus the driven coordinate
 where a level is handed its own value per sample — and computes every
 other node ONCE, from that piece's own branches. A later point of the
-same piece walks only the moving cone; a new piece re-binds the standing
-part. The arithmetic is unchanged node for node, so the value at any
+same piece walks only the moving cone; a new piece ordinarily re-binds the
+standing part. ADR-140 allows the *same path object* to return its last
+successful first-point result when all graph-referenced plain numeric inputs
+are finite and bit-identical, including signed zero; changed or uncertain
+inputs still take the complete eager walk with its original first error.
+This entry never outlives the path or replaces a sample. The arithmetic is
+unchanged node for node, so the value at any
 point is the same float a whole-graph evaluation gives, and the run pays
 the classification once per graph per tick rather than once per sample.
 `_Walk._skeleton` and `_Walk._level`, and `JumpPlan`'s own `_level`,

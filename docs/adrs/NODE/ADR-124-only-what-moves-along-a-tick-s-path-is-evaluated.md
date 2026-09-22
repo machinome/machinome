@@ -13,6 +13,8 @@
 
 **Amended 2026-09-22:** [ADR-139](./ADR-139-a-running-bound-reuses-proven-standing-bind-values.md) permits one bounded, Run-owned standing-bind snapshot across ticks for a traced running Bound only. Other path values retain this ADR's path-local lifetime.
 
+**Amended 2026-09-22:** [ADR-140](./ADR-140-a-path-reuses-only-its-own-identical-successful-bind.md) permits one short-lived path to reuse its own last successful first-point result on an exact finite input match. This does not revive the rejected per-sample, whole-dictionary or cross-tick cache.
+
 ## Context and Problem Statement
 
 `GraphValue.evaluate` (`solid_node/scad_expression.py`) is the run's one

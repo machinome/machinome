@@ -887,6 +887,11 @@ def _standing_input_bits(names, values):
         return None
 
 
+def _path_input_bits(names, values):
+    """Decline custom mappings before checking a path-local bind entry."""
+    return _standing_input_bits(names, values) if type(values) is dict else None
+
+
 def _moving_path_value(program, standing, values):
     """The positional moving program used at bind and later samples."""
     computed = [None] * len(program)
@@ -927,7 +932,7 @@ class _PathValue:
     """
 
     __slots__ = ('root', 'moving', 'order', 'standing', 'nodes',
-                 'program', 'standing_nodes', 'standing_values')
+                 'program', 'standing_nodes', 'standing_values', '_last_bind')
 
     def __init__(self, graph, moving):
         self.root = as_node(graph)
@@ -939,6 +944,8 @@ class _PathValue:
         self.program = None     # moving nodes, operation, positional children.
         self.standing_nodes = None
         self.standing_values = None
+        # The latest successful first point of THIS short-lived path only.
+        self._last_bind = None
 
     def bind(self, values):
         """A new piece: recompute the standing part under `values` --
@@ -946,6 +953,12 @@ class _PathValue:
         ever, which nodes move in the very same walk. Returns the root's
         value at `values`, exactly what `GraphValue.evaluate` would have
         returned for this point."""
+        previous = self._last_bind
+        if (previous is not None and self.root is previous[0] and
+                self.moving == previous[1]):
+            current_bits = _path_input_bits(previous[2], values)
+            if current_bits is not None and current_bits == previous[3]:
+                return previous[4]
         computed = {}
         standing = {}
         deciding = self.order is None
@@ -1022,6 +1035,13 @@ class _PathValue:
         # DAG order is reused, and a failed first bind never publishes it.
         if gathered is not None:
             self.nodes = tuple(gathered)
+        names = (previous[2] if previous is not None and
+                 self.root is previous[0] and self.moving == previous[1]
+                 else tuple(sorted({node.text for node in self.nodes
+                                    if node.kind == 'name'})))
+        bits = _path_input_bits(names, values)
+        self._last_bind = ((self.root, self.moving, names, bits, result)
+                           if bits is not None else None)
         return result
 
     def standing_snapshot(self, values):
@@ -1051,6 +1071,7 @@ class _PathValue:
         result = (_moving_path_value(previous.program,
                                      previous.standing_values, values)
                   if previous.order else previous.standing_values[-1])
+        self._last_bind = None
         self.order = previous.order
         self.nodes = previous.nodes
         self.program = previous.program
