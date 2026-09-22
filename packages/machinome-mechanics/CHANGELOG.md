@@ -2,7 +2,7 @@
 
 All notable changes to Machinome Mechanics.
 
-## 0.1.0 — 20 September 2026
+## 0.1.0 — 22 September 2026
 
 The first release of Machinome Mechanics, released with Machinome 0.7.0.
 It requires Machinome 0.7 or newer and installs with

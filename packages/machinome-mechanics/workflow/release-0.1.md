@@ -1,7 +1,7 @@
 # Machinome Mechanics 0.1.0 release
 
 Version 0.1.0 is the first release of the independent formula package,
-released on 20 September 2026 with Machinome 0.7.0. The release set is
+released on 22 September 2026 with Machinome 0.7.0. The release set is
 Machinome 0.7.0 (Apache-2.0), Machinome Viewer 0.7.0 (AGPL-3.0-only) and
 Machinome Mechanics 0.1.0 (Apache-2.0). The framework manual names this
 version through its `mechanics_version` substitution.

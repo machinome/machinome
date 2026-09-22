@@ -7,7 +7,7 @@ licensed Apache-2.0. Calculate gear angles, screw travel, piston positions,
 delta carriage heights, cam lifts, belt paths and linkage geometry with the
 same formulas for numeric poses and symbolic motion.
 
-Version 0.1.0 was released on 20 September 2026 with Machinome 0.7.0. It
+Version 0.1.0 was released on 22 September 2026 with Machinome 0.7.0. It
 requires Machinome 0.7 or newer.
 
 [User manual](https://machinome-mechanics.readthedocs.io/en/latest/) ·

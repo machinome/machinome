@@ -67,7 +67,7 @@ def test_the_manual_states_the_release():
             assert phrase not in text, (page, phrase)
     changelog = (ROOT / "CHANGELOG.md").read_text()
     current = " ".join(re.split(r"^## ", changelog, flags=re.M)[1].split())
-    assert current.startswith("0.1.0 — 20 September 2026"), current[:40]
+    assert current.startswith("0.1.0 — 22 September 2026"), current[:40]
     assert "Machinome 0.7.0" in current
     import tomllib
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
