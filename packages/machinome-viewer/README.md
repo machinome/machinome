@@ -1,5 +1,7 @@
 # Machinome Viewer
 
+[![CI](https://github.com/machinome/machinome-viewer/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/machinome/machinome-viewer/actions/workflows/ci.yml)
+
 The browser viewer for the [Machinome framework](https://machinome.readthedocs.io/):
 inspect an assembly, operate its declared inputs, and watch its mechanical
 relationships work. The same viewer powers the development page, portable
