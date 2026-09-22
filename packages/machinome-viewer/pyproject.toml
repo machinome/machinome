@@ -50,6 +50,9 @@ dev = [
     # needs it in the test environment.
     "httpx>=0.27,<1",
     "playwright",
+    # tests/test_packaging.py imports the build hook, which subclasses
+    # setuptools' build_py; Python 3.12+ environments no longer carry it.
+    "setuptools>=77",
 ]
 
 [project.urls]
