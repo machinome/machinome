@@ -58,6 +58,27 @@ function document(): RunDocument {
 }
 
 describe('expression lifetime under cache pressure', () => {
+  it('retains a current large graph across adjacent operations within finite capacity', () => {
+    const before = expressionGeneration();
+    withExpressions(() => {
+      prepare('source + 1');
+      let serial = 10;
+      while (expressionMetrics().nodes < 102_700) {
+        prepare(`${serial} + source`);
+        serial += 1;
+      }
+    });
+    expect(expressionMetrics().nodes).toBeGreaterThanOrEqual(102_700);
+    expect(expressionMetrics().nodes).toBeLessThan(125_000);
+    for (let tick = 0; tick < 3; tick += 1) {
+      const result = withExpressions(() => valueOf(prepare('source + 1'), {
+        time: 0, drivers: { source: 2 },
+      }));
+      expect(result).toBe(3);
+      expect(expressionGeneration()).toBe(before);
+    }
+  }, 30_000);
+
   it('reconciles document-local binding changes and poses the new tree under pressure', async () => {
     EXPRESSION_LIMITS.nodes = 5;
     const a = document() as Manifest;

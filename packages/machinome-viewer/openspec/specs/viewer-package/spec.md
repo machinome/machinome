@@ -1393,6 +1393,12 @@ the cache's reclamation threshold SHALL NOT fail or evaluate differently
 solely because it crosses that threshold. Existing malformed-document
 refusals and document-local binding meanings SHALL remain unchanged.
 
+When a supported machine's prepared expression graph fits within the
+viewer's finite cache capacity, consecutive ticks SHALL reuse that graph
+without reclaiming and reparsing it between those ticks. This reuse SHALL
+NOT change the machine's admitted travel, coordinate bank, event records,
+snapshot/replay behavior, numerical semantics or refusal behavior.
+
 Expression retention across repeated publications SHALL be bounded by
 current live work and cache headroom, not accumulated publication history.
 Disposing of the last viewer SHALL release retained expression state.
@@ -1403,6 +1409,14 @@ Disposing of the last viewer SHALL release retained expression state.
   the cache reclamation threshold while its document is loaded
 - **THEN** mounting completes and its initial pose and subsequent request
   results match the same machine without cache pressure
+
+#### Scenario: Consecutive ticks reuse a fitting graph
+
+- **WHEN** a supported running document has a prepared graph within the
+  finite cache capacity and advances several consecutive ticks
+- **THEN** those ticks reuse the prepared graph without a cache generation
+  change between ticks and produce the same complete bank and event records
+  as evaluation under forced reclamation
 
 #### Scenario: Reclamation happens between operations
 

@@ -139,3 +139,28 @@ and `PathValue` are operation-local. Program root lookups reuse the shared
 string cache instead of retaining a second map. A tick, clocked request or
 tree update scopes its full synchronous work. No host API, document version,
 numeric expectation or memory ceiling increase is part of this amendment.
+
+## Capacity amendment — 22 September 2026
+
+`retain-large-expression-working-set` raises only the finite node-reclaim
+trigger from 50,000 to 125,000. The committed OperatingCurta export prepares
+97,474 nodes, and the currently operating CounterTens trial prepares 102,580;
+the two mounted together retain a 102,690-node union. At 50,000, every
+adjacent tick of the committed machine reclaimed and rebuilt about 94,763
+nodes. The raised trigger keeps one fitting graph across those ticks and
+the measured pair of mounts without changing evaluation or generation
+reconstruction.
+
+The same pinned 48-tick segment admitted 36° and produced the identical
+213-coordinate bank at both thresholds. On a reserved core it took 65.670 s
+at 50,000 and 37.440 s with the source change. This is a cache-capacity
+change, not a numerical or sampling change; the full browser turn remains
+far slower than its declared two-second drawing duration.
+
+The trigger is not a hard maximum: a protected operation can temporarily
+exceed it. Reclamation still happens before a later outer operation, and
+disposing the last mounted viewer still clears the table. The trade-off is
+greater retained headroom for a current large machine, not unbounded
+publication history. Terminal V8 heap/RSS samples varied enough that they
+do not establish a fixed memory budget for one export. The viewer API and
+document version remain unchanged.

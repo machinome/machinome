@@ -436,7 +436,9 @@ export function prepare(expression: string): NodeId {
 // building fifty thousand nodes to reach it.
 // ---------------------------------------------------------------------
 
-export const EXPRESSION_LIMITS = { nodes: 50_000 };
+// ADR-043's finite headroom now covers the measured live Curta graph union
+// (102,690 nodes) without reparsing it between every tick.
+export const EXPRESSION_LIMITS = { nodes: 125_000 };
 
 let mountCount = 0;
 let scopeDepth = 0;

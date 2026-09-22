@@ -5,6 +5,12 @@ it carries release together and share one version.
 
 ## Unreleased
 
+- Keep a fitting operating machine's expression graph across ticks by
+  raising the finite reclaim trigger from 50,000 to 125,000 nodes. On a
+  pinned OperatingCurta export the first 48 crank ticks took 37.440 s
+  rather than 65.670 s on the reserved core, with the same 213-coordinate
+  bank. The complete browser turn is still much slower than its declared
+  two-second drawing duration. (ADR-043.)
 - Retain only the names a followed expression reads for generation-reset
   reconstruction, avoiding a full-bank copy on every path piece. On the
   pinned OperatingCurta export this saves 9.6% of the first 48 crank ticks
