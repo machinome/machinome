@@ -75,9 +75,12 @@ emits the lowest its content needs:
      - Explicit running ``Play`` relations for retained clearance.
    * - 10
      - Running relations driven by the root's clock (``time.drives``).
+   * - 11
+     - Source-timed running dependencies, preserving dwell and landing timing.
 
-A posed model is 2 to 4. A root declaring ``Time.running()`` publishes 5,
-6, 7, 9 or 10 according to its laws. A tree declaring a ``State``
+A posed model is 2 to 4. A root declaring ``Time.running()`` now publishes 11;
+older running exports used 5, 6, 7, 9 or 10 according to their laws.
+A tree declaring a ``State``
 publishes 8 whatever else it holds. Markings and controls are additive within their
 version. The bumps from 5 upward are **not** additive: a consumer that
 cannot read the declared version refuses the document by name rather
@@ -104,6 +107,12 @@ unaffected. ``machinome snapshot --renderer web`` refuses before it
 starts the browser, because a capture is a one-shot. The viewer's own
 manual states what its panels do for posed, running and clocked
 documents.
+
+See `using the viewer
+<https://machinome-viewer.readthedocs.io/en/latest/using-the-viewer.html>`_
+for operation and its `API reference
+<https://machinome-viewer.readthedocs.io/en/latest/reference/index.html>`_
+for host integration. The framework does not duplicate those contracts.
 
 .. warning::
 

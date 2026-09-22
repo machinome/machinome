@@ -598,17 +598,11 @@ no producer-local sharing syntax appears anywhere in the document. The
 object SHALL be ordered deterministically for a given tree, so republishing
 an unchanged model produces a byte-identical document.
 
-A program carrying an explicit time-drive admission SHALL declare
-`version: 10` under "A time-driven program publishes its independent drives".
-For programs with no such admission, the existing version-selection rules
-remain unchanged: the producer SHALL declare `version: 7` for a program carrying a BLOCK —
-a set of two or more edges whose dependencies are cyclic, ordered per
-piece under the simulation requirement "A selection decides which sources
-a law reads" — `version: 6` for a program with no block at least one of
-whose LAW edges names one of its own `gives` among its `needs` — a law
-that reads the coordinate it drives — and `version: 5` for a program with
-neither, whose document SHALL be byte-identical to the one it published
-before this rule existed. The shape of the document SHALL NOT otherwise change: the self-read
+Every newly exported running program SHALL declare `version: 11`, including
+ordinary, self-read, selected-block, Play and explicit-time programs. This
+source-timing semantic gate supersedes the older minimum-version and
+cross-upgrade byte-preservation promises. Posed/looping and clocked version
+selection SHALL remain unchanged. The shape of the document SHALL NOT otherwise change: the self-read
 is `needs ∩ gives`, no key is added for it, and the free names of a law
 edge's expressions SHALL still be exactly the ids in `needs`. NO KEY is
 added for a block either: a consumer SHALL re-derive it as the strongly
@@ -638,7 +632,7 @@ the agreement window, which is where that rule is pinned.
 
 - `identity`: the compiled program's identity — a digest over the root
   class, the bank's ids, the inputs' declarations, the spans and every
-  edge's ends, direction and expression, including the time-drive mapping
+  edge's ends, direction and expression, including the source-timing semantic generation and the time-drive mapping
   and its semantics version when present — so a state taken against one
   program is refused against another.
 - `clock`: the free name elapsed simulation seconds bind to, under the
@@ -818,24 +812,24 @@ run's binder is restored afterwards.
   `plug.p2.lift` -- here `plug.p1.lift` and `plug.p2.lift`, the two the
   expression actually reads, its own coordinate not appearing in it --
   every one of them a key of `program.coordinates`, and the document's
-  version is `5`
+  version is `11`
 
-#### Scenario: A program with a self-read law is a version 6 document
+#### Scenario: A program with a self-read law declares source timing
 
 - **WHEN** a running root states
   `(ring & wheel.turn).drives(wheel.turn, law=missing_tooth)` and is
   exported
-- **THEN** the document declares `version: 6`, the law edge's `needs`
+- **THEN** the document declares `version: 11`, the law edge's `needs`
   holds `ring` and `wheel.turn` and its `gives` holds `wheel.turn`, the
   expression's free names are exactly those in `needs`, and no key was
   added to `program` for the read
 
-#### Scenario: A program with no self-read law is unchanged
+#### Scenario: An ordinary program retains its payload across the semantic upgrade
 
 - **WHEN** a running root that declares no self-read law is exported
   before and after this change
-- **THEN** both documents declare `version: 5` and are byte-identical,
-  the program's ordering and its minted names included
+- **THEN** only the document version and semantic program identity change,
+  the program's ordering, expressions and minted names remain unchanged
 
 #### Scenario: A self-read law publishes its plan like any other
 
@@ -874,21 +868,21 @@ run's binder is restored afterwards.
 - **THEN** the simulation refuses at construction, naming the id and that
   `time` is reserved for the clock
 
-#### Scenario: A program carrying a block declares version 7
+#### Scenario: A program carrying a block declares source timing
 
 - **WHEN** a running root whose relations form a block — two laws each
   reading a coordinate the other determines, each behind a comparison on
   a third input — is exported
-- **THEN** the document declares `version: 7`, its `program.edges` lists
+- **THEN** the document declares `version: 11`, its `program.edges` lists
   the two members contiguously, and no key beyond the ones this
   requirement lists appears anywhere in `program`
 
-#### Scenario: A program with no block is byte-identical
+#### Scenario: A program with no block also declares source timing
 
 - **WHEN** a running root with no block is exported before and after this
   rule exists
-- **THEN** the two documents are byte-identical and declare the version
-  they always did
+- **THEN** the new document declares version 11 and its identity includes
+  source-timing semantics, with other fields unchanged
 
 ### Requirement: The published edges say what each one reads, gives and computes
 
@@ -2127,24 +2121,23 @@ machines that each carry one feature exercises none of them.
 
 ### Requirement: A play edge is explicit in a version 9 running document
 
-The published program SHALL represent each play relation as one edge with `kind: "play"`, `needs` containing source then retained coordinate, `gives` containing that retained coordinate, and finite numeric `low` and `high`.  A document containing a play edge SHALL declare version 9.  A document containing none SHALL keep the same lowest version and bytes it had before this capability.
+The published program SHALL represent each play relation as one edge with `kind: "play"`, `needs` containing source then retained coordinate, `gives` containing that retained coordinate, and finite numeric `low` and `high`.  Every newly exported running document, with or without Play, SHALL declare version 11 under the source-timing semantic gate. Legacy version 9 remains readable by a compatible consumer.
 
 `play` SHALL be an additional edge kind under "The published edges say what
-each one reads, gives and computes". The version-9 selection SHALL take
-precedence over the version-5/6/7 selection for ordinary running programs;
+each one reads, gives and computes". The current version-11 selection SHALL apply to all running programs;
 it SHALL NOT change the version-8 clocked document contract.
 
 #### Scenario: A play model publishes its full semantics
 - **WHEN** a running model declares `Play(low=-329, high=3)`
-- **THEN** its version-9 document carries a play edge naming both coordinate ids and the two offsets, and its program identity changes if either offset changes
+- **THEN** its version-11 document carries a play edge naming both coordinate ids and the two offsets, and its program identity changes if either offset changes
 
-#### Scenario: An old running model does not move version
+#### Scenario: An ordinary model receives the same semantic gate
 - **WHEN** a running model contains ordinary, jumping, self-read, or block edges but no play edge
-- **THEN** its document version, program entries, identity, and committed fixtures are byte-identical to the prior behavior
+- **THEN** its new export uses version 11 and source-timing identity, with other program entries unchanged and committed legacy fixtures retained
 
-#### Scenario: An installed viewer cannot read version 9
-- **WHEN** a snapshot or development command is asked to use a viewer reporting only document versions 1 through 8 for a play model
-- **THEN** the framework refuses before staging or execution, naming required version 9 and the viewer's reported versions
+#### Scenario: An installed viewer cannot read source-timed Play
+- **WHEN** a snapshot or development command is asked to use a viewer reporting only document versions 1 through 10 for a play model
+- **THEN** the framework refuses before staging or execution, naming required version 11 and the viewer's reported versions
 
 ### Requirement: The running corpus covers play semantics
 
@@ -2157,7 +2150,7 @@ The cross-runtime running conformance corpus SHALL contain play cases sufficient
 ### Requirement: A time-driven program publishes its independent drives
 
 A running program that compiles an explicit time source SHALL publish
-document `version: 10` and SHALL carry `program.time_drives`: an ordered
+document `version: 11` and SHALL carry `program.time_drives`: an ordered
 list of objects with `id` and `edge`, identifying each resolved time-source
 relation and its zero-based index in `program.edges`. Each `id` SHALL be
 `@time:<edge-index>`, separate from the qualified coordinate/input ID
@@ -2181,10 +2174,10 @@ program identity. Republishing an unchanged model SHALL produce identical
 bytes. Publishing a live run SHALL preserve its bank, tick, ownership and
 next-tick behavior.
 
-A program with no compiled time drive SHALL omit `time_drives` and retain
-its existing minimum document version and byte representation, including a
-model that reads `self.time` solely in ordinary pose expressions. A consumer
-supporting only earlier document versions SHALL refuse version 10 before
+A program with no compiled time drive SHALL omit `time_drives`, including a
+model that reads `self.time` solely in ordinary pose expressions. All newly
+exported running programs SHALL use version 11 and source-timing identity. A consumer
+supporting only earlier document versions SHALL refuse version 11 before
 executing it; silently dropping the new semantics is not compatibility.
 Browser execution requires a separately implemented matching consumer and
 SHALL NOT be claimed on producer-only evidence.
@@ -2192,7 +2185,7 @@ SHALL NOT be claimed on producer-only evidence.
 #### Scenario: A time drive is explicit and not a fabricated driver
 
 - **WHEN** a root with one `time.drives(shaft.turn, ratio=6)` is published
-- **THEN** the document is version 10, the corresponding edge reads
+- **THEN** the document is version 11, the corresponding edge reads
   `time`, `time_drives` maps its `@time:<edge-index>` ID to that edge,
   and the ID appears in the shaft's source candidates but not in
   `drivers` or `coordinates`
@@ -2208,7 +2201,7 @@ SHALL NOT be claimed on producer-only evidence.
 
 - **WHEN** an explicit time-drive law also reads its retained shaft angle
   to gate travel at exhaustion
-- **THEN** the version-10 document carries the existing self-read law
+- **THEN** the version-11 document carries the existing self-read law
   expression and jump plan together with the time-drive mapping;
   no Python-only callback is needed to reproduce the mechanism
 
@@ -2219,17 +2212,17 @@ SHALL NOT be claimed on producer-only evidence.
 - **THEN** both documents are byte-identical, the live run has not moved,
   and its next tick agrees with a run that was not published
 
-#### Scenario: A pose clock alone does not require the new version
+#### Scenario: A pose clock alone does not invent a time-drive mapping
 
 - **WHEN** a pre-existing running model uses `self.time` only to rotate
   a plain part and is exported before and after the change
-- **THEN** its documents are byte-identical and declare the same version,
-  with no `time_drives` field
+- **THEN** its new document declares version 11 and source-timing identity,
+  with no `time_drives` field and other payload fields unchanged
 
 #### Scenario: An older consumer cannot silently display an inert mechanism
 
-- **WHEN** a version-10 time-driven document is passed to a consumer
-  advertising support only through version 9
+- **WHEN** a version-11 time-driven document is passed to a consumer
+  advertising support only through version 10
 - **THEN** its unsupported-document-version refusal is reached before
   execution, rather than opening a motionless or wrongly stopped machine
 

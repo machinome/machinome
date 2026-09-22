@@ -91,6 +91,20 @@ class DocumentVersionsTest(TestCase):
     """The versions the installed viewer renders, asked of the report
     rather than inferred from the viewer's own release counter."""
 
+    def test_endpoint_era_viewer_refuses_source_timed_export(self):
+        report = dict(REPORT, apiVersion=23,
+                      documentVersions=list(range(1, 11)))
+        with patch.object(bundle, 'entry_points',
+                          return_value=[fake_entry(report)]):
+            message = bundle.unreadable_document(11)
+        self.assertIn('11', message)
+        self.assertIn('1, 2, 3, 4, 5, 6, 7, 8, 9, 10', message)
+        report['apiVersion'] = 24
+        report['documentVersions'].append(11)
+        with patch.object(bundle, 'entry_points',
+                          return_value=[fake_entry(report)]):
+            self.assertIsNone(bundle.unreadable_document(11))
+
     def test_the_report_says_which_documents_the_viewer_renders(self):
         report = dict(REPORT, documentVersions=[1, 2, 3, 4, 5])
         with patch.object(bundle, 'entry_points',

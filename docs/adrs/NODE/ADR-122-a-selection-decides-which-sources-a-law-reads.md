@@ -659,3 +659,8 @@ directly, rather than trusting the feature list of `CoverageGuardTest`
 as a proxy for it, and `uncovered_features` refuses a corpus missing the
 new `'an in-block gate crossing inside a tick'` feature. No other
 scenario, and nothing under `solid_node/`, moved.
+
+## Amendment — 2026-09-22
+
+Endpoint-increment handoff and unconditional block-stop search are superseded; selected ordering and transactional cycle refusal remain.
+See [ADR-137](ADR-137-determined-sources-retain-their-motion-path.md).

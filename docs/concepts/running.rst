@@ -153,7 +153,7 @@ for an ordinary absolute transform, but assigning it to a run-owned joint
 in ``simulate()`` is a second binding and is refused; name ``time``
 explicitly in the relation. Time supplies seconds, not gravity, torque or
 an escapement frequency; those remain the model's own laws. A program
-with a time drive publishes document version 10.
+with a time drive publishes document version 11, as do all new running exports.
 
 One law, two readings
 ---------------------
@@ -260,14 +260,17 @@ the branches read at the midpoint decide which dependencies are active
 and in what order the members run. A selection change alone moves
 nothing; a block relation binds nothing at rest; a piece that still
 cannot be ordered refuses the tick naming the piece, the branches and
-the relations on the cycle. A document carrying a block is version 7.
+the relations on the cycle. Determined sources retain their actual stroke,
+dwell and landing timing through the block and through ordinary chains;
+additional selector cuts do not replace that motion by endpoint ramps.
+New running documents, including blocks, declare version 11.
 
 **Retained clearance.** ``Play(low, high)`` is the narrow running law for
 a follower separated from its source by backlash or clearance: it holds
 inside the interval, is collected at either flank, and is released when
 the source reverses. Each play source is a run-owned driver or the output
 of another play edge in one linear chain; anything else is refused. A
-document carrying one is version 9.
+new document carrying one is version 11.
 
 A range is a physical stop
 --------------------------
@@ -370,7 +373,7 @@ separate ``time_drives`` tuple, the blocked time-drive relations.
 What it publishes
 -----------------
 
-A running root's document starts at version 5 and carries a ``program``
+A running root's document declares version 11 and carries a ``program``
 beside the geometry: the coordinate table with each bank id's kind, rest
 value, unit and domain, the compiled edges in program order with their
 expressions and jump plans, the candidate table of which inputs reach
@@ -382,5 +385,9 @@ snaps back. The model's ``self.time`` publishes as the free name ``time``
 bound to elapsed simulation seconds. A tree that declares controls
 carries a ``controls`` table beside ``instructions``, additively. A
 program with time-driven relations lists them as ``program.time_drives``,
-each naming the edge that reads ``time``, and publishes version 10.
+each naming the edge that reads ``time``. Source-timing semantics participate
+in the program identity: endpoint-era snapshots refuse restore into newly
+compiled programs before changing state. Re-export with the corrected
+producer and use a viewer supporting version 11; do not lower the document
+version manually. Posed, looping and clocked version selection is unchanged.
 :doc:`publishing` has the version table.

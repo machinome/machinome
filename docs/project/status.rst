@@ -39,12 +39,18 @@ Packages
 --------
 
 Machinome is Apache-2.0. Machinome Viewer is an optional, independent
-AGPL-3.0-only package; the matching release is |viewer_version|, API
-|viewer_api|, reading document versions |document_versions|, installed
+AGPL-3.0-only package, installed
 through the ``viewer`` extra. The framework builds and tests without it;
 interactive development requires it. Machinome Mechanics
 |mechanics_version| is the optional helper package behind the
 ``mechanics`` extra. Both release with the framework.
+
+The source-timing correction in the current source is unreleased. It requires
+the paired viewer capability API |viewer_api| and document versions
+|document_versions|; the previous viewer |viewer_version| release reports
+API 23 and versions 1 through 10. Package numbering has not been bumped by
+this work, and capability must be checked from the installed viewer's report.
+See :doc:`changelog` and :doc:`upgrading` before adopting the correction.
 
 Machinome Studio, the agent harness the framework is developed with,
 remains experimental and unpublished; the reserved ``studio`` extra is not

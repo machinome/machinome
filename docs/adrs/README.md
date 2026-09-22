@@ -109,6 +109,8 @@ that way.
 
 - [ADR-136](NODE/ADR-136-moving-contacts-use-relative-crossings.md) — Moving contacts use relative crossings: branch-verified local landing and exact constant-contact certificates prevent false overtaking/rounding refusals without changing bank arithmetic or tolerances — **Accepted**, amends 121; preserves 108/113/124/135
 
+- [ADR-137](NODE/ADR-137-determined-sources-retain-their-motion-path.md) — Determined sources retain timing through ordinary chains and selected blocks — **Accepted**, amends 122/123, preserves 107/121/124/136
+
 ### BUILD — loading, watching, CLI
 - [ADR-130](BUILD/ADR-130-machinome-is-a-clean-package-and-command-boundary.md) — Machinome is a clean package and command boundary — **Accepted**
 - [ADR-005](BUILD/ADR-005-path-based-dynamic-module-loading.md) — Path-based dynamic module loading — **Accepted**, amended by 119
@@ -180,6 +182,8 @@ that way.
 - [ADR-085](EXPORT/ADR-085-persistent-piece-facts-behind-a-verified-artifact-snapshot.md) — Persistent piece facts behind a verified artifact snapshot — **Accepted**, amends 043/028
 - [ADR-110](EXPORT/ADR-110-the-compiled-program-is-published-in-the-document.md) — The compiled program is published in the document, under a version an old consumer refuses: a running root's document declares version 5, carries the program compile time decided, and poses its geometry from a committed bank — **Accepted**, extends 034/080, depends on 104–109, cites 051/068
 - [ADR-111](EXPORT/ADR-111-a-conformance-corpus-is-the-contract-between-the-two-runtimes.md) — A conformance corpus is the contract between the two runtimes: a producer-generated fixture replayed by both, exact for discrete state and at the run's own agreement tolerance for floats, with a coverage guard that refuses to regenerate a narrower one — **Accepted**, depends on 110, cites 022/068
+
+- [ADR-138](EXPORT/ADR-138-source-timing-is-a-semantic-version-gate.md) — Running v11 and semantic snapshot identity protect corrected source timing — **Accepted**, amends 110/121/122/133
 
 ADR-019 (the solid-builder agent system) predates the shop and lives
 with the agent tooling's own history, not in this framework log.

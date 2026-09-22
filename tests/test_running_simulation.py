@@ -365,7 +365,7 @@ class ProgramReductionRunTest(BaseNodeTest):
         second = Sim(SpringBank(), 0.1).program.identity
         self.assertEqual(first, second)
 
-    def test_the_identity_the_corpus_carries_for_train_is_unchanged(self):
+    def test_only_the_source_timing_generation_changes_trains_old_identity(self):
         """The corpus is COMMITTED data, captured from a run of this
         framework. Reading `Train`'s freshly compiled identity against
         it -- rather than against a second in-process reading -- is
@@ -380,7 +380,12 @@ class ProgramReductionRunTest(BaseNodeTest):
             corpus = json.load(handle)
         identities = {entry['document']['program']['identity']
                      for entry in corpus['machines'] if entry['name'] == 'Train'}
-        self.assertEqual(identities, {Sim(Train(), 0.1).program.identity})
+        import hashlib
+        program = Sim(Train(), 0.1).program
+        self.assertNotIn(program.identity, identities)
+        old = '\n'.join(line for line in program.described().split('\n')
+                        if line != 'source-timing version=11')
+        self.assertEqual(identities, {hashlib.sha256(old.encode()).hexdigest()})
 
 
 class InstructionTest(BaseNodeTest):

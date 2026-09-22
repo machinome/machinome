@@ -125,8 +125,11 @@ longer an interactive-viewer option.
 The matching viewer is |viewer_version|, API |viewer_api|, reading
 document schemas |document_versions|. Check ``machinome viewer`` for the
 installed package, API and ``documentVersions``. A clocked machine
-requires schema 8; running models require 5, 6, 7 or 9 according to the
-laws they carry (explicit ``Play`` requires 9). Hosts must update their bundle and the renamed
+requires schema 8; newly exported running models require schema 11 and a
+viewer supporting source-timed motion (API 24). Re-export running models;
+endpoint-era snapshots refuse restore into the new semantic identity, so
+restart from the initial model state and replay intended commands.
+Hosts must update their bundle and the renamed
 JavaScript/DOM surface together. See :doc:`/concepts/publishing`.
 
 The ``mechanics`` extra selects the independent

@@ -460,7 +460,7 @@ class JumpPlan:
         return _Retained(self, own)
 
     def _partition(self, start, delta, described, coordinate,
-                   crossings, tick, forced=None, paths=None):
+                   crossings, tick, forced=None, paths=None, closed=False):
         """The tick's path, cut at every crossing of every jump surface.
 
         The jump nodes are taken in POSTORDER, so a node's level
@@ -493,7 +493,8 @@ class JumpPlan:
                 piece = paths.new_piece()
                 found.extend(self._crossings_of(
                     jump, start, delta, inner, left, right,
-                    described, coordinate, paths, piece))
+                    described, coordinate, paths, piece,
+                    closed=closed and right == 1.0))
                 if len(found) > _MAX_CROSSINGS:
                     raise _too_many(described, coordinate, jump, len(found))
             if not found:
@@ -515,11 +516,15 @@ class JumpPlan:
         return cuts
 
     def _crossings_of(self, jump, start, delta, inner, left, right,
-                      described, coordinate, paths=None, piece=None):
+                      described, coordinate, paths=None, piece=None,
+                      closed=False):
         """Where `jump` reaches one of its surfaces between two cuts."""
+        if getattr(delta, 'curved', False):
+            return self._searched(jump, start, delta, inner, left, right,
+                                  described, coordinate, paths, piece)
         if jump.affine:
             return self._solved(jump, start, delta, inner, left, right,
-                                described, coordinate, paths=paths,
+                                described, coordinate, closed=closed, paths=paths,
                                 piece=piece)
         if jump.shape == 'kinked':
             # A KINKED level is affine on each sub-interval between its
@@ -538,7 +543,7 @@ class JumpPlan:
                 # No kink is reached inside this piece, so the level IS
                 # affine over the whole of it.
                 return self._solved(jump, start, delta, inner, left, right,
-                                    described, coordinate, paths=paths,
+                                    described, coordinate, closed=closed, paths=paths,
                                     piece=piece)
             edges = (left,) + breaks + (right,)
             found = []
@@ -554,7 +559,7 @@ class JumpPlan:
                 # distinguishes them.
                 found.extend(self._solved(
                     jump, start, delta, inner, low_t, high_t, described,
-                    coordinate, closed=index < len(edges) - 2, paths=paths,
+                    coordinate, closed=closed or index < len(edges) - 2, paths=paths,
                     piece=piece))
             return _deduplicated(found)
         return self._searched(jump, start, delta, inner, left, right,
@@ -656,6 +661,8 @@ def _along(start, delta, t):
     At `t == 1` this is exactly `start + delta`, the same float the
     caller computed, because it is the same arithmetic.
     """
+    if hasattr(delta, 'along'):
+        return delta.along(start, t)
     return {name: start[name] + delta[name] * t for name in start}
 
 
@@ -1120,7 +1127,7 @@ class _Walk:
     __slots__ = ('reading', 'plan', 'own', 'start', 'delta', 'described',
                  'coordinate', 'taken', 'forced', '_skeleton_path',
                  '_skeleton_bound', '_level_paths', '_level_bound',
-                 '_outer_paths', '_live_branches')
+                 '_outer_paths', '_live_branches', '_closed_right')
 
     def __init__(self, reading, start, delta, described, coordinate,
                  forced=None):
@@ -1128,11 +1135,13 @@ class _Walk:
         self.plan = reading.plan
         self.own = reading.own
         self.start = start
-        self.delta = dict(delta)
+        self.delta = delta.copy()
         # The driven coordinate's own source moves by NOTHING along the
         # path: what it holds on a piece is what the pieces before it
         # produced, never an increment the tick handed it.
         self.delta[self.own] = 0.0
+        if hasattr(self.delta, 'hold'):
+            self.delta.hold(self.own)
         self.described = described
         self.coordinate = coordinate
         # A SELECTOR's level reads no coordinate the block determines --
@@ -1168,7 +1177,10 @@ class _Walk:
     ##############################################
     # The two layers
 
-    def run(self, crossings, tick, cutting=False):
+    def run(self, crossings, tick, cutting=False, trajectory=None, closed=False):
+        # A restricted source interval owns its right boundary when another
+        # interval follows it inside the same request.
+        self._closed_right = closed
         own0 = self.start[self.own]
         if not any(value for name, value in self.delta.items()
                    if name != self.own):
@@ -1202,6 +1214,9 @@ class _Walk:
                     return own_left + (self._skeleton(s, branches) - base)
 
                 cut = self._first_cut(t, right, own_left, branches, own_at)
+                if trajectory is not None:
+                    finish = right if cut is None else cut[0]
+                    trajectory.append((t, finish, own_at, branches))
                 if cutting and self.reading.kinks:
                     # The SKELETON's own kinks, inside the piece this
                     # branch reading holds over: between two of them the
@@ -1230,6 +1245,8 @@ class _Walk:
                         for level, jump in crossed)
                 cuts.append(where)
                 t = where
+                if t == right:
+                    break
             cuts.append(right)
         return own_left - own0, (own_left if landed else None), tuple(cuts)
 
@@ -1240,7 +1257,8 @@ class _Walk:
             return (0.0, 1.0)
         return self.reading.outer._partition(
             self.start, self.delta, self.described, self.coordinate,
-            crossings, tick, self.forced, self._outer_paths)
+            crossings, tick, self.forced, self._outer_paths,
+            closed=self._closed_right)
 
     def _outer_branches(self, left, right):
         if not self.reading.outer.jumps:
@@ -1332,6 +1350,8 @@ class _Walk:
         return None
 
     def _constant_contact(self, jump, left, right, own_left, branches):
+        if getattr(self.delta, 'curved', False):
+            return False
         # A stationary threshold keeps its existing point-evaluation path.
         if not any(self.delta.get(name, 0.0)
                    for name in free_names(as_node(jump.argument))):
@@ -1363,9 +1383,11 @@ class _Walk:
         return first, crossed
 
     def _crossing(self, jump, t, right, own_left, branches, own_at):
+        if getattr(self.delta, 'curved', False):
+            return self._searched(jump, t, right, own_left, branches, own_at)
         if jump.affine and self.reading.shape in _AFFINE:
             return self._solved(jump, t, right, own_left, own_at(right),
-                                branches)
+                                branches, closed=self._closed_right and right == 1.0)
         if jump.shape is None or self.reading.shape is None:
             return self._searched(jump, t, right, own_left, branches, own_at)
         # At least one of the two is KINKED and neither is curved, so the
@@ -1392,8 +1414,8 @@ class _Walk:
                     own_low if low_t == left else own_at(low_t),
                     own_high if high_t == stop else own_at(high_t),
                     branches,
-                    closed=not (index == len(outer) - 2
-                                and step == len(inner) - 2))
+                    closed=(self._closed_right and right == 1.0) or not (
+                        index == len(outer) - 2 and step == len(inner) - 2))
                 if found is not None:
                     return found
         return None
@@ -1422,7 +1444,7 @@ class _Walk:
     def _skeleton_cuts(self, left, right, branches):
         """The SKELETON's kink breakpoints strictly inside `[left,
         right]`, under this piece's branch reading."""
-        if not self.reading.kinks:
+        if not self.reading.kinks or getattr(self.delta, 'curved', False):
             return ()
 
         def at(t):
@@ -2277,6 +2299,9 @@ class Edge:
         it: the run commits that float rather than `value + delta`,
         exactly where it commits a stop at its bound.
         """
+        if hasattr(deltas, 'motions'):
+            from .trajectory import propagate
+            return propagate(self, values, deltas, crossings, tick, landings)
         if self.kind == 'play':
             source, retained = self.needs
             old = values[retained]
@@ -2579,7 +2604,8 @@ class Program:
         before, character for character.
         """
         lines = [f'root {self.root_class.__module__}.'
-                 f'{self.root_class.__qualname__}']
+                 f'{self.root_class.__qualname__}',
+                 'source-timing version=11']
         for identifier, declaration in self.inputs:
             lines.append(f'input {identifier} dtype={declaration.dtype!r} '
                          f'scale={declaration.scale!r}')
@@ -2653,7 +2679,10 @@ class Program:
 
     def deltas_of(self, admissions):
         """One displacement per input, zero everywhere else."""
-        deltas = {key: 0.0 for key in self.nodes}
+        from .trajectory import Propagation
+        demanded = {key for edge in self.edges for key in edge.needs
+                    if key not in edge.gives}
+        deltas = Propagation({key: 0.0 for key in self.nodes}, demanded)
         for input_id, delta in admissions.items():
             if delta:
                 deltas[self.source_keys[input_id]] = delta

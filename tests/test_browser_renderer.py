@@ -364,7 +364,7 @@ class UnreadableDocumentRefusalTest(TestCase):
                 self.renderer.render(self.running, snapshot_args(),
                                      os.path.join(self.build_dir, 'shot.png'))
         message = str(raised.exception)
-        self.assertIn('5', message)
+        self.assertIn('document version 11', message)
         self.assertIn('1, 2, 3, 4', message)
         self.assertIn('0.1.0', message)
         started.assert_not_called()
@@ -376,12 +376,12 @@ class UnreadableDocumentRefusalTest(TestCase):
         with patch.object(browser_module.viewer_bundle, 'has_bundle',
                           return_value=True), \
              patch.object(browser_module.viewer_bundle, 'document_versions',
-                          return_value=[1, 2, 3, 4, 5]):
+                          return_value=list(range(1, 12))):
             staging = self.renderer.stage(self.running, self.build_dir)
         self.addCleanup(self.renderer.remove_stage, staging)
         with open(os.path.join(staging, 'viewer.json')) as handle:
             document = json.load(handle)
-        self.assertEqual(document['version'], 5)
+        self.assertEqual(document['version'], 11)
 
     def test_a_baked_capture_publishes_no_controls(self):
         """A capture BAKES one instant: its tree holds numbers rather
@@ -401,7 +401,7 @@ class UnreadableDocumentRefusalTest(TestCase):
         with patch.object(browser_module.viewer_bundle, 'has_bundle',
                           return_value=True), \
              patch.object(browser_module.viewer_bundle, 'document_versions',
-                          return_value=[1, 2, 3, 4, 5]):
+                          return_value=list(range(1, 12))):
             staging = self.renderer.stage(controlled, self.build_dir)
         self.addCleanup(self.renderer.remove_stage, staging)
         with open(os.path.join(staging, 'viewer.json')) as handle:
@@ -409,7 +409,7 @@ class UnreadableDocumentRefusalTest(TestCase):
 
         self.assertNotIn('controls', document)
         self.assertEqual(document['instructions'], {})
-        self.assertEqual(document['version'], 5)
+        self.assertEqual(document['version'], 11)
         self.assertIn('program', document)
 
     def test_an_untimed_model_is_unaffected(self):

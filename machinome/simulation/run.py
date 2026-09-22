@@ -597,7 +597,7 @@ class Run:
                     for identifier, value in staged.items()}
                 self._landed(committed, landings)
                 reached = self._reached(staged, committed, bounds,
-                                        values, scaled)
+                                        values, scaled, deltas)
                 if not reached:
                     _record(crossings, found, start, 1.0)
                     staged = committed
@@ -767,7 +767,7 @@ class Run:
     # Stops
 
     def _reached(self, held, committed, bounds, values=None,
-                 admissions=None):
+                 admissions=None, deltas=None):
         """Every banked coordinate that ends the stretch OUTSIDE a bound
         and FURTHER outside than it began it -- and every CONSTRAINT the
         stretch carries outward anywhere inside it.
@@ -807,7 +807,7 @@ class Run:
                         found.append((identifier, 'high', number, None))
                     continue
                 located = self._constraint_reached(
-                    bound, held, committed, values, admissions)
+                    bound, held, committed, values, admissions, deltas)
                 if located is not None:
                     found.append((identifier, side, bound, located))
             if isinstance(low, Constraint) or isinstance(high, Constraint):
@@ -823,7 +823,7 @@ class Run:
     # A bound that reads other coordinates: the CONSTRAINT
 
     def _constraint_reached(self, constraint, held, committed, values,
-                            admissions):
+                            admissions, deltas=None):
         """The bracket of the stretch at which `constraint` is first
         carried outward, or `None`.
 
@@ -845,9 +845,10 @@ class Run:
         if all(committed[key] == held[key] for key in keys):
             return None
         return self._searched_constraint(constraint, held, values,
-                                         admissions)
+                                         admissions, deltas)
 
-    def _searched_constraint(self, constraint, held, values, admissions):
+    def _searched_constraint(self, constraint, held, values, admissions,
+                             deltas=None):
         """The level sampled at `_SUBDIVISIONS` fractions of the stretch,
         stopped at the FIRST sample carried outward, and the crossing
         bisected to `_CROSSING_TOLERANCE`.
@@ -861,8 +862,29 @@ class Run:
         No case is solved and no fourth tolerance is introduced.
         """
         own = self.bank[constraint.identifier]
+        keys = {name: self.keys[name]
+                for name in (constraint.identifier,) + constraint.reads}
+        motions = getattr(deltas, 'motions', {})
+        # Use paths already determined by this very propagation. An input
+        # has its commanded line and an undetermined coordinate holds. If
+        # even one determined path is absent (e.g. play), retain prefix
+        # replay for the whole constraint rather than inventing a chord.
+        traced = deltas is not None and all(
+            key in motions or key not in self.program.determiner
+            for key in keys.values())
 
         def level(t):
+            if traced:
+                def at(name):
+                    key = keys[name]
+                    return (motions[key].at(t) if key in motions
+                            else values[key] + deltas[key]*t)
+                arguments = {read: at(read) for read in constraint.reads}
+                arguments[constraint.identifier] = own
+                bound = constraint.graph.evaluate(arguments)
+                value = at(constraint.identifier)
+                return (value-bound if constraint.side == 'high'
+                        else bound-value)
             return self._constraint_level(constraint, held, values,
                                           admissions, t, own)
 
@@ -1078,6 +1100,12 @@ class Run:
             # stop may have been released into its clearance; recollection
             # reaches the same bound only after genuine source travel.
             return 0.0
+        motion = getattr(deltas, 'motions', {}).get(key)
+        if motion is not None:
+            if motion.affine:
+                return self._piecewise(edge, key, bound, value, values, deltas,
+                                       (0.0,) + motion.cuts() + (1.0,))
+            return self._searched(edge, key, bound, value, values, deltas)
         prefix = self.program.time_prefixes.get(key, ())
         if any(member is not edge and
                (member.plans or any(shape not in ('constant', 'affine')
@@ -1184,6 +1212,9 @@ class Run:
         """The increment `key` receives over the stretch truncated at
         `t`: one edge evaluation for a continuous law, one jump-plan
         partition-and-sum for a law that jumps."""
+        motion = getattr(deltas, 'motions', {}).get(key)
+        if motion is not None:
+            return motion.at(t) - values[key]
         prefix = self.program.time_prefixes.get(key)
         if prefix is not None or self._has_play_ancestor(key):
             # A downstream time or play follower need not be linear in its

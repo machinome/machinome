@@ -184,6 +184,8 @@ class CorpusDocumentTest(BaseNodeTest):
                 node = machine_class(entry['name'])()
                 bind_declared_defaults(node)
                 published = document(node)
+                from .source_timing_compatibility import without_semantic_upgrade
+                published = without_semantic_upgrade(self, published, entry['document'])
                 for key in ('format', 'version', 'drivers', 'instructions',
                             'bindings', 'program'):
                     self.assertEqual(published.get(key),

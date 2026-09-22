@@ -3,6 +3,17 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Preserve determined-source timing through running chains and selected
+  blocks, fixing Curta carry loss when later result stations join the graph.
+  Range and contact probes follow the same motion as the committed bank.
+* New running exports declare document version 11 and their program identity
+  includes the source-timing semantic generation. Use the paired API-24 viewer
+  and re-export; endpoint-era snapshots refuse restore into corrected programs.
+  Posed, looping and clocked version selection remains unchanged.
+
 Machinome 0.7.0
 ---------------
 

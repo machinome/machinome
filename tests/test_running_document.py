@@ -49,6 +49,7 @@ from machinome.simulation.program import (_BISECTION_ROUNDS,
 from machinome.simulation.run import _TOLERANCE
 
 from .base import BaseNodeTest
+from .source_timing_compatibility import without_semantic_upgrade
 from .running_project.machine import (Captured, ClassGate, Clearing, Clocked,
                                       ClockedBody, Columns, ColumnsBare,
                                       Crank, Derived, Gate, Gauged, Guarded,
@@ -193,24 +194,24 @@ class VersionTest(BaseNodeTest):
         with open(os.path.join(build_dir, 'viewer.json')) as handle:
             return json.load(handle)
 
-    def test_a_running_export_declares_version_five(self):
+    def test_a_running_export_declares_source_timing_version(self):
         manifest = self.exported(Train())
-        self.assertEqual(manifest['version'], 5)
+        self.assertEqual(manifest['version'], 11)
         self.assertIn('program', manifest)
 
-    def test_a_running_build_declares_version_five(self):
+    def test_a_running_build_declares_source_timing_version(self):
         published = self.built(Train())
-        self.assertEqual(published['version'], 5)
+        self.assertEqual(published['version'], 11)
         self.assertIn('program', published)
 
     def test_an_untimed_document_carries_no_program(self):
         self.assertNotIn('program', document(bound(TrainBody())))
         self.assertNotIn('program', document(bound(LoopingTrain())))
 
-    def test_a_running_root_with_nothing_shared_is_still_version_five(self):
+    def test_a_running_root_with_nothing_shared_still_declares_source_timing(self):
         """The ladder below 5 is content-derived; 5 is not."""
         published = document(bound(Window()))
-        self.assertEqual(published['version'], 5)
+        self.assertEqual(published['version'], 11)
 
 
 class InstructionTableTest(BaseNodeTest):
@@ -280,6 +281,7 @@ class ByteIdentityTest(BaseNodeTest):
                 with open(os.path.join(BASE_DOCUMENTS,
                                        f'{name}.json')) as handle:
                     expected = handle.read()
+                published = without_semantic_upgrade(self, published, json.loads(expected))
                 self.assertEqual(json.dumps(published, indent=2) + '\n',
                                  expected)
 
@@ -405,7 +407,7 @@ class LiveRunTest(BaseNodeTest):
 
         published = document(node)
 
-        self.assertEqual(published['version'], 5)
+        self.assertEqual(published['version'], 11)
         self.assertEqual(sim.state, state)
         self.assertEqual(sim.tick, tick)
         self.assertEqual(command.admitted, admitted)
@@ -438,7 +440,7 @@ class StatedBelowTest(BaseNodeTest):
 
         published = document(node)
 
-        self.assertEqual(published['version'], 5)
+        self.assertEqual(published['version'], 11)
         self.assertEqual(operations_of(published, 'd1')[0],
                          ['t', ['0', '0', 'd1.lift']])
         self.assertIn('plug.p1.lift', published['program']['coordinates'])
@@ -452,7 +454,7 @@ class StatedBelowTest(BaseNodeTest):
 
         published = document(node)
 
-        self.assertEqual(published['version'], 5)
+        self.assertEqual(published['version'], 11)
         self.assertEqual(operations_of(published, 'd1')[0],
                          ['t', ['0', '0', 'd1.lift']])
 
@@ -759,7 +761,7 @@ class SpansAndLimitsTest(BaseNodeTest):
                               (ClassGate, {'plug.p1.lift', 'plug.p2.lift'})):
             with self.subTest(cls=cls.__name__):
                 published = document(bound(cls()))
-                self.assertEqual(published['version'], 5)
+                self.assertEqual(published['version'], 11)
                 spans = published['program']['spans']
                 span = spans['plug.turn']
                 self.assertEqual(span['low'], 0.0)
@@ -900,7 +902,7 @@ class RefusalTest(BaseNodeTest):
         from machinome.simulation import program as program_module
 
         self.assertEqual(
-            document(bound(OptionalRead(fitted=True)))['version'], 5)
+            document(bound(OptionalRead(fitted=True)))['version'], 11)
         with self.assertRaises(program_module.UnsupportedLaw) as raised:
             document(bound(OptionalRead(fitted=False)))
         self.assertIn('Arbor.turn', str(raised.exception))
@@ -1115,10 +1117,10 @@ class ControlsTableTest(BaseNodeTest):
                 self.assertNotIn('controls', document(bound(factory())))
 
     def test_the_version_does_not_move(self):
-        self.assertEqual(self.published['version'], 5)
-        self.assertEqual(document(bound(ColumnsBare()))['version'], 5)
-        self.assertEqual(self.built(Columns())['version'], 5)
-        self.assertEqual(self.exported(Columns())['version'], 5)
+        self.assertEqual(self.published['version'], 11)
+        self.assertEqual(document(bound(ColumnsBare()))['version'], 11)
+        self.assertEqual(self.built(Columns())['version'], 11)
+        self.assertEqual(self.exported(Columns())['version'], 11)
 
     def test_a_control_under_a_non_running_root_is_refused_at_publication(self):
         with self.assertRaises(TypeError) as raised:
@@ -1182,7 +1184,7 @@ class ControlsTableTest(BaseNodeTest):
 
     def test_an_omitted_part_does_not_refuse_the_build(self):
         published = self.built(OmittedControl(fitted=False))
-        self.assertEqual(published['version'], 5)
+        self.assertEqual(published['version'], 11)
         self.assertEqual(sorted(published['controls']),
                          ['turn units', 'units dial'])
 
@@ -1365,12 +1367,13 @@ class SelectedPlacementTest(BaseNodeTest):
         with open(os.path.join(BASE_DOCUMENTS,
                                'touched_columns.json')) as handle:
             expected = handle.read()
+        published = without_semantic_upgrade(self, published, json.loads(expected))
         self.assertEqual(json.dumps(published, indent=2) + '\n', expected)
 
     def test_the_version_does_not_move_for_a_span(self):
         for factory in (Selector, Crank, Tilted, Register):
             with self.subTest(root=factory.__name__):
-                self.assertEqual(document(bound(factory()))['version'], 5)
+                self.assertEqual(document(bound(factory()))['version'], 11)
 
     def test_a_span_carries_no_expression_into_the_bindings(self):
         published = document(bound(Crank()))
@@ -1434,10 +1437,10 @@ class SelfReadDocumentTest(BaseNodeTest):
                 return entry
         raise AssertionError(f'no law edge gives {coordinate}')
 
-    def test_a_program_with_a_self_read_law_is_a_version_6_document(self):
+    def test_a_self_read_program_declares_source_timing(self):
         published = self.clearing()
 
-        self.assertEqual(published['version'], 6)
+        self.assertEqual(published['version'], 11)
         edge = self.law_edge(published, 'wheel.turn')
         self.assertEqual(edge['needs'], ['setter', 'ring', 'wheel.turn'])
         self.assertEqual(edge['gives'], ['wheel.turn'])
@@ -1468,9 +1471,9 @@ class SelfReadDocumentTest(BaseNodeTest):
                   for jump in plan['jumps']]
         self.assertTrue(any('wheel.turn' in names for names in levels))
 
-    def test_a_program_with_no_self_read_law_is_still_version_5(self):
-        self.assertEqual(document(bound(PlainClearing()))['version'], 5)
-        self.assertEqual(document(bound(Train()))['version'], 5)
+    def test_a_program_without_self_read_declares_source_timing(self):
+        self.assertEqual(document(bound(PlainClearing()))['version'], 11)
+        self.assertEqual(document(bound(Train()))['version'], 11)
 
     def test_the_document_is_the_committed_version_6_fixture(self):
         published = self.clearing()
@@ -1479,6 +1482,7 @@ class SelfReadDocumentTest(BaseNodeTest):
             child['mtime'] = None
         with open(os.path.join(BASE_DOCUMENTS, 'clearing.json')) as handle:
             expected = handle.read()
+        published = without_semantic_upgrade(self, published, json.loads(expected))
         self.assertEqual(json.dumps(published, indent=2) + '\n', expected)
 
     def test_the_viewer_warning_names_the_version_written(self):
@@ -1508,16 +1512,16 @@ class BlockDocumentTest(BaseNodeTest):
         bind_declared_defaults(node)
         return document(node)
 
-    def test_a_program_carrying_a_block_declares_version_seven(self):
+    def test_a_block_program_declares_source_timing(self):
         from .carriage_project.machine import ShiftedCarry
 
         body = self.published(ShiftedCarry)
-        self.assertEqual(body['version'], 7)
+        self.assertEqual(body['version'], 11)
 
-    def test_a_program_with_no_block_declares_the_version_it_always_did(
+    def test_a_program_without_block_declares_source_timing(
             self):
-        self.assertEqual(self.published(Train)['version'], 5)
-        self.assertEqual(self.published(Clearing)['version'], 6)
+        self.assertEqual(self.published(Train)['version'], 11)
+        self.assertEqual(self.published(Clearing)['version'], 11)
 
     def test_a_blocks_members_publish_as_ordinary_law_edges(self):
         from .carriage_project.machine import ShiftedCarry

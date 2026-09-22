@@ -51,7 +51,7 @@ class PlayTest(TestCase):
         self.assertEqual(edges[0]['gives'], ['y.turn'])
         self.assertEqual((edges[0]['low'], edges[0]['high']), (-10.0, 10.0))
         self.assertEqual(len(sim.program.identity), 64)
-        self.assertEqual(document_version({}, program={'edges': edges}), 9)
+        self.assertEqual(document_version({}, program={'edges': edges}), 11)
 
     def test_an_old_viewer_refuses_version_nine(self):
         report = {'documentVersions': list(range(1, 9)), 'version': '0.1.0'}

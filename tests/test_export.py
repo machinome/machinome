@@ -679,17 +679,17 @@ class RunningPublicationWarningTest(BaseNodeTest):
                 manifest = export_node(node, output, widget=False)
         return manifest, logged.output, asked
 
-    def test_a_version_five_export_warns_once_and_is_written_anyway(self):
+    def test_a_source_timed_export_warns_once_and_is_written_anyway(self):
         manifest, records, asked = self.export(
             self.running,
-            'document version 5; the installed viewer renders 1, 2, 3, 4 '
+            'document version 11; the installed viewer renders 1, 2, 3, 4 '
             '(machinome-viewer 0.1.0)')
-        warnings = [line for line in records if 'document version 5' in line]
+        warnings = [line for line in records if 'document version 11' in line]
         self.assertEqual(len(warnings), 1, records)
         self.assertIn('1, 2, 3, 4', warnings[0])
         self.assertIn('0.1.0', warnings[0])
-        self.assertEqual(manifest['version'], 5)
-        asked.assert_called_once_with(5)
+        self.assertEqual(manifest['version'], 11)
+        asked.assert_called_once_with(11)
 
     def test_a_viewer_that_can_read_it_is_not_warned_about(self):
         from machinome.core import export as export_module
@@ -698,4 +698,4 @@ class RunningPublicationWarningTest(BaseNodeTest):
         with patch.object(export_module.viewer_bundle, 'unreadable_document',
                           return_value=None):
             manifest = export_node(self.running, output, widget=False)
-        self.assertEqual(manifest['version'], 5)
+        self.assertEqual(manifest['version'], 11)

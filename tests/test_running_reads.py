@@ -699,7 +699,9 @@ class BlockSelfReadTest(BaseNodeTest):
         sim.run(1.0)
         self.assertEqual(
             [(one.coordinate, one.primitive, one.t) for one in sim.crossings],
-            [('carry.travel', '<', 0.25), ('higher.turn', '>=', 0.25),
+            # The lever reaches the successor's .5 gate at crank .5
+            # (fraction .125), before landing at crank 1 (fraction .25).
+            [('higher.turn', '>=', 0.125), ('carry.travel', '<', 0.25),
              ('higher.turn', '<', 0.5), ('carry.travel', '<', 0.5)])
         # The lever's own gate cut the first piece at a quarter of the
         # tick and the carriage's detent cut the stretch at its half.

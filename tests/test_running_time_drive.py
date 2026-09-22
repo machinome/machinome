@@ -337,7 +337,7 @@ class PublicationTest(BaseNodeTest):
         sim.run(1)
         before = dict(sim.state)
         doc = document(node)
-        self.assertEqual(doc['version'], 10)
+        self.assertEqual(doc['version'], 11)
         program = doc['program']
         self.assertEqual(program['time_drives'], [{'id': '@time:0', 'edge': 0}])
         self.assertEqual(program['edges'][0]['needs'], ['time'])
@@ -358,7 +358,7 @@ class PublicationTest(BaseNodeTest):
                 node = factory()
                 Sim(node, 0.1, meshes=False)
                 doc = document(node)
-                self.assertEqual(doc['version'], 10)
+                self.assertEqual(doc['version'], 11)
                 drives = doc['program']['time_drives']
                 self.assertEqual(len(drives), 2 if factory is stopped else 1)
                 for drive in drives:

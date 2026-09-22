@@ -1195,12 +1195,14 @@ of run state), and the compile asserts its own membership equals the
 pre-pass's (`_agree_on_membership`). Refused at construction by relation
 identity: a wiring or a derived coordinate inside a block, a block whose
 unconditional dependencies are still cyclic, an INTERMEDIATE among a
-block's driven ends, and a block member driving a GROUP. A program
-carrying a block is a VERSION 7 document, its members published as
+block's driven ends, and a block member driving a GROUP. Every newly exported
+running program is a VERSION 11 document (ADR-138),
+including one carrying a block, its members published as
 ordinary law edges contiguous at the block's position in an order that
 is a LISTING and not an execution order; `Program.described()` gains one
-`block` line, so the identity distinguishes membership, and a program
-with no block prints, publishes and costs exactly what it did.
+`block` line, so the identity distinguishes membership, and all running
+identities additionally carry `source-timing version=11`.
+Legacy affine payloads change only in version and identity, not their physics.
 
 The compile step also carries the SPAN TABLE and the CANDIDATE table.
 Every banked coordinate's declared range is resolved once, each bound a
@@ -1213,7 +1215,18 @@ is the inputs reaching each node key, one pass over the already ordered
 edges, a `check` edge contributing nothing; `Edge.shapes` is the
 per-driven-end classification that decides whether a stop on that end is
 solved or searched, and `Edge.affine` is the two-valued statement of it
-the document publishes.
+the document publishes. This static classification alone does not certify an
+actual source path (ADR-137).
+
+**Determined sources retain timing** (ADR-137). `simulation/trajectory.py`
+composes demanded motion paths from the existing evaluator and retained walks.
+Pure request-local caches retain actual pieces, dwell and landing; restriction
+preserves them rather than constructing an endpoint chord. Active branch folds
+classify against actual source paths. Certified affine pieces are solved;
+curves retain bounded search. Selected ordering, held inactive dependencies,
+absolute landings and transactional refusal remain unchanged. Crossing budgets
+cover the whole law across inherited pieces, even in record-disabled probes.
+Play and its downstream chain retain clearance-aware prefix replay.
 
 A TICK is increments only until it commits, and it is integrated in
 SEGMENTS (ADR-108): every input's increment is what its active command
@@ -1247,11 +1260,10 @@ A bound that READS OTHER COORDINATES is a CONSTRAINT (ADR-113),
 evaluated along the stretch's path rather than frozen at the tick's
 start: the joint's own coordinate in the expression takes the tick's
 committed value (ADR-109's rule, which keeps a ratchet's tooth), and
-every read takes the value it has along the path, computed by one pass
-over the bound's SUB-PROGRAM — the compiled edges determining the
-bounded coordinate and every read, in program order — with every
-admission scaled by the fraction, so the sample arithmetic is the
-segment arithmetic. Detection and localization are one procedure that
+every read takes the value it has along the same determined path used by
+propagation. When a required path is unavailable, a fresh pass over the bound's
+SUB-PROGRAM scales admissions from the original bank (ADR-137), so probes do
+not invent endpoint chords. Detection and localization are one procedure that
 looks inside the stretch: whenever a READ moves, the constraint level is
 sampled at `_SUBDIVISIONS` fractions, the first sample carried outward
 (`g > 0` and `g > g(0)`) brackets the stop, and `t*` is the inside end
@@ -1341,11 +1353,12 @@ inputs moving together (a clutch engaging mid-tick while its shaft
 turns) is invisible to it and the tick is refused `StopInvariantError`
 rather than answered wrongly, with or without a block — a constraint's
 reach is its declarer's subtree, a tick in which a constraint's READS
-move pays up
-to `_SUBDIVISIONS` sub-program passes for it whether or not it stops
-(measured on `Gate`: 0.36 ms quiet, 5.4 ms active, 3.3 ms blocking; on
-the lock 2.9 ms idle, 4.7 ms turning, 45 ms advancing the key), a block
-give is never affine so every stop on one is SEARCHED, and a block's
+move samples the same paths, falling back to up to `_SUBDIVISIONS`
+sub-program passes when paths are unavailable. Historical endpoint-era costs
+were measured on `Gate`: 0.36 ms quiet, 5.4 ms active, 3.3 ms blocking; on
+the lock 2.9 ms idle, 4.7 ms turning, 45 ms advancing the key.
+A block's static give is never affine, but a certified actual path is solved
+piece by piece (ADR-137); other stops retain bounded search. A block's
 candidate table is over-broad (every input reaching any member is a
 candidate for a stop on any other, filtered per tick by the pushing
 test). The evaluator is `GraphValue.evaluate` per edge per tick —
@@ -2463,20 +2476,18 @@ the wire, and branch placeholders are minted document-wide as `_j0`,
 `_j1`, … The version is the one step of the ladder read off the
 DECLARATION rather than the content, because a running root with a
 trivial program is still a machine a version 4 consumer would animate
-wrongly, and the bump is not additive. Within it the CONTENT decides
-once more, off the published edges and with no key added for either
-fact: a program carrying a BLOCK is version 7 (ADR-122), one carrying
-none but a law edge that reads the coordinate it drives is version 6
-(ADR-121), and one with neither is the byte-identical version 5 it
-always was — seven dominating six, since a block says nothing about
-self-reads and a self-read nothing about blocks. Explicit Play takes version 9.
-Explicit time drives take version 10 (ADR-133), ahead of those running rungs:
+wrongly, and the bump is not additive. Earlier running rungs selected 5, 6, 7,
+9 or 10 from their content. ADR-138 supersedes that selection: every newly
+exported running program declares **version 11** and carries a source-timing
+semantic generation in its canonical identity. This protects both portable
+exports from old consumers and corrected runs from endpoint-era snapshots.
+No payload field changes. With explicit time drives (ADR-133),
 `program.time_drives` maps each `@time:<edge-index>` ID to its flattened
 published edge index in ascending order. The edge reads `time` in `needs`,
 never `gives`; source candidates carry its admission ID beside driver IDs.
 The mapping and semantics version participate in identity. No time entry is
 added to coordinates, intermediates, drivers or controls. Without explicit
-time drives the field is absent and the previous bytes and versions remain.
+time drives the field is absent; version and identity still receive the semantic upgrade.
 
 **Version 8 is the CLOCKED rung** (ADR-128), read off the declaration by
 the same rule and DOMINATING every other: a tree in which anything
@@ -2489,14 +2500,14 @@ without merging with it, the split being the handle rule: every key of
 `drivers` is an input a person may move and no key of `states` ever is.
 There is no `coordinates` table, because a clocked bank holds no joint
 coordinate and every number in it is already published. A root that
-declares no `State` never declares 8 and publishes what it always
-published, byte for byte.
+declares no `State` never declares 8; running roots use 11 and posed/looping
+roots retain their existing selection.
 
 The framework asks the installed viewer what it can read, through the
 existing `machinome.viewer` entry point: `bundle.document_versions()`
 returns the report's `documentVersions`, or `[1, 2, 3, 4]` when the field
 is absent. `machinome build`, `machinome develop` and `machinome export` publish a
-version 5 document and WARN once; the Sphinx directive warns about a
+running document and WARN once when the installed viewer cannot read its version; the Sphinx directive warns about a
 committed export it embeds, off the manifest it already opened and with
 no CAD runtime loaded; `machinome snapshot --renderer web` REFUSES before the
 browser starts, because a capture is a one-shot. A CONFORMANCE CORPUS
@@ -2509,12 +2520,17 @@ the Curta-derived periodic first-contact stop and snapshot replay (ADR-135),
 with coverage and old-attribution mutation checks. This is producer evidence;
 the independent viewer must reproduce it before parity is claimed.
 `tools/generate_time_drive_corpus.py` separately
-publishes `tests/time-drive-corpus.json`: seven version-10 scenarios with 54
+originally published `tests/time-drive-corpus.json`: seven version-10 scenarios with 54
 ticks covering no-command motion, gates, winding/exhaustion, independent and
 connected stops, mixed commands, curved stop paths and replay/reset. The
 independent viewer at API 23 reads version 10 and executes these
 scenarios in its own repository; that is the viewer's evidence, not
-producer parity claimed here.
+producer parity claimed here. Source-timing fixtures from
+`tools/generate_source_timing_fixtures.py` additionally pin compact and unchanged
+Curta carry requests with content hashes, full banks and records. The paired
+API-24 viewer passes these in its own repository and rejects malformed v11
+programs; the old API-23 bundle refuses v11 before operation. Existing legacy
+corpus bytes remain controls, not regenerated physics expectations.
 
 Every producer — export, build snapshot, browser snapshot — also publishes a
 **printed-piece inventory** (ADR-043): a top-level `pieces` list beside `root`,
@@ -2739,20 +2755,10 @@ The short list that changes must not silently break:
   reading a sibling would need that sibling's path while the sibling's
   own walk is cutting it — a joint walk over several plans that no
   mechanism has asked for yet.
-- **A followed quantity is classified once, for the whole tick, and not
-  per PIECE** (ADR-123, measured by `evaluate-only-what-moves`): a kink
-  can pin a curved subtree to a constant on one of its pieces — the
-  Curta's detent cam is affine through its dwell and curved through its
-  rise — and a classification per piece at run time would solve strictly
-  more than a compile-time flag does. Measured on the originating
-  machine (`evaluate-only-what-moves` design.md section 7): a per-piece
-  classification would make 192 of 200 searched skeletons solvable (160
-  constant, 32 kinked, 8 still curved), but it MOVES a crossing located
-  by search to the solved answer — every recorded crossing would move —
-  and makes the classification depend on which piece you are in, which
-  ADR-123 deliberately kept static. Not taken: after ADR-124 its prize is
-  small (21 % of the post-change tick against the port enumeration's
-  56 %, next).
+- **Curved source paths retain bounded search** (ADR-137): active folds and
+  actual source pieces now certify solvable motion where available; this does
+  not promise arbitrary curved excursions are all found. No generic coupled
+  solver, microstep schedule or new tolerance is introduced.
 - **`declared_ports` is re-walked from every call, not memoised by
   class** (measured by `evaluate-only-what-moves` design.md section 8):
   61 % of the originating machine's construction and 12.5 % of its tick
@@ -2776,12 +2782,9 @@ The short list that changes must not silently break:
   selection that leaves a cycle active is refused only when it happens —
   transactionally, at run time, which is a failure mode an author can
   meet only by running.
-- **A stop on a block coordinate is always SEARCHED** (ADR-122): a
-  block's value is piecewise in its selector partition and re-ordered
-  across it, so `Edge.affine` is `False` on every give and the
-  localization pays up to 64 samples plus the bisection rounds, each
-  re-running the whole block. Classifying a give as affine under a fixed
-  branch vector is unmeasured.
+- **Block stop location follows actual paths** (ADR-137): certified affine
+  pieces are solved and other paths retain bounded search. Static block
+  affinity remains false and cannot by itself certify a whole request.
 - **A `sign`-gated source is never SWITCHED** (ADR-122): `sign`'s zero is
   a single point of its level, so a model gating its only conditional
   dependency on one is refused at construction rather than admitted and

@@ -17,6 +17,10 @@ class TimeDriveCorpusTest(BaseNodeTest):
         expected = json.loads(Path(__file__).with_name(
             'time-drive-corpus.json').read_text())
         actual = build()
+        from .source_timing_compatibility import without_semantic_upgrade
+        for current, old in zip(actual['machines'], expected['machines']):
+            current['document'] = without_semantic_upgrade(
+                self, current['document'], old['document'])
         self.assertEqual(actual, expected)
 
     def test_guard_requires_time_drives_and_their_motion(self):

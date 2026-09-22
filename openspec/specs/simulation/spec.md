@@ -1036,10 +1036,13 @@ change: the tick's path SHALL be cut at every crossing of every jump
 surface it meets, and the law's change SHALL be summed over the pieces
 between those cuts, so that no jump ever moves a part.
 
-The PATH of a tick SHALL be the straight line from the values the law's
-sources hold to those values plus the increments they were given,
-parametrised by a fraction `t` in `[0, 1]` — in the JOINT space of the
-sources for a law naming several. A tick in which no source moves SHALL
+The PATH of a tick SHALL follow each source's physical motion at the same
+fraction `t` in `[0, 1]`: commanded linear motion for an input, constant motion
+for a held coordinate, and law-determined motion for a driven source. Driven
+sources SHALL retain dwell, kink, crossing and landing timing through ordinary
+chains as well as selected blocks, rather than interpolate their net increments.
+For a law naming several sources these paths SHALL be read jointly at that
+same fraction. A tick in which no source moves SHALL
 contribute zero without evaluating the law.
 
 Each jump node SHALL have a LEVEL QUANTITY and a family of SURFACES:
@@ -2537,8 +2540,9 @@ naming the relations as written and the classes that stated them:
 
 **Over a stretch of a tick the block's SELECTORS SHALL be located
 first.** Every selector's level SHALL be followed along the path its
-coordinates take over the stretch — the same linear path every other
-source takes — and the stretch SHALL be CUT at every surface any of them
+coordinates take over the stretch — commanded motion for an input and
+law-determined motion for a driven source, retaining its timing — and the
+stretch SHALL be CUT at every surface any of them
 reaches: solved exactly where that level is affine or PIECEWISE AFFINE —
 the requirement "A kink is a cut, and a piecewise-affine quantity is
 solved" — otherwise sampled at
@@ -2565,10 +2569,14 @@ member's own integration rather than re-located by it, so the order the
 block chose and the branch the member reads cannot disagree. Each member
 SHALL otherwise be integrated over the piece by the rules that already
 govern it — the jump partition, and the walk of a law that reads the
-coordinate it drives — with a coordinate the block determines taken at
-the value the block has advanced it to and moving by the increment
-computed for it on THAT piece, and every other coordinate taken along the
-stretch's own path restricted to the piece.
+coordinate it drives — with each active determined source following the
+motion its law gives it
+at the corresponding point of the request, including its dwell, crossings
+and landing. This SHALL also hold for determined sources upstream of the
+block. Restricting a source to a piece SHALL retain that motion's timing,
+not substitute a straight line between the piece's endpoints. Inputs and
+held coordinates SHALL retain their commanded and constant paths,
+respectively.
 
 The block's contribution to each of its coordinates SHALL be the sum over
 the pieces. Where ANY piece's integration LANDED a coordinate at an
@@ -2642,6 +2650,26 @@ deterministic for a given tree, and the program's listing SHALL name the
 block at its position in the program's order and then carry each of its
 members' own entries, so the identity covers every member's ends,
 direction and expression as it does any other edge's.
+
+Adding later stations whose active motion does not influence an earlier
+carry SHALL NOT alter that carry's physical outcome. Additional internal
+partition boundaries SHALL NOT re-time a source's motion. Existing
+agreement windows and the status/discrete-reading rules above SHALL apply.
+
+The source-timing guarantee SHALL apply to ordinary chains as well as
+selected blocks: freezing a selection SHALL NOT change the physical timing
+of the same laws. Existing exact affine propagation SHALL retain its result;
+ordinary endpoint approximations that lose a dwell or landing SHALL be
+corrected rather than preserved for compatibility.
+
+#### Scenario: An ordinary frozen carry retains the same timing
+
+- **WHEN** the existing ShiftedCarry at shift 0 and its FixedZero ordinary
+  acyclic twin move crank 0..4, with a carry landing at 1 and gate at .5,
+  in one move and again in sixteen portions
+- **THEN** both versions finish with carry.travel 1 and higher.turn 3.5,
+  commands completed with full travel admitted, rather than the old bulk
+  result 2 produced by spreading the lever's stroke over the whole request
 
 #### Scenario: A carriage selects which wheel a lever reads
 
@@ -2779,6 +2807,39 @@ direction and expression as it does any other edge's.
   tick's result equals the one the same tick gives with the selection
   frozen at each of its two branches over the corresponding parts of the
   travel
+
+#### Scenario: Later result stations preserve an earlier carry
+
+- **WHEN** Curta's unchanged result-carry diagnostic sets digit to 0,
+  height to 9, crank angle to 90 and then requests crank angle 180 in one
+  unsplit move, with six, seven and eleven active result stations
+- **THEN** every move completes, ones.turn ends at 724, tens.turn ends at
+  704 and the first lever ends at 0 within the existing agreement window,
+  with the same earlier carry in all three graphs
+
+#### Scenario: A dwelling predecessor is not replaced by a ramp
+
+- **WHEN** a selected carry chain contains a source which moves and then
+  dwells or lands, and the same physical request is made with an additional
+  station whose selection changes but cannot influence that carry
+- **THEN** the earlier successor receives the same timed physical motion
+  and produces the same carry whether or not the later station is present
+
+#### Scenario: An upstream driven source retains its timing
+
+- **WHEN** the carry's driving shaft has nonuniform motion during a
+  request and the same request is executed whole or in smaller portions
+- **THEN** the full bank and admitted travel agree within the existing
+  window, with identical statuses and discrete readings away from the
+  threshold neighborhoods defined above
+
+#### Scenario: Observing the full result bank does not lose the carry
+
+- **WHEN** the eleven-station Curta result-carry diagnostic makes that same
+  unsplit request with its original ones and tens contact constraints
+- **THEN** the crank reaches 180 with completed status and tens.turn 704,
+  without disabling a constraint, reducing the bank, changing a law, or
+  subdividing the pilot's request
 
 ### Requirement: A kink is a cut, and a piecewise-affine quantity is solved
 
@@ -4396,3 +4457,35 @@ and transactional-refusal requirements remain in force.
   or cause an impossible-contact refusal
 - **AND** genuine nonzero relative movement, however small, and genuine invalid
   continuation retain the existing crossing and transactional-refusal behavior
+
+### Requirement: Source-timed execution is declared in exports and snapshots
+
+Every newly exported running program SHALL use document version 11, including
+ordinary, selected, Play and explicit-time programs. Existing fields and
+expression syntax SHALL remain unchanged; posed/looping and clocked version
+selection SHALL remain unchanged. A consumer supporting only versions through
+10 SHALL refuse the corrected export before operation.
+
+The running program's canonical identity SHALL include its source-timing
+semantic generation. A snapshot from endpoint-era semantics SHALL refuse
+restore before changing the bank, commands or records. This deliberately
+supersedes earlier running identity and document-byte preservation promises
+for this semantic correction, even for an affine program whose result is
+unchanged. Corrected snapshots SHALL remain deterministic and replayable.
+
+#### Scenario: Re-export protects the originating carry
+
+- **WHEN** the unchanged Curta carry is exported by the corrected framework
+- **THEN** the document is v11 and an old viewer refuses it rather than
+  silently using the endpoint carry arithmetic
+
+#### Scenario: Old arithmetic state is not restored silently
+
+- **WHEN** an endpoint-era running snapshot is restored into the same machine
+  compiled with source-timed semantics
+- **THEN** the identity mismatch refuses before mutating any live state
+
+#### Scenario: Other motion modes retain their format
+
+- **WHEN** posed, looping and clocked models are exported by the corrected producer
+- **THEN** their version selection remains unchanged

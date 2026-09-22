@@ -1,8 +1,9 @@
 # Apply finding: ordinary chains have the same timing defect
 
-2026-09-22. Status: implementation paused for a scope decision; no solver code
-changed. This is evidence, not a revision to the ratified design or permission
-to change its preservation guarantees.
+2026-09-22. Historical scope finding, subsequently resolved: the pilot approved
+the recommended ordinary-chain extension with “go on”. Planning commit
+`5f90739` replaces `a072b15` with that revision; implementation resumed.
+The measurements below precede solver changes.
 
 Planning commit `a072b15` follows pilot ratification and successful strict
 validation. Its clean tree and exactly one-commit ancestry above `e6a42c8`
@@ -77,7 +78,7 @@ Alternative: retain ordinary endpoint behavior and explicitly withdraw the
 frozen-equivalence promise for these trajectories. This gives the same laws
 different physics depending on graph shape and is not recommended.
 
-Neither option is implemented or ratified here. Under the framework-change
+At the original pause neither option was implemented or ratified. Under the framework-change
 skill, wait for the pilot, then invoke the update workflow if revision is
 chosen; validate and amend only planning commit 1 after re-ratification,
 preserving these uncommitted test/evidence changes. No intermediate
@@ -87,8 +88,6 @@ implementation commit, ADR, archive, or integration has been made.
 
 The unchanged four-test Curta replay was launched from this bench using its
 production source first on PYTHONPATH and the canonical project root second.
-Its log is `evidence/red-curta.log`; session 25315. The seven-station case is
-red; the constrained full-bank case is still running at this checkpoint.
-Task 1.4 is deliberately not checked off until its complete results, source
-hashes and bank/status evidence have been recorded. The worker is diagnostic,
-not a solver change, and has not been cancelled.
+Its log is `evidence/red-curta.log`; it completed with one pass and three
+failures in 281.895 seconds. The complete output, banks and source hashes are
+retained in `evidence/red-curta.json`; task 1.4 is now complete.

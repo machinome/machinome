@@ -565,8 +565,11 @@ class LandingTest(BaseNodeTest):
         # its own gate cuts the path and LANDS it at 1.0. Piece two: the
         # detent has passed, the higher wheel drives it with no gate, and
         # the crank's remaining 2.0 reaches it through the higher wheel.
+        # Higher engages at crank .5 (not halfway through the lever's
+        # endpoint chord over 0..2), adding 1.5 before the detent and 2
+        # after it. Carry still lands at 1 and then advances by 2.
         self.assertEqual(sim.state['lower.turn'], 4.0)
-        self.assertEqual(sim.state['higher.turn'], 3.0)
+        self.assertEqual(sim.state['higher.turn'], 3.5)
         self.assertEqual(sim.state['carry.travel'], 3.0)
         self.assertNotEqual(sim.state['carry.travel'], 1.0)
 

@@ -680,9 +680,9 @@ class VersionLadderTest(BaseNodeTest):
         self.assertEqual(self.version(root=plain), 2)
         self.assertEqual(self.version(root=flexible), 3)
         self.assertEqual(self.version(root=plain, bindings=['a']), 4)
-        self.assertEqual(self.version(root=plain, program={'edges': []}), 5)
-        self.assertEqual(self.version(root=plain, program=self.SELF_READ), 6)
-        self.assertEqual(self.version(root=plain, program=self.BLOCK), 7)
+        self.assertEqual(self.version(root=plain, program={'edges': []}), 11)
+        self.assertEqual(self.version(root=plain, program=self.SELF_READ), 11)
+        self.assertEqual(self.version(root=plain, program=self.BLOCK), 11)
         self.assertEqual(self.version(root=plain, clocked={}), 8)
 
     def test_eight_dominates_the_content_ladder(self):
