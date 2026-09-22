@@ -14,9 +14,10 @@ subject; this one links rather than restates.
     through the framework's ``viewer`` extra.
 
 `Machinome Mechanics <https://machinome-mechanics.readthedocs.io/en/latest/>`_
-    Twelve formulas for gears, lead screws, slider-cranks, linear deltas
-    and planar linkages, each stating its frame, its zero and its sign,
-    with a worked motion law. The package is ``machinome-mechanics``
+    Twenty-four formulas for gears, lead screws, slider-cranks, cams,
+    indexed advance, linear deltas, planar linkages, rolling motion and
+    belts, each stating its frame, its zero and its sign, with a worked
+    relation law. The package is ``machinome-mechanics``
     |mechanics_version|, Apache-2.0, installed through the ``mechanics``
     extra and imported from ``machinome_mechanics``.
 

@@ -545,14 +545,15 @@ counter-clockwise, as everywhere else.
 Mechanics helpers
 ==================
 
-The twelve gear, screw, crank, delta and linkage formulas belong to the
-independent `Machinome Mechanics package
-<https://machinome-mechanics.readthedocs.io/en/latest/>`_, the mechanics
-helpers for this framework. Select it with ``machinome[mechanics]`` and
-import from ``machinome_mechanics``. While publication is pending, follow
-the manual's `source installation instructions
-<https://machinome-mechanics.readthedocs.io/en/latest/getting-started.html>`_.
-``machinome.mechanisms`` is no longer a framework API.
+The gear, screw, crank, cam, indexing, delta, linkage, rolling and belt
+formulas, twenty-four in all, belong to the independent `Machinome
+Mechanics package <https://machinome-mechanics.readthedocs.io/en/latest/>`_,
+the mechanics helpers for this framework, released with it as
+|mechanics_version|. Select it with ``machinome[mechanics]`` and import
+from ``machinome_mechanics``; its `getting started page
+<https://machinome-mechanics.readthedocs.io/en/latest/getting-started.html>`_
+covers installation and migration. ``machinome.mechanisms`` is no longer
+a framework API.
 
 The `complete helper reference
 <https://machinome-mechanics.readthedocs.io/en/latest/reference/index.html>`_

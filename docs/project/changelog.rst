@@ -60,7 +60,8 @@ one description that can be built, operated and tested.
   no force solver or historical escapement model.
 * **Independent mechanics:** the twelve formula helpers move from
   ``machinome.mechanisms`` to ``machinome_mechanics`` in the independent
-  0.1.0 package, installed through ``machinome[mechanics]``.
+  0.1.0 package, which adds twelve more and is installed through
+  ``machinome[mechanics]``.
 * **Installed joint constraints:** an assembly can state
   ``joint_path.constrain(range=(lo, hi))`` on an existing scalar descendant.
   Scoped contributions intersect with its original stops without changing

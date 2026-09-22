@@ -190,3 +190,12 @@ No framework runtime, API or dependency changed; no ADR is needed. The
 example pages describe the pinned revisions' surfaces from their published
 documents; this record does not certify the examples' complete mechanical
 test suites. Nothing was pushed, tagged, published or integrated.
+
+## Mechanics companion pass (2026-09-22)
+
+The mechanics manual was brought to the released state in its own
+repository (OpenSpec change `release-mechanics-with-0-7`). This manual
+said "twelve" helpers on the API, install, manuals and upgrading pages
+and told readers to follow source installation "while publication is
+pending"; corrected to the twenty-four helpers in nine families and the
+index install. Strict `-E -W --keep-going` build clean.

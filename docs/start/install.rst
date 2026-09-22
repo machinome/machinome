@@ -79,9 +79,9 @@ and the ``documentVersions`` it reads. This manual matches viewer
 install and exits 1.
 
 Two more extras exist: ``mechanics`` installs `Machinome Mechanics
-<https://machinome-mechanics.readthedocs.io/en/latest/>`_, the twelve
-gear, screw, crank, delta and linkage formulas (version
-|mechanics_version|), and ``web-snapshot`` installs the viewer with its
+<https://machinome-mechanics.readthedocs.io/en/latest/>`_, twenty-four
+gear, screw, crank, cam, delta, linkage, rolling and belt formulas
+(version |mechanics_version|), and ``web-snapshot`` installs the viewer with its
 headless browser driver for transparent photographs. Neither is needed to
 start.
 
