@@ -48,9 +48,8 @@ In standard XY coordinates, left of an A-to-B direction along +X is +Y:
    >>> circle_intersection((1, 1), 5, (1, 9), 5, side=1)
    (-2.0, 5.0)
 
-For example, the grasshopper escapement in 3DPrintedClocks finds its nib
-as the intersection of a circle about the origin and one about a moving
-pivot:
+For example, a grasshopper escapement finds its nib as the intersection
+of a circle about the origin and one about a moving pivot:
 
 .. doctest::
 
@@ -173,10 +172,11 @@ clamp or singular-pose bearing is invented. Numeric division and domain errors
 propagate; deferred operands keep the same arithmetic for evaluation later.
 This is a selected pose, not continuous branch tracking across motion.
 
-Spiderbot supplies its horizontal span and vertical drop, then subtracts its
-measured tibia bend from the returned elbow. AlbertPro supplies
-``(height, 0, THIGH, SHIN)`` after its own height guard. Neither project passes
-servo offsets or body yaw to this helper: those remain in the project adapter.
+A hexapod leg supplies its horizontal span and vertical drop, then subtracts
+its measured tibia bend from the returned elbow. A quadruped standing on a
+vertical leg supplies ``(height, 0, thigh, shin)`` after its own height guard.
+Neither passes servo offsets or body yaw to this helper: those remain in the
+project's law.
 
 four_bar_pose
 -------------
@@ -213,8 +213,8 @@ four_bar_pose
 Let ``v = B-D`` and ``d = sqrt(v.x*v.x + v.y*v.y)``. The rocker bearing is
 ``atan2(v.y, v.x) + side*triangle_angle(coupler_length, rocker_length, d)``.
 The helper constructs C from that bearing and the rocker length. It does not
-normalize the sum: Dragon R1 subtracts this exact representation from its
-source-part bearing. Coupler bearing is ``atan2(C.y-B.y, C.x-B.x)``.
+normalize the sum, so a project can subtract this exact representation from
+a part's authored bearing. Coupler bearing is ``atan2(C.y-B.y, C.x-B.x)``.
 Neither output promises continuous unwrapping across an atan2 branch cut.
 
 .. doctest::
@@ -240,9 +240,10 @@ domain error. Tangency is mathematically reachable, but floating roundoff can
 still cause a domain error. No tolerance clamp or made-up pose is supplied.
 Supported deferred angles, pivots and lengths use the same arithmetic.
 
-Dragon R1 passes its measured lower/upper inner pivots as A/D in its XZ plane.
-It keeps ride-to-lower-angle inversion and passes ``source_lower_heading -
-lower_angle`` because positive +Y rotation is clockwise in that projection.
-It retains source-part offsets and the separate Y coordinates when lifting
-the returned points into 3D. Strandbeest closes O-C-W-H and O-C-U-H with
-opposite sides, then uses its remaining rigid-triangle construction unchanged.
+A vehicle's double-wishbone suspension passes its measured lower and upper
+inner pivots as A and D in its XZ plane. It keeps the ride-height-to-lower-angle
+inversion and passes ``authored_lower_heading - lower_angle``, because a
+positive rotation about +Y is clockwise in that projection, and it retains
+the parts' authored offsets and their Y coordinates when lifting the returned
+points into 3D. A walking linkage closes its two four-bar loops with opposite
+sides, then uses its remaining rigid-triangle construction unchanged.

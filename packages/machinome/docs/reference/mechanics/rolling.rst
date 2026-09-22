@@ -17,9 +17,10 @@ constant-radius drum, or recover rotation from that travel. Import from ``machin
    :returns: ``angle * radius * pi / 180`` in the radius's length unit.
 
 Positive travel follows the rotating surface's positive tangent. Apply your
-machine's mounting sign and reference offset afterwards. Dragon R1 negates
-the result for rack displacement; Thor uses the pulley pitch circle to move
-its belt. A tooth-tip radius is not a pitch radius.
+machine's mounting sign and reference offset afterwards: a rack-and-pinion
+steering model negates the result for rack displacement, and a belt drive
+uses the pulley pitch circle to move its belt. A tooth-tip radius is not a
+pitch radius.
 
 .. doctest::
 
@@ -46,9 +47,9 @@ as the other helpers.
    :param radius: Nonzero pitch/contact radius in the same length unit as travel.
    :returns: ``travel / radius * 180 / pi`` degrees.
 
-Use the same tangent sign as :py:func:`rolling_travel`. Prusa3-vanilla and
-Kossel use this conversion for belt-driven pulleys and plain idlers, with their
-own mounting signs and pulley reference phases applied separately. A plain
+Use the same tangent sign as :py:func:`rolling_travel`. Cartesian and delta
+printers use this conversion for belt-driven pulleys and plain idlers, with
+their own mounting signs and pulley reference phases applied separately. A plain
 idler's contact radius need not be a toothed pulley's pitch radius.
 
 .. doctest::

@@ -40,10 +40,11 @@ or a follower rotation; the helper does not infer a mechanism from its units.
        ...
    ZeroDivisionError: float division by zero
 
-Leonardo's cam hammer uses a 240-degree rise and 80-degree follower return;
-its physical cam deliberately returns in 45 degrees to release the follower.
-Keep those choices distinct. Deepseek's hydraulic sawmill uses the symmetric
-180/180 case with ``lift=2*FEED_THROW``: its named throw is half its full stroke.
+A cam hammer might lift over 240 degrees and let the follower return over
+80, while its physical cam returns in 45 degrees to release the hammer. Keep
+those two choices distinct. A sawmill feed cam uses the symmetric 180/180
+case and passes twice its named throw as ``lift``, because the throw is half
+the full stroke.
 
 Physical spans must be positive and sum to at most 360. The helper does not
 validate or repair them: zero numeric spans raise division errors and other

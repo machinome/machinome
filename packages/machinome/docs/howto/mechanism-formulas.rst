@@ -55,28 +55,34 @@ using the new dimension, without rewriting the formula.
 
 The ``law=`` form describes forward motion. Having an inverse helper
 such as ``screw_angle`` does not automatically make a relation invertible;
-declare that behaviour through the framework's `motion-law API
-<https://machinome.readthedocs.io/en/latest/driving.html>`_ when needed.
+declare that behaviour through the framework's `relation laws
+<https://machinome.readthedocs.io/en/latest/concepts/relations.html>`_
+when needed.
 
 Symbolic inputs
 ---------------
 
-The same formula can also be called directly with animation time. The
-framework uses SolidPython's symbolic time value for this expression path:
+The same formula also accepts the framework's symbolic values. Under a
+declared timeline, ``self.time`` in a node's ``simulate()`` is such a
+value, and a helper called with it returns a deferred expression rather
+than a number:
 
-.. doctest::
+.. code-block:: python
 
-   >>> from solid2 import get_animation_time
-   >>> from machinome_mechanics import piston_height
-   >>> angle = 360 * get_animation_time()
-   >>> height = piston_height(angle, 15, 60)
-   >>> "sqrt(" in str(height) and "$t" in str(height)
-   True
+   from machinome_mechanics import piston_height
 
-``height`` now describes a calculation to perform as time changes; it is
-not a sampled float. When used in a node's motion, the framework carries
-that expression into its supported animation outputs. The motion-law
-example above lets the framework supply the changing input for you.
+   class Engine(AssemblyNode):
+
+       def simulate(self):
+           angle = 360 * self.time
+           self.piston.translate([0, 0, piston_height(angle, 15, 60)])
+
+That expression is what the framework publishes to the browser viewer
+and writes into its animated builds; it is evaluated there, not sampled
+in Python. The package's own test suite checks that every helper agrees
+with itself on numbers and on symbolic values. The relation-law example
+above lets the framework supply the changing input for you, which is the
+form to prefer.
 
 .. _declared-parameters:
 
@@ -104,7 +110,7 @@ dimensional tokens directly to these helpers is not a supported general
 formula interface; the dimension algebra can reject the calculation.
 
 Next, choose a formula from :doc:`reference/index`. The framework's
-`declaring guide <https://machinome.readthedocs.io/en/latest/declaring.html>`_
-explains parameters and children, and its `driving guide
-<https://machinome.readthedocs.io/en/latest/driving.html>`_ explains how
-drivers, joints and project laws fit together.
+`values page <https://machinome.readthedocs.io/en/latest/concepts/values.html>`_
+explains parameters, formulas and the ``.value`` escape, and its
+`relations page <https://machinome.readthedocs.io/en/latest/concepts/relations.html>`_
+explains how drivers, joints and project laws fit together.

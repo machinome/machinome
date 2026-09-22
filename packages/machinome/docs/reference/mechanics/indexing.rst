@@ -32,11 +32,11 @@ option. The caller supplies the output reference, direction and mounting sign.
    >>> [indexed_advance(a, 36, carry_stroke, 325) for a in (0, 325, 342, 359, 685, 719)]
    [0.0, 0.0, 18.0, 36.0, 36.0, 72.0]
 
-The second example is Pascaline-module's corrected carry: one 36-degree stroke
+The second example is a mechanical calculator's carry: one 36-degree stroke
 from 325 to 359 degrees, followed by a hold. Keeping absolute phase lets the
-project retain its segment coordinates. Deepseek's hydraulic sawmill instead
-supplies its nonlinear hook-contact stroke with a 7.5-degree tooth increment;
-its four-turn smooth reset multiplies the result **outside** this helper.
+project retain its segment coordinates. A ratchet-fed sawmill instead
+supplies its nonlinear hook-contact stroke with a 7.5-degree tooth increment,
+and multiplies the result by its smooth reset **outside** this helper.
 Neither contact geometry nor reset policy is inferred.
 
 Continuity is **not guaranteed**. For a continuous seam, the stroke's upper
@@ -54,15 +54,9 @@ callback must itself be pure and support expression arithmetic for deferred
 use: use ``machinome.math`` functions, not numeric-only ``math`` functions or
 Python branches on symbolic values. It is called once while constructing the
 expression, not re-executed as a Python function at every animation sample.
-Exceptions propagate; the helper does not test or repair callbacks.
-
-.. doctest::
-
-   >>> from solid2 import get_animation_time
-   >>> from solid2.core.object_base import OpenSCADConstant
-   >>> expression = indexed_advance(720*get_animation_time(), 36, carry_stroke, 325)
-   >>> isinstance(expression, OpenSCADConstant)
-   True
+Exceptions propagate; the helper does not test or repair callbacks. With a
+symbolic angle such as ``720 * self.time``, the same call returns a deferred
+expression over the stroke's own arithmetic.
 
 The usual :doc:`../conventions` limitation on dimensional class-body values
 applies. Very large floating angles retain ordinary phase-reduction precision

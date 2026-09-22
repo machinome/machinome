@@ -21,9 +21,9 @@ surface of a plain idler. Use one length unit consistently.
    Supported raw symbolic count or pitch expressions use the same formula.
    No dimensional declaration-token contract is added.
 
-   Thor's GT2 pulleys use 2 mm pitch; Open Robot Actuator's AT3 pulleys use
-   3 mm pitch. Printer models that fit a loop's pitch can pass that fitted
-   value. Their tooth-tip/flank offsets remain outside this helper.
+   GT2 pulleys use 2 mm pitch; AT3 pulleys use 3 mm pitch. A printer model
+   that fits a loop's pitch can pass that fitted value. Tooth-tip and flank
+   offsets remain outside this helper.
 
 .. doctest::
 
@@ -68,9 +68,9 @@ surface of a plain idler. Use one length unit consistently.
    Symbolic coordinates and radii retain the same formula and runtime domain
    behavior; this is not a dimensional declaration-token contract.
 
-   Thor maps its truthy belt-back marker to -1; printer timing modules map
-   their counterclockwise marker to -1. Loop topology, wrap measurement,
-   pitch-line offsets and diagnostic wrappers remain project responsibilities.
+   A project that records a belt-back or counterclockwise marker maps it to
+   -1 before calling. Loop topology, wrap measurement, pitch-line offsets and
+   diagnostic wrappers remain project responsibilities.
 
 .. doctest::
 
@@ -106,8 +106,8 @@ surface of a plain idler. Use one length unit consistently.
    * ``length`` is the total of all straight spans and circular arcs.
 
    Distance zero is departure from circle 0, not its arrival. In particular,
-   the first arc in traversal is ``arc_lengths[1]``. Prusa and Hangprinter
-   rotate the circle-indexed arc tuple when adapting their after-span lists.
+   the first arc in traversal is ``arc_lengths[1]``. A project that lists
+   arcs after spans rotates the circle-indexed arc tuple when adapting it.
 
    Coincident tangent directions give zero wrap, not a full turn. A zero
    radius gives zero arc length; zero-radius circles and limiting zero-length
@@ -118,8 +118,8 @@ surface of a plain idler. Use one length unit consistently.
 
    This measures the route supplied; it does not choose routing, check
    self-intersections, generate a mesh, fit tooth count or add mounting phase.
-   Project turn markers and Thor's legacy full-turn-at-zero policy remain
-   adapter responsibilities.
+   Project turn markers and any full-turn-at-zero policy remain the
+   project's responsibilities.
 
 .. doctest::
 
@@ -153,11 +153,11 @@ surface of a plain idler. Use one length unit consistently.
    the handedness of the machine's mounting axis. The caller applies any tooth
    reference and mounting offset after choosing a consistent contact reference.
 
-   Prusa3-vanilla uses its measured tangent phase and pulley station; Kossel's
-   first-circle contact has station zero. Metamaquina2's Y pulley bends the
-   belt backwards and uses -1, with its clamp and pulley stations expressed in
-   the same path coordinate. Clamp-axis projections, fitted radii, phase
-   normalization and tooth profiles stay in those projects.
+   A pulley measured mid-route supplies its tangent phase and station; a
+   first-circle contact has station zero. A pulley the belt wraps backwards
+   uses -1, with its clamp and pulley stations expressed in the same path
+   coordinate. Clamp-axis projections, fitted radii, phase normalization and
+   tooth profiles stay in the project.
 
    The result is signed and unwrapped, including multiple revolutions.
    Physical pitch radius is positive. Negative radii preserve arithmetic;

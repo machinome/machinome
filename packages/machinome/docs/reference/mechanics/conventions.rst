@@ -97,6 +97,6 @@ Each reference page states the meaningful domain of its arguments.
 Check your dimensions and travel limits in the project, and leave a
 margin around singular poses where floating-point roundoff matters.
 These helpers do not prove collision clearance, strength or dynamic
-behaviour; use the framework's `testing facilities
-<https://machinome.readthedocs.io/en/latest/testing.html>`_ for the
-assembly properties your project needs.
+behaviour; use the framework's `test assertions
+<https://machinome.readthedocs.io/en/latest/reference/assertions.html>`_
+for the assembly properties your project needs.

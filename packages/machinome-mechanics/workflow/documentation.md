@@ -25,11 +25,12 @@ Version text is read from `pyproject.toml`, including in a source distribution.
 
 ## Check examples and the reference
 
-Use an environment with the actual framework and mechanics installed. Before
-publication, supply both local repositories so pip can resolve the dependency:
+Use an environment with the actual framework and mechanics installed, either
+the released framework or a checkout:
 
 ```sh
-python -m pip install -e /path/to/machinome -e '.[dev,docs]'
+python -m pip install -e '.[dev,docs]'              # released machinome
+python -m pip install -e /path/to/machinome -e '.[dev,docs]'   # a checkout
 python -m pytest
 python -m sphinx -b doctest -W --keep-going docs docs/_build/doctest
 python scripts/check-dist
@@ -49,12 +50,12 @@ The intended project slug is `machinome-mechanics`, with the manual at
 the version-2 `.readthedocs.yaml` configuration: Ubuntu 24.04, Python 3.12,
 `docs/requirements.txt`, `docs/conf.py`, warnings treated as errors.
 
-After the approved change is integrated and pushed, import
+Once the repository is pushed, import
 `https://github.com/machinome/machinome-mechanics` into Read the Docs if it is
 not already connected. Select the `machinome-mechanics` slug and `main` as the
 default branch, then verify the GitHub integration/webhook and trigger the
 first build. Later pushes to an enabled branch trigger builds through that
-integration. Enable release tags as documentation versions when published.
+integration. Enable release tags such as `v0.1.0` as documentation versions.
 
 A successful local build does not create an RTD project or prove a hosted
 deployment. If a different slug is necessary, update the package Documentation

@@ -81,9 +81,9 @@ or lever, belong in your project's law too.
    >>> nut_position
    19.0
 
-This is the kind of sign choice needed by the InMoov screw jack and
-OpenFlexure column. The Snappy Z-axis uses the inverse conversion to
-calculate a screw angle from travel.
+This is the sign choice a screw jack or a microscope focus column needs.
+A printer's Z axis that is commanded in travel uses the inverse conversion
+to calculate the screw angle.
 
 ``screw_travel`` performs arithmetic even for zero or negative leads;
 it does not validate that you described a physical thread. A zero lead

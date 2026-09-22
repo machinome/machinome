@@ -7,7 +7,7 @@ manual in [`docs/`](../docs/index.rst) is for users.
 - [User manual review](documentation-review.md): implementation validation and review gate.
 - [Extraction](extraction.md): provenance and accepted package boundary.
 - [Foundation validation](validation.md): historical validation evidence.
-- [Release 0.1 preparation](release-0.1.md): pending release steps and evidence.
+- [Release 0.1](release-0.1.md): the released set, its checks and the publishing steps.
 - [Empirical helper expansion](helper-expansion.md): per-helper cycles and consumer validation.
 
 Behavioral specifications and active changes remain in `openspec/`.

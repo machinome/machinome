@@ -1,30 +1,38 @@
-# Machinome Mechanics 0.1.0 release preparation
+# Machinome Mechanics 0.1.0 release
 
-Publication pending. This is the first release of the independent formula
-package, paired with Machinome 0.7.0 and Viewer 0.2.0.
+Version 0.1.0 is the first release of the independent formula package,
+released on 20 September 2026 with Machinome 0.7.0. The release set is
+Machinome 0.7.0 (Apache-2.0), Machinome Viewer 0.7.0 (AGPL-3.0-only) and
+Machinome Mechanics 0.1.0 (Apache-2.0). The framework manual names this
+version through its `mechanics_version` substitution.
 
-The twelve foundational gear, screw, crank, delta and linkage helpers are imported from
-`machinome_mechanics`, replacing the unreleased framework-owned
-`machinome.mechanisms` package. Their equations and signatures are preserved.
+The twelve foundational gear, screw, crank, delta and linkage helpers were
+extracted from the framework's unreleased `machinome.mechanisms` package with
+equations and signatures preserved; the [helper expansion](helper-expansion.md)
+added twelve more before release, each validated in at least two projects.
 The dependency is `machinome>=0.7.0`; solid-node 0.6 is historical formula
-provenance, not an installable substitute for this dependency.
+provenance, not an installable substitute.
 
-The subsequent [helper expansion](helper-expansion.md) adds APIs before release;
-its archived per-helper records carry the current empirical validation. Counts
-and results below describe the foundation, not the expanded API's latest suite.
+## What the release was checked with
 
-Validation on Linux / Python 3.12: 30 tests and 24 subtests pass, including
-numeric/symbolic agreement and declarative/motion integration. Distribution
-builds, strict metadata checks and isolated installation are recorded with the
-matching framework under `workflow/archive/release-0.7-2026-09-20/README.md`.
+- `python -m pytest`: the formula suites, numeric/symbolic agreement,
+  declarative and relation integration, and the documentation tests that
+  keep the reference complete, the release stated, the framework links
+  live and the reference free of project credits.
+- `python -m sphinx -b html -n -W --keep-going docs docs/_build/html` and
+  the `doctest` builder: strict manual and executable examples.
+- `python scripts/check-dist`: wheel and sdist built, metadata checked,
+  each installed and smoked outside the checkout. It uploads nothing.
 
-Publish after Machinome 0.7.0, then verify a fresh
-`pip install 'machinome[viewer,mechanics]==0.7.0'` resolves the whole set.
-The framework's default installation remains independent of this package.
+Per-cycle evidence for each helper is in the archived OpenSpec changes and
+in `helper-expansion.md`.
 
-To reproduce local checks: `python -m pytest`, `python scripts/check-dist`.
-To retain release artifacts: `python -m build` followed by
-`python -m twine check --strict dist/*`. Install and smoke both wheel and
-sdist outside the checkout, checking numeric and symbolic formulas.
+## Publishing
 
-No push, tag, index upload or remote release is performed by these checks.
+Publishing is the pilot's explicit decision. Upload after Machinome 0.7.0
+is on the index, then verify in a fresh environment that
+`pip install 'machinome[viewer,mechanics]'` resolves the whole set and that
+`python -c "import machinome_mechanics"` succeeds. Push the repository and
+tag `v0.1.0`; the Read the Docs project builds from the pushed `main`
+([documentation maintenance](documentation.md)). The framework's default
+installation remains independent of this package.

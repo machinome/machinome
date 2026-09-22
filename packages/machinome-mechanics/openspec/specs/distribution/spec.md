@@ -10,8 +10,9 @@ The distribution SHALL be named `machinome-mechanics` and expose the Python
 package `machinome_mechanics` under Apache-2.0. It SHALL declare
 `machinome>=0.7.0` as its runtime dependency and use `machinome.math` for its
 nonlinear formulas. It SHALL NOT bundle a copy of the framework or replace its
-expression evaluator. Because no mechanics version has been published, the
-first release SHALL NOT expose a `solid_node_mechanics` compatibility package.
+expression evaluator. The first release, 0.1.0 with Machinome 0.7.0, SHALL
+NOT expose a `solid_node_mechanics` compatibility package, because no
+earlier mechanics version was ever published.
 
 #### Scenario: Install a built distribution
 
@@ -33,3 +34,10 @@ first release SHALL NOT expose a `solid_node_mechanics` compatibility package.
 - **WHEN** a user installs `machinome[mechanics]`
 - **THEN** the `machinome-mechanics` distribution is selected without making
   the framework depend on or re-export its helpers at runtime
+
+#### Scenario: The release pair is legible
+
+- **WHEN** a user reads the package's README or changelog
+- **THEN** they learn that 0.1.0 is released with Machinome 0.7.0 and that
+  the framework's `viewer` and `mechanics` extras can be installed together
+

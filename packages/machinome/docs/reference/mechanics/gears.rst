@@ -103,10 +103,10 @@ escape wheel whose orientation is fixed by the escapement.
 Adapting a gear library
 -----------------------
 
-The ``cq_gears`` profiles used by the gearbox project centre a tooth on
-+X at zero: use ``driver_gap=180 / driver_teeth`` and ``driven_tooth=0``.
+``cq_gears`` profiles centre a tooth on +X at zero: use
+``driver_gap=180 / driver_teeth`` and ``driven_tooth=0``.
 
-The ``Gear`` profiles used by 3DPrintedClocks begin with a gap: use
+A clock-wheel profile that begins with a gap needs
 ``driver_gap=gap_angle / 2`` and
 ``driven_tooth=gap_angle + tooth_angle / 2``, in degrees. Mirroring a
 profile negates its reference angles. A lantern pinion whose first
@@ -152,9 +152,9 @@ alone does not promise an output speed smaller than the input speed.
    360.0
 
 The zero input increment gives zero output increment; any reference pose is
-added by the project. CycloidalDrive and OpenCycloid use 20 disk lobes and
-21 fixed ring pins, keeping their eccentric-center orbit at input speed and
-applying this coefficient only to disk attitude and output spin. Output
+added by the project. A typical printed reducer has 20 disk lobes and
+21 fixed ring pins; it keeps the eccentric-centre orbit at input speed and
+applies this coefficient only to disk attitude and output spin. Output
 transfer pins, source mounting phases and positive instruction ranges remain
 project data.
 
@@ -203,11 +203,12 @@ this helper does not register teeth against gaps.
        ...
    ZeroDivisionError: division by zero
 
-Thor uses a moving 60-tooth ring and fixed centers for its 10-tooth pinions,
-applying four measured local mounting signs separately. OpenTorque has a fixed
-126-tooth ring and 54-tooth planets: one sun turn advances its carrier 45 degrees,
-so the planet turns -60 in the common frame, or -105 relative to that carrier.
-The three orbit laws and source mounting phases remain project-owned.
+A robot-arm joint with a moving 60-tooth ring and fixed centres for its
+10-tooth pinions applies each pinion's measured mounting sign separately. A
+planetary stage with a fixed 126-tooth ring and 54-tooth planets advances its
+carrier 45 degrees per sun turn, so a planet turns -60 in the common frame,
+or -105 relative to that carrier. The orbit laws and mounting phases remain
+project-owned.
 
 Physical counts are positive integers with ring greater than pinion. Counts
 are not coerced, rounded or validated; zero numeric pinion count raises and

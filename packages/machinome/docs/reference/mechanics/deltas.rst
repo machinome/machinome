@@ -19,7 +19,8 @@ in degrees from +X about +Z. ``plane`` is the height of the effector's
 carriage joint **when the effector is centred**. For radially aligned
 joints, this is the carriage-joint radius minus the effector-joint
 radius. It is not necessarily the radius of the tower structure. This
-is the effective ``delta_radius`` convention used by the Kossel project.
+is the effective ``delta_radius`` convention of common delta-printer
+firmware.
 
 For each tower, the helper computes the horizontal vector from carriage
 joint to effector joint::

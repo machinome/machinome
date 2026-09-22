@@ -24,8 +24,8 @@ cylinder axis. A positive angle carries the pin toward **negative across**.
    The connecting rod brings the small end back to the cylinder axis.
    The sketch shows the coordinate convention, not particular dimensions.
 
-The V8 project uses ``across = y`` and ``along = z``, with the crank
-rotating about +X. Map the plane into your machine's frame yourself;
+A V8 engine model, for example, uses ``across = y`` and ``along = z``,
+with the crank rotating about +X. Map the plane into your machine's frame yourself;
 bank angles and throw phases become offsets to the angle you pass in.
 
 crank_pin
