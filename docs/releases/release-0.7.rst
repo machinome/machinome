@@ -1,7 +1,7 @@
 Machinome 0.7: Source code for machines
 =======================================
 
-Released on 20 September 2026.
+Released on 22 September 2026.
 
 Machinome gives a machine source code: its parts, their shared dimensions,
 the relationships that connect them, and the rules by which the whole
@@ -63,9 +63,11 @@ Explore and share
 The independent Machinome Viewer executes the published model in the
 browser: direct input controls, running transport, or clocked requests
 and state readouts as the machine requires. A static export carries that
-experience to a web page. The matching viewer 0.7.0 reports API 23 and
-reads schemas 1–10, including explicit running clearance pickup through
-``Play`` and motion the running clock drives.
+experience to a web page. The matching viewer 0.7.0 reports API 24 and
+reads schemas 1–11, including explicit running clearance pickup through
+``Play``, motion the running clock drives, and source-timed motion that
+keeps a determined source's stroke and dwell through the chains that
+read it.
 
 The manual teaches one machine from a part to a machine with memory, a
 hand-cranked tally counter, then keeps how-to guides and concept pages

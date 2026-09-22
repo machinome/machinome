@@ -2,8 +2,8 @@
 History
 =======
 
-Machinome 0.7.0 — in preparation
--------------------------------
+Machinome 0.7.0 (2026-09-22)
+----------------------------
 
 **Source code for machines.** Machinome continues solid-node 0.6.0 with
 the same Git history, under the ``machinome`` GitHub organisation.
@@ -16,14 +16,41 @@ This release describes a machine's parts, shared dimensions, movement,
 inputs and stored state together. Its user-facing summary and migration
 map are in ``docs/changelog.rst``, ``docs/releases/release-0.7.rst`` and
 ``docs/upgrading.rst``. The complete engineering record is preserved in
-``docs/releases/development-0.7.rst``. Publication is still pending.
+``docs/releases/development-0.7.rst``.
 
 Release preparation completes the independent mechanics extraction:
 ``machinome[mechanics]`` installs ``machinome-mechanics`` 0.1.0 and
 projects import its twelve helpers from ``machinome_mechanics``.
-Viewer 0.2.0 reports API 22 and reads schemas 1–9, including running
-``Play`` clearance pickup. Fresh installations bound ``ocp-gordon``
-below 0.3 to preserve the shared OCP 7.8 CAD runtime.
+Viewer 0.7.0 reports API 24 and reads schemas 1–11, including running
+``Play`` clearance pickup, explicit time drives and source-timed motion.
+Fresh installations bound ``ocp-gordon`` below 0.3 to preserve the
+shared OCP 7.8 CAD runtime.
+
+* **A determined source RETAINS its motion path (ADR-137, ADR-138).**
+  The Curta's unchanged crank request carried correctly with six result
+  stations and lost the carry with seven and eleven: the traced executor
+  handed each downstream block only its predecessor's net increment, a
+  chord that replaced a stroke and dwell with a ramp and re-timed the
+  earlier gate. Demanded, propagation-local motion paths are now composed
+  over the common request fraction; a source is commanded, held or
+  determined and its path is restricted, never replaced by a chord.
+  Range location and contact probes read the same paths as commits.
+  Because an endpoint-era viewer reads the corrected payload and silently
+  executes the wrong carry, every newly exported running program declares
+  document version 11 and its identity carries ``source-timing
+  version=11``; the paired viewer declares API 24. Change
+  ``preserve-carry-across-graph-expansion``.
+* **Running evaluation on a calculator-sized graph.** Nine measured
+  cycles on the frozen Curta runtime graph, each accepted only on
+  bit-identical bank parity: ``memoise-declared-ports``,
+  ``memoise-expression-order``, ``reuse-path-order``,
+  ``numeric-path-calls``, ``compile-graph-evaluation``,
+  ``compile-moving-path-evaluation``, ``compile-path-operations``,
+  ``evaluate-traced-constraint-path`` and ``demand-bound-read-paths``.
+  An ordinary two-second crank turn fell from 72.56 to 27.87 CPU
+  seconds. ``exact-leaf-shape-currency`` separately makes an exact leaf
+  recover native geometry from a stale BREP after its SCAD presentation
+  has been assembled.
 
 * **A clocked stroke can be WATCHED: an instruction is one request.** A
   clocked machine could compute a whole stroke exactly and could not show

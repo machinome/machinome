@@ -3,21 +3,10 @@
 Changelog
 =========
 
-Unreleased
-----------
-
-* Preserve determined-source timing through running chains and selected
-  blocks, fixing Curta carry loss when later result stations join the graph.
-  Range and contact probes follow the same motion as the committed bank.
-* New running exports declare document version 11 and their program identity
-  includes the source-timing semantic generation. Use the paired API-24 viewer
-  and re-export; endpoint-era snapshots refuse restore into corrected programs.
-  Posed, looping and clocked version selection remains unchanged.
-
 Machinome 0.7.0
 ---------------
 
-Released on 20/Sep/2026
+Released on 22/Sep/2026
 
 **Source code for machines.** This release continues solid-node 0.6.0
 under a new framework name and GitHub organisation. A machine's source
@@ -58,8 +47,8 @@ one description that can be built, operated and tested.
 * **Independent viewer:** ``machinome[viewer]`` selects the separate
   AGPL-3.0-only package. Interactive ``develop`` requires it;
   ``--no-web`` remains available. The matching viewer release 0.7.0,
-  numbered with the framework, implements API 23 and schemas 1–10, including running, clocked and
-  time-driven machines.
+  numbered with the framework, implements API 24 and schemas 1–11,
+  including running, clocked, time-driven and source-timed machines.
 * **Retained clearance pickup:** explicit running ``Play`` relations
   collect and release a follower through clearance; document schema 9
   carries that contact law to the viewer.
@@ -83,6 +72,24 @@ one description that can be built, operated and tested.
   landing on a moving threshold follows the parts' relative motion, and
   exact following contact is certified rather than rounded into a false
   departure. No API, tolerance or document change.
+* **Source-timed running motion:** a determined source keeps its actual
+  motion, stroke, dwell and landing, through ordinary chains and selected
+  blocks instead of a straight line between interval endpoints, so a
+  calculator's carry no longer changes when later result stations join
+  the graph. Range and contact probes follow the same motion as the
+  committed bank. Running exports declare document schema 11 and their
+  program identity includes the source-timing generation: re-export
+  running models for the matching viewer, and restart endpoint-era
+  snapshots from the initial state. Posed, looping and clocked schema
+  selection is unchanged.
+* **Running performance:** repeated expression evaluation reuses each
+  immutable graph's order and operations, running bounds and traced
+  constraint searches read determined motion paths instead of replaying
+  their prefix, and an exact leaf recovers its native shape after its
+  OpenSCAD presentation has been assembled. On the Curta Type I an
+  ordinary two-second crank turn fell from 72.6 to 27.9 CPU seconds with
+  an identical result bank; laws, tolerances and sample counts are
+  unchanged.
 * **Installation:** bound ``ocp-gordon`` below 0.3 so build123d 0.10
   remains compatible with the shared OCP 7.8 runtime in a fresh install.
 * **Documentation:** the manual is reorganised by reader intent around

@@ -2536,7 +2536,7 @@ the independent viewer must reproduce it before parity is claimed.
 originally published `tests/time-drive-corpus.json`: seven version-10 scenarios with 54
 ticks covering no-command motion, gates, winding/exhaustion, independent and
 connected stops, mixed commands, curved stop paths and replay/reset. The
-independent viewer at API 23 reads version 10 and executes these
+independent viewer (API 23 at the time, API 24 now) reads version 10 and executes these
 scenarios in its own repository; that is the viewer's evidence, not
 producer parity claimed here. Source-timing fixtures from
 `tools/generate_source_timing_fixtures.py` additionally pin compact and unchanged
