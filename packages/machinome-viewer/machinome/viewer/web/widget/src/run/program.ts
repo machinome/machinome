@@ -892,10 +892,10 @@ function loadProgramScoped(
   }
   const timeByEdge = new Map<number, string>();
   if (document.version === 10 || raw.time_drives !== undefined) {
-    if (document.version !== 10) {
-      return refuse('its time_drives require document version 10.');
+    if (document.version !== 10 && document.version !== 11) {
+      return refuse('its time_drives require document version 10 or 11.');
     }
-    if (clock !== 'time') return refuse('its version-10 clock must be named "time".');
+    if (clock !== 'time') return refuse('its time-drive clock must be named "time".');
     if (!Array.isArray(raw.time_drives) || raw.time_drives.length === 0) {
       return refuse('its time_drives must be a nonempty ordered array.');
     }

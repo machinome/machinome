@@ -15,6 +15,8 @@
 
 import { evaluateExpression, ProgramEdge } from './program';
 import type { LoadedProgram } from './program';
+import { propagations } from './motion';
+import { propagate } from './trajectory';
 import {
   blockCuts, blockIncrements, CrossingRecord, kinkedEndCuts, planCuts,
   planIncrement, retainedCuts, retainedIncrement,
@@ -135,6 +137,7 @@ export function edgeIncrements(
   deltas: Record<string, number>, crossings: CrossingRecord[] | null,
   tick: number, landings: Record<string, number> | null = null,
 ): [string, number][] {
+  if (propagations.has(deltas)) return propagate(program, edge, values, deltas, crossings, tick, landings);
   values = timed(program, edge, values);
   deltas = timed(program, edge, deltas);
   if (edge.kind === 'play') {

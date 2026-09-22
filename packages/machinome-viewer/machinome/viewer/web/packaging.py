@@ -70,6 +70,11 @@ FRONTENDS = (WIDGET,)
 
 def build_frontend(frontend):
     """Build one frontend included in source distributions and wheels."""
+    if (frontend.directory / 'node_modules').is_symlink():
+        raise RuntimeError(
+            f'{frontend.directory / "node_modules"} is a symlink; refusing '
+            'npm ci because it can empty the shared dependency directory. '
+            'Use a checkout with private dependencies to build distributions.')
     subprocess.check_call(['npm', 'ci'], cwd=frontend.directory)
     subprocess.check_call(['npm', 'run', 'build'], cwd=frontend.directory)
 

@@ -3,6 +3,16 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
+## Unreleased
+
+- Preserve source-motion timing through running chains and selected blocks,
+  fixing Curta carry loss when later result stations join the graph. Range
+  and moving-contact probes use the same path as the committed bank.
+- Declare API 24 and document versions 1–11. Re-export running models with the
+  paired corrected producer; old viewers reject v11 before operation.
+- Refuse distribution builds through symlinked `node_modules` before an
+  install can modify another checkout's dependencies.
+
 ## 0.7.0 — 21 September 2026
 
 The first published release of Machinome Viewer, released with Machinome

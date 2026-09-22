@@ -1495,23 +1495,23 @@ describe('a block in the run (design D4, D6, tasks 8-9)', () => {
     }
   });
 
-  it('8.2 `affine` is FALSE on every give of a block, so a stop on one of '
-     + 'its coordinates is SEARCHED: `RangedBlock`\'s own numbers', () => {
+  it('solves a block stop only from its certified physical path', () => {
     const run = corpusRun('RangedBlock', 0.05);
     const spin = run.move('spin', { by: 2, duration: 0.05 });
     run.move('shift', { by: 1, duration: 0.05 });
     run.advance();
-    // The producer's floats, which the piecewise path -- taken because
-    // the MEMBER publishes `affine: [true]` -- commits as 0.6 and 0.3.
+    // The source-timed producer independently gives exactly .3 and .6.
+    // The old endpoint executor searched this and returned .3 minus an ulp
+    // bracket. The member's published affine flag still proves nothing.
     const stops = run.stops();
     expect(stops).toHaveLength(1);
     expect(stops[0].coordinate).toBe('carry.travel');
-    expect(stops[0].t).toBe(0.29999999999972715);
+    expect(stops[0].t).toBe(0.3);
     expect(stops[0].inputs).toEqual(['spin']);
-    expect(run.state()['lower.turn']).toBe(0.5999999999994543);
-    expect(run.state().spin).toBe(0.5999999999994543);
+    expect(run.state()['lower.turn']).toBe(0.6);
+    expect(run.state().spin).toBe(0.6);
     expect(spin.status).toBe('blocked');
-    expect(spin.admitted).toBe(0.5999999999994543);
+    expect(spin.admitted).toBe(0.6);
     // And the determination really is the block, with `affine` false.
     const program = (run as unknown as { program: LoadedProgram }).program;
     const where = program.determiner.get('carry.travel')!;
@@ -1613,12 +1613,9 @@ describe('a stop on a kinked determiner (design D4 (c))', () => {
     expect(command.admitted).toBe(60 * expected);
   });
 
-  it('5.5 leaves a stop on a BLOCK coordinate SEARCHED', () => {
-    // A block has no single published expression until a branch vector
-    // is fixed, and the order its members run in may differ from piece
-    // to piece, so it carries no shape at all and `locate` searches it
-    // exactly as before. The corpus's own `RangedBlock` is the entry
-    // that records it.
+  it('does not classify a block from its members\' static shapes', () => {
+    // Only a request's determined path can certify its pieces. The
+    // published aggregate still carries no unconditional shape promise.
     const run = corpusRun('RangedBlock', 0.05);
     const block = [...run.program.edges].find(
       (edge) => edge.kind === 'block')!;

@@ -523,3 +523,8 @@ corpus even when the engine is broken.
   tracked. It IS rebuilt, every Python suite ran against it (129 passed),
   and `check-dist` reports `apiVersion 16`, `documentVersions [1,2,3,4,5,6,7]`
   and uploads nothing.
+
+## Amendment — 2026-09-22
+
+Endpoint-increment handoff and unconditional block-stop search are superseded; selected ordering and transactional cycle refusal remain.
+See [ADR-071](ADR-071-determined-sources-retain-their-motion-path.md).

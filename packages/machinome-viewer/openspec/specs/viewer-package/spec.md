@@ -1730,8 +1730,18 @@ increment per determined value and committing them together. Where the
 published edges carry a cycle, the entries propagated over are the edges
 with each such cycle contracted to ONE entry, ordered under the
 requirement "The worker orders a block per piece"; a program with no
-cycle is propagated over exactly as it was before the viewer knew of
-blocks.
+cycle retains its published propagation order while preserving determined
+source timing as specified below.
+
+The path SHALL follow each source at the same fraction of the request:
+commanded motion for inputs, constant motion for held values, and determined
+motion for driven values. Driven paths SHALL retain dwell, kink, crossing and
+landing timing in ordinary chains and selected blocks, not interpolate their
+net increments. Restriction SHALL preserve that timing. Physical results SHALL
+agree between a bulk request and its portions within the published agreement
+window, with exact statuses and discrete readings away from threshold
+neighborhoods. Additional stations that do not influence an earlier carry SHALL
+NOT alter it. Queries SHALL be pure and caches SHALL NOT outlive a propagation.
 
 - A **continuous law** SHALL contribute the difference of its expression
   evaluated at the end of the step's path and at its start.
@@ -1743,8 +1753,8 @@ blocks.
   quantity at that piece's midpoint; and the contribution SHALL be the sum
   of the branch-substituted law's change over the pieces. A jump SHALL
   therefore never move a part. A level quantity the producer published as
-  affine in its sources SHALL have every surface between a piece's two
-  endpoint values solved rather than searched; one the viewer finds
+  affine in its sources SHALL be solved only where those source paths make
+  the level affine in request fraction; one the viewer finds
   PIECEWISE AFFINE under the requirement "A piecewise-affine quantity is
   cut at its own kinks" SHALL have the piece SUB-DIVIDED at that
   quantity's own kinks and every surface of each sub-piece solved the
@@ -1803,9 +1813,9 @@ A bound that READS OTHER COORDINATES SHALL instead be evaluated ALONG
 the path of each stretch: the bounded coordinate inside the expression
 SHALL take the value it holds in the STEP's committed bank, and every
 coordinate the bound reads SHALL take the value it has along the
-stretch's path, computed by one pass over that bound's sub-program with
-every input's admission scaled by the fraction — the same arithmetic the
-segment is later committed by, edge for edge. The CONSTRAINT LEVEL of
+stretch's determined path, shared with the propagation that will commit the
+segment. Where a path is unavailable, the bound SHALL use fresh prefix replay
+with each admission scaled by the fraction, never a replacement endpoint chord. The CONSTRAINT LEVEL of
 such a bound is the coordinate's value minus the evaluated upper bound,
 or the evaluated lower bound minus the coordinate's value; outside is
 positive.
@@ -1822,7 +1832,7 @@ exactly as a bound over its own value alone is — the same detection, the
 same localization, and the same commit exactly at the bound.
 
 When a read moves, the level SHALL be sampled at the published number of
-sub-intervals, each sample one pass over the sub-program, and the
+sub-intervals along those same paths, and the
 stretch SHALL stop at the FIRST sample at which the level is positive
 AND greater than the level at the stretch's start; a level already
 positive at the start with a higher first sample SHALL stop the stretch
@@ -2999,8 +3009,9 @@ reads a value A determines, with a value an edge itself determines
 EXCLUDED — MAY carry a cycle. Every nontrivial strongly connected
 component of it is a **BLOCK**, and the viewer SHALL recognise a block
 from what the document already carries, requiring no further key for it.
-A program with no such component SHALL be executed exactly as it is
-today, by the same code, at the same cost.
+A program with no such component SHALL preserve source timing too. Exact affine
+propagation SHALL retain its arithmetic fast path; ordinary endpoint
+approximations that lose dwell or landing timing SHALL be corrected.
 
 **The published order of a block's members is a LISTING and not an
 execution order.** The viewer SHALL NOT execute a block's members in the
@@ -3062,14 +3073,11 @@ is refused when it is met.
   with its primitive, its level quantity and the value it read. The step
   SHALL commit nothing.
 - The members SHALL then run over the piece in that order, each by the
-  machinery that already governs it. A source the block does not
-  determine SHALL be taken at its value at the piece's left end, moving
-  by its share of the stretch. A source the block DOES determine SHALL be
-  taken at the value the block has advanced it to by the piece's start,
-  moving by the increment computed for it ON THIS PIECE — and by ZERO
-  where this piece's order has not determined it, which is safe because
-  every term reading it is multiplied by a branch the block forced to
-  zero.
+  machinery that already governs it. Every determined source SHALL follow
+  its actual motion restricted to this piece, retaining dwell and landing
+  timing, whether determined outside or inside the block. A switched-out
+  in-block source this piece has not determined SHALL hold its value at the
+  piece's start, since the forced branch removes its influence.
 - **Every selector SHALL be a CONSTANT for every member on that piece**:
   the branch the block read SHALL be substituted into the member's own
   plan rather than re-derived inside the piece. A forced node's crossings
@@ -3092,10 +3100,10 @@ crossings located over the stretch and the members' own rescaled out of
 their pieces — SHALL be sorted by that fraction before it is recorded, so
 the listing does not depend on which was computed first.
 
-**A declared bound on a value a block determines SHALL be SEARCHED and
-never solved**, whatever affinity the member that determines it
-publishes: a block's value is piecewise in the selector partition and
-re-ordered across it.
+**A declared bound SHALL be located along the same determined path.** Where
+that path is certified piecewise affine, each segment SHALL be solved; otherwise
+it SHALL use the published bounded search. A member's published affinity alone
+SHALL NOT certify its block's whole path.
 
 A block SHALL be complete and side-effect-free when it is asked for
 increments alone — as the probe that decides which inputs a stop blocks
@@ -3158,13 +3166,12 @@ through a selection that is inactive at that moment SHALL NOT be blocked.
   did not happen, and the report names the piece, the relations on the
   cycle and what each selector read
 
-#### Scenario: A stop on a block's value is searched
+#### Scenario: A stop on a block's value follows its actual path
 
 - **WHEN** a step drives a value a block determines into a declared bound
-- **THEN** the fraction at which it reaches the bound is found by
-  sampling and bisection over the whole block rather than solved from the
-  member's published affinity, and the value is committed exactly at its
-  bound
+- **THEN** the fraction at which it reaches the bound follows its determined
+  path, solved per certified affine segment or otherwise searched, and the
+  value is committed exactly at its bound
 
 #### Scenario: An inactive selection blocks nothing
 
@@ -3174,13 +3181,13 @@ through a selection that is inactive at that moment SHALL NOT be blocked.
 - **THEN** that input is not blocked and its command completes its whole
   travel, while the input that does push the value retires blocked
 
-#### Scenario: A program with no cycle is untouched
+#### Scenario: An ordinary frozen carry has the same physical timing
 
-- **WHEN** a document whose program's dependency graph has no cycle is
-  run
-- **THEN** every step propagates over the published edges in the
-  published order exactly as it did before the viewer knew of blocks, at
-  the same cost, and the committed bank is the same float for float
+- **WHEN** the existing FixedZero ordinary carry and ShiftedCarry at shift 0
+  receive crank 0..4 whole and in sixteen portions
+- **THEN** both finish with carry.travel 1 and higher.turn 3.5, completed
+  status and full admitted travel, rather than spreading the lever's stroke
+  over the whole request
 
 ### Requirement: Only what moves along a step's path is walked
 
@@ -4557,3 +4564,61 @@ SHALL remain in force, including nonzero relative movement however small.
 #### Scenario: A genuinely impossible continuation
 - **WHEN** an engagement has no valid continuation
 - **THEN** the existing named refusal commits no partial machine state
+
+### Requirement: Source-timed running programs are compatible by declaration
+
+The viewer SHALL accept producer document version 11 as a running program with
+source-timed semantics, including well-formed optional Play and time-drive
+declarations. It SHALL validate those features by content and refuse malformed
+mappings or clock reads without their required admission mapping before ticking.
+Version 11 SHALL NOT be treated as a clocked program. This extends the loader's
+supported document list without adding a new document key.
+
+Legacy running documents SHALL remain loadable and receive corrected source
+timing too, not a separately preserved endpoint-approximation algorithm. Posed,
+looping, clocked and clearance-aware Play behavior SHALL remain unchanged
+except for explicitly measured timing corrections in supported running chains.
+
+#### Scenario: Corrected exports cannot silently enter an old viewer
+
+- **WHEN** Curta is re-exported by the corrected producer as version 11 and
+  offered to an old viewer whose supported versions end at 10
+- **THEN** the old viewer refuses the version before operation rather than
+  silently executing the old carry arithmetic
+
+#### Scenario: Driver-only and autonomous documents load
+
+- **WHEN** valid version-11 driver-only and time-driven programs are loaded
+- **THEN** both run, while a missing mapping for a clock-reading edge is refused
+
+### Requirement: Curta source timing is pinned by producer evidence
+
+The viewer suite SHALL replay producer-generated timing fixtures without
+importing the framework or project. It SHALL compare full banks, statuses,
+admitted travel, crossings and stops under the producer's published float and
+discrete agreement rules. Fixtures SHALL retain producer content hashes and
+the unchanged physical oracle. The existing corpus SHALL remain a control;
+an expectation change requires recorded physical evidence, not regeneration
+solely to make a failure pass.
+
+#### Scenario: The complete diagnostic result bank preserves its carry
+
+- **WHEN** unchanged six-, seven- and eleven-station Curta diagnostic exports,
+  including the constrained full bank, receive digit 0, height 9, crank 90,
+  then one bulk crank 180 request
+- **THEN** all complete at crank 180, ones 724, tens 704 and first lever 0,
+  and the full bank agrees with partitioned replay from the same snapshot
+
+#### Scenario: A dwelling and curved source keep their timing
+
+- **WHEN** producer fixtures include a landed source, a piecewise or curved
+  upstream law, and an irrelevant later selector
+- **THEN** the viewer reproduces the producer's physical gate times, including
+  a landing exactly on an inherited breakpoint recorded once
+
+#### Scenario: Browser transports execute the same carry
+
+- **WHEN** the diagnostic export is operated in a real browser through worker
+  and in-thread fallback, then restored and replayed
+- **THEN** both match the producer bank and command outcomes and the rendered
+  parts follow the committed bank, without claiming whole-machine acceptance

@@ -27,6 +27,7 @@ import { ManifestDriver, ManifestInstruction } from '../types';
 import { Command, CommandRecord } from './commands';
 import { edgeCuts, edgeIncrements, edgeValues, predictsOf } from './edges';
 import { CrossingRecord } from './jumps';
+import { propagations } from './motion';
 import {
   Constraint, evaluateExpression, LandingInvariantError, ProgramBound,
   ProgramEdge, RunConflict, StopInvariantError, TooManyCrossings,
@@ -398,7 +399,7 @@ export class Run {
         }
         this.landed(committed, landings);
         const reached = this.reachedBounds(staged, committed, bounds,
-                                           values, scaled);
+                                           values, scaled, deltas);
         if (reached.length === 0) {
           record(crossings, found, start, 1);
           staged = committed;
@@ -587,6 +588,10 @@ export class Run {
 
   private deltasOf(admissions: Record<string, number>): Record<string, number> {
     const deltas: Record<string, number> = {};
+    propagations.set(deltas, {
+      motions: new Map(), untraced: new Set(),
+      demanded: new Set(this.program.edges.flatMap(edge => edge.needs.filter(key => !edge.gives.includes(key)))),
+    });
     for (const id of this.program.order) deltas[id] = 0;
     for (const id of this.program.intermediates) deltas[id] = 0;
     for (const id of this.program.timeDrives) deltas[id] = 0;
@@ -627,7 +632,8 @@ export class Run {
                         committed: Record<string, number>,
                         bounds: Bounds,
                         values: Record<string, number>,
-                        admissions: Record<string, number>): Reached[] {
+                        admissions: Record<string, number>,
+                        deltas: Record<string, number>): Reached[] {
     const found: Reached[] = [];
     for (const [identifier, low, high] of bounds) {
       const value = committed[identifier];
@@ -653,7 +659,7 @@ export class Run {
           continue;
         }
         const located = this.constraintReached(
-          bound, held, committed, values, admissions);
+          bound, held, committed, values, admissions, deltas);
         if (located !== null) found.push([identifier, side, bound, located]);
       }
       const plainLow = isConstraint(low) ? null : low;
@@ -685,10 +691,11 @@ export class Run {
                             held: Record<string, number>,
                             committed: Record<string, number>,
                             values: Record<string, number>,
-                            admissions: Record<string, number>): ConstraintContact | null {
+                            admissions: Record<string, number>,
+                            deltas: Record<string, number>): ConstraintContact | null {
     const keys = [constraint.identifier, ...constraint.reads];
     if (keys.every((key) => committed[key] === held[key])) return null;
-    return this.searchedConstraint(constraint, held, values, admissions);
+    return this.searchedConstraint(constraint, held, values, admissions, deltas);
   }
 
   /** The level sampled at `subdivisions` fractions of the stretch,
@@ -703,11 +710,22 @@ export class Run {
   private searchedConstraint(constraint: Constraint,
                              held: Record<string, number>,
                              values: Record<string, number>,
-                             admissions: Record<string, number>):
+                             admissions: Record<string, number>,
+                             deltas: Record<string, number>):
   ConstraintContact | null {
     const own = this.bank[constraint.identifier];
-    const level = (t: number): number => this.constraintLevel(
-      constraint, held, values, admissions, t, own);
+    const paths = propagations.get(deltas)?.motions;
+    const keys = [constraint.identifier, ...constraint.reads];
+    const determined = paths && keys.every(key => paths.has(key) || !this.program.determiner.has(key));
+    const level = (t: number): number => {
+      if (!determined) return this.constraintLevel(constraint, held, values, admissions, t, own);
+      const at = (key: string) => paths.get(key)?.at(t) ?? held[key] + (deltas[key] ?? 0) * t;
+      const scope: Record<string, number> = { [constraint.identifier]: own };
+      for (const read of constraint.reads) scope[read] = at(read);
+      const bound = evaluateExpression(this.program, constraint.expression, scope);
+      const value = at(constraint.identifier);
+      return constraint.side === 'high' ? value - bound : bound - value;
+    };
     const start = level(0);
     const outward = (here: number): boolean => here > 0 && here > start;
     const subdivisions = this.program.limits.subdivisions;
@@ -886,6 +904,12 @@ export class Run {
       // Already at or beyond it: the stop is at the very start of the
       // stretch, and the coordinate stands where it stands.
       return 0;
+    }
+    const motion = propagations.get(deltas)?.motions.get(identifier);
+    if (motion) {
+      return motion.affine
+        ? this.piecewise(edge, identifier, bound, value, values, deltas, [0, ...motion.cuts(), 1])
+        : this.searched(edge, identifier, bound, value, values, deltas);
     }
     if (edge.affine[index] || edge.shapes[index] === 'kinked') {
       // AFFINE or KINKED: either way the value is piecewise affine in
@@ -1078,6 +1102,8 @@ export class Run {
   private along(edge: ProgramEdge, key: string,
                 values: Record<string, number>,
                 deltas: Record<string, number>, t: number): number {
+    const motion = propagations.get(deltas)?.motions.get(key);
+    if (motion) return motion.at(t) - values[key];
     const truncated: Record<string, number> = {};
     for (const other of Object.keys(deltas)) truncated[other] = deltas[other] * t;
     for (const [given, increment] of edgeIncrements(

@@ -76,3 +76,6 @@ both repositories. Consequences:
 - [ADR-068](EXPORT/ADR-068-time-drives-admit-independent-motion-without-bank-state.md) — Time drives admit independent motion without bank state — **Accepted**, extends 045 and 047, preserves 067, consumes machinome ADR-133
 - [ADR-069](EXPORT/ADR-069-moving-stops-attribute-push-at-first-contact.md) — Moving stops attribute push at first contact — **Accepted**, amends 054, preserves 047 and 068, consumes machinome ADR-135
 - [ADR-070](EXPORT/ADR-070-moving-contacts-use-relative-crossings.md) — Moving contacts use relative crossings with exact following-contact certificates — **Accepted**, amends 057, preserves 047/060/069, consumes machinome ADR-136
+
+- [ADR-071](EXPORT/ADR-071-determined-sources-retain-their-motion-path.md) — Determined sources retain timing through running dependencies — **Accepted**, amends 058/061, preserves 057/060/067/070
+- [ADR-072](EXPORT/ADR-072-source-timing-is-declared-as-api24-and-v11.md) — API 24 and v11 declare corrected source timing — **Accepted**, extends 035/047

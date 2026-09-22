@@ -1,0 +1,3913 @@
+{
+  "producer_sha256": {
+    "machinome/simulation/program.py": "91957fb4e492d1229f678092a4db30fd307a8df6d62fe6ff8df238b9b1dbe9f5",
+    "machinome/simulation/run.py": "938adcd2cc09536e4b1c0bf2ae1c929c91ea1f83e5c7c2aff5b42486eacc4bff",
+    "machinome/simulation/trajectory.py": "36ad9a57cb875433c25fdfc8d31267c30718744d53af2fff635a304183349e1a",
+    "machinome/core/serializer.py": "f66f3f9cd98e18a30cb4de6a093649aa85b1604a3c240de4e3c08f04548fabe9",
+    "tools/generate_source_timing_fixtures.py": "6c419a654148aa80b5c27c852031058370f89045048331af424aae5ab59184a6",
+    "tests/carriage_project/timed_carry.py": "8d4de418c449bbf0e7fb751e6b81f3b9f79621b4dacc3fe293e6d587ed3f7066"
+  },
+  "project_checkpoint": null,
+  "record_mode": "cumulative",
+  "cases": [
+    {
+      "name": "fixed",
+      "document": {
+        "format": "machinome-export",
+        "version": 11,
+        "animation": {
+          "fps": 30,
+          "frames": 360
+        },
+        "drivers": {
+          "clearing": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "program": {
+          "identity": "9ea9f004979b1b9674ea3cd1928fc99eeacb24ef2b088b963d9547c4b488eaa2",
+          "clock": "time",
+          "coordinates": {
+            "clearing": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "carry.travel": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "mm",
+              "domain": "translational"
+            },
+            "higher.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "lower.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "clearing",
+                "lower.turn"
+              ],
+              "gives": [
+                "lower.turn"
+              ],
+              "description": "(crank, clearing, lower.turn) drives lower.turn",
+              "stated_by": "FixedZero",
+              "expressions": [
+                "(crank + (clearing * (lower.turn > 0.5)))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(crank + (clearing * _j0))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": ">",
+                      "level": "(lower.turn - 0.5)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "lower.turn",
+                "carry.travel"
+              ],
+              "gives": [
+                "carry.travel"
+              ],
+              "description": "(lower.turn, carry.travel) drives carry.travel",
+              "stated_by": "FixedZero",
+              "expressions": [
+                "(lower.turn * (carry.travel < 1.0))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(lower.turn * _j1)",
+                  "jumps": [
+                    {
+                      "name": "_j1",
+                      "primitive": "<",
+                      "level": "(carry.travel - 1.0)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "clearing",
+                "carry.travel",
+                "higher.turn"
+              ],
+              "gives": [
+                "higher.turn"
+              ],
+              "description": "(crank, clearing, carry.travel, higher.turn) drives higher.turn",
+              "stated_by": "FixedZero",
+              "expressions": [
+                "((crank * (carry.travel >= 0.5)) + (clearing * (higher.turn > 0.5)))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "((crank * _j2) + (clearing * _j3))",
+                  "jumps": [
+                    {
+                      "name": "_j2",
+                      "primitive": ">=",
+                      "level": "(carry.travel - 0.5)",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j3",
+                      "primitive": ">",
+                      "level": "(higher.turn - 0.5)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {},
+          "sources": {
+            "carry.travel": [
+              "clearing",
+              "crank"
+            ],
+            "clearing": [
+              "clearing"
+            ],
+            "crank": [
+              "crank"
+            ],
+            "higher.turn": [
+              "clearing",
+              "crank"
+            ],
+            "lower.turn": [
+              "clearing",
+              "crank"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-9
+          }
+        },
+        "root": {
+          "name": "FixedZero",
+          "type": "AssemblyNode",
+          "color": null,
+          "mtime": 1790086604.413618,
+          "operations": [],
+          "children": [
+            {
+              "name": "lower",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "lower.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "lower"
+            },
+            {
+              "name": "higher",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "higher.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                [
+                  "t",
+                  [
+                    "30.0",
+                    "0.0",
+                    "0.0"
+                  ]
+                ]
+              ],
+              "model": "higher"
+            },
+            {
+              "name": "carry",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "t",
+                  [
+                    "carry.travel",
+                    "0",
+                    "0"
+                  ]
+                ],
+                [
+                  "t",
+                  [
+                    "0.0",
+                    "30.0",
+                    "0.0"
+                  ]
+                ]
+              ],
+              "model": "carry"
+            }
+          ]
+        }
+      },
+      "rows": [
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "clearing": 0,
+            "crank": 4,
+            "higher.turn": 3.5,
+            "lower.turn": 4
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, lower.turn) drives lower.turn",
+              "coordinate": "lower.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.24999999999999997
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.12499999999999997
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0033227119711227715
+        },
+        {
+          "driver": "crank",
+          "to": 0,
+          "status": "completed",
+          "admitted": -4,
+          "bank": {
+            "carry.travel": 1,
+            "clearing": 0,
+            "crank": 0,
+            "higher.turn": -0.5,
+            "lower.turn": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, lower.turn) drives lower.turn",
+              "coordinate": "lower.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.24999999999999997
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.12499999999999997
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, lower.turn) drives lower.turn",
+              "coordinate": "lower.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.875
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.75
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0016030260012485087
+        },
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "clearing": 0,
+            "crank": 4,
+            "higher.turn": 3.5,
+            "lower.turn": 4
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, lower.turn) drives lower.turn",
+              "coordinate": "lower.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.24999999999999997
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.12499999999999997
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, lower.turn) drives lower.turn",
+              "coordinate": "lower.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.875
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.75
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, lower.turn) drives lower.turn",
+              "coordinate": "lower.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.001551196037326008
+        }
+      ],
+      "seconds": 0.9127498929738067
+    },
+    {
+      "name": "shifted",
+      "document": {
+        "format": "machinome-export",
+        "version": 11,
+        "animation": {
+          "fps": 30,
+          "frames": 360
+        },
+        "drivers": {
+          "clearing": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "shift": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(shift < 0.5)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(crank * _b0)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(shift - 0.5)"
+          },
+          {
+            "name": "_b3",
+            "expression": "(shift >= 0.5)"
+          }
+        ],
+        "program": {
+          "identity": "10b4688728af6252d9365ecb6c0684a6f9f656c23d6a4672a45d338a10adc900",
+          "clock": "time",
+          "coordinates": {
+            "clearing": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "shift": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "carry.travel": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "mm",
+              "domain": "translational"
+            },
+            "higher.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "lower.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "shift",
+                "clearing",
+                "lower.turn"
+              ],
+              "gives": [
+                "lower.turn"
+              ],
+              "description": "(crank, shift, clearing, lower.turn) drives lower.turn",
+              "stated_by": "ShiftedCarry",
+              "expressions": [
+                "(_b1 + (clearing * (lower.turn > 0.5)))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "((crank * _j0) + (clearing * _j1))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j1",
+                      "primitive": ">",
+                      "level": "(lower.turn - 0.5)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "shift",
+                "clearing",
+                "carry.travel",
+                "higher.turn"
+              ],
+              "gives": [
+                "higher.turn"
+              ],
+              "description": "(crank, shift, clearing, carry.travel, higher.turn) drives higher.turn",
+              "stated_by": "ShiftedCarry",
+              "expressions": [
+                "(((crank * _b3) + (_b1 * (carry.travel >= 0.5))) + (clearing * (higher.turn > 0.5)))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((crank * _j2) + ((crank * _j3) * _j4)) + (clearing * _j5))",
+                  "jumps": [
+                    {
+                      "name": "_j2",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j3",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j4",
+                      "primitive": ">=",
+                      "level": "(carry.travel - 0.5)",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j5",
+                      "primitive": ">",
+                      "level": "(higher.turn - 0.5)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "lower.turn",
+                "higher.turn",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "carry.travel"
+              ],
+              "description": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "stated_by": "ShiftedCarry",
+              "expressions": [
+                "(((lower.turn * _b0) + (higher.turn * _b3)) * (carry.travel < 1.0))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((lower.turn * _j6) + (higher.turn * _j7)) * _j8)",
+                  "jumps": [
+                    {
+                      "name": "_j6",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j7",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j8",
+                      "primitive": "<",
+                      "level": "(carry.travel - 1.0)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {},
+          "sources": {
+            "carry.travel": [
+              "clearing",
+              "crank",
+              "shift"
+            ],
+            "clearing": [
+              "clearing"
+            ],
+            "crank": [
+              "crank"
+            ],
+            "higher.turn": [
+              "clearing",
+              "crank",
+              "shift"
+            ],
+            "lower.turn": [
+              "clearing",
+              "crank",
+              "shift"
+            ],
+            "shift": [
+              "shift"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-9
+          }
+        },
+        "root": {
+          "name": "ShiftedCarry",
+          "type": "AssemblyNode",
+          "color": null,
+          "mtime": 1790086604.413618,
+          "operations": [],
+          "children": [
+            {
+              "name": "lower",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "lower.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "lower"
+            },
+            {
+              "name": "higher",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "higher.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                [
+                  "t",
+                  [
+                    "30.0",
+                    "0.0",
+                    "0.0"
+                  ]
+                ]
+              ],
+              "model": "higher"
+            },
+            {
+              "name": "carry",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "t",
+                  [
+                    "carry.travel",
+                    "0",
+                    "0"
+                  ]
+                ],
+                [
+                  "t",
+                  [
+                    "0.0",
+                    "30.0",
+                    "0.0"
+                  ]
+                ]
+              ],
+              "model": "carry"
+            }
+          ]
+        }
+      },
+      "rows": [
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "clearing": 0,
+            "crank": 4,
+            "higher.turn": 3.5,
+            "lower.turn": 4,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, lower.turn) drives lower.turn",
+              "coordinate": "lower.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.12499999999999997
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.24999999999999997
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0020393459708429873
+        },
+        {
+          "driver": "crank",
+          "to": 0,
+          "status": "completed",
+          "admitted": -4,
+          "bank": {
+            "carry.travel": 1,
+            "clearing": 0,
+            "crank": 0,
+            "higher.turn": -0.5,
+            "lower.turn": 0,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, lower.turn) drives lower.turn",
+              "coordinate": "lower.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.12499999999999997
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.24999999999999997
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, lower.turn) drives lower.turn",
+              "coordinate": "lower.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.875
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.75
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0017785680247470737
+        },
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "clearing": 0,
+            "crank": 4,
+            "higher.turn": 3.5,
+            "lower.turn": 4,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, lower.turn) drives lower.turn",
+              "coordinate": "lower.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.12499999999999997
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.24999999999999997
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, lower.turn) drives lower.turn",
+              "coordinate": "lower.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.875
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.75
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, lower.turn) drives lower.turn",
+              "coordinate": "lower.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, shift, clearing, carry.travel, higher.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0017914550262503326
+        }
+      ],
+      "seconds": 0.014201021986082196
+    },
+    {
+      "name": "landed",
+      "document": {
+        "format": "machinome-export",
+        "version": 11,
+        "animation": {
+          "fps": 30,
+          "frames": 360
+        },
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "shift": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(shift < 0.5)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(shift >= 0.5)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(shift - 0.5)"
+          }
+        ],
+        "program": {
+          "identity": "55898619a9b0239a1dc64a55e034c655251cbf0c6dffe77c7d1de0af74935c29",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "shift": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "carry.travel": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "mm",
+              "domain": "translational"
+            },
+            "higher.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "lower.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank"
+              ],
+              "gives": [
+                "lower.turn"
+              ],
+              "description": "crank drives lower.turn",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "crank"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "higher.turn"
+              ],
+              "description": "(crank, shift, carry.travel) drives higher.turn",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "(((crank * _b0) * (carry.travel >= 0.5)) + (crank * _b1))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((crank * _j0) * _j1) + (crank * _j2))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j1",
+                      "primitive": ">=",
+                      "level": "(carry.travel - 0.5)",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j2",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "lower.turn",
+                "higher.turn",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "carry.travel"
+              ],
+              "description": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "(((lower.turn * _b0) + (higher.turn * _b1)) * (carry.travel < 1))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((lower.turn * _j3) + (higher.turn * _j4)) * _j5)",
+                  "jumps": [
+                    {
+                      "name": "_j3",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j4",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j5",
+                      "primitive": "<",
+                      "level": "(carry.travel - 1)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {
+            "higher.turn": {
+              "low": null,
+              "high": null
+            }
+          },
+          "sources": {
+            "carry.travel": [
+              "crank",
+              "shift"
+            ],
+            "crank": [
+              "crank"
+            ],
+            "higher.turn": [
+              "crank",
+              "shift"
+            ],
+            "lower.turn": [
+              "crank"
+            ],
+            "shift": [
+              "shift"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-9
+          }
+        },
+        "root": {
+          "name": "TimedCarry",
+          "type": "AssemblyNode",
+          "color": null,
+          "mtime": 1790095012.813035,
+          "operations": [],
+          "children": [
+            {
+              "name": "lower",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "lower.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "lower"
+            },
+            {
+              "name": "higher",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "higher.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "higher"
+            },
+            {
+              "name": "carry",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "t",
+                  [
+                    "carry.travel",
+                    "0",
+                    "0"
+                  ]
+                ]
+              ],
+              "model": "carry"
+            }
+          ]
+        }
+      },
+      "rows": [
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 4,
+            "higher.turn": 3.5,
+            "lower.turn": 4,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0016475089942105114
+        },
+        {
+          "driver": "crank",
+          "to": 0,
+          "status": "completed",
+          "admitted": -4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 0,
+            "higher.turn": -0.5,
+            "lower.turn": 0,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0010984230320900679
+        },
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 4,
+            "higher.turn": 3.5,
+            "lower.turn": 4,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0010736450203694403
+        }
+      ],
+      "seconds": 0.08224843500647694
+    },
+    {
+      "name": "later",
+      "document": {
+        "format": "machinome-export",
+        "version": 11,
+        "animation": {
+          "fps": 30,
+          "frames": 360
+        },
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "shift": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(shift < 0.5)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(shift >= 0.5)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(shift - 0.5)"
+          },
+          {
+            "name": "_b3",
+            "expression": "(crank - 1)"
+          }
+        ],
+        "program": {
+          "identity": "3cdf689dee85aded03b743149d4dd87b8a8c38cc23b7b8a102102f5e1fc391c9",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "shift": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "carry.travel": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "mm",
+              "domain": "translational"
+            },
+            "higher.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "lower.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "station.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank"
+              ],
+              "gives": [
+                "lower.turn"
+              ],
+              "description": "crank drives lower.turn",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "crank"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "higher.turn"
+              ],
+              "description": "(crank, shift, carry.travel) drives higher.turn",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "(((crank * _b0) * (carry.travel >= 0.5)) + (crank * _b1))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((crank * _j0) * _j1) + (crank * _j2))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j1",
+                      "primitive": ">=",
+                      "level": "(carry.travel - 0.5)",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j2",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "higher.turn",
+                "crank"
+              ],
+              "gives": [
+                "station.turn"
+              ],
+              "description": "(higher.turn, crank) drives station.turn",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "((higher.turn * (crank < 1)) + (crank * (crank >= 1)))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "((higher.turn * _j3) + (crank * _j4))",
+                  "jumps": [
+                    {
+                      "name": "_j3",
+                      "primitive": "<",
+                      "level": "_b3",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j4",
+                      "primitive": ">=",
+                      "level": "_b3",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "lower.turn",
+                "higher.turn",
+                "shift",
+                "carry.travel",
+                "station.turn"
+              ],
+              "gives": [
+                "carry.travel"
+              ],
+              "description": "(lower.turn, higher.turn, shift, carry.travel, station.turn) drives carry.travel",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "((((lower.turn * _b0) + (higher.turn * _b1)) + (station.turn * (shift >= 2))) * (carry.travel < 1))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "((((lower.turn * _j5) + (higher.turn * _j6)) + (station.turn * _j7)) * _j8)",
+                  "jumps": [
+                    {
+                      "name": "_j5",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j6",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j7",
+                      "primitive": ">=",
+                      "level": "(shift - 2)",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j8",
+                      "primitive": "<",
+                      "level": "(carry.travel - 1)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {
+            "higher.turn": {
+              "low": null,
+              "high": null
+            }
+          },
+          "sources": {
+            "carry.travel": [
+              "crank",
+              "shift"
+            ],
+            "crank": [
+              "crank"
+            ],
+            "higher.turn": [
+              "crank",
+              "shift"
+            ],
+            "lower.turn": [
+              "crank"
+            ],
+            "shift": [
+              "shift"
+            ],
+            "station.turn": [
+              "crank",
+              "shift"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-9
+          }
+        },
+        "root": {
+          "name": "TimedCarry",
+          "type": "AssemblyNode",
+          "color": null,
+          "mtime": 1790095012.813035,
+          "operations": [],
+          "children": [
+            {
+              "name": "lower",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "lower.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "lower"
+            },
+            {
+              "name": "higher",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "higher.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "higher"
+            },
+            {
+              "name": "carry",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "t",
+                  [
+                    "carry.travel",
+                    "0",
+                    "0"
+                  ]
+                ]
+              ],
+              "model": "carry"
+            },
+            {
+              "name": "station",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "station.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "station"
+            }
+          ]
+        }
+      },
+      "rows": [
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 4,
+            "higher.turn": 3.5,
+            "lower.turn": 4,
+            "shift": 0,
+            "station.turn": 3.5
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(higher.turn, crank) drives station.turn",
+              "coordinate": "station.turn",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel, station.turn) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0024855959927663207
+        },
+        {
+          "driver": "crank",
+          "to": 0,
+          "status": "completed",
+          "admitted": -4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 0,
+            "higher.turn": -0.5,
+            "lower.turn": 0,
+            "shift": 0,
+            "station.turn": -0.5
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(higher.turn, crank) drives station.turn",
+              "coordinate": "station.turn",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel, station.turn) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(higher.turn, crank) drives station.turn",
+              "coordinate": "station.turn",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.75
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0025740150013007224
+        },
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 4,
+            "higher.turn": 3.5,
+            "lower.turn": 4,
+            "shift": 0,
+            "station.turn": 3.5
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(higher.turn, crank) drives station.turn",
+              "coordinate": "station.turn",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel, station.turn) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(higher.turn, crank) drives station.turn",
+              "coordinate": "station.turn",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.75
+            },
+            {
+              "tick": 0,
+              "relation": "(higher.turn, crank) drives station.turn",
+              "coordinate": "station.turn",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.002615102974232286
+        }
+      ],
+      "seconds": 0.01736126298783347
+    },
+    {
+      "name": "nonuniform",
+      "document": {
+        "format": "machinome-export",
+        "version": 11,
+        "animation": {
+          "fps": 30,
+          "frames": 360
+        },
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "shift": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(shift < 0.5)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(shift >= 0.5)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(shift - 0.5)"
+          }
+        ],
+        "program": {
+          "identity": "b318ca98a4de568c6180c3a892b62aed9b2fe9c33b3e23b6566ad9766d46d91b",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "shift": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "carry.travel": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "mm",
+              "domain": "translational"
+            },
+            "higher.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "lower.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank"
+              ],
+              "gives": [
+                "lower.turn"
+              ],
+              "description": "crank drives lower.turn",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "min(max((2 * crank), 0.0), 1.0)"
+              ],
+              "affine": [
+                false
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "higher.turn"
+              ],
+              "description": "(crank, shift, carry.travel) drives higher.turn",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "(((crank * _b0) * (carry.travel >= 0.5)) + (crank * _b1))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((crank * _j0) * _j1) + (crank * _j2))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j1",
+                      "primitive": ">=",
+                      "level": "(carry.travel - 0.5)",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j2",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "lower.turn",
+                "higher.turn",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "carry.travel"
+              ],
+              "description": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "(((lower.turn * _b0) + (higher.turn * _b1)) * (carry.travel < 1))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((lower.turn * _j3) + (higher.turn * _j4)) * _j5)",
+                  "jumps": [
+                    {
+                      "name": "_j3",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j4",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j5",
+                      "primitive": "<",
+                      "level": "(carry.travel - 1)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {
+            "higher.turn": {
+              "low": null,
+              "high": null
+            }
+          },
+          "sources": {
+            "carry.travel": [
+              "crank",
+              "shift"
+            ],
+            "crank": [
+              "crank"
+            ],
+            "higher.turn": [
+              "crank",
+              "shift"
+            ],
+            "lower.turn": [
+              "crank"
+            ],
+            "shift": [
+              "shift"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-9
+          }
+        },
+        "root": {
+          "name": "TimedCarry",
+          "type": "AssemblyNode",
+          "color": null,
+          "mtime": 1790095012.813035,
+          "operations": [],
+          "children": [
+            {
+              "name": "lower",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "lower.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "lower"
+            },
+            {
+              "name": "higher",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "higher.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "higher"
+            },
+            {
+              "name": "carry",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "t",
+                  [
+                    "carry.travel",
+                    "0",
+                    "0"
+                  ]
+                ]
+              ],
+              "model": "carry"
+            }
+          ]
+        }
+      },
+      "rows": [
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 4,
+            "higher.turn": 3.75,
+            "lower.turn": 1,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.0625
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.125
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0017256679711863399
+        },
+        {
+          "driver": "crank",
+          "to": 0,
+          "status": "completed",
+          "admitted": -4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 0,
+            "higher.turn": -0.25,
+            "lower.turn": 0,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.0625
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.125
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0014677259605377913
+        },
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 4,
+            "higher.turn": 3.75,
+            "lower.turn": 1,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.0625
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.125
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0014469180023297668
+        }
+      ],
+      "seconds": 0.011688844999298453
+    },
+    {
+      "name": "curved",
+      "document": {
+        "format": "machinome-export",
+        "version": 11,
+        "animation": {
+          "fps": 30,
+          "frames": 360
+        },
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "shift": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(shift < 0.5)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(shift >= 0.5)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(shift - 0.5)"
+          }
+        ],
+        "program": {
+          "identity": "c578b5ea56328c060a2e8e2e5b8b43b65f0d65fdc749a6bdad174fa7366ed302",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "shift": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "carry.travel": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "mm",
+              "domain": "translational"
+            },
+            "higher.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "lower.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank"
+              ],
+              "gives": [
+                "lower.turn"
+              ],
+              "description": "crank drives lower.turn",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "(crank * crank)"
+              ],
+              "affine": [
+                false
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "higher.turn"
+              ],
+              "description": "(crank, shift, carry.travel) drives higher.turn",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "(((crank * _b0) * (carry.travel >= 0.5)) + (crank * _b1))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((crank * _j0) * _j1) + (crank * _j2))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j1",
+                      "primitive": ">=",
+                      "level": "(carry.travel - 0.5)",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j2",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "lower.turn",
+                "higher.turn",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "carry.travel"
+              ],
+              "description": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "(((lower.turn * _b0) + (higher.turn * _b1)) * (carry.travel < 1))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((lower.turn * _j3) + (higher.turn * _j4)) * _j5)",
+                  "jumps": [
+                    {
+                      "name": "_j3",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j4",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j5",
+                      "primitive": "<",
+                      "level": "(carry.travel - 1)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {
+            "higher.turn": {
+              "low": null,
+              "high": null
+            }
+          },
+          "sources": {
+            "carry.travel": [
+              "crank",
+              "shift"
+            ],
+            "crank": [
+              "crank"
+            ],
+            "higher.turn": [
+              "crank",
+              "shift"
+            ],
+            "lower.turn": [
+              "crank"
+            ],
+            "shift": [
+              "shift"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-9
+          }
+        },
+        "root": {
+          "name": "TimedCarry",
+          "type": "AssemblyNode",
+          "color": null,
+          "mtime": 1790095012.813035,
+          "operations": [],
+          "children": [
+            {
+              "name": "lower",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "lower.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "lower"
+            },
+            {
+              "name": "higher",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "higher.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "higher"
+            },
+            {
+              "name": "carry",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "t",
+                  [
+                    "carry.travel",
+                    "0",
+                    "0"
+                  ]
+                ]
+              ],
+              "model": "carry"
+            }
+          ]
+        }
+      },
+      "rows": [
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 4,
+            "higher.turn": 3.292893218813788,
+            "lower.turn": 16,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.17677669529655304
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.00492334202863276
+        },
+        {
+          "driver": "crank",
+          "to": 0,
+          "status": "completed",
+          "admitted": -4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 0,
+            "higher.turn": -0.7071067811862122,
+            "lower.turn": 0,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.17677669529655304
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0025139610515907407
+        },
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 4,
+            "higher.turn": 3.292893218813788,
+            "lower.turn": 16,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.17677669529655304
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0027484369929879904
+        }
+      ],
+      "seconds": 0.01804533798713237
+    },
+    {
+      "name": "range",
+      "document": {
+        "format": "machinome-export",
+        "version": 11,
+        "animation": {
+          "fps": 30,
+          "frames": 360
+        },
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "shift": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(shift < 0.5)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(shift >= 0.5)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(shift - 0.5)"
+          }
+        ],
+        "program": {
+          "identity": "65f88a23a636838abb238646bf6a36bbc7ef6962035858ec822e7958af09d7d7",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "shift": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "carry.travel": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "mm",
+              "domain": "translational"
+            },
+            "higher.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "lower.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank"
+              ],
+              "gives": [
+                "lower.turn"
+              ],
+              "description": "crank drives lower.turn",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "crank"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "higher.turn"
+              ],
+              "description": "(crank, shift, carry.travel) drives higher.turn",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "(((crank * _b0) * (carry.travel >= 0.5)) + (crank * _b1))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((crank * _j0) * _j1) + (crank * _j2))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j1",
+                      "primitive": ">=",
+                      "level": "(carry.travel - 0.5)",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j2",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "lower.turn",
+                "higher.turn",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "carry.travel"
+              ],
+              "description": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "(((lower.turn * _b0) + (higher.turn * _b1)) * (carry.travel < 1))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((lower.turn * _j3) + (higher.turn * _j4)) * _j5)",
+                  "jumps": [
+                    {
+                      "name": "_j3",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j4",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j5",
+                      "primitive": "<",
+                      "level": "(carry.travel - 1)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {
+            "higher.turn": {
+              "low": null,
+              "high": 2
+            }
+          },
+          "sources": {
+            "carry.travel": [
+              "crank",
+              "shift"
+            ],
+            "crank": [
+              "crank"
+            ],
+            "higher.turn": [
+              "crank",
+              "shift"
+            ],
+            "lower.turn": [
+              "crank"
+            ],
+            "shift": [
+              "shift"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-9
+          }
+        },
+        "root": {
+          "name": "TimedCarry",
+          "type": "AssemblyNode",
+          "color": null,
+          "mtime": 1790095012.813035,
+          "operations": [],
+          "children": [
+            {
+              "name": "lower",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "lower.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "lower"
+            },
+            {
+              "name": "higher",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "higher.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "higher"
+            },
+            {
+              "name": "carry",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "t",
+                  [
+                    "carry.travel",
+                    "0",
+                    "0"
+                  ]
+                ]
+              ],
+              "model": "carry"
+            }
+          ]
+        }
+      },
+      "rows": [
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "blocked",
+          "admitted": 2.5,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 2.5,
+            "higher.turn": 2,
+            "lower.turn": 2.5,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [
+            {
+              "tick": 0,
+              "coordinate": "higher.turn",
+              "bound": "high",
+              "value": 2,
+              "t": 0.625,
+              "inputs": [
+                "crank"
+              ],
+              "time_drives": []
+            }
+          ],
+          "seconds": 0.004163823963608593
+        },
+        {
+          "driver": "crank",
+          "to": 0,
+          "status": "completed",
+          "admitted": -2.5,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 0,
+            "higher.turn": -0.5,
+            "lower.turn": 0,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [
+            {
+              "tick": 0,
+              "coordinate": "higher.turn",
+              "bound": "high",
+              "value": 2,
+              "t": 0.625,
+              "inputs": [
+                "crank"
+              ],
+              "time_drives": []
+            }
+          ],
+          "seconds": 0.001103352988138795
+        },
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "blocked",
+          "admitted": 2.5,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 2.5,
+            "higher.turn": 2,
+            "lower.turn": 2.5,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [
+            {
+              "tick": 0,
+              "coordinate": "higher.turn",
+              "bound": "high",
+              "value": 2,
+              "t": 0.625,
+              "inputs": [
+                "crank"
+              ],
+              "time_drives": []
+            },
+            {
+              "tick": 0,
+              "coordinate": "higher.turn",
+              "bound": "high",
+              "value": 2,
+              "t": 0.625,
+              "inputs": [
+                "crank"
+              ],
+              "time_drives": []
+            }
+          ],
+          "seconds": 0.002999306016135961
+        }
+      ],
+      "seconds": 0.015901392966043204
+    },
+    {
+      "name": "contact",
+      "document": {
+        "format": "machinome-export",
+        "version": 11,
+        "animation": {
+          "fps": 30,
+          "frames": 360
+        },
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          },
+          "shift": {
+            "default": 0,
+            "range": null,
+            "unit": null,
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "bindings": [
+          {
+            "name": "_b0",
+            "expression": "(shift < 0.5)"
+          },
+          {
+            "name": "_b1",
+            "expression": "(shift >= 0.5)"
+          },
+          {
+            "name": "_b2",
+            "expression": "(shift - 0.5)"
+          }
+        ],
+        "program": {
+          "identity": "09d2e556a62942c26ba475a324a94f8a9cea140e829e64a6a16ef240aad58872",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "shift": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "carry.travel": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "mm",
+              "domain": "translational"
+            },
+            "higher.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "lower.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank"
+              ],
+              "gives": [
+                "lower.turn"
+              ],
+              "description": "crank drives lower.turn",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "crank"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "higher.turn"
+              ],
+              "description": "(crank, shift, carry.travel) drives higher.turn",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "(((crank * _b0) * (carry.travel >= 0.5)) + (crank * _b1))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((crank * _j0) * _j1) + (crank * _j2))",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j1",
+                      "primitive": ">=",
+                      "level": "(carry.travel - 0.5)",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j2",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "lower.turn",
+                "higher.turn",
+                "shift",
+                "carry.travel"
+              ],
+              "gives": [
+                "carry.travel"
+              ],
+              "description": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "stated_by": "TimedCarry",
+              "expressions": [
+                "(((lower.turn * _b0) + (higher.turn * _b1)) * (carry.travel < 1))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(((lower.turn * _j3) + (higher.turn * _j4)) * _j5)",
+                  "jumps": [
+                    {
+                      "name": "_j3",
+                      "primitive": "<",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j4",
+                      "primitive": ">=",
+                      "level": "_b2",
+                      "affine": true
+                    },
+                    {
+                      "name": "_j5",
+                      "primitive": "<",
+                      "level": "(carry.travel - 1)",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spans": {
+            "higher.turn": {
+              "low": null,
+              "high": {
+                "expression": "(100 + carry.travel)"
+              }
+            }
+          },
+          "sources": {
+            "carry.travel": [
+              "crank",
+              "shift"
+            ],
+            "crank": [
+              "crank"
+            ],
+            "higher.turn": [
+              "crank",
+              "shift"
+            ],
+            "lower.turn": [
+              "crank"
+            ],
+            "shift": [
+              "shift"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-9
+          }
+        },
+        "root": {
+          "name": "TimedCarry",
+          "type": "AssemblyNode",
+          "color": null,
+          "mtime": 1790095012.813035,
+          "operations": [],
+          "children": [
+            {
+              "name": "lower",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "lower.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "lower"
+            },
+            {
+              "name": "higher",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "higher.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "higher"
+            },
+            {
+              "name": "carry",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "t",
+                  [
+                    "carry.travel",
+                    "0",
+                    "0"
+                  ]
+                ]
+              ],
+              "model": "carry"
+            }
+          ]
+        }
+      },
+      "rows": [
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 4,
+            "higher.turn": 3.5,
+            "lower.turn": 4,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0018646219978109002
+        },
+        {
+          "driver": "crank",
+          "to": 0,
+          "status": "completed",
+          "admitted": -4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 0,
+            "higher.turn": -0.5,
+            "lower.turn": 0,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0011818119673989713
+        },
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "carry.travel": 1,
+            "crank": 4,
+            "higher.turn": 3.5,
+            "lower.turn": 4,
+            "shift": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, shift, carry.travel) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": ">=",
+              "level": 0,
+              "t": 0.125
+            },
+            {
+              "tick": 0,
+              "relation": "(lower.turn, higher.turn, shift, carry.travel) drives carry.travel",
+              "coordinate": "carry.travel",
+              "primitive": "<",
+              "level": 0,
+              "t": 0.25
+            }
+          ],
+          "stops": [],
+          "seconds": 0.001153809018433094
+        }
+      ],
+      "seconds": 0.011441211972851306
+    },
+    {
+      "name": "crossing-budget",
+      "document": {
+        "format": "machinome-export",
+        "version": 11,
+        "animation": {
+          "fps": 30,
+          "frames": 360
+        },
+        "drivers": {
+          "crank": {
+            "default": 0,
+            "range": null,
+            "unit": "deg",
+            "dtype": null,
+            "scale": null
+          }
+        },
+        "instructions": {},
+        "program": {
+          "identity": "fc8b09f1453972864b09be2c4639ce64a3b5947aebcc2a65d258a18656f3cb66",
+          "clock": "time",
+          "coordinates": {
+            "crank": {
+              "kind": "input",
+              "initial": 0,
+              "domain": null
+            },
+            "higher.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "lower.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            },
+            "observer.turn": {
+              "kind": "coordinate",
+              "initial": 0,
+              "unit": "deg",
+              "domain": "rotational"
+            }
+          },
+          "intermediates": [],
+          "edges": [
+            {
+              "kind": "law",
+              "needs": [
+                "crank"
+              ],
+              "gives": [
+                "lower.turn"
+              ],
+              "description": "crank drives lower.turn",
+              "stated_by": "InheritedCrossings",
+              "expressions": [
+                "(((min(max(crank, 0.0), 1.0) + min(max((crank - 1), 0.0), 1.0)) + min(max((crank - 2), 0.0), 1.0)) + min(max((crank - 3), 0.0), 1.0))"
+              ],
+              "affine": [
+                false
+              ],
+              "plans": [
+                null
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "crank",
+                "lower.turn"
+              ],
+              "gives": [
+                "higher.turn"
+              ],
+              "description": "(crank, lower.turn) drives higher.turn",
+              "stated_by": "InheritedCrossings",
+              "expressions": [
+                "(crank * floor(lower.turn))"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                {
+                  "skeleton": "(crank * _j0)",
+                  "jumps": [
+                    {
+                      "name": "_j0",
+                      "primitive": "floor",
+                      "level": "lower.turn",
+                      "affine": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "law",
+              "needs": [
+                "higher.turn"
+              ],
+              "gives": [
+                "observer.turn"
+              ],
+              "description": "higher.turn drives observer.turn",
+              "stated_by": "InheritedCrossings",
+              "expressions": [
+                "higher.turn"
+              ],
+              "affine": [
+                true
+              ],
+              "plans": [
+                null
+              ]
+            }
+          ],
+          "spans": {},
+          "sources": {
+            "crank": [
+              "crank"
+            ],
+            "higher.turn": [
+              "crank"
+            ],
+            "lower.turn": [
+              "crank"
+            ],
+            "observer.turn": [
+              "crank"
+            ]
+          },
+          "limits": {
+            "crossing_tolerance": 1e-12,
+            "subdivisions": 64,
+            "bisection_rounds": 64,
+            "max_crossings": 1000,
+            "agreement": 1e-9
+          }
+        },
+        "root": {
+          "name": "InheritedCrossings",
+          "type": "AssemblyNode",
+          "color": null,
+          "mtime": 1790095012.813035,
+          "operations": [],
+          "children": [
+            {
+              "name": "lower",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "lower.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "lower"
+            },
+            {
+              "name": "higher",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "higher.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "higher"
+            },
+            {
+              "name": "observer",
+              "type": "LeafNode",
+              "color": null,
+              "mtime": 1790086604.413618,
+              "operations": [
+                [
+                  "r",
+                  "observer.turn",
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              ],
+              "model": "observer"
+            }
+          ]
+        }
+      },
+      "rows": [
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "crank": 4,
+            "higher.turn": 6,
+            "lower.turn": 4,
+            "observer.turn": 6
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 1,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 2,
+              "t": 0.5
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 3,
+              "t": 0.75
+            }
+          ],
+          "stops": [],
+          "seconds": 0.002350027032662183
+        },
+        {
+          "driver": "crank",
+          "to": 0,
+          "status": "completed",
+          "admitted": -4,
+          "bank": {
+            "crank": 0,
+            "higher.turn": 0,
+            "lower.turn": 0,
+            "observer.turn": 0
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 1,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 2,
+              "t": 0.5
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 3,
+              "t": 0.75
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 3,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 2,
+              "t": 0.5
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 1,
+              "t": 0.75
+            }
+          ],
+          "stops": [],
+          "seconds": 0.0021667989785782993
+        },
+        {
+          "driver": "crank",
+          "to": 4,
+          "status": "completed",
+          "admitted": 4,
+          "bank": {
+            "crank": 4,
+            "higher.turn": 6,
+            "lower.turn": 4,
+            "observer.turn": 6
+          },
+          "crossings": [
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 1,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 2,
+              "t": 0.5
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 3,
+              "t": 0.75
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 3,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 2,
+              "t": 0.5
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 1,
+              "t": 0.75
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 1,
+              "t": 0.25
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 2,
+              "t": 0.5
+            },
+            {
+              "tick": 0,
+              "relation": "(crank, lower.turn) drives higher.turn",
+              "coordinate": "higher.turn",
+              "primitive": "floor",
+              "level": 3,
+              "t": 0.75
+            }
+          ],
+          "stops": [],
+          "seconds": 0.002323608030565083
+        }
+      ],
+      "seconds": 0.013157023000530899
+    }
+  ]
+}

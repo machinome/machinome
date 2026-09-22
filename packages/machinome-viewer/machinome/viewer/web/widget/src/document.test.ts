@@ -221,13 +221,13 @@ describe('assertRenderable on a flexible document', () => {
     // `execute-running-play`: version 9 carries PLAY, so it moves to 10.
     // `execute-running-time-drives`: version 10 is executed; 11 is refused.
     const manifest = document({
-      version: 11 as unknown as Manifest['version'],
+      version: 12 as unknown as Manifest['version'],
       root: node('root', []),
     });
 
-    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b11\b/);
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b12\b/);
     expect(() => assertRenderable(manifest, '/m.json'))
-      .toThrow(/1, 2, 3, 4, 5, 6, 7, 8, 9, 10/);
+      .toThrow(/1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11/);
     expect(() => assertRenderable(manifest, '/m.json')).toThrow(/m\.json/);
   });
 
@@ -507,8 +507,8 @@ function withProgram(overrides: Record<string, unknown> = {},
 }
 
 describe('assertRenderable on a document carrying a program', () => {
-  it('renders versions 1 through 10 and says so in its list', () => {
-    expect(RENDERED_VERSIONS).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  it('renders versions 1 through 11 and says so in its list', () => {
+    expect(RENDERED_VERSIONS).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   });
 
   it('accepts a version 6 document -- one whose program carries a law '
@@ -539,11 +539,11 @@ describe('assertRenderable on a document carrying a program', () => {
     expect(program!.identity).toBe('a-program');
   });
 
-  it('refuses a version 11 document by name, naming what it renders', () => {
+  it('refuses a version 12 document by name, naming what it renders', () => {
     const manifest = withProgram(
-      { version: 11 as unknown as Manifest['version'] });
+      { version: 12 as unknown as Manifest['version'] });
     expect(() => assertRenderable(manifest, '/m.json'))
-      .toThrow(/renders versions 1, 2, 3, 4, 5, 6, 7, 8, 9, 10/);
+      .toThrow(/renders versions 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11/);
   });
 
   it('refuses a document carrying BOTH a program and a clocked machine',

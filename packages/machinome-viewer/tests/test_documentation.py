@@ -38,7 +38,13 @@ def test_the_manual_states_the_release():
         assert 'not yet published' not in text.lower(), page
     changelog = (ROOT / 'CHANGELOG.md').read_text()
     sections = re.split(r'^## ', changelog, flags=re.M)
-    current = ' '.join(sections[1].split())
+    # A new correction must not be silently attributed to the prior release.
+    # Keep its historical entry intact below an explicitly pending section.
+    release_sections = sections[1:]
+    if release_sections[0].startswith('Unreleased\n'):
+        assert 'API 24' in release_sections[0]
+        release_sections = release_sections[1:]
+    current = ' '.join(release_sections[0].split())
     assert current.startswith('0.7.0 — 21 September 2026'), current[:40]
     assert 'unreleased' not in current.lower()
     assert 'Machinome 0.7.0' in current

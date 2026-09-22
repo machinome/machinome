@@ -53,6 +53,8 @@ Document capabilities
      - Running ``Play`` relations retaining clearance/contact history.
    * - 10
      - Explicit running time drives with independently admitted motion.
+   * - 11
+     - Source-timed running motion through ordinary chains and selected blocks.
 
 These are producer-selected schemas, not modes you change by editing a JSON
 version field. The viewer accepts current ``machinome-export`` and legacy
@@ -85,9 +87,27 @@ API 20 established the Machinome browser names:
 Old SolidNode browser globals, mount attributes and CSS aliases are not
 provided. Reading a legacy model document does not restore old host names.
 API 21 added :js:meth:`ViewerHandle.setView`; API 22 added running ``Play``
-execution; API 23 adds explicit running time drives. A host that needs a
+execution; API 23 adds explicit running time drives; API 24 preserves determined
+source timing, including dwell and landing, through running dependencies.
+A host that needs a
 feature can check the declared API before
 using it. Do not assume an old pinned bundle implements the current manual.
+
+Source-timing migration
+=======================
+
+Re-export running models with the corrected producer and use an API-24 viewer.
+New running exports declare document version 11 even when an individual model
+has only affine motion. An old viewer refuses that version before operation.
+Do not lower the version by hand: the payload shape is unchanged, but the
+execution semantics are not. Posed, looping and clocked version selection is
+unchanged.
+
+Legacy running exports still load in the corrected viewer and use corrected
+physics. An old export cannot prevent an old viewer from executing its old
+arithmetic. New producer identities include the source-timing generation, so
+endpoint-era snapshots refuse restore into re-exported programs. Restart from
+the model's initial state and replay the intended commands instead.
 
 Dependency boundary
 ===================

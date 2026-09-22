@@ -4,11 +4,40 @@
 
 from unittest import TestCase
 from unittest.mock import call, patch
+from pathlib import Path
+import tempfile
 
 from machinome_viewer import packaging
 
 
 class FrontendPackagingTest(TestCase):
+
+    def test_packaging_refuses_shared_dependencies_before_installing(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shared = root / 'primary-dependencies'
+            shared.mkdir()
+            marker = shared / 'keep'
+            marker.write_text('untouched')
+            widget = root / 'widget'
+            widget.mkdir()
+            (widget / 'node_modules').symlink_to(shared, target_is_directory=True)
+            frontend = packaging.Frontend(widget, widget / 'dist' / 'bundle.js')
+            with patch.object(packaging.subprocess, 'check_call') as invoke:
+                with self.assertRaisesRegex(RuntimeError, 'symlink'):
+                    packaging.build_frontend(frontend)
+            invoke.assert_not_called()
+            self.assertEqual(marker.read_text(), 'untouched')
+
+    def test_packaging_installs_and_builds_private_dependencies(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            widget = Path(temporary)
+            frontend = packaging.Frontend(widget, widget / 'dist' / 'bundle.js')
+            with patch.object(packaging.subprocess, 'check_call') as invoke:
+                packaging.build_frontend(frontend)
+            self.assertEqual(invoke.call_args_list, [
+                call(['npm', 'ci'], cwd=widget),
+                call(['npm', 'run', 'build'], cwd=widget)])
 
     def test_source_distribution_builds_the_one_frontend(self):
         with patch('machinome_viewer.packaging.build_frontend') as build:

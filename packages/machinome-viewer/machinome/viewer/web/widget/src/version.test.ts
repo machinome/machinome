@@ -145,8 +145,8 @@ describe('API_VERSION', () => {
   // no version, and a version 8 document published after it is byte for
   // byte the one published before. 13 stays SKIPPED: the in-flight
   // cycle `slide-and-turn-parts` claims it.
-  it('declares version-10 retained time drives as API 23', () => {
-    expect(API_VERSION).toBe(23);
+  it('declares version-11 source timing as API 24', () => {
+    expect(API_VERSION).toBe(24);
   });
 });
 
@@ -154,7 +154,7 @@ describe('DOCUMENT_VERSIONS', () => {
   it('is declared in package.json, where a Python caller can read it', () => {
     expect(Array.isArray(pkg.machinomeDocumentVersions)).toBe(true);
     expect(pkg.machinomeDocumentVersions)
-      .toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      .toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   });
 
   it('is the list the package declares, not a second copy', () => {

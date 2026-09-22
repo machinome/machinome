@@ -31,6 +31,7 @@ import { ExpressionPath, movingNames, UnsupportedPathNode, withExpressions } fro
 import type { KinkLevel } from '../expressions';
 import { kinkLevel } from './program';
 import { constantContact, hasMovingSource } from './contact-proof';
+import { alongSources, copyHolding, curved } from './motion';
 
 /** A SELECTOR's placeholder bound to the branch the block read at its
  * piece's midpoint (design D3). A forced node is a CONSTANT on the
@@ -189,12 +190,7 @@ export function noLevel(primitive: string, described: string,
 export function along(start: Record<string, number>,
                       delta: Record<string, number>,
                       t: number): Record<string, number> {
-  const found: Record<string, number> = {};
-  for (const name in start) {
-    if (!Object.prototype.hasOwnProperty.call(start, name)) continue;
-    found[name] = start[name] + delta[name] * t;
-  }
-  return found;
+  return alongSources(start, delta, t);
 }
 
 /** A jump's surfaces between two values of its level quantity. */
@@ -470,7 +466,7 @@ function crossingsOf(
   start: Record<string, number>, delta: Record<string, number>,
   inner: Record<string, number>, left: number, right: number,
   described: string, coordinate: string,
-  paths: LevelPaths | null = null, piece = 0,
+  paths: LevelPaths | null = null, piece = 0, closed = false,
 ): [number, number][] {
   const limits = program.limits;
   const refuse = (count: number | null): never => {
@@ -501,8 +497,8 @@ function crossingsOf(
     }
     return found;
   };
-  if (jump.affine) return solved(left, right, false);
-  if (jump.shape === 'kinked') {
+  if (jump.affine && !curved(delta)) return solved(left, right, closed);
+  if (jump.shape === 'kinked' && !curved(delta)) {
     // A KINKED level is affine on each sub-interval between its own
     // kinks, so the piece is cut there -- recording nothing, counting
     // toward nothing -- and each sub-piece is solved.
@@ -520,7 +516,7 @@ function crossingsOf(
     if (breaks.length === 0) {
       // No kink is reached inside this piece, so the level IS affine
       // over the whole of it.
-      return solved(left, right, false);
+      return solved(left, right, closed);
     }
     const edges = [left, ...breaks, right];
     let found: [number, number][] = [];
@@ -530,7 +526,7 @@ function crossingsOf(
       // between the two sub-pieces that meet there; `deduplicated` is
       // what stops it being taken twice, and it exists for exactly this.
       found = found.concat(
-        solved(edges[at2], edges[at2 + 1], at2 < edges.length - 2));
+        solved(edges[at2], edges[at2 + 1], closed || at2 < edges.length - 2));
     }
     return deduplicated(found, limits.crossingTolerance);
   }
@@ -591,12 +587,12 @@ function bisect(program: PathHost, plan: ProgramPlan, jump: ProgramJump,
   return (lower + upper) / 2;
 }
 
-function partition(program: PathHost, plan: ProgramPlan,
+export function partition(program: PathHost, plan: ProgramPlan,
                    start: Record<string, number>,
                    delta: Record<string, number>, described: string,
                    coordinate: string, crossings: CrossingRecord[] | null,
                    tick: number, forced: Forced = null,
-                   given: LevelPaths | null = null): number[] {
+                   given: LevelPaths | null = null, closed = false): number[] {
   const limits = program.limits;
   const paths = given ?? new LevelPaths(program, movingNames(delta));
   let cuts = [0, 1];
@@ -616,7 +612,7 @@ function partition(program: PathHost, plan: ProgramPlan,
       const piece = paths.newPiece();
       found = found.concat(crossingsOf(program, plan, jump, start, delta,
                                        inner, left, right, described,
-                                       coordinate, paths, piece));
+                                       coordinate, paths, piece, closed && right === 1));
       if (found.length > limits.maxCrossings) {
         throw tooMany(described, coordinate, jump.primitive, found.length,
                       limits);
@@ -804,10 +800,14 @@ export function farSideOf(branchAt: (value: number) => number, near: number,
 }
 
 /** One driven end's piece-by-piece walk over one tick (`_Walk`). */
-class Walk {
+export type WalkPiece = [number, number, (t: number) => number,
+  Record<string, number> | null];
+
+export class Walk {
   private readonly delta: Record<string, number>;
 
   private taken = 0;
+  private closedRight = false;
 
   constructor(private readonly program: LoadedProgram,
               private readonly reading: RetainedReading,
@@ -821,7 +821,7 @@ class Walk {
               // and forcing reaches the whole walk through layer one
               // alone (design D3).
               private readonly forced: Forced = null) {
-    this.delta = { ...delta };
+    this.delta = copyHolding(delta, this.reading.own);
     // The driven coordinate's own source moves by NOTHING along the
     // path: what it holds on a piece is what the pieces before it
     // produced, never an increment the tick handed it.
@@ -866,8 +866,10 @@ class Walk {
   // ------------------------------------------------------------------
   // The two layers
 
-  run(crossings: CrossingRecord[] | null, tick: number, cutting = false):
+  run(crossings: CrossingRecord[] | null, tick: number, cutting = false,
+      trajectory: WalkPiece[] | null = null, closed = false):
   { increment: number; landing: number | null; cuts: number[] } {
+    this.closedRight = closed;
     const own = this.reading.own;
     const own0 = this.start[own];
     let moves = false;
@@ -906,6 +908,7 @@ class Walk {
         const ownAt = (s: number): number =>
           from + (this.skeletonAt(s, branches) - base);
         const cut = this.firstCut(t, right, ownLeft, branches, ownAt);
+        trajectory?.push([t, cut === null ? right : cut[0], ownAt, branches]);
         if (cutting && this.reading.kinks !== null) {
           // The SKELETON's own kinks, inside the piece this branch
           // reading holds over: between two of them the driven
@@ -945,6 +948,7 @@ class Walk {
         }
         cuts.push(where);
         t = where;
+        if (t === right) break;
       }
       cuts.push(right);
     }
@@ -962,7 +966,7 @@ class Walk {
     if (this.reading.outer.jumps.length === 0) return [0, 1];
     return partition(this.program, this.reading.outer, this.start, this.delta,
                      this.described, this.coordinate, crossings, tick,
-                     this.forced, this.outerPaths);
+                     this.forced, this.outerPaths, this.closedRight);
   }
 
   private outerBranches(left: number, right: number): Record<string, number> {
@@ -1063,6 +1067,7 @@ class Walk {
   private constantContact(jump: ProgramJump, left: number, right: number,
                           ownLeft: number,
                           branches: Record<string, number>): boolean {
+    if (curved(this.delta)) return false;
     return withExpressions(() => {
       const roots = this.program.bindings.roots();
       const level = this.program.nodeOf(jump.level);
@@ -1130,8 +1135,11 @@ class Walk {
       }
       return best;
     };
+    if (curved(this.delta)) {
+      return this.searched(jump, t, right, ownLeft, branches, ownAt, refuse);
+    }
     if (jump.affine && this.reading.affine) {
-      return solved(t, right, ownLeft, ownAt(right), false);
+      return solved(t, right, ownLeft, ownAt(right), this.closedRight && right === 1);
     }
     const jumpShape = jump.affine ? 'affine' : jump.shape;
     if (jumpShape === null || this.reading.shape === null) {
@@ -1164,7 +1172,8 @@ class Walk {
           lowT, highT,
           lowT === left ? ownLow : ownAt(lowT),
           highT === stop ? ownHigh : ownAt(highT),
-          !(index === outer.length - 2 && step === inner.length - 2));
+          (this.closedRight && right === 1)
+            || !(index === outer.length - 2 && step === inner.length - 2));
         if (found !== null) return found;
       }
     }
@@ -1175,7 +1184,7 @@ class Walk {
    * under this piece's branch reading (`_skeleton_cuts`). */
   private skeletonCuts(left: number, right: number,
                        branches: Record<string, number>): number[] {
-    if (this.reading.kinks === null) return [];
+    if (this.reading.kinks === null || curved(this.delta)) return [];
     const at = (t: number): Record<string, number> => {
       const values = along(this.start, this.delta, t);
       for (const name in branches) {
@@ -1633,7 +1642,7 @@ function blockRefused(block: ProgramBlock, remaining: readonly number[],
 
 /** The members of this piece, ordered over the dependencies its own
  * selection leaves ACTIVE (`_Block._order`). */
-function blockOrder(block: ProgramBlock, forced: Record<string, number>[],
+export function blockOrder(block: ProgramBlock, forced: Record<string, number>[],
                     left: number, right: number): number[] {
   const active = block.members.map(
     (_member, index) => block.activeReads(index, forced[index]));

@@ -366,7 +366,10 @@ describe('the cost of a tick', () => {
                                        { dt: 0.02, record: null });
     carriageEngine.move('crank', { by: 36000, duration: 40 });
     expect(evaluationsPerTick('the Curta carriage', carriageEngine, 200)
-      .toFixed(1)).toBe('5913.2');
+      // Source-timed pieces add endpoint evaluations (formerly 5913.2).
+      // Clearing and Train above retain their exact old costs; the carry
+      // now preserves its actual timing, measured independently in parity.
+      .toFixed(1)).toBe('6277.4');
   }, 240_000);
 
   it('runs the acceptance machine far faster than real time', () => {
