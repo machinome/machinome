@@ -164,7 +164,7 @@ The framework SHALL evaluate a shared expression against each supplied input map
 
 ### Requirement: Rebinding an expression path uses current piece values
 
-The framework SHALL evaluate an expression path at each new piece using that piece's current inputs and branch values, preserving the graph's arithmetic order and error behavior. Repeated binding SHALL NOT reuse numeric results from earlier pieces or retain a discarded machine graph through process-wide bookkeeping.
+The framework SHALL evaluate an expression path at each new piece using that piece's current inputs and branch values, preserving the graph's arithmetic order and error behavior. Repeated binding SHALL NOT reuse numeric results from earlier pieces or retain a discarded machine graph through process-wide bookkeeping. Repeated samples within one piece SHALL reuse the path's immutable evaluation structure without hashing expression-node keys for each sample.
 
 #### Scenario: Standing input changes between pieces
 
@@ -190,3 +190,13 @@ The framework SHALL evaluate an expression path at each new piece using that pie
 
 - **WHEN** a bound path `min` or `max` call has other than two operands
 - **THEN** it reports the same error as the public two-argument numeric function at that call's place in evaluation order
+
+#### Scenario: Repeated samples after a successful bind
+
+- **WHEN** one expression path is sampled repeatedly at different moving inputs within a piece
+- **THEN** each sample uses its current inputs and standing values in the original operation order without repeated expression-node key lookup
+
+#### Scenario: Failed later bind leaves the prior piece intact
+
+- **WHEN** an expression path is successfully bound, then a later bind fails before completion
+- **THEN** that failure retains its original error and cannot partially publish the later piece's values or evaluation structure

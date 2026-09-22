@@ -877,7 +877,8 @@ class _PathValue:
     tick that built it.
     """
 
-    __slots__ = ('root', 'moving', 'order', 'standing', 'nodes')
+    __slots__ = ('root', 'moving', 'order', 'standing', 'nodes',
+                 'program', 'standing_nodes', 'standing_values')
 
     def __init__(self, graph, moving):
         self.root = as_node(graph)
@@ -886,6 +887,9 @@ class _PathValue:
                                 # the nodes that MOVE, in postorder.
         self.standing = {}      # this piece's non-moving node values.
         self.nodes = None       # full immutable order, after a successful bind.
+        self.program = None     # moving nodes and positional child references.
+        self.standing_nodes = None
+        self.standing_values = None
 
     def bind(self, values):
         """A new piece: recompute the standing part under `values` --
@@ -917,10 +921,29 @@ class _PathValue:
                     standing[node] = computed[node]
             elif node not in known:
                 standing[node] = computed[node]
-        if deciding:
-            self.order = tuple(order)
-        self.standing = standing
         result = computed[self.root]
+        if deciding:
+            new_order = tuple(order)
+            standing_nodes = tuple(standing)
+            moving_positions = {node: index for index, node in enumerate(new_order)}
+            standing_positions = {node: index for index, node in enumerate(standing_nodes)}
+            program = tuple(
+                (node, tuple(
+                    (True, moving_positions[child]) if child in moving_positions
+                    else (False, standing_positions[child])
+                    for child in node.children))
+                for node in new_order)
+        else:
+            standing_nodes = self.standing_nodes
+        standing_values = tuple(standing[node] for node in standing_nodes)
+        # Publish only after a complete eager evaluation and a complete
+        # structural build. A failed rebind leaves the previous piece intact.
+        if deciding:
+            self.order = new_order
+            self.program = program
+            self.standing_nodes = standing_nodes
+        self.standing = standing
+        self.standing_values = standing_values
         # Each piece still computes every node from its own values. Only the
         # DAG order is reused, and a failed first bind never publishes it.
         if gathered is not None:
@@ -935,12 +958,34 @@ class _PathValue:
         if not self.order:
             _visited(0)
             return self.standing[self.root]
-        computed = {}
-        standing = self.standing
-        for node in self.order:
-            computed[node] = _path_node_value(node, values, computed, standing)
+        computed = [None] * len(self.program)
+        standing = self.standing_values
+        for index, (node, children) in enumerate(self.program):
+            if node.kind == 'num':
+                value = float(node.text)
+            elif node.kind == 'name':
+                if node.text not in values:
+                    raise ValueError(f'Unresolved motion input {node.text[:80]!r}')
+                value = float(values[node.text])
+            else:
+                args = [computed[position] if moving else standing[position]
+                        for moving, position in children]
+                if node.kind == 'binop':
+                    value = _PATH_OPERATORS[node.op](*args)
+                elif node.kind == 'unary':
+                    value = -args[0] if node.op == '-' else +args[0]
+                elif node.kind == 'call' and node.op in SYMBOLIC_BUILTINS:
+                    if node.op == 'min':
+                        value = min(*args) if len(args) == 2 else motion_math.min(*args)
+                    elif node.op == 'max':
+                        value = max(*args) if len(args) == 2 else motion_math.max(*args)
+                    else:
+                        value = getattr(motion_math, node.op)(*args)
+                else:
+                    raise ValueError(f'Cannot numerically resolve {node!r}')
+            computed[index] = value
         _visited(len(self.order))
-        return computed[self.root]
+        return computed[-1]
 
 
 def _leveled(compute, jump, described, coordinate):
