@@ -4,6 +4,10 @@ Machinome
 
 **Source code for machines**
 
+.. image:: https://github.com/machinome/machinome/actions/workflows/python-app.yml/badge.svg?branch=main
+   :target: https://github.com/machinome/machinome/actions/workflows/python-app.yml
+   :alt: Build status
+
 .. image:: https://img.shields.io/pypi/v/machinome.svg
    :target: https://pypi.org/project/machinome/
    :alt: PyPI version
