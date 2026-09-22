@@ -22,16 +22,15 @@ take no handedness argument.
 pitch. A four-start 1 mm screw has a lead of 4 mm, and stating it that
 way is why a multi-start thread cannot be silently halved.
 
-The three copies this was lifted from, each with its own sign:
+Three machines that each spell the sign their own way:
 
-- ``projects/openflexure-microscope`` -- every lever in that machine
-  turns a *falling* column into positive travel of what the axis moves,
-  so its ``column_travel`` is the negative of this function at the
-  screw's own angle.
-- ``projects/Inmoov-sim`` -- the elbow's screw jack winds the nut *down*
-  the screw towards the servo as the shaft turns on, so its
-  ``elbow_reach`` is a rest reach minus this function.
-- ``projects/snappy-reprap`` -- the Z screw, whose ``angle`` is this
+- A microscope focus column, where every lever turns a *falling* column
+  into positive travel of what the axis moves, so its column travel is
+  the negative of this function at the screw's own angle.
+- A screw-jack elbow, whose nut winds *down* the screw towards the servo
+  as the shaft turns on, so its reach is a rest reach minus this
+  function.
+- A printer's Z axis commanded in travel, whose screw angle is this
   module's :func:`screw_angle`.
 """
 

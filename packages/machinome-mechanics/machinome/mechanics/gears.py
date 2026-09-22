@@ -30,23 +30,21 @@ They are asymmetric on purpose: a tooth of the driven points into a gap
 of the driver, so the driver is described by a gap and the driven by a
 tooth. Both default to zero, so a caller with no convention states none.
 
-Two recipes, from the projects this law was lifted from:
+Two recipes, for the two kinds of gear library met so far:
 
-- **cq_gears** (``projects/sandbox/gearbox``) centres a tooth on local
-  +X at angle zero, so a gap centre sits half a tooth pitch round:
-  ``driver_gap = 180 / driver_teeth`` and ``driven_tooth = 0``. With
-  those two values ``meshed_angle`` is that project's
-  ``conjugate_angle(theta1, z1, z2, alpha)`` exactly.
-- **MrBunsy's ``Gear``** (``projects/3DPrintedClocks``) starts
-  ``get2D`` at a gap, so the first gap runs from zero to ``gap_angle``:
-  a gap centre sits at ``gap_angle / 2`` and a tooth tip at
-  ``gap_angle + tooth_angle / 2`` (both in degrees). A part the library
-  turns over -- to print it, or to face a pinion the other way --
-  mirrors every angle in it, so both references are negated. A lantern
-  pinion has no cut profile at all: its leaves are trundles standing in
-  holes at multiples of the tooth pitch beginning at zero, so its
-  ``driven_tooth`` is zero. Those two lines in the caller are the whole
-  of that library's convention; the law does not fork.
+- A library that centres a tooth on local +X at angle zero (``cq_gears``
+  does) puts a gap centre half a tooth pitch round:
+  ``driver_gap = 180 / driver_teeth`` and ``driven_tooth = 0``.
+- A clock-wheel library that starts its profile at a gap, so the first
+  gap runs from zero to ``gap_angle``: a gap centre sits at
+  ``gap_angle / 2`` and a tooth tip at ``gap_angle + tooth_angle / 2``
+  (both in degrees). A part the library turns over -- to print it, or to
+  face a pinion the other way -- mirrors every angle in it, so both
+  references are negated. A lantern pinion has no cut profile at all:
+  its leaves are trundles standing in holes at multiples of the tooth
+  pitch beginning at zero, so its ``driven_tooth`` is zero. Those two
+  lines in the caller are the whole of that library's convention; the
+  law does not fork.
 
 Getting a reference half a tooth wrong is the one error that looks like
 nothing: a wheel's teeth are as wide as its gaps, so the leaves land on
@@ -105,8 +103,8 @@ def cycloidal_ratio(lobes, pins):
     Physical use assumes positive integer lobes and pins > lobes. Counts
     are not rounded or validated; numeric zero lobes divide by zero.
     Numeric and supported deferred operands share the same arithmetic.
-    CycloidalDrive and OpenCycloid use (20, 21) to reduce disk/output spin
-    to -1/20 while their eccentric centers still orbit one-to-one.
+    A printed reducer with 20 lobes and 21 pins reduces disk/output spin
+    to -1/20 while its eccentric centre still orbits one-to-one.
     """
     return -(pins - lobes) / lobes
 
@@ -126,8 +124,9 @@ def internal_mesh_angle(ring_angle, ring_teeth, pinion_teeth, carrier_angle=0.0)
     raise ZeroDivisionError. Numeric and supported deferred values share
     the same formula, with no wrapping or geometry certification.
 
-    Thor uses (60,10) with fixed centers and local mounting signs.
-    OpenTorque uses (126,54), a fixed ring and moving carrier; its local
-    planet spin is this common-frame increment minus the carrier increment.
+    A moving 60-tooth ring over fixed-centre 10-tooth pinions keeps its
+    mounting signs in the caller. A planetary stage with a fixed 126-tooth
+    ring and 54-tooth planets on a moving carrier takes its local planet
+    spin as this common-frame increment minus the carrier increment.
     """
     return carrier_angle + (ring_teeth / pinion_teeth) * (ring_angle - carrier_angle)

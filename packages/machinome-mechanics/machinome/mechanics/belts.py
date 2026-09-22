@@ -22,9 +22,9 @@ def pulley_pitch_radius(teeth, pitch):
     rounding or clamping is performed: zero and signed inputs keep arithmetic
     behavior, and raw symbolic inputs retain the same definition.
 
-    Thor uses 2 mm GT2 pitch; Open Robot Actuator uses 3 mm AT3 pitch.
-    Printer callers keep their fitted pitch and subtract their own surface
-    allowance after this calculation. No tooth profile is generated here.
+    GT2 is 2 mm pitch; AT3 is 3 mm. A caller that fitted a loop's pitch
+    keeps that value and subtracts its own surface allowance after this
+    calculation. No tooth profile is generated here.
     """
     return teeth * pitch / (2 * pi)
 
@@ -44,7 +44,7 @@ def belt_tangent_points(centre_a, radius_a, centre_b, radius_b, sense_a=1, sense
     clamped. At limiting tangency the two contacts coincide. A zero radius
     yields its center. Raw symbolic coordinates/radii share the same law.
 
-    Thor and Prusa3-vanilla map their own belt-back turn markers to these
+    A caller with its own belt-back turn markers maps them to these
     explicit senses; this helper neither reads circles nor generates a belt.
     """
     points, _, _ = _tangent_geometry(centre_a, radius_a, centre_b, radius_b,
@@ -84,10 +84,10 @@ def belt_path_metrics(centres, radii, senses=None):
     zero-length spans retain a defined direction. Supported raw deferred
     coordinates/radii use the same formula; topology and senses are static.
 
-    Prusa and Hangprinter rotate arc_lengths by one entry for their
-    after-span arc indexing. Their turn strings, pitch fits and mounting
-    frames are not interpreted here; neither is Thor's legacy full-turn
-    policy at coincident contacts. No route discovery or belt mesh is done.
+    A caller that indexes arcs after spans rotates arc_lengths by one
+    entry. Turn strings, pitch fits and mounting frames are not interpreted
+    here; neither is any full-turn policy at coincident contacts. No route
+    discovery or belt mesh is done.
     """
     count = len(centres)
     if count < 2:
@@ -134,9 +134,10 @@ def belt_pulley_angle(belt_position, pitch_radius, contact_angle,
     At position == station the pulley's reference tooth points at contact_angle.
     Increasing belt position decreases angle for clockwise traversal.
 
-    Prusa subtracts travel from a measured tangent angle; Metamaquina2 Y's
-    reverse bend adds it. Their tooth references, fitted radius, clamp-to-path
-    conversion and machine mounting signs remain outside this law. Nothing
+    A pulley in the forward run subtracts travel from its measured tangent
+    angle; a reverse bend adds it. Tooth references, fitted radius,
+    clamp-to-path conversion and machine mounting signs remain outside this
+    law. Nothing
     wraps or clamps: multiple revolutions and signed radii retain arithmetic,
     zero numeric radius divides by zero, and supported deferred operands
     retain the same definition. Physical pitch radius is positive.

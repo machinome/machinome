@@ -12,13 +12,11 @@ to. The crank angle is measured from the along axis, positive by the
 right-hand rule about the crank axis, with zero at top dead centre.
 
 A caller whose crank axis is not this plane's normal maps the results
-with its own frame rotation. ``projects/v8-engine`` is this plane with
-``across = y`` and ``along = z``: its crank turns about +X with the pin
-at +Z at angle zero, and its ``pin_center_at``, ``rod_angle_at`` and
-``piston_height_at`` are the three functions below verbatim. That
-engine's bank offset and throw phases are not here -- they are the
-angle it passes in, which is the right place for a machine's own
-geometry.
+with its own frame rotation. A V8 engine, for instance, is this plane
+with ``across = y`` and ``along = z``: its crank turns about +X with the
+pin at +Z at angle zero. That engine's bank offset and throw phases are
+not here -- they are the angle it passes in, which is the right place
+for a machine's own geometry.
 
 The rod angle's sign is the one thing worth reading twice: it is the
 *negative* arcsine, so that a rod authored along the cylinder axis and

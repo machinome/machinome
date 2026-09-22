@@ -54,7 +54,8 @@ CONSUMER_PROJECTS = (
 
 
 def reader_facing_pages():
-    return sorted((ROOT / "docs").rglob("*.rst")) + [ROOT / "README.md"]
+    return (sorted((ROOT / "docs").rglob("*.rst")) + [ROOT / "README.md"]
+            + sorted((ROOT / "machinome_mechanics").glob("*.py")))
 
 
 def test_the_manual_states_the_release():
@@ -84,10 +85,11 @@ def test_the_manual_links_existing_framework_pages():
 
 
 def test_the_reference_names_no_consumer_projects():
+    """Manual pages and the docstrings help() shows describe machines by kind."""
     named = {
         (page.name, project)
         for page in reader_facing_pages()
-        for project in CONSUMER_PROJECTS
+        for project in CONSUMER_PROJECTS + ("projects/",)
         if project in page.read_text()
     }
     assert not named, sorted(named)

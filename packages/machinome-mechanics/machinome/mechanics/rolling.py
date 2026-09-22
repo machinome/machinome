@@ -6,9 +6,9 @@ Angles are unwrapped degrees, positive by the right-hand rule about the wheel
 axis. Positive travel follows its surface tangent in that rotational sense.
 Projects supply the sign that maps this tangent onto their rack, belt or rope
 axis, and add their own rest position. No slip or changing winding radius is
-modelled. Dragon R1 negates this travel for its rack; Thor uses it for belt
-travel at each pulley's pitch circle. The inverse gives Prusa3-vanilla and
-Kossel their belt-driven pulley/idler rotation; their phases and mounting
+modelled. A rack-and-pinion steering negates this travel for its rack; a
+belt drive uses it at each pulley's pitch circle. The inverse gives a
+printer its belt-driven pulley and idler rotation; phases and mounting
 signs remain outside the conversion.
 """
 

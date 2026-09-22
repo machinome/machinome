@@ -20,9 +20,10 @@ def harmonic_cam_lift(angle, lift, rise_span=180, return_span=180):
     Numeric and supported deferred values share this arithmetic definition.
     The clamps define the rise/return intervals, not tolerance correction.
 
-    Leonardo's hammer uses rise 240 and return 80, its physical cam return
-    45. Deepseek's sawmill uses 180/180 with lift twice its FEED_THROW.
-    This envelope neither generates a cam profile nor certifies contact.
+    A cam hammer may rise over 240 degrees and return over 80 while its
+    physical cam returns in 45; a sawmill feed cam uses 180/180 with a
+    lift of twice its named throw. This envelope neither generates a cam
+    profile nor certifies contact.
     """
     phase = angle - 360 * floor(angle / 360)
     rise = clamp01(phase / rise_span)

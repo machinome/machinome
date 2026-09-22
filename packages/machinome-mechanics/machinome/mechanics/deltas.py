@@ -10,8 +10,8 @@ effector. A point of the effector becomes three carriage heights, and
 each rod's pose follows from the same horizontal offset.
 
 ``radius`` is the horizontal distance from an effector joint to its
-carriage joint when the effector is at the origin -- ``delta_radius``
-in ``projects/kossel``. It is named that way because a delta has three
+carriage joint when the effector is at the origin -- the
+``delta_radius`` of delta-printer firmware. It is named that way because a delta has three
 radii that are easy to confuse (the tower circle, the carriage joints,
 the effector joints) and this is the one that closes the triangle: the
 tower's own radius less the effector's arm. Getting it from a drawing
@@ -24,9 +24,8 @@ are returned in the same frame.
 
 Why two rotations. :func:`delta_rod` returns a *tilt* and an *azimuth*
 rather than one angle about the perpendicular the lean actually happens
-about, and that is a finding about this framework, recorded in
-``projects/kossel``: a ``Rotation``'s axis is a constant, it cannot
-carry a driver symbol. A rod leaning toward a moving effector would need
+about, and that is a fact about this framework: a ``Rotation``'s axis
+is a constant, it cannot carry a driver symbol. A rod leaning toward a moving effector would need
 a computed axis, so instead it is posed by two rotations about constant
 axes -- by ``-tilt`` about Y, then by ``azimuth`` about Z -- which is
 the same pose and survives symbolically. The recipe works for a rod

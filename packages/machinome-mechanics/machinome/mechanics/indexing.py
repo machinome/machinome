@@ -24,9 +24,9 @@ def indexed_advance(angle, increment, stroke, phase_origin=0):
     equal increment plus stroke(phase_origin). No continuity correction,
     geometry, reset or mounting policy is inferred.
 
-    Pascaline uses origin 325 and its 36-degree cam stroke. Deepseek's sawmill
-    uses origin zero, a 7.5-degree tooth step and its hook-derived stroke,
-    then applies the four-turn reset outside this helper.
+    A calculator's carry uses origin 325 and its 36-degree cam stroke. A
+    ratchet-fed sawmill uses origin zero, a 7.5-degree tooth step and its
+    hook-derived stroke, then applies its reset outside this helper.
     """
     turns = floor((angle - phase_origin) / 360)
     phase = angle - 360 * turns

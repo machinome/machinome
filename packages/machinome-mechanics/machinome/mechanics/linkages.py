@@ -16,17 +16,16 @@ is working in; angles are degrees.
 one by a sign is only meaningful against a stated direction. Here the
 direction is from ``centre_a`` to ``centre_b``: ``side = 1`` is the
 intersection to its left (counter-clockwise from it), ``side = -1`` to
-its right. ``projects/3DPrintedClocks``'s grasshopper escapement calls
-this its ``branch``, and its ``nib_position(pivot, arm, branch, radius)``
-is ``circle_intersection((0, 0), radius, pivot, arm, branch)``.
+its right. A grasshopper escapement finds its nib this way, as
+``circle_intersection((0, 0), radius, pivot, arm, side)``.
 
 No guards. An unreachable configuration -- circles too far apart or one
 inside the other, a triangle whose sides do not close, a link shorter
 than its offset -- reaches ``sqrt`` or ``acos`` of an out-of-range value
 and raises numerically, exactly as ``machinome.math`` raises, and
 evaluates to NaN symbolically, exactly as OpenSCAD and the viewer do.
-That is what the originating projects do and it is the honest answer: a
-guard would have to invent a pose that does not exist.
+That is the honest answer: a guard would have to invent a pose that
+does not exist.
 """
 
 from machinome.math import acos, atan2, cos, sin, sqrt
@@ -80,8 +79,9 @@ def two_link_angles(x, y, first_length, second_length, side=1):
 
     Require nonzero target distance between the difference and sum of
     the lengths. Division/domain errors propagate numerically. Supported
-    deferred operands use exactly the same arithmetic. Spiderbot retains
-    its tibia offset; AlbertPro supplies (height, 0) after its own guard.
+    deferred operands use exactly the same arithmetic. A hexapod leg keeps
+    its tibia offset outside; a quadruped on a vertical leg supplies
+    (height, 0) after its own guard.
     """
     distance = sqrt(x * x + y * y)
     shoulder = atan2(y, x) + side * triangle_angle(
@@ -105,8 +105,9 @@ def four_bar_pose(angle, crank_pivot, rocker_pivot, crank_length,
     Neither promises continuous unwrapping. Domain/division errors propagate;
     numeric and supported deferred geometry share the same formula.
 
-    Dragon R1 keeps ride inversion and source-frame offsets; Strandbeest
-    uses the two selected closures before its remaining rigid triangles.
+    A double-wishbone suspension keeps its ride inversion and authored
+    offsets outside; a walking linkage takes its two selected closures
+    before its remaining rigid triangles.
     """
     bx = crank_pivot[0] + crank_length * cos(angle)
     by = crank_pivot[1] + crank_length * sin(angle)
