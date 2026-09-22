@@ -462,6 +462,11 @@ def apply_joint_motion(node, operations, slot):
     for offset, operation in enumerate(operations):
         operation._motion = True
         operation._joint_slot = slot
+        # Keep complete-block identity on the operations themselves, like
+        # their slot: a checkpoint may replace the list and a sweep may
+        # remove a subset. Contiguity alone cannot detect a cut-off pivot.
+        operation._joint_index = offset
+        operation._joint_length = len(operations)
         node.operations.insert(index + offset, operation)
         if phase is not None:
             _tag_operation(node, operation, phase)

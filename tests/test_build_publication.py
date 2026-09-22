@@ -207,7 +207,7 @@ class RenderVisibilityTest(TestCase):
 
 
 class RunningSnapshotWarningTest(TestCase):
-    """(7.4) The build publishes a version 5 document and warns once
+    """(7.4) The build publishes a version 11 document and warns once
     when the installed viewer does not list it."""
 
     def setUp(self):
@@ -247,13 +247,13 @@ class RunningSnapshotWarningTest(TestCase):
 
     def test_the_document_is_published_and_the_warning_is_one(self):
         document, records = self.published(
-            'document version 5; the installed viewer renders 1, 2, 3, 4 '
+            'document version 11; the installed viewer renders 1, 2, 3, 4 '
             '(machinome-viewer 0.1.0)')
-        self.assertEqual(document['version'], 5)
+        self.assertEqual(document['version'], 11)
         self.assertIn('program', document)
-        warnings = [line for line in records if 'document version 5' in line]
+        warnings = [line for line in records if 'document version 11' in line]
         self.assertEqual(len(warnings), 1, records)
 
     def test_a_viewer_that_can_read_it_is_not_warned_about(self):
         document, records = self.published(None)
-        self.assertEqual(document['version'], 5)
+        self.assertEqual(document['version'], 11)

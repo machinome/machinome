@@ -110,7 +110,14 @@ class Control:
         a joint of the DECLARING node, and poses it.
         """
         if isinstance(self.coordinate, PathRef):
-            return self.coordinate._walk(declaring)
+            # The terminal is the whole JOINT, not one of its coordinates.
+            # Drop that final segment even for a Free declaration, whose
+            # coordinate count may itself have been changed by an override.
+            path = self.coordinate
+            node = path._step(declaring, path.root._name, path.written)
+            for segment in path.segments[:-1]:
+                node = path._step(node, segment, path.written)
+            return node
         return declaring
 
     def check_declared_on(self, owner, name):
