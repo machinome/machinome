@@ -1,5 +1,7 @@
 ## Why
 
+**Experiment outcome, 22 September 2026:** Rejected after same-export performance checks. See `workflow/evidence/operating-curta-flat-bank-scope-rejected-2026-09-22.md`. No implementation was integrated; the proposed capability is not accepted.
+
 The OperatingCurta higher-counter export needs about 22 CPU seconds for the first 48 of 480 normal-duration crank ticks. A V8 profile attributes about 3 seconds of that window to repeatedly nesting the same qualified bank names for expression evaluation, plus associated garbage collection. The actual project needs a responsive crank without changing its two-second declared duration or any numerical behavior.
 
 ## What Changes
