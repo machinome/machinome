@@ -1,0 +1,1424 @@
+{
+  "framework_base": "e6a42c80e6dcc686c180b8a6d94037301c4213a5",
+  "status": "diagnosis, not implementation",
+  "runs": [
+    {
+      "log": "trace-carry-final.log",
+      "rows": [
+        {
+          "framework_module": "/home/asa/devel/machinome-studio/machinome/WTs/preserve-carry-across-graph-expansion/machinome/simulation/program.py"
+        },
+        {
+          "stations": 6,
+          "status": "completed",
+          "before": {
+            "bell.turn": -90,
+            "carriage_lift": 0,
+            "carriage_turn": 0,
+            "clearing": 0,
+            "crank.turn": -90,
+            "crank_angle": 90,
+            "digit": 0,
+            "height": 9,
+            "lever.travel": -4.2,
+            "lever_2.travel": 0,
+            "lever_3.travel": 0,
+            "lever_4.travel": 0,
+            "lever_5.travel": 0,
+            "ones.turn": 501.6,
+            "selector.turn": 0,
+            "shaft_10.turn": -196,
+            "shaft_2.turn": 133.6,
+            "shaft_3.turn": -14.399999999999999,
+            "shaft_4.turn": -76,
+            "shaft_5.turn": -96,
+            "shaft_6.turn": -116,
+            "shaft_7.turn": -136,
+            "shaft_8.turn": -156,
+            "shaft_9.turn": -176,
+            "tens.turn": 281.59999999999997,
+            "wheel_0.turn": -394.8,
+            "wheel_1.turn": -384.79999998999995,
+            "wheel_10.turn": -145.99999998,
+            "wheel_2.turn": -360.2500831,
+            "wheel_3.turn": -316.25008308,
+            "wheel_4.turn": -315.45008308,
+            "wheel_5.turn": -335.45008307,
+            "wheel_6.turn": -355.45008308,
+            "wheel_7.turn": -375.45008311,
+            "wheel_8.turn": -395.45008311,
+            "wheel_9.turn": -415.4500831,
+            "zero_setting": 0
+          },
+          "after": {
+            "bell.turn": -180,
+            "carriage_lift": 0,
+            "carriage_turn": 0,
+            "clearing": 0,
+            "crank.turn": -180,
+            "crank_angle": 180,
+            "digit": 0,
+            "height": 9,
+            "lever.travel": 0,
+            "lever_2.travel": 4.2,
+            "lever_3.travel": 4.2,
+            "lever_4.travel": 0,
+            "lever_5.travel": 0,
+            "ones.turn": 724,
+            "selector.turn": 0,
+            "shaft_10.turn": -196,
+            "shaft_2.turn": 684,
+            "shaft_3.turn": 561.6,
+            "shaft_4.turn": 413.59999999999997,
+            "shaft_5.turn": 265.6,
+            "shaft_6.turn": -116,
+            "shaft_7.turn": -136,
+            "shaft_8.turn": -156,
+            "shaft_9.turn": -176,
+            "tens.turn": 704,
+            "wheel_0.turn": -506,
+            "wheel_1.turn": -595.99999999,
+            "wheel_10.turn": -145.99999998,
+            "wheel_2.turn": -635.4500831,
+            "wheel_3.turn": -604.25008308,
+            "wheel_4.turn": -560.25008308,
+            "wheel_5.turn": -516.2500830700001,
+            "wheel_6.turn": -355.45008308,
+            "wheel_7.turn": -375.45008311,
+            "wheel_8.turn": -395.45008311,
+            "wheel_9.turn": -415.4500831,
+            "zero_setting": 0
+          },
+          "partitions": [
+            {
+              "members": [
+                "tens.turn",
+                "wheel_0.turn",
+                "wheel_1.turn",
+                "wheel_2.turn",
+                "wheel_3.turn",
+                "wheel_4.turn",
+                "wheel_5.turn",
+                "wheel_6.turn",
+                "wheel_7.turn",
+                "wheel_8.turn",
+                "wheel_9.turn",
+                "wheel_10.turn",
+                "lever.travel",
+                "shaft_2.turn",
+                "lever_2.travel",
+                "shaft_3.turn",
+                "lever_3.travel",
+                "shaft_4.turn",
+                "lever_4.travel",
+                "shaft_5.turn",
+                "lever_5.travel"
+              ],
+              "cuts": [
+                0,
+                1
+              ]
+            }
+          ],
+          "members": [
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -394.8,
+                "ones.turn": 501.6,
+                "tens.turn": 281.59999999999997
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 222.39999999999998,
+                "tens.turn": 0
+              },
+              "increment": -111.19999999999999,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -90,
+                "lever.travel": -4.2,
+                "wheel_0.turn": -394.8,
+                "wheel_1.turn": -384.79999998999995
+              },
+              "delta": {
+                "crank.turn": -90,
+                "lever.travel": 0,
+                "wheel_0.turn": -111.19999999999999,
+                "wheel_1.turn": 0
+              },
+              "increment": 4.2,
+              "landing": 0
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -90,
+                "lever.travel": -4.2
+              },
+              "delta": {
+                "crank.turn": -90,
+                "lever.travel": 4.2
+              },
+              "increment": 422.40000000000003,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -384.79999998999995,
+                "ones.turn": 501.6,
+                "tens.turn": 281.59999999999997
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 222.39999999999998,
+                "tens.turn": 422.40000000000003
+              },
+              "increment": -211.20000000000005,
+              "landing": null
+            }
+          ]
+        },
+        {
+          "stations": 7,
+          "status": "completed",
+          "before": {
+            "bell.turn": -90,
+            "carriage_lift": 0,
+            "carriage_turn": 0,
+            "clearing": 0,
+            "crank.turn": -90,
+            "crank_angle": 90,
+            "digit": 0,
+            "height": 9,
+            "lever.travel": -4.2,
+            "lever_2.travel": 0,
+            "lever_3.travel": 0,
+            "lever_4.travel": 0,
+            "lever_5.travel": 0,
+            "lever_6.travel": -4.2,
+            "ones.turn": 501.6,
+            "selector.turn": 0,
+            "shaft_10.turn": -196,
+            "shaft_2.turn": 133.6,
+            "shaft_3.turn": -14.399999999999999,
+            "shaft_4.turn": -76,
+            "shaft_5.turn": -96,
+            "shaft_6.turn": -116,
+            "shaft_7.turn": -136,
+            "shaft_8.turn": -156,
+            "shaft_9.turn": -176,
+            "tens.turn": 281.59999999999997,
+            "wheel_0.turn": -394.8,
+            "wheel_1.turn": -384.79999998999995,
+            "wheel_10.turn": -145.99999998,
+            "wheel_2.turn": -360.2500831,
+            "wheel_3.turn": -316.25008308,
+            "wheel_4.turn": -315.45008308,
+            "wheel_5.turn": -335.45008307,
+            "wheel_6.turn": -355.45008308,
+            "wheel_7.turn": -375.45008311,
+            "wheel_8.turn": -395.45008311,
+            "wheel_9.turn": -415.4500831,
+            "zero_setting": 0
+          },
+          "after": {
+            "bell.turn": -180,
+            "carriage_lift": 0,
+            "carriage_turn": 0,
+            "clearing": 0,
+            "crank.turn": -180,
+            "crank_angle": 180,
+            "digit": 0,
+            "height": 9,
+            "lever.travel": 0,
+            "lever_2.travel": 4.2,
+            "lever_3.travel": 4.2,
+            "lever_4.travel": 0,
+            "lever_5.travel": 0,
+            "lever_6.travel": -4.2,
+            "ones.turn": 724,
+            "selector.turn": 0,
+            "shaft_10.turn": -196,
+            "shaft_2.turn": 684,
+            "shaft_3.turn": 561.6,
+            "shaft_4.turn": 413.59999999999997,
+            "shaft_5.turn": 265.6,
+            "shaft_6.turn": 117.6,
+            "shaft_7.turn": -136,
+            "shaft_8.turn": -156,
+            "shaft_9.turn": -176,
+            "tens.turn": 698.4639999999999,
+            "wheel_0.turn": -506,
+            "wheel_1.turn": -593.23199999,
+            "wheel_10.turn": -145.99999998,
+            "wheel_2.turn": -635.4500831,
+            "wheel_3.turn": -604.25008308,
+            "wheel_4.turn": -560.25008308,
+            "wheel_5.turn": -516.2500830700001,
+            "wheel_6.turn": -472.25008308,
+            "wheel_7.turn": -375.45008311,
+            "wheel_8.turn": -395.45008311,
+            "wheel_9.turn": -415.4500831,
+            "zero_setting": 0
+          },
+          "partitions": [
+            {
+              "members": [
+                "tens.turn",
+                "wheel_0.turn",
+                "wheel_1.turn",
+                "wheel_2.turn",
+                "wheel_3.turn",
+                "wheel_4.turn",
+                "wheel_5.turn",
+                "wheel_6.turn",
+                "wheel_7.turn",
+                "wheel_8.turn",
+                "wheel_9.turn",
+                "wheel_10.turn",
+                "lever.travel",
+                "shaft_2.turn",
+                "lever_2.travel",
+                "shaft_3.turn",
+                "lever_3.travel",
+                "shaft_4.turn",
+                "lever_4.travel",
+                "shaft_5.turn",
+                "lever_5.travel",
+                "shaft_6.turn",
+                "lever_6.travel"
+              ],
+              "cuts": [
+                0,
+                0.06666666666666667,
+                1
+              ]
+            }
+          ],
+          "members": [
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -394.8,
+                "ones.turn": 501.6,
+                "tens.turn": 281.59999999999997
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 14.826666666666664,
+                "tens.turn": 0
+              },
+              "increment": -7.413333333333355,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -90,
+                "lever.travel": -4.2,
+                "wheel_0.turn": -394.8,
+                "wheel_1.turn": -384.79999998999995
+              },
+              "delta": {
+                "crank.turn": -6,
+                "lever.travel": 0,
+                "wheel_0.turn": -7.413333333333355,
+                "wheel_1.turn": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -90,
+                "lever.travel": -4.2
+              },
+              "delta": {
+                "crank.turn": -6,
+                "lever.travel": 0
+              },
+              "increment": 38.39999999999998,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -384.79999998999995,
+                "ones.turn": 501.6,
+                "tens.turn": 281.59999999999997
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 14.826666666666664,
+                "tens.turn": 38.39999999999998
+              },
+              "increment": -19.200000000000045,
+              "landing": null
+            },
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -402.21333333333337,
+                "ones.turn": 516.4266666666667,
+                "tens.turn": 319.99999999999994
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 207.57333333333332,
+                "tens.turn": 0
+              },
+              "increment": -103.78666666666663,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -96,
+                "lever.travel": -4.2,
+                "wheel_0.turn": -402.21333333333337,
+                "wheel_1.turn": -403.99999999
+              },
+              "delta": {
+                "crank.turn": -84,
+                "lever.travel": 0,
+                "wheel_0.turn": -103.78666666666663,
+                "wheel_1.turn": 0
+              },
+              "increment": 4.2,
+              "landing": 0
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -96,
+                "lever.travel": -4.2
+              },
+              "delta": {
+                "crank.turn": -84,
+                "lever.travel": 4.2
+              },
+              "increment": 378.464,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -403.99999999,
+                "ones.turn": 516.4266666666667,
+                "tens.turn": 319.99999999999994
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 207.57333333333332,
+                "tens.turn": 378.464
+              },
+              "increment": -189.23199999999997,
+              "landing": null
+            }
+          ]
+        },
+        {
+          "stations": 11,
+          "status": "completed",
+          "before": {
+            "bell.turn": -90,
+            "carriage_lift": 0,
+            "carriage_turn": 0,
+            "clearing": 0,
+            "crank.turn": -90,
+            "crank_angle": 90,
+            "digit": 0,
+            "height": 9,
+            "lever.travel": -4.2,
+            "lever_10.travel": -4.2,
+            "lever_2.travel": 0,
+            "lever_3.travel": 0,
+            "lever_4.travel": 0,
+            "lever_5.travel": 0,
+            "lever_6.travel": -4.2,
+            "lever_7.travel": 0,
+            "lever_8.travel": -4.2,
+            "lever_9.travel": -4.2,
+            "ones.turn": 501.6,
+            "selector.turn": 0,
+            "shaft_10.turn": -196,
+            "shaft_2.turn": 133.6,
+            "shaft_3.turn": -14.399999999999999,
+            "shaft_4.turn": -76,
+            "shaft_5.turn": -96,
+            "shaft_6.turn": -116,
+            "shaft_7.turn": -136,
+            "shaft_8.turn": -156,
+            "shaft_9.turn": -176,
+            "tens.turn": 281.59999999999997,
+            "wheel_0.turn": -394.8,
+            "wheel_1.turn": -384.79999998999995,
+            "wheel_10.turn": -145.99999998,
+            "wheel_2.turn": -360.2500831,
+            "wheel_3.turn": -316.25008308,
+            "wheel_4.turn": -315.45008308,
+            "wheel_5.turn": -335.45008307,
+            "wheel_6.turn": -355.45008308,
+            "wheel_7.turn": -375.45008311,
+            "wheel_8.turn": -395.45008311,
+            "wheel_9.turn": -415.4500831,
+            "zero_setting": 0
+          },
+          "after": {
+            "bell.turn": -180,
+            "carriage_lift": 0,
+            "carriage_turn": 0,
+            "clearing": 0,
+            "crank.turn": -180,
+            "crank_angle": 180,
+            "digit": 0,
+            "height": 9,
+            "lever.travel": 0,
+            "lever_10.travel": -4.2,
+            "lever_2.travel": 1.1630814999999979,
+            "lever_3.travel": 1.163081500000006,
+            "lever_4.travel": 0,
+            "lever_5.travel": 0,
+            "lever_6.travel": -4.2,
+            "lever_7.travel": 0,
+            "lever_8.travel": -4.2,
+            "lever_9.travel": -4.2,
+            "ones.turn": 724,
+            "selector.turn": 0,
+            "shaft_10.turn": -196,
+            "shaft_2.turn": 612,
+            "shaft_3.turn": 561.6000000000001,
+            "shaft_4.turn": 413.59999999999997,
+            "shaft_5.turn": 265.6,
+            "shaft_6.turn": 117.6,
+            "shaft_7.turn": -30.39999999999999,
+            "shaft_8.turn": -156,
+            "shaft_9.turn": -176,
+            "tens.turn": 632,
+            "wheel_0.turn": -506,
+            "wheel_1.turn": -559.99999999,
+            "wheel_10.turn": -145.99999998,
+            "wheel_2.turn": -599.4500831,
+            "wheel_3.turn": -604.25008308,
+            "wheel_4.turn": -560.25008308,
+            "wheel_5.turn": -516.2500830700001,
+            "wheel_6.turn": -472.25008308,
+            "wheel_7.turn": -428.25008311,
+            "wheel_8.turn": -395.45008311,
+            "wheel_9.turn": -415.4500831,
+            "zero_setting": 0
+          },
+          "partitions": [
+            {
+              "members": [
+                "tens.turn",
+                "wheel_0.turn",
+                "wheel_1.turn",
+                "wheel_2.turn",
+                "wheel_3.turn",
+                "wheel_4.turn",
+                "wheel_5.turn",
+                "wheel_6.turn",
+                "wheel_7.turn",
+                "wheel_8.turn",
+                "wheel_9.turn",
+                "wheel_10.turn",
+                "lever.travel",
+                "shaft_2.turn",
+                "lever_2.travel",
+                "shaft_3.turn",
+                "lever_3.travel",
+                "shaft_4.turn",
+                "lever_4.travel",
+                "shaft_5.turn",
+                "lever_5.travel",
+                "shaft_6.turn",
+                "lever_6.travel",
+                "shaft_7.turn",
+                "lever_7.travel",
+                "shaft_8.turn",
+                "lever_8.travel",
+                "shaft_9.turn",
+                "lever_9.travel",
+                "shaft_10.turn",
+                "lever_10.travel"
+              ],
+              "cuts": [
+                0,
+                0.06666666666666667,
+                0.14444444444444443,
+                0.28888888888888886,
+                0.36666666666666664,
+                0.5111111111111111,
+                0.5888888888888889,
+                0.7333333333333334,
+                0.8111111111111111,
+                0.9555555555555556,
+                1
+              ]
+            }
+          ],
+          "members": [
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -394.8,
+                "ones.turn": 501.6,
+                "tens.turn": 281.59999999999997
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 14.826666666666664,
+                "tens.turn": 0
+              },
+              "increment": -7.413333333333355,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -90,
+                "lever.travel": -4.2,
+                "wheel_0.turn": -394.8,
+                "wheel_1.turn": -384.79999998999995
+              },
+              "delta": {
+                "crank.turn": -6,
+                "lever.travel": 0,
+                "wheel_0.turn": -7.413333333333355,
+                "wheel_1.turn": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -90,
+                "lever.travel": -4.2
+              },
+              "delta": {
+                "crank.turn": -6,
+                "lever.travel": 0
+              },
+              "increment": 38.39999999999998,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -384.79999998999995,
+                "ones.turn": 501.6,
+                "tens.turn": 281.59999999999997
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 14.826666666666664,
+                "tens.turn": 38.39999999999998
+              },
+              "increment": -19.200000000000045,
+              "landing": null
+            },
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -402.21333333333337,
+                "ones.turn": 516.4266666666667,
+                "tens.turn": 319.99999999999994
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 17.297777777777775,
+                "tens.turn": 0
+              },
+              "increment": -8.648888888888905,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -96,
+                "lever.travel": -4.2,
+                "wheel_0.turn": -402.21333333333337,
+                "wheel_1.turn": -403.99999999
+              },
+              "delta": {
+                "crank.turn": -6.999999999999999,
+                "lever.travel": 0,
+                "wheel_0.turn": -8.648888888888905,
+                "wheel_1.turn": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -96,
+                "lever.travel": -4.2
+              },
+              "delta": {
+                "crank.turn": -6.999999999999999,
+                "lever.travel": 0
+              },
+              "increment": 44.800000000000125,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -403.99999999,
+                "ones.turn": 516.4266666666667,
+                "tens.turn": 319.99999999999994
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 17.297777777777775,
+                "tens.turn": 44.800000000000125
+              },
+              "increment": -22.400000000000034,
+              "landing": null
+            },
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -410.8622222222223,
+                "ones.turn": 533.7244444444444,
+                "tens.turn": 364.80000000000007
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 32.124444444444435,
+                "tens.turn": 0
+              },
+              "increment": -16.062222222222204,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -103,
+                "lever.travel": -4.2,
+                "wheel_0.turn": -410.8622222222223,
+                "wheel_1.turn": -426.39999999
+              },
+              "delta": {
+                "crank.turn": -12.999999999999998,
+                "lever.travel": 0,
+                "wheel_0.turn": -16.062222222222204,
+                "wheel_1.turn": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -103,
+                "lever.travel": -4.2
+              },
+              "delta": {
+                "crank.turn": -12.999999999999998,
+                "lever.travel": 0
+              },
+              "increment": 83.19999999999987,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -426.39999999,
+                "ones.turn": 533.7244444444444,
+                "tens.turn": 364.80000000000007
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 32.124444444444435,
+                "tens.turn": 83.19999999999987
+              },
+              "increment": -41.599999999999966,
+              "landing": null
+            },
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -426.9244444444445,
+                "ones.turn": 565.848888888889,
+                "tens.turn": 447.99999999999994
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 17.297777777777775,
+                "tens.turn": 0
+              },
+              "increment": -8.648888888888905,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -116,
+                "lever.travel": -4.2,
+                "wheel_0.turn": -426.9244444444445,
+                "wheel_1.turn": -467.99999999
+              },
+              "delta": {
+                "crank.turn": -7,
+                "lever.travel": 0,
+                "wheel_0.turn": -8.648888888888905,
+                "wheel_1.turn": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -116,
+                "lever.travel": -4.2
+              },
+              "delta": {
+                "crank.turn": -7,
+                "lever.travel": 0
+              },
+              "increment": 44.80000000000001,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -467.99999999,
+                "ones.turn": 565.848888888889,
+                "tens.turn": 447.99999999999994
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 17.297777777777775,
+                "tens.turn": 44.80000000000001
+              },
+              "increment": -22.399999999999977,
+              "landing": null
+            },
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -435.5733333333334,
+                "ones.turn": 583.1466666666666,
+                "tens.turn": 492.79999999999995
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 32.124444444444435,
+                "tens.turn": 0
+              },
+              "increment": -16.062222222222204,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -123,
+                "lever.travel": -4.2,
+                "wheel_0.turn": -435.5733333333334,
+                "wheel_1.turn": -490.39999998999997
+              },
+              "delta": {
+                "crank.turn": -12.999999999999998,
+                "lever.travel": 0,
+                "wheel_0.turn": -16.062222222222204,
+                "wheel_1.turn": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -123,
+                "lever.travel": -4.2
+              },
+              "delta": {
+                "crank.turn": -12.999999999999998,
+                "lever.travel": 0
+              },
+              "increment": 83.20000000000005,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -490.39999998999997,
+                "ones.turn": 583.1466666666666,
+                "tens.turn": 492.79999999999995
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 32.124444444444435,
+                "tens.turn": 83.20000000000005
+              },
+              "increment": -41.60000000000002,
+              "landing": null
+            },
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -451.6355555555556,
+                "ones.turn": 615.2711111111112,
+                "tens.turn": 576
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 17.29777777777779,
+                "tens.turn": 0
+              },
+              "increment": -8.648888888888905,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -136,
+                "lever.travel": -4.2,
+                "wheel_0.turn": -451.6355555555556,
+                "wheel_1.turn": -531.99999999
+              },
+              "delta": {
+                "crank.turn": -7.000000000000005,
+                "lever.travel": 0,
+                "wheel_0.turn": -8.648888888888905,
+                "wheel_1.turn": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -136,
+                "lever.travel": -4.2
+              },
+              "delta": {
+                "crank.turn": -7.000000000000005,
+                "lever.travel": 0
+              },
+              "increment": 44.80000000000007,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -531.99999999,
+                "ones.turn": 615.2711111111112,
+                "tens.turn": 576
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 17.29777777777779,
+                "tens.turn": 44.80000000000007
+              },
+              "increment": -22.399999999999977,
+              "landing": null
+            },
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -460.2844444444445,
+                "ones.turn": 632.5688888888889,
+                "tens.turn": 620.8000000000001
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 32.12444444444445,
+                "tens.turn": 0
+              },
+              "increment": -16.062222222222204,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -143,
+                "lever.travel": -4.2,
+                "wheel_0.turn": -460.2844444444445,
+                "wheel_1.turn": -554.39999999
+              },
+              "delta": {
+                "crank.turn": -13.000000000000004,
+                "lever.travel": 0,
+                "wheel_0.turn": -16.062222222222204,
+                "wheel_1.turn": 0
+              },
+              "increment": 1.96097240740741,
+              "landing": null
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -143,
+                "lever.travel": -4.2
+              },
+              "delta": {
+                "crank.turn": -13.000000000000004,
+                "lever.travel": 1.96097240740741
+              },
+              "increment": 11.199999999999932,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -554.39999999,
+                "ones.turn": 632.5688888888889,
+                "tens.turn": 620.8000000000001
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 32.12444444444445,
+                "tens.turn": 11.199999999999932
+              },
+              "increment": -5.600000000000023,
+              "landing": null
+            },
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -476.3466666666667,
+                "ones.turn": 664.6933333333334,
+                "tens.turn": 632
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 17.297777777777764,
+                "tens.turn": 0
+              },
+              "increment": -8.648888888888905,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -156,
+                "lever.travel": -2.23902759259259,
+                "wheel_0.turn": -476.3466666666667,
+                "wheel_1.turn": -559.99999999
+              },
+              "delta": {
+                "crank.turn": -6.999999999999995,
+                "lever.travel": 0,
+                "wheel_0.turn": -8.648888888888905,
+                "wheel_1.turn": 0
+              },
+              "increment": 2.23902759259259,
+              "landing": 0
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -156,
+                "lever.travel": -2.23902759259259
+              },
+              "delta": {
+                "crank.turn": -6.999999999999995,
+                "lever.travel": 2.23902759259259
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -559.99999999,
+                "ones.turn": 664.6933333333334,
+                "tens.turn": 632
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 17.297777777777764,
+                "tens.turn": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -484.9955555555556,
+                "ones.turn": 681.9911111111111,
+                "tens.turn": 632
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 32.12444444444445,
+                "tens.turn": 0
+              },
+              "increment": -16.062222222222204,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -163,
+                "lever.travel": 0,
+                "wheel_0.turn": -484.9955555555556,
+                "wheel_1.turn": -559.99999999
+              },
+              "delta": {
+                "crank.turn": -13.000000000000004,
+                "lever.travel": 0,
+                "wheel_0.turn": -16.062222222222204,
+                "wheel_1.turn": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -163,
+                "lever.travel": 0
+              },
+              "delta": {
+                "crank.turn": -13.000000000000004,
+                "lever.travel": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -559.99999999,
+                "ones.turn": 681.9911111111111,
+                "tens.turn": 632
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 32.12444444444445,
+                "tens.turn": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -501.0577777777778,
+                "ones.turn": 714.1155555555556,
+                "tens.turn": 632
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 9.884444444444433,
+                "tens.turn": 0
+              },
+              "increment": -4.942222222222199,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -176,
+                "lever.travel": 0,
+                "wheel_0.turn": -501.0577777777778,
+                "wheel_1.turn": -559.99999999
+              },
+              "delta": {
+                "crank.turn": -3.9999999999999956,
+                "lever.travel": 0,
+                "wheel_0.turn": -4.942222222222199,
+                "wheel_1.turn": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -176,
+                "lever.travel": 0
+              },
+              "delta": {
+                "crank.turn": -3.9999999999999956,
+                "lever.travel": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -559.99999999,
+                "ones.turn": 714.1155555555556,
+                "tens.turn": 632
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 9.884444444444433,
+                "tens.turn": 0
+              },
+              "increment": 0,
+              "landing": null
+            }
+          ]
+        },
+        {
+          "complete": true
+        }
+      ]
+    },
+    {
+      "log": "trace-carry-extra-cut.log",
+      "rows": [
+        {
+          "framework_module": "/home/asa/devel/machinome-studio/machinome/WTs/preserve-carry-across-graph-expansion/machinome/simulation/program.py"
+        },
+        {
+          "stations": 6,
+          "injected_cut": 0.06666666666666667,
+          "status": "completed",
+          "before": {
+            "bell.turn": -90,
+            "carriage_lift": 0,
+            "carriage_turn": 0,
+            "clearing": 0,
+            "crank.turn": -90,
+            "crank_angle": 90,
+            "digit": 0,
+            "height": 9,
+            "lever.travel": -4.2,
+            "lever_2.travel": 0,
+            "lever_3.travel": 0,
+            "lever_4.travel": 0,
+            "lever_5.travel": 0,
+            "ones.turn": 501.6,
+            "selector.turn": 0,
+            "shaft_10.turn": -196,
+            "shaft_2.turn": 133.6,
+            "shaft_3.turn": -14.399999999999999,
+            "shaft_4.turn": -76,
+            "shaft_5.turn": -96,
+            "shaft_6.turn": -116,
+            "shaft_7.turn": -136,
+            "shaft_8.turn": -156,
+            "shaft_9.turn": -176,
+            "tens.turn": 281.59999999999997,
+            "wheel_0.turn": -394.8,
+            "wheel_1.turn": -384.79999998999995,
+            "wheel_10.turn": -145.99999998,
+            "wheel_2.turn": -360.2500831,
+            "wheel_3.turn": -316.25008308,
+            "wheel_4.turn": -315.45008308,
+            "wheel_5.turn": -335.45008307,
+            "wheel_6.turn": -355.45008308,
+            "wheel_7.turn": -375.45008311,
+            "wheel_8.turn": -395.45008311,
+            "wheel_9.turn": -415.4500831,
+            "zero_setting": 0
+          },
+          "after": {
+            "bell.turn": -180,
+            "carriage_lift": 0,
+            "carriage_turn": 0,
+            "clearing": 0,
+            "crank.turn": -180,
+            "crank_angle": 180,
+            "digit": 0,
+            "height": 9,
+            "lever.travel": 0,
+            "lever_2.travel": 4.2,
+            "lever_3.travel": 4.2,
+            "lever_4.travel": 0,
+            "lever_5.travel": 0,
+            "ones.turn": 724,
+            "selector.turn": 0,
+            "shaft_10.turn": -196,
+            "shaft_2.turn": 684,
+            "shaft_3.turn": 561.6,
+            "shaft_4.turn": 413.59999999999997,
+            "shaft_5.turn": 265.6,
+            "shaft_6.turn": -116,
+            "shaft_7.turn": -136,
+            "shaft_8.turn": -156,
+            "shaft_9.turn": -176,
+            "tens.turn": 698.4639999999999,
+            "wheel_0.turn": -506,
+            "wheel_1.turn": -593.23199999,
+            "wheel_10.turn": -145.99999998,
+            "wheel_2.turn": -635.4500831,
+            "wheel_3.turn": -604.25008308,
+            "wheel_4.turn": -560.25008308,
+            "wheel_5.turn": -516.2500830700001,
+            "wheel_6.turn": -355.45008308,
+            "wheel_7.turn": -375.45008311,
+            "wheel_8.turn": -395.45008311,
+            "wheel_9.turn": -415.4500831,
+            "zero_setting": 0
+          },
+          "partitions": [
+            {
+              "members": [
+                "tens.turn",
+                "wheel_0.turn",
+                "wheel_1.turn",
+                "wheel_2.turn",
+                "wheel_3.turn",
+                "wheel_4.turn",
+                "wheel_5.turn",
+                "wheel_6.turn",
+                "wheel_7.turn",
+                "wheel_8.turn",
+                "wheel_9.turn",
+                "wheel_10.turn",
+                "lever.travel",
+                "shaft_2.turn",
+                "lever_2.travel",
+                "shaft_3.turn",
+                "lever_3.travel",
+                "shaft_4.turn",
+                "lever_4.travel",
+                "shaft_5.turn",
+                "lever_5.travel"
+              ],
+              "cuts": [
+                0,
+                0.06666666666666667,
+                1
+              ]
+            }
+          ],
+          "members": [
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -394.8,
+                "ones.turn": 501.6,
+                "tens.turn": 281.59999999999997
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 14.826666666666664,
+                "tens.turn": 0
+              },
+              "increment": -7.413333333333355,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -90,
+                "lever.travel": -4.2,
+                "wheel_0.turn": -394.8,
+                "wheel_1.turn": -384.79999998999995
+              },
+              "delta": {
+                "crank.turn": -6,
+                "lever.travel": 0,
+                "wheel_0.turn": -7.413333333333355,
+                "wheel_1.turn": 0
+              },
+              "increment": 0,
+              "landing": null
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -90,
+                "lever.travel": -4.2
+              },
+              "delta": {
+                "crank.turn": -6,
+                "lever.travel": 0
+              },
+              "increment": 38.39999999999998,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -384.79999998999995,
+                "ones.turn": 501.6,
+                "tens.turn": 281.59999999999997
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 14.826666666666664,
+                "tens.turn": 38.39999999999998
+              },
+              "increment": -19.200000000000045,
+              "landing": null
+            },
+            {
+              "driven": "wheel_0.turn",
+              "start": {
+                "wheel_0.turn": -402.21333333333337,
+                "ones.turn": 516.4266666666667,
+                "tens.turn": 319.99999999999994
+              },
+              "delta": {
+                "wheel_0.turn": 0,
+                "ones.turn": 207.57333333333332,
+                "tens.turn": 0
+              },
+              "increment": -103.78666666666663,
+              "landing": null
+            },
+            {
+              "driven": "lever.travel",
+              "start": {
+                "crank.turn": -96,
+                "lever.travel": -4.2,
+                "wheel_0.turn": -402.21333333333337,
+                "wheel_1.turn": -403.99999999
+              },
+              "delta": {
+                "crank.turn": -84,
+                "lever.travel": 0,
+                "wheel_0.turn": -103.78666666666663,
+                "wheel_1.turn": 0
+              },
+              "increment": 4.2,
+              "landing": 0
+            },
+            {
+              "driven": "tens.turn",
+              "start": {
+                "crank.turn": -96,
+                "lever.travel": -4.2
+              },
+              "delta": {
+                "crank.turn": -84,
+                "lever.travel": 4.2
+              },
+              "increment": 378.464,
+              "landing": null
+            },
+            {
+              "driven": "wheel_1.turn",
+              "start": {
+                "wheel_1.turn": -403.99999999,
+                "ones.turn": 516.4266666666667,
+                "tens.turn": 319.99999999999994
+              },
+              "delta": {
+                "wheel_1.turn": 0,
+                "ones.turn": 207.57333333333332,
+                "tens.turn": 378.464
+              },
+              "increment": -189.23199999999997,
+              "landing": null
+            }
+          ]
+        },
+        {
+          "complete": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,199 @@
+{
+  "framework_module": "/home/asa/devel/machinome-studio/machinome/WTs/preserve-carry-across-graph-expansion/machinome/simulation/program.py",
+  "runs": [
+    {
+      "model": "ShiftedCarry",
+      "portions": 1,
+      "requests": [
+        {
+          "status": "completed",
+          "admitted": 4
+        }
+      ],
+      "bank": {
+        "carry.travel": 1,
+        "clearing": 0,
+        "crank": 4,
+        "higher.turn": 2,
+        "lower.turn": 4,
+        "shift": 0
+      },
+      "blocks": 1
+    },
+    {
+      "model": "ShiftedCarry",
+      "portions": 16,
+      "requests": [
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        }
+      ],
+      "bank": {
+        "carry.travel": 1,
+        "clearing": 0,
+        "crank": 4,
+        "higher.turn": 3.5,
+        "lower.turn": 4,
+        "shift": 0
+      },
+      "blocks": 1
+    },
+    {
+      "model": "FixedZero",
+      "portions": 1,
+      "requests": [
+        {
+          "status": "completed",
+          "admitted": 4
+        }
+      ],
+      "bank": {
+        "carry.travel": 1,
+        "clearing": 0,
+        "crank": 4,
+        "higher.turn": 2,
+        "lower.turn": 4
+      },
+      "blocks": 0
+    },
+    {
+      "model": "FixedZero",
+      "portions": 16,
+      "requests": [
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        },
+        {
+          "status": "completed",
+          "admitted": 0.25
+        }
+      ],
+      "bank": {
+        "carry.travel": 1,
+        "clearing": 0,
+        "crank": 4,
+        "higher.turn": 3.5,
+        "lower.turn": 4
+      },
+      "blocks": 0
+    }
+  ]
+}
