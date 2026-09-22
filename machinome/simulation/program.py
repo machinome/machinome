@@ -2612,6 +2612,15 @@ class Program:
         # exist only now. Derived, with no decision in them, so a
         # document publishes neither (ADR-110).
         self.constraints = self._constraint_table(bound_reads or {})
+        # A Bound reads the actual path of a coordinate just as a later
+        # edge does.  Demand that path even when no edge consumes it;
+        # otherwise its search has to replay the entire determiner prefix
+        # at every sample.  The search still replays if no path is known.
+        self._path_demand = frozenset(
+            {key for edge in self.edges for key in edge.needs
+             if key not in edge.gives}
+            | {self.keys[read] for constraint in self.constraints.values()
+               for read in constraint.reads})
         self.identity = hashlib.sha256(
             self.described().encode()).hexdigest()
 
@@ -2755,9 +2764,8 @@ class Program:
     def deltas_of(self, admissions):
         """One displacement per input, zero everywhere else."""
         from .trajectory import Propagation
-        demanded = {key for edge in self.edges for key in edge.needs
-                    if key not in edge.gives}
-        deltas = Propagation({key: 0.0 for key in self.nodes}, demanded)
+        deltas = Propagation({key: 0.0 for key in self.nodes},
+                             self._path_demand)
         for input_id, delta in admissions.items():
             if delta:
                 deltas[self.source_keys[input_id]] = delta

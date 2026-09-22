@@ -216,6 +216,25 @@ The framework SHALL evaluate an expression path at each new piece using that pie
 - **WHEN** a required read has no determined motion path
 - **THEN** the constraint still replays its sub-program at each existing search fraction, retaining the same result and refusal behavior
 
+### Requirement: Running Bound reads demand their actual motion paths
+
+A running constraint's declared read coordinates SHALL count as consumers of their determined motion paths during propagation. When a read's determiner can provide a path, the existing bound search SHALL sample that actual path at the same fractions and in the same order as its prefix replay would, with the bound's own coordinate held at its original tick-start value. All resulting level float bits, first errors, stops, records and committed bank values SHALL remain unchanged. A read for which propagation has no determined path, including an untraced Play descendant, SHALL retain the existing prefix replay; the engine SHALL NOT infer a chord from endpoint values.
+
+#### Scenario: A retained own-read law feeds a crank Bound
+
+- **WHEN** a retained law reads the coordinate it drives and its output is named only by a running Bound, not by another edge
+- **THEN** the Bound receives the law's actual piecewise motion path and each existing search sample gives the same level float as prefix replay
+
+#### Scenario: A read cannot supply a determined path
+
+- **WHEN** a bound reads a Play descendant or another coordinate for which no actual motion path was determined
+- **THEN** every existing search fraction still replays the complete required prefix and retains its result and refusal behavior
+
+#### Scenario: Ordinary motion and a stopped withdrawal
+
+- **WHEN** the same machine completes a free crank turn or reaches a moving-read physical stop
+- **THEN** all search levels, stop attribution and bank values match the previous execution, with no change to dt, samples, tolerances or authored laws
+
 ### Requirement: Repeated path samples reuse immutable numeric operations
 
 After a path has been bound successfully, repeated samples of the same immutable moving cone SHALL reuse its operation classification and operand positions. Each sample SHALL still read its current moving inputs and the current piece's standing values, evaluate the same nodes in the same postorder with the same numeric operators and operand order, and report the same first error. Binding a new piece SHALL refresh standing values; a failed binding SHALL NOT publish partial values or structure. This optimization SHALL NOT retain discarded paths or change the number of evaluated path points.
