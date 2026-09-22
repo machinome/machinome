@@ -41,7 +41,7 @@ from .driver import RampProgram
 from .program import (CLOCK_NAME, Constraint, compile_program,
                       LandingInvariantError, qualified_coordinates, Stop,
                       TooManyCrossings, UnsupportedLaw, _BISECTION_ROUNDS,
-                      _CROSSING_TOLERANCE, _SUBDIVISIONS)
+                      _CROSSING_TOLERANCE, _PathValue, _SUBDIVISIONS)
 
 
 # Two increments agree when they are within this of each other,
@@ -872,6 +872,23 @@ class Run:
         traced = deltas is not None and all(
             key in motions or key not in self.program.determiner
             for key in keys.values())
+        if traced:
+            moving = set()
+            for read in constraint.reads:
+                key = keys[read]
+                if key in motions:
+                    motion = motions[key]
+                    # Motion.constant uses numeric equality. Its cached
+                    # endpoints can still be opposite signed zeros, which
+                    # the bound must read as two distinct float operands.
+                    if (not motion.constant or
+                            (motion.start == 0.0 and motion.end == 0.0 and
+                             math.copysign(1.0, motion.start) !=
+                             math.copysign(1.0, motion.end))):
+                        moving.add(read)
+                elif deltas[key]:
+                    moving.add(read)
+            bound_path = _PathValue(constraint.graph, moving)
 
         def level(t):
             if traced:
@@ -881,7 +898,8 @@ class Run:
                             else values[key] + deltas[key]*t)
                 arguments = {read: at(read) for read in constraint.reads}
                 arguments[constraint.identifier] = own
-                bound = constraint.graph.evaluate(arguments)
+                bound = (bound_path.bind(arguments) if bound_path.order is None
+                         else bound_path.at(arguments))
                 value = at(constraint.identifier)
                 return (value-bound if constraint.side == 'high'
                         else bound-value)

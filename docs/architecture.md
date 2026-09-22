@@ -1106,6 +1106,12 @@ call sites; `_KinkCuts.between`'s own kink levels stay on
 small for this to help. No cache outlives the tick that built it, and
 a machine whose followed quantities move entirely, or whose graphs are
 small, pays only that one classification walk per graph per tick.
+The running bound search also uses one search-local path value when ADR-137
+has determined every required read path: its first level binds the complete
+bound graph eagerly, later samples follow only read names whose actual paths
+move, and the bound's own coordinate remains the tick-start value. A read
+without a determined path keeps the existing sub-program replay; no search
+sample or tolerance changes.
 
 Mixed moving contacts also admit a conservative zero-motion certificate
 (ADR-136). Exact rational affine composition of the skeleton increment into

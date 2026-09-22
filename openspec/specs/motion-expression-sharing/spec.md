@@ -164,7 +164,7 @@ The framework SHALL evaluate a shared expression against each supplied input map
 
 ### Requirement: Rebinding an expression path uses current piece values
 
-The framework SHALL evaluate an expression path at each new piece using that piece's current inputs and branch values, preserving the graph's arithmetic order and error behavior. Repeated binding SHALL NOT reuse numeric results from earlier pieces or retain a discarded machine graph through process-wide bookkeeping. Repeated samples within one piece SHALL reuse the path's immutable evaluation structure without hashing expression-node keys for each sample.
+The framework SHALL evaluate an expression path at each new piece using that piece's current inputs and branch values, preserving the graph's arithmetic order and error behavior. Repeated binding SHALL NOT reuse numeric results from earlier pieces or retain a discarded machine graph through process-wide bookkeeping. Repeated samples within one piece SHALL reuse the path's immutable evaluation structure without hashing expression-node keys for each sample. A running constraint whose read paths are determined SHALL follow its bound expression as one search-local path, preserving each sampled level and its order; a constraint without those paths SHALL retain prefix replay.
 
 #### Scenario: Standing input changes between pieces
 
@@ -200,3 +200,18 @@ The framework SHALL evaluate an expression path at each new piece using that pie
 
 - **WHEN** an expression path is successfully bound, then a later bind fails before completion
 - **THEN** that failure retains its original error and cannot partially publish the later piece's values or evaluation structure
+
+#### Scenario: Determined constraint reads follow one search-local path
+
+- **WHEN** a running bound reads determined paths during a searched stop
+- **THEN** every existing sample and bisection compares the same level in the same order, with the bound's own coordinate held at the tick-start value and standing reads refreshed at the next search
+
+#### Scenario: Opposite signed-zero endpoints remain distinct
+
+- **WHEN** a determined read path reports numerically equal signed-zero endpoints with different sign bits
+- **THEN** the searched bound evaluates each endpoint's actual bit pattern rather than freezing one endpoint as a standing value
+
+#### Scenario: Undetermined reads still replay their prefix
+
+- **WHEN** a required read has no determined motion path
+- **THEN** the constraint still replays its sub-program at each existing search fraction, retaining the same result and refusal behavior
