@@ -887,7 +887,7 @@ class _PathValue:
                                 # the nodes that MOVE, in postorder.
         self.standing = {}      # this piece's non-moving node values.
         self.nodes = None       # full immutable order, after a successful bind.
-        self.program = None     # moving nodes and positional child references.
+        self.program = None     # moving nodes, operation, positional children.
         self.standing_nodes = None
         self.standing_values = None
 
@@ -933,6 +933,31 @@ class _PathValue:
                     else (False, standing_positions[child])
                     for child in node.children))
                 for node in new_order)
+            # 0 = literal, 1 = input name, 2 = the already selected
+            # numeric operation. Keep each node's child positions and
+            # original postorder; only dispatch is prepared once.
+            instructions = []
+            for node, children in program:
+                if node.kind == 'num':
+                    instructions.append((0, node.text, children))
+                elif node.kind == 'name':
+                    instructions.append((1, node.text, children))
+                elif node.kind == 'binop':
+                    instructions.append((2, _PATH_OPERATORS[node.op], children))
+                elif node.kind == 'unary':
+                    instructions.append((2, operator.neg if node.op == '-'
+                                         else operator.pos, children))
+                elif node.kind == 'call' and node.op in SYMBOLIC_BUILTINS:
+                    if node.op == 'min':
+                        operation = min if len(children) == 2 else motion_math.min
+                    elif node.op == 'max':
+                        operation = max if len(children) == 2 else motion_math.max
+                    else:
+                        operation = getattr(motion_math, node.op)
+                    instructions.append((2, operation, children))
+                else:
+                    raise ValueError(f'Cannot numerically resolve {node!r}')
+            instructions = tuple(instructions)
         else:
             standing_nodes = self.standing_nodes
         standing_values = tuple(standing[node] for node in standing_nodes)
@@ -940,7 +965,7 @@ class _PathValue:
         # structural build. A failed rebind leaves the previous piece intact.
         if deciding:
             self.order = new_order
-            self.program = program
+            self.program = instructions
             self.standing_nodes = standing_nodes
         self.standing = standing
         self.standing_values = standing_values
@@ -960,29 +985,17 @@ class _PathValue:
             return self.standing[self.root]
         computed = [None] * len(self.program)
         standing = self.standing_values
-        for index, (node, children) in enumerate(self.program):
-            if node.kind == 'num':
-                value = float(node.text)
-            elif node.kind == 'name':
-                if node.text not in values:
-                    raise ValueError(f'Unresolved motion input {node.text[:80]!r}')
-                value = float(values[node.text])
+        for index, (kind, operand, children) in enumerate(self.program):
+            if kind == 0:
+                value = float(operand)
+            elif kind == 1:
+                if operand not in values:
+                    raise ValueError(f'Unresolved motion input {operand[:80]!r}')
+                value = float(values[operand])
             else:
                 args = [computed[position] if moving else standing[position]
                         for moving, position in children]
-                if node.kind == 'binop':
-                    value = _PATH_OPERATORS[node.op](*args)
-                elif node.kind == 'unary':
-                    value = -args[0] if node.op == '-' else +args[0]
-                elif node.kind == 'call' and node.op in SYMBOLIC_BUILTINS:
-                    if node.op == 'min':
-                        value = min(*args) if len(args) == 2 else motion_math.min(*args)
-                    elif node.op == 'max':
-                        value = max(*args) if len(args) == 2 else motion_math.max(*args)
-                    else:
-                        value = getattr(motion_math, node.op)(*args)
-                else:
-                    raise ValueError(f'Cannot numerically resolve {node!r}')
+                value = operand(*args)
             computed[index] = value
         _visited(len(self.order))
         return computed[-1]

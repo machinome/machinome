@@ -1112,6 +1112,11 @@ bound graph eagerly, later samples follow only read names whose actual paths
 move, and the bound's own coordinate remains the tick-start value. A read
 without a determined path keeps the existing sub-program replay; no search
 sample or tolerance changes.
+After a successful eager bind, the private path also keeps the moving
+cone's numeric operation and positional operands for its own lifetime;
+later samples still walk the original postorder with fresh moving values
+and the current piece's standing values. No generated code or process-wide
+expression cache is involved.
 
 Mixed moving contacts also admit a conservative zero-motion certificate
 (ADR-136). Exact rational affine composition of the skeleton increment into

@@ -1,6 +1,8 @@
 """A bound path reuses structure, never an earlier piece's numbers."""
 
+import gc
 import struct
+import weakref
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -14,6 +16,26 @@ def name(text):
 
 
 class CompiledPathEvaluationTest(TestCase):
+    def test_later_samples_reuse_operation_classification(self):
+        x = name('x')
+        y = name('y')
+        difference = ExpressionNode('binop', '-', (x, y))
+        minimum = ExpressionNode('call', 'min', (difference, y))
+        root = ExpressionNode('binop', '+', (minimum, x))
+        path = _PathValue(root, {'x'})
+        self.assertEqual(path.bind({'x': 5, 'y': 2}), 7)
+
+        original = ExpressionNode.__getattribute__
+
+        def no_rediscovery(node, attribute):
+            if attribute in ('kind', 'op'):
+                raise AssertionError('path rediscovered immutable operation')
+            return original(node, attribute)
+
+        with patch.object(ExpressionNode, '__getattribute__', no_rediscovery):
+            self.assertEqual(path.at({'x': 8, 'y': 2}), 10)
+            self.assertEqual(path.at({'x': 1, 'y': 2}), 0)
+
     def test_later_samples_use_positional_structure_without_node_hashes(self):
         shared = ExpressionNode('binop', '*', (name('x'), name('x')))
         root = ExpressionNode('binop', '+', (shared, name('y')))
@@ -71,3 +93,18 @@ class CompiledPathEvaluationTest(TestCase):
             path.at({'x': 0})
         with self.assertRaisesRegex(ValueError, "Unresolved motion input 'later'"):
             path.at({'x': 2})
+
+    def test_operation_program_does_not_retain_released_graph(self):
+        def sampled_graph():
+            x = name('x')
+            root = ExpressionNode('call', 'max', (
+                ExpressionNode('binop', '+', (x, name('y'))), x))
+            reference = weakref.ref(root)
+            path = _PathValue(root, {'x'})
+            path.bind({'x': 1, 'y': 2})
+            path.at({'x': 3, 'y': 2})
+            return reference
+
+        reference = sampled_graph()
+        gc.collect()
+        self.assertIsNone(reference())
