@@ -11,10 +11,10 @@ them. Import helpers from `machinome_mechanics`.
 A *mechanism law* here is textbook geometry, not a design decision: how
 far a meshed gear has turned, how far a lead screw has advanced, where a
 slider-crank's piston is, how high a delta's carriage stands, where two
-circles cross. Thirteen `kinematics.py` files in this workspace wrote
-some of these out, each in its own frame and sign convention, each
-having to rediscover that convention against a rendered mesh, and the
-numeric-only ones broke the moment a symbolic driver reached them.
+circles cross. Projects that wrote these out by hand each chose a
+frame and a sign convention, rediscovered it against a rendered mesh,
+and, where the formula was numeric only, broke the moment a symbolic
+driver reached it.
 
 **Two faces, from `machinome.math`.** Every function here is a
 composition of `machinome.math` functions and ordinary arithmetic, and
@@ -44,8 +44,8 @@ stated escape hatch::
 **Conventions.** Every angle is in degrees, positive by the right-hand
 rule about the stated axis, matching `machinome.math` and the node
 transform API. Each family module states its frame, its zero and its
-sign once, at the top, and maps them onto the project the law was lifted
-from; read that module before calling into it. The names are unique
+sign once, at the top, and says what kind of machine each choice
+serves; read that module before calling into it. The names are unique
 across families -- `crank_rod_angle`, not `rod_angle`; `delta_rod`, not
 `rod_tilt` -- so the flat import says which family it came from.
 
