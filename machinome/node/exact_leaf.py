@@ -54,8 +54,8 @@ class ExactLeafNode(LeafNode):
     def shape(self):
         if self._up_to_date(self.brep_file):
             return cached_shape(self.brep_file)
-        if self.model is not None:
-            return shape_from_rendered(self.model)
+        # `model` is the SCAD presentation after assemble(), often an
+        # _ArtifactImport. A stale BREP needs fresh native geometry.
         rendered = self.render()
         self.validate(rendered)
         return shape_from_rendered(rendered)

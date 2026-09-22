@@ -193,6 +193,18 @@ class ExactArtifactTest(TestCase):
             shape = node.shape()
         self.assertAlmostEqual(shape.Volume(), 8.0)
 
+    def test_exact_fusion_recovers_native_leaf_after_brep_goes_stale(self):
+        fusion = ExactFusion()
+        fusion.assemble()
+        self.assertTrue(fusion.ring._up_to_date(fusion.ring.brep_file))
+
+        # Both artifacts belong to this test's temporary build directory.
+        # The assembled leaf still has SCAD presentation in `.model`.
+        os.remove(fusion.ring.brep_file)
+
+        self.assertAlmostEqual(solid_volume(fusion.shape()),
+                               8 * 3.141592653589793, places=5)
+
     def test_shape_is_local_and_does_not_apply_node_operations(self):
         node = Box()
         node.translate([20, 0, 0])

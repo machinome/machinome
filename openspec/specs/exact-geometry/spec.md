@@ -111,6 +111,11 @@ composed matrices the mesh path uses, so an exact comparison and a mesh
 comparison place the same node identically: world composition for collision
 questions, enclosing-solid composition for connectivity questions.
 
+When an exact leaf's BREP is current, `shape()` SHALL reuse that native
+artifact. When the BREP is stale, `shape()` SHALL return native geometry
+from the leaf's current render, even if SCAD presentation was previously
+assembled. It SHALL NOT return a presentation import as geometry.
+
 #### Scenario: The accessor returns unplaced geometry
 
 - **WHEN** `shape()` is read on an exact leaf carrying placement operations
@@ -127,6 +132,18 @@ questions, enclosing-solid composition for connectivity questions.
 - **WHEN** the same node is placed for an exact comparison and for a mesh
   comparison at one testing instant
 - **THEN** both use the same composed matrix and describe the same pose
+
+#### Scenario: A current BREP avoids rendering
+
+- **WHEN** an exact leaf has a current BREP and `shape()` is requested
+- **THEN** it returns that native artifact without calling the adapter's render
+
+#### Scenario: Stale BREP after SCAD assembly
+
+- **WHEN** an exact leaf's SCAD presentation has been assembled and its BREP
+  becomes stale before an exact fusion requests `shape()`
+- **THEN** the fusion receives the leaf's current native shape in its local
+  frame, not the SCAD artifact import
 
 ### Requirement: Exact composition of a fused solid
 
