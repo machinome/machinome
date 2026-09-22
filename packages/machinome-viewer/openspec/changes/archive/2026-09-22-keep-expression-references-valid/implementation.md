@@ -97,9 +97,9 @@ MACHINOME_CURTA_BUILDS=/home/asa/devel/machinome-studio/projects/Calculators/Cur
 Logs: `/tmp/viewer-lifetime-suite-serial.log`,
 `/tmp/viewer-lifetime-typecheck.log`, `/tmp/viewer-lifetime-build.log`,
 `/tmp/viewer-lifetime-python-complete.log`. No Python performance change,
-version bump, release, push or publication occurred. The spec sync/archive
-confirmation was asked while validation ran; pending the pilot's answer,
-the fully tested implementation is checkpointed with this change still active.
+version bump, release, push or publication occurred. The fully tested
+implementation was checkpointed in `9a755e5` with this change still active
+while awaiting the pilot's spec sync/archive confirmation.
 
 Initial full Curta run: **passed**, all four cases, no page errors, full
 eighth-station stopped/relieved banks equal Python exactly (4 × 213 values).
@@ -167,3 +167,19 @@ counter is numeric test-only telemetry, not retained nodes or a host option.
 Measured source program-load time was about 1.05 seconds, excluding assets,
 DOM and WebGL. Browser mount timings measure a different operation. No
 Python performance or arbitrary-size-memory guarantee is claimed.
+
+## Closeout — 22 September 2026
+
+The pilot explicitly selected "Sync and archive (recommended)" after the
+acceptance checks above passed. The approved requirement "Expression cache
+pressure does not change a machine" and its five scenarios are synchronized
+into `openspec/specs/viewer-package/spec.md`; the existing requirements and
+purpose are unchanged. The synchronized block matches the delta exactly.
+
+Strict OpenSpec validation passes for both the change and the viewer-package
+baseline, and `git diff --check` passes. All 13 tasks are complete. The whole
+change, including `.openspec.yaml` and its red/green evidence, is archived at
+`openspec/changes/archive/2026-09-22-keep-expression-references-valid/`.
+This documentation-only closeout does not change the tested implementation
+in `9a755e5`; the acceptance results above remain its evidence. No push,
+publication or cross-repository integration is performed.

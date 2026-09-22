@@ -21,10 +21,12 @@
 ## 4. Durable completion
 
 - [x] 4.1 Record red/green evidence and scoped lifetime amendments to ADR-043/044, preserving page-scoped sharing and document-local bindings.
-- [ ] 4.2 After all acceptance gates pass, synchronize the ratified delta, validate and archive this viewer change, and commit the implementation record in the viewer repository only. Do not push, publish or infer integration authority.
+- [x] 4.2 After all acceptance gates pass, synchronize the ratified delta, validate and archive this viewer change, and commit the implementation record in the viewer repository only. Do not push, publish or infer integration authority.
 
-Implementation and acceptance are complete; see `implementation.md`.
-Task 4.2 stays open pending the pilot's response to the archive workflow's
-explicit sync/archive confirmation. The code/evidence checkpoint is committed
-without moving this change or altering the baseline specification. No push,
-publication or cross-repository integration is performed.
+Implementation and acceptance are complete in `9a755e5`; see
+`implementation.md`. On 22 September 2026 the pilot explicitly selected
+"Sync and archive (recommended)". The approved cache-lifetime requirement
+and all five scenarios are synchronized into the viewer-package baseline,
+and this completed record is archived under
+`openspec/changes/archive/2026-09-22-keep-expression-references-valid/`.
+No push, publication or cross-repository integration is performed.
