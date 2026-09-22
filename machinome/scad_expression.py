@@ -30,6 +30,7 @@ def as_node(value):
 class GraphValue(OpenSCADConstant):
     def __init__(self, node):
         self._expression_node = node
+        self._evaluation_order = None
 
     @property
     def value(self):
@@ -59,8 +60,14 @@ class GraphValue(OpenSCADConstant):
                      '/': operator.truediv, '%': math.fmod, '^': operator.pow,
                      '<': operator.lt, '<=': operator.le, '>': operator.gt,
                      '>=': operator.ge, '==': operator.eq, '!=': operator.ne}
+        # The DAG is immutable: only the input values change between calls.
+        # Keep its order on this value, not in a process-wide registry that
+        # would retain discarded machines. Every call still computes fresh
+        # node values in the same order, including on an error path.
+        if self._evaluation_order is None:
+            self._evaluation_order = tuple(postorder([self._expression_node]))
         values = {}
-        for node in postorder([self._expression_node]):
+        for node in self._evaluation_order:
             args = [values[child] for child in node.children]
             if node.kind == 'num':
                 value = float(node.text)
