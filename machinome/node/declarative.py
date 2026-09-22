@@ -920,6 +920,10 @@ class NodeMeta(type):
             _validate_controls(cls, name, namespace['controls'])
         if _declares_marking(cls):
             _validate_markings(cls, name, namespace)
+        # Descriptor __set_name__ and every class-level declaration check are
+        # now finished. Port enumeration during either stage is provisional:
+        # a joint's coordinate may still carry its temporary None name.
+        cls._machinome_declarations_complete = True
         return cls
 
 

@@ -512,6 +512,20 @@ def declared_ports(node_class):
     a Python identifier: a consumer reaches a coordinate by the name
     reported here, never by `getattr` on the node.
     """
+    # The declaration belongs to the completed CLASS, including a generated
+    # site-joint specialization. Keep the snapshot there rather than in a
+    # process-global cache: a site's otherwise unreachable class must still
+    # be collectable (its ports can refer back to their owner). Read only the
+    # exact class's dictionary so a subclass never inherits a base map.
+    # A Bound can enumerate ports inside a Joint's __set_name__, while its
+    # coordinate still has a temporary None name. Cache only after NodeMeta
+    # finishes all descriptor naming and declaration validation.
+    complete = vars(node_class).get('_machinome_declarations_complete', False)
+    cached = (vars(node_class).get('_machinome_declared_ports')
+              if complete else None)
+    if cached is not None:
+        return dict(cached)
+
     ports = {}
     for klass in reversed(node_class.__mro__):
         for name, value in vars(klass).items():
@@ -528,7 +542,12 @@ def declared_ports(node_class):
                 ports.update(owned)
             elif isinstance(getattr(value, 'coordinate', None), Port):
                 ports[name] = value.coordinate
-    return ports
+    # A caller has always owned its returned mapping. Cache immutable pairs
+    # and return another mapping even for the first caller. Only publish the
+    # cache after every duck-typed declaration probe has succeeded.
+    if complete:
+        setattr(node_class, '_machinome_declared_ports', tuple(ports.items()))
+    return dict(ports)
 
 
 def set_coordinate(node, name, value):
