@@ -1103,7 +1103,8 @@ the classification once per graph per tick rather than once per sample.
 `_level_at` and `_branches` when reached through `_LevelPaths`, are the
 call sites; `_KinkCuts.between`'s own kink levels stay on
 `GraphValue.evaluate`, because a kink's level is a separate sub-graph too
-small for this to help. No cache outlives the tick that built it, and
+small for this to help. These path values do not outlive the tick that built
+them, and
 a machine whose followed quantities move entirely, or whose graphs are
 small, pays only that one classification walk per graph per tick.
 The running bound search also uses one search-local path value when ADR-137
@@ -1112,6 +1113,13 @@ bound graph eagerly, later samples follow only read names whose actual paths
 move, and the bound's own coordinate remains the tick-start value. A read
 without a determined path keeps the existing sub-program replay; no search
 sample or tolerance changes.
+ADR-139 makes one narrower exception for the first bind of a traced running
+bound: the owning `Run` retains at most one successful standing-value snapshot
+per compiled constraint. A later search reuses it only for the identical
+graph and moving-name set with identical finite IEEE bits for every referenced
+standing input; its moving cone still runs at the first point in original
+postorder. Uncertain or changed inputs take the complete eager bind, and
+restore/reset clears the snapshots. Other path values remain path-local.
 After a successful eager bind, the private path also keeps the moving
 cone's numeric operation and positional operands for its own lifetime;
 later samples still walk the original postorder with fresh moving values

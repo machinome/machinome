@@ -11,6 +11,8 @@
 - [ADR-121](./ADR-121-a-law-may-read-the-coordinate-it-drives.md) — the two-layer walk's own points and branches are unchanged; only how each is evaluated
 **OpenSpec change:** `evaluate-only-what-moves`
 
+**Amended 2026-09-22:** [ADR-139](./ADR-139-a-running-bound-reuses-proven-standing-bind-values.md) permits one bounded, Run-owned standing-bind snapshot across ticks for a traced running Bound only. Other path values retain this ADR's path-local lifetime.
+
 ## Context and Problem Statement
 
 `GraphValue.evaluate` (`solid_node/scad_expression.py`) is the run's one

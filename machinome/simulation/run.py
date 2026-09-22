@@ -317,6 +317,9 @@ class Run:
 
         self.program = compile_program(sim.node, inputs, coordinates,
                                        sim.controls, sim.instructions)
+        # One successful first-point standing bind per compiled constraint.
+        # The program graph already belongs to this run; no cache outlives it.
+        self._constraint_bind_cache = {}
         for edge in self.program.edges:
             if edge.kind != 'play':
                 continue
@@ -889,6 +892,8 @@ class Run:
                 elif deltas[key]:
                     moving.add(read)
             bound_path = _PathValue(constraint.graph, moving)
+            cache_key = (constraint.identifier, constraint.side)
+            cache = getattr(self, '_constraint_bind_cache', None)
 
         def level(t):
             if traced:
@@ -898,8 +903,17 @@ class Run:
                             else values[key] + deltas[key]*t)
                 arguments = {read: at(read) for read in constraint.reads}
                 arguments[constraint.identifier] = own
-                bound = (bound_path.bind(arguments) if bound_path.order is None
-                         else bound_path.at(arguments))
+                if bound_path.order is None:
+                    hit, bound = bound_path.bind_from(
+                        arguments, cache.get(cache_key) if cache is not None
+                        else None)
+                    if not hit:
+                        bound = bound_path.bind(arguments)
+                    snapshot = bound_path.standing_snapshot(arguments)
+                    if snapshot is not None and cache is not None:
+                        cache[cache_key] = snapshot
+                else:
+                    bound = bound_path.at(arguments)
                 value = at(constraint.identifier)
                 return (value-bound if constraint.side == 'high'
                         else bound-value)
@@ -1448,6 +1462,7 @@ class Run:
             self.active[input_id] = command
         self.bank = dict(snapshot.bank)
         self.sim.tick = snapshot.tick
+        self._constraint_bind_cache.clear()
         if self.ring is not None:
             self.ring.clear()
             self.crossing_ring.clear()

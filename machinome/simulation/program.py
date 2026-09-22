@@ -856,6 +856,55 @@ def _visited(count):
     a probe that only counts postorder steps."""
 
 
+@dataclass(frozen=True)
+class _StandingBindSnapshot:
+    """One successful first-point bind, owned by its running constraint."""
+
+    root: ExpressionNode
+    moving: frozenset
+    names: tuple
+    bits: tuple
+    nodes: tuple
+    order: tuple
+    program: tuple
+    standing_nodes: tuple
+    standing_values: tuple
+
+
+def _standing_input_bits(names, values):
+    """Exact finite input identity, or no proof that standing nodes agree."""
+    try:
+        # Do not call an arbitrary object's __float__ merely to test the
+        # cache: a conversion may have side effects or a changing result.
+        operands = tuple(values[name] for name in names)
+        if any(type(value) not in (bool, int, float) for value in operands):
+            return None
+        numbers = tuple(float(value) for value in operands)
+        if not all(math.isfinite(value) for value in numbers):
+            return None
+        return tuple(struct.pack('!d', value) for value in numbers)
+    except (KeyError, TypeError, ValueError, OverflowError, struct.error):
+        return None
+
+
+def _moving_path_value(program, standing, values):
+    """The positional moving program used at bind and later samples."""
+    computed = [None] * len(program)
+    for index, (kind, operand, children) in enumerate(program):
+        if kind == 0:
+            value = float(operand)
+        elif kind == 1:
+            if operand not in values:
+                raise ValueError(f'Unresolved motion input {operand[:80]!r}')
+            value = float(values[operand])
+        else:
+            args = [computed[position] if moving else standing[position]
+                    for moving, position in children]
+            value = operand(*args)
+        computed[index] = value
+    return computed[-1]
+
+
 class _PathValue:
     """One compiled graph followed along ONE tick's path.
 
@@ -975,6 +1024,41 @@ class _PathValue:
             self.nodes = tuple(gathered)
         return result
 
+    def standing_snapshot(self, values):
+        """A bounded owner's reusable standing result after a successful bind."""
+        if self.order is None:
+            return None
+        names = tuple(sorted({node.text for node in self.standing_nodes
+                              if node.kind == 'name'}))
+        bits = _standing_input_bits(names, values)
+        if bits is None:
+            return None
+        return _StandingBindSnapshot(
+            self.root, self.moving, names, bits, self.nodes, self.order,
+            self.program, self.standing_nodes, self.standing_values)
+
+    def bind_from(self, values, previous):
+        """Bind the first point from identical standing inputs, or miss.
+
+        No path state is published before the moving first point succeeds.
+        A miss does not inspect a graph operation: its caller performs the
+        original eager full bind, preserving that walk's first error.
+        """
+        if (previous is None or self.root is not previous.root or
+                self.moving != previous.moving or
+                _standing_input_bits(previous.names, values) != previous.bits):
+            return False, None
+        result = (_moving_path_value(previous.program,
+                                     previous.standing_values, values)
+                  if previous.order else previous.standing_values[-1])
+        self.order = previous.order
+        self.nodes = previous.nodes
+        self.program = previous.program
+        self.standing_nodes = previous.standing_nodes
+        self.standing_values = previous.standing_values
+        self.standing = ({self.root: result} if not previous.order else {})
+        return True, result
+
     def at(self, values):
         """A later point of the SAME piece: walk only the nodes that
         move, in the same postorder `bind` decided, reading a standing
@@ -983,22 +1067,9 @@ class _PathValue:
         if not self.order:
             _visited(0)
             return self.standing[self.root]
-        computed = [None] * len(self.program)
-        standing = self.standing_values
-        for index, (kind, operand, children) in enumerate(self.program):
-            if kind == 0:
-                value = float(operand)
-            elif kind == 1:
-                if operand not in values:
-                    raise ValueError(f'Unresolved motion input {operand[:80]!r}')
-                value = float(values[operand])
-            else:
-                args = [computed[position] if moving else standing[position]
-                        for moving, position in children]
-                value = operand(*args)
-            computed[index] = value
+        result = _moving_path_value(self.program, self.standing_values, values)
         _visited(len(self.order))
-        return computed[-1]
+        return result
 
 
 def _leveled(compute, jump, described, coordinate):
