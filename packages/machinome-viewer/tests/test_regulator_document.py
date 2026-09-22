@@ -215,12 +215,14 @@ DRIVE = """async () => {
   const steppedShot = await shot();
 
   // 4b. THE CLOCK'S OWN REQUESTS ARE NEVER DRAWN (OpenSpec
-  // `draw-every-request`, design D4). A gesture on a HANDLE is drawn
-  // over the viewer's own fifth of a second; a step and a played frame
-  // pass a ZERO duration through the same door, because a drawn step
-  // would PAUSE the transport that asked for it -- a transport control
-  // that stops the transport -- and a drawn played frame would fight
-  // itself sixty times a second.
+  // `draw-every-request`, design D4; `draw-at-the-declared-tempo`,
+  // design D5). A gesture on a HANDLE is drawn -- at the tempo its
+  // input's declared instruction states, or the viewer's own fifth of a
+  // second where the document states none; a step and a played frame go
+  // through the same door asking for NO drawing at all, because a drawn
+  // step would PAUSE the transport that asked for it -- a transport
+  // control that stops the transport -- and a drawn played frame would
+  // fight itself sixty times a second.
   const readoutBeforeStep = readout();
   at('.clocked-step').click();
   // The readout advances with the step, and the bank by the stated

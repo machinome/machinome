@@ -928,11 +928,18 @@ GESTURE = """async () => {
     amountBox.dispatchEvent(new Event('change'));
   };
   // Sampled BEFORE each frame, so the first entry is the pose the
-  // gesture's own task made and the last is a landed one.
+  // gesture's own task made and the last is a landed one. It stops AT
+  // THE LANDING -- the reading reaching the bank the request already
+  // stands at -- rather than after a fixed count: a gesture drawn at
+  // its input's declared TEMPO can take ten times as many frames as the
+  // viewer's own fifth of a second did, so a fixed sample count no
+  // longer stands for "landed" (OpenSpec `draw-at-the-declared-tempo`).
   const watch = async (id, frames) => {
     const samples = [];
     for (let n = 0; n < frames; n += 1) {
       samples.push({ value: field(id), bank: machine.state() });
+      if (n > 0 && samples[samples.length - 1].value
+          === machine.state()[id]) break;
       await frame();
     }
     return samples;
@@ -958,9 +965,10 @@ GESTURE = """async () => {
   const bankAtOnce = machine.state();
   const nudged = [];
   let midShot = null;
-  for (let n = 0; n < 60; n += 1) {
+  for (let n = 0; n < 900; n += 1) {
     nudged.push({ value: field('crank'), bank: machine.state() });
     if (n === 3) midShot = shot();
+    if (n > 0 && nudged[nudged.length - 1].value === bankAtOnce.crank) break;
     await frame();
   }
   const wall = (performance.now() - startedAt) / 1000;
@@ -974,7 +982,7 @@ GESTURE = """async () => {
   box('crank').value = '720';
   box('crank').dispatchEvent(new Event('change'));
   const typedAtOnce = field('crank');
-  const typed = await watch('crank', 60);
+  const typed = await watch('crank', 900);
   const landedTyped = { crank: field('crank'), bank: machine.state() };
 
   // ---- 3. A field the maker is EDITING is not rewritten ------------
@@ -993,7 +1001,10 @@ GESTURE = """async () => {
   };
   await frame();
   const followedAfterCommit = box('crank').value;
-  for (let n = 0; n < 40; n += 1) await frame();
+  // Long enough to outlast a drawing at the DECLARED tempo (two
+  // seconds at sixty frames), where forty frames outlasted a fifth of
+  // a second.
+  for (let n = 0; n < 200; n += 1) await frame();
 
   machine.reset();
   plus('crank').click();
@@ -1006,7 +1017,7 @@ GESTURE = """async () => {
                   crank: machine.state().crank });
   }
   const editedStill = box('crank').value;
-  for (let n = 0; n < 40; n += 1) await frame();
+  for (let n = 0; n < 200; n += 1) await frame();
 
   // ---- 4. A RANGED, WHOLE-NUMBER input: the slider's commit --------
   machine.reset();
@@ -1032,7 +1043,89 @@ GESTURE = """async () => {
   await frame();
   const hostNext = { crank: field('crank'), bank: machine.state() };
 
+  // ---- 7. THE TEMPO the DOCUMENT declares -------------------------
+  // (OpenSpec `draw-at-the-declared-tempo`.) Six gestures on ONE page
+  // at ONE frame rate, so the numbers are comparable with each other
+  // and no absolute this host cannot promise is asserted.
+  //
+  // This fixture declares `'Set four': targets operand 4 over 0.5 s`
+  // and `'Stroke': by crank 360 over 2 s`, and names `feed`, `ring`
+  // and `setting` in neither -- one bench carrying every case the rule
+  // distinguishes.
+  const tempo = {};
+  const measure = async (name, id, arm, act) => {
+    arm();
+    // A reset LANDS anything still running, REBUILDS the panel -- which
+    // is how a nudge amount reaches its button -- and puts the bank
+    // back where it started.
+    machine.reset();
+    await frame();
+    const from = field(id);
+    const startedAt = performance.now();
+    act();
+    const end = machine.state()[id];
+    const poses = new Set();
+    let frames = 0;
+    while (frames < 900) {
+      await frame();
+      frames += 1;
+      poses.add(field(id));
+      if (field(id) === end) break;
+    }
+    tempo[name] = { frames, wall: (performance.now() - startedAt) / 1000,
+                    from, end, landed: field(id), poses: poses.size };
+  };
+  // The DECLARED travel: the instruction states 360 over two seconds,
+  // and the gesture asks for exactly that.
+  await measure('declared', 'crank', () => setAmount('crank', 360),
+                () => plus('crank').click());
+  // A TWELFTH of it, which the rate makes a twelfth of the time.
+  await measure('twelfth', 'crank', () => setAmount('crank', 30),
+                () => plus('crank').click());
+  // TWICE it, typed: twice the stroke at the same rate, uncapped.
+  await measure('twice', 'crank', () => {}, () => {
+    box('crank').value = '720';
+    box('crank').dispatchEvent(new Event('change'));
+  });
+  // An input named ONLY by a `targets` instruction: a landing states no
+  // rate, so this keeps the viewer's own duration.
+  await measure('targetsOnly', 'operand', () => setAmount('operand', 8),
+                () => plus('operand').click());
+  // And an input NO instruction names at all.
+  await measure('unnamed', 'feed', () => setAmount('feed', 25),
+                () => plus('feed').click());
+  // The instruction's own PRESS, unchanged: its declared duration.
+  await measure('press', 'crank', () => {},
+                () => at('.clocked-instruction[data-instruction="Stroke"]')
+                  .click());
+
+  // ---- 8. A gesture an interlock CLIPS is drawn for the travel the
+  // MACHINE admitted, at the declared rate -- not for the travel it
+  // asked for. The ratchet holds a backwards crank on the last seated
+  // tooth (a 6-degree pitch), so a backwards nudge of a WHOLE TURN is
+  // admitted only as far as the few degrees left inside that tooth, and
+  // the picture is short in exactly that proportion.
+  machine.reset();
+  setAmount('crank', -360);
+  // The amount reaches the button at the next rebuild, and a move
+  // through the host's handle rebuilds.
+  machine.move('crank', { by: 1103 });
+  const clipFrom = machine.state().crank;
+  const clipStarted = performance.now();
+  plus('crank').click();
+  const clipEnd = machine.state().crank;
+  let clipFrames = 0;
+  while (clipFrames < 900) {
+    await frame();
+    clipFrames += 1;
+    if (field('crank') === clipEnd) break;
+  }
+  const clipped = { from: clipFrom, end: clipEnd, frames: clipFrames,
+                    wall: (performance.now() - clipStarted) / 1000,
+                    landed: field('crank'), outcome: outcome('crank') };
+
   return {
+    clipped,
     firstPress, rebuilt, start, crankAtOnce, bankAtOnce, nudged, wall,
     costs, landedNudge, typedAtOnce, typed, landedTyped,
     committedFocus, followedAfterCommit, edited, editedStill,
@@ -1040,7 +1133,7 @@ GESTURE = """async () => {
     byHand: { admitted: byHand.admitted, origin: byHand.origin,
               end: byHand.end, commits: byHand.commits.length,
               bank: handBank },
-    hostAtOnce, hostNext,
+    hostAtOnce, hostNext, tempo,
     moved: midShot !== null && midShot !== endShot,
     apiVersion: viewer.apiVersion,
   };
@@ -1068,8 +1161,11 @@ WATCH_TRACK = """() => {
 
 #: The PHOTOGRAPH: one nudge, FROZEN part-way. The page's animation loop
 #: is given a budget of frames and stops scheduling when it runs out, so
-#: the last painted frame stands still for the camera -- a drawing of a
-#: fifth of a second is otherwise over before a screenshot is taken.
+#: the last painted frame stands still for the camera -- a drawing is
+#: otherwise over before a screenshot is taken. The budget and the wait
+#: are sized to the DECLARED tempo: this nudge of a whole turn is drawn
+#: over the two seconds `'Stroke'` declares, roughly 120 frames, where
+#: it took a fifth of a second before.
 FREEZE = """async (frames) => {
   const host = document.getElementById('host');
   host.replaceChildren();
@@ -1097,7 +1193,7 @@ FREEZE = """async (frames) => {
   viewer.machine().move('operand', { to: 4 });
   budget = frames;
   at('.clocked-plus[data-input="crank"]').click();
-  await new Promise((resolve) => setTimeout(resolve, 400));
+  await new Promise((resolve) => setTimeout(resolve, 3000));
   const read = { crank: Number(at('.clocked-value[data-input="crank"]').value),
                  bank: viewer.machine().state() };
   window.requestAnimationFrame = previous;
@@ -1108,12 +1204,19 @@ FREEZE = """async (frames) => {
 @needs_bundle
 @needs_playwright
 class GestureDrawnInABrowserTest(TestCase):
-    """(4) EVERY request the clocked panel makes is DRAWN.
+    """(4) EVERY request the clocked panel makes is DRAWN, at the TEMPO
+    the document declares for its input.
 
     The pilot's own gesture -- the nudge amount set to a whole turn and
     the plus button pressed -- a typed value, and a ranged input's
-    slider commit, each ONE request made at the gesture and drawn over
-    the viewer's own fifth of a second.
+    slider commit, each ONE request made at the gesture and drawn.
+
+    How long each is drawn for is read off the document: this fixture
+    declares `'Stroke': by crank 360 over 2 s`, so a gesture of a whole
+    turn on `crank` takes those two seconds and a gesture of a twelfth
+    of it a twelfth of them, while `operand` (named only by a `targets`
+    instruction) and `feed` (named by none) keep the viewer's own fifth
+    of a second (OpenSpec `draw-at-the-declared-tempo`).
     """
 
     def setUp(self):
@@ -1128,7 +1231,7 @@ class GestureDrawnInABrowserTest(TestCase):
         self.addCleanup(server.__exit__, None, None, None)
         self.harness_url = f'{base}/harness.html'
 
-    def test_a_gesture_on_a_handle_is_one_request_drawn_over_a_fifth(self):
+    def test_a_gesture_on_a_handle_is_one_request_drawn_at_its_tempo(self):
         SHOTS.mkdir(exist_ok=True)
         errors = []
         with sync_playwright() as playwright:
@@ -1161,9 +1264,15 @@ class GestureDrawnInABrowserTest(TestCase):
                     ' bank: window.__gesture.machine().state() })')
                 # PIXELS ARE EVIDENCE: the nudge FROZEN four frames in,
                 # and the same nudge landed.
-                frozen = page.evaluate(FREEZE, 4)
+                frozen = page.evaluate(FREEZE, 30)
                 page.screenshot(
                     path=str(SHOTS / 'clocked-gesture-mid-nudge.png'))
+                # THREE QUARTERS through the SAME two-second stroke:
+                # a second point of one tempo-drawn gesture, which a
+                # fifth of a second had no room to hold (task 4.6).
+                late = page.evaluate(FREEZE, 90)
+                page.screenshot(
+                    path=str(SHOTS / 'clocked-gesture-at-tempo.png'))
                 landed = page.evaluate(FREEZE, 10_000)
                 page.screenshot(
                     path=str(SHOTS / 'clocked-gesture-landed.png'))
@@ -1285,11 +1394,111 @@ class GestureDrawnInABrowserTest(TestCase):
               f'{result["committedFocus"]["active"]!r}, the field then '
               f'reading {result["followedAfterCommit"]!r}')
 
+        # 10. THE TEMPO (OpenSpec `draw-at-the-declared-tempo`). Six
+        # gestures on one page at one frame rate. The absolutes belong
+        # to this host and are PRINTED; what is asserted is the shape
+        # the document declares -- a rate, and a fallback where it
+        # declares none.
+        tempo = result['tempo']
+        for name, one in tempo.items():
+            print(f'  tempo {name}: {one["frames"]} frames over '
+                  f'{one["wall"]:.2f} s, {one["from"]} -> {one["end"]} '
+                  f'({one["poses"]} distinct poses)')
+        for name, one in tempo.items():
+            self.assertEqual(one['landed'], one['end'],
+                             f'the {name} gesture never landed')
+
+        # 10a. The gesture asking for exactly the DECLARED travel takes
+        # the DECLARED duration -- the two seconds `'Stroke'` states,
+        # which is also what pressing `'Stroke'` itself takes. Asserted
+        # as a window around the declared number, not as a frame count.
+        self.assertEqual(tempo['declared']['end'], 360)
+        self.assertGreater(tempo['declared']['wall'], 1.5)
+        self.assertLess(tempo['declared']['wall'], 3.5)
+        # An order above the fifth of a second a handle used to get, and
+        # far more frames than that fifth could hold.
+        self.assertGreater(tempo['declared']['frames'], 40)
+        self.assertGreater(tempo['declared']['poses'], 40)
+
+        # 10b. A TWELFTH of the declared travel takes a twelfth of the
+        # time: a RATE, measured against 10a on the same page rather
+        # than against an absolute.
+        self.assertEqual(tempo['twelfth']['end'], 30)
+        ratio = tempo['twelfth']['wall'] / tempo['declared']['wall']
+        print(f'  a twelfth of the travel took {ratio:.3f} of the time')
+        self.assertGreater(ratio, 1 / 24)
+        self.assertLess(ratio, 1 / 6)
+
+        # 10c. TWICE it takes twice, uncapped.
+        self.assertEqual(tempo['twice']['end'], 720)
+        twice = tempo['twice']['wall'] / tempo['declared']['wall']
+        print(f'  twice the travel took {twice:.3f} of the time')
+        self.assertGreater(twice, 1.5)
+        self.assertLess(twice, 2.5)
+
+        # 10d. An input named ONLY by a `targets` instruction, and an
+        # input NO instruction names, both keep the viewer's own fifth
+        # of a second -- measurably shorter than 10a on the same page.
+        for name in ('targetsOnly', 'unnamed'):
+            self.assertLess(tempo[name]['wall'],
+                            tempo['declared']['wall'] / 4,
+                            f'{name} was not drawn over the fallback')
+            self.assertGreater(tempo[name]['wall'], 0.05)
+            # Still DRAWN, not jumped.
+            self.assertGreater(tempo[name]['poses'], 2)
+        self.assertEqual(tempo['targetsOnly']['end'], 9)
+        # And the whole-number rule still holds at every frame of the
+        # `targets`-named input's own drawing.
+        for value in operand:
+            self.assertEqual(value, int(value))
+
+        # 10e. A gesture an interlock CLIPS is drawn for the travel the
+        # MACHINE ADMITTED, at the declared rate: the ratchet holds a
+        # backwards whole turn on the last seated tooth, so the picture
+        # is the few degrees it went and not the 360 it asked for.
+        clipped = result['clipped']
+        print(f'  clipped: {clipped["from"]} -> {clipped["end"]} in '
+              f'{clipped["frames"]} frames over {clipped["wall"]:.3f} s, '
+              f'reported {clipped["outcome"]!r}')
+        self.assertLess(clipped['end'], clipped['from'])
+        self.assertGreater(clipped['end'], clipped['from'] - 360,
+                           'the ratchet did not clip the backwards turn')
+        self.assertEqual(clipped['landed'], clipped['end'])
+        self.assertIn('held by', clipped['outcome'])
+        # The declared RATE on the ADMITTED travel: a whole turn takes
+        # two seconds, so the handful of degrees the machine admitted
+        # takes a hundredth of that -- and nothing like the two seconds
+        # the travel ASKED FOR would have taken.
+        expected = (tempo['declared']['wall']
+                    * abs(clipped['end'] - clipped['from']) / 360)
+        print(f'  the clipped gesture took {clipped["wall"]:.3f} s, the '
+              f'declared rate on its admitted travel being '
+              f'{expected:.3f} s')
+        self.assertLess(clipped['wall'], tempo['declared']['wall'] / 10)
+        # Within a couple of frames of the rate, the frame being the
+        # quantum this harness can measure at all.
+        self.assertLess(abs(clipped['wall'] - expected), 4 / 60)
+
+        # 10f. The PRESSED instruction is unchanged: drawn over the
+        # duration it DECLARES, the same two seconds.
+        self.assertEqual(tempo['press']['end'], 360)
+        press = tempo['press']['wall'] / tempo['declared']['wall']
+        print(f'  the pressed instruction took {press:.3f} of the '
+              f'gesture of the same travel')
+        self.assertGreater(press, 0.7)
+        self.assertLess(press, 1.4)
+
         print(f'  frozen mid-nudge at crank {frozen["crank"]}, '
+              f'three quarters in at {late["crank"]}, '
               f'landed at {landed["crank"]}')
         self.assertGreater(frozen['crank'], 0)
         self.assertLess(frozen['crank'], 360)
+        # TWO points of ONE two-second stroke, which the viewer's own
+        # fifth of a second had no room to hold.
+        self.assertGreater(late['crank'], frozen['crank'])
+        self.assertLess(late['crank'], 360)
         self.assertEqual(landed['crank'], 360)
         self.assertTrue((SHOTS / 'clocked-gesture-mid-nudge.png').is_file())
+        self.assertTrue((SHOTS / 'clocked-gesture-at-tempo.png').is_file())
         self.assertTrue((SHOTS / 'clocked-gesture-landed.png').is_file())
         self.assertEqual(result['apiVersion'], 24)

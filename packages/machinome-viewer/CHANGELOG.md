@@ -5,6 +5,10 @@ it carries release together and share one version.
 
 ## Unreleased
 
+- Draw a clocked handle gesture at the tempo of the first `by` instruction
+  naming its input, scaled to admitted travel. Use the existing 0.2-second
+  duration when no instruction declares a travel. Pressed instructions keep
+  their declared duration. (ADR-073; integrated from the earlier Curta cycle.)
 - Preserve source-motion timing through running chains and selected blocks,
   fixing Curta carry loss when later result stations join the graph. Range
   and moving-contact probes use the same path as the committed bank.

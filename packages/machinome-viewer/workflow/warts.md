@@ -361,6 +361,19 @@ unchanged and are not restated (this cycle moved no floor).
   this repository's headless harness is a figure about the harness, and a
   claim about how a document FEELS needs hardware the pilot has.
 
+- **2026-09-17, `draw-at-the-declared-tempo`: this is now the BINDING limit on
+  the Curta measurement.** With a gesture drawn at the document's declared
+  tempo, the pilot's nudge of a whole turn went from 1 frame (`[0, 360]`, the
+  teleport) to 3 frames over 2.21 s on this host — but the thing the pilot is
+  watching, a one-tooth digit advance, is 11.25 of 360 degrees, which at 2.2
+  fps is **0.09 of a frame**. No rule can draw a 3% band of a stroke on a page
+  that renders three times in it. The same rule on the calculator fixture,
+  which this host DOES render at 60 fps, gives the stroke 121 frames and the
+  passage 3.8. Where the Curta harness needs the RULE measured without the
+  rasteriser in the way, it hands the animation loop timestamps at a stated
+  spacing (`FREEZE`'s `stride`): at a simulated 20 fps, 100 ms into the same
+  nudge, the crank stood at 180 degrees before the change and 18 after.
+
 ## The clocked nudge AMOUNT reaches a row's buttons only at the next rebuild
 
 **CLOSED 2026-09-17 at the orchestrator's review of `draw-every-request`:** the

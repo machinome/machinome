@@ -11,9 +11,10 @@ import { describe, expect, it } from 'vitest';
 import {
   clockedControlLayer, clockedFollowing, clockedInputControl,
   clockStepAmount, DEFAULT_CLOCK_STEP, DEFAULT_NUDGE, formatClockedOutcome,
-  GESTURE_SECONDS,
+  GESTURE_SECONDS, gestureSeconds,
 } from './clockedControls';
 import type { ClockedMachineView, ClockedOutcome } from './clockedControls';
+import type { ManifestInstruction } from './types';
 
 const FREE = { default: 0, range: null, unit: null, dtype: null, scale: null };
 
@@ -198,19 +199,83 @@ describe('the clocked chrome', () => {
     expect(layer.transport?.refusal).toBe('would cross 3600 surfaces');
   });
 
-  it("states how long a drawn GESTURE takes: one short duration of the "
-     + "viewer's own, the same for every travel", () => {
+  it("states how long a drawn GESTURE takes: the TEMPO its input's "
+     + 'declared instruction states, and the viewer\'s own short '
+     + 'duration where the document states none', () => {
     // A handle declares no duration -- only an instruction does -- so
-    // the chrome states one: the running chrome's own fifth of a second
-    // (`runControls.ts`'s `DEFAULT_NUDGE.seconds`), for the reason
-    // recorded there.
+    // the viewer takes one from the document where the document states
+    // one, and states one itself where it does not. The fallback is the
+    // running chrome's own fifth of a second (`runControls.ts`'s
+    // `DEFAULT_NUDGE.seconds`), for the reason recorded there.
     expect(GESTURE_SECONDS).toBe(0.2);
-    // A DURATION and not a rate: the clocked nudge is an AMOUNT alone,
-    // so there is nothing per-input for a travel to scale, and a nudge
-    // of 360 degrees is drawn over the same fifth of a second as a
-    // nudge of one.
-    expect(typeof GESTURE_SECONDS).toBe('number');
     expect(typeof DEFAULT_NUDGE).toBe('number');
+
+    // THE TEMPO. `'Turn crank': by crank 360 over 2 s` states a rate:
+    // 360 design units in two seconds. A gesture is drawn over the
+    // declared duration in the proportion its ADMITTED travel bears to
+    // the declared travel.
+    const tempo: Record<string, ManifestInstruction> = {
+      'Turn crank': { by: { crank: 360 }, duration: 2 },
+    };
+    expect(gestureSeconds('crank', 360, tempo)).toBe(2);
+    expect(gestureSeconds('crank', 30, tempo)).toBeCloseTo(2 / 12, 12);
+    // No cap: twice the declared travel is twice the declared stroke.
+    expect(gestureSeconds('crank', 720, tempo)).toBe(4);
+    // A direction is not a rate: a backwards whole turn takes as long.
+    expect(gestureSeconds('crank', -360, tempo)).toBe(2);
+    // Zero travel is zero seconds, which the drawing already lands at
+    // once -- the old zero-travel rule reached by arithmetic.
+    expect(gestureSeconds('crank', 0, tempo)).toBe(0);
+    // And an input the instruction does not name keeps the fallback,
+    // on the same document.
+    expect(gestureSeconds('setting', 30, tempo)).toBe(GESTURE_SECONDS);
+
+    // A `targets` instruction states a LANDING, not a travel: the
+    // travel it makes depends on where the input stands, so it states a
+    // different rate at every bank and none at its own landing. Not a
+    // tempo source, whatever the gesture asks for.
+    const landing: Record<string, ManifestInstruction> = {
+      'Set four': { targets: { operand: 4 }, duration: 0.5 },
+    };
+    expect(gestureSeconds('operand', 4, landing)).toBe(GESTURE_SECONDS);
+    expect(gestureSeconds('operand', 1, landing)).toBe(GESTURE_SECONDS);
+
+    // A declared travel of ZERO states no rate -- a travel of nothing
+    // over some duration -- and is skipped.
+    expect(gestureSeconds('crank', 30, {
+      Nothing: { by: { crank: 0 }, duration: 2 },
+    })).toBe(GESTURE_SECONDS);
+
+    // Nothing declared at all, and nothing naming this input.
+    expect(gestureSeconds('crank', 360, {})).toBe(GESTURE_SECONDS);
+    expect(gestureSeconds('feed', 360, tempo)).toBe(GESTURE_SECONDS);
+
+    // SEVERAL `by` instructions naming one input: the FIRST the
+    // document declares, which is the button nearest the top of the
+    // panel. The key order is the producer's declaration order and it
+    // survives end to end.
+    const two: Record<string, ManifestInstruction> = {
+      'Set four': { targets: { operand: 4 }, duration: 0.5 },
+      Stroke: { by: { crank: 360 }, duration: 2 },
+      Nudge: { by: { crank: 36 }, duration: 10 },
+    };
+    expect(gestureSeconds('crank', 360, two)).toBe(2);
+
+    // A declared duration of ZERO states a real one -- this travel is
+    // drawn in no time -- and is honoured, as its own press is.
+    const instant: Record<string, ManifestInstruction> = {
+      Snap: { by: { crank: 360 }, duration: 0 },
+    };
+    expect(gestureSeconds('crank', 360, instant)).toBe(0);
+    expect(gestureSeconds('crank', 7, instant)).toBe(0);
+
+    // A non-finite or absurd travel is never answered with a non-finite
+    // duration: a drawing of `Infinity` seconds is one nothing lands.
+    for (const absurd of [Number.NaN, Infinity, -Infinity, 1e308 * 10]) {
+      const answered = gestureSeconds('crank', absurd, tempo);
+      expect(Number.isFinite(answered)).toBe(true);
+      expect(answered).toBeGreaterThanOrEqual(0);
+    }
   });
 
   it('takes a step AMOUNT and never a negative one: the clock has no '

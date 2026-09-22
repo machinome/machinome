@@ -102,10 +102,13 @@ they are written by the mechanism, not set directly by the viewer.
 Mechanical stops can admit only part of a request. A refused request leaves
 the committed bank unchanged.
 
-The built-in panel draws a manual gesture's transition over a short interval
-(0.2 seconds), and draws an instruction over its declared duration. Another
-gesture first lands the previous drawing. This drawing illustrates an already
-solved request; it is not a second simulation.
+The built-in panel draws a manual gesture at the tempo of the first declared
+instruction that states a travel on that input. The drawing time scales with
+the travel the machine admits. If no instruction states a travel on that input,
+the panel uses a short interval (0.2 seconds). A pressed instruction is drawn
+over its declared duration. Another gesture first lands the previous drawing.
+This drawing illustrates an already solved request; it is not a second
+simulation.
 
 A model declaring an elapsed clock adds **Play**, **Step by seconds** and
 **Speed** controls. Clock time only moves forward. A model without a clock

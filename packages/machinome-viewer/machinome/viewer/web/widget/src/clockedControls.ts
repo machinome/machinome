@@ -187,28 +187,95 @@ export interface ClockedControlLayer {
 
 /** One design unit a press. A clocked nudge is an AMOUNT and nothing
  * else: what it asks for is a travel, and how long the viewer DRAWS
- * that travel is `GESTURE_SECONDS` below -- the same fifth of a second
- * whatever the amount, so there is nothing per-input to scale. */
+ * that travel is `gestureSeconds` below -- the tempo the input's own
+ * declared instruction states, or `GESTURE_SECONDS` where the document
+ * states none. Neither is a property of the nudge amount itself, so
+ * there is still nothing per-input for this constant to scale. */
 export const DEFAULT_NUDGE = 1;
 
-/** How long a gesture on a HANDLE is drawn over, in WALL seconds
- * (OpenSpec `draw-every-request`, design D2).
+/** How long a gesture on a handle NO DECLARED TRAVEL NAMES is drawn
+ * over, in WALL seconds (OpenSpec `draw-every-request`, design D2;
+ * `draw-at-the-declared-tempo`, design D1, which made it the FALLBACK
+ * it is).
  *
  * A declared instruction states its own duration; a handle declares
- * none, so the viewer states one. It is the running chrome's own number
- * and the running chrome's own reason (`runControls.ts`'s
- * `DEFAULT_NUDGE = {amount: 1, seconds: 0.2}`): *a nudge that teleports
- * is a nudge nobody can watch. A fifth of a second is long enough to see
- * the carry throw and short enough to feel like a button.*
+ * none. Where the document states a TRAVEL on that input over a
+ * duration, `gestureSeconds` reads the rate off it. Where it states
+ * none, the viewer states this: the running chrome's own number and the
+ * running chrome's own reason (`runControls.ts`'s `DEFAULT_NUDGE =
+ * {amount: 1, seconds: 0.2}`): *a nudge that teleports is a nudge
+ * nobody can watch. A fifth of a second is long enough to see the carry
+ * throw and short enough to feel like a button.*
  *
- * It is a DURATION and never a rate. The running chrome can afford a
- * rate because its nudge is a travel over SIMULATED time inside a
- * cadence; a clocked gesture has no cadence, and one design unit per
- * 0.2 s would draw the Curta's 360-degree crank nudge over 72 seconds.
- * The playback speed does not scale it either: the speed means machine
- * time (ADR-063) and a drawing is wall time (ADR-064). A maker who wants
- * the two-second stroke presses the declared instruction. */
+ * It is a DURATION and never a rate of its own. The running chrome can
+ * afford a rate because its nudge is a travel over SIMULATED time
+ * inside a cadence; a clocked gesture has no cadence, and one design
+ * unit per 0.2 s would draw the Curta's 360-degree crank nudge over 72
+ * seconds. The rate below is not invented that way either: it is READ
+ * off a declaration the document already carries. The playback speed
+ * scales neither: the speed means machine time (ADR-063) and a drawing
+ * is wall time (ADR-064). */
 export const GESTURE_SECONDS = 0.2;
+
+/** How long a gesture on `inputId` that ADMITTED `admitted` design
+ * units of travel is drawn over, in WALL seconds (OpenSpec
+ * `draw-at-the-declared-tempo`, design D1-D3).
+ *
+ * `duration x |admitted| / |by|` where a declared instruction states a
+ * TRAVEL on that input, and `GESTURE_SECONDS` where none does. The
+ * Curta's `'Turn crank': by crank_rotation 360 over 2 s` is the case
+ * this exists for: at a fixed fifth of a second its whole-turn nudge
+ * moves 30 degrees a frame, and the 11.25-degree tooth passage a maker
+ * is watching falls inside one frame.
+ *
+ * Both sides of the ratio are DESIGN units -- `ClockedRequest.admitted`
+ * by its own documented asymmetry with `origin`/`end`, and an
+ * instruction's `by` because that is what a press asks in -- so the
+ * ratio is unit-free and a driver whose `scale` is not 1 is right for
+ * free.
+ *
+ * The travel that counts is the one ADMITTED and not the one asked for:
+ * a gesture an interlock clips is drawn for as far as the machine went,
+ * at the declared rate. Scaling by what was asked would crawl through a
+ * clipped stroke, and the outcome already says in words that it was
+ * stopped.
+ *
+ * Only a `by=` instruction is a source. A `targets=` instruction states
+ * where its driver LANDS: the travel it makes depends on where the
+ * input stands when it is pressed, so it states a different rate at
+ * every bank and a division by zero at its own landing. A declared
+ * travel of ZERO states no rate either and is skipped. Where SEVERAL
+ * state one, the FIRST the document declares wins -- the button nearest
+ * the top of the panel, the chrome listing them in that same key order.
+ *
+ * There is no cap: a maker who asks for twice the declared travel has
+ * asked to watch twice the declared stroke, and a picture drawn at one
+ * rate for its first half and another for the rest is a picture of
+ * neither. A handle stays usable throughout and a further gesture lands
+ * the drawing at once.
+ *
+ * A declared duration of zero is HONOURED -- gestures on that input
+ * land at once, as its own press does -- and zero travel gives zero
+ * seconds, which the drawing already lands in one pose. A travel no
+ * arithmetic can turn into a finite number of seconds is answered with
+ * the fallback rather than with a drawing that never ends. */
+export function gestureSeconds(
+  inputId: string,
+  admitted: number,
+  instructions: Readonly<Record<string, ManifestInstruction>>,
+): number {
+  for (const name of Object.keys(instructions)) {
+    const declared = instructions[name].by?.[inputId];
+    if (declared === undefined || !Number.isFinite(declared)
+        || declared === 0) {
+      continue;
+    }
+    const seconds = instructions[name].duration
+      * Math.abs(admitted) / Math.abs(declared);
+    return Number.isFinite(seconds) ? seconds : GESTURE_SECONDS;
+  }
+  return GESTURE_SECONDS;
+}
 
 /** How many seconds one press of STEP asks for. A second is the clock's
  * own unit, and the speed ladder is what makes a long watch short. */
