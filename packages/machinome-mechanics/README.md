@@ -1,5 +1,7 @@
 # machinome-mechanics
 
+[![CI](https://github.com/machinome/machinome-mechanics/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/machinome/machinome-mechanics/actions/workflows/ci.yml)
+
 Mechanics helpers for the [Machinome framework](https://machinome.readthedocs.io/en/latest/),
 licensed Apache-2.0. Calculate gear angles, screw travel, piston positions,
 delta carriage heights, cam lifts, belt paths and linkage geometry with the
