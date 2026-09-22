@@ -30,4 +30,4 @@ the ordered sampled levels, stop, bank, replay or refusal behavior.
 #### Scenario: A bound reads a retained self-read part
 - **WHEN** a running bound reads a self-read coordinate whose law can provide an exact motion path
 - **THEN** every sampled bound level and the admitted machine state equal the ordinary replay result
-- **AND** the stop search uses that path without repeating the whole program prefix for each sample
+- **AND** the stop search uses that path without repeating the bound's constraint subprogram for each sample

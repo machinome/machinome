@@ -17,7 +17,7 @@ import {
 } from './program';
 import type { LoadedProgram, RunDocument } from './program';
 import { nextAfter } from './jumps';
-import { Motion } from './motion';
+import { Motion, propagations } from './motion';
 import corpus from '../running-corpus.json';
 import { ExpressionPath, expressionMetrics, UnsupportedPathNode } from '../expressions';
 
@@ -646,6 +646,61 @@ function ticks(run: Run, count: number): void {
 }
 
 describe('the Gate: a plug that turns only when its pins clear', () => {
+  it('retains a self-read pawl path needed by a running bound', () => {
+    const program = bench({
+      coordinates: { crank: input(0), pawl: coordinate(0) },
+      edges: [{
+        kind: 'law', needs: ['crank', 'pawl'], gives: ['pawl'],
+        description: 'crank drives retained pawl', stated_by: 'Bench',
+        expressions: ['((crank / 2) + (2 * (pawl >= 3)))'], affine: [false],
+        plans: [{ skeleton: '((crank / 2) + (2 * _j0))', jumps: [
+          { name: '_j0', primitive: '>=', level: '(pawl - 3)', affine: true },
+        ] }],
+      }],
+      spans: { crank: { high: { expression: '(10 - pawl)' } } },
+      sources: { crank: ['crank'], pawl: ['crank'] },
+    });
+    expect(program.constraints.get('crank:high')?.reads).toEqual(['pawl']);
+    const run = new Run(program, 0.1, 8);
+    const before = run.snapshot();
+    const probe = run as unknown as {
+      searchedConstraint: (...args: unknown[]) => unknown;
+    };
+    const original = probe.searchedConstraint.bind(run);
+    let retained = false;
+    const search = vi.spyOn(probe, 'searchedConstraint').mockImplementation(
+      (...args: unknown[]) => {
+        const deltas = args[4] as Record<string, number>;
+        retained ||= propagations.get(deltas)?.motions.has('pawl') ?? false;
+        return original(...args);
+      });
+    try {
+      const first = run.move('crank', { by: 10, duration: 0.1 });
+      run.advance();
+      expect(retained).toBe(true);
+      expect(first.status).toBe('blocked');
+      expect(first.admitted).toBeGreaterThan(0);
+      expect(first.admitted).toBeLessThan(10);
+      expect(run.stops().at(-1)?.coordinate).toBe('crank');
+      const bank = run.state();
+      const stops = run.stops();
+      const outcome = [first.status, first.admitted];
+      run.restore(before);
+      const replay = run.move('crank', { by: 10, duration: 0.1 });
+      run.advance();
+      expect([replay.status, replay.admitted]).toEqual(outcome);
+      expect(run.state()).toEqual(bank);
+      expect(run.stops()).toEqual(stops);
+      search.mockClear();
+      run.advance();
+      expect(search).not.toHaveBeenCalled();
+      expect(run.state()).toEqual(bank);
+      expect(run.stops()).toEqual(stops);
+    } finally {
+      search.mockRestore();
+    }
+  });
+
   it('keeps opposite signed-zero traced endpoints in the moving cone', () => {
     const signed = new Motion(-0, +0, [[0, 1, () => 0]]);
     expect(signed.constant).toBe(true);
@@ -969,27 +1024,25 @@ describe('the PawlRatchet: a committed tooth and an along-path pawl', () => {
 describe('a quiet bound costs nothing', () => {
   it('takes no sample when nothing the constraint depends on moves', () => {
     const program = gate();
-    let evaluations = 0;
-    const nodeOf = program.nodeOf;
-    (program as { nodeOf: (text: string) => unknown }).nodeOf = (text) => {
-      if (text === CLEARED) evaluations += 1;
-      return nodeOf(text);
-    };
     const run = new Run(program, 0.1, 8);
+    const probe = run as unknown as {
+      searchedConstraint: (...args: unknown[]) => unknown;
+    };
+    const sampled = vi.spyOn(probe, 'searchedConstraint');
     // `feed` moves the pins, which the bound reads: this tick samples.
     run.move('feed', { by: 1, duration: 0.1 });
     run.advance();
-    const sampled = evaluations;
-    expect(sampled).toBeGreaterThan(1);
+    expect(sampled).toHaveBeenCalled();
 
     // Nothing this constraint depends on moves now: `plug.turn` stands
     // and so do both lifts, so `boundsNow` alone touches the
     // expression -- and it does not, because a constraint side is never
     // evaluated there.
-    evaluations = 0;
+    sampled.mockClear();
     run.advance();
-    expect(evaluations).toBe(0);
+    expect(sampled).not.toHaveBeenCalled();
     expect(run.stops()).toEqual([]);
+    sampled.mockRestore();
   });
 
   it('leaves a coordinate standing outside its bound free', () => {

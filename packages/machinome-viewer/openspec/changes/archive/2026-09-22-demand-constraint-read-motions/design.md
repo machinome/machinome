@@ -1,6 +1,6 @@
 ## Context
 
-The viewer builds a tick-local `demanded` set from edge `needs` excluding the same edge's `gives`. That exclusion is right for a self-read law's *dependency* but loses a separate consumer: a compiled constraint may read that law's output. On frozen OperatingCurta `7586002`, the crank high bound reads `main_drive.anti_reversal.reverse_rotation_prevention_pawl.turn`; the pawl law both needs and gives this coordinate, so it is not demanded. The propagation path may take the endpoint-only legacy branch, leaving no `Motion` for `searchFromSources` and forcing a program prefix replay at each bound sample. This is a viewer-specific hypothesis pending actual sampled parity and timing.
+The viewer builds a tick-local `demanded` set from edge `needs` excluding the same edge's `gives`. That exclusion is right for a self-read law's *dependency* but loses a separate consumer: a compiled constraint may read that law's output. On frozen OperatingCurta `7586002`, the crank high bound reads `main_drive.anti_reversal.reverse_rotation_prevention_pawl.turn`; the pawl law both needs and gives this coordinate, so it is not demanded. The frozen viewer's first 18-degree tick confirms no retained pawl `Motion` and 65 `constraintLevel` subprogram evaluations for the crank bound; `searchFromSources` is not the fallback in this case. Ordered sample parity and candidate timing remain to be proved.
 
 ## Goals / Non-Goals
 

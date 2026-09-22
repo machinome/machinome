@@ -608,7 +608,10 @@ export class Run {
     const deltas: Record<string, number> = {};
     propagations.set(deltas, {
       motions: new Map(), untraced: new Set(),
-      demanded: new Set(this.program.edges.flatMap(edge => edge.needs.filter(key => !edge.gives.includes(key)))),
+      demanded: new Set([
+        ...this.program.edges.flatMap(edge => edge.needs.filter(key => !edge.gives.includes(key))),
+        ...[...this.program.constraints.values()].flatMap(bound => bound.reads),
+      ]),
     });
     for (const id of this.program.order) deltas[id] = 0;
     for (const id of this.program.intermediates) deltas[id] = 0;

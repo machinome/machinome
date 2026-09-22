@@ -1,6 +1,6 @@
 ## Why
 
-The committed OperatingCurta `7586002` export makes its crank high bound read a self-read, nonlinear anti-reversal pawl. The viewer currently demands traced motion from edge dependencies but not from bound reads; the pawl is omitted and the stop search replays the program for each sample. A declared two-second crank gesture remains far too slow to operate normally even after the prior expression improvements.
+The committed OperatingCurta `7586002` export makes its crank high bound read a self-read, nonlinear anti-reversal pawl. The viewer currently demands traced motion from edge dependencies but not from bound reads; the pawl is omitted and the constraint search re-evaluates its subprogram for each sample. A declared two-second crank gesture remains far too slow to operate normally even after the prior expression improvements.
 
 ## What Changes
 

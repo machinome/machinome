@@ -5,6 +5,12 @@ it carries release together and share one version.
 
 ## Unreleased
 
+- Retain exact motion for coordinates read by running bounds, including
+  Curta's self-read anti-reversal pawl. On the pinned export, its first
+  18-degree tick took 1.084 rather than 2.133 process-CPU seconds, with
+  the same 213-coordinate bank; the active-stop search kept all 134
+  sampled values and the stop bit-identical. A full browser revolution
+  remains unverified and slow.
 - Reuse a search-local moving cone when sampling a determined constraint
   bound. The pinned OperatingCurta's first 48 crank ticks took 28.082 s
   versus 48.218 s on the post-cap viewer in no-WebGL runs, with
