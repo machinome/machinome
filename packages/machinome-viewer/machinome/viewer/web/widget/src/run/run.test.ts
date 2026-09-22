@@ -9,15 +9,17 @@
 // the tick with the group of inputs that push them, segments, and the
 // atomicity that makes a refused tick commit nothing at all.
 
-import { describe, expect, it } from 'vitest';
-import { Run } from './run';
+import { describe, expect, it, vi } from 'vitest';
+import { movingConstraintReads, Run } from './run';
 import type { StopRecord } from './run';
 import {
   LandingInvariantError, loadProgram, refusalKind, StopInvariantError,
 } from './program';
 import type { LoadedProgram, RunDocument } from './program';
 import { nextAfter } from './jumps';
+import { Motion } from './motion';
 import corpus from '../running-corpus.json';
+import { ExpressionPath, expressionMetrics, UnsupportedPathNode } from '../expressions';
 
 /** The next representable float below `value`. */
 const nextDown = (value: number): number => nextAfter(value, -Infinity);
@@ -644,6 +646,90 @@ function ticks(run: Run, count: number): void {
 }
 
 describe('the Gate: a plug that turns only when its pins clear', () => {
+  it('keeps opposite signed-zero traced endpoints in the moving cone', () => {
+    const signed = new Motion(-0, +0, [[0, 1, () => 0]]);
+    expect(signed.constant).toBe(true);
+    expect(movingConstraintReads(['signed'], new Map([['signed', signed]]),
+      { signed: -0 }, { signed: 0 }).has('signed')).toBe(true);
+    const loop = new Motion(0, 0, [[0, 1, t => t * (1 - t)]], false);
+    expect(movingConstraintReads(['loop'], new Map([['loop', loop]]),
+      { loop: 0 }, { loop: 0 }).has('loop')).toBe(true);
+  });
+
+  it('does not re-resolve standing bound work at every traced sample', () => {
+    const standing = Array.from({ length: 48 }, (_, index) =>
+      `abs(plug.turn + ${index + 1})`).join(' + ');
+    const upper = `((90 * (feed >= 17.95)) + (0 * (${standing})))`;
+    const run = new Run(bench({
+      coordinates: { feed: input(20), 'plug.turn': coordinate(30) },
+      edges: [],
+      spans: { 'plug.turn': { high: { expression: upper } } },
+      sources: { feed: ['feed'], 'plug.turn': [] },
+    }), 0.1, 8);
+    const before = run.snapshot();
+    const baseline = expressionMetrics().resolutions;
+    const handle = run.move('feed', { by: -5, duration: 0.1 });
+    run.advance();
+    const resolutions = expressionMetrics().resolutions - baseline;
+    expect(handle.status).toBe('blocked');
+    expect(handle.admitted).toBeCloseTo(-2.05, 9);
+    expect(run.state().feed).toBeCloseTo(17.95, 9);
+    expect(run.stops().at(-1)?.coordinate).toBe('plug.turn');
+    expect(resolutions).toBeLessThan(10_000);
+    const bank = run.state();
+    const stop = run.stops().at(-1);
+    run.restore(before);
+    const repeated = run.move('feed', { by: -5, duration: 0.1 });
+    run.advance();
+    expect(repeated.status).toBe(handle.status);
+    expect(repeated.admitted).toBe(handle.admitted);
+    expect(run.state()).toEqual(bank);
+    expect(run.stops().at(-1)).toEqual(stop);
+  });
+
+  it('falls back to generic evaluation for a ternary searched bound', () => {
+    const program = bench({
+      coordinates: { feed: input(20), 'plug.turn': coordinate(30) },
+      edges: [],
+      spans: { 'plug.turn': {
+        high: { expression: '(feed >= 17.95 ? 90 : 0)' },
+      } },
+      sources: { feed: ['feed'], 'plug.turn': [] },
+    });
+    expect(program.constraints.get('plug.turn:high')?.reads).toContain('feed');
+    const run = new Run(program, 0.1, 8);
+    const bind = vi.spyOn(ExpressionPath.prototype, 'bind');
+    try {
+      const handle = run.move('feed', { by: -5, duration: 0.1 });
+      run.advance();
+      expect(bind.mock.results.some(result => result.type === 'throw'
+        && result.value instanceof UnsupportedPathNode)).toBe(true);
+      expect(handle.status).toBe('completed');
+      expect(handle.admitted).toBe(-5);
+      expect(run.state().feed).toBe(15);
+    } finally {
+      bind.mockRestore();
+    }
+  });
+
+  it('does not evaluate a dead throwing branch before ternary fallback', () => {
+    const program = bench({
+      coordinates: { feed: input(20), 'plug.turn': coordinate(30) },
+      edges: [],
+      spans: { 'plug.turn': {
+        high: { expression: '(feed ? 90 : missing())' },
+      } },
+      sources: { feed: ['feed'], 'plug.turn': [] },
+    });
+    expect(program.constraints.get('plug.turn:high')?.reads).toContain('feed');
+    const run = new Run(program, 0.1, 8);
+    const handle = run.move('feed', { by: -5, duration: 0.1 });
+    expect(() => run.advance()).not.toThrow();
+    expect(handle.status).toBe('completed');
+    expect(handle.admitted).toBe(-5);
+    expect(run.state().feed).toBe(15);
+  });
+
   it('does not turn while a pin crosses (the static-reads path)', () => {
     const run = new Run(gate(), 0.1, 8);
     const handle = run.move('twist', { by: 30, duration: 0.1 });

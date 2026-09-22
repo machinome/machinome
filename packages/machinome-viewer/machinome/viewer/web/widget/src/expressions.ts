@@ -1216,6 +1216,29 @@ export class PathValue {
     this.computed.clear();
     if (deciding) {
       const walk = this.postorder();
+      // Decide whether the WHOLE graph is path-safe before evaluating any
+      // node. An unsupported ternary or short-circuit may have an untaken
+      // child that throws; eagerly walking that child and only then falling
+      // back would change generic valueOf's observable error semantics.
+      for (const id of walk) {
+        const node = nodes[id];
+        if (node.kind === 'binary' && (node.op === '&&' || node.op === '||')) {
+          throw new UnsupportedPathNode(`PathValue: a short-circuit "${node.op}"`);
+        }
+        if (node.kind === 'member' || node.kind === 'index'
+            || node.kind === 'ternary' || node.kind === 'array'
+            || node.kind === 'object') {
+          throw new UnsupportedPathNode(`PathValue: a ${node.kind} node`);
+        }
+        if (node.kind === 'name' && node.parts.length > 1
+            && node.parts[0] !== TIME_ID
+            && !this.bindings?.has(node.parts[0])
+            && !Object.prototype.hasOwnProperty.call(values, node.name)
+            && !(node.parts[0] in context)) {
+          throw new UnsupportedPathNode(
+            `PathValue: the multi-part name "${node.name}" is neither in the run's bank nor resolvable through $t, a binding or the OpenSCAD context -- the one shape flat and nested resolution could disagree on.`);
+        }
+      }
       this.walked = walk;
       const moves = new Map<NodeId, boolean>();
       const order: NodeId[] = [];

@@ -22,12 +22,13 @@
 // every segment has succeeded.
 
 import { toNative } from '../drivers';
-import { withExpressions } from '../expressions';
+import { ExpressionPath, UnsupportedPathNode, withExpressions } from '../expressions';
 import { ManifestDriver, ManifestInstruction } from '../types';
 import { Command, CommandRecord } from './commands';
 import { edgeCuts, edgeIncrements, edgeValues, predictsOf } from './edges';
 import { CrossingRecord } from './jumps';
 import { propagations } from './motion';
+import type { Motion } from './motion';
 import {
   Constraint, evaluateExpression, LandingInvariantError, ProgramBound,
   ProgramEdge, RunConflict, StopInvariantError, TooManyCrossings,
@@ -72,6 +73,23 @@ export interface MoveRequest {
   by?: number;
   to?: number;
   duration?: number;
+}
+
+/** The bound's moving reads for one traced search. Exported only for the
+ * viewer's exact signed-zero and non-affine motion regression tests. */
+export function movingConstraintReads(
+  reads: readonly string[], paths: ReadonlyMap<string, Motion> | undefined,
+  held: Record<string, number>, deltas: Record<string, number>,
+): ReadonlySet<string> {
+  return new Set(reads.filter((read) => {
+    const path = paths?.get(read);
+    if (path !== undefined) {
+      return !path.constant || !Object.is(path.start, path.end);
+    }
+    const delta = deltas[read] ?? 0;
+    return delta !== 0 || !Object.is(held[read] + delta * 0,
+                                    held[read] + delta);
+  }));
 }
 
 /** One bound this stretch reaches: the coordinate, the side, the bound
@@ -717,12 +735,35 @@ export class Run {
     const paths = propagations.get(deltas)?.motions;
     const keys = [constraint.identifier, ...constraint.reads];
     const determined = paths && keys.every(key => paths.has(key) || !this.program.determiner.has(key));
+    // The first sample binds the expression's standing graph. Later samples
+    // read only nodes depending on an actually moving path. A constant Motion
+    // can still have opposite signed-zero cached endpoints: comparing its
+    // start/end with Object.is keeps that read in the moving cone.
+    const boundPath = determined
+      ? new ExpressionPath(constraint.expression,
+                           movingConstraintReads(constraint.reads, paths, held, deltas),
+                           this.program.bindings.roots)
+      : null;
+    let pathBound = false;
+    let pathDisabled = false;
     const level = (t: number): number => {
       if (!determined) return this.constraintLevel(constraint, held, values, admissions, t, own);
       const at = (key: string) => paths.get(key)?.at(t) ?? held[key] + (deltas[key] ?? 0) * t;
       const scope: Record<string, number> = { [constraint.identifier]: own };
       for (const read of constraint.reads) scope[read] = at(read);
-      const bound = evaluateExpression(this.program, constraint.expression, scope);
+      let bound: number;
+      if (pathDisabled) {
+        bound = evaluateExpression(this.program, constraint.expression, scope);
+      } else {
+        try {
+          bound = Number(pathBound ? boundPath!.at(scope) : boundPath!.bind(scope));
+          pathBound = true;
+        } catch (error) {
+          if (!(error instanceof UnsupportedPathNode)) throw error;
+          pathDisabled = true;
+          bound = evaluateExpression(this.program, constraint.expression, scope);
+        }
+      }
       const value = at(constraint.identifier);
       return constraint.side === 'high' ? value - bound : bound - value;
     };

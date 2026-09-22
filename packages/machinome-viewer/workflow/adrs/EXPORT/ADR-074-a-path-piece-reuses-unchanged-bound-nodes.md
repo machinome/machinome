@@ -21,3 +21,32 @@ No cross-step cache, document field, option, API version or altered search point
 ## Consequences
 
 The real export's first 48 crank ticks fell from 32.605 s to 27.838 s without WebGL, while committed source-timing corpus banks and restored replay remained exact. This is worthwhile but does **not** make a full physical revolution interactive. A subsequent viewer cycle must address the measured remaining costs; the original two-second duration remains the declaration, not a performance claim.
+
+## Traced-constraint amendment — 22 September 2026
+
+`trace-constraint-bounds-with-path` applies the existing `ExpressionPath`
+moving-cone rule to one determined constraint search. The first prescribed
+sample binds the bound, and later prescribed samples evaluate only work
+depending on a moving read. Movement classification uses the traced
+`Motion`, including a nominally constant motion whose start and end are
+opposite signed zeros, or the undetermined read's linear delta. An
+unsupported node disables the path for that search and falls back to the
+generic evaluator; other errors are not caught. The untraced prefix replay,
+search fractions, bisection, numeric operations and final bound read remain
+unchanged.
+
+On the pinned current OperatingCurta export, an active stopped tick made the
+same 69 ordered bound samples and identical IEEE-754 argument/result bytes
+in both variants, then blocked at the same 213-coordinate bank. Its first
+48 crank ticks fell from 47.948 to 27.985 process-CPU seconds in the
+post-review no-WebGL rerun, with unchanged 36° admission and full bank. The browser
+accepted the real pointer command but had reached only 12° in 21.284 wall
+seconds; this amendment does not claim a completed interactive revolution.
+
+A read-only review exposed an error-order hazard in the first implementation:
+`PathValue.bind` could evaluate an unsupported ternary's dead child before
+throwing the fallback signal. The accepted implementation preflights the
+whole binding-expanded path graph for unsupported structure before evaluating
+any child. A red-first bound with `(feed ? 90 : missing())` now completes
+through generic fallback without touching `missing()`. This preflight adds
+no sample or arithmetic operation to a supported path.

@@ -5,6 +5,11 @@ it carries release together and share one version.
 
 ## Unreleased
 
+- Reuse a search-local moving cone when sampling a determined constraint
+  bound. The pinned OperatingCurta's first 48 crank ticks took 28.082 s
+  versus 48.218 s on the post-cap viewer in no-WebGL runs, with
+  identical 213-coordinate banks; the complete browser turn remains
+  unverified and slow. (ADR-074.)
 - Keep a fitting operating machine's expression graph across ticks by
   raising the finite reclaim trigger from 50,000 to 125,000 nodes. On a
   pinned OperatingCurta export the first 48 crank ticks took 37.440 s
