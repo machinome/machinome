@@ -870,7 +870,7 @@ class _PathValue:
     tick that built it.
     """
 
-    __slots__ = ('root', 'moving', 'order', 'standing')
+    __slots__ = ('root', 'moving', 'order', 'standing', 'nodes')
 
     def __init__(self, graph, moving):
         self.root = as_node(graph)
@@ -878,6 +878,7 @@ class _PathValue:
         self.order = None       # decided on the first `bind`; a tuple of
                                 # the nodes that MOVE, in postorder.
         self.standing = {}      # this piece's non-moving node values.
+        self.nodes = None       # full immutable order, after a successful bind.
 
     def bind(self, values):
         """A new piece: recompute the standing part under `values` --
@@ -891,7 +892,11 @@ class _PathValue:
         moves = {} if deciding else None
         order = [] if deciding else None
         known = None if deciding else frozenset(self.order)
-        for node in postorder([self.root]):
+        gathered = [] if self.nodes is None else None
+        sequence = postorder([self.root]) if gathered is not None else self.nodes
+        for node in sequence:
+            if gathered is not None:
+                gathered.append(node)
             computed[node] = _path_node_value(node, values, computed)
             if deciding:
                 if node.kind == 'name':
@@ -908,7 +913,12 @@ class _PathValue:
         if deciding:
             self.order = tuple(order)
         self.standing = standing
-        return computed[self.root]
+        result = computed[self.root]
+        # Each piece still computes every node from its own values. Only the
+        # DAG order is reused, and a failed first bind never publishes it.
+        if gathered is not None:
+            self.nodes = tuple(gathered)
+        return result
 
     def at(self, values):
         """A later point of the SAME piece: walk only the nodes that
