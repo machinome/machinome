@@ -30,7 +30,7 @@ export function poseScope(bank: Record<string, number>, clock: string,
   return {
     time: 0,
     drivers: nest({ ...bank, [clock]: elapsedSeconds }),
-    bindings: bindings.roots(),
+    get bindings() { return bindings.roots(); },
   };
 }
 
@@ -50,7 +50,7 @@ export function clockedScope(bank: Record<string, number>, time: number,
   return {
     time,
     drivers: nest(bank),
-    bindings: bindings.roots(),
+    get bindings() { return bindings.roots(); },
   };
 }
 

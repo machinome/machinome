@@ -37,6 +37,7 @@ import type { LoadedCommit, LoadedMachine } from './document';
 import { nextEvent } from './events';
 import type { ManifestDriver } from '../types';
 import { evaluateExpression } from '../run/program';
+import { withExpressions } from '../expressions';
 
 /** ONE EVENT: where on the path it happened, what the input stood at,
  * which committing relation (or relations) fired there, and what they
@@ -304,103 +305,105 @@ export function clockedMachine(machine: LoadedMachine,
 
     move(inputId: string, request: { by?: number; to?: number }):
     ClockedRequest {
-      const by = request.by === undefined ? null : request.by;
-      const to = request.to === undefined ? null : request.to;
-      const declaration = declarationOf(inputId);
-      if ((by === null) === (to === null)) {
-        throw new ClockedRequestError(
-          `move('${inputId}', ...) states exactly one of by= (how far to ` +
-          'travel) and to= (where to land), both in design units; got ' +
-          `by=${by} and to=${to}.`);
-      }
-      const origin = bank[inputId];
-      const target = to !== null
-        ? native(declaration, to) : origin + native(declaration, by as number);
-      if (machine.clock !== null && inputId === machine.clock
-          && target < origin) {
-        // TIME NEVER REVERSES (`Clocked.move`, `clocked.py:2064-2082`),
-        // checked exactly where the producer checks it: AFTER the by/to
-        // exclusivity refusal and after `target` is computed, BEFORE the
-        // clip. The order is observable -- a request stating both `by`
-        // and `to` on a backwards clock gets the exclusivity message --
-        // so it is mirrored rather than re-derived.
-        //
-        // A REFUSAL and not a stop: a stop reports a bound the machine
-        // MET, and no bound was met. ZERO is admitted and falls straight
-        // through: `target === origin` makes the clip return at once and
-        // the event loop breaks on `delta === 0`.
-        const asked = to === null ? `by=${by}` : `to=${to}`;
-        throw new ClockedRequestError(
-          `move('${inputId}', ${asked}) asks this machine's clock to run ` +
-          `BACKWARDS: it stands at ${origin} seconds and the request ends ` +
-          `at ${target}. Elapsed seconds never wrap and never reverse -- no ` +
-          'bound was met and nothing stopped, the request has no meaning. ' +
-          'Restore a snapshot taken at the earlier instant, or reset the ' +
-          'machine, to stand before it again.');
-      }
-
-      // STEP 0: the request's travel is CLIPPED to the largest fraction
-      // at which every compiled constraint is still satisfied, ONCE,
-      // over the bank as it stands here, BEFORE the first event is
-      // located.
-      const levels = machine.bounds.map(
-        (bound) => levelReading(machine, bound, bank));
-      const { target: clippedTarget, stops } = clipped(levels, inputId, origin,
-                                                       target);
-      const working = { ...bank };
-      const commits: ClockedCommit[] = [];
-      let current = origin;
-      const span = clippedTarget - origin;
-      for (;;) {
-        const delta = clippedTarget - current;
-        if (delta === 0) break;
-        const event = eventOn(working, inputId, current, delta);
-        if (event === null) break;
-        const { landing, firing } = event;
-        // SYNCHRONOUS reads: every relation firing here reads the bank
-        // as it stood BEFORE the event, including a state this same
-        // event writes and a state another relation writes at it.
-        // Declaration order is therefore not observable.
-        const staged: Record<string, number> = {};
-        const writers = new Map<string, LoadedCommit>();
-        for (const relation of firing) {
-          const written = committed(machine, relation, working, inputId,
-                                    landing);
-          for (const identifier of Object.keys(written)) {
-            const first = writers.get(identifier);
-            if (first !== undefined) {
-              throw twoAnswers(identifier, first, relation, inputId, landing);
-            }
-            writers.set(identifier, relation);
-            staged[identifier] = written[identifier];
-          }
+      return withExpressions(() => {
+        const by = request.by === undefined ? null : request.by;
+        const to = request.to === undefined ? null : request.to;
+        const declaration = declarationOf(inputId);
+        if ((by === null) === (to === null)) {
+          throw new ClockedRequestError(
+            `move('${inputId}', ...) states exactly one of by= (how far to ` +
+            'travel) and to= (where to land), both in design units; got ' +
+            `by=${by} and to=${to}.`);
         }
-        Object.assign(working, staged);
-        working[inputId] = landing;
-        commits.push({
-          relations: firing.map((relation) => relation.description),
-          fraction: span === 0 ? 1 : (landing - origin) / span,
-          value: landing,
-          targets: { ...staged },
-        });
-        current = landing;
-      }
-      working[inputId] = clippedTarget;
-      judged(levels, working, inputId, by, to);
-      // Nothing above touched the bank: a request refused anywhere
-      // between here and its first event committed NOTHING.
-      posed(working);
-      const scale = declaration.scale;
-      return {
-        input: inputId,
-        by,
-        to,
-        origin,
-        end: clippedTarget,
-        commits,
-        admitted: (clippedTarget - origin) * (scale === null ? 1 : scale),
-        stops,
-      };
+        const origin = bank[inputId];
+        const target = to !== null
+          ? native(declaration, to) : origin + native(declaration, by as number);
+        if (machine.clock !== null && inputId === machine.clock
+            && target < origin) {
+          // TIME NEVER REVERSES (`Clocked.move`, `clocked.py:2064-2082`),
+          // checked exactly where the producer checks it: AFTER the by/to
+          // exclusivity refusal and after `target` is computed, BEFORE the
+          // clip. The order is observable -- a request stating both `by`
+          // and `to` on a backwards clock gets the exclusivity message --
+          // so it is mirrored rather than re-derived.
+          //
+          // A REFUSAL and not a stop: a stop reports a bound the machine
+          // MET, and no bound was met. ZERO is admitted and falls straight
+          // through: `target === origin` makes the clip return at once and
+          // the event loop breaks on `delta === 0`.
+          const asked = to === null ? `by=${by}` : `to=${to}`;
+          throw new ClockedRequestError(
+            `move('${inputId}', ${asked}) asks this machine's clock to run ` +
+            `BACKWARDS: it stands at ${origin} seconds and the request ends ` +
+            `at ${target}. Elapsed seconds never wrap and never reverse -- no ` +
+            'bound was met and nothing stopped, the request has no meaning. ' +
+            'Restore a snapshot taken at the earlier instant, or reset the ' +
+            'machine, to stand before it again.');
+        }
+
+        // STEP 0: the request's travel is CLIPPED to the largest fraction
+        // at which every compiled constraint is still satisfied, ONCE,
+        // over the bank as it stands here, BEFORE the first event is
+        // located.
+        const levels = machine.bounds.map(
+          (bound) => levelReading(machine, bound, bank));
+        const { target: clippedTarget, stops } = clipped(levels, inputId, origin,
+                                                         target);
+        const working = { ...bank };
+        const commits: ClockedCommit[] = [];
+        let current = origin;
+        const span = clippedTarget - origin;
+        for (;;) {
+          const delta = clippedTarget - current;
+          if (delta === 0) break;
+          const event = eventOn(working, inputId, current, delta);
+          if (event === null) break;
+          const { landing, firing } = event;
+          // SYNCHRONOUS reads: every relation firing here reads the bank
+          // as it stood BEFORE the event, including a state this same
+          // event writes and a state another relation writes at it.
+          // Declaration order is therefore not observable.
+          const staged: Record<string, number> = {};
+          const writers = new Map<string, LoadedCommit>();
+          for (const relation of firing) {
+            const written = committed(machine, relation, working, inputId,
+                                      landing);
+            for (const identifier of Object.keys(written)) {
+              const first = writers.get(identifier);
+              if (first !== undefined) {
+                throw twoAnswers(identifier, first, relation, inputId, landing);
+              }
+              writers.set(identifier, relation);
+              staged[identifier] = written[identifier];
+            }
+          }
+          Object.assign(working, staged);
+          working[inputId] = landing;
+          commits.push({
+            relations: firing.map((relation) => relation.description),
+            fraction: span === 0 ? 1 : (landing - origin) / span,
+            value: landing,
+            targets: { ...staged },
+          });
+          current = landing;
+        }
+        working[inputId] = clippedTarget;
+        judged(levels, working, inputId, by, to);
+        // Nothing above touched the bank: a request refused anywhere
+        // between here and its first event committed NOTHING.
+        posed(working);
+        const scale = declaration.scale;
+        return {
+          input: inputId,
+          by,
+          to,
+          origin,
+          end: clippedTarget,
+          commits,
+          admitted: (clippedTarget - origin) * (scale === null ? 1 : scale),
+          stops,
+        };
+      });
     },
 
     snapshot: () => ({ identity: machine.identity, bank: { ...bank } }),

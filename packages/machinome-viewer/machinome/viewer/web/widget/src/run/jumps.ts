@@ -27,7 +27,7 @@ import {
 import type {
   BlockMember, LoadedProgram, PathHost, ProgramBlock, RetainedReading,
 } from './program';
-import { movingNames, PathValue, UnsupportedPathNode } from '../expressions';
+import { ExpressionPath, movingNames, UnsupportedPathNode, withExpressions } from '../expressions';
 import type { KinkLevel } from '../expressions';
 import { kinkLevel } from './program';
 import { constantContact, hasMovingSource } from './contact-proof';
@@ -335,7 +335,7 @@ export function kinkBreaks(kinks: readonly KinkLevel[],
  * jump: the refusal is a structural property of the expression, decided
  * once. */
 export class LevelPaths {
-  private readonly paths = new Map<string, PathValue>();
+  private readonly paths = new Map<string, ExpressionPath>();
 
   private readonly bound = new Map<string, number>();
 
@@ -357,8 +357,7 @@ export class LevelPaths {
     }
     let path = this.paths.get(jump.name);
     if (path === undefined) {
-      path = new PathValue(this.program.nodeOf(jump.level), this.moving,
-                           this.program.bindings.roots());
+      path = new ExpressionPath(jump.level, this.moving, this.program.bindings.roots);
       this.paths.set(jump.name, path);
     }
     const bind = this.bound.get(jump.name) !== piece;
@@ -836,14 +835,13 @@ class Walk {
     // zeroes its source (above).
     const moving = movingNames(this.delta);
     this.outerPaths = new LevelPaths(this.program, moving);
-    const roots = this.program.bindings.roots();
-    this.skeletonPath = new PathValue(
-      this.program.nodeOf(this.reading.outer.skeleton), moving, roots);
+    this.skeletonPath = new ExpressionPath(
+      this.reading.outer.skeleton, moving, this.program.bindings.roots);
     const own = new Set(moving);
     own.add(this.reading.own);
     for (const jump of this.reading.dependent) {
       this.levelPaths.set(
-        jump.name, new PathValue(this.program.nodeOf(jump.level), own, roots));
+        jump.name, new ExpressionPath(jump.level, own, this.program.bindings.roots));
     }
   }
 
@@ -852,14 +850,14 @@ class Walk {
 
   /** One path value for the outer skeleton, re-bound whenever `branches`
    * changes object identity -- a new piece (D6). */
-  private readonly skeletonPath: PathValue;
+  private readonly skeletonPath: ExpressionPath;
 
   private skeletonBound: Record<string, number> | null = null;
 
   private skeletonDisabled = false;
 
   /** One path value per DEPENDENT jump's level (D5, D7). */
-  private readonly levelPaths = new Map<string, PathValue>();
+  private readonly levelPaths = new Map<string, ExpressionPath>();
 
   private readonly levelBound = new Map<string, Record<string, number>>();
 
@@ -1065,13 +1063,15 @@ class Walk {
   private constantContact(jump: ProgramJump, left: number, right: number,
                           ownLeft: number,
                           branches: Record<string, number>): boolean {
-    const roots = this.program.bindings.roots();
-    const level = this.program.nodeOf(jump.level);
-    if (!hasMovingSource(level, this.delta, roots)) return false;
-    const values = { ...along(this.start, this.delta, left), ...branches };
-    return constantContact(this.program.nodeOf(this.reading.outer.skeleton),
-                           level, values, this.delta, this.reading.own,
-                           ownLeft, right - left, roots);
+    return withExpressions(() => {
+      const roots = this.program.bindings.roots();
+      const level = this.program.nodeOf(jump.level);
+      if (!hasMovingSource(level, this.delta, roots)) return false;
+      const values = { ...along(this.start, this.delta, left), ...branches };
+      return constantContact(this.program.nodeOf(this.reading.outer.skeleton),
+                             level, values, this.delta, this.reading.own,
+                             ownLeft, right - left, roots);
+    });
   }
 
   // ------------------------------------------------------------------
@@ -1333,8 +1333,8 @@ class Walk {
     // At fixed crossing sources the threshold may have overtaken the part.
     // Establish the LOCAL near-to-far orientation before the ordinal walk;
     // stationary thresholds keep their original point-evaluation path.
-    if (hasMovingSource(this.program.nodeOf(jump.level), this.delta,
-                        this.program.bindings.roots())) {
+    if (withExpressions(() => hasMovingSource(
+      this.program.nodeOf(jump.level), this.delta, this.program.bindings.roots()))) {
       const onNear = branchAt(ownStar) === near;
       const step = ulpOf(ownStar);
       let oriented: number | null = null;

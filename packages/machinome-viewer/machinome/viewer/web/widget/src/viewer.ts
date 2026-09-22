@@ -471,6 +471,7 @@ export async function mount(
   // clock name binds to elapsed simulation seconds beside it. `$t` stays
   // 0 for a version 5 document, because no expression in one reads it.
   const scope = (): EvalScope => {
+    const poseBindings = bindingsTable;
     // Under a CLOCKED root the BANK poses the geometry and `$t` SWEEPS:
     // a version 8 document publishes the ordinary `animation` object, so
     // a geometry that is a formula of `$t` animates while the bank
@@ -484,7 +485,7 @@ export async function mount(
                           bindingsTable);
     }
     return loadedProgram === null
-      ? { time, drivers: drivers.scope(), bindings: bindingsTable.roots() }
+      ? { time, drivers: drivers.scope(), get bindings() { return poseBindings.roots(); } }
       : poseScope(bank, loadedProgram.clock, elapsedSeconds, bindingsTable);
   };
 

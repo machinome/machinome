@@ -115,3 +115,27 @@ The viewer evaluates a **hash-consed DAG**, not a parse tree.
   such expression can first be met inside a frame.
 - The viewer API version stays 6: no interface change and no capability a
   host may require.
+
+## Lifetime amendment — 22 September 2026
+
+`keep-expression-references-valid` corrects the assumption that one model
+fits below the reclamation threshold. The Curta remaining-result-bank
+export needs 94,854 nodes during program loading; a reset between its
+expression root and binding roots caused either missing-node failures or
+reuse of an integer for a different expression.
+
+The store remains page-scoped. A nestable, synchronous `withExpressions`
+operation protects complete preparation and consumption. Threshold-based
+reclamation happens before an outer operation acquires references; a live
+operation may exceed the unchanged 50,000-node trigger. Scopes release in
+`finally`, including refusals. Final-mount disposal inside a scope defers
+the clear until its end. No scope spans an `await` or a mounted session.
+
+Long-lived kink descriptors retain source plus postorder index and rebuild
+their operands once per generation. `ExpressionPath` retains source and
+the original piece's standing values to rebuild `PathValue` after a reset;
+the numerical path algorithm is unchanged. Raw `NodeId`, structural walkers
+and `PathValue` are operation-local. Program root lookups reuse the shared
+string cache instead of retaining a second map. A tick, clocked request or
+tree update scopes its full synchronous work. No host API, document version,
+numeric expectation or memory ceiling increase is part of this amendment.

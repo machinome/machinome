@@ -37,7 +37,7 @@
 //     entry's own free names, keyed by name and holding no node id, so
 //     it survives a store reset untouched.
 
-import { expressionGeneration, NodeId, prepare } from './expressions';
+import { expressionGeneration, NodeId, prepare, withExpressions } from './expressions';
 import { freeVariables } from './evaluator';
 import { Manifest, ManifestBinding } from './types';
 
@@ -45,7 +45,9 @@ export interface BindingTable {
   /** name -> the interned root of that binding's expression, for the
    * scope. `undefined` for a document with no table -- structurally
    * distinct from an empty one, though the two compare equal wherever
-   * a binding map is compared (D3). */
+   * a binding map is compared (D3). Acquire and consume this raw map
+   * inside the SAME withExpressions operation as any other roots used
+   * with it. Retained pose scopes reacquire it through a getter. */
   roots(): ReadonlyMap<string, NodeId> | undefined;
   /** `names` with every binding name replaced by what it transitively
    * reads. A name that is not an entry -- $t, a driver id, or a
@@ -171,7 +173,7 @@ export function bindingTable(document: Manifest, sourceUrl: string): BindingTabl
   let cachedGeneration = -1;
   let cachedRoots: Map<string, NodeId> | undefined;
 
-  const roots = (): ReadonlyMap<string, NodeId> => {
+  const roots = (): ReadonlyMap<string, NodeId> => withExpressions(() => {
     if (cachedRoots === undefined || cachedGeneration !== expressionGeneration()) {
       const map = new Map<string, NodeId>();
       entries.forEach((entry) => map.set(entry.name, prepare(entry.expression)));
@@ -179,7 +181,7 @@ export function bindingTable(document: Manifest, sourceUrl: string): BindingTabl
       cachedGeneration = expressionGeneration();
     }
     return cachedRoots;
-  };
+  });
 
   const closure = (names: ReadonlySet<string>): ReadonlySet<string> => {
     const result = new Set<string>();

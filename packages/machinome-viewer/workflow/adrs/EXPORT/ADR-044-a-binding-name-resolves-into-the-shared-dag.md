@@ -169,3 +169,19 @@ document and travels in the evaluation scope.**
 - The API version rises to 7. The `viewer` extra's version floor in the
   framework — the first published viewer that reads version 4 — remains the
   framework's to write once this package is released.
+
+## Lifetime amendment — 22 September 2026
+
+`keep-expression-references-valid` retains the document-local table and
+generation guard, but makes their acquisition coherent. `roots()` prepares
+the entire map within one synchronous expression scope; a caller combining
+that map with other roots encloses both acquisitions and their use in the
+same scope. Stamping the generation only after an unprotected sequence of
+preparations was insufficient: resets could silently reassign earlier IDs.
+
+Posing scopes hold a getter for their own table instead of retaining a raw
+map across operations. Tree reconciliation compares both maps in one scope,
+and retained kink operands and path values carry reconstructible sources as
+specified in ADR-043's amendment. Binding closure still holds only names,
+so it remains generation-independent. The pass comparison still includes
+the document's binding meanings; page-scoped sharing never makes them global.

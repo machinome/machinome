@@ -30,15 +30,17 @@
 // `DriverScope`) as thin delegations over that table, so every other
 // module's imports are unchanged.
 
-import { freeNames, prepare, valueOf } from './expressions';
+import { freeNames, prepare, valueOf, withExpressions } from './expressions';
 import type { DriverScope, EvalScope } from './expressions';
 
 export type { DriverScope, EvalScope };
 export { TIME_ID } from './expressions';
 
 export function evalExpr(expression: string, scope: EvalScope): number {
-  const value = valueOf(prepare(expression), scope);
-  return typeof value === 'number' ? value : Number(value);
+  return withExpressions(() => {
+    const value = valueOf(prepare(expression), scope);
+    return typeof value === 'number' ? value : Number(value);
+  });
 }
 
 /** Every input `expression` reads: `$t` and qualified driver ids.
@@ -49,5 +51,5 @@ export function evalExpr(expression: string, scope: EvalScope): number {
  * driver id is, static iff the set is empty, and mixed when both.
  */
 export function freeVariables(expression: string): ReadonlySet<string> {
-  return freeNames(prepare(expression));
+  return withExpressions(() => freeNames(prepare(expression)));
 }

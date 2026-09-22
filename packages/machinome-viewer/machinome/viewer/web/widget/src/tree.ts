@@ -16,7 +16,7 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { ManifestMarking, ManifestNode, RawOperation } from './types';
 import { EvalScope, evalExpr, freeVariables, TIME_ID } from './evaluator';
-import { bindingRootsEqual } from './expressions';
+import { bindingRootsEqual, withExpressions } from './expressions';
 import { BindingTable, EMPTY_BINDINGS } from './bindings';
 import { FlexibleShape } from './flexible';
 
@@ -404,7 +404,8 @@ export class WidgetTree {
     // stays exactly "_b3" while what "_b3" reads changes underneath it).
     // A republish that changed neither invalidates nothing.
     const operationsChanged = !operationsEqual(this.operations, data.operations);
-    const bindingsChanged = !bindingRootsEqual(this.bindings.roots(), bindings.roots());
+    const bindingsChanged = withExpressions(() =>
+      !bindingRootsEqual(this.bindings.roots(), bindings.roots()));
 
     return () => {
       // All nested fetches succeeded.  Only now is it safe to mutate the
@@ -646,6 +647,10 @@ export class WidgetTree {
   // document's driver values). `changed` bounds the work: a node whose
   // free variables none of it touches keeps the matrix it has.
   update(scope: EvalScope, changed: Changed = 'all'): void {
+    withExpressions(() => this.updateScoped(scope, changed));
+  }
+
+  private updateScoped(scope: EvalScope, changed: Changed): void {
     if (this.needsUpdate(changed)) {
       this.group.matrix.copy(operationsMatrix(this.operations, scope));
     }
@@ -774,6 +779,10 @@ function uniqueDataByName(children: ManifestNode[]): Set<string> {
 // Operations listed [op1, op2, ...] apply to the solid in order:
 // v' = opN(...(op1(v))), i.e. matrix = M_opN * ... * M_op1
 export function operationsMatrix(ops: RawOperation[], scope: EvalScope): THREE.Matrix4 {
+  return withExpressions(() => operationsMatrixScoped(ops, scope));
+}
+
+function operationsMatrixScoped(ops: RawOperation[], scope: EvalScope): THREE.Matrix4 {
   const matrix = new THREE.Matrix4();
   const step = new THREE.Matrix4();
   const axis = new THREE.Vector3();

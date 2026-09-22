@@ -31,7 +31,7 @@
 
 import { BindingTable } from '../bindings';
 import { freeVariables } from '../evaluator';
-import { kinkLevels, NodeId, prepare, expressionGeneration } from
+import { retainedKinkLevels, NodeId, prepare, withExpressions } from
   '../expressions';
 import type { KinkLevel, PathShape } from '../expressions';
 import { evaluateExpression, JUMP_PRIMITIVES } from '../run/program';
@@ -221,6 +221,11 @@ const EVENT_PRIMITIVES: readonly string[] = [
  * the same interning the run already uses. */
 export function loadClocked(document: ClockedDocument, sourceUrl: string,
                             bindings: BindingTable): LoadedMachine {
+  return withExpressions(() => loadClockedScoped(document, sourceUrl, bindings));
+}
+
+function loadClockedScoped(document: ClockedDocument, sourceUrl: string,
+                            bindings: BindingTable): LoadedMachine {
   const refuse = (reason: string): never => {
     throw new ClockedError(
       `${sourceUrl} carries a clocked machine this viewer cannot ` +
@@ -301,20 +306,8 @@ export function loadClocked(document: ClockedDocument, sourceUrl: string,
   const declaredNames = new Set(order);
 
   // --- the expression store ------------------------------------------
-  const roots = new Map<string, NodeId>();
-  let generation = expressionGeneration();
-  const nodeOf = (expression: string): NodeId => {
-    if (generation !== expressionGeneration()) {
-      roots.clear();
-      generation = expressionGeneration();
-    }
-    let found = roots.get(expression);
-    if (found === undefined) {
-      found = prepare(expression);
-      roots.set(expression, found);
-    }
-    return found;
-  };
+  const nodeOf = (expression: string): NodeId =>
+    withExpressions(() => prepare(expression));
 
   /** Every free name of `expression`, closed over the bindings table:
    * a binding name resolves away to what it transitively reads. */
@@ -645,7 +638,7 @@ function readCommit(entry: unknown, index: number,
       affine: shape === 'affine',
       shape: shape as PathShape,
       kinks: shape === 'kinked'
-        ? kinkLevels(context.nodeOf(level), context.bindings.roots()) : null,
+        ? retainedKinkLevels(level, context.bindings.roots) : null,
     });
   }
 
@@ -901,7 +894,7 @@ function readBound(entry: unknown, index: number,
       affine: jumpShapes[at] !== 'kinked',
       shape: jumpShapes[at],
       kinks: jumpShapes[at] === 'kinked'
-        ? kinkLevels(context.nodeOf(jump.level), context.bindings.roots())
+        ? retainedKinkLevels(jump.level, context.bindings.roots)
         : null,
     }));
     const shape = shapes.level as PathShape;
@@ -911,12 +904,12 @@ function readBound(entry: unknown, index: number,
         jumps,
         shape,
         kinks: shape === 'kinked'
-          ? kinkLevels(context.nodeOf(skeleton), context.bindings.roots())
+          ? retainedKinkLevels(skeleton, context.bindings.roots)
           : null,
       },
       shape,
       kinks: shape === 'kinked'
-        ? kinkLevels(context.nodeOf(skeleton), context.bindings.roots())
+        ? retainedKinkLevels(skeleton, context.bindings.roots)
         : null,
     });
   }

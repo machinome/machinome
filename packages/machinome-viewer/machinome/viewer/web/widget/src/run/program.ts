@@ -27,8 +27,8 @@
 import { BindingTable, bindingTable } from '../bindings';
 import { freeVariables } from '../evaluator';
 import {
-  expressionGeneration, kinkLevels, NodeId, prepare, shapeOf, structureOf,
-  valueOf,
+  retainedKinkLevels, NodeId, prepare, shapeOf, structureOf,
+  valueOf, withExpressions,
 } from '../expressions';
 import type { KinkLevel, PathShape } from '../expressions';
 import {
@@ -411,12 +411,14 @@ export function evaluateExpression(
   expression: string,
   values: Record<string, number>,
 ): number {
-  const value = valueOf(program.nodeOf(expression), {
-    time: 0,
-    drivers: nest(values),
-    bindings: program.bindings.roots(),
+  return withExpressions(() => {
+    const value = valueOf(program.nodeOf(expression), {
+      time: 0,
+      drivers: nest(values),
+      bindings: program.bindings.roots(),
+    });
+    return typeof value === 'number' ? value : Number(value);
   });
-  return typeof value === 'number' ? value : Number(value);
 }
 
 /** A KINK's LEVEL QUANTITY at one point of the path: `x` for `abs(x)`
@@ -430,14 +432,17 @@ export function evaluateExpression(
  * `_KinkCuts` on `GraphValue.evaluate` (design D5). */
 export function kinkLevel(program: PathHost, kink: KinkLevel,
                           values: Record<string, number>): number {
-  const scope = {
-    time: 0,
-    drivers: nest(values),
-    bindings: program.bindings.roots(),
-  };
-  const a = Number(valueOf(kink.a, scope));
-  if (kink.b === null) return a;
-  return a - Number(valueOf(kink.b, scope));
+  return withExpressions(() => {
+    kink = kink.current?.() ?? kink;
+    const scope = {
+      time: 0,
+      drivers: nest(values),
+      bindings: program.bindings.roots(),
+    };
+    const a = Number(valueOf(kink.a, scope));
+    if (kink.b === null) return a;
+    return a - Number(valueOf(kink.b, scope));
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -717,6 +722,14 @@ function cycleMessage(stuck: readonly ProgramEdge[]): string {
 }
 
 export function loadProgram(
+  document: RunDocument,
+  sourceUrl: string,
+  bindings?: BindingTable,
+): LoadedProgram {
+  return withExpressions(() => loadProgramScoped(document, sourceUrl, bindings));
+}
+
+function loadProgramScoped(
   document: RunDocument,
   sourceUrl: string,
   bindings?: BindingTable,
@@ -1257,21 +1270,10 @@ export function loadProgram(
     }
   }
 
-  // The interned roots, generation-guarded (design D12).
-  let generation = -1;
-  let roots = new Map<string, NodeId>();
-  const nodeOf = (expression: string): NodeId => {
-    if (generation !== expressionGeneration()) {
-      roots = new Map();
-      generation = expressionGeneration();
-    }
-    let found = roots.get(expression);
-    if (found === undefined) {
-      found = prepare(expression);
-      roots.set(expression, found);
-    }
-    return found;
-  };
+  // The shared string-to-root cache already belongs to the current
+  // generation. Do not retain a second map stamped before preparation.
+  const nodeOf = (expression: string): NodeId =>
+    withExpressions(() => prepare(expression));
 
   const table = bindings ?? bindingTable(document as Manifest, sourceUrl);
 
@@ -1331,7 +1333,7 @@ export function loadProgram(
     const shape = shapeOf(root, constants, roots);
     return {
       shape,
-      kinks: shape === 'kinked' ? kinkLevels(root, roots) : null,
+      kinks: shape === 'kinked' ? retainedKinkLevels(expression, table.roots) : null,
     };
   };
   for (const edge of edges) {
@@ -1579,12 +1581,12 @@ export function loadProgram(
     return {
       members: built,
       gives,
-      activeReads: (index, forced) => {
+      activeReads: (index, forced) => withExpressions(() => {
         const member = built[index];
         if (member.plan === null) return member.unconditional;
         const reads = readsUnder(member.plan, forced, nodeOf, table.roots());
         return new Set([...reads].filter((key) => determined.has(key)));
-      },
+      }),
     };
   };
 

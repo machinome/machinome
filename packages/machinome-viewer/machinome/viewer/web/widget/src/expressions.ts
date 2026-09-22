@@ -178,6 +178,7 @@ type Node =
 
 let table = new Map<string, NodeId>();
 let nodes: Node[] = [];
+let peakNodes = 0;
 // Expression TEXT -> its DAG root. The strings are the ones the loaded
 // document already holds; this map adds an entry, not a copy (D8).
 let expressionRoots = new Map<string, NodeId>();
@@ -187,6 +188,7 @@ function intern(key: string, build: () => Node): NodeId {
   if (existing !== undefined) return existing;
   const id = nodes.length;
   nodes.push(build());
+  peakNodes = Math.max(peakNodes, nodes.length);
   table.set(key, id);
   return id;
 }
@@ -414,25 +416,15 @@ function build(raw: Expression, source: string): NodeId {
 export function prepare(expression: string): NodeId {
   const cached = expressionRoots.get(expression);
   if (cached !== undefined) return cached;
-
-  // The node ceiling (D8), checked here -- at the START of a NEW
-  // preparation, never mid-build -- so a table that has grown past it
-  // (a long `machinome develop` session republishing hundreds of document
-  // versions) is dropped whole before the next expression is built,
-  // rather than risking a partially-built DAG whose ids a caller
-  // already holds. One document never reaches the ceiling on its own
-  // (D8): the whole grasshopper clock interns 267 nodes.
-  if (nodes.length >= EXPRESSION_LIMITS.nodes) {
-    resetStore();
-  }
-
-  const parsed = tokenize(plainLiterals(expression));
-  if (parsed === null) {
-    throw new Error('Cannot evaluate an empty expression');
-  }
-  const rootId = build(parsed, expression);
-  expressionRoots.set(expression, rootId);
-  return rootId;
+  return withExpressions(() => {
+    const parsed = tokenize(plainLiterals(expression));
+    if (parsed === null) {
+      throw new Error('Cannot evaluate an empty expression');
+    }
+    const rootId = build(parsed, expression);
+    expressionRoots.set(expression, rootId);
+    return rootId;
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -447,6 +439,28 @@ export function prepare(expression: string): NodeId {
 export const EXPRESSION_LIMITS = { nodes: 50_000 };
 
 let mountCount = 0;
+let scopeDepth = 0;
+let disposalPending = false;
+
+/** One synchronous preparation AND use of node references. Reclamation
+ * happens before the outermost operation acquires roots, never between
+ * acquisitions or while walking them. The threshold is headroom for
+ * obsolete work, not a limit on one live document's working set.
+ * Raw IDs/maps must not survive this scope without source + generation.
+ * Never wrap an async callback: a scope cannot span an await. */
+export function withExpressions<T>(action: () => T): T {
+  if (scopeDepth === 0 && nodes.length >= EXPRESSION_LIMITS.nodes) resetStore();
+  scopeDepth += 1;
+  try {
+    return action();
+  } finally {
+    scopeDepth -= 1;
+    if (scopeDepth === 0 && disposalPending) {
+      disposalPending = false;
+      if (mountCount === 0) resetStore();
+    }
+  }
+}
 
 // D4: a `BindingTable` (bindings.ts) holds node ids OUTSIDE this store,
 // prepared once at load. A reset hands ids out again from zero, so a
@@ -494,7 +508,8 @@ export function releaseExpressions(): void {
   if (mountCount === 0) return;
   mountCount -= 1;
   if (mountCount === 0) {
-    resetStore();
+    if (scopeDepth > 0) disposalPending = true;
+    else resetStore();
   }
 }
 
@@ -509,12 +524,13 @@ export function releaseExpressions(): void {
 
 let resolutions = 0;
 
-export function expressionMetrics(): { nodes: number; resolutions: number } {
-  return { nodes: nodes.length, resolutions };
+export function expressionMetrics(): { nodes: number; peakNodes: number; resolutions: number } {
+  return { nodes: nodes.length, peakNodes, resolutions };
 }
 
 export function resetExpressionMetrics(): void {
   resolutions = 0;
+  peakNodes = nodes.length;
 }
 
 // ---------------------------------------------------------------------
@@ -981,6 +997,43 @@ export function affineCoordinate(expression: string, coordinate: string,
  * error. */
 export class UnsupportedPathNode extends Error {}
 
+/** Reconstructible owner of a PathValue. The numerical walk stays in
+ * PathValue unchanged; only its generation-qualified working data is
+ * rebuilt. A reset between points must bind the ORIGINAL piece values,
+ * not treat the new point as the start of a different piece. */
+export class ExpressionPath {
+  private generation = -1;
+  private path?: PathValue;
+  private standing?: Record<string, number>;
+
+  constructor(private readonly expression: string,
+              private readonly moving: ReadonlySet<string>,
+              private readonly bindings: () => ReadonlyMap<string, NodeId> | undefined) {}
+
+  private current(): PathValue {
+    if (this.generation !== expressionGeneration()) {
+      this.path = new PathValue(prepare(this.expression), this.moving, this.bindings());
+      this.generation = expressionGeneration();
+      if (this.standing !== undefined) this.path.bind(this.standing);
+    }
+    return this.path!;
+  }
+
+  bind(values: Record<string, number>): unknown {
+    return withExpressions(() => {
+      // Binding a new piece does not need to reconstruct the old one.
+      this.standing = undefined;
+      const result = this.current().bind(values);
+      this.standing = { ...values };
+      return result;
+    });
+  }
+
+  at(values: Record<string, number>): unknown {
+    return withExpressions(() => this.current().at(values));
+  }
+}
+
 export class PathValue {
   /** The moving cone, in the WHOLE graph's postorder, decided the first
    * time this quantity is bound (D2). `null` until then. */
@@ -1370,6 +1423,31 @@ export interface KinkLevel {
   readonly a: NodeId;
   /** `null` for `abs`, whose level is its argument alone. */
   readonly b: NodeId | null;
+  /** Reconstructible derived operands, when retained beyond one scope. */
+  readonly current?: () => KinkLevel;
+}
+
+/** Kink descriptors may live for the lifetime of a loaded program. Keep
+ * their source and postorder index, not an unqualified old integer.
+ * Rebuild the list once per generation, shared by all its descriptors. */
+export function retainedKinkLevels(expression: string,
+                                  bindings: () => ReadonlyMap<string, NodeId> | undefined):
+readonly KinkLevel[] {
+  return withExpressions(() => {
+    let generation = -1;
+    let levels: readonly KinkLevel[];
+    const current = (): readonly KinkLevel[] => {
+      if (generation !== expressionGeneration()) {
+        levels = kinkLevels(prepare(expression), bindings());
+        generation = expressionGeneration();
+      }
+      return levels;
+    };
+    return current().map((level, index) => ({
+      ...level,
+      current: () => current()[index],
+    }));
+  });
 }
 
 /** `root`'s kink nodes in the expression's own POSTORDER, so a kink

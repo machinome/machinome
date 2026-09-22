@@ -22,6 +22,7 @@
 // every segment has succeeded.
 
 import { toNative } from '../drivers';
+import { withExpressions } from '../expressions';
 import { ManifestDriver, ManifestInstruction } from '../types';
 import { Command, CommandRecord } from './commands';
 import { edgeCuts, edgeIncrements, edgeValues, predictsOf } from './edges';
@@ -347,6 +348,10 @@ export class Run {
   }
 
   integrate(tick: number, advance: boolean, only: Command | null = null): void {
+    withExpressions(() => this.integrateScoped(tick, advance, only));
+  }
+
+  private integrateScoped(tick: number, advance: boolean, only: Command | null): void {
     const admissions: Record<string, number> = {};
     for (const [inputId, command] of this.active) {
       admissions[inputId] = (only !== null && command !== only)
