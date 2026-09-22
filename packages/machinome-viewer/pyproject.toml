@@ -31,6 +31,10 @@ keywords = ["machinome", "cad", "viewer", "three.js"]
 dependencies = [
     "fastapi>=0.111,<1",
     "uvicorn>=0.30,<1",
+    # uvicorn serves WebSockets only through an optional library, and the
+    # development page's live reload is one (/ws/reload). Without it a fresh
+    # install's page never learns that the model was republished.
+    "websockets>=10.4",
 ]
 
 [project.optional-dependencies]
@@ -50,6 +54,9 @@ dev = [
     # needs it in the test environment.
     "httpx>=0.27,<1",
     "playwright",
+    # tests/test_packaging.py imports the build hook, which subclasses
+    # setuptools' build_py; Python 3.12+ environments no longer carry it.
+    "setuptools>=77",
 ]
 
 [project.urls]
