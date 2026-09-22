@@ -1,0 +1,30 @@
+# OperatingCurta: fresh export, full replay, pointer turn, and expanded-bank parity
+
+This is local acceptance evidence for the independent viewer at `1f91191`; it is not a release, hosted-service test, or interactive-speed claim. All commands used the public OperatingCurta export and the viewer bundle embedded in that export. No project source was edited for these checks. The two exports below are separate immutable fixtures; neither was overwritten during its paired checks.
+
+## Committed project `f7e4945`: complete normal turn
+
+`machinome export simulation.running:OperatingCurta -o _build_current_operating_2026_09_22` ran with framework `471d00a`. Its `manifest.json` SHA256 is `a985106e264089a3e5ad7028321771b0d6185b5c1579f28a128766570c0ccce3`, program identity `ae6a7f69b3fae2cc47f2fd3df0baf1aff14a297d06526855a3e52043a27221eb`, and embedded viewer bundle SHA256 `648da7dbfac1c802dfdb89fae7549a4c99a9dc194f1f67845313b0d9f94371c4`. The v11 document has 24 drivers, 25 controls, 213 coordinates, and 149 unique nonempty STL references with none missing.
+
+The first no-WebGL diagnostic used `dt=1/240`, a 1024-entry recorder, and one `advance(1)` per tick. Digit 1 completed its 0.2-second move in 48 ticks (3.386 seconds wall). A 480-tick `Turn crank` completed with 360° admitted in 189.586 seconds, no stops, terminal 213-key sorted-bank digest `78196167897eae674cda4048269b6344a38282e8ecd45f4d3ba7f60de2b6253c`, and snapshot digest `27d71861ea59bccc917a3c3dc3ac0363b98f80c5576b37fb82c613d4061b7e77`. After an exact restore of all 213 initial values, replay completed in 194.404 seconds with identical terminal bank and snapshot, 503 turn-local crossings, and 480 turn-local trajectory entries. **That diagnostic process exited 1** because its raw JSON trajectory hash changed with object-key insertion order after restore; it did not prove record parity.
+
+The cause was isolated with a 48-tick replay: all per-tick, per-key values matched by `Object.is`, while raw trajectory JSON differed and sorted-key trajectory JSON matched. `Run.snapshot()` sorts bank keys before `restore()` copies them; first-run trajectory entries retain the program's initial bank insertion order. A second full no-WebGL diagnostic canonicalized each trajectory entry's bank key order without changing samples, numbers, constraints, or event order. It exited **0**: selector 48 ticks/3.433 seconds; first crank 480 ticks/186.749 seconds; restored replay 480 ticks/185.348 seconds. Both commands completed with 360° admitted and no stops; the full bank and snapshot digests above matched, all 213 terminal values matched by `Object.is`, and the 503 turn-local crossings and 480 canonicalized turn-local trajectories had matching digests. The corrected diagnostic bundle SHA256 was `89ebdbc765377ef2532fc6e27276a61f56d160584b2c700f778b7e8008a26f65` (temporary local test harness, not viewer package code).
+
+Chromium then mounted this same export with the embedded bundle, a worker-backed run, all 25 controls, all 213 coordinate keys, and no page errors. An actual pointer drag of selector 1 yielded `[1,0,0,0,0,0,0,0]`, selector shaft 36°, and crank 0°. An actual click on the `one revolution` control was accepted: after eight seconds the crank was at 12° and the outcome read `running…`; it reached 360° in **197.923 seconds** with physical crank part −360°, result ones 76°, result tens −16°, and a 213-key bank. The screenshot is `projects/Calculators/Curta-Type-I-3x/_build_checks/operating-current-first-turn-browser-2026-09-22.png`, visually inspected as a complete, uncropped machine. This is successful browser operation but plainly not a two-second wall-clock turn.
+
+## Committed project `7586002`: expanded higher-result root
+
+After the project adopted the verified higher-result locking parts, a separate public export was made to `_build_current_operating_7586002` with framework `70d0bd9` and the same viewer `1f91191` bundle. Its `manifest.json` SHA256 is `c36432b1080387eeb40234532f516a9ae05f8a9822fd3f47f44ffbbb42f889d1`, program identity `be125f4048c8be00ce4e73d646311d4a50ac75a59aa739f93bf2f38c992fa195`, and embedded bundle SHA256 remains `648da7dbfac1c802dfdb89fae7549a4c99a9dc194f1f67845313b0d9f94371c4`. It is v11 with 24 drivers, 25 controls, 213 coordinates, and 149 unique nonempty model references. Framework main subsequently advanced to `6dc07a8`; this export remains pinned to its recorded source.
+
+The project-owned `simulation/tools/result_bank_operating_browser.py` ran against that export and `_build_checks/result-bank-production-acceptance.json`. Its report `_build_current_operating_7586002/result-bank-browser-acceptance.json` says `validation: passed`, errors `[]`, and compares the complete 213-coordinate *stopped and relieved* banks exactly to Python in all four cases:
+
+| Station / target | Browser stop | Relief | Replay / retry |
+| --- | ---: | ---: | --- |
+| 3 / 190° | 165.22323837279146° | 165.17323837279145° | exact replay / blocked retry |
+| 3 / 880° | 165.22323837227304° | 165.17323837227303° | exact replay / blocked retry |
+| 8 / 290° | 265.22323837279146° | 265.17323837279145° | exact replay / blocked retry |
+| 8 / 980° | 265.22323837227304° | 265.17323837227303° | exact replay / blocked retry |
+
+All four initial requests blocked, all relief moves completed, all retries blocked, and the idle bank stayed unchanged. Screenshots `result-station-3-withdrawal.png` and `result-station-8-withdrawal.png` in the same export were visually inspected: the machine is rendered, at the expected stop angles, with no missing meshes. The browser report was written by the existing project harness into the project's ignored build output; nothing was uploaded.
+
+The remaining limitation is throughput: the normal browser revolution takes roughly 198 seconds wall time despite a declared two-second drawing duration. No law, admission tolerance, event sample, or control contract was relaxed in these checks. The expanded higher-result export passed its stopped-bank cases; a new full 480-tick normal turn on that *expanded* document was not run here.

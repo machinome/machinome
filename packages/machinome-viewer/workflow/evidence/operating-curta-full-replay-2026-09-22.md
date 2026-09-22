@@ -1,6 +1,6 @@
 # OperatingCurta: complete no-WebGL turn and replay on the pinned v11 export
 
-This is correctness and measured latency evidence, **not** a claim of an interactive or visibly accepted browser turn. The fresh project export after ongoing mechanical work remains outstanding.
+This records the historical pinned v11 run only, **not** a claim of an interactive or visibly accepted browser turn at that checkpoint. A later fresh-project export and actual browser turn are recorded in [the current-export evidence](operating-curta-current-export-2026-09-22.md).
 
 The in-thread viewer engine was bundled from viewer `3ef7482` immediately before this run. Viewer main later moved to `e771a28`, a CI workflow/README-only merge with no widget source or package difference. The document was the unchanged `Calculators/Curta-Type-I-3x/_build_source_timing_2026_09_22/operating_curta/viewer.json`, SHA256 `cdbb284e56672aa905e38a25c7efd1f3169fc8f128cd3195f27baf7745a9c28b`, v11, identity `0aac38742fcad90b0818ed07bd2bd4e239873169ffa9d207b3a18f869a732ca3`, 213 bank coordinates. Node v24.11.1 ran with `dt=1/240` s and a 1024-entry recorder. No WebGL or browser process was involved.
 
@@ -17,4 +17,4 @@ The original diagnostic process exited **1**, not 0, because its final assertion
 
 The corrected accounting was exercised separately on the committed seven-coordinate `tests/fixtures/clearing/viewer.json`: a 24-tick preparatory command followed by a 24-tick command produced 48 retained trajectory entries on the first pass, then 24 after restore/replay; first-pass and replay *command-local* trajectories and the one crossing were byte-identical, as were all bank values. That small probe exited 0. It establishes the recorder comparison method, not this Curta's as-yet-unmeasured turn-local recorder hashes.
 
-The observed 192–182 seconds per revolution is the actual in-thread cost, not the earlier 48-tick extrapolation. It remains roughly two orders of magnitude slower than the instruction's declared two-second drawing duration. A final hosted or standalone browser turn, visible readout and replay still require a fresh project export after mechanical source settles.
+The observed 192–182 seconds per revolution is the actual in-thread cost, not the earlier 48-tick extrapolation. It remains roughly two orders of magnitude slower than the instruction's declared two-second drawing duration. The later fresh-export browser turn and corrected replay are recorded separately; this historical harness exit remains 1.
