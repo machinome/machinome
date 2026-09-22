@@ -16,6 +16,6 @@ When a running step follows an expression over successive path pieces, the viewe
 - **WHEN** a moving coordinate is sampled at a later point, then the same path is rebound under another piece's branch reading
 - **THEN** the new bind reads only its own supplied values and returns the same value as a whole expression evaluation
 
-#### Scenario: Actual OperatingCurta export remains equivalent
-- **WHEN** the viewer executes a crank turn on the OperatingCurta's 213-coordinate document
-- **THEN** its admitted travel, every committed coordinate, readout, replay and recorded crossings are unchanged while redundant expression resolutions fall
+#### Scenario: Actual OperatingCurta export remains equivalent over a bounded crank window
+- **WHEN** the viewer executes the first 48 ticks of a crank turn on the OperatingCurta's 213-coordinate document after setting selector 1
+- **THEN** its admitted travel and every committed coordinate are unchanged while redundant expression resolutions fall

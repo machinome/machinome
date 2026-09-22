@@ -1954,8 +1954,7 @@ describe('a curved quantity is still searched', () => {
       }],
     });
 
-  it('6.3 classifies `max(0, sin(x))` as NOTHING and samples it at the '
-     + 'same cost as before', () => {
+  it('6.3 classifies `max(0, sin(x))` as NOTHING and retains its search samples', () => {
     const program = curved();
     expect(program.edges[0].plans[0]!.jumps[0].shape).toBeNull();
     expect(program.edges[0].shapes[0]).toBe('affine');
@@ -1963,10 +1962,9 @@ describe('a curved quantity is still searched', () => {
     const crossings: CrossingRecord[] = [];
     planIncrement(program, planOf(program), { crank: 0 }, { crank: 1.5 },
                   'crank drives wheel.turn', 'wheel.turn', crossings, 1);
-    // The number the SAME call costs on the base tree, to the
-    // resolution: 64 samples, their bisections and the substituted
-    // skeleton over the pieces.
-    expect(expressionMetrics().resolutions).toBe(278);
+    // The same 64 samples, bisections and pieces as before. Four node
+    // resolutions now reuse equal bound values between adjacent pieces.
+    expect(expressionMetrics().resolutions).toBe(274);
     expect(crossings.length).toBeGreaterThan(0);
   });
 });

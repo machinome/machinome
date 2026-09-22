@@ -733,6 +733,51 @@ describe('expressionGeneration and the reset guard (D4)', () => {
 // ---------------------------------------------------------------------
 
 describe('PathValue (D1-D9)', () => {
+  it('rebinding equal values resolves no node, including after a sampled point', () => {
+    const id = prepare('((a + b) * (c + d))');
+    const path = new PathValue(id, new Set(['a']));
+    resetExpressionMetrics();
+    expect(path.bind({ a: 1, b: 2, c: 3, d: 4 })).toBe(21);
+    path.at({ a: 8, b: 2, c: 3, d: 4 });
+    const before = expressionMetrics().resolutions;
+    expect(path.bind({ a: 1, b: 2, c: 3, d: 4 })).toBe(21);
+    expect(expressionMetrics().resolutions - before).toBe(0);
+  });
+
+  it('rebinding a changed branch resolves only its dependent cone', () => {
+    const id = prepare('((a + b) * (c + d))');
+    const path = new PathValue(id, new Set(['a']));
+    path.bind({ a: 1, b: 2, c: 3, d: 4 });
+    resetExpressionMetrics();
+    const result = path.bind({ a: 1, b: 2, c: 9, d: 4 });
+    expect(result).toBe(39);
+    expect(expressionMetrics().resolutions).toBeLessThan(path.totalNodes());
+    expect(result).toBe(valueOf(id, { time: 0, drivers: { a: 1, b: 2, c: 9, d: 4 } } as never));
+  });
+
+  it('tracks input presence and Object.is differences, including through bindings', () => {
+    const boundRoot = prepare('(x * 2)');
+    const id = prepare('(_bound + y)');
+    const path = new PathValue(id, new Set(['x']), new Map([['_bound', boundRoot]]));
+    expect(path.bind({ x: 0, y: 1 })).toBe(1);
+    resetExpressionMetrics();
+    expect(path.bind({ x: -0, y: 1 })).toBe(1);
+    expect(expressionMetrics().resolutions).toBeGreaterThan(0);
+    expect(path.bind({ x: 3, y: 1 })).toBe(7);
+    resetExpressionMetrics();
+    expect(path.bind({ x: 3, y: 1 })).toBe(7);
+    expect(expressionMetrics().resolutions).toBe(0);
+    const nanPath = new PathValue(prepare('(z + 1)'), new Set(['z']));
+    nanPath.bind({ z: Number.NaN });
+    resetExpressionMetrics();
+    nanPath.bind({ z: Number.NaN });
+    expect(expressionMetrics().resolutions).toBe(0);
+    nanPath.bind({ z: undefined } as unknown as Record<string, number>);
+    resetExpressionMetrics();
+    nanPath.bind({});
+    expect(expressionMetrics().resolutions).toBeGreaterThan(0);
+  });
+
   it('1.1/1.2 answers, at a bound piece, the same float valueOf answers, '
      + 'and the same again at a second point of the SAME piece', () => {
     const expression = '((a + (b * c)) - sin(d))';

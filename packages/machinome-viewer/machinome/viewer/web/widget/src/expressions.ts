@@ -1039,8 +1039,8 @@ export class PathValue {
    * time this quantity is bound (D2). `null` until then. */
   private order: NodeId[] | null = null;
 
-  /** Every node's value on the CURRENT piece that does not move (D2). */
-  private readonly standing = new Map<NodeId, unknown>();
+  /** Every node's value at the last bind. `at` never changes this map. */
+  private readonly bound = new Map<NodeId, unknown>();
 
   /** Scratch, valid only for the duration of one `bind`/`at` call. */
   private readonly computed = new Map<NodeId, unknown>();
@@ -1048,6 +1048,11 @@ export class PathValue {
   /** The whole graph's postorder, decided once and reused by every later
    * piece (D2). */
   private walked: NodeId[] = [];
+
+  /** Stable dependencies and unresolved bank leaves of this path graph. */
+  private readonly children = new Map<NodeId, readonly NodeId[]>();
+  private readonly inputs: NodeId[] = [];
+  private readonly inputValues = new Map<NodeId, { present: boolean; value: unknown }>();
 
   constructor(private readonly root: NodeId,
               private readonly moving: ReadonlySet<string>,
@@ -1103,7 +1108,14 @@ export class PathValue {
 
   private read(id: NodeId): unknown {
     if (this.computed.has(id)) return this.computed.get(id);
-    return this.standing.get(id);
+    return this.bound.get(id);
+  }
+
+  private inputAt(id: NodeId, values: Record<string, number>):
+    { present: boolean; value: unknown } {
+    const name = (nodes[id] as NameNode).name;
+    const present = Object.prototype.hasOwnProperty.call(values, name);
+    return { present, value: present ? values[name] : undefined };
   }
 
   /** One node's value at one point (D1, D4). Resolution order for a
@@ -1179,38 +1191,59 @@ export class PathValue {
     }
   }
 
-  /** A new piece: recompute the standing part, deciding which nodes move
-   * the FIRST time, in that same walk (D2). Every node computed charges
-   * the resolution probe (D8). */
+  /** A new piece: decide the moving cone on the first bind, then retain
+   * unaffected values across later pieces. `at` samples are scratch and
+   * cannot contaminate this bound snapshot. */
   bind(values: Record<string, number>): unknown {
     const deciding = this.order === null;
-    const walk = deciding ? this.postorder() : this.walked;
-    if (deciding) this.walked = walk;
-    const moves = new Map<NodeId, boolean>();
-    const order: NodeId[] = [];
     this.computed.clear();
-    this.standing.clear();
-    const known = deciding ? null : new Set(this.order!);
-    for (const id of walk) {
-      const value = this.valueAt(id, values);
-      resolutions += 1;
-      this.computed.set(id, value);
-      if (deciding) {
+    if (deciding) {
+      const walk = this.postorder();
+      this.walked = walk;
+      const moves = new Map<NodeId, boolean>();
+      const order: NodeId[] = [];
+      for (const id of walk) {
         const node = nodes[id];
         const children = this.childrenOf(id);
+        this.children.set(id, children);
+        if (node.kind === 'name' && children.length === 0
+            && node.parts[0] !== TIME_ID) {
+          this.inputs.push(id);
+          this.inputValues.set(id, this.inputAt(id, values));
+        }
+        const value = this.valueAt(id, values);
+        resolutions += 1;
+        this.bound.set(id, value);
         const nodeMoves = node.kind === 'name' && children.length === 0
           ? this.movesByName(id)
           : children.some((child) => moves.get(child) === true);
         moves.set(id, nodeMoves);
-        if (nodeMoves) order.push(id); else this.standing.set(id, value);
-      } else if (!known!.has(id)) {
-        this.standing.set(id, value);
+        if (nodeMoves) order.push(id);
+      }
+      this.order = order;
+      return this.bound.get(this.root);
+    }
+
+    const dirty = new Set<NodeId>();
+    for (const id of this.inputs) {
+      const next = this.inputAt(id, values);
+      const previous = this.inputValues.get(id)!;
+      if (next.present !== previous.present
+          || !Object.is(next.value, previous.value)) {
+        dirty.add(id);
+        this.inputValues.set(id, next);
       }
     }
-    if (deciding) this.order = order;
-    const found = this.computed.get(this.root);
-    this.computed.clear();
-    return found;
+    if (dirty.size === 0) return this.bound.get(this.root);
+    for (const id of this.walked) {
+      if (!dirty.has(id)
+          && !this.children.get(id)!.some((child) => dirty.has(child))) continue;
+      const value = this.valueAt(id, values);
+      resolutions += 1;
+      this.bound.set(id, value);
+      dirty.add(id);
+    }
+    return this.bound.get(this.root);
   }
 
   /** A LATER point of the SAME piece: only the moving cone (D2). Every
@@ -1221,7 +1254,7 @@ export class PathValue {
     if (order === null) {
       throw new Error('PathValue.at() called before bind()');
     }
-    if (order.length === 0) return this.standing.get(this.root);
+    if (order.length === 0) return this.bound.get(this.root);
     this.computed.clear();
     for (const id of order) {
       const value = this.valueAt(id, values);

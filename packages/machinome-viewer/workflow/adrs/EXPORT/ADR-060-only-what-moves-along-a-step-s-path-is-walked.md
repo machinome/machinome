@@ -2,6 +2,8 @@
 
 **Status:** Accepted
 
+**Amended by:** [ADR-074](ADR-074-a-path-piece-reuses-unchanged-bound-nodes.md) for the later-bind whole-graph rewalk in Decision 2; the first bind and `at` moving-cone rule stand.
+
 **Date:** 2026-09-16
 
 **Change:** `walk-only-what-moves`

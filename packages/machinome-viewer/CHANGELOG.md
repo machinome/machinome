@@ -5,6 +5,10 @@ it carries release together and share one version.
 
 ## Unreleased
 
+- Reuse unchanged expression nodes across adjacent running path pieces. The
+  OperatingCurta's first 48 crank ticks improve by 14.6% without WebGL, but a
+  complete browser revolution remains much slower than its two-second
+  declaration; follow-up performance work is still required. (ADR-074.)
 - Draw a clocked handle gesture at the tempo of the first `by` instruction
   naming its input, scaled to admitted travel. Use the existing 0.2-second
   duration when no instruction declares a travel. Pressed instructions keep

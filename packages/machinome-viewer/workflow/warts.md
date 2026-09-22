@@ -111,6 +111,19 @@ document interactive.
   not dispute — is unaddressed, and a document whose followed quantities
   overlap more than the Curta's own could still pay for it.
 
+- **OperatingCurta v11 follow-up (2026-09-22).** The earlier conclusion was
+  for the v7 export and no longer describes this project's v11 running source
+  timing. On its pinned 213-coordinate export, with WebGL absent, 48/480 crank
+  ticks took 32.605 s. ADR-074's unchanged-node cache fell that to 27.838 s
+  (14.6%), and its selector setup from 11.553 s to 7.004 s. The post-cache
+  profile still assigns substantial CPU to `nest`, `compute`, `resolveName`
+  and full-bank copies at `ExpressionPath.bind` (alongside necessary
+  `PathValue.at` work); see `workflow/evidence/operating-curta-path-cache-2026-09-22.md`.
+  **Triage: reopened for this v11 document.** A next cycle must measure and
+  address the remaining viewer-owned evaluation/scope cost without weakening
+  the admitted path or changing dt; this cache alone does not make the
+  declared two-second turn interactive.
+
 # The clocked machine (2026-09-17, `execute-the-commit`, ADR-062)
 
 Four findings met while mirroring machinome's clocked executor (ADR-125,

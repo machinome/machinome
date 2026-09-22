@@ -343,17 +343,17 @@ describe('the cost of a tick', () => {
       .toBeLessThan(4000);
   }, 240_000);
 
-  it('leaves a machine with no kink EVALUATING EXACTLY what it did', () => {
-    // The three machines design §8 pins to the unit: none of their
-    // followed quantities is reclassified, so not one evaluation may
-    // move. Measured on the base and after, identical.
+  it('leaves search samples unchanged while saving equal path-piece work', () => {
+    // Earlier cycles pinned these counts to show no search was removed.
+    // Incremental bind skips 12.0 resolutions per Clearing tick, while
+    // the sample count and all outputs remain pinned by the corpus.
     const clearingMachine = machines.find((one) => one.name === 'Clearing')!;
     const clearingEngine = Engine.load(
       clearingMachine.document as RunDocument,
       { dt: clearingMachine.dt, record: null });
     clearingEngine.move('ring', { by: 100000, duration: 1000 });
     expect(evaluationsPerTick('Clearing', clearingEngine, 200).toFixed(1))
-      .toBe('471.1');
+      .toBe('459.1');
 
     const train = machines.find((one) => one.name === 'Train')!;
     const trainEngine = Engine.load(train.document as RunDocument,
@@ -366,10 +366,9 @@ describe('the cost of a tick', () => {
                                        { dt: 0.02, record: null });
     carriageEngine.move('crank', { by: 36000, duration: 40 });
     expect(evaluationsPerTick('the Curta carriage', carriageEngine, 200)
-      // Source-timed pieces add endpoint evaluations (formerly 5913.2).
-      // Clearing and Train above retain their exact old costs; the carry
-      // now preserves its actual timing, measured independently in parity.
-      .toFixed(1)).toBe('6277.4');
+      // Incremental bind skips equal piece work (formerly 6277.4).
+      // Carry timing and bank values remain independently pinned in parity.
+      .toFixed(1)).toBe('4301.9');
   }, 240_000);
 
   it('runs the acceptance machine far faster than real time', () => {
